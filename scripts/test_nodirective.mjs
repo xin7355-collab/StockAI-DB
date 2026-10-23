@@ -13,6 +13,9 @@
  * ④ V79.5.7 永豐智慧單攻略「直接照抄」那塊:讀 `_exitDistance` 的三條出場線,⛔ 不可再有停利觸發價 / 先賣一半 / 回檔 5% / −10%。
  * INJECT=1:把 CPI 的事前換回舊指令 → ① 必須紅;INJECT=2:標籤說明換回「賣 1/3 ~ 1/2」→ ② 必須紅;
  * INJECT=3:多空計分卡換回「持股分批停利」→ ③ 必須紅;INJECT=4:智慧單那塊換回「先賣一半」→ ④ 必須紅。
+ * ⑤ V79.5.9 K 線頁「🗣️ 朱老師這樣看」(renderChuKbarVerdict + 主升段體檢 _mainRiseStage)⛔ 不可自己給進出指令
+ *    (跌破 5MA 先停利 / 持股分批出 / 跌破前低就撤 / 快進快出 / 站穩月線 + 帶量長紅再進 …)——
+ *    全站只有一套:要不要買照決策台(這一檔自己的觸發價),手上的照三條出場。INJECT=5:換回「順勢做多,買點守 5MA」→ ⑤ 必須紅。
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
@@ -30,8 +33,9 @@ const BAN = /(減碼|加碼|買進|賣出|賣 ?1\/3|現金比例|Call|Put|做多
 
 let src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 let file = path.join(ROOT, 'index.html');
-if (['1', '2', '3', '4'].includes(INJ)) {
-    if (INJ === '3') src = src.replace("'弱勢明顯 —— 別接刀;手上的照你的出場規則走'", "'弱勢明顯,持股分批停利、空手不接刀'");
+if (['1', '2', '3', '4', '5'].includes(INJ)) {
+    if (INJ === '5') src = src.replace("'型態偏多 —— 要不要買照決策台(看這一檔自己的觸發價),手上的照你的出場規則走。'", "'順勢做多,買點守 5MA,跌破 5MA 先停利,別凹單。'");
+    else if (INJ === '3') src = src.replace("'弱勢明顯 —— 別接刀;手上的照你的出場規則走'", "'弱勢明顯,持股分批停利、空手不接刀'");
     else if (INJ === '4') src = src.replace('<div>• ⛔ 不設停利單、⛔ 不先賣一半 —— 照上面三條走就好</div>', '<div>• 停利觸發 ≥ 120(先賣一半,剩的守月線)</div>');
     else if (INJ === '1') src = src.replace("before: '公布前後這兩天,台股波動常常比較大;但漲跌方向沒有固定規律。',", "before: '事前 1-2 天:減碼短線部位、現金比例拉到 30%。',");
     else src = src.replace("tip: '偏弱的單一訊號 —— ⛔ 不是賣出指令,手上的照你的出場規則走(⛔ 不用先賣一部分)'", "tip: '走弱明顯,持有者降低部位(賣 1/3 ~ 1/2)'");
@@ -88,6 +92,25 @@ if (m) {
     ok('③a 空過守門:白名單每一條都對得上(用不到的要刪掉)', unused.length === 0, unused.join(','));
     ok('③b 理論原文頁要講清楚本站的規則(葛蘭碧 / K 棒型態 / 朱老師選股說明)',
        /以上是葛蘭碧理論原本的說法/.test(src) && /data-kbhelpnote="1"/.test(src) && /data-chudescnote="1"/.test(src));
+}
+
+// ⑤ 🧹 V79.5.9 K 線頁「🗣️ 朱老師這樣看」⛔ 不可自己給進出指令(靜態掃這兩支函式的程式碼,⛔ 註解不算)
+{
+    const BAN5 = /停利|分批出|分批進|就撤|快進快出|續抱|再進|再追|鐵血停損|直接放棄|翻臉出場|以偏多為主|先觀望|順勢做多,|順勢做、|買點守|搶反彈|等打底|再說|再動作|先減碼|趁反彈減碼|高信度買點|最高信度|回檔就是機會|逃命|快出|部位砍半/;
+    const L = src.split('\n');
+    const head = /^    (?:async )?([_A-Za-z0-9]+)\(.*\) *\{ *$/;
+    const body = name => {
+        const i = L.findIndex(x => (x.match(head) || [])[1] === name);
+        if (i < 0) return null;
+        let j = i + 1; while (j < L.length && !head.test(L[j])) j++;
+        return L.slice(i, j).map(x => x.replace(/^\s*\/\/.*$/, '').replace(/[ \t]+\/\/[^\n]*$/, '')).join('\n');
+    };
+    const ck = body('renderChuKbarVerdict'), st = body('_mainRiseStage'), rs = body('_resonanceHtml');   // 共振框排在朱老師卡最上面
+    ok('⑤a 空過守門:找得到朱老師卡 / 主升段體檢 / 共振框三支函式', !!ck && !!st && !!rs && ck.length > 3000 && /kbarCtaTxt/.test(ck) && /isBullGrade/.test(rs), `${(ck || '').length} / ${(st || '').length} / ${(rs || '').length}`);
+    const hits = [ck || '', st || '', rs || ''].join('\n').split('\n').filter(x => BAN5.test(x)).map(x => x.match(BAN5)[0] + ' ← ' + x.trim().slice(0, 70));
+    ok('⑤b 朱老師卡 ⛔ 不再自己給停損價與進出指令(停利 / 分批出 / 就撤 / 快進快出 / 續抱 / 再進 / 再追 / 以偏多為主 …)', hits.length === 0, hits.slice(0, 4).join(' | '));
+    ok('⑤c 💡 操作一律指回同一套:要不要買照決策台、手上的照你的出場規則走',
+       /要不要買照決策台/.test(ck || '') && ((ck || '').match(/照你的出場規則走/g) || []).length >= 9, ((ck || '').match(/照你的出場規則走/g) || []).length);
 }
 
 const browser = await chromium.launch({

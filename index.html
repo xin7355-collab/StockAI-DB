@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.5.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.5.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.5.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.5.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8569,10 +8569,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.5.8',
+    _APP_VERSION: 'V79.5.9',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.5.9', d: [
+            '🧹 K 線頁「朱老師這樣看」只描述型態:要不要買照決策台、手上的照你的出場規則走',
+            '🧹 選股頁清單標題寫清楚列了幾檔',
+            '🔧 巨頭財報新聞那一格修好(以前一直是空的)',
+        ], dt: '2026-10-23' },
         { v: 'V79.5.8', d: [
             '🔧 AI 翻譯 / 簡短判讀:AI 供應商把原本用的模型下架了,改成自動換用新的(這幾天這類 AI 回覆會失敗或亂碼,現在恢復)',
         ], dt: '2026-10-23' },
@@ -8747,7 +8752,6 @@ ${list}
         { v: 'V78.5.2', d: ['🔧 小修正'] },
         { v: 'V78.5.1', d: ['🔧 小修正'] },
         { v: 'V78.5.0', d: ['🔧 小修正'] },
-        { v: 'V78.4.9', d: ['🔧 小修正'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -29071,21 +29075,21 @@ ${this._reportFacts(sym)}
         try { const rg = this._detectMarketRegime?.(); if (rg) { regime = rg.regime; overheat = !!rg.overheat; } } catch (_) {}
         let grade, gcls, gbar, names, note;
         // 🎯 V68.1.3 共振門檻拉高:A+ 級不只要 4 個多方訊號 + 零反向,還要「大盤不是空頭」才成立(下方 regime gate 把逆風的 A+ 降級)
-        if (nb >= 4 && ns === 0) { grade = '🔴 A+ 級買點共振'; gcls = 'text-red-300'; gbar = 'border-red-500 bg-red-900/25'; names = reso.bull; note = '多個獨立策略同時看多、且無反向訊號 → 這是最高信度的買點,回檔就是機會。仍守停損。'; }
-        else if (nb >= 3 && ns <= 1) { grade = '🔴 A 級買點共振'; gcls = 'text-red-300'; gbar = 'border-red-500 bg-red-900/15'; names = reso.bull; note = '多個策略同向看多 → 高信度買點,順勢做、守停損。'; }
-        else if (ns >= 3 && nb === 0) { grade = '⛔ 逃頂共振·高危'; gcls = 'text-green-300'; gbar = 'border-green-500 bg-green-900/25'; names = reso.bear; note = '多個賣訊/風險同時亮 → 逃命訊號,持股快出、空手勿接刀。'; }
-        else if (ns >= 2 && nb <= 1) { grade = '🟢 偏空共振'; gcls = 'text-green-300'; gbar = 'border-green-500 bg-green-900/15'; names = reso.bear; note = '風險訊號偏多 → 保守、減碼,別追。'; }
-        else if (nb >= 2 && ns === 0) { grade = '🟡 偏多共振'; gcls = 'text-red-300'; gbar = 'border-yellow-500 bg-yellow-900/10'; names = reso.bull; note = '兩個策略看多,信度中上 → 可留意,等再多一個訊號更穩。'; }
-        else { grade = '⚖️ 多空訊號並存'; gcls = 'text-yellow-300'; gbar = 'border-yellow-500 bg-yellow-900/10'; names = [...reso.bull, ...reso.bear]; note = '多空訊號都有,方向未定 → 別急,以「現在怎麼做」的價位紀律為準。'; }
+        if (nb >= 4 && ns === 0) { grade = '🔴 看多訊號共振(強)'; gcls = 'text-red-300'; gbar = 'border-red-500 bg-red-900/25'; names = reso.bull; note = '多個訊號同時看多、沒有反向訊號 —— 這是描述,⛔ 不是買點;要不要買照決策台,手上的照你的出場規則走。'; }
+        else if (nb >= 3 && ns <= 1) { grade = '🔴 看多訊號共振'; gcls = 'text-red-300'; gbar = 'border-red-500 bg-red-900/15'; names = reso.bull; note = '多個訊號同向看多 —— 這是描述,⛔ 不是買點;要不要買照決策台,手上的照你的出場規則走。'; }
+        else if (ns >= 3 && nb === 0) { grade = '⛔ 看空訊號共振(強)'; gcls = 'text-green-300'; gbar = 'border-green-500 bg-green-900/25'; names = reso.bear; note = '多個賣訊 / 風險同時亮 → 別追、空手的別接刀;手上的照你的出場規則走。'; }
+        else if (ns >= 2 && nb <= 1) { grade = '🟢 偏空共振'; gcls = 'text-green-300'; gbar = 'border-green-500 bg-green-900/15'; names = reso.bear; note = '風險訊號偏多 → 別追;手上的照你的出場規則走。'; }
+        else if (nb >= 2 && ns === 0) { grade = '🟡 偏多共振'; gcls = 'text-red-300'; gbar = 'border-yellow-500 bg-yellow-900/10'; names = reso.bull; note = '兩個訊號看多 —— 這是描述;要不要買照決策台。'; }
+        else { grade = '⚖️ 多空訊號並存'; gcls = 'text-yellow-300'; gbar = 'border-yellow-500 bg-yellow-900/10'; names = [...reso.bull, ...reso.bear]; note = '多空訊號都有,方向未定 → 要不要買照決策台,手上的照你的出場規則走。'; }
         // 🌡️ 大盤過濾套用:做多類共振遇大盤空頭 → 直接降級(逆大盤做多是勝率殺手);大盤過熱 → 加警語不降級
-        const isBullGrade = /買點共振|偏多共振/.test(grade);
+        const isBullGrade = /看多訊號共振|偏多共振/.test(grade);
         let mktTag = '';
         if (isBullGrade && regime === 'bear') {
-            grade = '⚠️ 買點共振·但大盤逆風'; gcls = 'text-yellow-300'; gbar = 'border-yellow-500 bg-yellow-900/10';
-            note = '個股多個策略看多,但<b>大盤現在是空頭</b> — 逆大盤做多勝率大打折。真要做:只挑強勢中的強勢、部位砍半、停損更嚴,否則等大盤翻多再進。';
+            grade = '⚠️ 看多訊號共振·但大盤逆風'; gcls = 'text-yellow-300'; gbar = 'border-yellow-500 bg-yellow-900/10';
+            note = '個股多個訊號看多,但<b>大盤現在是空頭</b> —— 逆著大盤容易被拖累;要不要買照決策台,手上的照你的出場規則走。';
             mktTag = '<span class="text-[9px] font-bold text-green-300 ml-1">🌡️大盤空頭</span>';
         } else if (isBullGrade && overheat) {
-            note += ' ⚠️ <b>但大盤過熱</b>(乖離過大),追高留一手、分批進、別重壓。';
+            note += ' ⚠️ <b>但大盤過熱</b>(乖離過大),別追高。';
             mktTag = '<span class="text-[9px] font-bold text-orange-300 ml-1">🌡️大盤過熱</span>';
         } else if (isBullGrade && regime === 'bull') {
             mktTag = '<span class="text-[9px] font-bold text-red-300 ml-1">🌡️大盤順風</span>';
@@ -29095,8 +29099,8 @@ ${this._reportFacts(sym)}
         //   ⭐ 排在大盤那段**之後**:個股的主結論優先(單一劇本原則的主結論講的就是這一檔)。
         try {
             if (isBullGrade && this._bearGate?.(this.currentSymbolId)) {
-                grade = '⚠️ 買點共振·但這檔中期是空頭'; gcls = 'text-yellow-300'; gbar = 'border-yellow-500 bg-yellow-900/10';
-                note = '多個策略同時看多,<b>但上面的主結論是空頭</b> —— 這只能當<b>反彈</b>看,⛔ 不是買點;有貨的趁反彈減碼,空手的等它站回中期趨勢再說。';
+                grade = '⚠️ 看多訊號共振·但這檔中期是空頭'; gcls = 'text-yellow-300'; gbar = 'border-yellow-500 bg-yellow-900/10';
+                note = '多個訊號同時看多,<b>但上面的主結論是空頭</b> —— 這只能當<b>反彈</b>看,⛔ 不是買點;手上的照你的出場規則走。';
                 mktTag += '<span class="text-[9px] font-bold text-yellow-300 ml-1">⚠️這檔中期空頭</span>';
             }
         } catch (_) {}
@@ -29677,23 +29681,23 @@ ${this._reportFacts(sym)}
             // 0) 🎢 主升段體檢(fold-in):先講大方向站在哪一段
             if (stageInfo) lines.push(`🎢 <b class="${stageInfo.stageCol}">主升段體檢:${stageInfo.stage}</b> — ${stageInfo.stageMsg}`);
             // 1) 波段結構
-            if (trend === 'bull') lines.push('📈 <b>波段結構頭頭高、底底高</b>,這是標準多頭,方向對!順著做就贏一半。');
-            else if (trend === 'bear') lines.push('📉 <b>頭頭低、底底低</b>,還在空頭修正,別想著抄底接刀,等打底再說。');
-            else lines.push('➖ 高低點還沒表態,<b>箱型整理</b>中,等帶量突破箱頂再進場,現在別急。');
+            if (trend === 'bull') lines.push('📈 <b>波段結構頭頭高、底底高</b>,這是標準多頭的走法。');
+            else if (trend === 'bear') lines.push('📉 <b>頭頭低、底底低</b>,還在空頭修正 —— 別想著抄底接刀。');
+            else lines.push('➖ 高低點還沒表態,<b>箱型整理</b>中。');
             // 2) 均線
             if (ma5 != null && ma20 != null && ma60 != null && price > ma5 && ma5 > ma20 && ma20 > ma60)
                 lines.push(`📐 站上 5 日、月線 ${nf(ma20)}、季線 ${nf(ma60)},<b>均線多頭排列漂亮</b>,多方掌控。`);
             else if (ma20 != null && price > ma20) lines.push(`📐 站在月線 ${nf(ma20)} 之上(多空分水嶺),<b>中線偏多</b>,守住就有戲。`);
-            else if (ma20 != null) lines.push(`📐 <b>跌破月線 ${nf(ma20)}</b>(多空分水嶺),中線轉弱,搶反彈要快進快出。`);
+            else if (ma20 != null) lines.push(`📐 <b>跌破月線 ${nf(ma20)}</b>(多空分水嶺),中線轉弱。`);
             // 3) K棒型態
             if (bullPats.length) lines.push(`🕯️ K棒出現 <b class="text-red-300">${bullPats.slice(0, 3).join('、')}</b>,是轉強/發動訊號。`);
             if (bearPats.length) lines.push(`🕯️ K棒出現 <b class="text-green-300">${bearPats.slice(0, 3).join('、')}</b>,留意轉弱/出貨,別追高。`);
             if (!bullPats.length && !bearPats.length) lines.push('🕯️ 目前沒有明顯 K 棒轉折型態,盤整等變盤。');
             // 4) ⭐ 歷史高點 + 創新高機會(使用者要的重點)
             if (athPct >= -0.3) {
-                lines.push(`🚀 <b class="text-red-300">已經創新高 ${nf(price)}!</b> 上面完全沒有套牢賣壓,只要量能跟得上,<b>續強噴出</b>機率高,回檔不破 5MA 都可續抱。`);
+                lines.push(`🚀 <b class="text-red-300">已經創新高 ${nf(price)}!</b> 上面完全沒有套牢賣壓。`);
             } else if (athPct >= -3) {
-                lines.push(`🎯 離歷史高點 <b>${nf(ath)}</b> 只剩 <b class="text-red-300">${Math.abs(athPct).toFixed(1)}%</b>,一旦<b>帶量突破就是創新高</b>,上面套牢賣壓少,有機會噴一波,盯緊量能!`);
+                lines.push(`🎯 離歷史高點 <b>${nf(ath)}</b> 只剩 <b class="text-red-300">${Math.abs(athPct).toFixed(1)}%</b>,再漲過去就是<b>創新高</b>,上面套牢賣壓少。`);
             } else if (athPct >= -15) {
                 lines.push(`🏔️ 目前離歷史高點 <b>${nf(ath)}</b> 還有 ${Math.abs(athPct).toFixed(1)}%,先過<b>前高壓力 ${nf(recentHigh)}</b> 這關,站穩了才有機會挑戰新高。`);
             } else {
@@ -29702,8 +29706,8 @@ ${this._reportFacts(sym)}
             // 5) 量能
             if (red && bigVol && !diverge) lines.push(`📊 今天<b class="text-red-300">帶量長紅 ${(vCur / avgV).toFixed(1)}×均量</b>,量增配紅 K = 有效突破,量價都對了。`);
             else if (diverge) lines.push('📊 <b class="text-yellow-300">量價背離</b>(無量創高/量縮),小心假突破,別被騙進場。');
-            else if (!red && bigVol) lines.push('📊 <b class="text-green-300">量增黑 K</b>,爆量收黑 = 主力出貨賣壓,持股當心。');
-            else if (volShrink) lines.push(`📊 量縮到 ${(vCur / avgV * 100).toFixed(0)}% 均量,<b>觀望量</b>,等放量表態再動作。`);
+            else if (!red && bigVol) lines.push('📊 <b class="text-green-300">量增黑 K</b>,爆量收黑 = 賣壓重;手上的照你的出場規則走。');
+            else if (volShrink) lines.push(`📊 量縮到 ${(vCur / avgV * 100).toFixed(0)}% 均量,<b>觀望量</b>(買賣都不積極)。`);
             // 6) 📊 OBV 能量潮(V62.2)
             if (obvState || obvDiv) {
                 let s6 = '🌊 <b>OBV 能量潮</b>:';
@@ -29732,7 +29736,7 @@ ${this._reportFacts(sym)}
             const idxParts = overheated ? [kdTxt, macdTxt] : [kdTxt, macdTxt, rsiTxt, biasTxt];
             if (idxParts.some(Boolean)) lines.push(`🎯 <b>指標綜合</b>:${idxParts.filter(Boolean).join(' ・ ')}。`);
             if (overheated)
-                lines.push(`🔥 <b class="text-orange-300">短線過熱</b>:RSI ${Math.round(_rsiNow)} + 乖離 +${_biasNow.toFixed(0)}% 都在極端區,噴出末段追高易套 —— <b>別追</b>,拉回不破月線 ${nf(ma20)} + 出紅K 再進。`);
+                lines.push(`🔥 <b class="text-orange-300">短線過熱</b>:RSI ${Math.round(_rsiNow)} + 乖離 +${_biasNow.toFixed(0)}% 都在極端區,噴出末段追高易套 —— <b>別追高</b>;要不要買照決策台。`);
 
             // ── headline + 對策 ──
             //   🎯 V65.0 一致性守門:月線是多空分水嶺,「跌破月線」時不喊「多頭噴相」(避免型態多頭卻價在月線下的矛盾)
@@ -29744,26 +29748,20 @@ ${this._reportFacts(sym)}
             //   ⭐ 照既有慣例:**headline 與型態敘述一個字不動,只改「叫人怎麼做」那句**。
             const _ckBear = (() => { try { return !!this._bearGate?.(this.currentSymbolId); } catch (_) { return false; } })();
             let tone, headline, cta, barCls, headCls;
-            if (sc >= 4 && !belowMa20) { tone = 'bull'; headline = '🔴 型態讚!多頭噴相'; cta = _ckBear ? '⚠️ 型態確實漂亮,<b>但上面的主結論是空頭</b> —— 這只能當<b>反彈</b>看,⛔ 不是順勢做多的理由;有貨的跌破 5MA 先減碼,空手的別追。' : '順勢做多,買點守 5MA,跌破 5MA 先停利,別凹單。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
-            else if (sc >= 1.5 && !belowMa20) { tone = 'bull'; headline = '🔴 型態偏多成形'; cta = _ckBear ? '⚠️ 型態偏多,<b>但上面的主結論是空頭</b> —— 力道未滿又逆勢,⛔ 別追;有貨的趁反彈減碼,跌破月線就走。' : '偏多但力道未滿,等帶量長紅過前高再追,回檔不破月線續抱。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
+            if (sc >= 4 && !belowMa20) { tone = 'bull'; headline = '🔴 型態讚!多頭噴相'; cta = _ckBear ? '⚠️ 型態確實漂亮,<b>但上面的主結論是空頭</b> —— 這只能當<b>反彈</b>看,⛔ 不是順勢做多的理由;空手的別追,手上的照你的出場規則走。' : '型態偏多 —— 要不要買照決策台(看這一檔自己的觸發價),手上的照你的出場規則走。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
+            else if (sc >= 1.5 && !belowMa20) { tone = 'bull'; headline = '🔴 型態偏多成形'; cta = _ckBear ? '⚠️ 型態偏多,<b>但上面的主結論是空頭</b> —— 力道未滿又逆勢,只能當<b>反彈</b>看,⛔ 別追;手上的照你的出場規則走。' : '偏多但力道還不夠 —— 要不要買照決策台(看這一檔自己的觸發價),手上的照你的出場規則走。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
             else if (sc >= 1.5 && belowMa20) { tone = 'bull'; headline = '🟠 型態偏多·但月線壓著';
-                // 🐛 V72.1.7 兩個修:
-                //   ① `recentLow`(波段低點)可能是 null → 原本直接 `nf(null)` 印出
-                //      「跌破前低 **--** 就撤」,使用者根本不知道要撤在哪(實測 2327 就長這樣)。
-                //      → 退回「近 20 日低」(一定算得出來),⛔ 但要**改名**,別把兩種低點混為一談。
-                //   ② 中期空頭時⛔ 不可再說「現在追要快進快出」——「講反話」的第 6 處。
-                //      ⚠️ 我的巡邏 grep 漏掉這處,因為用詞是「快進快出」不在字典裡
-                //      → 字典已補(見 CLAUDE.md 巡邏指令)。
-                const _l20 = (() => { const a = (data || []).slice(-20).map(b => +b.low || +b.close).filter(v => v > 0); return a.length ? Math.min(...a) : null; })();
-                const _stopTxt = (recentLow != null && recentLow > 0) ? `跌破前低 ${nf(recentLow)} 就撤`
-                    : (_l20 != null ? `跌破近 20 日低 ${nf(_l20)} 就撤` : '跌破你自己設的停損就撤');
+                // 🐛 V72.1.7 修過「跌破前低 -- 就撤」與空頭時「現在追要快進快出」;
+                // 🧹 V79.5.9 這張卡⛔ 不再自己給停損價與進出指令(跌破前低就撤 / 快進快出 / 跌破 5MA 先停利 / 分批出 …)——
+                //   全站只有一套:要不要買照決策台(這一檔自己的觸發價),手上的照三條出場(`_exitDistance`)。
+                //   型態 headline、三格價位、事實描述一個字不動;空頭守門那句(主結論是空頭・只能當反彈看)照留。
                 cta = _ckBear
-                    ? `型態是偏多沒錯,但價還在月線 ${nf(ma20)} 之下,<b>而且中期趨勢是空頭</b> —— 這只能當<b>反彈</b>看,⛔ 不是進場理由;有貨的趁反彈減碼,${_stopTxt}。`
-                    : `型態是偏多沒錯,但價還在月線 ${nf(ma20)} 之下——<b>先站回月線才算真轉強</b>;現在追要快進快出,${_stopTxt},別當多頭噴相硬抱。`;
+                    ? `型態是偏多沒錯,但價還在月線 ${nf(ma20)} 之下,<b>而且中期趨勢是空頭</b> —— 這只能當<b>反彈</b>看,⛔ 不是進場理由;手上的照你的出場規則走。`
+                    : `型態是偏多沒錯,但價還在月線 ${nf(ma20)} 之下 —— <b>站回月線之前還不算真轉強</b>;要不要買照決策台,手上的照你的出場規則走。`;
                 barCls = 'border-orange-500'; headCls = 'text-orange-300'; }
-            else if (sc > -1.5) { tone = 'flat'; headline = '🟡 型態中性整理'; cta = '多空不明,別急進場,等站穩月線+帶量突破前高再說。'; barCls = 'border-yellow-500'; headCls = 'text-yellow-300'; }
-            else if (sc > -4) { tone = 'bear'; headline = '🟢 型態轉弱'; cta = '別追高,持股跌破月線或成本 -5% 鐵血停損,搶反彈快進快出。'; barCls = 'border-green-500'; headCls = 'text-green-300'; }
-            else { tone = 'bear'; headline = '🟢 型態壞掉·出貨相'; cta = '空手勿接刀,持股分批出,結構破壞別凹。'; barCls = 'border-green-500'; headCls = 'text-green-300'; }
+            else if (sc > -1.5) { tone = 'flat'; headline = '🟡 型態中性整理'; cta = '多空不明 —— 要不要買照決策台,手上的照你的出場規則走。'; barCls = 'border-yellow-500'; headCls = 'text-yellow-300'; }
+            else if (sc > -4) { tone = 'bear'; headline = '🟢 型態轉弱'; cta = '型態轉弱 —— 別追高;手上的照你的出場規則走。'; barCls = 'border-green-500'; headCls = 'text-green-300'; }
+            else { tone = 'bear'; headline = '🟢 型態壞掉·出貨相'; cta = '結構破壞 —— 空手的別接刀;手上的照你的出場規則走。'; barCls = 'border-green-500'; headCls = 'text-green-300'; }
             const _tRaw = Math.round(50 + sc * 6);
             const _tScore = Math.max(2, Math.min(98, _tRaw));
             this._lastTechScore = { sym: this.currentSymbolId, score: _tScore, tone, raw: _tRaw, clamped: _tRaw !== _tScore };   // 🧭 V68.4.6 供總覽「總評儀表板」技術·K線維度
@@ -29822,10 +29820,10 @@ ${this._reportFacts(sym)}
                         let inner;
                         if (bestBull) {
                             inner = `<div class="text-[11px] font-bold text-amber-300 mb-0.5">⚖️ 多空訊號打架 → 看這檔的股性</div>
-                                <div class="text-[12px] text-gray-200 leading-relaxed">今天同時出現偏多(轉強)和偏空(出貨/假突破)型態。這檔歷史上吃「<b class="text-red-300">${bestBull.key}</b>」這一招 → <b class="text-red-300">以偏多為主</b>,但只要<b>跌破月線 ${nf(ma20)} 或前低 ${nf(recentLow)}</b> 就翻臉出場,別凹。</div>`;
+                                <div class="text-[12px] text-gray-200 leading-relaxed">今天同時出現偏多(轉強)和偏空(出貨/假突破)型態。這檔歷史上吃「<b class="text-red-300">${bestBull.key}</b>」這一招(決策台的觸發價就是看這個)→ 要不要買照決策台,手上的照你的出場規則走。</div>`;
                         } else {
                             inner = `<div class="text-[11px] font-bold text-amber-300 mb-0.5">⚖️ 多空訊號打架 → 本股無高勝率多方型態撐腰</div>
-                                <div class="text-[12px] text-gray-200 leading-relaxed">今天多空型態同時出現,但這檔歷史上沒有值得信的多方型態能背書 → <b class="text-green-300">保守偏空/先觀望</b>,別急著追多;要進場等站穩月線 ${nf(ma20)}+帶量長紅再說。</div>`;
+                                <div class="text-[12px] text-gray-200 leading-relaxed">今天多空型態同時出現,但這檔歷史上沒有夠力的多方型態能背書 → <b>別急著追多</b>;要不要買照決策台,手上的照你的出場規則走。</div>`;
                         }
                         cn.className = 'bg-[#0d1117] border-l-4 border-amber-500 rounded-r px-2.5 py-1.5 my-1.5';
                         cn.innerHTML = inner;
@@ -29835,9 +29833,9 @@ ${this._reportFacts(sym)}
                             const hd = document.getElementById('kbarHeadline');
                             const ctaLead = document.getElementById('kbarCtaLead');
                             const ctaTxt = document.getElementById('kbarCtaTxt');
-                            if (hd) { hd.className = 'text-[15px] font-black text-amber-300 leading-tight'; hd.innerHTML = '🗣️ 朱老師這樣看:🟠 型態偏多但訊號打架·先觀望'; }
+                            if (hd) { hd.className = 'text-[15px] font-black text-amber-300 leading-tight'; hd.innerHTML = '🗣️ 朱老師這樣看:🟠 型態偏多・但訊號打架'; }
                             if (ctaLead) ctaLead.className = 'text-amber-300';
-                            if (ctaTxt) ctaTxt.innerHTML = `型態偏多,但這檔沒有夠力的多方型態 —— <b>別追</b>,站穩月線 ${nf(ma20)} + 帶量長紅再進;跌破前低 ${nf(recentLow)} 直接放棄。`;
+                            if (ctaTxt) ctaTxt.innerHTML = `型態偏多,但這檔沒有夠力的多方型態 —— <b>別追</b>;要不要買照決策台,手上的照你的出場規則走。`;
                             if (el) el.className = 'bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-2.5 shadow-lg';
                         }
                     }
@@ -29919,7 +29917,7 @@ ${this._reportFacts(sym)}
             let stage, stageCol, stageBar, stageMsg, stageBias;
             if (trend === 'bear' || (!aboveMa60 && !maBull && pos52 < 0.35)) {
                 stage = '⬇️ 下降段'; stageCol = 'text-green-300'; stageBar = 'border-green-500'; stageBias = -2;
-                stageMsg = '結構偏空或破季線,別接刀;等打底、站回季線+均線翻多再看。';
+                stageMsg = '結構偏空或破季線 —— 別接刀;手上的照你的出場規則走。';
             } else if (overheat || (pos52 >= 0.9 && biasMa20 >= 18)) {
                 stage = '⚠️ 末升段過熱'; stageCol = 'text-orange-300'; stageBar = 'border-orange-500'; stageBias = -1;
                 stageMsg = '位階高、乖離大,主升段末端;別追高,手上的照你的出場規則走。';
@@ -29931,10 +29929,10 @@ ${this._reportFacts(sym)}
                 stageMsg = '剛帶量突破/站上季線翻多 → 初升段起漲;要不要買照決策台,買了照你的出場規則走。';
             } else if (coil || eff < 0.25) {
                 stage = '🟡 盤整打底'; stageCol = 'text-yellow-300'; stageBar = 'border-yellow-500'; stageBias = 0;
-                stageMsg = '均線糾結/區間整理,能量累積中;等「帶量長紅突破」表態再進,別在區間追高殺低。';
+                stageMsg = '均線糾結/區間整理,能量累積中 —— 別在區間追高殺低;要不要買照決策台。';
             } else {
                 stage = '⚪ 中性待表態'; stageCol = 'text-gray-300'; stageBar = 'border-gray-500'; stageBias = 0;
-                stageMsg = '多空未明;等均線歸多頭排列+帶量突破前高再動作。';
+                stageMsg = '多空未明 —— 要不要買照決策台。';
             }
 
             // 法人近10日買超(from bars,同步)
@@ -49399,7 +49397,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         etf50: 201.17, twii: 169.05,
     },
 
-    // 📊 這套打法的歷史成績(摺疊,⛔ 不開新卡片 —— 併在「明天要盯這幾檔」裡)
+    // 📊 這套打法的歷史成績(摺疊,⛔ 不開新卡片 —— 併在「明天要盯的清單」裡)
     _pbTrackRecordHtml() {
         if (!this._labMode()) return '';   // 🔬 V78.3.6 歷史成績只在實驗室模式(產業作戰室)
         const T = this._PB_TRACK; if (!T) return '';
@@ -49928,7 +49926,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                </div>`;
         return `<div class="mb-2.5 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
             <div class="flex items-center justify-between mb-1">
-                <span class="text-[12px] font-black text-gray-100">🎯 明天要盯這 <b class="text-red-300">${j.picks_syms || rows.length}</b> 檔</span>
+                <span class="text-[12px] font-black text-gray-100">🎯 明天要盯的清單 <span class="text-[10px] text-gray-500 font-normal">共 <b class="text-gray-300 font-mono">${new Set(rows.map(r => String(r.s))).size.toLocaleString()}</b> 檔</span></span>
                 <button onclick="event.stopPropagation();app._showPbHelp()" class="text-[9px] text-gray-500 hover:text-cyan-300 flex-shrink-0">ⓘ 怎麼用</button>
             </div>
             <!-- 🧭 V74.2.7 選股頁改用「總覽邏輯」(使用者:「選股頁面」)——
@@ -50221,7 +50219,7 @@ App 會在那個時段幫你盯,到價自動提醒。
                         `${name}(${t.s}) 現價 ${px} 已跌破你進場時設的停損 ${t.sl}。\n` +
                         `一張約 ${pl >= 0 ? '+' : ''}${Math.round(pl).toLocaleString()} 元。\n` +
                         `⛔ 這套會賺完全靠這一步 —— 十次本來就會錯七次,小賠出場才有下一次。別凹。\n` +
-                        `處理完到「明天要盯這幾檔」把它標成已出場,就不再吵你。`, t.s);
+                        `處理完到「明天要盯的清單」把它標成已出場,就不再吵你。`, t.s);
                 }
                 continue;
             }

@@ -89,8 +89,16 @@ const R = await page.evaluate(async () => {
         bearNote: /空頭沒有驗證過/.test(foldTxt) || /⚠️[^\n]{0,160}空頭[^\n]{0,80}(差|輸|沒過)/.test(foldTxt),
         // 🧹 V78.3.6 一般模式:整個卡(含所有摺疊)都⛔ 不可出現實測數字 / 研究字樣
         allTxt: (v.textContent || '').replace(/\s+/g, ' '),
-        // 只框「🎯 明天要盯這 N 檔」那張卡(⛔ 別被同頁其他卡的字救活或誤殺)
-        cardTxt: (([...v.querySelectorAll('div')].filter(d => /^\s*🎯 明天要盯這/.test(d.firstElementChild?.textContent || ''))[0] || {}).textContent || '').replace(/\s+/g, ' '),
+        // 只框「🎯 明天要盯的清單」那張卡(⛔ 別被同頁其他卡的字救活或誤殺)
+        //   🧹 V79.5.9 標題從「明天要盯這 1398 檔」(全市場有招的檔數,跟清單對不上)改成「明天要盯的清單・共 N 檔」→ 只認前綴
+        cardTxt: (([...v.querySelectorAll('div')].filter(d => /^\s*🎯 明天要盯/.test(d.firstElementChild?.textContent || ''))[0] || {}).textContent || '').replace(/\s+/g, ' '),
+        // ④ 清單裡實際列了幾檔不同的股票(每一列的 onclick 帶代號;同一檔兩招算一檔)
+        cardSymN: (() => {
+            const cd = [...v.querySelectorAll('div')].filter(d => /^\s*🎯 明天要盯/.test(d.firstElementChild?.textContent || ''))[0];
+            if (!cd) return -1;
+            return new Set([...cd.querySelectorAll('.space-y-1 > div[onclick*="app.analyze("]')]
+                .map(el => ((el.getAttribute('onclick') || '').match(/analyze\('([^']+)'\)/) || [])[1]).filter(Boolean)).size;
+        })(),
         openTxt,
     };
 });
@@ -115,7 +123,12 @@ ok('① 🚨 第一眼要留「不是開盤買」+ 尾盤時窗(⛔ 這是防止
 //    ③ 🧬 那一行改成講「決策台會買的那一格」(怎麼做),⛔ 不帶研究字樣
 ok('② ⛔ 一般模式沒有「實測根據」摺疊,2/3/6 檔回測數字整張卡都不出現(🧹 V78.3.6)',
     R.foldFound === false && !/1,718,529|1,361,088|735,938|實測根據/.test(R.allTxt), JSON.stringify({ found: R.foldFound }));
-ok('🚧 空過守門:框得到「🎯 明天要盯這 N 檔」那張卡', R.cardTxt.length > 200 && /一天最多做前 2 檔/.test(R.cardTxt), R.cardTxt.length);
+ok('🚧 空過守門:框得到「🎯 明天要盯的清單」那張卡', R.cardTxt.length > 200 && /一天最多做前 2 檔/.test(R.cardTxt), R.cardTxt.length);
+// ④ 🧹 V79.5.9 標題的檔數 = 清單裡實際列的不同股票數(⛔ 不可再印 picks_syms —— 那是「全市場有自己招的檔數」,
+//    10/22 那份是 1398,清單只列 542 筆 → 標題寫「明天要盯這 1398 檔」跟一天只做前 2 檔對不上)
+const _titleN = +((R.cardTxt.match(/明天要盯的清單\s*共\s*([\d,]+)\s*檔/) || [])[1] || '-1').replace(/,/g, '');
+ok('④ 標題的檔數 = 清單裡實際列的不同股票數(🧹 V79.5.9)', R.cardSymN > 0 && _titleN === R.cardSymN,
+    `標題 ${_titleN} / 清單 ${R.cardSymN}`);
 ok('③ 🧬 那一行講「決策台會買的那一格」(或今天沒有),⛔ 這張卡不帶實測/回測研究字樣(🧹 V78.3.6)',
     /決策台(唯一)?會買的那一格/.test(R.cardTxt) && !/實測|回測|期望值|勝率\s*\d|對照組|(?<!中)探針/.test(R.cardTxt),   // 「中探針」(6217)是公司名
     (R.cardTxt.match(/實測|回測|勝率\s*\d|對照組|(?<!中)探針/) || [''])[0]);

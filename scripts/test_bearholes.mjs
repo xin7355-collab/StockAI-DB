@@ -87,8 +87,11 @@ ok('⑨e 事實描述(條件明細)一個字不動 —— 兩邊的分數列要�
     strip(R.bear.sm).includes('ADX 趨勢強度') && strip(R.bull.sm).includes('ADX 趨勢強度'), '');
 
 // ── ⑩ renderChuKbarVerdict ──────────────────────────────
-ok('⑩a 測資守門:非空頭時真的落在那兩格(⛔ 沒落到的話 ⑩b 是假綠燈)',
-    /順勢做多|等帶量長紅過前高再追/.test(strip(R.bull.ck)), strip(R.bull.ck).slice(-300));
+// 🧹 V79.5.9 朱老師卡的 💡 操作不再寫「順勢做多 / 過前高再追」(一律:要不要買照決策台、手上的照你的出場規則走)
+//   → 測資守門改用型態標題確認走到多頭那兩格;⭐ 有鑑別力的是 ⑩c(拿掉守門 → 空頭也印多頭那句 → ⑩c 紅)
+const ctaOf = h => ((h || '').match(/id="kbarCtaTxt">([\s\S]*?)<\/span>/) || [])[1] || '';
+ok('⑩a 測資守門:非空頭時真的落在那兩格,而且 💡 操作指回決策台(⛔ 沒落到的話 ⑩b/⑩c 是假綠燈)',
+    /型態(讚|偏多成形)/.test(strip(R.bull.ck)) && /要不要買照決策台/.test(strip(ctaOf(R.bull.ck))), strip(ctaOf(R.bull.ck)) || strip(R.bull.ck).slice(-300));
 //   ⚠️ ⛔ 比對前一定要先剝掉**否定形** —— 我自己寫的正確句子就含被禁的字
 //      (「⛔ 不是順勢做多的理由」)。本站已踩過 13 次。
 const noNeg = h => strip(h).replace(/⛔ 不是順勢做多的理由/g, '').replace(/⛔ 不是買點/g, '');
@@ -97,9 +100,11 @@ ok('⑩b 空頭時⛔ 不可再出現「順勢做多 / 等帶量長紅過前高�
 ok('⑩e 共振卡(第 12 處)空頭時⛔ 不可寫「高信度買點,順勢做」',
     !/高信度買點/.test(noNeg(R.bear.ck)) && /這檔中期是空頭/.test(strip(R.bear.ck)), strip(R.bear.ck).slice(0, 300));
 ok('⑩f 測資守門:非空頭時共振卡真的有出現(⛔ 否則 ⑩e 是假綠燈)',
-    /買點共振/.test(strip(R.bull.ck)), strip(R.bull.ck).slice(0, 240));
+    /看多訊號共振/.test(strip(R.bull.ck)), strip(R.bull.ck).slice(0, 240));   // 🧹 V79.5.9「A 級買點共振」改名「看多訊號共振」(⛔ 不叫買點)
 ok('⑩c 空頭時要說出「主結論是空頭」且只能當反彈看',
     /主結論是空頭/.test(strip(R.bear.ck)) && /反彈/.test(strip(R.bear.ck)), strip(R.bear.ck).slice(-320));
+ok('⑩g 空頭時 💡 操作⛔ 不可邀你買(⛔「要不要買照決策台」),要講手上的照你的出場規則走(🧹 V79.5.9)',
+    !/要不要買/.test(strip(ctaOf(R.bear.ck))) && /照你的出場規則走/.test(strip(ctaOf(R.bear.ck))), strip(ctaOf(R.bear.ck)));
 ok('⑩d 事實描述不動:型態 headline 兩邊必須一樣(⛔ 不可連結論一起竄改)',
     (strip(R.bear.ck).match(/型態(讚|偏多成形)/) || [''])[0] === (strip(R.bull.ck).match(/型態(讚|偏多成形)/) || [''])[0],
     `bear=${(strip(R.bear.ck).match(/型態(讚|偏多成形)/) || [''])[0]} bull=${(strip(R.bull.ck).match(/型態(讚|偏多成形)/) || [''])[0]}`);
