@@ -2362,7 +2362,8 @@ def _bsi_pick(header, rows, now=None):
     key = _bsi_light(sc)
     if raw_li not in (None, ''):
         got = _bsi_zh_light(raw_li)
-        if got != key:
+        # 認得出顏色才比對(燈號欄若是代碼就只看分數 —— 分數才是官方主值,燈號是照區間換的)
+        if got is not None and got != key:
             return (None, None, None, f'{mo} 燈號「{raw_li}」跟 {sc} 分對不起來(分數應該是 {key})→ ⛔ 不用')
     tw = now or datetime.now(timezone(timedelta(hours=8)))
     cur = f'{tw.year:04d}-{tw.month:02d}'

@@ -163,6 +163,9 @@ noname = 'Date,領先指標,同時指標\n2026-08,38,27\n'
 r8e = mm._bsi_from_open_data(fake({'https://example.test/bsi.csv': noname}), now=NOW)
 ok('⑧e 決定性對照:欄位名字對不上 → 拒收、把欄位與最後一列寫進原因(⛔ 不猜)',
    r8e[0] is None and '找不到分數欄' in (r8e[3] or '') and '領先指標' in (r8e[3] or ''), r8e)
+code_li = CSV_OK.replace('紅燈', 'R')
+r8d2 = mm._bsi_from_open_data(fake({'https://example.test/bsi.csv': code_li}), now=NOW)
+ok('⑧d2 燈號欄是代碼(認不出顏色)→ 只看分數,照收', r8d2 == ('red', 38, '2026-08', None), r8d2)
 r8f = mm._bsi_from_open_data(fake({'https://example.test/bsi.csv': _R(200, '<!DOCTYPE html><html>x</html>')}), now=NOW)
 ok('⑧f 下載回網頁 → 寫原因(陷阱 #23)、⛔ 不拿去解析', r8f[0] is None and '網頁' in (r8f[3] or ''), r8f)
 fut = CSV_OK.replace('2026-08,101.9,38', '2027-01,101.9,38')
