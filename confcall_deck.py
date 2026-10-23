@@ -59,7 +59,12 @@ PACE = float(os.getenv('CC_PACE') or 3.0)
 BUDGET_MIN = float(os.getenv('CC_BUDGET_MIN') or 40)
 AI_MAX = int(os.getenv('CC_AI_MAX') or 40)
 MAX_BYTES = 40 * 1024 * 1024
-DL_MAX_SEC = float(os.getenv('CC_DL_MAX_SEC') or 240)   # 一份簡報(含重試)最多下載幾秒 —— 下載程式實測約 30 KB/s,4 MB 要 2 分多(120 秒那版 12 份斷 5 份)
+DL_MAX_SEC = float(os.getenv('CC_DL_MAX_SEC') or 240)   # 不知道檔案多大時:一份簡報(含重試)最多下載幾秒 —— 下載程式實測約 30 KB/s,4 MB 要 2 分多(120 秒那版 12 份斷 5 份)
+# 📏 V79.6.4 下載提速 知道檔案多大(Content-Length)時,時限照大小算:大小 ÷ DL_FLOOR_KBS,介於 DL_MAX_SEC ~ DL_BIG_MAX_SEC
+#    10/23 第 4 輪:8~16 MB 的大簡報檔案路徑 23~55 KB/s,固定 240 秒一律下載不完 → 4 份整份放棄、40 分鐘白花 18 分
+#    ⏱️ 上限 10 分:一輪 40 分才停止開新的一份 + 這份 10 分 + 抽字 1 分 + AI 40 秒 + 推檔 ≈ 53 分 < job 時限 60 分
+DL_FLOOR_KBS = float(os.getenv('CC_DL_FLOOR_KBS') or 20)
+DL_BIG_MAX_SEC = float(os.getenv('CC_DL_BIG_MAX_SEC') or 600)
 DL_READ = float(os.getenv('CC_DL_READ') or 20)          # 一次讀取最多等幾秒沒有收到東西
 DL_BACKOFF = (0, 2, 5)        # 一份簡報最多試 3 次(⛔ 舊版 5 次 × 60 秒)
 EXTRACT_MAX_SEC = float(os.getenv('CC_EXTRACT_MAX_SEC') or 60)   # 一份簡報最多抽幾秒字(pypdf 遇到很複雜的頁面會卡好幾分鐘)
@@ -899,6 +904,21 @@ def err_kind(err):
     return 'tmp'
 
 
+def dl_limit(total):
+    """📏 一份簡報(兩條路合起來)最多下載幾秒:不知道多大 → DL_MAX_SEC;知道 → 大小 ÷ DL_FLOOR_KBS,介於 DL_MAX_SEC ~ DL_BIG_MAX_SEC。"""
+    if not total:
+        return DL_MAX_SEC
+    return max(DL_MAX_SEC, min(DL_BIG_MAX_SEC, total / 1024 / DL_FLOOR_KBS))
+
+
+def _content_range(v):
+    """'bytes 1024-2047/9999' → (1024, 9999);看不懂回 (None, 0)。"""
+    m = re.match(r'\s*bytes\s+(\d+)-(\d+)/(\d+|\*)', str(v or ''))
+    if not m:
+        return None, 0
+    return int(m.group(1)), (int(m.group(3)) if m.group(3) != '*' else 0)
+
+
 class Fetcher:
     def __init__(self, session=None, pace=PACE, sleeper=time.sleep, clock=time.time):
         if session is None:
@@ -910,53 +930,92 @@ class Fetcher:
         self.last = 0.0
         self.pref = 'nas'            # ⚡ 先走檔案原本的路徑(下載程式實測每份只有約 30 KB/s);回網頁就馬上換下載程式
         self.wins = {}
+        self.last_total = 0          # 上一次 get 從 Content-Length / Content-Range 知道的檔案大小(get_any 換路時算剩幾秒)
+        self.resumed = 0             # 📎 這一輪靠續傳救回來幾次(log 用)
 
-    def get(self, url):
+    def get(self, url, max_sec=None):
         """回 (bytes|None, 原因)。暫時性錯誤指數退避重試;⛔ 不無限重試。
-        🐢 V79.6.3 第二輪:整份(含重試)最多 DL_MAX_SEC 秒;每次讀取 DL_READ 秒沒收到東西就算逾時;每一次嘗試的結果都寫進原因
-           (10/23 第一輪 30 份 40 分鐘讀不完 —— 舊版每份最多試 5 次 × 讀取逾時 60 秒,一份就可能卡 5 分鐘以上)。"""
+        🐢 V79.6.3 第二輪:整份(含重試)有時限;每次讀取 DL_READ 秒沒收到東西就算逾時;每一次嘗試的結果都寫進原因
+           (10/23 第一輪 30 份 40 分鐘讀不完 —— 舊版每份最多試 5 次 × 讀取逾時 60 秒,一份就可能卡 5 分鐘以上)。
+        📏 V79.6.4 下載提速 時限照檔案大小算(dl_limit);max_sec = 呼叫端給的上限(get_any 換路時只給剩下的秒數)。
+        📎 V79.6.4 下載提速 續傳:下載到一半斷線 → 下一次嘗試帶 Range 從斷掉的地方接著拿;主機回 206 而且起點對得上才接,
+           回 200(不支援續傳)就整份重來、起點對不上也整份重來(⛔ 拼出錯的檔)。"""
         wait = self.pace - (self.clock() - self.last)
         if wait > 0:
             self.sleep(wait)
         notes = []
         t0 = self.clock()
+        buf = io.BytesIO()           # 📎 跨嘗試留著(續傳)
+        total = 0
+        self.last_total = 0
+        cap = max_sec if max_sec is not None else None
+
+        def lim():
+            x = dl_limit(total)
+            return min(x, cap) if cap is not None else x
+
+        def tag():
+            return f'({";".join(notes)})' if notes else ''
         for k, back in enumerate(DL_BACKOFF):
             if back:
-                if self.clock() - t0 + back > DL_MAX_SEC:
+                if self.clock() - t0 + back > lim():
                     break
                 self.sleep(back)
             ta = self.clock()
+            have = buf.tell()
+            hdr = dict(UA)
+            if have:
+                hdr['Range'] = f'bytes={have}-'
             try:
-                r = self.s.get(url, headers=UA, timeout=(8, DL_READ), stream=True)
+                r = self.s.get(url, headers=hdr, timeout=(8, DL_READ), stream=True)
                 self.last = self.clock()
                 if r.status_code in (429, 500, 502, 503, 504):
                     notes.append(f'HTTP {r.status_code}')
                     continue
-                if r.status_code != 200:
+                hd = getattr(r, 'headers', None) or {}
+                if have and r.status_code == 206:
+                    st, tt = _content_range(hd.get('Content-Range'))
+                    if st != have:                           # 起點對不上 → ⛔ 接;下一次整份重來
+                        r.close()
+                        notes.append(f'續傳起點不對({st}≠{have})')
+                        buf, have = io.BytesIO(), 0
+                        continue
+                    total = tt or total
+                    notes.append(f'續傳@{have // 1024}KB')
+                    self.resumed += 1
+                elif r.status_code == 200:
+                    if have:                                 # 主機不支援續傳 → 整份重來
+                        notes.append('不支援續傳→重來')
+                        buf, have = io.BytesIO(), 0
+                    try:
+                        total = int(hd.get('Content-Length') or 0)
+                    except (TypeError, ValueError):
+                        total = 0
+                else:
                     return None, f'HTTP {r.status_code}'
-                buf = io.BytesIO()
-                try:
-                    total = int((getattr(r, 'headers', None) or {}).get('Content-Length') or 0)
-                except (TypeError, ValueError):
-                    total = 0
+                self.last_total = total
                 if total > MAX_BYTES:
                     r.close()
                     return None, 'too_big'
-                t_body = self.clock()
+                t_body, got0 = self.clock(), buf.tell()
                 for chunk in r.iter_content(16384):
                     buf.write(chunk)
                     got = buf.tell()
                     if got > MAX_BYTES:
                         return None, 'too_big'
                     el = self.clock() - t_body
-                    # ⏱️ 知道檔案多大的話,照目前速度算得出「時限內下載不完」就提早放棄(⛔ 白白等滿時限、最後整份丟掉)
-                    if total and el >= 20 and got < total and (el / got) * (total - got) + (self.clock() - t0) > DL_MAX_SEC:
+                    part = got - got0
+                    # ⏱️ 知道檔案多大的話,照這一次的速度算得出「時限內下載不完」就提早放棄(⛔ 白白等滿時限、最後整份丟掉)
+                    if total and el >= 20 and part > 0 and got < total and (el / part) * (total - got) + (self.clock() - t0) > lim():
                         r.close()
-                        return None, f'slow:{got // 1024}/{total // 1024}KB@{got / 1024 / max(el, 1e-9):.0f}KB/s' + (f'({";".join(notes)})' if notes else '')
-                    if self.clock() - t0 > DL_MAX_SEC:      # 🐢 主機把頻寬壓到很慢(一小塊一小塊給)→ ⛔ 不可一份等十分鐘
+                        return None, f'slow:{got // 1024}/{total // 1024}KB@{part / 1024 / max(el, 1e-9):.0f}KB/s' + tag()
+                    if self.clock() - t0 > lim():           # 🐢 主機把頻寬壓到很慢(一小塊一小塊給)→ ⛔ 不可一份等十分鐘
                         r.close()
-                        return None, f'slow:{got // 1024}KB/{DL_MAX_SEC:.0f}s' + (f'({";".join(notes)})' if notes else '')
+                        return None, f'slow:{got // 1024}KB/{lim():.0f}s' + tag()
                 b = buf.getvalue()
+                if total and len(b) < total:                 # 連線提早結束(沒丟例外)→ 下一次續傳
+                    notes.append(f'只拿到{len(b) // 1024}/{total // 1024}KB')
+                    continue
                 if b[:5] == b'%PDF-' or b[:4] == b'PK\x03\x04':
                     return b, ''
                 # ⚠️ 原因字串裡的「|」會被 err_kind 當成兩條路的分隔(網頁標題常有「公開資訊觀測站 | …」)→ 換掉
@@ -965,19 +1024,29 @@ class Fetcher:
                     return None, f'blocked:{head[:60]}'  # 🛡️ 被擋(⛔ 當成檔案不在)
                 return None, f'not_file:{head[:80]}'     # 回了網頁(陷阱 #23:不存在的路徑回 200 + 網頁)
             except Exception as e:                           # noqa: BLE001 —— 每一次的原因都記下來
-                notes.append(f'{type(e).__name__}@{self.clock() - ta:.0f}s')
+                notes.append(f'{type(e).__name__}@{self.clock() - ta:.0f}s' + (f'(已{buf.tell() // 1024}KB)' if buf.tell() else ''))
                 self.last = self.clock()
-            if self.clock() - t0 > DL_MAX_SEC:
+            if self.clock() - t0 > lim():
                 break
         return None, ';'.join(notes) or 'fail'
 
     def get_any(self, routes):
         """⚡ 同一份簡報有兩條官方下載路(下載程式 / 檔案原本的路徑)→ 先走上一次成功的那條,失敗才換另一條。
-        回 (bytes|None, 原因, 用的是哪條)。⛔ 不猜網址:回來的東西一律驗 %PDF- / zip 標頭(陷阱 #23)。"""
+        回 (bytes|None, 原因, 用的是哪條)。⛔ 不猜網址:回來的東西一律驗 %PDF- / zip 標頭(陷阱 #23)。
+        ⏱️ V79.6.4 下載提速 兩條路**合起來**一份最多 dl_limit(檔案大小) 秒:換路時第二條只拿剩下的秒數,剩不到 30 秒就不換
+           (時限照大小放寬之後,兩條各自從頭算會變成一份最多 20 分鐘)。"""
         order = sorted(routes, key=lambda kv: 0 if kv[0] == self.pref else 1)
         errs = []
-        for kind, u in order:
-            b, err = self.get(u)
+        t_file, known = self.clock(), 0
+        for i, (kind, u) in enumerate(order):
+            rem = None
+            if i:
+                rem = dl_limit(known) - (self.clock() - t_file)
+                if rem < 30:
+                    errs.append(f'{kind}:skip:沒時間換路({rem:.0f}s)')
+                    break
+            b, err = self.get(u, max_sec=rem)
+            known = max(known, self.last_total)
             if b is not None:
                 self.pref = kind
                 self.wins[kind] = self.wins.get(kind, 0) + 1
@@ -1285,6 +1354,8 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         reason = 'retry'          # 只剩暫時性失敗的 → 下一輪(每天那一輪)再試,⛔ 不接力
     wins = getattr(fetcher, 'wins', None) or {}
     route = ('・下載路 ' + ' / '.join(f'{"檔案路徑" if k == "nas" else "下載程式"} {v} 份' for k, v in sorted(wins.items()))) if wins else ''
+    if getattr(fetcher, 'resumed', 0):
+        route += f'・斷線續傳 {fetcher.resumed} 次'
     log(f'📦 讀成功 {n_ok} 份 ・失敗 {n_fail} ・AI 摘要 {ai_used} 次 ・改了 {wrote} 檔 data/cc/ ・清單 {nd} 場 ・還沒讀 {left} 份({reason}){route}')
     _gh_out(more=1 if left else 0, reason=reason, left=left)
     if todo and n_ok == 0 and n_bad >= (BLOCK_STOP if reason == 'blocked' else 5):

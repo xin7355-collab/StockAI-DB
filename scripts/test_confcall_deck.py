@@ -713,5 +713,110 @@ ok("㉝b workflow 推 cc_deep 那步:`!cancelled() && steps.run.outputs.ran == '
 ok('㉝c 部署那步 ⛔ 跟著紅燈跑(沒有 always / !cancelled)', 'always()' not in _dep and '!cancelled()' not in _dep, _dep[:200])
 
 
+# ㊴~㊶ 📏📎 V79.6.4 下載提速 大簡報不再整份放棄(10/23 第 4 輪:8~16 MB 的 4 份在固定 240 秒內下載不完,40 分鐘白花 18 分)
+class RgResp:
+    def __init__(s, clk, body, start, kbs, code, hdrs, cut=None, exc=True):
+        s.clk, s.body, s.start, s.kbs, s.status_code, s.headers, s.cut, s.exc = clk, body, start, kbs, code, hdrs, cut, exc
+    def iter_content(s, n):
+        pos = s.start
+        while pos < len(s.body):
+            if s.cut is not None and pos >= s.cut:
+                if s.exc:
+                    raise ConnectionError('connection reset')
+                return                                   # 連線提早結束(沒丟例外)
+            ch = s.body[pos:pos + 16384]
+            s.clk['t'] += len(ch) / 1024 / s.kbs
+            pos += len(ch)
+            yield ch
+    def close(s):
+        pass
+class RgSess:
+    """mode:'range' 支援續傳 / 'ignore' 不理 Range(回 200 整份)/ 'wrong' 回 206 但起點不對
+       kbs:{'nas': KB/s, 'srv': KB/s} ・cut:第一次請求在第幾個 byte 斷 ・early:斷法改成提早結束不丟例外 ・clen:有沒有 Content-Length"""
+    def __init__(s, clk, body, kbs, mode='range', cut=None, early=False, clen=True):
+        s.clk, s.body, s.kbs, s.mode, s.cut, s.early, s.clen, s.calls = clk, body, kbs, mode, cut, early, clen, []
+    def get(s, url, headers=None, **kw):
+        k = 'nas' if '/nas/STR/' in url else 'srv'
+        rg = (headers or {}).get('Range')
+        s.calls.append((k, rg))
+        n = len(s.body)
+        cut = s.cut if len(s.calls) == 1 else None
+        if rg and s.mode in ('range', 'wrong'):
+            a = int(rg.split('=')[1].rstrip('-'))
+            st = a if s.mode == 'range' else max(0, a - 1000)
+            return RgResp(s.clk, s.body, st, s.kbs[k], 206, {'Content-Range': f'bytes {st}-{n - 1}/{n}', 'Content-Length': str(n - st)}, cut, not s.early)
+        return RgResp(s.clk, s.body, 0, s.kbs[k], 200, ({'Content-Length': str(n)} if s.clen else {}), cut, not s.early)
+def _rgf(sess, clk):
+    return cdm.Fetcher(session=sess, pace=0, sleeper=lambda x: clk.__setitem__('t', clk['t'] + x), clock=lambda: clk['t'])
+B6 = b'%PDF-1.4\n' + b'x' * (6 * 1024 * 1024)
+NAS = 'https://mopsov.twse.com.tw/nas/STR/641420261016M001.pdf'
+ok('㊴0 時限照大小算:不知道多大 240 秒・6 MB 307 秒・16 MB 封頂 600 秒',
+   cdm.dl_limit(0) == cdm.DL_MAX_SEC and abs(cdm.dl_limit(6 * 1024 * 1024) - 307.2) < 0.1 and cdm.dl_limit(16 * 1024 * 1024) == cdm.DL_BIG_MAX_SEC,
+   (cdm.dl_limit(0), cdm.dl_limit(6 * 1024 * 1024), cdm.dl_limit(16 * 1024 * 1024)))
+ck39 = {'t': 0.0}
+b39, e39 = _rgf(RgSess(ck39, B6, {'nas': 25, 'srv': 25}), ck39).get(NAS)
+ok('㊴ 6 MB、每秒 25 KB(要 246 秒,超過舊的固定 240 秒)→ 照大小給時間,下載得完', b39 == B6 and e39 == '' and 240 < ck39['t'] < 300, (e39, ck39['t']))
+_old_big = cdm.DL_BIG_MAX_SEC
+cdm.DL_BIG_MAX_SEC = cdm.DL_MAX_SEC                       # 退回舊寫法:不管多大一律 240 秒
+ck39b = {'t': 0.0}
+b39b, e39b = _rgf(RgSess(ck39b, B6, {'nas': 25, 'srv': 25}), ck39b).get(NAS)
+cdm.DL_BIG_MAX_SEC = _old_big
+ok('㊴b ⭐ 決定性對照:退回固定 240 秒 → 同一份 20 秒就判下載不完、整份放棄', b39b is None and e39b.startswith('slow:') and ck39b['t'] < 30, (e39b, ck39b['t']))
+
+B2 = b'%PDF-1.4\n' + bytes(range(256)) * (8 * 1024)        # 2 MB(內容會變,拼錯一段就對不上)
+CUT = 50 * 16384
+ck40 = {'t': 0.0}
+s40 = RgSess(ck40, B2, {'nas': 50, 'srv': 50}, mode='range', cut=CUT)
+f40 = _rgf(s40, ck40)
+b40, e40 = f40.get(NAS)
+ok('㊵ 下載到 800 KB 斷線 → 第二次帶 Range 從 800 KB 接著拿,拼起來一個位元組都不差', b40 == B2 and e40 == '' and s40.calls == [('nas', None), ('nas', f'bytes={CUT}-')]
+   and f40.resumed == 1, (e40, s40.calls, f40.resumed, len(b40 or b'')))
+ck40b = {'t': 0.0}
+s40b = RgSess(ck40b, B2, {'nas': 50, 'srv': 50}, mode='ignore', cut=CUT)
+f40b = _rgf(s40b, ck40b)
+b40b, e40b = f40b.get(NAS)
+ok('㊵b ⭐ 決定性對照:主機不理 Range(回 200 整份)→ 整份重來,⛔ 把整份接在半份後面', b40b == B2 and e40b == '' and s40b.calls[1] == ('nas', f'bytes={CUT}-')
+   and f40b.resumed == 0, (e40b, s40b.calls, len(b40b or b'')))
+ck40c = {'t': 0.0}
+s40c = RgSess(ck40c, B2, {'nas': 50, 'srv': 50}, mode='wrong', cut=CUT)
+b40c, e40c = _rgf(s40c, ck40c).get(NAS)
+ok('㊵c 主機回 206 但起點對不上 → ⛔ 接、下一次整份重來', b40c == B2 and e40c == '' and s40c.calls == [('nas', None), ('nas', f'bytes={CUT}-'), ('nas', None)],
+   (e40c, s40c.calls))
+ck40d = {'t': 0.0}
+s40d = RgSess(ck40d, B2, {'nas': 50, 'srv': 50}, mode='range', cut=CUT, early=True)
+b40d, e40d = _rgf(s40d, ck40d).get(NAS)
+ok('㊵d 連線提早結束(沒丟例外、知道檔案多大)→ 看得出來只拿到一半 → 續傳拿完(⛔ 把半份 PDF 當成功)', b40d == B2 and len(s40d.calls) == 2, (e40d, s40d.calls))
+ck40e = {'t': 0.0}
+s40e = RgSess(ck40e, B2, {'nas': 50, 'srv': 50}, mode='range', cut=CUT, early=True, clen=False)
+b40e, e40e = _rgf(s40e, ck40e).get(NAS)
+ok('㊵e 對照:不知道檔案多大 → 看不出被截斷(所以㊵d 靠 Content-Length;抽字會再擋一次)', b40e is not None and len(b40e) == CUT and len(s40e.calls) == 1,
+   (len(b40e or b''), s40e.calls))
+
+# ㊶ 兩條路合起來一份最多 dl_limit(檔案大小) 秒(放寬時限之後,兩條各自從頭算會變成一份 20 分鐘)
+B9 = b'%PDF-1.4\n' + b'y' * (9830 * 1024)               # 9.6 MB(10/23 7715 那份的大小)
+ck41 = {'t': 0.0}
+s41 = RgSess(ck41, B9, {'nas': 10, 'srv': 25})
+b41, e41, k41 = _rgf(s41, ck41).get_any(cdm.file_urls(TPL, '771520261022M001.pdf'))
+ok('㊶ 檔案路徑每秒 10 KB(20 秒就算得出下載不完)→ 換下載程式、只拿剩下的時間,25 KB/s 下載得完',
+   b41 == B9 and k41 == 'srv' and ck41['t'] <= cdm.dl_limit(len(B9)) + 5, (e41, k41, round(ck41['t']), [c[0] for c in s41.calls]))
+ck41b = {'t': 0.0}
+s41b = RgSess(ck41b, B9, {'nas': 10, 'srv': 25}, clen=False)
+b41b, e41b, k41b = _rgf(s41b, ck41b).get_any(cdm.file_urls(TPL, '771520261022M001.pdf'))
+ok('㊶b 不知道多大、檔案路徑慢慢給到時限 → 下載程式那條沒時間了就 ⛔ 換(一份 ⛔ 拖到 480 秒)',
+   b41b is None and 'srv:skip:' in e41b and all(c[0] == 'nas' for c in s41b.calls) and ck41b['t'] <= cdm.DL_MAX_SEC + 5
+   and cdm.err_kind(e41b) == 'tmp', (e41b, round(ck41b['t']), s41b.calls[:3]))
+ck41c = {'t': 0.0}
+rs41 = RouteSess({'srv': 'pdf', 'nas': 'html'}, ck41c)
+b41c, e41c, k41c = cdm.Fetcher(session=rs41, pace=0, sleeper=lambda x: None, clock=lambda: ck41c['t']).get_any(cdm.file_urls(TPL, '233020260716M001.pdf'))
+ok('㊶c ⭐ 決定性對照:檔案路徑馬上回網頁 → 下載程式照樣有整份的時間(⛔ 誤判成沒時間)', b41c and k41c == 'srv' and rs41.calls == ['nas', 'srv'], (e41c, rs41.calls))
+ok('㊶d 原因字串的續傳紀錄不會被 err_kind 當成兩條路的分隔', cdm.err_kind('nas:ConnectionError@3s(已800KB);續傳@800KB | srv:slow:100KB/240s') == 'tmp')
+# ㊷ job 時限要裝得下「讀到 40 分才停止開新的 + 最後那份大簡報下載滿 + 抽字 + AI + 推檔」(被砍掉 = 整輪白讀,紀錄在最後才存)
+_tm = int(re.search(r'timeout-minutes:\s*(\d+)', _wf).group(1))
+# 安裝平常 3 分、apt 慢的時候 5 分;推檔兩個分支各 5 次重試(5~25 秒)+ 接力 → 抓 5 分
+_need = 5 * 60 + cdm.BUDGET_MIN * 60 + cdm.DL_BIG_MAX_SEC + cdm.EXTRACT_MAX_SEC + cdm.AI_DEADLINE + 5 * 60
+ok('㊷ job 時限 ≥ 安裝 5 分 + 讀簡報上限 + 最後一份下載上限 + 抽字 + AI + 推檔 5 分(改其中任何一個時限要一起看)',
+   _tm * 60 >= _need, (_tm, round(_need / 60, 1)))
+
+
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))
 sys.exit(1 if fails else 0)

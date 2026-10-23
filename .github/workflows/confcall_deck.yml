@@ -61,7 +61,10 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
-    timeout-minutes: 60
+    # ⏱️ 75 分:安裝 3~5 分 + 讀簡報 40 分才停止開新的一份 + 最後那份大簡報最多下載 10 分(V79.6.4 下載提速:時限照檔案大小算)
+    #    + 抽字 1 分 + AI 40 秒 + 推檔 / 部署 / 接力最多約 5 分 ≈ 62 分;被時限砍掉 = 這一輪讀到的全部白讀(紀錄在最後才存)
+    #    ⛔「job 時限別超過 60」那條只管拿共用部署鎖的 job —— 這支自己一個 group,不擋別人部署
+    timeout-minutes: 75
     steps:
       - name: 📥 下載程式碼 (main)
         uses: actions/checkout@v4
