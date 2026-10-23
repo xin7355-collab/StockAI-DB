@@ -117,6 +117,17 @@ ok('⑥c 08:00:盤前簡報 + 換倉 + 總經 + 盤中快照', ['runPreMarket(en
 ok('⑥d 其他(盤中):個人警報 + 看門狗', /runScan\(env\)/.test(bElse) && /intradayWatchdog\(env\)/.test(bElse), bElse.slice(0, 200));
 ok('⑥e ⛔ 分流不可再寫死字串(一律 CRON.xxx,改排程只改一處)', !/event\.cron === '/.test(S.slice(0, S.indexOf('\n    },'))));
 ok('⑥f 週五盤後總結那則會附週報(以前星期五沒跑 = 從來沒送過)', /isTaipeiFriday\(\) \? buildWeekBlock/.test(W));
+// ⑦ 週報第一次真的會送出去 → 內容先驗(以前從來沒跑過):標起訖日、⛔ 講成「本週」(週五 17:00 當天收盤還沒進 breadth)
+const H = [['2026/10/15', -3.41, 367, 1767], ['2026/10/16', 0.3, 1367, 684], ['2026/10/19', -0.61, 414, 1705],
+  ['2026/10/20', -1.13, 708, 1327], ['2026/10/21', 1.28, 1287, 757], ['2026/10/22', -1.81, 460, 1650]]
+  .map(([d, idx, up, dn]) => ({ d, idx, up, dn }));
+const wk = M.buildWeekBlock ? M.buildWeekBlock({ history: H }) : '';
+const cum = H.slice(-5).reduce((c, b) => c * (1 + b.idx / 100), 1) * 100 - 100;
+ok('⑦ 週報標起訖日(最後 5 個交易日 10/16~10/22)', wk.includes('10/16~10/22 共 5 個交易日'), wk);
+ok('⑦b 週報漲跌 = 5 天複利(獨立重算)', wk.includes(`${cum > 0 ? '+' : ''}${cum.toFixed(2)}%`), `${wk} vs ${cum.toFixed(2)}`);
+ok('⑦c 漲多於跌 / 跌多於漲天數', wk.includes('漲多於跌 2 天 / 跌多於漲 3 天'), wk);
+ok('⑦d ⛔ 不可講成「本週」(那 5 天是上週五~昨天)', !/本週/.test(wk), wk);
+ok('⑦e 不到 3 天 → 不附', M.buildWeekBlock && M.buildWeekBlock({ history: H.slice(0, 2) }) === '');
 
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ test_worker_cron 全過');
 process.exit(fails.length ? 1 : 0);

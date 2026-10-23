@@ -399,7 +399,7 @@ const CRON = {
 // 台北的星期幾(0 = 週日);排程時間點優先用 Cloudflare 給的 scheduledTime
 function _twWeekday(ms) { return new Date((Number(ms) || Date.now()) + 8 * 3600e3).getUTCDay(); }
 
-export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs, CRON, _twWeekday };
+export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs, CRON, _twWeekday, buildWeekBlock };
 export default {
     async fetch(request, env, ctx) {
         if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -2188,7 +2188,9 @@ function buildWeekBlock(bd) {
     if (h.length < 3) return '';
     let c = 1; for (const b of h) if (b.idx != null && Number.isFinite(+b.idx)) c *= 1 + (+b.idx) / 100;
     const r = (c - 1) * 100, up = h.filter(b => +b.up > +b.dn).length;
-    return `*📅 本週回顧*\n  ▸ 加權近 ${h.length} 個交易日 ${r > 0 ? '+' : ''}${r.toFixed(2)}%・漲多於跌 ${up} 天 / 跌多於漲 ${h.length - up} 天`;
+    // 🗓️ V22.7 標起訖日:週五 17:00 推的時候當天收盤還沒進 breadth(每日採礦晚上才跑)→ 這 5 天是「上週五~昨天」,⛔ 不可講成本週
+    const md = b => String(b?.d || '').slice(5);
+    return `*📅 最近一週回顧*\n  ▸ 加權 ${md(h[0])}~${md(h[h.length - 1])} 共 ${h.length} 個交易日 ${r > 0 ? '+' : ''}${r.toFixed(2)}%・漲多於跌 ${up} 天 / 跌多於漲 ${h.length - up} 天`;
 }
 function isTaipeiFriday() {
     try { return new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Taipei', weekday: 'short' }) === 'Fri'; } catch (_) { return false; }
