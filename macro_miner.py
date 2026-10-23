@@ -2218,7 +2218,7 @@ def fetch_sector_etfs():
     return out
 
 
-def apply_business_signal(out, bsi_light, bsi_score, bsi_month, bsi_err, prev_path=None):
+def apply_business_signal(out, bsi_light, bsi_score, bsi_month, bsi_err, prev_path=None, prev=None):
     """寫入 out["business_signal"]。抽成純函式是為了測得動(⛔ 不要再 inline 回 main())。
 
     🚨🚨 V74.5.6 這裡曾經讓 **整支 macro_miner 每天都在同一行崩掉**,而且 workflow 全綠:
@@ -2236,14 +2236,19 @@ def apply_business_signal(out, bsi_light, bsi_score, bsi_month, bsi_err, prev_pa
     """
     if not bsi_light:
         # V23.2 — 失敗時 stale fallback:讀上次 macro_risk.json 保留 light,加 stale=True 標示
+        # 🌅 V79.6.4 `prev` = main() 已用 `_load_prev_macro()` 讀好的上一份(本機 → 已發佈)。
+        #   ⛔ 以前只讀本機檔 → macro_cron 是乾淨 checkout、本機沒有 → 早上那幾輪把燈號洗成空的,
+        #      要等晚上 daily_miner(有還原 data/)才補回(macro_miner 讀本機檔的第 4 次,同 V79.5.2 / V79.5.4 / V79.6.0)
         try:
-            pp = Path(prev_path) if prev_path else (DATA_DIR / 'macro_risk.json')
-            if pp.exists():
-                prev = json.loads(pp.read_text(encoding='utf-8')) or {}
+            if not isinstance(prev, dict) or not prev:
+                pp = Path(prev_path) if prev_path else (DATA_DIR / 'macro_risk.json')
+                prev = (json.loads(pp.read_text(encoding='utf-8')) or {}) if pp.exists() else {}
+            if isinstance(prev, dict) and prev:
                 prev_bsi = (prev.get('business_signal') or {})
                 if prev_bsi.get('light'):
                     out["business_signal"] = {
-                        "light":  prev_bsi['light'],
+                        # 舊檔若是少連字號的鍵(FinMind 備援那版)→ 順手改成 App 認得的
+                        "light":  re.sub(r'^yellow(?=red|blue)', 'yellow-', str(prev_bsi['light'])),
                         "score":  prev_bsi.get('score'),
                         "month":  prev_bsi.get('month'),
                         "source": "ndc-stale",
@@ -2270,6 +2275,196 @@ def apply_business_signal(out, bsi_light, bsi_score, bsi_month, bsi_err, prev_pa
     }
     print(f"   → {bsi_month}: {bsi_light} ({bsi_score} 分)")
     return out["business_signal"]
+
+
+def _bsi_light(score):
+    """國發會分數 → App 認得的燈號鍵(全檔唯一一份)。
+    ⛔ 以前三條來源各寫一份:FinMind 備援那份寫成 'yellowred' / 'yellowblue',
+       App(index.html)認的是 'yellow-red' / 'yellow-blue' → 黃紅燈 / 黃藍燈那幾個月會顯示不出來。"""
+    s = int(score)
+    return ('blue' if s <= 16 else 'yellow-blue' if s <= 22 else 'green' if s <= 31
+            else 'yellow-red' if s <= 37 else 'red')
+
+
+# 🌡️ V79.6.4 政府資料開放平臺「景氣指標及燈號」(國發會,每月)—— 國發會網站是前端組出來的網頁(陷阱 #23)、
+#   FinMind 那份是付費層(10/01 起拿不到)→ 第三條路。⛔ 下載網址不寫死(沙箱連不到平臺,寫死 = 猜):
+#   每次先問平臺的資料集清單 API,用它列出的下載網址;解析不了就把「網址 + 欄位 + 最後一列」寫進 error
+#   (同 `_taifex_list_endpoints` 的做法:讓官方自己說答案,下一輪照實際格式補)。
+BSI_OPEN_DATASET = '6099'
+_BSI_ZH = (('黃紅', 'yellow-red'), ('黃藍', 'yellow-blue'), ('紅', 'red'), ('綠', 'green'), ('藍', 'blue'))
+
+
+def _bsi_month(v):
+    """年月的各種寫法 → 'YYYY-MM';認不得回 None(⛔ 不猜)。民國年(3 位數)自動 +1911。"""
+    t = str(v or '').strip()
+    for pat, roc in ((r'^(\d{4})[-/.](\d{1,2})(?:\D|$)', 0), (r'^(\d{4})年\s*(\d{1,2})月?', 0), (r'^(\d{4})(\d{2})$', 0), (r'^(\d{4})(\d{2})\d{2}$', 0),
+                     (r'^(\d{3})[-/.年]\s*(\d{1,2})(?:\D|$)', 1911), (r'^(\d{3})(\d{2})$', 1911), (r'^(\d{3})(\d{2})\d{2}$', 1911)):
+        m = re.match(pat, t)
+        if m:
+            y, mo = int(m.group(1)) + roc, int(m.group(2))
+            if 1990 <= y <= 2100 and 1 <= mo <= 12:
+                return f'{y:04d}-{mo:02d}'
+            return None
+    return None
+
+
+def _bsi_zh_light(v):
+    t = str(v or '')
+    for zh, key in _BSI_ZH:            # 先比「黃紅 / 黃藍」再比單色
+        if zh in t:
+            return key
+    low = t.lower()
+    for en, key in (('yellow-red', 'yellow-red'), ('yellow red', 'yellow-red'), ('yellow-blue', 'yellow-blue'),
+                    ('yellow blue', 'yellow-blue'), ('red', 'red'), ('green', 'green'), ('blue', 'blue')):
+        if en in low:
+            return key
+    return None
+
+
+def _bsi_pick(header, rows, now=None):
+    """表格 → (light, score, month, None);認不出來 → (None, None, None, 診斷)。
+    ⛔ 欄位只認「名字」:分數欄要有「分」+「信號 / 對策 / 綜合判斷」(或英文 score + signal/monitor),
+       ⛔ 不拿「數值落在 9~45」去猜(領先指標之類也會落在那裡)。有燈號欄就一定要跟分數對得上。"""
+    H = [str(h or '').strip() for h in header]
+    i_sc = i_li = i_dt = None
+    for i, h in enumerate(H):
+        lo = h.lower()
+        if i_sc is None and (('分' in h and any(k in h for k in ('信號', '對策', '綜合判斷')))
+                             or ('score' in lo and any(k in lo for k in ('signal', 'monitor')))):
+            i_sc = i
+    for i, h in enumerate(H):
+        lo = h.lower()
+        if i != i_sc and i_li is None and ('燈' in h or 'light' in lo):
+            i_li = i
+        if i_dt is None and any(k in h for k in ('日期', '年月', '月份', '期間', '時間')) or (i_dt is None and lo in ('date', 'month', 'time', 'period')):
+            i_dt = i
+    if i_dt is None and rows and _bsi_month(rows[0][0] if rows[0] else ''):
+        i_dt = 0
+    cols = f'欄位 {H[:8]}'
+    if i_sc is None or i_dt is None:
+        return (None, None, None, f'找不到{"分數" if i_sc is None else "年月"}欄({cols}・最後一列 {list(rows[-1])[:8] if rows else []})')
+    best = None
+    for r in rows:
+        if len(r) <= max(i_sc, i_dt):
+            continue
+        mo = _bsi_month(r[i_dt])
+        try:
+            sc = int(round(float(str(r[i_sc]).strip())))
+        except Exception:
+            continue
+        if not mo or not (9 <= sc <= 45):
+            continue
+        if best is None or mo > best[0]:
+            best = (mo, sc, (r[i_li] if (i_li is not None and len(r) > i_li) else None))
+    if best is None:
+        return (None, None, None, f'沒有一列同時有年月與 9~45 分({cols}・最後一列 {list(rows[-1])[:8] if rows else []})')
+    mo, sc, raw_li = best
+    key = _bsi_light(sc)
+    if raw_li not in (None, ''):
+        got = _bsi_zh_light(raw_li)
+        if got != key:
+            return (None, None, None, f'{mo} 燈號「{raw_li}」跟 {sc} 分對不起來(分數應該是 {key})→ ⛔ 不用')
+    tw = now or datetime.now(timezone(timedelta(hours=8)))
+    cur = f'{tw.year:04d}-{tw.month:02d}'
+    y, m_ = tw.year, tw.month - 6
+    while m_ <= 0:
+        y, m_ = y - 1, m_ + 12
+    if mo > cur or mo < f'{y:04d}-{m_:02d}':
+        return (None, None, None, f'最新月份 {mo} 不合理(現在 {cur},只收最近半年)→ ⛔ 不用({cols})')
+    return (key, sc, mo, None)
+
+
+def _bsi_rows_from(content, fmt=''):
+    """下載回來的 bytes → (header, rows);認不出來回 (None, 原因)。"""
+    raw = content if isinstance(content, (bytes, bytearray)) else str(content or '').encode('utf-8')
+    head = raw[:200].lstrip().lower()
+    if head.startswith(b'<!doctype') or head.startswith(b'<html'):
+        return None, '回的是網頁(HTML)'
+    txt = None
+    for enc in ('utf-8-sig', 'cp950', 'big5'):
+        try:
+            txt = raw.decode(enc)
+            break
+        except Exception:
+            continue
+    if txt is None:
+        return None, '編碼認不出來'
+    st = txt.lstrip()
+    if 'json' in fmt.lower() or st[:1] in ('[', '{'):
+        try:
+            j = json.loads(st)
+        except Exception as e:
+            return None, f'JSON 解析失敗:{str(e)[:40]}'
+        recs = j if isinstance(j, list) else next((v for v in (j.values() if isinstance(j, dict) else []) if isinstance(v, list)), [])
+        recs = [r for r in recs if isinstance(r, dict)]
+        if not recs:
+            return None, 'JSON 裡沒有資料列'
+        keys = list(recs[0].keys())
+        return keys, [[r.get(k) for k in keys] for r in recs]
+    import csv as _csv
+    import io as _io
+    rows = [r for r in _csv.reader(_io.StringIO(txt)) if any(str(c).strip() for c in r)]
+    if len(rows) < 2:
+        return None, f'CSV 只有 {len(rows)} 列'
+    return rows[0], rows[1:]
+
+
+def _bsi_from_open_data(get, now=None):
+    """政府資料開放平臺 → (light, score, month, None) 或 (None, None, None, 診斷)。get(url) 回 requests 風格的回應。"""
+    meta = f'https://data.gov.tw/api/v2/rest/dataset/{BSI_OPEN_DATASET}'
+    try:
+        r = get(meta)
+    except Exception as e:
+        return (None, None, None, f'開放資料 {BSI_OPEN_DATASET} 清單連不到:{type(e).__name__}')
+    if getattr(r, 'status_code', 0) != 200:
+        return (None, None, None, f'開放資料 {BSI_OPEN_DATASET} 清單 HTTP {getattr(r, "status_code", "?")}')
+    try:
+        j = json.loads(r.text)
+    except Exception:
+        return (None, None, None, f'開放資料 {BSI_OPEN_DATASET} 清單不是 JSON(開頭 {str(getattr(r, "text", ""))[:80]!r})')
+    found = []                                   # (格式, 網址) —— 走過整份清單,⛔ 不假設欄位名
+
+    def walk(o):
+        if isinstance(o, dict):
+            fm = next((str(v) for k, v in o.items() if 'format' in str(k).lower() and isinstance(v, str)), '')
+            for k, v in o.items():
+                if isinstance(v, str) and v.startswith('http') and 'url' in str(k).lower():
+                    found.append((fm, v))
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    walk(j)
+    seen, urls = set(), []
+    for fm, u in sorted(found, key=lambda x: (0 if 'csv' in x[0].lower() else 1 if 'json' in x[0].lower() else 2)):
+        if u not in seen and 'data.gov.tw/dataset' not in u:
+            seen.add(u)
+            urls.append((fm, u))
+    if not urls:
+        return (None, None, None, f'開放資料 {BSI_OPEN_DATASET} 清單裡沒有下載網址(鍵 {list(j)[:6] if isinstance(j, dict) else type(j).__name__})')
+    notes = []
+    for fm, u in urls[:3]:
+        if fm and not any(k in fm.lower() for k in ('csv', 'json')):
+            notes.append(f'{fm} {u[:90]}(不是 CSV / JSON,跳過)')
+            continue
+        try:
+            rr = get(u)
+        except Exception as e:
+            notes.append(f'{u[:90]} 連不到:{type(e).__name__}')
+            continue
+        if getattr(rr, 'status_code', 0) != 200:
+            notes.append(f'{u[:90]} HTTP {getattr(rr, "status_code", "?")}')
+            continue
+        hdr, rows = _bsi_rows_from(getattr(rr, 'content', None) or getattr(rr, 'text', ''), fm)
+        if hdr is None:
+            notes.append(f'{u[:90]} {rows}')
+            continue
+        res = _bsi_pick(hdr, rows, now=now)
+        if res[0]:
+            return res
+        notes.append(f'{u[:90]} {res[3]}')
+    return (None, None, None, f'開放資料 {BSI_OPEN_DATASET}:' + ' ;'.join(notes)[:700])
 
 
 def fetch_business_signal():
@@ -2348,12 +2543,7 @@ def fetch_business_signal():
                 if score is None:
                     last_err_box['val'] = "no valid score in payload"
                     continue
-                if score <= 16:    light = 'blue'
-                elif score <= 22:  light = 'yellow-blue'
-                elif score <= 31:  light = 'green'
-                elif score <= 37:  light = 'yellow-red'
-                else:              light = 'red'
-                return (light, score, month, None)
+                return (_bsi_light(score), score, month, None)
             except Exception as e:
                 # 🐛 V72.3.2 陷阱 #23:`Expecting value: line 1 column 1` = 拿到 **HTML** 去 parse JSON
                 #   (站方對不存在的路徑回 HTTP 200 + 網頁,不回 404)。光記這句話查不出真因,
@@ -2395,6 +2585,19 @@ def fetch_business_signal():
     except Exception as _pe:
         err = f"{err} || 端點列舉也失敗:{str(_pe)[:60]}"
 
+    # 🆕 V79.6.4 政府資料開放平臺(國發會「景氣指標及燈號」,免費)—— 排在 FinMind(付費層)前面
+    try:
+        # ⚠️ 壓縮格式交給 requests 自己宣告(只宣告它解得開的;⛔ 手寫 br 那次就是亂碼)
+        _od = _bsi_from_open_data(lambda u: _req.get(u, timeout=30, headers={
+            'User-Agent': headers['User-Agent'], 'Accept': '*/*'}))
+        if _od[0]:
+            print(f"  🌡️ 景氣對策信號(政府開放資料 {BSI_OPEN_DATASET}):{_od[1]} 分 / {_od[0]} / {_od[2]}")
+            return _od
+        err = f"{err} || {_od[3]}"
+        print(f"  ⚠️ 景氣燈號開放資料:{_od[3][:300]}")
+    except Exception as _oe:
+        err = f"{err} || 開放資料備援失敗:{type(_oe).__name__} {str(_oe)[:60]}"
+
     # 🆕 V73.3.9 FinMind 備援(`TaiwanBusinessIndicator`)
     #   🚨 這一格從 V72.3.2 起就是空的 —— 真因是陷阱 #23(NDC 對不存在的路徑回 HTTP 200 + HTML,
     #      拿去 parse JSON 就爆 `Expecting value: line 1 column 1`),而且錯誤被包在 dict 裡
@@ -2430,8 +2633,7 @@ def fetch_business_signal():
                     _score, _col = int(round(float(_v))), _k
                     break
             if _score is not None:
-                _light = ('blue' if _score <= 16 else 'yellowblue' if _score <= 22
-                          else 'green' if _score <= 31 else 'yellowred' if _score <= 37 else 'red')
+                _light = _bsi_light(_score)     # ⛔ 以前這裡自己寫一份、少了連字號(App 認不得黃紅 / 黃藍)
                 _m = str(_last.get('date') or '')[:7]
                 print(f"  🌡️ 景氣對策信號(FinMind 備援):{_score} 分 / {_light} / {_m} ・欄位 `{_col}`")
                 return (_light, _score, _m, None)
@@ -2442,7 +2644,7 @@ def fetch_business_signal():
     except Exception as _fe:
         err = f"{err} || FinMind 備援失敗:{str(_fe)[:80]}"
 
-    return (None, None, None, err[:600])
+    return (None, None, None, err[:1500])      # V79.6.4 600 → 1500:開放資料那段診斷要看得到
 
 
 def _yf_chg_3d(ticker, name):
@@ -3305,7 +3507,7 @@ def main():
     print("─" * 50)
     print("🌡️ 抓取國發會景氣對策信號(每月 27 號發布上月燈號)…")
     bsi_light, bsi_score, bsi_month, bsi_err = fetch_business_signal()
-    apply_business_signal(out, bsi_light, bsi_score, bsi_month, bsi_err)
+    apply_business_signal(out, bsi_light, bsi_score, bsi_month, bsi_err, prev=_prev_json)
 
     # V25.4 — ^TWII 60 日百分位(給主力護盤判讀真低/高檔用)
     print("📊 採集 ^TWII 60 日位置百分位…")

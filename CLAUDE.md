@@ -1175,7 +1175,7 @@ CLAUDE.md 自己早就寫了「巡邏 grep 只能抓你想得到的說法 → **
 
 | 改動 | 必連帶檢查 |
 |------|-----------|
-| **macro_risk.json 新增/改欄位**(macro_miner.py) | ⚠️ **macro_miner 讀任何本機 `data/*.json`,早上的 macro_cron(乾淨 checkout)都讀不到** → 一律走「本機 → 已發佈那份」(`_load_prev_macro` / `_rh_from_local_or_published` / `_twii_rows`),⛔ 只讀本機 = 白天那幾輪默默退化(V79.5.2 日期守門 / V79.5.4 外資期貨基準 / V79.6.0 順逆價差三次都是這樣)。① 前端讀取卡(grep 欄名)② 首席 AI prompt 注入(`runUnifiedGroqAnalysis`)③ `_calcRiskScore` 風險指數 ④ `risk_history.json` 快照欄位 ⑤ 前端欄名跟後端**完全一致** |
+| **macro_risk.json 新增/改欄位**(macro_miner.py) | ⚠️ **macro_miner 讀任何本機 `data/*.json`,早上的 macro_cron(乾淨 checkout)都讀不到** → 一律走「本機 → 已發佈那份」(`_load_prev_macro` / `_rh_from_local_or_published` / `_twii_rows`),⛔ 只讀本機 = 白天那幾輪默默退化(V79.5.2 日期守門 / V79.5.4 外資期貨基準 / V79.6.0 順逆價差 / V79.6.4 景氣燈號沿用,四次都是這樣)。① 前端讀取卡(grep 欄名)② 首席 AI prompt 注入(`runUnifiedGroqAnalysis`)③ `_calcRiskScore` 風險指數 ④ `risk_history.json` 快照欄位 ⑤ 前端欄名跟後端**完全一致** |
 | **後端改/加欄位名** | 前端 fallback 鏈要含新欄名(別只讀舊名);grep 雙向確認前後端同名(記取 `us_macro` 不存在、`published_time` 前端沒讀的 bug) |
 | **新增 data/*.json 檔** | ① daily_miner deploy 底層 `git archive origin/data` 會保留(append 類檔靠這保命,如 risk_history)② 前端 fetch 用動態 `ghBase` + `?t=${Date.now()}` ③ 確認 daily_miner.yml push paths 是否需納入觸發 |
 | **新計分因子**(獵鷹/主力出貨/多空) | ① 卡片「因子來源」說明文字同步 ② 首席 AI 若注入該訊號要更新 ③ 數值單位確認(億/張/口/%,記取 `fi_spot_net`=億) |
