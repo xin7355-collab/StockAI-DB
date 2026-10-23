@@ -353,15 +353,34 @@ def _clean_title_zh(orig, zh):
     return zh
 
 
+# 🔎 V79.5.9 抓不到的來源「拿到了什麼」—— 10/23 實測 11 個來源有 4 個(鉅亨網台股 / MoneyDJ / 工商時報 / Anue)
+#    每一輪都「parse 失敗」整個被丟掉,而 log 只有 feedparser 的一句話,看不出是網址換了、被擋(網頁 / 驗證頁)
+#    還是編碼問題(沙箱與外部抓取都連不到那幾個網站,只能讓 Actions 自己說)→ 把狀態碼 / 內容類型 / 最後網址 / 開頭印出來。
+#    ⛔ 只是診斷,不改任何判讀;看到結果再決定換網址還是修編碼(陷阱 #23:⛔ 不可猜網址)。
+_RSS_DIAG = {}
+
+
+def _rss_diag_text(resp, err=None):
+    """把一次 HTTP 回應壓成一行診斷(⛔ 不印 header 全文、只取開頭 120 字)。"""
+    if resp is None:
+        return f'requests 也失敗:{type(err).__name__ if err else "?"} {str(err or "")[:80]}'
+    body = re.sub(r'\s+', ' ', (getattr(resp, 'text', '') or '')[:400]).strip()[:120]
+    ctype = (getattr(resp, 'headers', {}) or {}).get('Content-Type', '?')
+    final = getattr(resp, 'url', '') or ''
+    return f'HTTP {getattr(resp, "status_code", "?")} ・{ctype} ・最後網址 {final[:90]} ・開頭「{body}」'
+
+
 def _fetch_rss_with_encoding_fallback(url: str):
     """抓 RSS feed,若 feedparser 直連 parse 失敗(常見:鉅亨網/MoneyDJ 因
     XML 宣告 us-ascii 但實際是 utf-8/windows-1252 → bozo 但 entries 空),
     fallback 用 requests 強制以 utf-8 重新 decode 後再丟給 feedparser。
+    兩次都沒有文章時,把 requests 那次拿到的東西記進 _RSS_DIAG(fetch_feed 會印)。
     """
     feed = feedparser.parse(url, request_headers={'User-Agent': 'Mozilla/5.0 universal_radar/1.0'})
     if feed.entries:
         return feed
     # 🔧 fallback:requests 預拿 bytes,強制 utf-8 decode,再丟回 feedparser
+    resp, err = None, None
     try:
         import requests as _rq
         resp = _rq.get(url, headers={'User-Agent': 'Mozilla/5.0 universal_radar/1.0'}, timeout=10)
@@ -369,6 +388,10 @@ def _fetch_rss_with_encoding_fallback(url: str):
         feed2 = feedparser.parse(resp.text)
         if feed2.entries:
             return feed2
+    except Exception as e:
+        err = e
+    try:
+        _RSS_DIAG[url] = _rss_diag_text(resp, err)
     except Exception:
         pass
     return feed
@@ -382,6 +405,10 @@ def fetch_feed(source_name: str, url: str) -> list:
         if not feed.entries:
             if feed.bozo:
                 print(f"  ⚠️ {source_name} parse 失敗：{feed.bozo_exception}")
+            else:
+                print(f"  ⚠️ {source_name} 沒有任何文章")
+            if _RSS_DIAG.get(url):
+                print(f"     🔎 實際拿到:{_RSS_DIAG[url]}")
             return matched
 
         for entry in feed.entries[:MAX_PER_SOURCE]:
@@ -661,12 +688,15 @@ def fetch_global_news():
 
 
 def fetch_tech_giants_news():
-    """🛰️ 科技巨頭專屬 RSS 採集(餵盤前戰情官報「川普/黃仁勳/SpaceX/Kuiper」獨立觀測段)。
-    每桶最多 3 則,共 12 則 Groq 翻譯,輸出 data/tech_giants_news.json 給前端 runGlobalMarketAI 讀。
+    """🛰️ 科技巨頭專屬 RSS 採集(餵盤前戰情官報「川普/黃仁勳/SpaceX/Kuiper/巨頭財報」獨立觀測段)。
+    每桶最多 3 則,共 15 則 Groq 翻譯,輸出 data/tech_giants_news.json 給前端 runGlobalMarketAI 讀。
     任一桶失敗不影響其他;Groq 翻譯失敗時 fallback 保留英文標題(前端仍可顯示)。
     """
     print("\n🛰️ 科技巨頭專屬情報採集中...")
-    bucket = {"trump": [], "huang": [], "spacex": [], "kuiper": []}
+    # 🐛 V79.5.9 桶名一律從 TECH_GIANTS_SOURCES 來 —— V73.9.1 加了第 5 桶 earnings,這裡卻還寫死 4 個
+    #    → 每一輪 `bucket['earnings']` KeyError(log「⚠️ earnings 失敗: 'earnings'」)→ 巨頭財報那桶**從上線就一直是空的**,
+    #    前端 `tg.earnings` 永遠退回關鍵字備援(陷阱 #37:加了來源,收的地方沒跟著改)。
+    bucket = {k: [] for k in TECH_GIANTS_SOURCES}
     for key, url in TECH_GIANTS_SOURCES.items():
         try:
             feed = feedparser.parse(url, request_headers={'User-Agent': 'Mozilla/5.0 universal_radar/1.0'})
@@ -680,7 +710,7 @@ def fetch_tech_giants_news():
         except Exception as e:
             print(f"  ⚠️ {key} 失敗: {e}")
 
-    # Groq 翻譯每桶前 3 則(共最多 12 則,搭配 sleep 2.5s 不撞 30 RPM)
+    # Groq 翻譯每桶前 3 則(5 桶共最多 15 則,搭配 sleep 2.5s 不撞 30 RPM)
     if GROQ_API_KEYS:
         for key, arr in bucket.items():
             for it in arr[:3]:
