@@ -321,13 +321,14 @@ def _months(today):
 _FILE_TPL = None            # 📄 這一輪從官方 form 抄到的下載樣板(fetch_market 會填;⛔ 模組層級,不改函式簽名)
 
 
-def fetch_market(typek, today, session=None):
-    """typek = 'sii'(上市) / 'otc'(上櫃)。回 (rows, err)。⛔ 這裡自己 try,呼叫端⛔ 不需要再包。"""
+def fetch_market(typek, today, session=None, months=None):
+    """typek = 'sii'(上市) / 'otc'(上櫃)。回 (rows, err)。⛔ 這裡自己 try,呼叫端⛔ 不需要再包。
+    months = [(年, 月)…](📞 V79.6.3 confcall_deck 回補舊簡報清單用);沒給 = 照 PAST / FUTURE 算(原本的行為)。"""
     import requests
     s = session or requests.Session()
     mkt = '上市' if typek == 'sii' else '上櫃'
     rows, errs, got = [], [], 0
-    for (y, m) in _months(today):
+    for (y, m) in (months or _months(today)):
         form = {'encodeURIComponent': '1', 'step': '1', 'firstin': '1', 'off': '1',
                 'TYPEK': typek, 'year': str(y - 1911), 'month': f'{m:02d}'}
         last = None

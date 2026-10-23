@@ -29,6 +29,18 @@ on:
         description: '這一輪最多叫 AI 幾次(預設 40;填 0 = 不叫)'
         required: false
         default: ''
+      list_from:
+        description: '📚 回補舊簡報清單:起月 YYYY-MM(例 2021-07;空白 = 不查清單,只讀已經在清單裡的)'
+        required: false
+        default: ''
+      list_to:
+        description: '📚 回補舊簡報清單:迄月 YYYY-MM(例 2026-08)'
+        required: false
+        default: ''
+      chain:
+        description: '接力第幾棒(自動填,手動不用填)'
+        required: false
+        default: ''
 
 # ⛔ 不跟 gh-pages-push 共用鎖(讀簡報要 20~40 分,拿著鎖會擠掉別人的部署,V79.5.0 weekly_backtest 的教訓)
 #    → 自己一個 group;部署那步用 fetch + 重試(同 tick_flow)。
@@ -39,6 +51,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write                # 🔁 接力用(gh workflow run;workflow_dispatch 由 GITHUB_TOKEN 觸發也會建新的 run)
 
 jobs:
   deck:
@@ -98,40 +111,37 @@ jobs:
           # 🔧 排程 / workflow_run 觸發時 inputs.* 是空字串 → Python 端一律 `or 預設`
           CC_MAX: ${{ github.event.inputs.max_files }}
           CC_AI_MAX: ${{ github.event.inputs.ai_max }}
+          CC_LIST_FROM: ${{ github.event.inputs.list_from }}
+          CC_LIST_TO: ${{ github.event.inputs.list_to }}
         run: |
           set -o pipefail
           python3 confcall_deck.py --selftest
           python3 confcall_deck.py 2>&1 | tee /tmp/deck.log
 
-      - name: 🚀 推 cc_deep 分支
+      # ⭐ cc_deep 跟 data / gh-pages 一樣「永遠只有 1 個 commit」(orphan force-push):
+      #    回補期間每一棒都會改很多月檔,累積歷史會一路長大;研究只需要最新那份。
+      #    ⛔ 只有這支 workflow 會寫 cc_deep,而且 concurrency 同一時間只有一輪 → force-push 不會蓋掉別人的東西。
+      - name: 🚀 推 cc_deep 分支(orphan,只留 1 個 commit)
         run: |
           set -e
           [ -s cc_deep/cc/index.json ] || { echo "❌ 沒有 index.json → 不推"; exit 1; }
-          cp -r cc_deep/cc /tmp/cc_out
+          rm -rf /tmp/cc_out && cp -r cc_deep/cc /tmp/cc_out
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin "+refs/heads/cc_deep:refs/remotes/origin/cc_deep" 2>/dev/null || true
           git reset --hard -q; git clean -fdxq -e cc_deep -e data
-          if git rev-parse --verify -q origin/cc_deep >/dev/null; then
-            git checkout -f -B cc_deep origin/cc_deep
-          else
-            echo "ℹ️ 第一次:建立 cc_deep 分支(orphan)"
-            git checkout -f --orphan cc_deep
-            git rm -rfq --cached . 2>/dev/null || true
-            git clean -fdq -e cc_deep -e data -e .git 2>/dev/null || true
-          fi
+          git checkout -f -q --orphan cc_deep_tmp
+          git rm -rfq --cached . >/dev/null 2>&1 || true
           rm -rf cc && cp -r /tmp/cc_out cc
           git add -f cc
-          if git diff --cached --quiet; then echo "無變更"; else
-            git commit -q -m "📞 法說會簡報特徵 $(date -u '+%Y-%m-%d %H:%M UTC')"
-            pushed=0
-            for i in 1 2 3 4 5; do
-              git push origin cc_deep 2>/dev/null && { echo "✅ cc_deep push 成功 ($i)"; pushed=1; break; }
-              sleep $((i*5)); git fetch origin cc_deep 2>/dev/null || true; git pull --rebase origin cc_deep 2>/dev/null || true
-            done
-            [ "$pushed" -eq 1 ] || { echo "❌ cc_deep push 連 5 次失敗"; exit 1; }
-          fi
+          git commit -q -m "📞 法說會簡報特徵 $(date -u '+%Y-%m-%d %H:%M UTC')(讀過 $(ls cc/feat/*.json.gz 2>/dev/null | wc -l) 個月)"
+          pushed=0
+          for i in 1 2 3 4 5; do
+            git push -f -q origin HEAD:refs/heads/cc_deep && { echo "✅ cc_deep push 成功 ($i)"; pushed=1; break; }
+            sleep $((i*5))
+          done
+          [ "$pushed" -eq 1 ] || { echo "❌ cc_deep push 連 5 次失敗"; exit 1; }
           git checkout -f -q "${{ github.sha }}" 2>/dev/null || git checkout -f -q main
+          git branch -D cc_deep_tmp >/dev/null 2>&1 || true
 
       - name: 🚀 部署 data/cc + confcall_digest.json 到 gh-pages + data
         run: |
@@ -164,3 +174,18 @@ jobs:
           deploy_branch gh-pages
           deploy_branch data
           echo "⏭️ 驗證⛔ 不可只看綠燈:git show origin/gh-pages:data/confcall_digest.json | head -c 400"
+
+      # 🔁 接力:只有「時間用完 / 到每輪上限」才接(⛔ 被擋 blocked / 只剩暫時性失敗 retry → 等每天那一輪再試)
+      #    ⭐ 每天跟在 playbook_scan 後面那一輪也會接 → 某一棒排隊時被別的 run 擠掉(concurrency 只留一個 pending),
+      #       下一個跑完的 run 會自己再接回來,⛔ 不會斷掉
+      - name: 🔁 接力(回補還沒讀完)
+        if: steps.run.outputs.more == '1' && (steps.run.outputs.reason == 'time' || steps.run.outputs.reason == 'cap')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHAIN: ${{ github.event.inputs.chain }}
+          LEFT: ${{ steps.run.outputs.left }}
+        run: |
+          C=$(( ${CHAIN:-0} + 1 ))
+          if [ "$C" -gt 60 ]; then echo "⛔ 已經接力 60 棒 → 停(防無限迴圈);還沒讀 $LEFT 份,下一個每天那一輪會再接"; exit 0; fi
+          gh workflow run confcall_deck.yml --ref main -f chain="$C" -f max_files=99999
+          echo "🔁 已觸發第 $C 棒(還沒讀 $LEFT 份)"

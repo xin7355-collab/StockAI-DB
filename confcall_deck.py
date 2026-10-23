@@ -21,6 +21,14 @@
       data/cc/{sym}.json        ← 每檔最近 4 份(散戶 App 個股頁 / 產業作戰室讀)
       data/confcall_digest.json ← 最近 60 天每場一列(產業作戰室法說會分頁的清單)
 
+📚 回補舊簡報(V79.6.3,使用者鐵則「要馬上就能用的,不是還要等好幾天」):
+   「這次第一次提到」要跟這家公司前幾份比 → 只讀最近 60 天的話,上線後要等下一季才有得比。
+   → 手動給起訖月(CC_LIST_FROM / CC_LIST_TO)時,先用 confcall_miner.fetch_market 一個月一個月查舊場次表
+     (含簡報檔名)存進 cc_deep/cc/backlog.json.gz;讀的順序 = ① 最近 60 天 ② 這些公司前 4 份 ③ 其他(新 → 舊)。
+     讀不完就寫 GITHUB_OUTPUT more=1 → workflow 自己接力下一棒(⛔ 被擋 / 只剩暫時性失敗不接)。
+   「第一次提到」每輪從全部特徵重算(novelty_all,⛔ 不存進特徵檔)→ 回補讀到更舊的,新簡報的結果自動變準;
+   同一份簡報被好幾場引用 → 日期一律用最早那場(fix_dates)。
+
 ⛔ 不可改掉的設計:
    ① 只讀公開資訊觀測站 mopsov(mops 主機對 runner 回安全性錯誤;confcall_miner 已實測)
    ② 防封鎖:間隔 + 指數退避 + 連續失敗收工 + 每輪上限(使用者鐵則:外部請求要完美略過與重試)
@@ -56,6 +64,13 @@ PREV_DECKS = 4                # 「第一次提到」跟這家公司前幾份比
 COMMON_SHARE = 0.20           # 這一季超過兩成公司都在講的詞 ⛔ 不算「新」
 COMMON_MIN_DECKS = 30         # 樣本太少就不判「大家都在講」
 TRANSIENT_TRIES = 3           # 下載失敗(暫時性)最多試幾輪
+NOT_FILE_GRACE = 3            # 開完 3 天內「回網頁」多半是還沒上傳 → 當暫時性失敗(之後再試);更舊的才當永久
+LIST_FROM = os.getenv('CC_LIST_FROM') or ''          # 📚 回補舊簡報清單的起訖月(YYYY-MM;手動 / 第一棒才給)
+LIST_TO = os.getenv('CC_LIST_TO') or ''
+LIST_RETRY_MAX = 6            # 上次沒抓齊的月份,每輪最多重抓幾個
+LIST_PACE = float(os.getenv('CC_LIST_PACE') or 2.0)   # 🐢 查清單時兩次查詢之間多等幾秒(MOPS 對機器人敏感)
+# 受邀參加券商 / 投顧辦的場次(⛔ 不是公司自己辦的)—— 從官方「擇要訊息」判斷
+INV_RE = re.compile(r'受邀|邀請|應邀|參加.{0,24}(證券|投顧|銀行|金控|論壇|研討會|峰會|投資人會議)')
 TW = timezone(timedelta(hours=8))
 UA = {'User-Agent': 'Mozilla/5.0 confcall_deck/1.0', 'Accept': 'application/pdf, application/octet-stream, */*'}
 
@@ -373,28 +388,216 @@ def load_index():
     return _load_json(CC / 'cc' / 'index.json', {'files': {}})
 
 
-def iter_feats(months=None):
-    """一個月一個月讀(⛔ 不一次全讀進記憶體)。months=None → 全部。"""
+def load_all():
+    """cc_deep 讀過的全部簡報特徵 → {YYYY-MM: [rec…]}。
+    ⚠️ 全部載進記憶體:「第一次提到」要跟這家公司前幾份比、「大家都在講的詞」要看前 100 天全市場,
+       只能一起算。量級:2021-07 起約 1.2 萬份 × 每份約 4KB → 約 50MB JSON(runner 7GB 夠;⛔ 不在 1GB 小主機跑)。"""
+    out = {}
     d = CC / 'cc' / 'feat'
-    if not d.exists():
-        return
-    for p in sorted(d.glob('*.json.gz')):
-        if months and p.name[:7] not in months:
+    if d.exists():
+        for p in sorted(d.glob('*.json.gz')):
+            out[p.name[:7]] = _load_json(p, [])
+    return out
+
+
+def backlog_path():
+    return CC / 'cc' / 'backlog.json.gz'
+
+
+def load_backlog():
+    bl = _load_json(backlog_path(), None)
+    if not isinstance(bl, dict) or not isinstance(bl.get('rows'), list):
+        bl = {'months': {}, 'rows': []}
+    bl.setdefault('months', {})
+    return bl
+
+
+def months_between(a, b):
+    """'2021-07','2021-09' → [(2021,7),(2021,8),(2021,9)];格式錯 / 反了 → []。"""
+    try:
+        y, m = int(a[:4]), int(a[5:7])
+        y2, m2 = int(b[:4]), int(b[5:7])
+    except (ValueError, TypeError):
+        return []
+    out = []
+    while (y, m) <= (y2, m2) and len(out) < 240:
+        out.append((y, m))
+        m += 1
+        if m > 12:
+            y, m = y + 1, 1
+    return out
+
+
+def compact_row(r):
+    x = {'s': str(r.get('s')), 'name': r.get('name') or '', 'mkt': r.get('mkt') or '', 'd': r.get('d'), 't': r.get('t') or '',
+         'pdf': list(r.get('pdf') or []), 'inv': 1 if INV_RE.search(r.get('sum') or '') else 0}
+    if r.get('vid'):
+        x['vid'] = r['vid']
+    return x
+
+
+def list_backfill(bl, months, today, fetch=None, log=print, sleeper=time.sleep):
+    """📚 一個月一個月查公開資訊觀測站的法說會一覽表(上市 + 上櫃)→ 有簡報檔名、已經開完的場次併進 backlog。
+    ⛔ 某個月沒抓齊 → 不標「做完」(下一輪自動重抓);連 3 個月都抓不到 → 收手(多半被擋,⛔ 不硬打)。
+    回 (新增幾場, 沒抓齊的月份)。"""
+    if fetch is None:
+        import requests
+        import confcall_miner
+        sess = requests.Session()
+        fetch = lambda typek, ym: confcall_miner.fetch_market(typek, today, sess, months=[ym])
+    have = {(r['s'], r['d'], r.get('t') or '') for r in bl['rows']}
+    done = bl.setdefault('months', {})
+    t = today.isoformat()
+    added, bad, streak = 0, [], 0
+    for (y, m) in months:
+        key = f'{y}-{m:02d}'
+        if (done.get(key) or {}).get('ok'):
             continue
-        for r in _load_json(p, []):
-            yield r
+        got, n_rows, errs = 0, 0, []
+        for typek in ('sii', 'otc'):
+            try:
+                rows, err = fetch(typek, (y, m))
+            except Exception as e:                 # fetch_market 自己有 try;這裡防假的 / 未來改壞
+                rows, err = [], f'{type(e).__name__}'
+            if err:
+                errs.append(f'{typek}:{str(err)[:60]}')
+            else:
+                got += 1
+            n_rows += len(rows or [])
+            for r in rows or []:
+                if not r.get('pdf') or not r.get('d') or r['d'] >= t:
+                    continue
+                k = (str(r['s']), r['d'], r.get('t') or '')
+                if k in have:
+                    continue
+                have.add(k)
+                bl['rows'].append(compact_row(r))
+                added += 1
+            sleeper(LIST_PACE)      # 🐢 兩次查詢之間多等(MOPS 對機器人敏感;fetch_market 自己也有退避)
+        ok_m = got == 2 and n_rows > 0
+        done[key] = {'ok': ok_m, 'n': n_rows, 'at': datetime.now(TW).isoformat(timespec='minutes')}
+        log(f'  📚 {key}:{n_rows} 場' + ('' if ok_m else f' ⚠️ 沒抓齊({"; ".join(errs) or "0 場"}),下一輪再抓'))
+        if ok_m:
+            streak = 0
+        else:
+            bad.append(key)
+            streak += 1
+            if streak >= 3:
+                log('🛑 連 3 個月抓不到(可能被擋)→ 清單回補先停,下一輪再接')
+                break
+    bl['updated'] = datetime.now(TW).isoformat(timespec='minutes')
+    return added, bad
 
 
-def common_terms(recs):
-    """這一批(最近一季)裡超過兩成簡報都講到的詞 → 不算「新」。樣本太少回空集合。"""
-    recs = [r for r in recs if r.get('terms')]
-    if len(recs) < COMMON_MIN_DECKS:
-        return set()
-    df = {}
-    for r in recs:
-        for t in {x.lower() for x in r['terms']}:
-            df[t] = df.get(t, 0) + 1
-    return {t for t, c in df.items() if c / len(recs) > COMMON_SHARE}
+def _readable(st):
+    return not (st and (st.get('st') in ('ok', 'no_text', 'bad_file', 'ppt_old', 'too_big', 'parse_fail')
+                        or (st.get('tries') or 0) >= TRANSIENT_TRIES))
+
+
+def plan_todo(recent_rows, backlog_rows, files, today):
+    """要讀哪些簡報、照什麼順序。回 (todo[(row, 檔名, 原因)…], earliest{檔名: (日期, row)})。
+    順序:① 最近 60 天場次表裡的(新 → 舊)
+         ② 這些公司前 PREV_DECKS 份(新 → 舊;「這次第一次提到」要跟它們比,⭐ 回補時先讀這些 App 才馬上有得比)
+         ③ 其他回補的(新 → 舊)
+    同一份簡報只排一次;日期用「最早引用它的那一場」(拿舊簡報去券商場重講的 ⛔ 不算新的一場)。"""
+    t = today.isoformat()
+    earliest = {}
+    for r in list(recent_rows) + list(backlog_rows):
+        d = r.get('d') or '9999'
+        if d > t:
+            continue
+        f, why = pick_deck(r.get('pdf'))
+        if not f:
+            continue
+        if f not in earliest or d < earliest[f][0]:
+            earliest[f] = (d, r, why)
+    recent_f, recent_s = set(), set()
+    for r in recent_rows:
+        f, _ = pick_deck(r.get('pdf'))
+        if f and f in earliest:
+            recent_f.add(f)
+            recent_s.add(str(r.get('s')))
+    by_sym = {}
+    for f, (d, r, _) in earliest.items():
+        by_sym.setdefault(str(r.get('s')), []).append((d, f))
+    tier = {f: 0 for f in recent_f}
+    for s in recent_s:
+        older = [f for d, f in sorted(by_sym.get(s, []), reverse=True) if f not in recent_f]
+        for f in older[:PREV_DECKS]:
+            tier.setdefault(f, 1)
+    todo = [(tier.get(f, 2), d, f, r, why) for f, (d, r, why) in earliest.items() if _readable(files.get(f))]
+    todo.sort(key=lambda x: (x[1], x[2]), reverse=True)        # 新 → 舊
+    todo.sort(key=lambda x: x[0])                              # 再照優先序(穩定排序)
+    return [(r, f, why) for _, _, f, r, why in todo], {f: (d, r) for f, (d, r, _) in earliest.items()}
+
+
+def fix_dates(allr, earliest):
+    """讀過的簡報後來找到「更早引用它的場次」→ 日期改成更早那場(⛔ 不重新下載)。回 (改了幾筆, 動到的月份)。"""
+    moved, touched = 0, set()
+    for m in list(allr):
+        keep = []
+        for r in allr[m]:
+            e = earliest.get(r.get('f'))
+            if e and r.get('d') and e[0] < r['d']:
+                row = e[1]
+                r['d'], r['t'], r['inv'] = e[0], row.get('t') or '', 1 if row.get('inv') or INV_RE.search(row.get('sum') or '') else 0
+                mt = file_meta(r.get('f')) or {}
+                r.pop('reuse', None)
+                if mt.get('fd') and mt['fd'] < r['d'] and (date.fromisoformat(r['d']) - date.fromisoformat(mt['fd'])).days > 3:
+                    r['reuse'] = mt['fd']
+                nm = r['d'][:7]
+                touched |= {m, nm}
+                moved += 1
+                if nm != m:
+                    allr.setdefault(nm, []).append(r)
+                    continue
+            keep.append(r)
+        allr[m] = keep
+    return moved, touched
+
+
+class _Common:
+    """「大家都在講的詞」:只用這一場**之前** 100 天的簡報算(⛔ 前視);樣本 < COMMON_MIN_DECKS 份就不判。"""
+    def __init__(self, df, n):
+        self.df, self.n = df, n
+
+    def __contains__(self, t):
+        return self.n >= COMMON_MIN_DECKS and self.df.get(t, 0) / self.n > COMMON_SHARE
+
+
+def novelty_all(recs):
+    """每一份讀成功的簡報 → {檔名: {'first':True} 或 {'new':[[詞,頁]…], 'n_new', 'dropped':[…], 'prev_d'}}。
+    ⭐ 每輪重算(⛔ 不存進特徵檔):回補讀到更舊的簡報之後,新簡報的「第一次提到」自動變準。
+    ⛔ 前視:前幾份只取日期更早的;「大家都在講」只看這一場之前 100 天。"""
+    ok = sorted([r for r in recs if r.get('st') == 'ok' and isinstance(r.get('terms'), dict) and r.get('d')],
+                key=lambda r: (r['d'], r.get('f') or ''))
+    low = [{t.lower() for t in r['terms']} for r in ok]
+    out, hist, df = {}, {}, {}
+    lo = hi = 0
+    for i, r in enumerate(ok):
+        d = r['d']
+        try:
+            cut = (date.fromisoformat(d) - timedelta(days=100)).isoformat()
+        except ValueError:
+            cut = d
+        while hi < len(ok) and ok[hi]['d'] < d:
+            for t in low[hi]:
+                df[t] = df.get(t, 0) + 1
+            hi += 1
+        while lo < hi and ok[lo]['d'] < cut:
+            for t in low[lo]:
+                df[t] -= 1
+                if not df[t]:
+                    del df[t]
+            lo += 1
+        prev = [x for x in hist.get(r['s'], []) if x[0] < d][-PREV_DECKS:]
+        new, dropped = novelty(r['terms'], [x[1] for x in reversed(prev)], _Common(df, hi - lo))
+        if new is None:
+            out[r['f']] = {'first': True}
+        else:
+            out[r['f']] = {'new': [[t, r['terms'][t]] for t in new][:12], 'n_new': len(new), 'dropped': dropped, 'prev_d': prev[-1][0]}
+        hist.setdefault(r['s'], []).append((d, r['terms']))
+    return out
 
 
 # ───────────────────────── 網路(只在正式跑時用) ─────────────────────────
@@ -439,8 +642,13 @@ class Fetcher:
         return None, err or 'fail'
 
 
-def groq_summarize(name, sym, d, feat, keys, poster=None):
-    """回 (ai dict, model, 丟掉幾點) 或 (None, None, 0)。⛔ 沒有金鑰就不做。"""
+AI_DEADLINE = float(os.getenv('CC_AI_DEADLINE') or 40)    # 一份簡報的 AI 最多花幾秒(⛔ 不可為了 AI 拖慢整輪讀簡報)
+AI_FAIL_STOP = 3              # 連幾份 AI 都失敗 → 這一輪不再叫(多半是額度用完)
+
+
+def groq_summarize(name, sym, d, feat, keys, poster=None, clock=time.time, sleeper=time.sleep):
+    """回 (ai dict, model, 丟掉幾點) 或 (None, None, 0)。⛔ 沒有金鑰就不做。
+    🐢 防拖慢:被限流(429)就換下一把金鑰(每把額度分開)、只等 1 秒;一份簡報最多 AI_DEADLINE 秒。"""
     if not keys:
         return None, None, 0
     from groq_common import groq_model, groq_apply, invalidate
@@ -450,17 +658,20 @@ def groq_summarize(name, sym, d, feat, keys, poster=None):
                'temperature': 0.2, 'max_tokens': 700}
     post = poster or (lambda **kw: requests.post(**kw))
     tried = set()
+    t0 = clock()
     for i, key in enumerate(list(keys) * 2):
+        if clock() - t0 > AI_DEADLINE:
+            break
         try:
             if not payload.get('model'):
                 groq_apply(payload, groq_model(keys, 'light', avoid=tried), 700)
             r = post(url='https://api.groq.com/openai/v1/chat/completions', json=payload,
-                     headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}, timeout=45)
+                     headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}, timeout=30)
             if r.status_code == 404 and len(tried) < 3:
                 tried.add(payload.get('model')); invalidate('light', payload.get('model')); payload['model'] = None
                 continue
             if r.status_code == 429:
-                time.sleep(2 + i)
+                sleeper(1.0)            # 換下一把(⛔ 不在同一把上越等越久)
                 continue
             if r.status_code != 200:
                 continue
@@ -480,93 +691,109 @@ def _today():
     return datetime.now(TW).date()
 
 
-def build_outputs(touched, rows_by_sym, today):
-    """依 cc_deep 的特徵寫 App 讀的兩個檔。touched = 這一輪有新簡報的股票。"""
-    recent_months = {(today - timedelta(days=k)).isoformat()[:7] for k in range(0, DIGEST_DAYS + 35, 28)}
-    by_sym, digest = {}, []
-    cut = (today - timedelta(days=DIGEST_DAYS)).isoformat()
-    for r in iter_feats():
-        by_sym.setdefault(r['s'], []).append(r)
+def build_outputs(recs, nov, info, today):
+    """App 讀的兩個檔:data/cc/{sym}.json(每檔最近 4 份)+ data/confcall_digest.json(最近 60 天每場一列)。
+    ⛔ 每檔的檔案裡沒有「每輪都變」的時間戳 → 內容沒變就不改檔(不然每輪上千個檔都算變更)。"""
+    by_sym = {}
+    for r in recs:
+        if r.get('st') in ('ok', 'no_text'):
+            by_sym.setdefault(r['s'], []).append(r)
     out_dir = DATA / 'cc'
     out_dir.mkdir(parents=True, exist_ok=True)
-    wrote = 0
-    for s, lst in by_sym.items():
+    cut = (today - timedelta(days=DIGEST_DAYS)).isoformat()
+    keys = ('d', 't', 'inv', 'f', 'kind', 'pages', 'st', 'reuse', 'outlook', 'nums', 'titles', 'tone', 'ai', 'model', 'gate_drop')
+    wrote, digest = 0, []
+    for s, lst in sorted(by_sym.items()):
         lst.sort(key=lambda r: (r.get('d') or '', r.get('f') or ''), reverse=True)
-        if s in touched or not (out_dir / f'{s}.json').exists():
-            decks = []
-            for r in lst[:KEEP_PER_SYM]:
-                decks.append({k: r.get(k) for k in ('d', 'f', 'kind', 'pages', 'st', 'reuse', 'first', 'new', 'dropped', 'prev_d',
-                                                     'outlook', 'nums', 'titles', 'tone', 'ai', 'model', 'gate_drop') if r.get(k) is not None})
-                decks[-1]['titles'] = (decks[-1].get('titles') or [])[:12]
-            (out_dir / f'{s}.json').write_text(json.dumps({'s': s, 'updated': datetime.now(TW).isoformat(timespec='minutes'),
-                                                           'decks': decks}, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        decks = []
+        for r in lst[:KEEP_PER_SYM]:
+            x = {k: r.get(k) for k in keys if r.get(k) not in (None, '', [], 0) or k in ('d', 'f', 'st')}
+            if x.get('titles'):
+                x['titles'] = x['titles'][:12]
+            x.update(nov.get(r.get('f')) or {})
+            decks.append(x)
+        body = json.dumps({'s': s, 'name': lst[0].get('name') or s, 'decks': decks}, ensure_ascii=False, separators=(',', ':'))
+        p = out_dir / f'{s}.json'
+        if not p.exists() or p.read_text(encoding='utf-8') != body:
+            p.write_text(body, encoding='utf-8')
             wrote += 1
         for r in lst:
-            if (r.get('d') or '') >= cut and r.get('st') == 'ok':
-                nm = (rows_by_sym.get(s) or {}).get('name') or r.get('name') or s
-                ai = r.get('ai') or {}
-                digest.append({'s': s, 'name': nm, 'd': r.get('d'), 'f': r.get('f'), 'one': ai.get('one') or '',
-                               'new': [t for t, _ in (r.get('new') or [])][:5], 'new_n': len(r.get('new') or []),
-                               'first': bool(r.get('first')), 'reuse': r.get('reuse') or '', 'n_nums': len(r.get('nums') or []),
-                               'pages': r.get('pages')})
+            if (r.get('d') or '') < cut or r.get('st') != 'ok':
+                continue
+            nv, ai = nov.get(r.get('f')) or {}, r.get('ai') or {}
+            row = {'s': s, 'name': r.get('name') or s, 'd': r.get('d'), 't': r.get('t') or '', 'inv': r.get('inv') or 0, 'f': r.get('f'),
+                   'one': ai.get('one') or '', 'ol': ((r.get('outlook') or [[0, '']])[0][1] or '')[:80],
+                   'new': [t for t, _ in (nv.get('new') or [])][:5], 'new_n': nv.get('n_new', 0), 'first': bool(nv.get('first')),
+                   'prev_d': nv.get('prev_d') or '', 'reuse': r.get('reuse') or '', 'n_nums': len(r.get('nums') or []), 'pages': r.get('pages')}
+            vid = ((info.get(r.get('f')) or (None, {}))[1] or {}).get('vid')
+            if vid:
+                row['vid'] = vid
+            digest.append(row)
     digest.sort(key=lambda x: (x['d'] or '', x['new_n']), reverse=True)
     _save_json(DATA / 'confcall_digest.json', {'updated': datetime.now(TW).isoformat(timespec='minutes'),
                                                'days': DIGEST_DAYS, 'n': len(digest), 'rows': digest})
     return wrote, len(digest)
 
 
-def run(fetcher=None, groq_keys=None, today=None, log=print):
+def _gh_out(**kw):
+    """接力用:寫進 GitHub Actions 的 step outputs(本機跑沒有這個檔 → 不寫)。"""
+    p = os.getenv('GITHUB_OUTPUT')
+    if not p:
+        return
+    with open(p, 'a', encoding='utf-8') as f:
+        for k, v in kw.items():
+            f.write(f'{k}={v}\n')
+
+
+def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
     today = today or _today()
     t0 = time.time()
     src = _load_json(SRC, None)
     if not src:
         log('❌ 讀不到 data/confcall.json(法說會場次表)→ 這輪不做')
+        _gh_out(more=0, reason='nosrc', left=0)
         return 1
     tpl = (src.get('src') or {}).get('file')
-    rows = [r for r in (src.get('recent') or []) + (src.get('upcoming') or []) if r and r.get('pdf')]
-    rows_by_sym = {}
-    for r in rows:
-        rows_by_sym.setdefault(str(r['s']), r)
+    past = today.isoformat()
+    recent_rows = [r for r in (src.get('recent') or []) + (src.get('upcoming') or [])
+                   if r and r.get('pdf') and (r.get('d') or '9999') <= past]
+    # 📚 回補:手動給起訖月才查清單;上次沒抓齊的月份每輪自動重抓幾個
+    bl = load_backlog()
+    want = months_between(LIST_FROM, LIST_TO) if (LIST_FROM and LIST_TO) else []
+    retry = [tuple(map(int, k.split('-'))) for k, v in sorted(bl['months'].items(), reverse=True) if not (v or {}).get('ok')][:LIST_RETRY_MAX]
+    months = sorted(set(want) | set(retry), reverse=True)            # 新 → 舊(App 最需要的是最近幾季)
+    if months:
+        log(f'📚 回補場次清單:{len(months)} 個月({months[-1][0]}-{months[-1][1]:02d} ~ {months[0][0]}-{months[0][1]:02d})')
+        added, bad = list_backfill(bl, months, today, fetch=list_fetch, log=log)
+        _save_json(backlog_path(), bl)
+        log(f'📚 清單多了 {added} 場(回補清單共 {len(bl["rows"])} 場)' + (f' ・沒抓齊 {len(bad)} 個月:{", ".join(bad[:6])}' if bad else ''))
     idx = load_index()
     files = idx.setdefault('files', {})
-    # 要讀的:已經開完、有簡報、還沒讀過(或上次是暫時性失敗而且還沒超過次數)
-    todo, seen = [], set()
-    for r in sorted(rows, key=lambda x: x.get('d') or '', reverse=True):
-        if (r.get('d') or '9999') > today.isoformat():
-            continue
-        f, why = pick_deck(r.get('pdf'))
-        if not f or f in seen:
-            continue
-        seen.add(f)
-        st = files.get(f)
-        if st and (st.get('st') == 'ok' or st.get('st') in ('no_text', 'bad_file', 'ppt_old', 'too_big', 'parse_fail')
-                   or (st.get('tries') or 0) >= TRANSIENT_TRIES):
-            continue
-        todo.append((r, f, why))
-    log(f'📞 場次表 {len(rows)} 場有簡報 ・這一輪要讀 {len(todo)} 份(上限 {MAX_FILES})')
-    if not todo:
-        build_outputs(set(), rows_by_sym, today)
-        log('ℹ️ 沒有新的簡報;只重建清單')
-        return 0
-    fetcher = fetcher or Fetcher()
-    # 歷史:每家公司前幾份的詞 + 最近一季大家都在講的詞(一個月一個月讀)
-    hist = {}
-    recent = []
-    q_cut = (today - timedelta(days=100)).isoformat()
-    for rec in iter_feats():
-        if rec.get('st') == 'ok' and rec.get('terms') is not None:
-            hist.setdefault(rec['s'], []).append((rec.get('d') or '', rec['terms']))
-            if (rec.get('d') or '') >= q_cut:
-                recent.append(rec)
-    common = common_terms(recent)
-    new_recs, touched, ai_used, n_ok, n_fail, streak = [], set(), 0, 0, 0, 0
-    for r, f, why in todo[:MAX_FILES]:
+    todo, earliest = plan_todo(recent_rows, bl['rows'], files, today)
+    recent_fs = {pick_deck(x.get('pdf'))[0] for x in recent_rows}
+    n_t0 = sum(1 for r, f, w in todo if f in recent_fs)
+    log(f'📞 最近場次 {len(recent_rows)} 場有簡報 ・回補清單 {len(bl["rows"])} 場 ・這一輪待讀 {len(todo)} 份'
+        f'(最近的 {n_t0} 份優先;上限 {MAX_FILES})')
+    allr = load_all()
+    moved, touched_m = fix_dates(allr, earliest)
+    if moved:
+        log(f'🗓️ {moved} 份簡報找到更早引用它的場次 → 日期改成那一場(⛔ 不重新下載)')
+    fetcher = fetcher or (Fetcher() if todo else None)
+    new_recs, ai_used, ai_fail, n_ok, n_fail, streak, n_try = [], 0, 0, 0, 0, 0, 0
+    reason = 'done'
+    for r, f, why in todo:
+        if n_try >= MAX_FILES:
+            reason = 'cap'
+            break
         if (time.time() - t0) / 60 > BUDGET_MIN:
             log(f'⏱️ 到時間上限 {BUDGET_MIN} 分 → 收工(剩的下一輪接著讀)')
+            reason = 'time'
             break
+        n_try += 1
         s, d = str(r['s']), r.get('d')
         mt = file_meta(f) or {}
-        rec = {'s': s, 'd': d, 'f': f, 'name': r.get('name') or s, 'kind': mt.get('ext'), 'ts': datetime.now(TW).isoformat(timespec='minutes')}
+        rec = {'s': s, 'd': d, 'f': f, 'name': r.get('name') or s, 'kind': mt.get('ext'), 't': r.get('t') or '',
+               'inv': 1 if (r.get('inv') or INV_RE.search(r.get('sum') or '')) else 0, 'ts': datetime.now(TW).isoformat(timespec='minutes')}
         if mt.get('fd') and d and mt['fd'] < d and (date.fromisoformat(d) - date.fromisoformat(mt['fd'])).days > 3:
             rec['reuse'] = mt['fd']          # 拿舊簡報去券商場重講
         if why == 'ppt_old':
@@ -577,14 +804,19 @@ def run(fetcher=None, groq_keys=None, today=None, log=print):
         b, err = fetcher.get(file_url(tpl, f))
         if b is None:
             n_fail += 1
-            streak += 1
             prev = files.get(f) or {}
-            perm = err.startswith('not_file') or err == 'too_big' or err.startswith('HTTP 4')
+            young = bool(d) and (today - date.fromisoformat(d)).days <= NOT_FILE_GRACE
+            perm = (err.startswith('not_file') and not young) or err == 'too_big' or (err.startswith('HTTP 4') and err != 'HTTP 429')
             files[f] = {'st': 'too_big' if err == 'too_big' else ('bad_file' if perm else 'dl_fail'), 'err': err[:120],
                         's': s, 'd': d, 'tries': (prev.get('tries') or 0) + 1}
             log(f'  ⚠️ {s} {d} {f} 下載失敗:{err[:80]}')
+            # 「被擋」才算連續失敗(⛔ 回網頁 = 主機有回應、只是那份檔不在,不算被擋)
+            if err.startswith('not_file') or err == 'too_big':
+                continue
+            streak += 1
             if streak >= 5:
                 log('🛑 連 5 份下載失敗(可能被擋)→ 本輪收工,下一輪再試')
+                reason = 'blocked'
                 break
             continue
         streak = 0
@@ -600,45 +832,43 @@ def run(fetcher=None, groq_keys=None, today=None, log=print):
             rec.update({'st': 'no_text', 'pages': len(pages)})       # 只有圖片的簡報(⛔ 不 OCR)
             files[f] = {'st': 'no_text', 's': s, 'd': d, 'tries': 1}
             new_recs.append(rec)
-            touched.add(s)
             continue
         feat = feat_of(pages, mt)
-        prev = sorted([x for x in hist.get(s, []) if x[0] < (d or '')], reverse=True)[:PREV_DECKS]
-        new, dropped = novelty(feat['terms'], [x[1] for x in prev], common)
         rec.update({'st': 'ok', **feat})
-        if new is None:
-            rec['first'] = True
-        else:
-            rec['new'] = [[t, feat['terms'][t]] for t in new][:12]
-            rec['dropped'] = dropped
-            rec['prev_d'] = prev[0][0] if prev else None
-        if groq_keys and ai_used < AI_MAX and d and d >= (today - timedelta(days=DIGEST_DAYS)).isoformat():
+        if groq_keys and ai_used < AI_MAX and ai_fail < AI_FAIL_STOP and d and d >= (today - timedelta(days=DIGEST_DAYS)).isoformat():
             ai, model, gd = groq_summarize(rec['name'], s, d, feat, groq_keys)
             ai_used += 1
             if ai:
                 rec.update({'ai': ai, 'model': model, 'gate_drop': gd})
+                ai_fail = 0
+            else:
+                ai_fail += 1
+                if ai_fail >= AI_FAIL_STOP:
+                    log(f'🤖 AI 連 {AI_FAIL_STOP} 份都沒回(多半是額度用完)→ 這一輪不再叫 AI,只給機械式重點')
         files[f] = {'st': 'ok', 's': s, 'd': d, 'tries': 1, 'pages': feat['pages']}
-        hist.setdefault(s, []).append((d or '', feat['terms']))
         new_recs.append(rec)
-        touched.add(s)
         n_ok += 1
-        log(f'  ✅ {s} {d} {feat["pages"]} 頁 ・重點 {len(feat["outlook"])} 句 ・數字 {len(feat["nums"])} 句 ・'
-            f'{"第一次收錄" if new is None else f"新詞 {len(new)} 個"}{" ・AI ✓" if rec.get("ai") else ""}')
-    # 寫回 cc_deep(按場次月份)
-    by_m = {}
+        log(f'  ✅ {s} {d} {feat["pages"]} 頁 ・重點 {len(feat["outlook"])} 句 ・數字 {len(feat["nums"])} 句 ・詞 {len(feat["terms"])} 個'
+            f'{" ・AI ✓" if rec.get("ai") else ""}')
+    # 寫回 cc_deep(按場次月份;同一份簡報以這一輪的為準)
     for rec in new_recs:
-        by_m.setdefault((rec.get('d') or '0000-00')[:7], []).append(rec)
-    for m, lst in by_m.items():
-        p = month_file(m + '-01')
-        old = _load_json(p, [])
-        keep = {x.get('f'): x for x in old}
-        for rec in lst:
-            keep[rec['f']] = rec
-        _save_json(p, sorted(keep.values(), key=lambda x: (x.get('d') or '', x.get('f') or '')))
+        m = (rec.get('d') or '0000-00')[:7]
+        lst = allr.setdefault(m, [])
+        lst[:] = [x for x in lst if x.get('f') != rec['f']] + [rec]
+        touched_m.add(m)
+    for m in touched_m:
+        _save_json(month_file(m + '-01'), sorted(allr.get(m, []), key=lambda x: (x.get('d') or '', x.get('f') or '')))
     idx['updated'] = datetime.now(TW).isoformat(timespec='minutes')
     _save_json(CC / 'cc' / 'index.json', idx)
-    wrote, nd = build_outputs(touched, rows_by_sym, today)
-    log(f'📦 讀成功 {n_ok} 份 ・失敗 {n_fail} ・AI 摘要 {ai_used} 次 ・寫了 {wrote} 檔 data/cc/ ・清單 {nd} 場')
+    recs = [x for lst in allr.values() for x in lst]
+    nov = novelty_all(recs)
+    wrote, nd = build_outputs(recs, nov, earliest, today)
+    left = max(0, len(todo) - n_try) + sum(1 for r, f, w in todo[:n_try] if (files.get(f) or {}).get('st') == 'dl_fail'
+                                           and (files.get(f) or {}).get('tries', 0) < TRANSIENT_TRIES)
+    if reason == 'done' and left:
+        reason = 'retry'          # 只剩暫時性失敗的 → 下一輪(每天那一輪)再試,⛔ 不接力
+    log(f'📦 讀成功 {n_ok} 份 ・失敗 {n_fail} ・AI 摘要 {ai_used} 次 ・改了 {wrote} 檔 data/cc/ ・清單 {nd} 場 ・還沒讀 {left} 份({reason})')
+    _gh_out(more=1 if left else 0, reason=reason, left=left)
     if todo and n_ok == 0 and n_fail >= 5:
         log('❌ 一份都沒讀到而且連續失敗 → 紅燈(⛔ 不可全綠沒資料)')
         return 1
