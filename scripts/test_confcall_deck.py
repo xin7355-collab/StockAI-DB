@@ -364,6 +364,27 @@ b2, err2 = fs2.get('https://x/f?fileName=a.pdf')
 ok('⑯b ⭐ 決定性對照:同一份檔速度正常 → 照常拿到', b2 is not None and b2[:5] == b'%PDF-' and err2 == '', (err2, clk2['t']))
 
 
+# ⑯c ⏱️ 知道檔案多大(Content-Length)而且照目前速度一定下載不完 → 提早放棄(⛔ 白等滿時限、最後整份丟掉)
+class SizedResp(SlowResp):
+    def __init__(self, clk, body, per, total):
+        super().__init__(clk, body, per); self.headers = {'Content-Length': str(total)}
+class SizedSess(SlowSess):
+    def __init__(self, clk, body, per, total):
+        super().__init__(clk, body, per); self.total = total
+    def get(self, url, **kw):
+        self.n += 1
+        return SizedResp(self.clk, self.body, self.per, self.total) if self.total else SlowResp(self.clk, self.body, self.per)
+big2 = b'%PDF-1.4\n' + b'x' * (1024 * 300)
+ck5 = {'t': 0.0}
+f5 = cdm.Fetcher(session=SizedSess(ck5, big2, 1.0, len(big2)), pace=0, sleeper=lambda x: None, clock=lambda: ck5['t'])
+b5, e5 = f5.get('https://x/f?fileName=a.pdf')
+ck6 = {'t': 0.0}
+f6 = cdm.Fetcher(session=SizedSess(ck6, big2, 1.0, 0), pace=0, sleeper=lambda x: None, clock=lambda: ck6['t'])
+b6, e6 = f6.get('https://x/f?fileName=a.pdf')
+ok('⑯c 300 KB、每秒 1 KB(要 5 分鐘)→ 20 秒就算得出下載不完,提早放棄並寫速度', b5 is None and e5.startswith('slow:') and 'KB/s' in e5 and ck5['t'] <= 25, (e5, ck5['t']))
+ok('⑯d ⭐ 決定性對照:同一份檔不知道多大(沒有 Content-Length)→ 等到總時限才放棄', b6 is None and e6.startswith('slow:') and ck6['t'] >= cdm.DL_MAX_SEC, (e6, ck6['t']))
+
+
 # ⑰ 🐢 抽字卡住(pypdf 遇到很複雜的頁面會卡好幾分鐘)→ 子程序時限到就砍掉、記 timeout(⛔ 整輪卡死)
 import time as _t
 _orig_pdf = cdm.extract_pdf
@@ -375,6 +396,103 @@ cdm.extract_pdf = _orig_pdf
 ok('⑰ 抽字卡住 → 時限到砍掉、回 timeout(⛔ 等 5 秒)', pg_ is None and er_ == 'timeout' and dt_ < 3, (er_, round(dt_, 2)))
 pg2_, er2_ = cdm.extract_safe(PDF_NEW, timeout=20)
 ok('⑰b ⭐ 決定性對照:同一份正常的簡報 → 照常抽到字', pg2_ is not None and any('Revenue 1,350' in p for p in pg2_) and er2_ == '', (er2_, pg2_[:1] if pg2_ else None))
+
+
+# ⑲ ⚡ 兩條官方下載路 + 每份(含重試)總時限 —— 10/23 第一輪 30 份讀 40 分鐘還沒完(舊版每份最多 5 次 × 讀取逾時 60 秒)
+TPL = {'host': 'https://mopsov.twse.com.tw', 'path': '/server-java/FileDownLoad',
+       'q': {'step': '9', 'filePath': '/home/html/nas/STR/', 'functionName': 't100sb02_1'}, 'arg': 'fileName'}
+R_ = cdm.file_urls(TPL, '233020260716M001.pdf')
+ok('⑲ 兩條路:下載程式 + 檔案原本的路徑 /nas/STR/', [k for k, _ in R_] == ['srv', 'nas'] and R_[1][1] == 'https://mopsov.twse.com.tw/nas/STR/233020260716M001.pdf'
+   and 'fileName=233020260716M001.pdf' in R_[0][1], R_)
+ok('⑲a 檔名怪怪的(有斜線)→ 只給下載程式那條(⛔ 拼網址)', [k for k, _ in cdm.file_urls(TPL, '../x.pdf')] == ['srv'])
+class RouteSess:
+    """srv / nas 各自回什麼:'pdf' 正常 / 'html' 回網頁 / 'to' 讀取逾時;記下被叫的順序"""
+    def __init__(self, beh, clk):
+        self.beh, self.clk, self.calls = beh, clk, []
+    def get(self, url, **kw):
+        k = 'nas' if '/nas/STR/' in url else 'srv'
+        self.calls.append(k)
+        b = self.beh[k]
+        if b == 'to':
+            self.clk['t'] += 20
+            raise TimeoutError('read timeout')
+        class R:
+            status_code = 200
+            def __init__(s, body): s.body = body
+            def iter_content(s, n): yield s.body
+            def close(s): pass
+        return R(b'%PDF-1.4\nhello' if b == 'pdf' else b'<html>not here</html>')
+ck = {'t': 0.0}
+rs = RouteSess({'srv': 'to', 'nas': 'pdf'}, ck)
+fa = cdm.Fetcher(session=rs, pace=0, sleeper=lambda x: ck.__setitem__('t', ck['t'] + x), clock=lambda: ck['t'])
+b1, e1, k1 = fa.get_any(cdm.file_urls(TPL, '233020260716M001.pdf'))
+b2, e2, k2 = fa.get_any(cdm.file_urls(TPL, '233020260717M001.pdf'))
+ok('⑲b 先走檔案路徑(下載程式實測只有約 30 KB/s);拿到了就一直走它、⛔ 去叫下載程式', b1 and k1 == 'nas' and b2 and k2 == 'nas'
+   and rs.calls == ['nas', 'nas'], (k1, k2, rs.calls))
+ck1 = {'t': 0.0}
+rs1 = RouteSess({'srv': 'pdf', 'nas': 'to'}, ck1)
+fa1 = cdm.Fetcher(session=rs1, pace=0, sleeper=lambda x: ck1.__setitem__('t', ck1['t'] + x), clock=lambda: ck1['t'])
+b1b, e1b, k1b = fa1.get_any(cdm.file_urls(TPL, '233020260716M001.pdf'))
+ok('⑲c 檔案路徑逾時 → 換下載程式拿到;每一次嘗試都有時限(3 次 × 讀取逾時 + 退避 < 總時限)', b1b and k1b == 'srv' and rs1.calls == ['nas', 'nas', 'nas', 'srv']
+   and ck1['t'] <= cdm.DL_MAX_SEC + cdm.DL_READ, (k1b, rs1.calls, ck1['t']))
+ck2 = {'t': 0.0}
+rs2 = RouteSess({'srv': 'pdf', 'nas': 'html'}, ck2)
+fb = cdm.Fetcher(session=rs2, pace=0, sleeper=lambda x: None, clock=lambda: ck2['t'])
+b3, e3, k3 = fb.get_any(cdm.file_urls(TPL, '233020260716M001.pdf'))
+b3b, e3b, k3b = fb.get_any(cdm.file_urls(TPL, '233020260717M001.pdf'))
+ok('⑲d ⭐ 決定性對照:檔案路徑回網頁(⛔ 被當成檔案)→ 換下載程式拿到;下一份直接走下載程式(⛔ 每份都先白問一次)',
+   b3 and k3 == 'srv' and b3b and k3b == 'srv' and rs2.calls == ['nas', 'srv', 'srv'], (k3, k3b, rs2.calls))
+ck3 = {'t': 0.0}
+fc = cdm.Fetcher(session=RouteSess({'srv': 'to', 'nas': 'to'}, ck3), pace=0, sleeper=lambda x: ck3.__setitem__('t', ck3['t'] + x), clock=lambda: ck3['t'])
+b4, e4, k4 = fc.get_any(cdm.file_urls(TPL, '233020260716M001.pdf'))
+ok('⑲e 兩條都逾時 → 原因兩段都在(nas:… | srv:…)、每段寫幾次嘗試', b4 is None and e4.startswith('nas:') and ' | srv:' in e4 and e4.count('TimeoutError@') == 6, e4)
+ok('⑳ 失敗原因分類:兩條都回網頁 = nf ・下載程式 404 + 另一條回網頁 = 4xx(⛔ 管順序)・下載程式逾時 = 暫時性 ・太大 = too_big',
+   cdm.err_kind('srv:not_file:a | nas:not_file:b') == 'nf' and cdm.err_kind('srv:HTTP 404 | nas:not_file:b') == '4xx'
+   and cdm.err_kind('srv:ReadTimeout@20s | nas:not_file:b') == 'tmp' and cdm.err_kind('srv:too_big') == 'too_big'
+   and cdm.err_kind('not_file:x') == 'nf' and cdm.err_kind('HTTP 429') == 'tmp'
+   and cdm.err_kind('nas:not_file:b | srv:HTTP 404') == '4xx' and cdm.err_kind('nas:HTTP 404 | srv:ReadTimeout@20s') == 'tmp')
+
+
+# ㉑~㉓ 🧾 10/23 第一輪實跑抓到的品質問題(原文照抄當測資):免責聲明 / 註腳 / 標題被當成「講到之後」、人名 / 料號被當成產品詞
+L_ = [(1, '本簡報中所提及之預測性資訊包括營運展望、財務狀況以及業務'),
+      (2, '產業狀況或後續重大發展的完整述論。對未來的展望,反應本公司截至目前為止對於未來的看法'),
+      (3, '註：時程預期可能因主管機關審核速度、出口國設備審批、工期、客戶需求變化'),
+      (4, '* Ref : Boeing COMMERCIAL MARKET OUTLOOK 2026–2045'),
+      (5, '2026年第4季市場展望'),
+      (6, '預期第四季營收季增 5%~8%,毛利率維持 30% 以上')]
+ol_ = [t for _, t in cdm.outlook_of(L_)]
+ok('㉑ 免責聲明 / 註腳 / 資料來源 / 只有標題 ⛔ 當成「講到之後」', ol_ == ['預期第四季營收季增 5%~8%,毛利率維持 30% 以上'], ol_)
+ok('㉑a ⭐ 決定性對照:同一句真的展望照收', '預期第四季營收季增 5%~8%,毛利率維持 30% 以上' in ol_)
+pg_disc = ['公司簡介\n本公司為台灣上市公司', '預測性陳述\n本簡報包含預測性資訊\n實際結果可能與預期不同\n預期明年營收成長 20%', '營運展望\n預期明年營收成長 20%']
+f_ = cdm.feat_of(pg_disc, {})
+ok('㉑b 免責那一頁整頁拿掉(同一頁 ≥2 行免責),別頁同一句照收', [p for p, _ in f_['outlook']] == [3], f_['outlook'])
+f2_ = cdm.feat_of([pg_disc[0], '營運展望\n本公司說明\n預期明年營收成長 20%', pg_disc[2]], {})
+ok('㉑c ⭐ 決定性對照:那一頁沒有免責 → 那一頁的展望也收', [p for p, _ in f2_['outlook']] == [2], f2_['outlook'])
+tm_ = cdm.terms_of(['CHIEN-HUNG KUO 投資人關係 StockCode COMMERCIAL MARKET OUTLOOK Y19 YC02 CB410 H007 ISO27001 CAGR ISO',
+                    'GB200 機櫃 CoWoS 產能 HVAC 空調 PMIC DRAM 導入'])
+bad_ = [k for k in ('CHIEN-HUNG', 'CHIEN', 'HUNG', 'KUO', 'StockCode', 'COMMERCIAL', 'MARKET', 'OUTLOOK', 'Y19', 'YC02', 'CB410', 'H007', 'ISO27001', 'CAGR', 'ISO') if k in tm_]
+ok('㉒ 產品詞 ⛔ 人名 / 英文單字 / 廠區料號 / 財務縮寫 / 認證', not bad_, bad_)
+ok('㉒a ⭐ 決定性對照:真的產品 / 技術詞照收(GB200 / CoWoS / HVAC / PMIC / DRAM)', all(k in tm_ for k in ('GB200', 'CoWoS', 'HVAC', 'PMIC', 'DRAM')), tm_)
+bo_ = cdm.best_outlook([[2, '經濟合作暨發展組織(OECD)2026年經濟展望報告指出全球經濟面臨科技投資強勁'], [5, '預期明年營收成長 15%,產能擴充一倍']])
+ok('㉓ 清單那一句挑「有數字、講營運」的,總經背景排後面(⛔ 改寫)', bo_ == [5, '預期明年營收成長 15%,產能擴充一倍'], bo_)
+ok('㉓a 只有一句 → 就是那一句;沒有 → None', cdm.best_outlook([[3, '預期明年持續成長']]) == [3, '預期明年持續成長'] and cdm.best_outlook([]) is None)
+
+
+# ㉔ 🧾 舊版規則讀過的(cc_deep 已存)→ 載入時照現在的規則再篩一次,digest 那一句 ⛔ 是免責聲明(⛔ 重新下載)
+with tempfile.TemporaryDirectory() as tmp:
+    cdx, datax, ccx = setup(tmp, [])
+    old_rec = {'s': '6770', 'name': '力積電', 'd': '2026-10-21', 'f': '677020261021M001.pdf', 'st': 'ok', 'pages': 18,
+               'outlook': [[2, '本簡報中所提及之預測性資訊包括營運展望、財務狀況以及業務'], [9, '預期第四季稼動率回升至 80%']],
+               'nums': [[3, '註:營收 100 億元'], [9, '預期第四季稼動率回升至 80%']], 'terms': {'KUO': 1, 'Y19': 2, 'PMIC': 9}, 'tone': [0, 0]}
+    cdx._save_json(cdx.month_file('2026-10-01'), [old_rec])
+    allx = cdx.load_all()
+    rr = allx['2026-10'][0]
+    ok('㉔ 舊特徵載入時再篩:免責那句、註腳那句、人名料號拿掉,真的展望 / 數字 / 產品詞留著',
+       [p for p, _ in rr['outlook']] == [9] and [p for p, _ in rr['nums']] == [9] and list(rr['terms']) == ['PMIC'], rr)
+    w, nd = cdx.build_outputs([rr], cdx.novelty_all([rr]), {}, date(2026, 10, 23))
+    dg = json.loads((datax / 'confcall_digest.json').read_text(encoding='utf-8'))
+    ok('㉔a 清單那一句變成真的展望(⛔ 免責聲明)', dg['rows'][0]['ol'].startswith('預期第四季稼動率'), dg['rows'][0])
+    ok('㉔b 再篩一次結果不變(冪等)', cdx.refilter(json.loads(json.dumps(rr))) == rr)
 
 
 # ⑱ ⚡ 抽字引擎:有 pdftotext 用它(快好幾倍),沒有退回 pypdf —— 兩條路抽到的頁數與字要一樣

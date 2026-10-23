@@ -59,7 +59,9 @@ PACE = float(os.getenv('CC_PACE') or 3.0)
 BUDGET_MIN = float(os.getenv('CC_BUDGET_MIN') or 40)
 AI_MAX = int(os.getenv('CC_AI_MAX') or 40)
 MAX_BYTES = 40 * 1024 * 1024
-DL_MAX_SEC = float(os.getenv('CC_DL_MAX_SEC') or 120)   # 一份簡報最多下載幾秒(read timeout 只管每一小塊,整份要另外管)
+DL_MAX_SEC = float(os.getenv('CC_DL_MAX_SEC') or 240)   # 一份簡報(含重試)最多下載幾秒 —— 下載程式實測約 30 KB/s,4 MB 要 2 分多(120 秒那版 12 份斷 5 份)
+DL_READ = float(os.getenv('CC_DL_READ') or 20)          # 一次讀取最多等幾秒沒有收到東西
+DL_BACKOFF = (0, 2, 5)        # 一份簡報最多試 3 次(⛔ 舊版 5 次 × 60 秒)
 EXTRACT_MAX_SEC = float(os.getenv('CC_EXTRACT_MAX_SEC') or 60)   # 一份簡報最多抽幾秒字(pypdf 遇到很複雜的頁面會卡好幾分鐘)
 MAX_PAGES = 80
 KEEP_PER_SYM = 4
@@ -90,6 +92,8 @@ THEMES = [
     '5G', '6G', 'Wi-Fi 7', 'WiFi 7', 'Wi-Fi 8', '低功耗', '物聯網', 'IoT', '醫療', '生技', '新藥', '醫材', '減重',
     'PCB', 'ABF', '載板', 'CCL', '銅箔', '玻璃基板', '面板級封裝', 'FOPLP', 'TGV', '矽晶圓', '半導體設備', '量測', '檢測',
     '美國廠', '墨西哥', '越南', '印度', '日本廠', '泰國', '海外設廠', '併購', '轉投資', '新產品', '新客戶', '量產',
+    # V79.6.3 第一輪實跑:通用的「英文 + 數字代號」抓到一堆廠區 / 料號(Y19、CB02、H007)→ 拿掉那條,常見的 AI 產品代號改列在這裡
+    'GB200', 'GB300', 'B200', 'B300', 'H100', 'H200', 'H20', 'MI300', 'MI350', 'Blackwell', 'Rubin', 'NVLink', 'SOCAMM', 'LPDDR5', 'DDR6', 'HBM4', 'HBM3E',
 ]
 _EN_STOP = {
     'EPS', 'YOY', 'QOQ', 'MOM', 'Q1', 'Q2', 'Q3', 'Q4', 'H1', 'H2', 'FY', 'IR', 'TWD', 'NTD', 'NT', 'USD', 'RMB', 'CEO', 'CFO',
@@ -98,18 +102,37 @@ _EN_STOP = {
     'IN', 'TO', 'ON', 'BY', 'AT', 'AS', 'IS', 'BE', 'OR', 'AN', 'A', 'I', 'II', 'III', 'IV', 'V', 'VS', 'ETC', 'AGM', 'SEC',
     'TWSE', 'TPEX', 'MOPS', 'GAAP', 'NON', 'TBD', 'NA', 'N', 'E', 'P', 'F', 'R', 'S', 'T', 'U', 'X', 'Y', 'Z', 'C', 'D', 'G', 'H',
     'L', 'O', 'W', 'J', 'MAP', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+    # V79.6.3 第一輪實跑抓到的雜訊:財務 / ESG / 機構 / 國家縮寫(⛔ 產品詞)
+    'CAGR', 'ASP', 'ISO', 'RBA', 'SDG', 'SDGS', 'GHG', 'CDP', 'TCFD', 'SBTI', 'TNFD', 'OECD', 'IMF', 'GDP', 'CPI', 'PMI', 'DGBAS',
+    'USA', 'EU', 'US', 'UK', 'APAC', 'EMEA', 'CEO', 'VP', 'SVP', 'EVP', 'CSR', 'ERP', 'BOD', 'NAV', 'PE', 'PB', 'PER', 'DPS', 'CNY',
+    'JPY', 'EUR', 'KRW', 'YEN', 'QTD', 'MTD', 'BU', 'IRR', 'NPV', 'EBIT', 'EBITDA', 'CAPEX', 'OPEX', 'CASH', 'FCF', 'WACC', 'LTM',
+    'STOCK', 'CODE', 'NOTE', 'NOTES', 'TOTAL', 'OTHER', 'OTHERS', 'MARKET', 'SALES', 'GROSS', 'NET', 'PROFIT', 'INCOME', 'ASSET',
+    # 投資人關係聯絡頁常見的姓氏拼音(⛔ 產品詞)
+    'CHEN', 'LIN', 'HUANG', 'CHANG', 'LEE', 'WANG', 'WU', 'LIU', 'TSAI', 'YANG', 'HSU', 'CHENG', 'KUO', 'HUNG', 'TSENG', 'CHIU',
+    'LIAO', 'LAI', 'HSIEH', 'YEH', 'CHOU', 'CHU', 'CHIANG', 'SU', 'LU', 'KAO', 'HO', 'LO', 'TU', 'SHIH', 'CHIEN', 'PAN', 'FANG',
 }
 OUTLOOK_RE = re.compile(r'展望|預期|預估|預計|目標|看好|指引|後市|下半年|明年|outlook|guidance|expect|forecast|target', re.I)
 KPI_RE = re.compile(r'營收|毛利率|營業利益率|營益率|營業利益|淨利|稅後|EPS|每股盈餘|資本支出|產能|稼動率|出貨|訂單|在手訂單|單價|ASP|'
                     r'市占|revenue|gross margin|operating margin|net income|capex|capacity|utilization|shipment|backlog', re.I)
 NUM_RE = re.compile(r'\d[\d,]*(?:\.\d+)?\s*(?:%|％|億|萬|元|倍|x|X|kW|MW|GW|nm|吋|片|台|K|M|B)?')
 # 免責聲明 / 前瞻性陳述那一頁一定有「expect / 預期」→ ⛔ 不可當成公司的展望
-DISCLAIM_RE = re.compile(r'forward[- ]looking|safe harbor|undertakes no obligation|uncertaint|免責|前瞻性|僅供參考|不代表|聲明|風險與不確定', re.I)
+DISCLAIM_RE = re.compile(r'forward[- ]looking|safe harbor|undertakes no obligation|uncertaint|免責|前瞻性|僅供參考|不代表|聲明|風險與不確定|'
+                         r'預測性資訊|預測性陳述|未來的看法|截至目前為止|不負.{0,6}更新|更新或修正|實際結果|可能與.{0,8}不同|'
+                         r'actual results|no obligation|without notice', re.I)
+# 註腳 / 資料來源 / 參考 —— ⛔ 不是公司的話(10/23 實跑:「註:時程預期可能因主管機關審核…」「* Ref : Boeing … OUTLOOK」)
+NOTE_RE = re.compile(r'^\s*(註|＊|\*|※|資料來源|來源|出處|Source|Ref\b|Note\b|Notes\b)', re.I)
+# 只有標題字(「2026 年第 4 季市場展望」「營運展望」)⛔ 不算一句話
+TITLE_RE = re.compile(r'(展望|規劃|計畫|計劃|目標|策略|outlook|guidance|plan)\s*$', re.I)
+# 總經背景(OECD / IMF / 全球經濟 …)⛔ 是公司自己的展望 —— 挑「最有代表性的一句」時排後面
+MACRO_RE = re.compile(r'OECD|IMF|世界銀行|全球經濟|經濟成長率|GDP|通膨|聯準會|Fed\b|利率', re.I)
+COMPANY_RE = re.compile(r'本公司|公司|我們|集團|本集團|營收|訂單|產能|出貨|客戶|新產品|量產')
 POS_RE = re.compile(r'成長|增加|提升|強勁|優於|創新高|新高|擴產|樂觀|回溫|復甦|看好|倍增|growth|increase|strong|record|recover', re.I)
 NEG_RE = re.compile(r'下滑|減少|衰退|疲弱|保守|審慎|謹慎|調整|庫存去化|逆風|不確定|放緩|下修|decline|decrease|weak|cautious|headwind|soft', re.I)
 _THEME_RES = [(t, re.compile((r'(?<![A-Za-z])' + re.escape(t) + r'(?![A-Za-z])') if re.match(r'^[\x00-\x7f ]+$', t) else re.escape(t), re.I))
               for t in THEMES]
-_EN_TOKEN = re.compile(r'(?<![A-Za-z0-9])(?:[A-Z]{2,}[A-Za-z0-9\-\+]*|[A-Z][a-z]+[A-Z][A-Za-z0-9]*|[A-Z]{1,4}\d{2,4}[A-Za-z]*|\d{3,4}[GT])(?![A-Za-z0-9])')
+# ⚠️ V79.6.3 第一輪實跑:舊樣式抓到人名(CHIEN-HUNG)、英文單字(COMMERCIAL / MARKET / OUTLOOK)、廠區料號(Y19 / CB02 / H007)、
+#    StockCode 這種混大小寫 → 只收「3~5 個大寫字母」的縮寫;2 個字母 / 混大小寫 / 英文加數字一律只認詞庫裡的(GaN / CoWoS / GB200…)
+_EN_TOKEN = re.compile(r'(?<![A-Za-z0-9\-])[A-Z]{3,5}(?![A-Za-z0-9\-])')
 
 FILE_FALLBACK = {'host': 'https://mopsov.twse.com.tw', 'path': '/server-java/FileDownLoad',
                  'q': {'step': '9', 'filePath': '/home/html/nas/STR/', 'functionName': 't100sb02_1'}, 'arg': 'fileName'}
@@ -150,6 +173,17 @@ def file_url(tpl, name):
     t = tpl if (tpl and tpl.get('path')) else FILE_FALLBACK
     q = dict(t.get('q') or {})
     return f"{t.get('host') or FILE_FALLBACK['host']}{t['path']}?{urlencode(q)}&{t.get('arg') or 'fileName'}={name}"
+
+
+def file_urls(tpl, name):
+    """兩條官方下載路:① 下載程式(FileDownLoad)② 檔案原本的路徑(filePath 是 /home/html/nas/STR/ → 網站上的 /nas/STR/)。
+    ⛔ 第二條拼不出來(樣板沒有 filePath)就只給第一條;兩條回來的東西都要驗檔頭。"""
+    out = [('srv', file_url(tpl, name))]
+    t = tpl if (tpl and tpl.get('path')) else FILE_FALLBACK
+    m = re.search(r'/html(/[^?#]+/)$', str((t.get('q') or {}).get('filePath') or ''))
+    if m and re.fullmatch(r'[0-9A-Za-z_.-]+', name or ''):
+        out.append(('nas', f"{t.get('host') or FILE_FALLBACK['host']}{m.group(1)}{name}"))
+    return out
 
 
 def _clean(s):
@@ -277,13 +311,32 @@ def _pick(lines, pred, limit):
     return out
 
 
+def _not_said(s):
+    """⛔ 不是公司說的話:免責聲明 / 註腳 / 資料來源。"""
+    return bool(DISCLAIM_RE.search(s) or NOTE_RE.search(s))
+
+
+def _is_title(s):
+    t = re.sub(r'\s', '', s)
+    return len(t) <= 20 and bool(TITLE_RE.search(s)) and not re.search(r'[,，。;；]', s)
+
+
 def outlook_of(lines, limit=8):
-    # ⛔ 只有標題字(「展望」「Outlook」)不算一句話;⛔ 免責聲明不算
-    return _pick(lines, lambda s: bool(OUTLOOK_RE.search(s)) and not DISCLAIM_RE.search(s) and len(re.sub(r'\s', '', s)) >= 8, limit)
+    # ⛔ 只有標題字(「展望」「Outlook」「2026 年第 4 季市場展望」)不算一句話;⛔ 免責聲明 / 註腳不算
+    return _pick(lines, lambda s: bool(OUTLOOK_RE.search(s)) and not _not_said(s) and not _is_title(s)
+                 and len(re.sub(r'\s', '', s)) >= 8, limit)
 
 
 def nums_of(lines, limit=10):
-    return _pick(lines, lambda s: bool(KPI_RE.search(s)) and bool(re.search(r'\d', s)) and not DISCLAIM_RE.search(s), limit)
+    return _pick(lines, lambda s: bool(KPI_RE.search(s)) and bool(re.search(r'\d', s)) and not _not_said(s), limit)
+
+
+def best_outlook(outlook):
+    """清單上那一句「公司講到之後」:有數字 / 講營運的優先,總經背景排後面(⛔ 改寫原文,只是挑一句)。"""
+    def sc(x):
+        t = x[1]
+        return (2 if re.search(r'\d', t) else 0) + (2 if KPI_RE.search(t) else 0) + (1 if COMPANY_RE.search(t) else 0) - (3 if MACRO_RE.search(t) else 0)
+    return max(outlook, key=lambda x: (sc(x), -outlook.index(x))) if outlook else None
 
 
 def terms_of(pages):
@@ -295,11 +348,8 @@ def terms_of(pages):
         for term, rx in _THEME_RES:
             if term not in out and rx.search(t):
                 out[term] = i + 1
-        for tok in _EN_TOKEN.findall(t):
-            tk = tok.strip('-+')
-            if len(tk) < 2 or tk.upper() in _EN_STOP or re.fullmatch(r'\d+', tk):
-                continue
-            if re.fullmatch(r'(19|20)\d\d[A-Za-z]*', tk):      # 年份
+        for tk in _EN_TOKEN.findall(t):
+            if tk in _EN_STOP:
                 continue
             if tk not in out and not any(tk.lower() == k.lower() for k in out):
                 out[tk] = i + 1
@@ -395,6 +445,12 @@ def parse_ai_json(txt):
 
 def feat_of(pages, meta):
     lines = page_lines(pages)
+    # 🧾 免責聲明那一頁(同一頁 ≥2 行在講「預測性資訊 / 實際結果可能不同」)整頁拿掉 —— 一句一句擋會漏(10/23 實跑兩份漏掉)
+    dpg = {}
+    for p, ln in lines:
+        if DISCLAIM_RE.search(ln):
+            dpg[p] = dpg.get(p, 0) + 1
+    lines = [(p, ln) for p, ln in lines if dpg.get(p, 0) < 2]
     ol = outlook_of(lines)
     return {
         'pages': len(pages),
@@ -444,8 +500,28 @@ def load_all():
     d = CC / 'cc' / 'feat'
     if d.exists():
         for p in sorted(d.glob('*.json.gz')):
-            out[p.name[:7]] = _load_json(p, [])
+            out[p.name[:7]] = [refilter(r) for r in _load_json(p, [])]
     return out
+
+
+_THEME_SET = set(THEMES)
+
+
+def _term_ok(t):
+    return t in _THEME_SET or (bool(re.fullmatch(r'[A-Z]{3,5}', t or '')) and t not in _EN_STOP)
+
+
+def refilter(rec):
+    """🧾 以前版本抽的特徵(cc_deep 存的)照現在的規則再篩一次 —— 冪等、⛔ 不重新下載。
+    (10/23 第一輪用舊規則讀了一批:免責聲明 / 註腳被當成展望、人名料號被當成產品詞;同一頁的免責整頁拿掉那條補不回來)"""
+    if not isinstance(rec, dict) or rec.get('st') != 'ok':
+        return rec
+    ol = [x for x in (rec.get('outlook') or []) if isinstance(x, (list, tuple)) and len(x) == 2 and not _not_said(x[1]) and not _is_title(x[1])]
+    nm = [x for x in (rec.get('nums') or []) if isinstance(x, (list, tuple)) and len(x) == 2 and not _not_said(x[1])]
+    rec['outlook'], rec['nums'] = ol, nm
+    rec['terms'] = {k: v for k, v in (rec.get('terms') or {}).items() if _term_ok(k)}
+    rec['tone'] = tone_of(ol)
+    return rec
 
 
 def backlog_path():
@@ -649,6 +725,28 @@ def novelty_all(recs):
 
 
 # ───────────────────────── 網路(只在正式跑時用) ─────────────────────────
+def err_kind(err):
+    """下載失敗的原因分類(兩條路的原因用「 | 」串起來,每段前面是 srv: / nas:)。
+    'too_big' 任一條說太大 ・'nf' 每一條都回網頁(檔案不在)・'4xx' 下載程式回 4xx(429 除外)而另一條也沒拿到 ・其他 = 暫時性
+    ⚠️ 兩條路的順序會變(先走上一次成功的那條)→ 照 srv / nas 名字找,⛔ 不可假設第一段是下載程式"""
+    by = {}
+    for p in str(err or '').split(' | '):
+        k, _, v = p.partition(':')
+        if k in ('srv', 'nas'):
+            by[k] = v
+        else:
+            by['srv'] = p                                    # 舊格式 / 只有一條路
+    parts = list(by.values())
+    if any(x == 'too_big' for x in parts):
+        return 'too_big'
+    if parts and all(x.startswith('not_file') for x in parts):
+        return 'nf'
+    sv = by.get('srv', '')
+    if sv.startswith('HTTP 4') and sv != 'HTTP 429' and all(x.startswith(('HTTP 4', 'not_file')) for x in parts):
+        return '4xx'
+    return 'tmp'
+
+
 class Fetcher:
     def __init__(self, session=None, pace=PACE, sleeper=time.sleep, clock=time.time):
         if session is None:
@@ -658,42 +756,81 @@ class Fetcher:
         self.pace, self.sleep, self.clock = pace, sleeper, clock
         self.fail_streak = 0
         self.last = 0.0
+        self.pref = 'nas'            # ⚡ 先走檔案原本的路徑(下載程式實測每份只有約 30 KB/s);回網頁就馬上換下載程式
+        self.wins = {}
 
     def get(self, url):
-        """回 (bytes|None, 原因)。暫時性錯誤指數退避重試;⛔ 不無限重試。"""
+        """回 (bytes|None, 原因)。暫時性錯誤指數退避重試;⛔ 不無限重試。
+        🐢 V79.6.3 第二輪:整份(含重試)最多 DL_MAX_SEC 秒;每次讀取 DL_READ 秒沒收到東西就算逾時;每一次嘗試的結果都寫進原因
+           (10/23 第一輪 30 份 40 分鐘讀不完 —— 舊版每份最多試 5 次 × 讀取逾時 60 秒,一份就可能卡 5 分鐘以上)。"""
         wait = self.pace - (self.clock() - self.last)
         if wait > 0:
             self.sleep(wait)
-        err = ''
-        for k, back in enumerate((0, 2, 4, 8, 16)):
+        notes = []
+        t0 = self.clock()
+        for k, back in enumerate(DL_BACKOFF):
             if back:
+                if self.clock() - t0 + back > DL_MAX_SEC:
+                    break
                 self.sleep(back)
+            ta = self.clock()
             try:
-                r = self.s.get(url, headers=UA, timeout=(10, 60), stream=True)
+                r = self.s.get(url, headers=UA, timeout=(8, DL_READ), stream=True)
                 self.last = self.clock()
                 if r.status_code in (429, 500, 502, 503, 504):
-                    err = f'HTTP {r.status_code}'
+                    notes.append(f'HTTP {r.status_code}')
                     continue
                 if r.status_code != 200:
                     return None, f'HTTP {r.status_code}'
                 buf = io.BytesIO()
-                t_dl = self.clock()
-                for chunk in r.iter_content(65536):
+                try:
+                    total = int((getattr(r, 'headers', None) or {}).get('Content-Length') or 0)
+                except (TypeError, ValueError):
+                    total = 0
+                if total > MAX_BYTES:
+                    r.close()
+                    return None, 'too_big'
+                t_body = self.clock()
+                for chunk in r.iter_content(16384):
                     buf.write(chunk)
-                    if buf.tell() > MAX_BYTES:
+                    got = buf.tell()
+                    if got > MAX_BYTES:
                         return None, 'too_big'
-                    if self.clock() - t_dl > DL_MAX_SEC:      # 🐢 主機把頻寬壓到很慢(一小塊一小塊給)→ ⛔ 不可一份等十分鐘
+                    el = self.clock() - t_body
+                    # ⏱️ 知道檔案多大的話,照目前速度算得出「時限內下載不完」就提早放棄(⛔ 白白等滿時限、最後整份丟掉)
+                    if total and el >= 20 and got < total and (el / got) * (total - got) + (self.clock() - t0) > DL_MAX_SEC:
                         r.close()
-                        return None, f'slow:{buf.tell() // 1024}KB/{DL_MAX_SEC:.0f}s'
+                        return None, f'slow:{got // 1024}/{total // 1024}KB@{got / 1024 / max(el, 1e-9):.0f}KB/s' + (f'({";".join(notes)})' if notes else '')
+                    if self.clock() - t0 > DL_MAX_SEC:      # 🐢 主機把頻寬壓到很慢(一小塊一小塊給)→ ⛔ 不可一份等十分鐘
+                        r.close()
+                        return None, f'slow:{got // 1024}KB/{DL_MAX_SEC:.0f}s' + (f'({";".join(notes)})' if notes else '')
                 b = buf.getvalue()
                 if b[:5] == b'%PDF-' or b[:4] == b'PK\x03\x04':
                     return b, ''
                 head = b[:200].decode('utf-8', 'ignore').replace('\n', ' ')
                 return None, f'not_file:{head[:80]}'     # 回了網頁(陷阱 #23:不存在的路徑回 200 + 網頁)
-            except Exception as e:
-                err = type(e).__name__
+            except Exception as e:                           # noqa: BLE001 —— 每一次的原因都記下來
+                notes.append(f'{type(e).__name__}@{self.clock() - ta:.0f}s')
                 self.last = self.clock()
-        return None, err or 'fail'
+            if self.clock() - t0 > DL_MAX_SEC:
+                break
+        return None, ';'.join(notes) or 'fail'
+
+    def get_any(self, routes):
+        """⚡ 同一份簡報有兩條官方下載路(下載程式 / 檔案原本的路徑)→ 先走上一次成功的那條,失敗才換另一條。
+        回 (bytes|None, 原因, 用的是哪條)。⛔ 不猜網址:回來的東西一律驗 %PDF- / zip 標頭(陷阱 #23)。"""
+        order = sorted(routes, key=lambda kv: 0 if kv[0] == self.pref else 1)
+        errs = []
+        for kind, u in order:
+            b, err = self.get(u)
+            if b is not None:
+                self.pref = kind
+                self.wins[kind] = self.wins.get(kind, 0) + 1
+                return b, '', kind
+            errs.append(f'{kind}:{err}')
+            if err == 'too_big':
+                break
+        return None, ' | '.join(errs), None
 
 
 AI_DEADLINE = float(os.getenv('CC_AI_DEADLINE') or 40)    # 一份簡報的 AI 最多花幾秒(⛔ 不可為了 AI 拖慢整輪讀簡報)
@@ -776,7 +913,7 @@ def build_outputs(recs, nov, info, today):
                 continue
             nv, ai = nov.get(r.get('f')) or {}, r.get('ai') or {}
             row = {'s': s, 'name': r.get('name') or s, 'd': r.get('d'), 't': r.get('t') or '', 'inv': r.get('inv') or 0, 'f': r.get('f'),
-                   'one': ai.get('one') or '', 'ol': ((r.get('outlook') or [[0, '']])[0][1] or '')[:80],
+                   'one': ai.get('one') or '', 'ol': ((best_outlook(r.get('outlook') or []) or [0, ''])[1] or '')[:80],
                    'new': [t for t, _ in (nv.get('new') or [])][:5], 'new_n': nv.get('n_new', 0), 'first': bool(nv.get('first')),
                    'prev_d': nv.get('prev_d') or '', 'reuse': r.get('reuse') or '', 'n_nums': len(r.get('nums') or []), 'pages': r.get('pages'),
                    # 🔎 簡報講到的產品 / 技術詞(照第一次出現的頁排,最多 30 個)→ 法說會頁可以搜「誰在講 CPO」
@@ -858,7 +995,10 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
             new_recs.append(rec)
             continue
         t_f = time.time()
-        b, err = fetcher.get(file_url(tpl, f))
+        if hasattr(fetcher, 'get_any'):
+            b, err, route = fetcher.get_any(file_urls(tpl, f))
+        else:                                                # 測試用的假下載器只有 get
+            (b, err), route = fetcher.get(file_url(tpl, f)), 'srv'
         t_dl = time.time() - t_f
         if n_try % 10 == 0:
             log(f'  ⏳ 第 {n_try} 份 ・已 {(time.time() - t0) / 60:.1f} 分 ・成功 {n_ok} ・失敗 {n_fail}')
@@ -866,12 +1006,13 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
             n_fail += 1
             prev = files.get(f) or {}
             young = bool(d) and (today - date.fromisoformat(d)).days <= NOT_FILE_GRACE
-            perm = (err.startswith('not_file') and not young) or err == 'too_big' or (err.startswith('HTTP 4') and err != 'HTTP 429')
-            files[f] = {'st': 'too_big' if err == 'too_big' else ('bad_file' if perm else 'dl_fail'), 'err': err[:120],
+            ek = err_kind(err)
+            perm = (ek == 'nf' and not young) or ek in ('too_big', '4xx')
+            files[f] = {'st': 'too_big' if ek == 'too_big' else ('bad_file' if perm else 'dl_fail'), 'err': err[:160],
                         's': s, 'd': d, 'tries': (prev.get('tries') or 0) + 1}
-            log(f'  ⚠️ {s} {d} {f} 下載失敗:{err[:80]}({t_dl:.0f} 秒)')
+            log(f'  ⚠️ {s} {d} {f} 下載失敗:{err[:140]}({t_dl:.0f} 秒)')
             # 「被擋」才算連續失敗(⛔ 回網頁 = 主機有回應、只是那份檔不在,不算被擋)
-            if err.startswith('not_file') or err == 'too_big':
+            if ek in ('nf', 'too_big'):
                 continue
             streak += 1
             if streak >= 5:
@@ -916,7 +1057,7 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         n_ok += 1
         log(f'  ✅ {s} {d} {feat["pages"]} 頁 ・重點 {len(feat["outlook"])} 句 ・數字 {len(feat["nums"])} 句 ・詞 {len(feat["terms"])} 個'
             f'{" ・AI ✓" if rec.get("ai") else ""}'
-            f'({kb:,} KB ・下載 {t_dl:.0f} 秒 ・抽字 {t_ex:.1f} 秒{f" ・AI {t_ai:.0f} 秒" if t_ai else ""})')
+            f'({kb:,} KB ・下載 {t_dl:.0f} 秒{"(nas)" if route == "nas" else ""} ・抽字 {t_ex:.1f} 秒{f" ・AI {t_ai:.0f} 秒" if t_ai else ""})')
     # 寫回 cc_deep(按場次月份;同一份簡報以這一輪的為準)
     for rec in new_recs:
         m = (rec.get('d') or '0000-00')[:7]
@@ -934,7 +1075,9 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
                                            and (files.get(f) or {}).get('tries', 0) < TRANSIENT_TRIES)
     if reason == 'done' and left:
         reason = 'retry'          # 只剩暫時性失敗的 → 下一輪(每天那一輪)再試,⛔ 不接力
-    log(f'📦 讀成功 {n_ok} 份 ・失敗 {n_fail} ・AI 摘要 {ai_used} 次 ・改了 {wrote} 檔 data/cc/ ・清單 {nd} 場 ・還沒讀 {left} 份({reason})')
+    wins = getattr(fetcher, 'wins', None) or {}
+    route = ('・下載路 ' + ' / '.join(f'{"檔案路徑" if k == "nas" else "下載程式"} {v} 份' for k, v in sorted(wins.items()))) if wins else ''
+    log(f'📦 讀成功 {n_ok} 份 ・失敗 {n_fail} ・AI 摘要 {ai_used} 次 ・改了 {wrote} 檔 data/cc/ ・清單 {nd} 場 ・還沒讀 {left} 份({reason}){route}')
     _gh_out(more=1 if left else 0, reason=reason, left=left)
     if todo and n_ok == 0 and n_fail >= 5:
         log('❌ 一份都沒讀到而且連續失敗 → 紅燈(⛔ 不可全綠沒資料)')
