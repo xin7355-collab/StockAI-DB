@@ -436,8 +436,11 @@ jobs:
           #   → 時快時慢,慢的日子會撞掉掃描自己的時限。這一步本身要 16~22 分鐘(#637 21.5 分)
           #   → 藏在這裡面,部署 job 少約 6 分、共用部署鎖也少佔 6 分。
           #   ⛔ 失敗不擋任何東西:掃描那一步看到沒裝好(RC 不是 0 或瀏覽器不在)會自己補裝。
+          #   ⏱️ V79.6.4 巡邏:安裝本身也要有時限 —— 下面會 `wait $PIDPW`,裝到一半卡住(apt 鎖 / 下載停住)
+          #      就會把這一步一路拖到整個 job 時限,後面的部署全部沒跑(「不擋任何東西」就不成立了)。
+          #      逾時 → RC=124 → 掃描那步看到沒裝好會自己補裝(那步自己有 10 分鐘上限)。
           ( T0=$(date +%s); set +e
-            npm i -D playwright@1.49.1 && npx playwright install --with-deps chromium
+            timeout 300 npm i -D playwright@1.49.1 && timeout 600 npx playwright install --with-deps chromium
             echo "RC=$? SEC=$(( $(date +%s) - T0 ))" ) > /tmp/parallel/pw.log 2>&1 &
           PIDPW=$!
           python universal_radar.py > /tmp/parallel/r1.log 2>&1 &

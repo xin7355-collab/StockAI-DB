@@ -9053,7 +9053,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.6.3',
+  VER: 'V79.6.4',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -11109,6 +11109,21 @@ ${M.news || '(無)'}
     for (const f of (r.pdf || [])) { const x = m.get(f); if (x) return x; }
     return null;
   },
+  /** 📋 V79.6.4 清單也列「讀不成的」那幾份(只有 st)→ 讀成功的才算有重點(舊產物沒有 st = 讀成功的) */
+  _confOk(dg) { return !!dg && (!dg.st || dg.st === 'ok'); },
+  /** 🔁 這一場拿更早那一場的同一份簡報重講(digest 的日期 = 第一次用那份簡報的場次)→ ⛔ 算這一場的「新東西」 */
+  _confReused(r, dg) { return !!(dg && r && dg.d && r.d && r.d > dg.d); },
+  /** 讀不成的原因(白話;⛔ 說成「還沒讀到」—— 那是另一件事) */
+  _confStTxt(dg) {
+    const st = dg && dg.st;
+    if (st === 'no_text') return '簡報是圖片做的,抽不出字(⛔ 不猜)→ 直接看簡報';
+    if (st === 'ppt_old') return '簡報是舊的 .ppt 格式,本站讀不了 → 直接看簡報';
+    if (st === 'parse_fail') return '這份簡報抽字失敗(檔案太複雜或壞掉)→ 直接看簡報';
+    if (st === 'too_big') return '簡報檔超過 40MB,本站沒讀 → 直接看簡報';
+    if (st === 'bad_file') return '公開資訊觀測站上找不到這份簡報檔(連結可能已失效)';
+    if (st === 'dl_fail') return dg.gave_up ? `連續 ${dg.tries || 3} 天都下載不到這份簡報 → 直接看簡報` : '簡報下載失敗(主機太慢或暫時連不上),之後每天會再試';
+    return '';
+  },
   _confDay(n) { const d = new Date(this._confToday() + 'T12:00:00+08:00'); d.setDate(d.getDate() + n); return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); },
   /** 受邀參加券商 / 投顧辦的場次(⛔ 不是公司自己辦的)—— 跟 confcall_deck.INV_RE 同一條 */
   _confInv(r) { return /受邀|邀請|應邀|參加.{0,24}(證券|投顧|銀行|金控|論壇|研討會|峰會|投資人會議)/.test((r && r.sum) || ''); },
@@ -11215,10 +11230,10 @@ ${M.news || '(無)'}
     const mine = this._confMine();
     const done = r => r.d < today || (r.d === today && !!this._confDeckOf(r));
     const past = rows.filter(done), fut = rows.filter(r => !done(r));
-    const nn = r => ((this._confDeckOf(r) || {}).new_n || 0);
+    const nn = r => { const dg = this._confDeckOf(r); return this._confOk(dg) && !this._confReused(r, dg) ? (dg.new_n || 0) : 0; };
     past.sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (nn(b) - nn(a)) || (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
     if (past.length) {
-      const nDeck = past.filter(r => this._confDeckOf(r)).length;
+      const nDeck = past.filter(r => this._confOk(this._confDeckOf(r))).length;
       html += `<div class="note" data-conf-sec="past" style="margin-top:6px">🎤 <b>已經開完 ${past.length} 場</b>・簡報讀到 ${nDeck} 份(👜 你的排最前,其餘照「這次第一次提到的東西」多寡排)</div>`;
       html += past.map(r => this._confCardHtml(r, mine)).join('');
     }
@@ -11233,22 +11248,27 @@ ${M.news || '(無)'}
     const q = this._confQ;
     const hi = t => this._labHi ? this._labHi(this._esc(t), q) : this._esc(t);
     const md = d => String(d || '').slice(5).replace('-', '/');
-    const dg = this._confDeckOf(r);
+    const dgAny = this._confDeckOf(r);
+    // 📋 V79.6.4 巡邏:清單也列「讀不成的」(只有 st)→ 讀成功的才當成有重點;🔁 這一場晚於那份簡報第一次用的場次 = 拿舊簡報重講
+    const ok = this._confOk(dgAny), dg = ok ? dgAny : null, reused = ok && this._confReused(r, dg);
     const nm = this.nameOf && this.nameOf(r.s);
     const shown = (nm && nm !== r.s) ? nm : (r.name || r.s);
     const tags = [`<span class="sigtag">${md(r.d)}(${this._confWk(r.d)})${r.t ? ' ' + this._esc(r.t) : ''}</span>`,
                   `<span class="sigtag" data-cc-host>${this._confInv(r) ? '券商邀請' : '自辦'}</span>`];
     if (dg) {
-      if (dg.reuse) tags.push(`<span class="sigtag" data-cc-reuse>🔁 沿用 ${md(dg.reuse)} 那份簡報</span>`);
+      if (reused) tags.push(`<span class="sigtag" data-cc-reuse>🔁 沿用 ${md(dg.d)} 那場的簡報</span>`);
+      else if (dg.reuse) tags.push(`<span class="sigtag" data-cc-reuse>🔁 沿用 ${md(dg.reuse)} 那份簡報</span>`);
       else if (dg.first) tags.push(`<span class="sigtag" data-cc-first>第一次收錄(還沒有上一份可以比)</span>`);
       else if (dg.new_n) tags.push(`<span class="sigtag good" data-cc-new="${dg.new_n}">🆕 新東西 ${dg.new_n}</span>`);
       else tags.push(`<span class="sigtag" data-cc-new="0">跟上一份比沒有新的詞</span>`);
-    }
+    } else if (dgAny) tags.push(`<span class="sigtag" data-cc-st="${this._esc(dgAny.st)}">📄 讀不到</span>`);
     let body = '';
     if (dg && dg.one) body += `<div class="note" style="margin-top:3px" data-cc-one>🤖 <b>一句話</b>:${hi(dg.one)} <span style="color:var(--dim2)">(AI 只讀簡報抽出來的句子;數字都對過原文)</span></div>`;
     else if (dg && dg.ol) body += `<div class="note" style="margin-top:3px" data-cc-ol>📌 <b>公司講到「之後」</b>:${hi(dg.ol)}</div>`;
-    if (dg && (dg.new || []).length) body += `<div class="note" style="margin-top:3px" data-cc-newlist>🆕 <b>這次第一次提到</b>${dg.prev_d ? `(跟 ${md(dg.prev_d)} 那份比)` : ''}:${dg.new.map(t => `<span class="sigtag good">${hi(t)}</span>`).join(' ')}${dg.new_n > dg.new.length ? ` <span style="color:var(--dim2)">…共 ${dg.new_n} 個</span>` : ''}</div>`;
-    if (!dg) body += `<div class="note" style="margin-top:3px" data-cc-none>📄 簡報重點:${(r.pdf || []).length ? '還沒讀到(每天收盤後讀一輪;簡報多半會後才上傳)' : '公司沒有上傳簡報'}</div>`;
+    if (reused) body += `<div class="note" style="margin-top:3px" data-cc-reusenote>🔁 這一場用的是 ${md(dg.d)} 那場的同一份簡報 → 下面的重點是那時候的(⛔ 這一場的新東西)。</div>`;
+    else if (dg && (dg.new || []).length) body += `<div class="note" style="margin-top:3px" data-cc-newlist>🆕 <b>這次第一次提到</b>${dg.prev_d ? `(跟 ${md(dg.prev_d)} 那份比)` : ''}:${dg.new.map(t => `<span class="sigtag good">${hi(t)}</span>`).join(' ')}${dg.new_n > dg.new.length ? ` <span style="color:var(--dim2)">…共 ${dg.new_n} 個</span>` : ''}</div>`;
+    if (!dg && dgAny) body += `<div class="note" style="margin-top:3px" data-cc-stline>📄 簡報重點:${this._esc(this._confStTxt(dgAny))}</div>`;
+    else if (!dg) body += `<div class="note" style="margin-top:3px" data-cc-none>📄 簡報重點:${(r.pdf || []).length ? '還沒讀到(每天收盤後讀一輪;簡報多半會後才上傳)' : '公司沒有上傳簡報'}</div>`;
     const key = `${r.s}-${dg ? dg.f : r.d}`;
     if (dg) body += `<details data-dk="ccd-${this._esc(key)}" ontoggle="PRO.confOpen(this, '${this._esc(r.s)}', '${this._esc(dg.f)}', '${this._esc(r.d)}')"><summary style="cursor:pointer;list-style:none;font-size:11px;color:var(--cyan);margin-top:4px">📄 看重點:公司給的數字・講到「之後」的句子・跟上一份比・開完到現在的股價 <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" data-ccd-body="${this._esc(key)}">⏳ 讀取中…</div></details>`;
     if (r.sum) body += `<details data-dk="conf-${r.s}-${r.d}"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim)">📝 擇要訊息(公司在場次表上寫的) <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" style="margin-top:4px;white-space:pre-wrap">${hi(r.sum)}</div></details>`;
@@ -11290,7 +11310,8 @@ ${M.news || '(無)'}
     if (!dk) { box.innerHTML = `⚠️ 讀不到這一檔的簡報重點檔(data/cc/${this._esc(sym)}.json)—— 檔案沒產出或網路失敗,⛔ 不代表簡報沒內容。`; return; }
     box.dataset.done = '1';
     box.innerHTML = this._confDetailHtml(dk, sym, d);
-    const px = await this._confPxSince(sym, dk.d || d).catch(() => null);
+    // 📅 V79.6.4「開完到現在」= 從**這一場**算(拿舊簡報重講的那一場,⛔ 從第一次用那份簡報的日子算)
+    const px = await this._confPxSince(sym, d || dk.d).catch(() => null);
     const pb = box.querySelector('[data-ccd-px]');
     if (pb) pb.innerHTML = this._confPxHtml(px);
   },
@@ -11299,6 +11320,7 @@ ${M.news || '(無)'}
     const pg = p => p ? ` <span class="mono" style="color:var(--dim2)">(第 ${e(p)} 頁)</span>` : '';
     const md = x => String(x || '').slice(5).replace('-', '/');
     let h = '';
+    if (d && dk.d && d > dk.d) h += `<div data-ccd-reuse>🔁 這一場(${e(md(d))})用的是 ${e(md(dk.d))} 那場的同一份簡報 → 下面全部是那一份的內容;「第一次提到」是跟更早那份比的。</div>`;
     const ai = dk.ai || null;
     if (ai && (ai.one || (ai.outlook || []).length || (ai.new || []).length || (ai.risk || []).length)) {
       const sec = (t, arr) => (arr || []).length ? `<div style="margin-top:3px"><b>${t}</b><br>${arr.map(x => `・${e(x.t)}${pg(x.p)}`).join('<br>')}</div>` : '';
@@ -11364,9 +11386,12 @@ ${M.news || '(無)'}
             <span class="sigtag">${this._esc(r.mkt || '')}</span>${r.ind ? `<span class="sigtag">${this._esc(this.IND_NAME[r.ind] || r.ind)}</span>` : ''}
             <span style="margin-left:auto;font-size:11px" class="mono">${this._esc(r.t || '')}</span></div>
           <div class="note" style="margin-top:2px">📍 ${hi(r.place || '—')}</div>
-          ${(() => { const dg = past ? this._confDeckOf(r) : null; if (!dg) return '';
-                     const one = dg.one || dg.ol; const nw = dg.first ? '第一次收錄' : (dg.new_n ? `🆕 新東西 ${dg.new_n}` : '');
-                     return one || nw ? `<div class="note" style="margin-top:2px" data-cc-line>📄 ${one ? hi(one) : ''}${one && nw ? ' ・' : ''}${nw ? `<span class="sigtag${dg.new_n ? ' good' : ''}">${nw}</span>` : ''} <span class="labbtn" onclick="PRO.confSearch('${this._esc(r.s)}')">看重點</span></div>` : ''; })()}
+          ${(() => { const dg0 = past ? this._confDeckOf(r) : null; if (!dg0) return '';
+                     // 📋 V79.6.4 讀不成的寫原因;拿舊簡報重講的 ⛔ 標「新東西」
+                     if (!this._confOk(dg0)) return `<div class="note" style="margin-top:2px" data-cc-line data-cc-st="${this._esc(dg0.st)}">📄 ${this._esc(this._confStTxt(dg0))}</div>`;
+                     const dg = dg0, rs = this._confReused(r, dg);
+                     const one = dg.one || dg.ol; const nw = rs ? `🔁 沿用 ${this._esc(String(dg.d).slice(5).replace('-', '/'))} 那場的簡報` : dg.first ? '第一次收錄' : (dg.new_n ? `🆕 新東西 ${dg.new_n}` : '');
+                     return one || nw ? `<div class="note" style="margin-top:2px" data-cc-line>📄 ${one ? hi(one) : ''}${one && nw ? ' ・' : ''}${nw ? `<span class="sigtag${dg.new_n && !rs ? ' good' : ''}">${nw}</span>` : ''} <span class="labbtn" onclick="PRO.confSearch('${this._esc(r.s)}')">看重點</span></div>` : ''; })()}
           ${sum}
           ${files.length ? `<div class="note" style="margin-top:3px">${files.join(' ・ ')}</div>` : ''}
           ${r.other ? `<div class="note" style="margin-top:2px">ℹ️ ${hi(r.other)}</div>` : ''}
@@ -11697,8 +11722,11 @@ ${M.news || '(無)'}
     const n = D.n || {};
     const G = this._confDig;
     // 📄 簡報重點那份檔讀不到 ≠ 簡報沒內容(陷阱 #22)→ 一定要分開講
+    // 📋 V79.6.4 清單也列讀不成的(只有 st)→「讀到幾份」只算讀成功的,讀不成的另外講
+    const nOkDeck = G && Array.isArray(G.rows) ? G.rows.filter(r => this._confOk(r)).length : 0;
+    const nBadDeck = G && Array.isArray(G.rows) ? G.rows.length - nOkDeck : 0;
     const deckLine = G && Array.isArray(G.rows)
-      ? `<br>📄 簡報重點:最近 ${G.days || 60} 天讀到 <b>${G.rows.length}</b> 份(更新 ${this._esc(String(G.updated || '').slice(0, 16).replace('T', ' '))})`
+      ? `<br>📄 簡報重點:最近 ${G.days || 60} 天讀到 <b>${nOkDeck}</b> 份${nBadDeck ? `(另 ${nBadDeck} 份讀不到或還在試)` : ''}(更新 ${this._esc(String(G.updated || '').slice(0, 16).replace('T', ' '))})`
       : `<br><span data-conf-nodigest="1">📄 簡報重點:<b>還沒產出</b>(data/confcall_digest.json 讀不到;第一次要等採礦跑完一輪)—— ⛔ 不代表簡報沒內容</span>`;
     meta.innerHTML = `📅 資料日 <b>${this._esc(D.data_date || '—')}</b>${stale >= 4 ? ` <span class="sigtag warn">⚠️ 已 ${stale} 天沒更新</span>` : ''}
       ・未來 <b>${n.upcoming ?? (D.upcoming || []).length}</b> 場 ・已開 <b>${n.recent ?? (D.recent || []).length}</b> 場 ・有擇要 ${n.with_sum ?? '—'} ・有簡報/影音 ${n.with_files ?? '—'}${deckLine}

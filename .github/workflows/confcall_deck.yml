@@ -131,7 +131,11 @@ jobs:
       # ⭐ cc_deep 跟 data / gh-pages 一樣「永遠只有 1 個 commit」(orphan force-push):
       #    回補期間每一棒都會改很多月檔,累積歷史會一路長大;研究只需要最新那份。
       #    ⛔ 只有這支 workflow 會寫 cc_deep,而且 concurrency 同一時間只有一輪 → force-push 不會蓋掉別人的東西。
+      # 💾 V79.6.4 巡邏:上一步紅燈(一份都沒讀到 / 被擋)**也要推** —— 紀錄裡有「每份試過幾次、哪天試的」,
+      #    不推的話下一輪又從零開始算 → 被擋的時候每天白問同一批、慢的那份永遠不會放棄。
+      #    ran=1 = 程式真的跑完並存了紀錄(selftest 沒過 / 中途當掉就沒有 → ⛔ 不推)。部署與接力照舊只在成功時做。
       - name: 🚀 推 cc_deep 分支(orphan,只留 1 個 commit)
+        if: ${{ !cancelled() && steps.run.outputs.ran == '1' }}
         run: |
           set -e
           [ -s cc_deep/cc/index.json ] || { echo "❌ 沒有 index.json → 不推"; exit 1; }

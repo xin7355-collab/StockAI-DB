@@ -20,6 +20,7 @@ import importlib
 import io
 import json
 import os
+import re
 import sys
 import tempfile
 import zipfile
@@ -146,18 +147,36 @@ with tempfile.TemporaryDirectory() as tmp:
     ok('④ 回網頁(不存在的路徑回 200 + HTML):開完超過 3 天 → bad_file(⛔ 下一輪不再試)', idx['777720260901M001.pdf']['st'] == 'bad_file', idx.get('777720260901M001.pdf'))
     ok('④a ⭐ 決定性對照:昨天才開完的回網頁 = 多半還沒上傳 → dl_fail(下一輪再試)', idx['888820261022M001.pdf']['st'] == 'dl_fail', idx.get('888820261022M001.pdf'))
     dg = json.loads((data / 'confcall_digest.json').read_text(encoding='utf-8'))
-    ok('①e 清單只列最近 60 天、讀成功的(8/10 那場在 60 天外 → 不列;5678 有列)', [r['s'] for r in dg['rows']] == ['5678'], dg['rows'])
-    ok('①f 清單帶這份簡報講到的詞(法說會頁搜「誰在講 X」用)', '低軌衛星' in (dg['rows'][0].get('tm') or []), dg['rows'][0].get('tm'))
+    okr = {r['s']: r for r in dg['rows'] if r.get('st') == 'ok'}
+    str_ = {r['s']: r for r in dg['rows'] if r.get('st') != 'ok'}
+    # 📋 V79.6.4:最近場次表引用的簡報 ⛔ 被 60 天切掉(8/10 那份在場次表裡 → 列);讀不成的也列一列只有狀態
+    ok('①e 清單:讀成功的 5678 + 場次表引用的 1234(8/10,60 天外也列)都帶 st=ok;n_ok = 讀成功的份數',
+       set(okr) == {'5678', '1234'} and dg.get('n_ok') == 2, ([(r['s'], r.get('st')) for r in dg['rows']], dg.get('n_ok')))
+    ok('①e2 讀不成的也列(只有狀態):9999 只有圖片 no_text ・8888 還沒上傳 dl_fail(還在試)・7777 檔案不在 bad_file;⛔ 沒有任何重點欄位',
+       {k: v['st'] for k, v in str_.items()} == {'9999': 'no_text', '8888': 'dl_fail', '7777': 'bad_file'}
+       and str_['8888'].get('gave_up') == 0 and str_['8888'].get('tries') == 1
+       and not any(k in v for v in str_.values() for k in ('one', 'ol', 'tm', 'new', 'first')), str_)
+    ok('①f 清單帶這份簡報講到的詞(法說會頁搜「誰在講 X」用)', '低軌衛星' in (okr['5678'].get('tm') or []), okr['5678'].get('tm'))
+    # ⭐ 決定性對照:同一批特徵、不給「最近場次引用」→ 8/10 那份照舊被 60 天切掉
+    _all = [x for l in cd.load_all().values() for x in l]
+    cd.build_outputs(_all, cd.novelty_all(_all), {}, date(2026, 10, 23), files={}, cite=set())
+    dg0 = json.loads((data / 'confcall_digest.json').read_text(encoding='utf-8'))
+    ok('①e3 ⭐ 決定性對照:不給最近場次引用的簡報 → 1234 那份(60 天外)不列、讀不成的也沒有(沒給 index)',
+       [r['s'] for r in dg0['rows'] if r.get('st') == 'ok'] == ['5678'] and not [r for r in dg0['rows'] if r.get('st') not in ('ok', 'no_text')], dg0['rows'])
     ok('⑦ 沒有金鑰 → 沒有 AI 摘要', 'ai' not in d0 and 'ai' not in b)
 
     # 第二輪:1234 開了新的一場(新簡報)+ 9/20 券商場拿 8/10 那份重講;舊的那幾份 ⛔ 不再下載
     rows2 = rows1 + [{'s': '1234', 'name': '測試甲', 'd': '2026-10-21', 't': '14:00', 'pdf': ['123420261021M001.pdf']},
                      {'s': '1234', 'name': '測試甲', 'd': '2026-09-20', 't': '10:00', 'pdf': ['123420260810M001.pdf']}]
     cd, data, cc = setup(tmp, rows2)
+    # 📅 V79.6.4:同一天再跑一輪 → 今天已經失敗過的 8888 ⛔ 再試(接力那幾棒同一天會連撞同一份)
+    ff2s = FakeFetcher({'123420261021M001.pdf': PDF_NEW, '888820261022M001.pdf': PDF_OLD})
+    cd.run(fetcher=ff2s, groq_keys=[], today=date(2026, 10, 23), log=logs.append)
+    ok('②s 同一天再跑:今天失敗過的那份 ⛔ 再試(只下載新的那一份)', ff2s.calls == ['123420261021M001.pdf'], ff2s.calls)
     ff2 = FakeFetcher({'123420261021M001.pdf': PDF_NEW, '888820261022M001.pdf': PDF_OLD})
-    rc2 = cd.run(fetcher=ff2, groq_keys=[], today=date(2026, 10, 23), log=logs.append)
-    ok('② 第二輪只下載新的那一份 + 上次還沒上傳的那份(讀過的 / 永久失敗的 ⛔ 不再下載;重講的同一份檔名 ⛔ 不再下載)',
-       rc2 == 0 and sorted(ff2.calls) == ['123420261021M001.pdf', '888820261022M001.pdf'], ff2.calls)
+    rc2 = cd.run(fetcher=ff2, groq_keys=[], today=date(2026, 10, 24), log=logs.append)
+    ok('② 隔天:上次還沒上傳的那份再試一次(讀過的 / 永久失敗的 ⛔ 不再下載;重講的同一份檔名 ⛔ 不再下載)',
+       rc2 == 0 and sorted(ff2.calls) == ['888820261022M001.pdf'], ff2.calls)
     a2 = json.loads((data / 'cc' / '1234.json').read_text(encoding='utf-8'))['decks']
     nw = [t for t, _ in a2[0].get('new', [])]
     ok('③ 第二份跟上一份比:robot / CPO / US 是新的,AI / CoWoS 不算新', a2[0]['d'] == '2026-10-21' and 'CPO' in nw and 'AI' not in nw and 'CoWoS' not in nw, a2[0])
@@ -528,6 +547,170 @@ if _sh.which('pdftotext'):
 else:
     print('ℹ️ ⑱ 這台機器沒有 pdftotext → 只驗 pypdf 那條')
     ok('⑱ 沒有 pdftotext 也抽得到(pypdf)', len(cdm.extract_pdf(_pdf3)) == 3)
+
+
+
+# ㉙~㊳ 🧹 V79.6.4 巡邏修正(採礦端)——每一條都有「舊寫法會怎樣」的對照
+# ㉙ 被擋那一頁(200 + 「因為安全性考量」)⛔ 當成檔案不在
+class _BodySess:
+    def __init__(self, body):
+        self.body, self.n = body, 0
+    def get(self, url, **kw):
+        self.n += 1
+        body = self.body
+        class R:
+            status_code = 200
+            headers = {}
+            def iter_content(s, n): yield body
+            def close(s): pass
+        return R()
+_blk = '<html><head><title>公開資訊觀測站 | 錯誤</title></head><body>因為安全性考量,您的網頁請求被拒絕</body></html>'
+fb_ = cdm.Fetcher(session=_BodySess(_blk.encode('big5')), pace=0, sleeper=lambda x: None)
+bb_, eb_ = fb_.get('https://x/f?fileName=a.pdf')
+fn_ = cdm.Fetcher(session=_BodySess('<html><head><title>公開資訊觀測站 | 查無資料</title></head></html>'.encode('utf-8')), pace=0, sleeper=lambda x: None)
+bn_, en_ = fn_.get('https://x/f?fileName=a.pdf')
+ok('㉙ 被擋那一頁(Big5「因為安全性考量」)→ blocked(⛔ 當成檔案不在)', bb_ is None and eb_.startswith('blocked:') and cdm.err_kind('nas:' + eb_) == 'blocked', eb_)
+ok('㉙a ⭐ 決定性對照:一般的網頁(查無資料)→ 還是 not_file / nf', bn_ is None and en_.startswith('not_file:') and cdm.err_kind('srv:' + en_ + ' | nas:' + en_) == 'nf', en_)
+ok('㉙b 原因裡的「|」換掉(⛔ 讓 err_kind 把網頁標題切成第三條路)', ' | ' not in eb_ and ' | ' not in en_ and '¦' in en_, (eb_, en_))
+
+
+class _BlkFetcher(FakeFetcher):
+    """每一份都回指定原因;記下退避等了幾秒"""
+    def __init__(self, err):
+        super().__init__({})
+        self.err, self.slept = err, []
+    def get(self, url):
+        self.calls.append(url.split('fileName=')[-1])
+        return None, self.err
+    def sleep(self, x):
+        self.slept.append(x)
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    rows_b = [{'s': str(4000 + i), 'name': 'x', 'd': '2026-09-0' + str(i + 1), 'pdf': [f'{4000 + i}2026090{i + 1}M001.pdf']} for i in range(6)]
+    gho = Path(tmp) / 'gh_out.txt'
+    cd, data, cc = setup(tmp, rows_b, GITHUB_OUTPUT=gho)
+    fbk = _BlkFetcher('srv:blocked:<html>因為安全性考量')
+    lgb = []
+    rcb_ = cd.run(fetcher=fbk, groq_keys=[], today=date(2026, 10, 23), log=lgb.append)
+    idxb = json.loads((cc / 'cc' / 'index.json').read_text(encoding='utf-8'))['files']
+    outb = gho.read_text(encoding='utf-8')
+    ok(f'㉙c 連 {cdm.BLOCK_STOP} 份被擋 → 收工(⛔ 硬打)、中間照退避等({list(cdm.BLOCK_BACKOFF[:cdm.BLOCK_STOP - 1])} 秒)、紅燈',
+       len(fbk.calls) == cdm.BLOCK_STOP and fbk.slept == list(cdm.BLOCK_BACKOFF[:cdm.BLOCK_STOP - 1]) and rcb_ == 1 and 'reason=blocked' in outb,
+       (fbk.calls, fbk.slept, rcb_, outb))
+    ok('㉙d 被擋的那幾份記 dl_fail、試過次數 ⛔ 加(⛔ 算這份檔的錯、⛔ 永久 bad_file)',
+       all(v['st'] == 'dl_fail' and v['tries'] == 0 for v in idxb.values()) and len(idxb) == cdm.BLOCK_STOP, idxb)
+    ok('㉝ 💾 紅燈也寫 ran=1(workflow 照推 cc_deep → 紀錄存得住)', 'ran=1' in outb and (cc / 'cc' / 'index.json').exists(), outb)
+    # ⭐ 決定性對照:同 6 份(都開完超過 3 天)回一般網頁 = 檔案真的不在 → 全部試完、標 bad_file、⛔ 紅燈
+    cd, data, cc = setup(tmp, rows_b, GITHUB_OUTPUT=gho)
+    shutil_rm = __import__('shutil').rmtree
+    shutil_rm(cc, ignore_errors=True)
+    fnf = _BlkFetcher('srv:not_file:<html>查無資料')
+    rcn_ = cd.run(fetcher=fnf, groq_keys=[], today=date(2026, 10, 23), log=lambda x: None)
+    idxn = json.loads((cc / 'cc' / 'index.json').read_text(encoding='utf-8'))['files']
+    ok('㉙e ⭐ 決定性對照:同 6 份回「查無資料」→ 6 份都試、全部 bad_file、⛔ 退避、⛔ 紅燈(檔案不在 ≠ 壞掉)',
+       len(fnf.calls) == 6 and not fnf.slept and all(v['st'] == 'bad_file' for v in idxn.values()) and rcn_ == 0, (fnf.calls, fnf.slept, rcn_))
+
+# ㉞ 檔案路徑 404 + 下載程式回網頁 = 檔案不在(舊版當暫時性 → 白試 3 輪、還算連續失敗)
+ok('㉞ nas 404 + srv 回網頁 → nf(兩種順序都是)', cdm.err_kind('nas:HTTP 404 | srv:not_file:<html>') == 'nf'
+   and cdm.err_kind('srv:not_file:<html> | nas:HTTP 404') == 'nf')
+ok('㉞a ⭐ 決定性對照:nas 404 但下載程式逾時 → 還是暫時性(下載程式那條沒說檔案不在)', cdm.err_kind('nas:HTTP 404 | srv:ReadTimeout@20s') == 'tmp')
+ok('㉞b 任一條被擋 → blocked(先於 nf 判斷)', cdm.err_kind('nas:blocked:<html> | srv:not_file:x') == 'blocked')
+
+# ㉜ 數字核對改成「整個數字」比 —— 舊版子字串:「20」在「2026」裡、「5」在頁碼 p5 裡都算找得到
+_src = 'p3 預計 2026 年營收成長 15%\np5 毛利率 53.10%\np12 產能 1,200 片'
+ok('㉜ AI 編的「成長 20%」抓得到(原文只有 2026 / 15)', cdm.num_gate('營收成長 20%', _src) == ['20'], cdm.num_gate('營收成長 20%', _src))
+ok('㉜a 頁碼標籤不算原文的數字:「5 成」抓得到(原文只有 p5)', cdm.num_gate('5 成', _src) == ['5'], cdm.num_gate('5 成', _src))
+ok('㉜b 原文有的照過:53.1 = 53.10、1200 = 1,200、2026 年', all(not cdm.num_gate(t, _src) for t in ('毛利率 53.1%', '產能 1200 片', '2026 年營收成長 15%')))
+ok('㉜c AI 句子裡自己寫的頁碼(p5 / 第 12 頁)⛔ 算數字主張', not cdm.num_gate('見 p5 說明', _src) and not cdm.num_gate('第 12 頁:成長 15%', _src))
+_old_gate = lambda text, source: [n for n in cdm._NUM_ONLY.findall(text) if n.replace(',', '').rstrip('.') not in re.sub(r'(?<=\d),(?=\d)', '', source)]
+ok('㉜d ⭐ 決定性對照:舊的子字串比法同一句會放行(「20」⊂「2026」)', _old_gate('營收成長 20%', _src) == [] and _old_gate('5 成', _src) == [])
+
+# ㉟ PDF 字型的私用區字元( 項目符號)在手機上是方框 → 抽字時拿掉;舊特徵載入時也洗一次
+ok('㉟ _clean 拿掉私用區字元(\\uf06e / \\uf0b7),中文照留', cdm._clean(' 營收成長 15%') == ' 營收成長 15%' and cdm._clean('毛利率 30%') == '毛利率 30%', repr(cdm._clean(' 營收成長 15%')))
+_rr = {'st': 'ok', 'outlook': [[3, '預期明年營收成長 15%,產能擴充一倍']], 'nums': [[4, '毛利率維持 30% 以上']], 'titles': [[1, '營運展望']], 'terms': {}}
+_rf = cdm.refilter(json.loads(json.dumps(_rr)))
+ok('㉟a 舊特徵(cc_deep 存的)載入時再洗:句子裡沒有私用區字元、內容不變', all('' not in t and '' not in t for _, t in _rf['outlook'] + _rf['nums'] + _rf['titles'])
+   and _rf['outlook'][0][1] == '預期明年營收成長 15%,產能擴充一倍', _rf)
+ok('㉟b 再洗一次結果不變(冪等)', cdm.refilter(json.loads(json.dumps(_rf))) == _rf)
+
+# ㉚ 清單回補連 3 個月被擋 → 還沒輪到的月份也記「沒抓齊」(接力那幾棒 ⛔ 帶起訖月,不記就永遠沒人查)
+_bl = {'months': {}, 'rows': []}
+_got = []
+def _lf_block(typek, ym):
+    _got.append(ym)
+    return [], '被主機擋(安全性考量)'
+cdm.list_backfill(_bl, [(2026, 8), (2026, 7), (2026, 6), (2026, 5), (2026, 4)], date(2026, 10, 23), fetch=_lf_block, log=lambda x: None, sleeper=lambda x: None)
+ok('㉚ 連 3 個月被擋 → 收手(5 月 / 4 月 ⛔ 打);但 5 月 / 4 月也記成「沒抓齊」(下一輪 retry 會抓)',
+   sorted(set(_got)) == [(2026, 6), (2026, 7), (2026, 8)] and all(not _bl['months'].get(k, {'ok': True}).get('ok') for k in ('2026-05', '2026-04'))
+   and _bl['months']['2026-04'].get('skip') == 1, (_got, _bl['months']))
+_bl2 = {'months': {}, 'rows': []}
+cdm.list_backfill(_bl2, [(2026, 8), (2026, 7)], date(2026, 10, 23), fetch=lambda t, ym: ([{'s': '1', 'd': '2026-07-01', 'pdf': ['x.pdf']}], None), log=lambda x: None, sleeper=lambda x: None)
+ok('㉚a ⭐ 決定性對照:沒被擋 → 每個月都 ok、沒有 skip 紀錄', all(v.get('ok') and not v.get('skip') for v in _bl2['months'].values()) and len(_bl2['months']) == 2, _bl2['months'])
+
+# ㉛ 暫時性失敗「一天算一次」:同一天 ⛔ 再試、3 個不同的日子之後才放棄
+with tempfile.TemporaryDirectory() as tmp:
+    rows_t = [{'s': '6001', 'name': 'x', 'd': '2026-10-01', 'pdf': ['600120261001M001.pdf']}]
+    cd, data, cc = setup(tmp, rows_t)
+    seq = []
+    for dd in (date(2026, 10, 20), date(2026, 10, 20), date(2026, 10, 21), date(2026, 10, 22), date(2026, 10, 23)):
+        f_ = FakeFetcher({})
+        cd.run(fetcher=f_, groq_keys=[], today=dd, log=lambda x: None)
+        st_ = json.loads((cc / 'cc' / 'index.json').read_text(encoding='utf-8'))['files'].get('600120261001M001.pdf', {})
+        seq.append((len(f_.calls), st_.get('tries')))
+    ok('㉛ 同一份連不上:10/20 試 → 10/20 再跑 ⛔ 試 → 10/21、10/22 各試一次 → 滿 3 天之後 ⛔ 再試',
+       seq == [(1, 1), (0, 1), (1, 2), (1, 3), (0, 3)], seq)
+    dgt = json.loads((data / 'confcall_digest.json').read_text(encoding='utf-8'))
+    ok('㉛a 放棄之後清單那一列標 gave_up=1(App 才寫得出「試了 3 天都沒下載到」)',
+       [(r['st'], r.get('gave_up')) for r in dgt['rows']] == [('dl_fail', 1)], dgt['rows'])
+    # ⭐ 決定性對照:舊格式紀錄(沒有 last)→ 同一天照樣會試(= 舊版行為)
+    ix = json.loads((cc / 'cc' / 'index.json').read_text(encoding='utf-8'))
+    ix['files']['600120261001M001.pdf'] = {'st': 'dl_fail', 'err': 'ConnectionError', 's': '6001', 'd': '2026-10-01', 'tries': 1}
+    (cc / 'cc' / 'index.json').write_text(json.dumps(ix), encoding='utf-8')
+    f_ = FakeFetcher({})
+    cd.run(fetcher=f_, groq_keys=[], today=date(2026, 10, 23), log=lambda x: None)
+    ok('㉛b ⭐ 決定性對照:沒有 last 的舊紀錄 → 同一天照樣試(試過次數 +1)', len(f_.calls) == 1, f_.calls)
+
+# ㊲ 「還沒上傳」的(開完 3 天內回網頁)再多也 ⛔ 紅燈(那是正常的,⛔ 不是壞掉)
+with tempfile.TemporaryDirectory() as tmp:
+    rows_y = [{'s': str(7100 + i), 'name': 'x', 'd': '2026-10-22', 'pdf': [f'{7100 + i}20261022M001.pdf']} for i in range(6)]
+    cd, data, cc = setup(tmp, rows_y)
+    fy = _BlkFetcher('srv:not_file:<html>')
+    rcy = cd.run(fetcher=fy, groq_keys=[], today=date(2026, 10, 23), log=lambda x: None)
+    ok('㊲ 6 份昨天才開完的都還沒上傳 → 全部試、rc 0(⛔ 紅燈)、記 dl_fail(明天再試)',
+       len(fy.calls) == 6 and rcy == 0 and all(v['st'] == 'dl_fail' for v in json.loads((cc / 'cc' / 'index.json').read_text(encoding='utf-8'))['files'].values()), (fy.calls, rcy))
+
+# ㊳ 紀錄格式升到 v2(一次):舊版標的 bad_file 重新判(有些其實是被擋)・「太慢」失敗的重新算次數
+with tempfile.TemporaryDirectory() as tmp:
+    rows_m = [{'s': '8101', 'name': 'x', 'd': '2026-09-01', 'pdf': ['810120260901M001.pdf']},
+              {'s': '8102', 'name': 'x', 'd': '2026-09-02', 'pdf': ['810220260902M001.pdf']},
+              {'s': '8103', 'name': 'x', 'd': '2026-09-03', 'pdf': ['810320260903M001.pdf']}]
+    cd, data, cc = setup(tmp, rows_m)
+    (cc / 'cc').mkdir(parents=True, exist_ok=True)
+    (cc / 'cc' / 'index.json').write_text(json.dumps({'files': {
+        '810120260901M001.pdf': {'st': 'bad_file', 'err': 'not_file:<html>', 's': '8101', 'd': '2026-09-01', 'tries': 1},
+        '810220260902M001.pdf': {'st': 'dl_fail', 'err': 'slow:3008KB/120s', 's': '8102', 'd': '2026-09-02', 'tries': 3},
+        '810320260903M001.pdf': {'st': 'dl_fail', 'err': 'ConnectionError', 's': '8103', 'd': '2026-09-03', 'tries': 3}}}), encoding='utf-8')
+    fm = FakeFetcher({'810120260901M001.pdf': PDF_OLD, '810220260902M001.pdf': PDF_NEW})
+    lgm = []
+    cd.run(fetcher=fm, groq_keys=[], today=date(2026, 10, 23), log=lgm.append)
+    ixm = json.loads((cc / 'cc' / 'index.json').read_text(encoding='utf-8'))
+    ok('㊳ 升 v2:舊的 bad_file 重新判(這次讀到了)、太慢失敗滿 3 次的重新算(讀到了)、其他原因滿 3 次的 ⛔ 動',
+       sorted(fm.calls) == ['810120260901M001.pdf', '810220260902M001.pdf'] and ixm.get('v') == cdm.IDX_VER
+       and ixm['files']['810120260901M001.pdf']['st'] == 'ok' and ixm['files']['810220260902M001.pdf']['st'] == 'ok'
+       and ixm['files']['810320260903M001.pdf']['tries'] == 3 and any('紀錄格式升到' in x for x in lgm), (fm.calls, ixm))
+    fm2 = FakeFetcher({})
+    lgm2 = []
+    cd.run(fetcher=fm2, groq_keys=[], today=date(2026, 10, 23), log=lgm2.append)
+    ok('㊳a 已經是 v2 → ⛔ 再搬(冪等)', not fm2.calls and not any('紀錄格式升到' in x for x in lgm2), (fm2.calls, lgm2[:3]))
+
+# ㉝b workflow:推 cc_deep 那步紅燈也跑(看 ran=1);部署 / 接力照舊只在成功時
+_wf = (ROOT / '.github' / 'workflows' / 'confcall_deck.yml').read_text(encoding='utf-8')
+_push = _wf[_wf.index('🚀 推 cc_deep'):_wf.index('🚀 部署 data/cc')]
+_dep = _wf[_wf.index('🚀 部署 data/cc'):_wf.index('🔁 接力(回補還沒讀完)')]
+ok("㉝b workflow 推 cc_deep 那步:`!cancelled() && steps.run.outputs.ran == '1'`(紅燈也推、selftest 沒過 ⛔ 推)",
+   "!cancelled()" in _push and "steps.run.outputs.ran == '1'" in _push, _push[:300])
+ok('㉝c 部署那步 ⛔ 跟著紅燈跑(沒有 always / !cancelled)', 'always()' not in _dep and '!cancelled()' not in _dep, _dep[:200])
 
 
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))

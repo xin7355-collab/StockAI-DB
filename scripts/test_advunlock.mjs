@@ -220,6 +220,11 @@ const T = await page.evaluate(() => {
       R.rc = ids(run({ bars: new Map([['2454', rc(0.12, 40)]]), fav: ['2454'] }));
       R.rcNoM = ids(run({ bars: new Map([['2454', rc(0.05, 40)]]), fav: ['2454'] }));
       R.rcNoI = ids(run({ bars: new Map([['2454', rc(0.12, 20)]]), fav: ['2454'] }));
+      // 🐛 V79.6.4 巡邏:盤中補上的那一根「根本沒有」法人欄位(undefined,⛔ 是 0)→ 照樣從前一根算(舊版整條判斷跳過)
+      const delInst = (k, keys) => { const r = k[k.length - 1]; keys.forEach(x => { delete r[x]; }); return k; };
+      R.rcMiss = ids(run({ bars: new Map([['2454', delInst(rc(0.12, 40), ['foreign_net', 'trust_net', 'dealer_net'])]]), fav: ['2454'] }));
+      R.fiMiss = ids(run({ bars: new Map([['2454', delInst(fi(5), ['foreign_net'])]]), fav: ['2454'] }));
+      R.fiMissNo = ids(run({ bars: new Map([['2454', delInst(fi(4), ['foreign_net'])]]), fav: ['2454'] }));
       // 💥 V79.6.3 融資斷頭:融資在 100 元附近一路增(成本 ≈ 100 → 追繳線 78),最後 6 天跌到 70、融資 5 天減 13% → margin_call;只跌到 85(還沒破線)→ 沒有
       const mc = lastPx => mkK(80, '2026-10-16', k => { const n = k.length, px = [95, 90, 85, 80, 75, lastPx];
         k.forEach((r, i) => { r.margin_balance = 1000 + Math.min(i, n - 6) * 10; });
@@ -273,6 +278,8 @@ ok('③p 外資連買 5 天(最後一根 0 = 沒公布,從前一根算)→ fi_st
 ok('③p2 外資單日買超 ≥ 自己過去 250 天第 99 百分位(最後一根 0 = 沒公布,看前一根)→ fi_burst;只是平常大小 / 過去不到 120 天 → 沒有', has(T.fb, 'fi_burst') && !has(T.fbNo, 'fi_burst') && !has(T.fbShort, 'fi_burst'), JSON.stringify([T.fb, T.fbNo, T.fbShort]));
 ok('③q 券資比衝到自己歷史最高 10% → short_hi;一樣 → 沒有', has(T.sh, 'short_hi') && !has(T.shNo, 'short_hi'), JSON.stringify([T.sh, T.shNo]));
 ok('③q2 🎭 融資 10 天增 12% + 三大法人 10 天賣超 4% 佔量(最後一根沒公布 → 從前一根算)→ retail_catch;融資只增 5% / 法人只賣 2% → 沒有', has(T.rc, 'retail_catch') && !has(T.rcNoM, 'retail_catch') && !has(T.rcNoI, 'retail_catch'), JSON.stringify([T.rc, T.rcNoM, T.rcNoI]));
+ok('③q4 🐛 最後一根沒有法人欄位(盤中補上的那根)→ 從前一根算:retail_catch / fi_streak5 照樣成立;外資只連買 4 天 → 沒有(決定性對照)',
+   has(T.rcMiss, 'retail_catch') && has(T.fiMiss, 'fi_streak5') && !has(T.fiMissNo, 'fi_streak5'), JSON.stringify([T.rcMiss, T.fiMiss, T.fiMissNo]));
 ok('③q3 💥 收盤跌破推估追繳線 + 融資 5 天減 13% → margin_call(追繳線讀 _marginCallState);跌到 85 還沒破線 → 沒有', has(T.mc, 'margin_call') && !has(T.mcNo, 'margin_call') && /^broken:/.test(T.mcState), JSON.stringify([T.mc, T.mcNo, T.mcState]));
 ok('③r 賣掉 2 天後收盤站回賣價 → rebuy;沒站回 / 賣掉太久 → 沒有;只賣掉的那檔⛔ 判別的條件', has(T.rb, 'rebuy') && !has(T.rbNo, 'rebuy') && !has(T.rbOld, 'rebuy') && !T.rbOnly.length, JSON.stringify([T.rb, T.rbNo, T.rbOld, T.rbOnly]));
 ok('③s 大盤剛脫離空頭 → bull_on;一路跌 → 沒有', has(T.bull, 'bull_on') && !has(T.bullNo, 'bull_on'), JSON.stringify([T.bull, T.bullNo]));

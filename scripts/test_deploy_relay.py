@@ -310,7 +310,7 @@ ok('⑦ 並行那步:背景裝瀏覽器而且有等它(`wait $PIDPW`)',
    and 'PIDPW=$!' in PAR_SH and 'wait $PIDPW' in PAR_SH)
 
 
-def pw_case(par_sh, scan_sh, npx_par=0, npx_scan=0, drop_browser=False, drop_log=False, strict=False):
+def pw_case(par_sh, scan_sh, npx_par=0, npx_scan=0, drop_browser=False, drop_log=False, strict=False, npx_sleep=1, sub_to=60):
     """實跑兩段;回 (並行那步 rc, 輸出, 掃描那步 rc, 輸出, 被叫的指令清單)。"""
     tmp = Path(tempfile.mkdtemp(prefix='pw_'))
     try:
@@ -327,7 +327,7 @@ def pw_case(par_sh, scan_sh, npx_par=0, npx_scan=0, drop_browser=False, drop_log
         fake('git', f'echo "git $* [$PHASE]" >> "{calls}"; exit 0')
         fake('npm', f'echo "npm $* [$PHASE]" >> "{calls}"; exit 0')
         # ⚠️ 假的 npx 故意慢 1 秒:沒有 `wait $PIDPW` 的話,並行那步會在它寫完 RC 之前就結束(決定性對照乙靠這個)
-        fake('npx', f'echo "npx $* [$PHASE]" >> "{calls}"; sleep 1; '
+        fake('npx', f'echo "npx $* [$PHASE]" >> "{calls}"; sleep ${{NPX_SLEEP:-1}}; '
                     f'if [ "${{NPX_RC:-0}}" = 0 ]; then mkdir -p "{browser.parent}"; touch "{browser}"; fi; exit ${{NPX_RC:-0}}')
         pm = work / 'node_modules' / 'playwright'
         pm.mkdir(parents=True)
@@ -340,7 +340,7 @@ def pw_case(par_sh, scan_sh, npx_par=0, npx_scan=0, drop_browser=False, drop_log
         bash = ['bash', '--noprofile', '--norc', '-eo', 'pipefail'] if strict else ['bash', '-e']
         env = dict(os.environ, PATH=f'{bindir}:{os.environ.get("PATH", "")}', NODE_PATH='')
         r1 = subprocess.run(bash + [str(tmp / 'par.sh')], cwd=work, capture_output=True, text=True,
-                            env=dict(env, PHASE='par', NPX_RC=str(npx_par)), timeout=60)
+                            env=dict(env, PHASE='par', NPX_RC=str(npx_par), NPX_SLEEP=str(npx_sleep)), timeout=sub_to)
         time.sleep(1.5)   # 決定性對照乙(沒有 wait)時,讓背景那個先跑完再往下
         if drop_browser and browser.exists():
             browser.unlink()
@@ -394,6 +394,24 @@ if PAR_SH and SCAN_SH:
         ok('⑦ 決定性對照乙:拿掉 wait $PIDPW → 一定印不出「已先裝好」(⑦甲 第一條會紅)', '瀏覽器已先裝好' not in o1, o1[-300:])
     else:
         ok('⑦ 決定性對照乙:抽得到 wait $PIDPW 那行', False, '樣式對不上')
+    # 戊 ⏱️ V79.6.4 巡邏:安裝卡住 → 時限到就砍掉、並行那步照常結束(⛔ 被 `wait $PIDPW` 拖到整個 job 時限)
+    ok('⑦戊 背景安裝有時限(npm 與 npx 都包 timeout)', re.search(r'timeout \d+ npm i -D playwright', PAR_SH or '') is not None
+       and re.search(r'timeout \d+ npx playwright install', PAR_SH or '') is not None, (PAR_SH or '')[:400])
+    _short = re.sub(r'timeout \d+ npx', 'timeout 2 npx', PAR_SH)
+    if _short != PAR_SH:
+        t_s = time.time()
+        rc1, o1, rc2, o2, cl = pw_case(_short, SCAN_SH, npx_sleep=30)
+        ok('⑦戊 npx 卡住 30 秒、時限 2 秒 → 並行那步幾秒內結束、印「瀏覽器沒裝好」、掃描那步補裝',
+           rc1 == 0 and '瀏覽器沒裝好' in o1 and 'RC=124' in o1 and time.time() - t_s < 25 and _scan_installed(cl), (rc1, o1[-300:]))
+        _hang = re.sub(r'timeout \d+ (npm|npx)', r'\1', PAR_SH)
+        try:
+            pw_case(_hang, SCAN_SH, npx_sleep=30, sub_to=8)
+            hung = False
+        except subprocess.TimeoutExpired:
+            hung = True
+        ok('⑦戊 ⭐ 決定性對照:拿掉時限 → 同一個卡住的安裝會把並行那步一直拖住(8 秒內結束不了)', hung)
+    else:
+        ok('⑦戊 抽得到 timeout N npx 那段', False, '樣式對不上')
 
 run_case(single_branch=False)
 run_case(single_branch=True)

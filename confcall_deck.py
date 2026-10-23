@@ -71,6 +71,12 @@ COMMON_SHARE = 0.20           # 這一季超過兩成公司都在講的詞 ⛔ �
 COMMON_MIN_DECKS = 30         # 樣本太少就不判「大家都在講」
 TRANSIENT_TRIES = 3           # 下載失敗(暫時性)最多試幾輪
 NOT_FILE_GRACE = 3            # 開完 3 天內「回網頁」多半是還沒上傳 → 當暫時性失敗(之後再試);更舊的才當永久
+# 🛡️ V79.6.4 巡邏:主機擋機器人時回 200 + 一頁「因為安全性考量…」(confcall_miner 實測同一句)→ ⛔ 不可當成「檔案不在」
+#    (舊版把它算成 not_file → 開完超過 3 天的簡報一被擋就永久標 bad_file、而且不算連續失敗 → 擋多久就白問多久)
+BLOCK_MARKS = ('因為安全性考量', 'CAN NOT BE ACCESSED', 'CANNOT BE ACCESSED', 'Request Rejected')
+BLOCK_STOP = 3                # 連幾份被擋 → 本輪收工(⛔ 硬打)
+BLOCK_BACKOFF = (10, 20, 40)  # 被擋之後下一份先等幾秒(指數退避)
+IDX_VER = 2                   # cc/index.json 的格式版本(升版時 run() 開頭搬一次舊紀錄)
 LIST_FROM = os.getenv('CC_LIST_FROM') or ''          # 📚 回補舊簡報清單的起訖月(YYYY-MM;手動 / 第一棒才給)
 LIST_TO = os.getenv('CC_LIST_TO') or ''
 LIST_RETRY_MAX = 6            # 上次沒抓齊的月份,每輪最多重抓幾個
@@ -186,8 +192,12 @@ def file_urls(tpl, name):
     return out
 
 
+_PUA_RE = re.compile('[\ue000-\uf8ff\ufffd]')
+
+
 def _clean(s):
     s = _html.unescape(str(s or '')).replace('　', ' ').replace('\xa0', ' ')
+    s = _PUA_RE.sub('', s)          # 🔣 PDF 字型的私用區字元(項目符號 \uf06e、\uf0b7…)在手機上是方框(V79.6.4 巡邏)
     s = re.sub(r'[ \t]+', ' ', s)
     return s
 
@@ -442,15 +452,27 @@ def novelty(terms, prev_terms, common):
 
 
 _NUM_ONLY = re.compile(r'\d[\d,]*(?:\.\d+)?')
+_SRC_PAGE = re.compile(r'(?m)^p\d+ ')                                   # ai_prompt 每行開頭的頁碼標籤「p12 」
+_AI_PAGE = re.compile(r'(?<![A-Za-z])[pP]\.?\s?\d+|第\s*\d+\s*頁')        # AI 自己在句子裡寫的頁碼(⛔ 算數字主張)
+
+
+def _num_norm(n):
+    v = n.replace(',', '').rstrip('.')
+    if '.' in v:
+        v = v.rstrip('0').rstrip('.')          # 53.10 = 53.1、5.0 = 5
+    return v
 
 
 def num_gate(text, source):
-    """AI 寫的每個數字都要在原文找得到;回缺的那幾個(空 list = 過關)。⛔ 1 位數也查(頁碼除外由呼叫端處理)。"""
-    src = re.sub(r'(?<=\d),(?=\d)', '', source or '')
+    """AI 寫的每個數字都要在原文找得到;回缺的那幾個(空 list = 過關)。⛔ 1 位數也查。
+    🧾 V79.6.4 巡邏:**整個數字比對**(⛔ 子字串)—— 舊版「20」在「2026」裡、「5」在頁碼標籤「p5」裡都算找得到
+       → AI 編的「成長 20%」照樣過關。現在:原文先拿掉每行開頭的頁碼標籤再切成一個一個數字;
+       AI 句子裡自己寫的頁碼(p5 / P.5 / 第 5 頁)不算數字主張。"""
+    have = {_num_norm(n) for n in _NUM_ONLY.findall(_SRC_PAGE.sub('', re.sub(r'(?<=\d),(?=\d)', '', source or '')))}
     miss = []
-    for n in _NUM_ONLY.findall(text or ''):
-        v = n.replace(',', '').rstrip('.')
-        if v and v not in src:
+    for n in _NUM_ONLY.findall(_AI_PAGE.sub(' ', text or '')):
+        v = _num_norm(n)
+        if v and v not in have:
             miss.append(n)
     return miss
 
@@ -583,6 +605,12 @@ def refilter(rec):
     (10/23 第一輪用舊規則讀了一批:免責聲明 / 註腳被當成展望、人名料號被當成產品詞;同一頁的免責整頁拿掉那條補不回來)"""
     if not isinstance(rec, dict) or rec.get('st') != 'ok':
         return rec
+    # 🔣 V79.6.4:以前抽的字留著 PDF 私用區字元(手機上是方框)→ 照現在的 _clean 再洗一次(冪等)
+    for k in ('outlook', 'nums', 'titles'):
+        v = rec.get(k)
+        if isinstance(v, list):
+            rec[k] = [[x[0], re.sub(r'[ \t]+', ' ', _PUA_RE.sub('', str(x[1]))).strip()] for x in v
+                      if isinstance(x, (list, tuple)) and len(x) == 2 and _PUA_RE.sub('', str(x[1])).strip()]
     ol = [x for x in (rec.get('outlook') or []) if isinstance(x, (list, tuple)) and len(x) == 2 and not _not_said(x[1]) and not _is_title(x[1])]
     nm = [x for x in (rec.get('nums') or []) if isinstance(x, (list, tuple)) and len(x) == 2 and not _not_said(x[1]) and _has_figure(x[1])
           and len(re.sub(r'\s', '', x[1])) >= 6]
@@ -679,15 +707,53 @@ def list_backfill(bl, months, today, fetch=None, log=print, sleeper=time.sleep):
             bad.append(key)
             streak += 1
             if streak >= 3:
-                log('🛑 連 3 個月抓不到(可能被擋)→ 清單回補先停,下一輪再接')
+                # 📌 V79.6.4 巡邏:還沒輪到的月份也要記「沒抓齊」—— 接力那幾棒 ⛔ 不帶起訖月(只重抓「記著沒抓齊」的),
+                #    不記的話這幾個月就永遠沒人查(舊版:連 3 個月被擋 → 後面的月份從此消失)
+                rest = [f'{yy}-{mm:02d}' for (yy, mm) in months[months.index((y, m)) + 1:]]
+                for k2 in rest:
+                    if not (done.get(k2) or {}).get('ok'):
+                        done[k2] = {'ok': False, 'n': 0, 'at': datetime.now(TW).isoformat(timespec='minutes'), 'skip': 1}
+                        bad.append(k2)
+                log('🛑 連 3 個月抓不到(可能被擋)→ 清單回補先停,下一輪再接' + (f'(還沒查的 {len(rest)} 個月記下來,之後每輪重抓幾個)' if rest else ''))
                 break
     bl['updated'] = datetime.now(TW).isoformat(timespec='minutes')
     return added, bad
 
 
-def _readable(st):
-    return not (st and (st.get('st') in ('ok', 'no_text', 'bad_file', 'ppt_old', 'too_big', 'parse_fail')
-                        or (st.get('tries') or 0) >= TRANSIENT_TRIES))
+def migrate_index(idx):
+    """cc/index.json 舊格式搬一次(冪等:搬過就記 v)。回一句說明(沒搬回 '')。
+    v2(V79.6.4 巡邏):① 舊版把「被擋」那一頁也當成檔案不在 → bad_file 全部重新判一次(真的不在的,下一次一樣會標回去)
+                    ② 下載路換了(先走檔案路徑)→ 以前因為「太慢」失敗的重新算次數。"""
+    if (idx.get('v') or 1) >= IDX_VER:
+        return ''
+    files = idx.setdefault('files', {})
+    nb = nr = 0
+    for f in list(files):
+        st = files[f] or {}
+        if st.get('st') == 'bad_file':
+            del files[f]
+            nb += 1
+        elif st.get('st') == 'dl_fail' and 'slow:' in str(st.get('err') or ''):
+            st['tries'] = 0
+            st.pop('last', None)
+            nr += 1
+    idx['v'] = IDX_VER
+    return f'標「檔案不在」的 {nb} 份重新判・太慢失敗的 {nr} 份重新算次數' if (nb or nr) else ''
+
+
+def _readable(st, today=None):
+    """這份簡報這一輪要不要讀。⛔ 讀過的 / 永久失敗的 / 暫時性失敗滿 TRANSIENT_TRIES「天」的。
+    📅 V79.6.4 巡邏:暫時性失敗**今天已經試過**的也先跳過(明天再試)—— 接力那幾棒同一天會連撞同一份慢檔,
+       舊版 3 次機會一個小時內就用完、之後永久放棄;現在 3 次 = 3 個不同的日子。"""
+    if not st:
+        return True
+    if st.get('st') in ('ok', 'no_text', 'bad_file', 'ppt_old', 'too_big', 'parse_fail'):
+        return False
+    if (st.get('tries') or 0) >= TRANSIENT_TRIES:
+        return False
+    if today is not None and st.get('st') == 'dl_fail' and st.get('last') == today.isoformat():
+        return False
+    return True
 
 
 def plan_todo(recent_rows, backlog_rows, files, today):
@@ -721,7 +787,7 @@ def plan_todo(recent_rows, backlog_rows, files, today):
         older = [f for d, f in sorted(by_sym.get(s, []), reverse=True) if f not in recent_f]
         for f in older[:PREV_DECKS]:
             tier.setdefault(f, 1)
-    todo = [(tier.get(f, 2), d, f, r, why) for f, (d, r, why) in earliest.items() if _readable(files.get(f))]
+    todo = [(tier.get(f, 2), d, f, r, why) for f, (d, r, why) in earliest.items() if _readable(files.get(f), today)]
     todo.sort(key=lambda x: (x[1], x[2]), reverse=True)        # 新 → 舊
     todo.sort(key=lambda x: x[0])                              # 再照優先序(穩定排序)
     return [(r, f, why) for _, _, f, r, why in todo], {f: (d, r) for f, (d, r, _) in earliest.items()}
@@ -797,6 +863,16 @@ def novelty_all(recs):
 
 
 # ───────────────────────── 網路(只在正式跑時用) ─────────────────────────
+def is_block_page(b):
+    """主機回的網頁是不是「被擋」那一頁(⛔ 是檔案不在)。網頁可能是 UTF-8 也可能是 Big5 → 兩種都解;只看前 8KB。"""
+    b = (b or b'')[:8192]
+    for enc in ('utf-8', 'big5'):
+        t = b.decode(enc, 'ignore')
+        if any(m in t for m in BLOCK_MARKS):
+            return True
+    return False
+
+
 def err_kind(err):
     """下載失敗的原因分類(兩條路的原因用「 | 」串起來,每段前面是 srv: / nas:)。
     'too_big' 任一條說太大 ・'nf' 每一條都回網頁(檔案不在)・'4xx' 下載程式回 4xx(429 除外)而另一條也沒拿到 ・其他 = 暫時性
@@ -811,7 +887,11 @@ def err_kind(err):
     parts = list(by.values())
     if any(x == 'too_big' for x in parts):
         return 'too_big'
-    if parts and all(x.startswith('not_file') for x in parts):
+    # 🛡️ 任一條路回「被擋」的網頁 → 被擋(⛔ 永久、⛔ 算這份檔的錯;算連續失敗並退避)
+    if any(x.startswith('blocked') for x in parts):
+        return 'blocked'
+    # 📭 檔案不在:下載程式回網頁、檔案路徑回 404 / 網頁(V79.6.4 巡邏:nas 404 + srv 網頁以前被當成暫時性 → 白試 3 輪、還算連續失敗)
+    if by and all(v.startswith('not_file') or (k == 'nas' and v in ('HTTP 404', 'HTTP 410')) for k, v in by.items()):
         return 'nf'
     sv = by.get('srv', '')
     if sv.startswith('HTTP 4') and sv != 'HTTP 429' and all(x.startswith(('HTTP 4', 'not_file')) for x in parts):
@@ -879,7 +959,10 @@ class Fetcher:
                 b = buf.getvalue()
                 if b[:5] == b'%PDF-' or b[:4] == b'PK\x03\x04':
                     return b, ''
-                head = b[:200].decode('utf-8', 'ignore').replace('\n', ' ')
+                # ⚠️ 原因字串裡的「|」會被 err_kind 當成兩條路的分隔(網頁標題常有「公開資訊觀測站 | …」)→ 換掉
+                head = b[:200].decode('utf-8', 'ignore').replace('\n', ' ').replace('|', '¦')
+                if is_block_page(b):
+                    return None, f'blocked:{head[:60]}'  # 🛡️ 被擋(⛔ 當成檔案不在)
                 return None, f'not_file:{head[:80]}'     # 回了網頁(陷阱 #23:不存在的路徑回 200 + 網頁)
             except Exception as e:                           # noqa: BLE001 —— 每一次的原因都記下來
                 notes.append(f'{type(e).__name__}@{self.clock() - ta:.0f}s')
@@ -954,9 +1037,12 @@ def _today():
     return datetime.now(TW).date()
 
 
-def build_outputs(recs, nov, info, today):
+def build_outputs(recs, nov, info, today, files=None, cite=None):
     """App 讀的兩個檔:data/cc/{sym}.json(每檔最近 4 份)+ data/confcall_digest.json(最近 60 天每場一列)。
-    ⛔ 每檔的檔案裡沒有「每輪都變」的時間戳 → 內容沒變就不改檔(不然每輪上千個檔都算變更)。"""
+    ⛔ 每檔的檔案裡沒有「每輪都變」的時間戳 → 內容沒變就不改檔(不然每輪上千個檔都算變更)。
+    📋 V79.6.4 巡邏:清單也列「讀不成的」(只有狀態 st:只有圖片 / 舊格式 / 抽不出字 / 檔案不在 / 太大 / 下載失敗)
+       → App 才分得出「還沒讀」跟「讀不到」(舊版一律寫「還沒讀到」);
+       最近場次引用的簡報(cite)⛔ 被 60 天切掉 —— 拿 3 個月前那份去券商場重講的那一場也要對得到。"""
     by_sym = {}
     for r in recs:
         if r.get('st') in ('ok', 'no_text'):
@@ -964,8 +1050,10 @@ def build_outputs(recs, nov, info, today):
     out_dir = DATA / 'cc'
     out_dir.mkdir(parents=True, exist_ok=True)
     cut = (today - timedelta(days=DIGEST_DAYS)).isoformat()
+    cite = set(cite or ())
+    in_dg = lambda f, d: (d or '') >= cut or (f in cite)
     keys = ('d', 't', 'inv', 'f', 'kind', 'pages', 'st', 'reuse', 'outlook', 'nums', 'titles', 'tone', 'ai', 'model', 'gate_drop')
-    wrote, digest = 0, []
+    wrote, digest, seen = 0, [], set()
     for s, lst in sorted(by_sym.items()):
         lst.sort(key=lambda r: (r.get('d') or '', r.get('f') or ''), reverse=True)
         decks = []
@@ -981,10 +1069,10 @@ def build_outputs(recs, nov, info, today):
             p.write_text(body, encoding='utf-8')
             wrote += 1
         for r in lst:
-            if (r.get('d') or '') < cut or r.get('st') != 'ok':
+            if r.get('st') != 'ok' or not in_dg(r.get('f'), r.get('d')):
                 continue
             nv, ai = nov.get(r.get('f')) or {}, r.get('ai') or {}
-            row = {'s': s, 'name': r.get('name') or s, 'd': r.get('d'), 't': r.get('t') or '', 'inv': r.get('inv') or 0, 'f': r.get('f'),
+            row = {'s': s, 'name': r.get('name') or s, 'd': r.get('d'), 't': r.get('t') or '', 'inv': r.get('inv') or 0, 'f': r.get('f'), 'st': 'ok',
                    'one': ai.get('one') or '', 'ol': ((best_outlook(r.get('outlook') or []) or [0, ''])[1] or '')[:80],
                    'new': [t for t, _ in (nv.get('new') or [])][:5], 'new_n': nv.get('n_new', 0), 'first': bool(nv.get('first')),
                    'prev_d': nv.get('prev_d') or '', 'reuse': r.get('reuse') or '', 'n_nums': len(r.get('nums') or []), 'pages': r.get('pages'),
@@ -994,10 +1082,37 @@ def build_outputs(recs, nov, info, today):
             if vid:
                 row['vid'] = vid
             digest.append(row)
+            seen.add(r.get('f'))
+    n_ok = len(digest)
+
+    def st_row(f, s, d, st, src=None, extra=None):
+        """讀不成的那一份:只有狀態(⛔ 沒有任何重點欄位,App 不會拿空的去畫)。"""
+        src = src or {}
+        x = {'s': str(s), 'name': src.get('name') or str(s), 'd': d, 't': src.get('t') or '', 'f': f, 'st': st, 'new_n': 0,
+             'inv': 1 if (src.get('inv') or INV_RE.search(src.get('sum') or '')) else 0}
+        x.update(extra or {})
+        return x
+    for r in recs:                                       # 讀到了但沒有字 / 抽不出來 / 舊格式
+        f = r.get('f')
+        if r.get('st') in ('no_text', 'parse_fail', 'ppt_old') and f and f not in seen and in_dg(f, r.get('d')):
+            digest.append(st_row(f, r.get('s'), r.get('d'), r['st'], r))
+            seen.add(f)
+    for f, st in (files or {}).items():                  # 下載不到(只有 index 有紀錄)
+        st = st or {}
+        if f in seen or st.get('st') not in ('bad_file', 'too_big', 'dl_fail'):
+            continue
+        e = info.get(f)
+        d = e[0] if e else st.get('d')
+        if not in_dg(f, d):
+            continue
+        tries = st.get('tries') or 0
+        ex = {'tries': tries, 'gave_up': 1 if tries >= TRANSIENT_TRIES else 0} if st['st'] == 'dl_fail' else None
+        digest.append(st_row(f, st.get('s') or ((e[1] or {}).get('s') if e else ''), d, st['st'], e[1] if e else None, ex))
+        seen.add(f)
     digest.sort(key=lambda x: (x['d'] or '', x['new_n']), reverse=True)
     _save_json(DATA / 'confcall_digest.json', {'updated': datetime.now(TW).isoformat(timespec='minutes'),
-                                               'days': DIGEST_DAYS, 'n': len(digest), 'rows': digest})
-    return wrote, len(digest)
+                                               'days': DIGEST_DAYS, 'n': len(digest), 'n_ok': n_ok, 'rows': digest})
+    return wrote, n_ok
 
 
 def _gh_out(**kw):
@@ -1034,6 +1149,9 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         log(f'📚 清單多了 {added} 場(回補清單共 {len(bl["rows"])} 場)' + (f' ・沒抓齊 {len(bad)} 個月:{", ".join(bad[:6])}' if bad else ''))
     idx = load_index()
     files = idx.setdefault('files', {})
+    nmig = migrate_index(idx)
+    if nmig:
+        log(f'🧹 紀錄格式升到 v{IDX_VER}:{nmig}')
     todo, earliest = plan_todo(recent_rows, bl['rows'], files, today)
     recent_fs = {pick_deck(x.get('pdf'))[0] for x in recent_rows}
     n_t0 = sum(1 for r, f, w in todo if f in recent_fs)
@@ -1045,6 +1163,8 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         log(f'🗓️ {moved} 份簡報找到更早引用它的場次 → 日期改成那一場(⛔ 不重新下載)')
     fetcher = fetcher or (Fetcher() if todo else None)
     new_recs, ai_used, ai_fail, n_ok, n_fail, streak, n_try = [], 0, 0, 0, 0, 0, 0
+    n_bad, blk = 0, 0             # n_bad = 暫時性 / 被擋(紅燈只看這種;「還沒上傳」⛔ 算壞掉)・blk = 連續被擋幾份
+    tday = today.isoformat()
     reason = 'done'
     for r, f, why in todo:
         if n_try >= MAX_FILES:
@@ -1080,19 +1200,34 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
             young = bool(d) and (today - date.fromisoformat(d)).days <= NOT_FILE_GRACE
             ek = err_kind(err)
             perm = (ek == 'nf' and not young) or ek in ('too_big', '4xx')
+            # 📅 一天只算一次(同一天又失敗 ⛔ 再扣)・🛡️ 被擋 ⛔ 算這份檔的錯(tries 不動)
+            tries = (prev.get('tries') or 0) + (0 if (ek == 'blocked' or prev.get('last') == tday) else 1)
             files[f] = {'st': 'too_big' if ek == 'too_big' else ('bad_file' if perm else 'dl_fail'), 'err': err[:160],
-                        's': s, 'd': d, 'tries': (prev.get('tries') or 0) + 1}
+                        's': s, 'd': d, 'tries': tries, 'last': tday}
             log(f'  ⚠️ {s} {d} {f} 下載失敗:{err[:140]}({t_dl:.0f} 秒)')
-            # 「被擋」才算連續失敗(⛔ 回網頁 = 主機有回應、只是那份檔不在,不算被擋)
+            if ek == 'blocked':
+                n_bad += 1
+                blk += 1
+                if blk >= BLOCK_STOP:
+                    log(f'🛑 連 {BLOCK_STOP} 份被主機擋(「安全性考量」那一頁)→ 本輪收工,明天再試(⛔ 硬打)')
+                    reason = 'blocked'
+                    break
+                wait_s = BLOCK_BACKOFF[min(blk, len(BLOCK_BACKOFF)) - 1]
+                log(f'  🛡️ 被擋 → 先等 {wait_s} 秒再試下一份(指數退避)')
+                if hasattr(fetcher, 'sleep'):
+                    fetcher.sleep(wait_s)
+                continue
+            # 「連不上 / 逾時 / 5xx」才算連續失敗(⛔ 回網頁 = 主機有回應、只是那份檔不在,不算被擋)
             if ek in ('nf', 'too_big'):
                 continue
+            n_bad += 1
             streak += 1
             if streak >= 5:
                 log('🛑 連 5 份下載失敗(可能被擋)→ 本輪收工,下一輪再試')
                 reason = 'blocked'
                 break
             continue
-        streak = 0
+        streak, blk = 0, 0
         t_ai = 0.0
         kb, t_e = len(b) // 1024, time.time()
         pages, perr = extract_safe(b)
@@ -1140,9 +1275,10 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         _save_json(month_file(m + '-01'), sorted(allr.get(m, []), key=lambda x: (x.get('d') or '', x.get('f') or '')))
     idx['updated'] = datetime.now(TW).isoformat(timespec='minutes')
     _save_json(CC / 'cc' / 'index.json', idx)
+    _gh_out(ran=1)                # 💾 紀錄已存 → 就算等一下紅燈,workflow 也要把 cc_deep 推上去(⛔ 不然「試過幾次」永遠存不住)
     recs = [x for lst in allr.values() for x in lst]
     nov = novelty_all(recs)
-    wrote, nd = build_outputs(recs, nov, earliest, today)
+    wrote, nd = build_outputs(recs, nov, earliest, today, files=files, cite=recent_fs)
     left = max(0, len(todo) - n_try) + sum(1 for r, f, w in todo[:n_try] if (files.get(f) or {}).get('st') == 'dl_fail'
                                            and (files.get(f) or {}).get('tries', 0) < TRANSIENT_TRIES)
     if reason == 'done' and left:
@@ -1151,8 +1287,8 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
     route = ('・下載路 ' + ' / '.join(f'{"檔案路徑" if k == "nas" else "下載程式"} {v} 份' for k, v in sorted(wins.items()))) if wins else ''
     log(f'📦 讀成功 {n_ok} 份 ・失敗 {n_fail} ・AI 摘要 {ai_used} 次 ・改了 {wrote} 檔 data/cc/ ・清單 {nd} 場 ・還沒讀 {left} 份({reason}){route}')
     _gh_out(more=1 if left else 0, reason=reason, left=left)
-    if todo and n_ok == 0 and n_fail >= 5:
-        log('❌ 一份都沒讀到而且連續失敗 → 紅燈(⛔ 不可全綠沒資料)')
+    if todo and n_ok == 0 and n_bad >= (BLOCK_STOP if reason == 'blocked' else 5):
+        log('❌ 一份都沒讀到而且連續失敗 / 被擋 → 紅燈(⛔ 不可全綠沒資料)')
         return 1
     return 0
 
