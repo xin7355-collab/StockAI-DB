@@ -110,6 +110,29 @@
  },
  "sbl": {
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
-  "at": "2026-10-20"
+  "at": "2026-10-23",
+  "probe_first": "2010-01-04",
+  "cols": [
+   "MarginShortSalesPreviousDayBalance",
+   "MarginShortSalesShortSales",
+   "MarginShortSalesShortCovering",
+   "MarginShortSalesStockRedemption",
+   "MarginShortSalesCurrentDayBalance",
+   "MarginShortSalesQuota",
+   "SBLShortSalesPreviousDayBalance",
+   "SBLShortSalesShortSales",
+   "SBLShortSalesReturns",
+   "SBLShortSalesAdjustments",
+   "SBLShortSalesCurrentDayBalance",
+   "SBLShortSalesQuota",
+   "SBLShortSalesShortCovering"
+  ],
+  "have": 1242,
+  "of": 2548,
+  "chk": [
+   0,
+   0
+  ],
+  "done": false
  }
 }
