@@ -41,8 +41,9 @@ GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions"
 #      ② sentiment → 全部退回「中立」
 #      ③ important → 失敗時預設 True → 垃圾新聞全部放行
 #    ⭐ 改成問官方「現在有哪些」+ 404 自我修復,見 groq_common.py。
-from groq_common import groq_model, groq_reason, invalidate as _groq_invalidate
+from groq_common import groq_model, groq_reason, groq_apply, invalidate as _groq_invalidate
 GROQ_TIER    = "light"   # 這支是「大量新聞逐則判讀 + 翻譯」→ 走輕量層
+_GROQ_SAID = set()       # 🤖 V79.5.8 這一輪用過哪些模型(每個只印一次,查 log 才知道翻譯是誰做的)
 
 # 【防禦機制】建立全域連線池與自動退避重試
 http_session = requests.Session()
@@ -99,6 +100,7 @@ def _call_groq_with_rotation(payload: dict, label: str = ""):
     _tried = set()                          # 已知不存在的模型名
     _last = None                            # 最後一個非 200 的回應(次數用完時要交出去)
     payload = dict(payload); payload.setdefault("model", None)
+    _base_max = payload.get("max_tokens")   # 🧠 V79.5.8 換模型時從原本的額度重算(⛔ 不可越疊越多)
     for _ in range(max_attempts):
         idx = _groq_active_idx(time.time())
         if idx is None:
@@ -117,6 +119,12 @@ def _call_groq_with_rotation(payload: dict, label: str = ""):
             # ⭐ 模型名一律在這裡注入 —— 呼叫端只要不自己填 model,就自動吃到最新的可用模型
             #    (⛔ 三個呼叫端各寫一份 = 陷阱 #37,遲早只改到一邊)
             payload["model"] = payload.get("model") or groq_model(GROQ_API_KEYS, GROQ_TIER, avoid=_tried)
+            # 🧠 V79.5.8 每個模型要帶的參數不一樣(qwen 明寫不思考、gpt-oss 低強度 + 額度 +400、llama 什麼都不帶)
+            #    ⛔ 404 換模型時要拿掉上一個模型的參數(groq_apply 會先清再套)
+            groq_apply(payload, payload["model"], _base_max)
+            if payload["model"] not in _GROQ_SAID:
+                _GROQ_SAID.add(payload["model"])
+                print(f"  🤖 [Groq] 這輪用 {payload['model']}")
             res = http_session.post(GROQ_URL, json=payload, headers=headers, timeout=20)
             # 🩹 自我修復:404 = 這個模型名不存在 → 清快取、換一個、再打一次
             #    ⛔ 換 key 沒用(所有 key 看到的模型清單一樣),所以走的是「換模型」不是「換 key」
@@ -188,6 +196,8 @@ def _groq_json(payload: dict, label: str = "") -> tuple:
         return (None, (groq_reason(res.status_code) + (f" · {detail}" if detail else ""))[:120])
     try:
         content = res.json()["choices"][0]["message"]["content"].strip()
+        # 🧠 V79.5.8 會思考的模型萬一把思考內容放進答案(<think>…</think>)→ 先拿掉,⛔ 不然裡面的大括號會被當成 JSON
+        content = re.sub(r"<think>.*?</think>", "", content, flags=re.S).strip()
         if not content.startswith("{"):
             m = re.search(r"\{.*\}", content, re.S)
             if m:

@@ -61,9 +61,33 @@ const CASES = [
     [['gemini-2.0-flash', 'gemini-2.0-flash-001'], 'gemini-2.5-flash'],
 ];
 
-const R = await page.evaluate(async (CASES) => {
+// 🤖 V79.5.8 Groq 真清單(10/22 #637 部署 log):llama 全下架,只剩 qwen / gpt-oss / allam + 7 個語音防護類
+const REAL_GROQ = ['allam-2-7b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'openai/gpt-oss-120b',
+    'whisper-large-v3', 'whisper-large-v3-turbo', 'playai-tts', 'playai-tts-arabic',
+    'meta-llama/llama-guard-4-12b', 'meta-llama/llama-prompt-guard-2-22m', 'meta-llama/llama-prompt-guard-2-86m'];
+// 跨語言測資:每一份清單都至少有一個偏好序配得到的(⛔ 配不到時 JS 回原名、Python 回硬清單 —— 那是刻意不同的退路)
+const QCASES = (() => {
+    let seed = 7; const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
+    const shuf = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+    const cats = [
+        [REAL_GROQ, []], [REAL_GROQ, ['qwen/qwen3.8-27b']], [REAL_GROQ, ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b']],
+        [['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', ...REAL_GROQ], []],
+        [['llama-4-70b-x', 'qwen/qwen3-32b', 'openai/gpt-oss-120b', 'allam-2-7b'], []],
+        [['qwen/qwen3-32b', 'allam-2-7b', 'whisper-large-v3'], []],
+    ];
+    const out = [];
+    for (let k = 0; k < 5; k++) for (const [ids, av] of cats) for (const want of ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile']) out.push([shuf(ids), want, av]);
+    return out;
+})();
+const QNAMES = ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'allam-2-7b', '', 'Qwen/QwQ-32B'];
+
+const R = await page.evaluate(async ({ CASES, REAL, QCASES, QNAMES }) => {
     const o = {};
     const P = (p, ids, w, av) => app._aiPickModel(p, ids, w, av);
+    o.q_real = { light: P('groq', REAL, 'llama-3.1-8b-instant'), heavy: P('groq', REAL, 'llama-3.3-70b-versatile'),
+                 light2: P('groq', REAL, 'llama-3.1-8b-instant', ['qwen/qwen3.8-27b']), heavy2: P('groq', REAL, 'llama-3.3-70b-versatile', ['qwen/qwen3.8-27b']) };
+    o.qx = QCASES.map(([ids, w, av]) => P('groq', ids, w, av));
+    o.qex = QNAMES.map(n => [app._groqExtra(n), app._groqBudget(n, 300)]);
     o.g_keep = P('gemini', ['gemini-2.5-flash', 'gemini-3.0-flash'], 'gemini-2.5-flash');
     o.g_up = P('gemini', ['models/gemini-2.0-flash', 'models/gemini-3.0-flash', 'models/gemini-3.0-flash-lite'], 'gemini-2.5-flash');
     o.g_empty = P('gemini', [], 'gemini-2.5-flash');
@@ -118,9 +142,26 @@ const R = await page.evaluate(async (CASES) => {
     o.q_down = await runQ(null, () => qOK, 'llama-3.1-8b-instant');
     o.q_decom = await runQ(['llama-3.1-8b-instant', 'llama-3.2-8b-x'], m => m === 'llama-3.1-8b-instant' ? qDecom : qOK, 'llama-3.1-8b-instant');
     o.q_bad = await runQ(['llama-3.1-8b-instant', 'llama-3.2-8b-x'], () => qBad, 'llama-3.1-8b-instant');
+    // 🧠 V79.5.8 送出去的那包:每個模型帶自己的參數(呼叫端塞的 high 要被換掉;換模型 ⛔ 不可帶上一個的)
+    const runQB = async (models, chat, want, mt) => {
+        app._aiModelClear('groq');
+        const bodies = [];
+        app.safeFetch = async (u, opt) => {
+            u = String(u);
+            if (u.endsWith('/v1/models')) return { ok: true, status: 200, json: async () => ({ data: models.map(id => ({ id })) }) };
+            const b = JSON.parse(opt.body); bodies.push(b);
+            return chat(b.model);
+        };
+        const res = await app._groqFetch('K', { model: want, messages: [], max_tokens: mt, reasoning_effort: 'high' }, {});
+        return { bodies, ok: res.ok };
+    };
+    o.qb_real = await runQB(REAL, () => qOK, 'llama-3.1-8b-instant', 300);
+    o.qb_oss = await runQB(['openai/gpt-oss-20b'], () => qOK, 'llama-3.1-8b-instant', 300);
+    o.qb_llama = await runQB(['llama-3.1-8b-instant'], () => qOK, 'llama-3.1-8b-instant', 300);
+    o.qb_retry = await runQB(REAL, m => m === 'qwen/qwen3.8-27b' ? qDecom : qOK, 'llama-3.1-8b-instant', 300);
     app.safeFetch = real; app._getGeminiKeys = gk; app._getGroqKeys = qk;
     return o;
-}, CASES);
+}, { CASES, REAL: REAL_GROQ, QCASES, QNAMES });
 
 // ① 純函式
 ok('①a 清單有原名 → 照用', R.g_keep === 'gemini-2.5-flash', R.g_keep);
@@ -142,6 +183,20 @@ ok('②f Groq 清單問不到 → 照原名打', R.q_down.ok && R.q_down.log.cha
 ok('②g ⭐ Groq 400 model_decommissioned → 換一個成功', R.q_decom.ok && R.q_decom.log.chat.join() === 'llama-3.1-8b-instant,llama-3.2-8b-x', JSON.stringify(R.q_decom));
 ok('②h Groq 一般 400(內容太長)⛔ 不換模型', !R.q_bad.ok && R.q_bad.log.chat.length === 1, JSON.stringify(R.q_bad));
 
+// 🤖 V79.5.8 llama 全下架之後
+ok('①i ⭐ 真清單(沒有 llama)→ 兩層都挑 qwen(⛔ 不可回原名 → 404)', R.q_real.light === 'qwen/qwen3.8-27b' && R.q_real.heavy === 'qwen/qwen3.8-27b', JSON.stringify(R.q_real));
+ok('①j qwen 下架 → light 換 gpt-oss-20b、heavy 換 gpt-oss-120b(⛔ 不挑 allam)', R.q_real.light2 === 'openai/gpt-oss-20b' && R.q_real.heavy2 === 'openai/gpt-oss-120b', JSON.stringify(R.q_real));
+{
+    const b = (R.qb_real.bodies || [])[0] || {};
+    ok('②i 真清單一次就成功,送出去的是 qwen + 不思考、額度不動(呼叫端塞的 high 被換掉)', R.qb_real.ok && R.qb_real.bodies.length === 1 && b.model === 'qwen/qwen3.8-27b' && b.reasoning_effort === 'none' && !('include_reasoning' in b) && b.max_tokens === 300, JSON.stringify(R.qb_real));
+    const c = (R.qb_oss.bodies || [])[0] || {};
+    ok('②j gpt-oss → 低強度、不回傳思考、額度 +400', c.model === 'openai/gpt-oss-20b' && c.reasoning_effort === 'low' && c.include_reasoning === false && c.max_tokens === 700, JSON.stringify(c));
+    const d = (R.qb_llama.bodies || [])[0] || {};
+    ok('②k 決定性對照:llama ⛔ 一個思考參數都不帶(帶了會被拒)', d.model === 'llama-3.1-8b-instant' && !('reasoning_effort' in d) && !('include_reasoning' in d) && d.max_tokens === 300, JSON.stringify(d));
+    const r = R.qb_retry.bodies || [];
+    ok('②l qwen 被下架 → 換 gpt-oss-20b 重送,參數跟著換(⛔ 不可帶 qwen 的、額度不可疊)', R.qb_retry.ok && r.length === 2 && r[0].reasoning_effort === 'none' && r[1].model === 'openai/gpt-oss-20b' && r[1].reasoning_effort === 'low' && r[1].max_tokens === 700, JSON.stringify(r.map(x => [x.model, x.reasoning_effort, x.max_tokens])));
+}
+
 // ④ 跨檔
 {
     const py = execFileSync('python3', ['-c', `
@@ -157,6 +212,29 @@ print(json.dumps([m._pick_gemini_model(i,w) for i,w in cases]))`], { input: JSON
     const wR = CASES.map(([ids, want]) => fn(ids, want));
     ok('④b worker.pickGeminiModel == index._aiPickModel', JSON.stringify(wR) === JSON.stringify(R.cases), `${JSON.stringify(wR)} / ${JSON.stringify(R.cases)}`);
     ok('④c worker Gemini 404 會重挑', /r\.status === 404[\s\S]{0,200}geminiModel\(env, \[model\]\)/.test(w));
+    // 🤖 V79.5.8 Groq 挑模型 + 每個模型的參數:index == groq_common.py(兩邊註解都寫「必須一致」,這裡真的比)
+    const qpy = execFileSync('python3', ['-c', `
+import json,sys,re,io,contextlib; sys.path.insert(0, ${JSON.stringify(ROOT)})
+import groq_common as G
+class _R:
+    status_code = 200
+    def __init__(s, ids): s._ids = ids
+    def json(s): return {'data': [{'id': i} for i in s._ids]}
+d = json.loads(sys.stdin.read())
+picks = []
+for ids, want, av in d['cases']:
+    G._cache.update(ids=None, at=0.0, err=''); G._good.clear()
+    G.requests.get = lambda *a, _ids=ids, **k: _R(_ids)
+    tier = 'heavy' if re.search(r'70b|versatile', want, re.I) else 'light'
+    with contextlib.redirect_stdout(io.StringIO()):
+        picks.append(G.groq_model(['k'], tier, avoid=set(av)))
+ex = [[G.groq_extra(n), G.groq_budget(n, 300)] for n in d['names']]
+print(json.dumps({'picks': picks, 'ex': ex}))`], { input: JSON.stringify({ cases: QCASES, names: QNAMES }), encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } }).trim().split('\n').pop();
+    const qR = JSON.parse(qpy);
+    const diff = QCASES.map((c, i) => [i, R.qx[i], qR.picks[i]]).filter(([, a, b]) => a !== b);
+    ok(`④d ⭐ Groq 挑模型 index == groq_common.py(${QCASES.length} 份亂序清單 × 兩層)`, R.qx.length === QCASES.length && diff.length === 0, JSON.stringify(diff.slice(0, 3)));
+    ok('④d2 空過守門:測資裡真的挑到 qwen 與 gpt-oss 兩種', R.qx.some(x => /qwen/.test(x)) && R.qx.some(x => /gpt-oss/.test(x)), JSON.stringify([...new Set(R.qx)]));
+    ok('④e 每個模型的參數 / 額度 index == groq_common.py', JSON.stringify(R.qex) === JSON.stringify(qR.ex), `js ${JSON.stringify(R.qex)} / py ${JSON.stringify(qR.ex)}`);
 }
 
 await browser.close();

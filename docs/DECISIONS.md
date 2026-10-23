@@ -3,6 +3,27 @@
 使用者(附三張截圖):「1.跑馬燈移除 2.app 預設策略符合進場,我想要的是我要點進階才能是領頭羊策略,所以 app 內容要注意文字敘述,不要露餡,現在有些文字有點疑似露餡了 3.產業 app 裡面的成績單沒有領頭羊策略」。追問後選:預設 = 決策台的「📈 符合進場」、🔥 觸發價預設收起;👑 搬進「🔓 進階功能」;作戰室成績單永遠顯示 👑。
 
 
+## 🤖 V79.5.8 Groq 把 llama 全下架 → App 走 Groq 的 AI 每次都失敗、採礦端新聞判讀抽籤抽到阿拉伯文模型 → 偏好序接 qwen → gpt-oss、⛔ allam、每個模型帶自己的參數
+
+**怎麼發現的**:巡邏讀 10/22 #637 部署 log,「⚡ 並行 7 腳本」那步每一則新聞都印「🩹 模型 llama-3.1-8b-instant 已下架(404)」+「⚠️ 偏好序配不到 light;它實際有的是:allam-2-7b, qwen/qwen3.8-27b, openai/gpt-oss-20b, openai/gpt-oss-120b」(還濾掉 7 個語音 / 防護類)→ **Groq 一個 llama 都沒有了**。
+
+**後果(兩邊不一樣)**
+- 採礦 `groq_common.groq_model`:偏好序全是 llama → 每一則先白打一次 404 → 清快取 → 緊急退路拿**亂序**清單的第一個(Groq 每次回的順序都不一樣 = 抽籤,1/4 抽到阿拉伯文的 allam)。gh-pages `radar_news.json` 15 則裡 2 則「AI 回的內容看不懂(JSONDecodeError)」、2 則原因是亂碼、「巨大好險有 YouBike」被當重要放行。
+- App `_aiPickModel('groq')`:配不到就回原名 → 404 → `_groqFetch` 重問清單還是回原名 → `m2 === model` 不重試 → **每次都失敗**(輕量判讀 / 翻譯 / 金鑰測試;深度分析靠 Gemini / OpenRouter 備援)。
+
+**官方文件(Context7,Groq console)**:qwen3.8-27b 在 Groq 上預設不思考(`reasoning_effort` 預設 none)、中文強;gpt-oss 預設 medium 思考、思考放在另一個欄位,但跟答案**共用同一個 max_tokens**(300 字的翻譯會被思考吃光);llama 帶 reasoning 參數會被拒(400)。
+
+**修法**(⛔ 不寫死新的模型名,照 V73.9.1 那套「問官方現在有哪些」)
+- 偏好序兩層都在原本 llama 那幾條**後面**接:light `qwen` → `gpt-oss-20b` → `gpt-oss`;heavy `qwen` → `gpt-oss-120b` → `gpt-oss`(llama 回來了照舊優先,行為不變)。採礦與 App 兩份,`test_ai_model_pick ④d` 60 份亂序清單 × 兩層跨語言比對。
+- 取清單時把 allam(`_UNSUITED`)跟語音 / 防護類一起濾掉,log 寫出濾掉了誰;緊急退路改成照名字排序挑(同一份清單永遠同一個)。硬清單(連清單都取不到時)改 `qwen/qwen3.8-27b`。
+- 每個模型自己的參數:`groq_extra` / `groq_budget` / `groq_apply`(採礦)= `_groqExtra` / `_groqBudget` / `_groqBody`(App):qwen 明寫 none;gpt-oss low + 不回傳思考 + 額度 +400;其他什麼都不帶。404 換模型時先清掉上一個的參數、額度從原本的值重算(⛔ 不可越疊越多)。
+- `universal_radar` 每輪印「🤖 這輪用 X」(以前查不到翻譯是哪個模型做的);答案裡混了 `<think>…</think>` 先拿掉再找 JSON。
+- 沒改:`api.py` 也寫死 llama-3.3,但沒有 workflow 跑它、沒有程式 import 它(只在註解裡被提到);worker.js 不用 Groq。`macro_miner._groq_chat_mm` 會自動吃到新偏好序(qwen 不需要額外參數);gpt-oss 備援的參數等 F2 跟 daily_miner.yml 一起推(那兩個檔會觸發採礦,白天推會讓 17:00 叫醒被跳過)。
+
+**測試**:`test_groqmodel.py` ③(硬清單 ⛔ llama)⑬a~⑬h(真清單 × 20 種亂序都挑 qwen、qwen 下架換 20b / 120b、緊急退路不抽籤、三種模型的參數與額度、換到 llama 會清掉思考參數、實跑一次就中 + `<think>` 解析得掉 + log 寫模型;⭐ 決定性對照:換回舊偏好 + 舊硬清單 → 第一發就是已下架的 llama);`test_ai_model_pick.mjs` ①i①j ②i~②l ④d④e。注入 5 + 2 種舊寫法都紅。;順手:`test_macro_ai.py` ① 寫死「模型名要有 llama」→ 這次換模型就紅 → 改看三個家族(llama / qwen / gpt-oss)且 ⛔ 不是 gemini(⚠️ 那支不在四驗證清單裡,是巡邏 import macro_miner 的測試時抓到的)
+
+**上線後要看**:下一輪 news_express / news_premarket 或今晚 daily_miner「並行 7 腳本」那步 log 印「這輪用 qwen/qwen3.8-27b」、沒有 404 那幾行;gh-pages `radar_news.json` 不再有「看不懂(JSONDecodeError)」。
+
 ## 🧹 V79.5.7 指令字清掃第二批:看得到的字 ⛔ 再叫人「分批停利 / 減碼 / 空手 / 現金為王」+ 永豐智慧單「直接照抄」改讀三條出場線
 
 **為什麼**:V78.5.0(先賣一半兩段 17 條全輸)與 V79.3.5(大盤警示只描述)之後,還有一批字串在叫人先賣、減碼、空手 —— 跟「手上的照你的出場規則走」打架。V79.5.6 留了一份 51 行的候選清單,這版逐行讀完。

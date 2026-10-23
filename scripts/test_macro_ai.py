@@ -19,6 +19,7 @@ V71.4.0 再修正:使用者實際用法是「夜間排程用便宜的 Groq、白
 """
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, '/home/user/StockAI-DB')
@@ -97,7 +98,9 @@ FAIL = R(500, {"error": "boom"})
 
 # ① Groq 成功(夜間常態)→ 不可動用 Gemini 額度
 r = run(gem_ok(), GROQ_OK)
-assert r and 'llama' in r['model'], f"① model 應標 groq,實際 {r and r.get('model')}"
+# 🤖 V79.5.8 Groq 已沒有 llama(10/22 只剩 qwen / gpt-oss)→ 判「標的是 Groq 的模型」改看三個家族,⛔ 不再寫死 llama
+assert r and not r['model'].startswith('gemini') and re.search(r'llama|qwen|gpt-oss', r['model']), \
+    f"① model 應標 groq,實際 {r and r.get('model')}"
 assert calls['gemini'] == 0, "① Groq 成功時不該打 Gemini(夜間排程不燒 Gemini 額度)"
 print(f"✅ ① 夜間 Groq 成功({r['model']})→ 完全不碰 Gemini 額度")
 

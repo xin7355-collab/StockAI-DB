@@ -36,15 +36,32 @@ GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 # ⭐ 偏好序用**正規表示式**,⛔ 不比對固定字串 —— 版號會一直變(3.1 → 3.3 → …)。
 #   兩個層級:heavy = 質化判讀;light = 大量、便宜的工作(翻譯標題)。
+# 🚨 V79.5.8 2026-10-22 實測 Groq 清單**一個 llama 都沒有了**(只剩 gpt-oss-120b / gpt-oss-20b /
+#    qwen3.8-27b / allam-2-7b)→ 舊偏好序全部配不到:每一則先白打一次 404,再從**亂序**清單拿第一個
+#    (1/4 機會是阿拉伯文的 allam)→ radar_news 出現「AI 回的內容看不懂」與亂碼原因。
+#    ⭐ llama 那幾條留在最前面(回來了照舊用、行為不變),後面接 qwen(中文強、Groq 上預設不思考)→ gpt-oss。
 _PREFS = {
     'heavy': [r'llama-3\.3-70b', r'llama-\d+(\.\d+)?-70b', r'llama.*70b',
-              r'llama.*(instruct|versatile)', r'^llama'],
+              r'llama.*(instruct|versatile)', r'^llama',
+              r'qwen', r'gpt-oss-120b', r'gpt-oss'],
     'light': [r'llama-3\.\d+-8b', r'llama.*8b', r'.*instant',
-              r'llama-3\.3-70b', r'^llama'],
+              r'llama-3\.3-70b', r'^llama',
+              r'qwen', r'gpt-oss-20b', r'gpt-oss'],
 }
 
 # 🛟 保險②:解析不到時的硬清單(⛔ 只當最後手段,不是主要來源)
-_LEGACY = {'heavy': 'llama-3.3-70b-versatile', 'light': 'llama-3.1-8b-instant'}
+#    V79.5.8 llama 已全部下架 → 改成 10/22 清單上實際存在、中文最好的那一個
+_LEGACY = {'heavy': 'qwen/qwen3.8-27b', 'light': 'qwen/qwen3.8-27b'}
+
+# 🈚 V79.5.8 聊得了天、但不適合中文的模型(allam = 阿拉伯文模型)—— 跟非聊天模型一樣,取清單時就濾掉
+_UNSUITED = re.compile(r'allam', re.I)
+
+# 🧠 V79.5.8 每個模型要帶的參數不一樣(Groq 官方文件):
+#    - qwen3:Groq 上預設就不思考;明寫 none,免得哪天預設改了 → 思考內容混進答案、吃掉字數
+#    - gpt-oss:預設 medium 思考,思考跟答案共用同一個 max_tokens → 低強度 + 不回傳思考,額度再多給 400
+#    - 其他(llama…):⛔ 什麼都不帶 —— 帶了 reasoning 參數會被拒(400)
+_EXTRA_KEYS = ('reasoning_effort', 'include_reasoning', 'reasoning_format')
+_GPTOSS_BUDGET = 400
 
 # 🚨 V73.9.3 **非聊天模型一律先濾掉**(實測踩到:解析器挑到 `whisper-large-v3`(語音辨識)
 #    與 `canopylabs/orpheus`(語音合成)→ Groq 回 400
@@ -74,9 +91,12 @@ def _list_models(keys):
                 err = f'key#{i + 1} HTTP {r.status_code}'   # 🔐 只記第幾把
                 continue
             raw = [m.get('id') for m in (r.json().get('data') or []) if m.get('id')]
-            ids = [m for m in raw if not _NON_CHAT.search(m)]
-            if len(raw) != len(ids):
-                print(f'  🧹 [Groq] 濾掉 {len(raw) - len(ids)} 個非聊天模型(語音/嵌入/防護類)')
+            chat = [m for m in raw if not _NON_CHAT.search(m)]
+            if len(raw) != len(chat):
+                print(f'  🧹 [Groq] 濾掉 {len(raw) - len(chat)} 個非聊天模型(語音/嵌入/防護類)')
+            ids = [m for m in chat if not _UNSUITED.search(m)]
+            if len(chat) != len(ids):
+                print(f'  🧹 [Groq] 濾掉 {len(chat) - len(ids)} 個不適合中文的模型({", ".join(m for m in chat if _UNSUITED.search(m))})')
             if ids:
                 err = ''
                 break
@@ -107,13 +127,46 @@ def groq_model(keys, tier='light', avoid=None):
     #    而且外層會誤以為「已經換過了」(V73.9.1 用注入缺陷才發現這個洞)。
     leg = _LEGACY.get(tier, _LEGACY['light'])
     if leg in avoid:
-        for mid in ids:
+        # ⛔ V79.5.8 不再拿清單的第一個 —— Groq 每次回的順序都不一樣,等於抽籤(實測 1/4 抽到 allam)
+        #    → 照名字排序挑,同一份清單永遠挑同一個(清單在取的時候已濾掉非聊天 / 不適合中文的)
+        for mid in sorted(ids):
             if mid not in avoid:
                 return mid
         for t2, v2 in _LEGACY.items():
             if v2 not in avoid and not _NON_CHAT.search(v2):
                 return v2
     return leg
+
+
+def groq_extra(model):
+    """🧠 V79.5.8 這個模型要多帶的參數(見 _EXTRA_KEYS 上面的說明)。⛔ llama 等其他模型回 {}。
+    ⚠️ 跟 index.html `_groqExtra` 是同一份規則(test_ai_model_pick.mjs 跨語言比對)。"""
+    m = (model or '').lower()
+    if 'gpt-oss' in m:
+        return {'reasoning_effort': 'low', 'include_reasoning': False}
+    if 'qwen' in m:
+        return {'reasoning_effort': 'none'}
+    return {}
+
+
+def groq_budget(model, max_tokens):
+    """🧠 V79.5.8 gpt-oss 的思考跟答案共用 max_tokens → 多給 400,⛔ 不然 300 字的翻譯會被思考吃光、回空的。"""
+    if max_tokens and 'gpt-oss' in (model or '').lower():
+        return int(max_tokens) + _GPTOSS_BUDGET
+    return max_tokens
+
+
+def groq_apply(payload, model, base_max=None):
+    """🧠 V79.5.8 把「這個模型專用」的參數套進 payload(就地改、也回傳)。
+    ⭐ 先拿掉上一個模型留下的(404 換模型時,⛔ 不可把 gpt-oss 的參數帶給 llama → 400);
+       max_tokens 一律從呼叫端原本的值重算(⛔ 不可在換模型時一直往上疊)。"""
+    for k in _EXTRA_KEYS:
+        payload.pop(k, None)
+    payload['model'] = model
+    payload.update(groq_extra(model))
+    if base_max is not None:
+        payload['max_tokens'] = groq_budget(model, base_max)
+    return payload
 
 
 def groq_reason(status: int) -> str:

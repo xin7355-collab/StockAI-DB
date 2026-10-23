@@ -82,7 +82,9 @@ r = G.groq_model([SECRET], 'heavy')
 ok('② 清單裡沒有偏好的 → 仍要回一個字串(⛔ 不可 None)', isinstance(r, str) and r, repr(r))
 reset(); stub_models(code=401)
 r2 = G.groq_model([SECRET], 'light')
-ok('③ 完全取不到清單 → 退回硬清單,⛔ 不可 throw/None', isinstance(r2, str) and 'llama' in r2, repr(r2))
+# V79.5.8 硬清單改成 10/22 清單上實際存在的那一個(llama 已全部下架)
+ok('③ 完全取不到清單 → 退回硬清單,⛔ 不可 throw/None', isinstance(r2, str) and r2 == G._LEGACY['light'], repr(r2))
+ok('③c 硬清單 ⛔ 不可再是已下架的 llama', not any('llama' in v for v in G._LEGACY.values()), G._LEGACY)
 reset()
 G.requests.get = lambda *a, **k: (_ for _ in ()).throw(RuntimeError('boom'))
 r3 = G.groq_model([SECRET], 'light')
@@ -285,6 +287,100 @@ with contextlib.redirect_stdout(io.StringIO()):
 ok('⑫c 🔍 全部金鑰冷卻時,原因要說出「用量到上限」(⛔ 不可只寫「暫時無法分析」)',
    '用量到上限' in r5[1], r5[1])
 ok('⑫d 而且要講得出「幾把 / 多久恢復」', '2 把' in r5[1] and '小時' in r5[1], r5[1])
+
+# ── ⑬ V79.5.8:Groq 把 llama 全下架(10/22 #637 部署 log 那份真清單)──────────────
+# 🚨 舊偏好序全是 llama → 每一則先白打一次 404 → 清快取 → 從**亂序**清單拿第一個(1/4 是阿拉伯文的 allam)
+#    → radar_news 出現「AI 回的內容看不懂(JSONDecodeError)」與亂碼原因。
+import random  # noqa: E402
+REAL_CHAT = ['allam-2-7b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'openai/gpt-oss-120b']
+REAL_NONCHAT = ['whisper-large-v3', 'whisper-large-v3-turbo', 'playai-tts', 'playai-tts-arabic',
+                'meta-llama/llama-guard-4-12b', 'meta-llama/llama-prompt-guard-2-22m',
+                'meta-llama/llama-prompt-guard-2-86m']
+REAL = REAL_CHAT + REAL_NONCHAT
+rng = random.Random(7)
+picks = set()
+buf3 = io.StringIO()
+with contextlib.redirect_stdout(buf3):
+    for _ in range(20):
+        ids = REAL[:]; rng.shuffle(ids)
+        for tier in ('light', 'heavy'):
+            reset(); stub_models(ids=ids)
+            picks.add((tier, G.groq_model([SECRET], tier)))
+ok('⑬a ⭐ 真清單 × 20 種亂序 → 兩層都挑 qwen(同一份清單永遠同一個,⛔ 不可抽籤)',
+   picks == {('light', 'qwen/qwen3.8-27b'), ('heavy', 'qwen/qwen3.8-27b')}, sorted(picks))
+ok('⑬b 🧹 allam 在取清單時就濾掉,而且 log 說得出濾掉了誰', 'allam-2-7b' in buf3.getvalue() and '不適合中文' in buf3.getvalue(),
+   buf3.getvalue()[:200])
+reset(); stub_models(ids=REAL)
+with contextlib.redirect_stdout(io.StringIO()):
+    l2 = G.groq_model([SECRET], 'light', avoid={'qwen/qwen3.8-27b'})
+    h2 = G.groq_model([SECRET], 'heavy', avoid={'qwen/qwen3.8-27b'})
+    l3 = G.groq_model([SECRET], 'light', avoid={'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'})
+ok('⑬c qwen 下架 → light 換 gpt-oss-20b、heavy 換 gpt-oss-120b', (l2, h2) == ('openai/gpt-oss-20b', 'openai/gpt-oss-120b'), (l2, h2))
+ok('⑬c2 再下架 20b → light 換 120b(⛔ 不可挑到 allam)', l3 == 'openai/gpt-oss-120b', l3)
+# 緊急退路(偏好全被 avoid)⛔ 不可抽籤:清單裡只剩不認識的,同一份清單不管怎麼排都挑同一個
+odd = ['zeta-chat-1', 'alpha-chat-2', 'qwen/qwen3.8-27b']
+outs = set()
+with contextlib.redirect_stdout(io.StringIO()):
+    for _ in range(10):
+        o2 = odd[:]; rng.shuffle(o2)
+        reset(); stub_models(ids=o2)
+        outs.add(G.groq_model([SECRET], 'light', avoid={'qwen/qwen3.8-27b'}))
+ok('⑬d 🎲 偏好全用光時 ⛔ 不可拿亂序清單的第一個(照名字排,永遠同一個)', outs == {'alpha-chat-2'}, outs)
+
+# ⑬e 每個模型的參數:qwen 不思考;gpt-oss 低強度 + 不回傳思考 + 額度 +400;llama ⛔ 什麼都不帶
+ok('⑬e qwen → reasoning_effort none', G.groq_extra('qwen/qwen3.8-27b') == {'reasoning_effort': 'none'})
+ok('⑬e2 gpt-oss → low + 不回傳思考', G.groq_extra('openai/gpt-oss-20b') == {'reasoning_effort': 'low', 'include_reasoning': False})
+ok('⑬e3 ⛔ llama / 不認識的 → 什麼都不帶(帶了會被拒)', G.groq_extra('llama-3.3-70b-versatile') == {} and G.groq_extra(None) == {})
+ok('⑬e4 額度:gpt-oss +400、其他不動、沒給就不給',
+   (G.groq_budget('openai/gpt-oss-120b', 300), G.groq_budget('qwen/qwen3.8-27b', 300), G.groq_budget('openai/gpt-oss-20b', None)) == (700, 300, None))
+p = {'messages': [], 'max_tokens': 300}
+G.groq_apply(p, 'openai/gpt-oss-20b', 300); G.groq_apply(p, 'openai/gpt-oss-20b', 300)
+ok('⑬f 換來換去額度 ⛔ 不可越疊越多(從原本的值重算)', p['max_tokens'] == 700, p)
+G.groq_apply(p, 'llama-3.3-70b-versatile', 300)
+ok('⑬f2 ⭐ 404 換到 llama 時,上一個模型的思考參數要拿掉(⛔ 帶過去會 400)',
+   not any(k in p for k in ('reasoning_effort', 'include_reasoning', 'reasoning_format')) and p['max_tokens'] == 300, p)
+
+# ⑬g 實跑:用真清單 + 「清單上沒有的回 404」的假 Groq → 新程式一次就成功、送出去的參數對
+seen3 = []
+
+
+class _SessReal:
+    def post(self, url, json=None, headers=None, timeout=None):
+        p = dict(json or {})
+        seen3.append(p)
+        if p.get('model') not in REAL_CHAT:
+            return FakeResp(404, {}, 'model_not_found')
+        # 會思考的模型把思考放進答案也要解析得掉
+        return FakeResp(200, {'choices': [{'message': {'content':
+            '<think>先想一下 {不是答案}</think>{"sentiment":"利多","reason":"r","title_zh":"翻好了","important":true}'}}]})
+
+
+def run_real():
+    seen3.clear()
+    sys.modules.pop('universal_radar', None)
+    import universal_radar as U3  # noqa: E402
+    U3.GROQ_API_KEYS = [SECRET]; U3.SKIP_AI = False
+    U3.http_session = _SessReal()
+    reset(); stub_models(ids=REAL)
+    with contextlib.redirect_stdout(io.StringIO()) as b:
+        r = U3.analyze_sentiment('Nvidia beats earnings', 'blah')
+    return r, [s.get('model') for s in seen3], b.getvalue()
+
+
+r6, models6, log6 = run_real()
+ok('⑬g ⭐ 真清單:一次就打中 qwen(⛔ 不可先白打一次 404)', models6 == ['qwen/qwen3.8-27b'], models6)
+ok('⑬g2 送出去的那包帶 reasoning_effort none、max_tokens 沒被改', seen3 and seen3[0].get('reasoning_effort') == 'none'
+   and seen3[0].get('max_tokens') == 500, seen3[:1])
+ok('⑬g3 思考內容 <think> 混進答案也解析得掉', r6[2] == '翻好了' and r6[0] == '利多', r6)
+ok('⑬g4 log 印出這輪用哪個模型(查翻譯是誰做的)', '這輪用 qwen/qwen3.8-27b' in log6, log6[:200])
+# ⭐ 決定性對照:換回舊偏好 + 舊硬清單 → 一定先撞 404(證明上面那條量得到舊病)
+_old = (dict(G._PREFS), dict(G._LEGACY))
+G._PREFS.update({'heavy': [r'llama-3\.3-70b', r'^llama'], 'light': [r'llama-3\.\d+-8b', r'.*instant', r'^llama']})
+G._LEGACY.update({'heavy': 'llama-3.3-70b-versatile', 'light': 'llama-3.1-8b-instant'})
+_r7, models7, _ = run_real()
+G._PREFS.clear(); G._PREFS.update(_old[0]); G._LEGACY.clear(); G._LEGACY.update(_old[1])
+ok('⑬h 決定性對照:舊偏好 + 舊硬清單 → 第一發是已下架的 llama(404)', models7[:1] == ['llama-3.1-8b-instant'] and len(models7) >= 2, models7)
+ok('⑬h2 而且新偏好序換回來之後又是一次中', run_real()[1] == ['qwen/qwen3.8-27b'])
 
 print()
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ GROQMODEL_PASS(全部通過)')
