@@ -207,10 +207,15 @@ def _groq_json(payload: dict, label: str = "") -> tuple:
         return (None, f"AI 回的內容看不懂({type(e).__name__})")
 
 
+# 🗑️ V79.6.1 停用 4 個已失效的來源(10/23 news_express #354 的「🔎 實際拿到」,V79.5.9 加的診斷):
+#    鉅亨網台股 / Anue 即時頭條 → 都被導到 cnyes.com/twstock/error.htm(HTTP 200 的錯誤網頁)
+#    MoneyDJ 即時新聞          → 被導到 moneydj.com/404.htm
+#    工商時報即時              → HTTP 403「Just a moment...」(Cloudflare 擋機器人,換網址也沒用)
+#    ⛔ 不猜新網址(陷阱 #23);要補來源得先有人在瀏覽器確認新的 RSS 網址還活著。test_techgiants ⑥ 釘住。
 RSS_SOURCES = {
     "科技新報":         "https://technews.tw/feed/",
-    "鉅亨網台股":       "https://www.cnyes.com/rss/cat/tw_stock",
-    "MoneyDJ 即時新聞": "https://www.moneydj.com/RSS/RSSNews.aspx",
+    # "鉅亨網台股":       "https://www.cnyes.com/rss/cat/tw_stock",        # 🗑️ V79.6.1 失效(error.htm)
+    # "MoneyDJ 即時新聞": "https://www.moneydj.com/RSS/RSSNews.aspx",      # 🗑️ V79.6.1 失效(404.htm)
     "Reddit r/stocks":  "https://www.reddit.com/r/stocks/.rss",
     # ➕ 使用者指定來源(有公開 RSS 才可程式化抓):自由財經 / 聯合新聞網 / 中央社財經
     "自由財經":         "https://news.ltn.com.tw/rss/business.xml",
@@ -219,8 +224,8 @@ RSS_SOURCES = {
     # ➕ 即時新聞源(2026-06-13 加入,延遲 15-30 分鐘,比上面慢 1-3 小時的源快很多)
     "Yahoo 即時財經":   "https://tw.news.yahoo.com/rss/finance",
     "ETtoday 財經":     "https://feeds.feedburner.com/ettoday/finance",
-    "工商時報即時":     "https://ctee.com.tw/feed",
-    "Anue 即時頭條":    "https://www.cnyes.com/rss/news/realtimenews",  # 鉅亨「即時」版,比上面綜合版快
+    # "工商時報即時":     "https://ctee.com.tw/feed",                     # 🗑️ V79.6.1 Cloudflare 403
+    # "Anue 即時頭條":    "https://www.cnyes.com/rss/news/realtimenews",  # 🗑️ V79.6.1 失效(error.htm)
     # PTT RSSHub 預留（自架 rsshub instance 後解開）
     # "PTT Stock":      "https://rsshub.app/ptt/stock",
 }

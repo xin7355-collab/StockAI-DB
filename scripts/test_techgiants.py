@@ -137,5 +137,16 @@ try:
 finally:
     _req.get = _real_get
 
+# ⑥ V79.6.1 已確認失效的 4 個新聞來源 ⛔ 不可再放回 RSS_SOURCES(10/23 news_express #354 的 🔎 診斷)
+_DEAD = {
+    'https://www.cnyes.com/rss/cat/tw_stock': '導到 cnyes.com/twstock/error.htm',
+    'https://www.cnyes.com/rss/news/realtimenews': '導到 cnyes.com/twstock/error.htm',
+    'https://www.moneydj.com/RSS/RSSNews.aspx': '導到 moneydj.com/404.htm',
+    'https://ctee.com.tw/feed': 'HTTP 403 Cloudflare 擋機器人',
+}
+_back = [f'{u}({why})' for u, why in _DEAD.items() if u in U.RSS_SOURCES.values()]
+ok('⑥ 已失效的 4 個新聞來源沒有被放回去(要補先確認新網址還活著)', not _back, _back)
+ok('⑥ 空過守門:RSS_SOURCES 還有 ≥5 個來源', len(U.RSS_SOURCES) >= 5, len(U.RSS_SOURCES))
+
 print(f"\n{'❌ %d 項未過:' % len(fails) + chr(10) + '  - ' + (chr(10) + '  - ').join(fails) if fails else '✅ 全部通過'}")
 sys.exit(1 if fails else 0)

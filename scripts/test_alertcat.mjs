@@ -6,8 +6,8 @@
 //   ① 分類**順序**不可換 —— 實跑掃過所有真實標題,真的靠順序決定的有**兩處**:
 //      ・「🥊 第 2 擊｜跌破 月線」同時對上 pos(第2擊)與 exit(跌破)→ pos 必須在前,
 //        否則你自己的部位訊號會變成可以關掉的一般風險訊號。
-//      ・「⛔ 逃頂共振·高危」同時對上 exit(逃頂)與 entry(共振)→ exit 必須在前,
-//        否則一則賣訊會被歸成買點(多空不對稱鐵則直接破功)。
+//      ・「⛔ 看空訊號共振(強)」(V79.6.1 前叫「⛔ 逃頂共振·高危」)同時對上 exit(看空 / 逃頂)與 entry(共振)
+//        → exit 必須在前,否則一則賣訊會被歸成買點(多空不對稱鐵則直接破功)。
 //      ⭐ 誠實紀錄:`day` 在 `pos` 前面目前**沒有重疊**,那條是預防性的。
 //   ② `pos`/`price` 的 `lock` 不可拿掉 —— 那是「你自己設的停損/停利/到價」,
 //      ⛔ 不是本站的預測(CLAUDE.md 既有鐵則:那一類不走任何統計守門)。
@@ -33,8 +33,11 @@ const EXPECT = [
   ['⚠️ 大盤外部壓力很高', 'market'], ['⚠️ 全球熔斷:2 個指數觸發', 'market'], ['⚠️ 外面壓力很大(黑天鵝條件)', 'market'],   // 🔕 V79.3.5 這三則只進鈴鐺(`_alertQuiet`)
   ['🚨 處置股風險', 'dispo'],
   ['📉 高檔出貨訊號', 'exit'], ['🕯️ 長黑K壓力｜國巨', 'exit'], ['🟡 跌破月線', 'exit'],
-  ['⚠️ 創 20 日新低', 'exit'], ['🧯 六脈熄火(盤中)', 'exit'], ['⛔ 逃頂共振·高危', 'exit'],
+  ['⚠️ 創 20 日新低', 'exit'], ['🧯 六脈熄火(盤中)', 'exit'], ['⛔ 看空訊號共振(強)', 'exit'],
+  ['（只記錄、不跳提醒）⛔ 看空訊號共振(強)', 'exit'],   // 🔕 V79.6.1 共振改成只記在 🔔(`_watchlistPulse` 的 quiet)
+  ['⛔ 逃頂共振·高危', 'exit'],                          // 鈴鐺裡 V79.6.1 以前的舊紀錄還是這個名字
   ['🔴 突破 5MA', 'entry'], ['📐 費波納契回撤買點', 'entry'], ['⚡ 六脈點火(盤中)', 'entry'],
+  ['🔴 看多訊號共振(強)', 'entry'], ['（只記錄、不跳提醒）🧊 低基期起漲', 'entry'],
   ['🔴 A+ 級買點共振', 'entry'], ['🚀 創 20 日新高', 'entry'], ['🧊 低基期起漲', 'entry'],
   ['🌇 09/16(三) 盤後零股盤點', 'other'],
 ];
@@ -60,10 +63,10 @@ ok(dayIdx[0] >= 0 && dayIdx[0] < dayIdx[1], '①b 分類順序(預防性):⚡當
 const ord = await pg.evaluate(() => {
   const i = k => app._ALERT_CATS.findIndex(c => c.k === k);
   return { pos: i('pos'), exit: i('exit'), entry: i('entry'),
-           a: app._alertCatOf('🥊 第 2 擊｜跌破 月線').k, b: app._alertCatOf('⛔ 逃頂共振·高危').k };
+           a: app._alertCatOf('🥊 第 2 擊｜跌破 月線').k, b: app._alertCatOf('⛔ 看空訊號共振(強)').k };
 });
 ok(ord.pos < ord.exit && ord.a === 'pos', '①c 「第 2 擊｜跌破」必須歸 👜你的部位(⛔ 不可被 exit 搶走 = 會變成可關掉的)', `pos=${ord.pos} exit=${ord.exit} → ${ord.a}`);
-ok(ord.exit < ord.entry && ord.b === 'exit', '①d 「逃頂共振」必須歸 🚪賣出(⛔ 不可被 entry 搶走 = 賣訊變買點)', `exit=${ord.exit} entry=${ord.entry} → ${ord.b}`);
+ok(ord.exit < ord.entry && ord.b === 'exit', '①d 「看空訊號共振」必須歸 🚪賣出(⛔ 不可被 entry 的「共振」搶走 = 賣訊變買點)', `exit=${ord.exit} entry=${ord.entry} → ${ord.b}`);
 
 // ② 勾掉一類就不再打擾,而且⛔ 只影響那一類
 const g = await pg.evaluate(() => {

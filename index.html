@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.6.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.6.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.6.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -5555,13 +5555,34 @@ const app = {
                     this._alertCache[key] = Date.now();
                     this._fireAlert(title, `${name}(${sym}) ${body}`, sym);
                 };
+                // 🔕 V79.6.1 沒有實測背書的訊號 → 只進 🔔 通知歷史、⛔ 不跳提醒(V76.1.7 同一條;同樣 30 分鐘去重)
+                const quiet = (signal, title, body) => {
+                    // 🔁 設定「嚴格提醒」關掉(alertStrict === false)= 舊行為:照樣跳出來(文字仍只描述)
+                    if (this.settings && this.settings.alertStrict === false) return trigger(signal, title, body);
+                    const key = `${sym}_${signal}`;
+                    if (!this._alertCache) this._alertCache = {};
+                    const last = this._alertCache[key] || 0;
+                    if (Date.now() - last < 30 * 60 * 1000) return;
+                    this._alertCache[key] = Date.now();
+                    this._alertQuiet(`（只記錄、不跳提醒）${title}`, `${name}(${sym}) ${body}`, sym);
+                };
+                // 🔕 V79.6.1 K 線偵測器類先過 `_alertWorthIt`(查成績用偵測器原本的標題;沒過 → 只記錄)
+                const gated = (signal, det, s, dispTitle) => {
+                    const t = dispTitle || s.title;
+                    const body = String(s.msg || '').replace(/<[^>]+>/g, '');
+                    const v = this._alertWorthIt(det, s.title, s.tone);
+                    if (v.ok) trigger(signal, t, body + this._alertEdgeNote(v));
+                    else quiet(signal, t, body);
+                };
 
                 // ⚡ V70.0.9 壓箱寶:六脈點火/熄火「全庫存+自選」背景掃描(60s 輪掃自動推,不用盯盤)
                 //   便宜前濾(漲 ≥2% 才驗點火 / 跌 ≤-1.5% 且持股才驗熄火)→ 才跑 4 次六脈重算,CPU 無感
                 //   今日合成棒:現價當收盤、Fugle 高低、量=前5日均量×估量倍率(單位跟 kdata 自身一致)
                 try {
                     const _chgNow = (nowPrice - prevClose) / prevClose * 100;
-                    const _needFire = _chgNow >= 2, _needOut = _chgNow <= -1.5 && !!costBy[sym];
+                    // 🔬 V79.6.1 六脈點火 / 熄火只在實驗室模式推(V79.0.3:沒回測過的盤中判讀 ⛔ 不推播 —— 這裡當時漏了,陷阱 #37)
+                    const _lab6 = this._labMode();
+                    const _needFire = _lab6 && _chgNow >= 2, _needOut = _lab6 && _chgNow <= -1.5 && !!costBy[sym];
                     if (_needFire || _needOut) {
                         const vp = this._chuVolumeProgress(fugle, kdata);
                         const volRatio = (vp && vp.estimated && vp.prevVol) ? vp.estimated / vp.prevVol : 0;
@@ -5577,9 +5598,9 @@ const app = {
                             for (let k = 0; k <= 2; k++) { const pv = this._sixMeridianCalc(k === 0 ? kdata : kdata.slice(0, kdata.length - k)); if (pv) prevs.push(pv.okN); }
                             if (_needFire && prevs.length && Math.min(...prevs) <= 2 && nowV.okN >= 4 && volRatio >= 1.5) {
                                 const _lo = (+fugle.dayLow || nowPrice).toFixed(2);
-                                trigger('sixFire', '⚡ 六脈點火(盤中)', `盤中共振 ${nowV.okN} 分 + 估量 ${volRatio.toFixed(1)}× → 低檔齊發參考買進;鐵律:停損=今日最低 ${_lo},收盤跌破就走(誘多)`);
+                                trigger('sixFire', '⚡ 六脈點火(盤中)', `盤中共振 ${nowV.okN} 分 + 估量 ${volRatio.toFixed(1)}× → 低檔六脈齊發(🔬 實驗室:沒有回測過,⛔ 不是買進訊號;今日最低 ${_lo})`);
                             } else if (_needOut && prevs.length && Math.max(...prevs) >= 4 && nowV.okN <= 2) {
-                                trigger('sixOut', '🧯 六脈熄火(盤中)', `共振 ${Math.max(...prevs)} 分 → 盤中僅剩 ${nowV.okN} 分且跌 ${_chgNow.toFixed(1)}% → 持股先減碼/停利,別等全翻空`);
+                                trigger('sixOut', '🧯 六脈熄火(盤中)', `共振 ${Math.max(...prevs)} 分 → 盤中僅剩 ${nowV.okN} 分且跌 ${_chgNow.toFixed(1)}%(🔬 實驗室:沒有回測過;手上的照你的出場規則走)`);
                             }
                         }
                     }
@@ -5605,14 +5626,14 @@ const app = {
                             const _burst = _est && _v20lots > 0 && _est >= _v20lots * 2;            // 今日估量 ≥2× 月均量
                             const _chg = (nowPrice - prevClose) / prevClose * 100;
                             if (_dry && _burst && _chg >= 3.5) {
-                                trigger('lowbaseIgnite', '🧊 低基期起漲',
-                                    `位階 ${_pos.toFixed(0)}%(距高點 −${_dd.toFixed(0)}%)長期量縮後今日爆量 ${(_est / _v20lots).toFixed(1)}× + 漲 ${_chg.toFixed(1)}% → 跌深打底第一根攻擊量;鐵律:停損設今日最低,收盤跌破就走`);
+                                quiet('lowbaseIgnite', '🧊 低基期起漲',
+                                    `位階 ${_pos.toFixed(0)}%(距高點 −${_dd.toFixed(0)}%)長期量縮後今日爆量 ${(_est / _v20lots).toFixed(1)}× + 漲 ${_chg.toFixed(1)}%(跌深後第一根大量;⛔ 不是買進訊號,要不要買照決策台)`);
                             }
                         }
                     }
                 } catch (_) {}
 
-                if (prevClose <= ma5 && nowPrice > ma5)  trigger('break5',  '🔴 突破 5MA',   `現價 ${nowPrice.toFixed(2)} 上穿 5MA ${ma5.toFixed(2)}(停利訊號)${upTag}`);
+                if (prevClose <= ma5 && nowPrice > ma5)  trigger('break5',  '🔴 突破 5MA',   `現價 ${nowPrice.toFixed(2)} 站上 5 日線 ${ma5.toFixed(2)}${upTag}`);
                 // V18.8 — 朱家泓:跌破 5MA = 短線停利/停損(原本只監突破,缺賣訊)
                 // 🚨 V75.0.1 這裡本來**寫死 5MA**,而 `_pbExitSweep` 已改讀 `_exitPrimary`
                 //   → 同一天可能收到**兩則互相矛盾的通知**(一則叫你走、一則沒動靜)。
@@ -5671,7 +5692,7 @@ const app = {
                         const _stabilize = prevClose < ma5 && nowPrice >= ma5;   // 昨在5MA下、今站回=止穩訊號
                         if (_drop <= -25 && _bias20 < -12 && _stabilize) {
                             const _lo30 = Math.min(...kdata.slice(-30).map(r => +r.low || +r.close || Infinity).filter(v => Number.isFinite(v)));
-                            trigger('heavyRebound', '🏋️ 權值股超跌反彈候選', `從近半年高 ${_hi120.toFixed(1)} 跌 ${Math.abs(_drop).toFixed(0)}% + 超賣 + 站回5MA(止穩),ETF/法人護盤易彈 → 可小量搏反彈,跌破前低 ${Number.isFinite(_lo30) ? _lo30.toFixed(1) : '前低'} 停損`);
+                            quiet('heavyRebound', '🏋️ 權值股超跌反彈候選', `從近半年高 ${_hi120.toFixed(1)} 跌 ${Math.abs(_drop).toFixed(0)}% + 超賣 + 站回 5 日線(近 30 天最低 ${Number.isFinite(_lo30) ? _lo30.toFixed(1) : '—'});⛔ 不是買進訊號,要不要買照決策台`);
                         }
                     }
                 }
@@ -5718,18 +5739,19 @@ const app = {
                     const _scanData = (_todayBar && !_lastIsToday) ? [...kdata, _todayBar] : kdata;
                     const _sc = (this._detectVolPriceScenario(_scanData) || [])[0];
                     if (_sc && /出貨|起漲攻擊|止跌訊號|回後買點/.test(_sc.title)) {   // V66.5 推 出貨/出貨確認/攻擊/回後買/止跌(洗盤醞釀不吵)
-                        trigger('vpScenario_' + _sc.title.replace(/[^一-龥A-Za-z]/g, ''), _sc.title, _sc.msg.replace(/<[^>]+>/g, ''));
+                        gated('vpScenario_' + _sc.title.replace(/[^一-龥A-Za-z]/g, ''), '_detectVolPriceScenario', _sc);
                     }
                     // 📊 V66.5 依建議3:盤中頂背離推播(用 settled kdata 避免盤中假訊,價噴但動能背離=該跑)
-                    const _topDiv = [...(this._detectRsiDivergence(kdata) || []), ...(this._detectObvDivergence(kdata) || []), ...(this._detectIndicatorDivergence(kdata) || [])].find(s => s.tone === 'bear');
-                    if (_topDiv) trigger('topdiv_' + _topDiv.title.replace(/[^一-龥A-Za-z]/g, ''), '⚠️ ' + _topDiv.title, _topDiv.msg.replace(/<[^>]+>/g, ''));
+                    const _tagD = (d, a) => (a || []).map(x => ({ ...x, _d: d }));   // 🔕 V79.6.1 記住是哪一支偵測器(查實測成績要用)
+                    const _topDiv = [..._tagD('_detectRsiDivergence', this._detectRsiDivergence(kdata)), ..._tagD('_detectObvDivergence', this._detectObvDivergence(kdata)), ..._tagD('_detectIndicatorDivergence', this._detectIndicatorDivergence(kdata))].find(s => s.tone === 'bear');
+                    if (_topDiv) gated('topdiv_' + _topDiv.title.replace(/[^一-龥A-Za-z]/g, ''), _topDiv._d, _topDiv, '⚠️ ' + _topDiv.title);
                     // 💰 V66.6 盤中精準買點推播:口袋支點(主力偷買)+ 費波納契回撤(黃金位止穩)
-                    const _buySetup = [...(this._detectPocketPivot(_scanData) || []), ...(this._detectFibRetrace(_scanData) || [])].find(s => s.tone === 'bull');
-                    if (_buySetup) trigger('buyset_' + _buySetup.title.replace(/[^一-龥A-Za-z]/g, ''), _buySetup.title, _buySetup.msg.replace(/<[^>]+>/g, ''));
-                    // 🎯 V66.7 A+ 級買點共振推播(≥4 個獨立策略同向且無反向,最高信度,每日 1 次去重靠 30 分冷卻)
+                    const _buySetup = [..._tagD('_detectPocketPivot', this._detectPocketPivot(_scanData)), ..._tagD('_detectFibRetrace', this._detectFibRetrace(_scanData))].find(s => s.tone === 'bull');
+                    if (_buySetup) gated('buyset_' + _buySetup.title.replace(/[^一-龥A-Za-z]/g, ''), _buySetup._d, _buySetup);
+                    // 🎯 V66.7 多訊號共振(≥4 個同向且無反向)—— 🔕 V79.6.1 這個組合沒有實測成績 → 只記在 🔔、只描述(名字跟 K 線頁共振框一致)
                     const _reso = this._signalResonance(_scanData);
-                    if (_reso && _reso.nb >= 4 && _reso.ns === 0) trigger('resoAplus', '🔴 A+ 級買點共振', `${_reso.nb} 個獨立策略同時看多:${_reso.bull.slice(0, 5).join('、')} → 最高信度買點,回檔就是機會(仍守停損)。`);
-                    else if (_reso && _reso.ns >= 3 && _reso.nb === 0) trigger('resoTop', '⛔ 逃頂共振·高危', `${_reso.ns} 個賣訊同時亮:${_reso.bear.slice(0, 5).join('、')} → 逃命訊號,持股快出、空手勿接刀。`);
+                    if (_reso && _reso.nb >= 4 && _reso.ns === 0) quiet('resoAplus', '🔴 看多訊號共振(強)', `${_reso.nb} 個訊號同時看多:${_reso.bull.slice(0, 5).join('、')}(這是描述,⛔ 不是買點;要不要買照決策台)`);
+                    else if (_reso && _reso.ns >= 3 && _reso.nb === 0) quiet('resoTop', '⛔ 看空訊號共振(強)', `${_reso.ns} 個賣訊同時亮:${_reso.bear.slice(0, 5).join('、')}(別追;手上的照你的出場規則走)`);
                 } catch (_) {}
 
                 await new Promise(r => setTimeout(r, 1500)); // 每股間隔 1.5s 避免 Fugle 429
@@ -5824,7 +5846,7 @@ const app = {
      *     **真的會重疊、真的靠順序決定的有兩處**(⛔ 不是我一開始以為的那一處):
      *       ・「🥊 第 2 擊｜跌破 月線」同時對上 `pos`(第2擊)與 `exit`(跌破)
      *         → **`pos` 必須在前**,否則它會被當成一般風險訊號而**關得掉**(那是你的部位)。
-     *       ・「⛔ 逃頂共振·高危」同時對上 `exit`(逃頂)與 `entry`(共振)
+     *       ・「⛔ 看空訊號共振(強)」(V79.6.1 前叫「逃頂共振·高危」)同時對上 `exit`(看空)與 `entry`(共振)
      *         → **`exit` 必須在前**,否則一則賣訊會被歸成買點。
      *     ⭐ 誠實紀錄:`day` 排在 `pos` 前面**目前沒有重疊**(`pos` 的 regex 沒有「平倉」)
      *        → 那是**預防性**的,⛔ 不是現在就 load-bearing;測試 ①b 把它釘住免得日後加字踩到。
@@ -5847,7 +5869,7 @@ const app = {
           d: '官方名單裡有你手上或自選的股票(⛔ 這是事實不是預測)。' },
         { k: 'market', n: '🌡️ 大盤風險 / 熔斷',   re: /大盤|熔斷|黑天鵝|風險指數|恐慌|警戒/,
           d: '台股風險指數破你設的門檻、全球指數熔斷、外面壓力很大(黑天鵝條件)。🔕 只記在 🔔 鈴鐺、⛔ 不跳通知 —— 只描述外面的壓力,不是賣出訊號。' },
-        { k: 'exit',   n: '🚪 賣出 / 風險訊號',   re: /出貨|背離|轉弱|轉偏空|做頭|壓力沉重|逃命|逃頂|熄火|減碼|賣訊|末段|過熱|長黑|跌破|新低/,
+        { k: 'exit',   n: '🚪 賣出 / 風險訊號',   re: /出貨|背離|轉弱|轉偏空|做頭|壓力沉重|逃命|逃頂|熄火|減碼|賣訊|末段|過熱|長黑|跌破|新低|看空/,
           d: '不是你的部位,但那一檔出現偏空訊號。⚠️ 關掉之前想一下:**整套會賺靠的就是錯的時候早點跑** —— 少提醒一次出場的代價,比多提醒一次大。' },
         { k: 'entry',  n: '📈 進場 / 買點訊號',   re: /買點|突破|點火|共振|回撤|止穩|起漲|新高|反彈|進場|轉強/,
           d: 'K 棒出現的買點訊號(沒把握的只記在 🔔 歷史、不打擾你)。⚠️ 它不是你選的策略的買點 —— 要買什麼照決策台。⭐ 買點錯過還有下一次 → 這一類最適合關掉。' },
@@ -8569,10 +8591,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.6.0',
+    _APP_VERSION: 'V79.6.1',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.6.1', d: [
+            '🔕 盤中即時警報:沒有把握的買賣訊號改成只記在 🔔 通知紀錄,不再跳出來',
+            '🔧 新聞少掉 4 個已經失效的來源',
+        ], dt: '2026-10-23' },
         { v: 'V79.6.0', d: [
             '🔧 背景整理:晚上整理資料時提早準備好掃描工具、白天也算得到順逆價差(畫面沒有變)',
         ], dt: '2026-10-23' },
@@ -8753,7 +8779,6 @@ ${list}
         { v: 'V78.5.4', d: ['🔧 小修正'] },
         { v: 'V78.5.3', d: ['🔧 小修正'] },
         { v: 'V78.5.2', d: ['🔧 小修正'] },
-        { v: 'V78.5.1', d: ['🔧 小修正'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },

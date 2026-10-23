@@ -16,6 +16,12 @@
  * ⑤ V79.5.9 K 線頁「🗣️ 朱老師這樣看」(renderChuKbarVerdict + 主升段體檢 _mainRiseStage)⛔ 不可自己給進出指令
  *    (跌破 5MA 先停利 / 持股分批出 / 跌破前低就撤 / 快進快出 / 站穩月線 + 帶量長紅再進 …)——
  *    全站只有一套:要不要買照決策台(這一檔自己的觸發價),手上的照三條出場。INJECT=5:換回「順勢做多,買點守 5MA」→ ⑤ 必須紅。
+ * ⑥ V79.6.1 盤中即時警報(`_watchlistPulse`,設定「自選盯盤提醒」打開才跑)⛔ 不可再跳沒回測過的買賣指令:
+ *    ・K 線偵測器類(量價情境 / 頂背離 / 口袋支點・費波納契)先過 `_alertWorthIt`,沒過 → 只記在 🔔(`quiet`)
+ *    ・低基期起漲 / 權值股超跌反彈 / 多訊號共振 → 只記在 🔔、只描述(⛔「停損設今日最低」「可小量搏反彈」「最高信度買點」「持股快出」)
+ *    ・六脈點火 / 熄火只在實驗室模式(V79.0.3 那條當時漏了這處)
+ *    ・設定「嚴格提醒」關掉(`alertStrict === false`)= 舊行為:那些照樣跳(⭐ 決定性對照,同一份資料)
+ *    INJECT=6:低基期起漲換回 trigger + 舊文字 → ⑥ 必須紅;INJECT=7:六脈拿掉實驗室守門 → ⑥ 必須紅。
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
@@ -33,8 +39,11 @@ const BAN = /(減碼|加碼|買進|賣出|賣 ?1\/3|現金比例|Call|Put|做多
 
 let src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 let file = path.join(ROOT, 'index.html');
-if (['1', '2', '3', '4', '5'].includes(INJ)) {
-    if (INJ === '5') src = src.replace("'型態偏多 —— 要不要買照決策台(看這一檔自己的觸發價),手上的照你的出場規則走。'", "'順勢做多,買點守 5MA,跌破 5MA 先停利,別凹單。'");
+if (['1', '2', '3', '4', '5', '6', '7'].includes(INJ)) {
+    if (INJ === '6') src = src.replace("quiet('lowbaseIgnite', '🧊 低基期起漲',", "trigger('lowbaseIgnite', '🧊 低基期起漲',")
+                              .replace('(跌深後第一根大量;⛔ 不是買進訊號,要不要買照決策台)', ' → 跌深打底第一根攻擊量;鐵律:停損設今日最低,收盤跌破就走');
+    else if (INJ === '7') src = src.replace('const _needFire = _lab6 && _chgNow >= 2,', 'const _needFire = _chgNow >= 2,');
+    else if (INJ === '5') src = src.replace("'型態偏多 —— 要不要買照決策台(看這一檔自己的觸發價),手上的照你的出場規則走。'", "'順勢做多,買點守 5MA,跌破 5MA 先停利,別凹單。'");
     else if (INJ === '3') src = src.replace("'弱勢明顯 —— 別接刀;手上的照你的出場規則走'", "'弱勢明顯,持股分批停利、空手不接刀'");
     else if (INJ === '4') src = src.replace('<div>• ⛔ 不設停利單、⛔ 不先賣一半 —— 照上面三條走就好</div>', '<div>• 停利觸發 ≥ 120(先賣一半,剩的守月線)</div>');
     else if (INJ === '1') src = src.replace("before: '公布前後這兩天,台股波動常常比較大;但漲跌方向沒有固定規律。',", "before: '事前 1-2 天:減碼短線部位、現金比例拉到 30%。',");
@@ -113,6 +122,29 @@ if (m) {
        /要不要買照決策台/.test(ck || '') && ((ck || '').match(/照你的出場規則走/g) || []).length >= 9, ((ck || '').match(/照你的出場規則走/g) || []).length);
 }
 
+// ⑥ 🔕 V79.6.1 盤中即時警報(_watchlistPulse)⛔ 不可再跳沒回測過的買賣指令(靜態;⛔ 註解不算)
+{
+    const L = src.split('\n');
+    const head = /^    (?:async )?([_A-Za-z0-9]+)\(.*\) *\{ *$/;
+    const i = L.findIndex(x => (x.match(head) || [])[1] === '_watchlistPulse');
+    let j = i + 1; while (i >= 0 && j < L.length && !head.test(L[j])) j++;
+    const wp = i < 0 ? '' : L.slice(i, j).map(x => x.replace(/^\s*\/\/.*$/, '').replace(/[ \t]+\/\/[^\n]*$/, '')).join('\n');
+    ok('⑥a 空過守門:找得到 _watchlistPulse 而且有 quiet / gated 兩個 helper', wp.length > 5000 && /const quiet = \(signal, title, body\) =>/.test(wp) && /const gated = \(signal, det, s, dispTitle\) =>/.test(wp), wp.length);
+    const BAN6 = /停損設今日最低|收盤跌破就走|可小量搏反彈|最高信度買點|回檔就是機會|持股快出|空手勿接刀|逃命訊號|停利訊號|持股先減碼|參考買進|A\+ 級買點|逃頂共振/;
+    const hits = wp.split('\n').filter(x => BAN6.test(x)).map(x => x.match(BAN6)[0] + ' ← ' + x.trim().slice(0, 70));
+    ok('⑥b 盤中警報 ⛔ 不再寫「停損設今日最低 / 可小量搏反彈 / 最高信度買點 / 持股快出 / 停利訊號 / 持股先減碼」', hits.length === 0, hits.slice(0, 3).join(' | '));
+    ok('⑥c 六脈點火 / 熄火只在實驗室模式(兩個 _need* 都要先過 _lab6)',
+       /const _lab6 = this\._labMode\(\);/.test(wp) && /const _needFire = _lab6 && /.test(wp) && /_needOut = _lab6 && /.test(wp));
+    const viaGate = ['vpScenario_', 'topdiv_', 'buyset_'];
+    ok('⑥d 量價情境 / 頂背離 / 口袋支點・費波納契 一律先過實測守門(gated),⛔ 直接 trigger',
+       viaGate.every(k => wp.includes(`gated('${k}'`) && !wp.includes(`trigger('${k}'`)), viaGate.filter(k => !wp.includes(`gated('${k}'`)).join(','));
+    const viaQuiet = ['lowbaseIgnite', 'heavyRebound', 'resoAplus', 'resoTop'];
+    ok('⑥e 低基期起漲 / 權值股超跌反彈 / 兩種共振 只記在 🔔(quiet),⛔ 直接 trigger',
+       viaQuiet.every(k => wp.includes(`quiet('${k}'`) && !wp.includes(`trigger('${k}'`)), viaQuiet.filter(k => !wp.includes(`quiet('${k}'`)).join(','));
+    ok('⑥f quiet 照「嚴格提醒」逃生門:alertStrict === false → 走 trigger(舊行為)',
+       /const quiet = [^\n]*\n(?:[ \t]*\n)*[^\n]*alertStrict === false\) return trigger\(signal, title, body\)/.test(wp));
+}
+
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
@@ -161,6 +193,89 @@ try {
     ok('④c ⛔ 停利觸發 / 先賣一半(否定句以外)/ 回檔 5% / −10% 鐵血停損',
        !/停利觸發|回檔 5%|-10%|−10%/.test(G.t) && !/先賣一半/.test(G.t.replace('⛔ 不先賣一半', '')), G.t.slice(0, 300));
     ok('④d K 棒型態說明頁尾要講本站規則', /本站的買賣照決策台/.test(G.kb), G.kb.slice(-160));
+
+    // ⑥ 實跑:同一份假資料跑三次 —— 一般模式 / 實驗室模式 / 關掉嚴格提醒(⭐ 決定性對照)
+    const P = await page.evaluate(async () => {
+        const SYM = '9999';
+        const KD = [];
+        for (let i = 0; i < 130; i++) {   // 一年高點 150 → 跌到 100 打底、最後 6 天量縮;今天 103(漲 4%、站上 5 日線、爆量)
+            const c = i < 70 ? 150 : (i < 129 ? 100 : 99);
+            const d = new Date(Date.UTC(2025, 9, 1) + i * 86400000).toISOString().slice(0, 10);
+            KD.push({ date: d, open: c, high: c * 1.01, low: c * 0.99, close: c, volume: i >= 124 ? 500 : 1000 });
+        }
+        const keep = {};
+        const stub = (k, v) => { keep[k] = app[k]; app[k] = v; };
+        const fired = [], quietL = [];
+        let sixCalls = 0;
+        stub('isMarketOpen', () => true);
+        stub('_comboWatchGet', () => ({}));
+        stub('_getInventory', () => []);
+        stub('_isEtfSym', () => false);
+        stub('fetchFugleData', async () => ({ price: 103, open: 100, high: 104, low: 99.5, dayHigh: 104, dayLow: 99.5, volume: 9000 }));
+        stub('_patchQuoteVol', () => {});
+        stub('_comboCheck', () => {});
+        stub('_intradayQuickTag', () => '');
+        stub('_chuVolumeProgress', () => ({ estimated: 5000, prevVol: 100 }));
+        stub('_chuElapsedMinutes', () => null);
+        stub('_kbarTryFire', () => {});
+        stub('_leaderMine', () => new Set());
+        stub('_exitPrimary', () => null);
+        stub('_kbarFiredToday', () => true);
+        stub('_sixMeridianCalc', d => { sixCalls++; return { okN: d.length > KD.length ? 5 : 1 }; });
+        stub('_detectVolPriceScenario', () => [{ title: '🔴 高檔出貨量', tone: 'bear', msg: '<b>高檔爆量</b>' }]);
+        stub('_detectRsiDivergence', () => []);
+        stub('_detectObvDivergence', () => [{ title: 'OBV 頂背離', tone: 'bear', msg: '價創高 OBV 沒創高' }]);
+        stub('_detectIndicatorDivergence', () => []);
+        stub('_detectPocketPivot', () => [{ title: '💰 口袋支點(主力偷買)', tone: 'bull', msg: '下跌日量都小於今天' }]);
+        stub('_detectFibRetrace', () => []);
+        stub('_signalResonance', () => ({ nb: 5, ns: 0, bull: ['甲', '乙', '丙', '丁', '戊'], bear: [] }));
+        stub('_fireAlert', (t, b) => { fired.push(`${t}｜${b}`); });
+        stub('_alertQuiet', (t, b) => { quietL.push(`${t}｜${b}`); });
+        const keepFav = [app.favGroups, app.activeGroupName, app.monitorList, app.settings];
+        app.favGroups = { T6: [SYM] }; app.activeGroupName = 'T6'; app.monitorList = [];
+        const idbGet = app.idb.get;
+        app.idb.get = async k => (k === `proTerm_kline_${SYM}` ? { data: KD } : idbGet.call(app.idb, k));
+        const N0 = window.Notification;
+        try { Object.defineProperty(window, 'Notification', { value: { permission: 'granted' }, configurable: true, writable: true }); } catch (_) {}
+        const st0 = window.setTimeout;
+        window.setTimeout = (f, ms, ...a) => st0(f, ms === 1500 ? 0 : ms, ...a);   // 每檔間隔 1.5 秒 → 測試裡不用等
+        const run = async (lab, strict) => {
+            fired.length = 0; quietL.length = 0; sixCalls = 0; app._alertCache = {}; app._wlCursor = 0;
+            app.settings = Object.assign({}, keepFav[3] || {}, { watchlistAlert: true, alertStrict: strict });
+            document.documentElement.classList.toggle('lab', !!lab);
+            await app._watchlistPulse();
+            return { fired: fired.slice(), quiet: quietL.slice(), sixCalls };
+        };
+        let R;
+        try {
+            R = { norm: await run(false, undefined), lab: await run(true, undefined), loose: await run(false, false) };
+        } finally {
+            window.setTimeout = st0;
+            document.documentElement.classList.remove('lab');
+            Object.entries(keep).forEach(([k, v]) => { app[k] = v; });
+            [app.favGroups, app.activeGroupName, app.monitorList, app.settings] = keepFav;
+            app.idb.get = idbGet;
+            try { Object.defineProperty(window, 'Notification', { value: N0, configurable: true, writable: true }); } catch (_) {}
+        }
+        return R;
+    });
+    const has = (arr, re) => arr.some(x => re.test(x));
+    const NOPOP = [/^🧊 低基期起漲/, /^🔴 高檔出貨量/, /^⚠️ OBV 頂背離/, /^💰 口袋支點/, /^🔴 看多訊號共振/, /^⚡ 六脈點火/];
+    ok('⑥g 空過守門:實跑真的走到盤中掃描(突破 5 日線那則有跳)', has(P.norm.fired, /^🔴 突破 5MA｜/), JSON.stringify(P.norm.fired).slice(0, 200));
+    ok('⑥h 一般模式:沒把握的那幾則 ⛔ 跳出來(低基期起漲 / 量價情境 / 頂背離 / 口袋支點 / 共振 / 六脈)',
+       NOPOP.every(re => !has(P.norm.fired, re)), P.norm.fired.filter(x => NOPOP.some(re => re.test(x))).join(' | ').slice(0, 260));
+    const QWANT = ['🧊 低基期起漲', '🔴 高檔出貨量', '⚠️ OBV 頂背離', '💰 口袋支點(主力偷買)', '🔴 看多訊號共振(強)'];
+    ok('⑥i 那幾則改成只記在 🔔(一則都沒不見)', QWANT.every(t => P.norm.quiet.some(x => x.startsWith('（只記錄、不跳提醒）' + t))),
+       QWANT.filter(t => !P.norm.quiet.some(x => x.startsWith('（只記錄、不跳提醒）' + t))).join(','));
+    const BANRT = /停損設今日最低|收盤跌破就走|可小量搏反彈|最高信度買點|回檔就是機會|停利訊號|參考買進/;
+    ok('⑥j 跳出來的與記在 🔔 的文字都 ⛔ 有買賣指令', ![...P.norm.fired, ...P.norm.quiet, ...P.lab.fired].some(x => BANRT.test(x)),
+       [...P.norm.fired, ...P.norm.quiet, ...P.lab.fired].filter(x => BANRT.test(x)).join(' | ').slice(0, 260));
+    ok('⑥k 一般模式連六脈都不算(_sixMeridianCalc 0 次)', P.norm.sixCalls === 0, P.norm.sixCalls);
+    ok('⑥l 實驗室模式:六脈點火照樣跳、而且寫「⛔ 不是買進訊號」(決定性對照:同一份資料)',
+       P.lab.sixCalls > 0 && has(P.lab.fired, /^⚡ 六脈點火\(盤中\)｜.*⛔ 不是買進訊號/), JSON.stringify(P.lab.fired).slice(0, 200));
+    ok('⑥m 關掉嚴格提醒 = 舊行為:同一份資料那五則都跳出來(⭐ 決定性對照)',
+       QWANT.every(t => P.loose.fired.some(x => x.startsWith(t))) && !P.loose.quiet.some(x => x.startsWith('（只記錄')),
+       JSON.stringify(P.loose.fired).slice(0, 260));
 } finally {
     await browser.close();
     if (file !== path.join(ROOT, 'index.html')) fs.rmSync(file, { force: true });
