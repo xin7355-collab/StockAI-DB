@@ -222,7 +222,9 @@ done
 - **純前端 / 小邏輯改動完成、四驗證通過後**：**不需問使用者**,直接 `git checkout main && git merge <feature-branch> --ff-only && git push origin main`,讓 `deploy_pages.yml` 自動上線
 - **採礦 `*.py` 改動**:同上,直接 merge main + push,由 `daily_miner.yml` 接手
 - **無需先開 PR**;若 web session 開在 feature branch,完成就 fast-forward 合併回 main
-- ⛔ **仍須先問使用者**的例外:① 大規模重構/架構大改 ② 刪檔/刪資料 ③ 改 GitHub Actions workflow 邏輯 ④ 動 `data/` 內快取 ⑤ 不確定是否會壞時
+- 🏃 **2026-10-23 使用者明示:「你就直接一直做下去就好」(不要一直停下來要我確認)** → 改 workflow、改採礦、大改版面、動 `data/` 快取都**直接做**,做完回報「做了什麼 + 怎麼換回」。
+- ⛔ **只剩兩件仍須先問使用者**(做錯了沒辦法用 `git revert` 救回來):① **會動真錢的開關**(自動下單真實帳戶,例如 `PARK_LIVE_OK`、`LIVE`)② **刪掉使用者自己存的資料 / 不可回復的刪除**(例:IndexedDB 的貼上報告、AI 圖,或 force-push 蓋掉別人的東西)
+- ⚠️ 雲端 session 的「Plan(計畫)」模式本來就會停下來等核准、排程工具(send_later / update_trigger)在 Auto 模式也可能被攔 —— 那兩個不是 CLAUDE.md 管得到的;要不被問,使用者在輸入框旁的下拉選單選「Auto」,並自己把 `permissions.allow` 寫進 `.claude/settings.json`(Claude 自己改那個檔會被安全檢查擋下,⛔ 不可繞過)
 - 壞了 → 使用者說「壞了」→ Claude 直接修;或 `git revert HEAD` 回退
 
 ### 🔁 V75.0.9 策略預設值「自動替換」規則(使用者明示,永久授權)
@@ -600,7 +602,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 ### 溝通風格
 - **語言**:繁體中文回答(永遠不英文)
 - **風格**:**直接做別問**,不要長篇解釋,重點條列;一次回多件事用編號 + 短句
-- **問問題時機**:**只在「重大事件」才問**(架構大改、刪檔/刪資料、改 GitHub Actions、動採礦邏輯、不確定會不會壞);其他直接做。連「需要繼續嗎/部署嗎/版本要不要 bump」都不用問
+- **問問題時機**(2026-10-23 更新,使用者:「直接一直做下去就好」):**只有兩件先問** —— ① 會動真錢的開關 ② 刪掉使用者自己存的資料 / 不可回復的刪除(詳見上面「Claude 永久授權」)。其他(含架構大改、改 GitHub Actions、動採礦邏輯)直接做、做完回報怎麼換回;拿不準的取捨挑一個合理預設先做,回報時寫出來。連「需要繼續嗎/部署嗎/版本要不要 bump」都不用問
 - **使用者性格**:看不懂程式碼,壞了再說;Claude 永久授權 push main 直接 deploy
 
 ### 數字呈現
