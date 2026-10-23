@@ -1164,24 +1164,28 @@ details.colart[open] .colsum{display:none}
      ⛔ 深度查詢是外部網頁深連結(使用者選的),⛔ 不叫 App 內 AI;先複製到剪貼簿再開(V76.2.1 的做法)。 -->
 <div id="tabConf" class="hidden">
   <div class="panel">
-    <h2>法說會 <span class="sub">時間表 + 官方擇要 ・ 只描述,不下多空</span></h2>
+    <h2>法說會 <span class="sub">公司自己在法說會說了什麼 ・ 只描述,不是買賣建議</span></h2>
     <div class="labbar" id="confBar"></div>
     <div style="display:flex;gap:6px;align-items:center;margin:6px 0">
-      <input id="confQ" type="search" placeholder="搜公司 / 代號 / 擇要關鍵字(例:HBM、毛利率、資本支出)" oninput="PRO.confSearch(this.value)" style="flex:1;min-width:0">
+      <input id="confQ" type="search" placeholder="搜公司 / 代號 / 簡報裡的詞(例:CPO、機器人、資本支出)" oninput="PRO.confSearch(this.value)" style="flex:1;min-width:0">
       <button class="lbtn" id="confQx" onclick="PRO.confSearch('')" style="display:none">✕</button>
     </div>
     <div id="confMeta" class="note"></div>
     <div id="confAlert"></div>
     <div class="labbar" id="confInd"></div>
-    <div id="confReact"></div>
     <div id="confBody"></div>
+    <div id="confReact"></div>
     <details class="sbnote" style="margin-top:8px"><summary>📖 這頁在算什麼 <span style="color:var(--dim2)">展開 ▾</span></summary>
       <div class="note">
-        ⭐ 來源是公開資訊觀測站的「法人說明會一覽表」(上市 + 上櫃),每個交易日收盤後跟採礦一起更新,涵蓋前 60 天到後 45 天。<br>
-        📝 「擇要訊息」是公司自己填的官方摘要;簡報 PDF 多半<b>會後才上傳</b>,未開的場次會寫「公司尚未提供」。<br>
+        ⭐ 場次來源是公開資訊觀測站的「法人說明會一覽表」(上市 + 上櫃),每個交易日收盤後更新,涵蓋前 60 天到後 45 天。<br>
+        📄 <b>簡報重點</b>:每天收盤後把已開完那幾場的<b>中文簡報</b>(PDF / PPTX)讀一遍,抓出每頁標題、講到「之後」的句子(展望 / 預期 / 目標)、
+        有數字的營運句子(營收 / 毛利率 / 資本支出 / 產能 / 出貨…),<b>全部附頁碼、照抄原文</b>。只有圖片的簡報讀不到字(⛔ 不猜)。<br>
+        🆕 <b>這次第一次提到</b> = 這家公司前 4 份簡報都沒出現過的產品 / 技術詞,而且不是這一季兩成以上公司都在講的詞(擋掉「AI」這種大家都講的)。
+        還沒有上一份可以比的寫「第一次收錄」(⛔ 不說新)。<br>
+        🤖 <b>一句話</b>:AI 只讀上面抽出來的句子;AI 寫的數字在原文找不到 → 那一點整點拿掉。<br>
         ⚠️ <b>財報公布截止日 ≠ 法說會</b>(那是兩件事,本站別處的「財報最晚 X 日」講的是前者)。<br>
-        🚨 法說會前後<b>波動常變大</b>,但「會漲還是會跌」本站實測 37 種行事曆日<b>方向 0 個成立</b> → 這頁只描述,⛔ 不給方向、不給部位。
-        該盯的是擇要裡的<b>營收、毛利率、資本支出、產能</b>這幾個數字有沒有兌現。
+        🚨 「剛開完法說會」本身<b>不是買進理由</b>(下面「📊」那段是同一天所有股票當對照的實測);
+        簡報<b>內容</b>(新東西多不多、講得保不保守)有沒有用還在測 → 這頁只描述,⛔ 不給方向、不給部位。
       </div>
     </details>
   </div>
@@ -8147,6 +8151,9 @@ const PRO = {
       { col: {"s": "破解迷思", "q": "領頭羊換倉日那天收盤漲停(或跌停)的股票,隔天還要照名單買嗎?還是那一份錢改放 0050?", "a": "照買。換倉日收盤就漲停的那一檔,不買改放 0050、或改買下一名,都比照買差。", "num": "100 萬照規則做:照買 → 近 4 年約 10.9 倍、16 年約 71 倍;漲停那檔不買、錢放 0050 → 10.5 倍 / 58.5 倍;改買下一名 → 9.6 倍 / 30.8 倍。", "mean": "換倉日收盤漲停只代表那天很強,不代表之後會比較差;照名單買,只有「隔天一開盤就漲停、根本買不到」才不追。", "do": ["換倉日收盤漲停的那一檔,隔天照名單買", "隔天一開盤就漲停 → 不追,那一份錢先放 0050", "換倉日收盤跌停的很少見,一樣照名單買"], "warn": "近 4 年那段,不買漲停股在 17 種起點裡有 10 種比較好,但總共還是少賺;拉長到 16 年只剩 1 種比較好。", "how": "同一套領頭羊規則,只改「換倉日收盤剛好漲停(或跌停)的那一檔怎麼處理」:照買 / 不買錢放 0050 / 改買下一名,再把漲停門檻改成 7%、8%、9% 看結果是不是一片,另跑「隨機少買同樣比例」當對照,兩段各 17 種起點。", "range": "2022-09~2026-10 與 2011~2026 兩段・成交金額前 100 大的普通股", "trig": "none", "trigWhy": "決策台「今天要做的事」在換倉那幾天就直接寫「換倉日收盤漲停的照買」,不用另外跳專欄", "u": "2026-10-12"}, r: 70, k: 'lead-rklu', u: '2026-10-12', t: '🟥 <b>👑 換倉日收盤漲停的那一檔「隔天不買、錢改放 0050」或「改買下一名」—— 兩段都輸照買;16 年 17 種起點只有 1 種比較好</b>', w: '⛔ 照名單買(現行);只有隔天一開盤就漲停才不追', how: 'leader_probe 加 rkLu / rkLd / rkTh / rkSham / trace(⛔ 不設時逐位相同,selftest ㊴):換倉日收盤鎖漲停(收盤 ≥ 前收 ×(1 + 漲跌幅 − 1%)且收在最高、除權息日不算)的候選 → park = 那一份錢放 0050、next = 改買下一名;rkTh 7 / 8 / 9% 看高原;rkSham 隨機少買同比例(另一顆亂數);trace 記每個換倉候選之後 10 天比 0050。兩段 × 17 條,配對比現行(開盤成交 = 看板基準,另跑隔天收盤成交)。', n: '現行 <b>988%</b> / <b>6,997%</b>(資料到 10/08)・漲停不買 → 0050 949% / 5,753%(配對 10/17、1/17)・改買下一名 856% / 2,981%(7/17、1/17)・漲 ≥9% 不買 920% / 5,707% ・≥8% 921% / 5,952% ・≥7% 859% / 5,344% ・跌停不買 930% / 6,160%(跌停 4 年只有 1 次、16 年 5 次)・隨機少買 17% 866% / 4,043% ・隔天收盤成交:現行 848% / 3,635%、漲停不買 787% / 2,599%(7/17、3/17)・事件:那幾檔之後 10 天比 0050 4 年 −0.39pp(t −0.55)、16 年 +0.77pp(t 1.89)', d: '使用者:「如果換倉日漲跌停,隔天還要買嗎?還是就都買 0050」。<br>⭐ 兩段方向一致:不買都比較差,改買下一名更差(下一名本來就比較弱)。<br>⚠️ 近 4 年那段「不買漲停股」比隨機少買好(−38 vs −122pp),但仍輸照買;16 年那段比隨機少買還差。<br>⭐ 事件層級:換倉日收盤漲停的那幾檔,之後 10 天跟 0050 差不多(都不顯著)—— 沒有「漲停之後就沒力」這件事。<br>✅ 落地 V79.1.6:決策台「怎麼買」那一行寫「換倉日收盤漲停的照買」(⛔ 不印數字)。', s: 'leader_probe.mjs rkLu / rkLd / rkTh / rkSham / trace・V79.1.6' },
       { col: {"s": "破解迷思", "q": "0050 漲了、變貴了,閒錢要等它便宜一點再停進去嗎?我買進後平均成本被墊高了,這樣對嗎?", "a": "不用等。等 0050 跌到月線下、或不是近期新高才停,成績跟隨便挑日子停差不多;改放現金更差。平均成本被墊高不影響之後賺賠。", "num": "100 萬照領頭羊做:閒錢一直停 0050 → 近 4 年約 10.9 倍、16 年約 71 倍;等 0050 跌到月線下才停 → 10.8 倍 / 68 倍;錢放現金 → 8.1 倍 / 50 倍(17 種起點全輸)。", "mean": "平均成本是過去的事,之後賺多少只看你接下來抱著 0050 還是抱著現金;照規則停 0050,換倉那天要用錢再賣。", "do": ["沒用到的錢停 0050,不用等它便宜", "換倉日之間不用調整 0050", "換倉那天買股票的錢不夠,再賣需要的那部分 0050"], "warn": "停 0050 空頭時會跟著跌,中途回檔比放現金深一點(近 4 年 −49% vs −45%)。", "how": "同一套領頭羊規則,只改閒錢:一直停 0050 / 0050 收盤在 20 日線下才停 / 0050 不是近 20 天最高才停 / 錢放現金;另跑「隨機挑同樣比例的日子才停」當對照,兩段各 17 種起點。", "range": "2022-09~2026-10 與 2011~2026 兩段", "trig": "none", "trigWhy": "講閒錢放哪,每天都適用", "u": "2026-10-12"}, r: 72, k: 'lead-park-gate', u: '2026-10-12', t: '🅿️ <b>「0050 變貴了,閒錢等它便宜再停」—— 等月線下 / 等不是近期新高才停,都跟隨機挑日子差不多;改放現金兩段 17 種起點全輸</b>', w: '⛔ 閒錢一直停 0050,換倉日之間不調整(現行)', how: 'leader_probe 加 parkGate(ma20 / hi20 / sham,parkGateP;⛔ 不設時逐位相同,selftest ㊵):閘門關的日子沒用到的錢先放現金,每天收盤看一次,閘門開了才停進 0050;sham = 隨機挑同樣比例的日子開。另跑 park:false(錢放現金)。兩段 × 17 條配對比現行。', n: '現行(一直停)<b>988%</b> / <b>6,997%</b> ・0050 在 20 日線下才停 978% / 6,732%(配對 7/17、3/17;閘門開 32% / 38% 的日子)・不是 20 日新高才停 969% / 6,910%(7/17、5/17;開 77% / 81%)・隨機閘門 35% 977% / 6,998%(2/17、4/17)・79% 985% / 7,357%(4/17、7/17)・錢放現金 707% / 4,918%(0/17、0/17;回撤 −45% / −53% vs 現行 −49% / −57%)', d: '使用者:「我目前依照你說的策略閒錢買 0050,目前感受是 0050 變貴了,我進場後墊高了我的成本,這樣對嘛」。<br>⭐ 兩件事分開答:① 等便宜才停 = 跟隨機挑日子停一樣(擇時沒有東西);② 停 0050 vs 放現金:0050 兩段 17/17 全贏,代價是空頭一起跌。<br>⭐ 「平均成本被墊高」是錯覺:之後的賺賠只看接下來抱什麼。<br>🐛 順手抓到 App 的錯:決策台舊版天天用「帳戶總資金 − 個股」算該停多少 0050,使用者填的帳戶總資金(6 萬)比手上的股票 + 0050(約 48 萬)還少 → 算出「0050 多了要賣」是錯的;而且回測裡 0050 只在換倉那天動。<br>✅ 落地 V79.1.6:👑 時那一行只寫「換倉日之間不用調整、不用等它便宜」;帳戶總資金過期就只請你先改設定;換倉那天要賣多少 0050 寫在「今天要做的事」。', s: 'leader_probe.mjs parkGate / park:false・V79.1.6' },
       { col: {"s": "破解迷思", "q": "「散戶多空比」很高代表散戶太樂觀、大盤要跌;很低代表散戶恐慌、要漲?", "a": "不會。隔天大盤漲跌跟它幾乎沒關係。", "num": "8 年多、2,033 天:散戶最偏多那幾天,隔天大盤只比平常多跌一點點,扣掉手續費還是賠;散戶最偏空那幾天也一樣。", "mean": "散戶多空比只是在描述散戶現在站哪一邊,不用拿來猜明天。", "do": ["看到散戶多空比很高或很低,照原本的規則走就好", "不要因為它就先賣或先買", "要判斷大盤,看決策台說的空頭守門"], "warn": "這裡測的是「隔天」;更長的時間沒有拿來當買賣規則測。", "how": "用小台指期貨三大法人的未平倉,算出散戶淨多還是淨空;資料收盤後才公布,所以只看下一個交易日 0050 的開盤到收盤,跟同一年其他日子比。", "range": "2018-06~2026-10・2,033 天", "trig": "none", "trigWhy": "講一個數字能不能用來猜明天,不是某一天才發生的事", "u": "2026-10-11"}, k: 'retail-ls', u: '2026-10-11', r: 62, t: '👥 「散戶多空比太高 → 大盤要跌、太低 → 要漲」(主力出貨指數的計分)', n: '2,033 天:App 三條門檻六關 0~3/6、扣成本全負 → 拿掉計分', d: 'App 拿小台散戶多空比替主力出貨指數加減分(≥30% +20、15~30% +10、≤−25% −15)、情緒卡 🚨⚠️💡、Telegram 盤前摘要 —— 從來沒回測過,而且 V79.0.9 之前正負號還有兩套說法(主力出貨指數 / Telegram 反了)。<br>資料:📚 歷史補挖 —— 小台全市場未平倉(期交所下載頁 2016 起)+ 三大法人小台未平倉(期交所下載頁回網頁 → FinMind 2018-06 起);重算 App 那份跟 App 每天存的 68 天對得上(相關 0.85,快照晚一天)、2026-10-08 逐位相同 54.7%。<br>⛔ 結果(隔天 0050 開→收,同年平均當對照,六關):≥30% 偏空 401 天 +0.08pp(t=1.73、3/6、扣成本 −0.19%)・15~30% 偏空 320 天 +0.01pp(0/6)・≤−25% 偏多 359 天 +0.01pp(0/6)・正式算法(÷ 全市場未平倉)位階前 / 後 20% +0.09 / +0.07pp(都 3/6、|t| < 2)・前 / 後 10% 2/6 / 0/6。5 日收→收描述 +0.3~+0.5pp,沒當規則測。<br>✅ 處置(V79.1.1):主力出貨指數與 Telegram 不再計分;因子卡只寫「散戶偏多 / 偏空」、情緒卡只顯示數字(拿掉 🚨⚠️💡 與閃爍)。', s: 'retail_ls_probe.mjs・taifex_hist_miner.py rl・hist_backfill.yml・V79.1.1' },
+      { col: {"s": "破解迷思", "q": "股市是散戶跟大戶的心理戰嗎?跟著大戶(法人、主力、分點)、跟散戶反著做,會不會贏?", "a": "本站把常見的 13 種做法用十幾年的資料一個一個測過:沒有一種能拿來買;有用的只有兩條「別站錯邊」。", "num": "外資連買、外資投信一起買、外資突然一大筆、分點連買或突然大買、券資比高、散戶多空比、大戶增散戶減、跌深板塊外資在買、融資增法人賣、融資斷頭去撿、隔日沖 —— 扣完手續費全部沒有贏;只有「進注意股前 5 天已經漲 30% 以上」之後明顯比較差、「融資一直增加」的股票墊底。", "mean": "法人和大戶的買賣都是收盤後才公布,你看到的時候價格多半已經反映;而且「大戶」不是一個人,有人買就有人賣。能做的是少站錯邊,不是跟單。", "do": ["不要因為「外資 / 投信 / 主力在買」就跟著買", "不要因為「散戶在追、法人在賣」就急著賣", "噴著進注意股(前 5 天漲 30% 以上)的,別追", "融資一直增加的股票小心一點", "買點照決策台那套,手上的照你的出場規則走"], "warn": "這些測的是收盤後公布的資料(法人、融資、集保、分點);盤中的大單、內外盤沒有算在裡面。分點資料只有 2024~2026 兩年,集保是一週一次,都比較粗。", "how": "每一種說法都用「隔天開盤才進場」、跟同一天所有股票比、扣掉來回手續費和稅,再看每一年是不是同一個方向、門檻挪一挪還成不成立;能拿來當做法的,還要放進模擬帳跟 0050 比。", "range": "台股上市櫃(含已下市)・個股法人 2012 起、融資 2010 起、集保 2023 起、分點 2024~2026", "trig": "none", "trigWhy": "這是總整理;每一種說法各自的專欄有自己的觸發條件(外資連買、外資突然大買、券資比高、融資增法人賣、融資斷頭…)", "u": "2026-10-23"}, k: 'myth-bigplayer', u: '2026-10-23', r: 92, t: '🎭 <b>「股市是散戶跟大戶的心理戰,跟著大戶(法人 / 主力 / 分點)、跟散戶反著做就會贏」—— 本站測過的 13 種常見做法:能拿來買的 0 種;有用的只有兩條「別站錯邊」</b>', w: '⛔ 不跟單、不反著散戶做 ・✅ 噴著進注意股(前 5 日 ≥30%)別追 ・✅ 融資一直增加的小心', n: '外資連買 N 天 +0.03~+0.11pp(扣成本全負)・外資+投信同步 +0.07pp(−0.37)・外資突然一大筆 扣成本全負 ・分點連買 / 突然大買 / 集中度 / 扣隔日沖 六關 0 過 ・券資比最高一成 +0.04pp(−0.40)・散戶多空比 隔天量不到 ・兩上兩下 最好打平大盤 ・板塊偷布局 16 年 +0.41pp 3/6 ・融資增 + 法人賣 +0.27pp(比乾淨對照 −0.24)・融資斷頭去撿 組合 ×1.5~1.9 vs 0050 含息 ×12 ・隔日沖 碰得到賺不到 ・✅ 噴著進注意股 = 避雷 ・✅ 集保:融資增加的組合墊底', d: '使用者 10/23:「股票是不是一場心理戰,是散戶與大戶的對決,我要的是能找出其中的東西 …… 看是否能減少損失還是能夠找出貓膩」。⭐ 把已測過的整理在一起(各自的數字、方法在各自那一條),再補測兩個沒測過的:「散戶在接、法人在賣」(融資增 + 法人賣同時發生)與「融資斷頭」(retail_inst_probe / margin_call_port,見各自那一條)。<br>⭐ 為什麼跟大戶不會贏:① 法人 / 融資 / 集保都是<b>收盤後</b>才公布,隔天開盤進場時價格多半已經反映 ② 「大戶」不是同一個人 —— 外資裡有避險、套利、被動指數,有人買就有人賣 ③ 會漲的股票本來就比較多人在買(外資買多的股票平均報酬高,但跟同一天其他股票比就沒了)。<br>⭐ 能做的是<b>少站錯邊</b>:注意股前 5 天已漲 ≥30%(之後明顯差)、融資一直增加(集保那篇的組合墊底)。<br>⏳ 還沒測:借券賣出(資料 V79.0.0 起停了,補挖中)、盤中大單與內外盤(沒有夠長的逐筆歷史)。', s: 'myth-fistreak / fi-trust-sync / fi-burst / myth-brokerburst / myth-shortsq / retail-ls / myth-2up2down / sector-stealth / retail_inst_probe / margin_call_port / myth-dtflip / avoid-attn30・V79.6.3' },
+      { col: {"s": "破解迷思", "q": "融資一直增加、法人一直賣(「散戶在接、大戶在倒貨」),之後會跌嗎?", "a": "不會比較會跌。這種股票之後 20 天平均跟大盤差不多,甚至略好。", "num": "2012~2026 年、2.4 萬次:之後 20 天平均比同一天所有股票多 0.27%;跟「融資一樣增加、但法人沒在賣」的比,少 0.1~0.9%(48 種門檻都是少一點),扣完手續費就沒有了。反過來「融資減少、法人在買」也沒有比較會漲。", "mean": "「散戶在接、法人在賣」是很常見的籌碼描述,不是賣出理由;法人在賣只讓它比「同樣融資增加的股票」弱一點點,不是會跌。", "do": ["看到「散戶在接、法人在賣」不要急著賣", "反過來「散戶在逃、法人在接」也不要當買點", "手上的照你的出場規則走,買點照決策台那套"], "warn": "這裡算的是收盤後公布的融資與三大法人;一天之內的大單、分點沒有算在裡面。前半段(2012~2019)略差、後半段(2019~2026)略好,兩段都不夠大。", "how": "用每天收盤後已經公布的融資與法人(融資 10 天增 10% 以上、三大法人 10 天賣超佔成交量 3% 以上),隔天開盤進場,跟同一天所有股票比之後 5 / 10 / 20 天;再跟「融資一樣增加但法人沒賣」比,看法人那一半有沒有多給資訊;天數 5 / 10 / 20 × 融資 5~30% × 法人 1~5% 共 48 種門檻全部算。", "range": "2,514 檔(含已下市)・融資 2010 起、個股法人 2012 起;866 檔上櫃 2023 年前的融資還在補", "trig": ["retail_catch"], "u": "2026-10-23"}, k: 'myth-retail-catch', u: '2026-10-23', r: 84, t: '🎭 <b>「散戶在接、法人在賣 → 之後會跌」—— 16 年 2.4 萬次:之後 20 天反而比同一天所有股票多 +0.27pp;跟「融資也增、法人沒賣」比少一點(48 種門檻全部同方向),但 37 格小於來回成本 → ⛔ 不是賣出訊號</b>', w: '⛔ 別因為「散戶在接、法人在賣」就賣 ・反過來「散戶在逃、法人在接」也⛔ 不是買點', n: 'A1 融資 10 日增 ≥10% + 三大法人 10 日賣超 ≥ 成交量 3%:n=23,820・20 日 +0.27pp(5 日 −0.05・10 日 +0.08)・前後半 −0.12 / +0.66・逐年同向(負)6/15・六關 0/6;乾淨對照 C1(融資一樣增、法人沒賣)+0.51pp ・比乾淨對照 48 格全部是負的(−0.06~−0.85pp)、11/48 格差距 > 0.44%(多在 20 日窗口)・A1r 融資減 + 法人買 +0.11pp vs 乾淨對照 +0.15pp(比對照 5/48 格)・A3 高檔(離 60 日高 5% 內)+ 法人 10 日賣 + 融資增 +0.55pp(⛔ 不是負的)・A3b 高檔 + 法人賣 +0.03pp vs 高檔法人沒賣 +0.40pp(逐年 12/15)', d: '使用者 10/23 第 1 點(散戶 vs 大戶)。因子動物園單獨測過「法人買超佔量」「融資增減」「券資比」,這次測的是<b>兩邊同時發生</b>(沒測過)。⭐ 判讀:法人在賣的確讓它比「同樣融資在增加的股票」差一點(48 格全部同方向,這是真的一點點資訊),但① 跟同一天所有股票比反而是正的 ② 差距大多小於來回成本 0.44% → ⛔ 不能拿來賣,也⛔ 不能反著買。<br>⚠️ 866 檔上櫃 2023 年前沒有融資(補挖中,#92)→ 2023 年前的事件偏上市;到齊重跑。對照組 = 同一天所有股票(陷阱 #50)、2015-06 前漲跌幅 ±7%(lib_limit)、鎖死買不到不算、斷崖守門。', s: 'retail_inst_probe.mjs・V79.6.3' },
+      { col: {"s": "破解迷思", "q": "融資斷頭、恐慌殺盤之後,是撿便宜的時候嗎?", "a": "單看每一筆,斷頭的股票之後真的比較會彈;但拿來當做法(錢有限、一次只能買幾檔),十幾年下來輸給隨便挑跌一樣深的股票,也遠輸 0050。", "num": "2011~2026 年、3,007 次斷頭:之後 20 天平均比同一天所有股票多 4%,16 年裡 13 年同方向;但照「最多同時抱 5~20 檔」實際去買,100 萬只變 1.5~1.9 倍,0050 含息是 12 倍。", "mean": "斷頭潮常常是短線低點附近,但大跌時錢通常已經卡在別的股票裡;真正買得到的,往往是先斷頭、後來又再跌的那幾檔。", "do": ["不要因為「斷頭了」就去撿", "手上剛好有的,照你的出場規則走,不用另外加碼攤平", "想吃大跌後的反彈,0050 抱著就吃得到"], "warn": "斷頭有一半集中在少數幾個大跌月份(2025 年 4 月、2020 年 3 月、2015 年 8 月…),次數看起來多,其實是那幾次;追繳線是用融資增加的日子推估的,不是任何人真正的成本。", "how": "收盤跌破推估的融資追繳線(近 60 天融資成本 × 上市 0.78 / 上櫃 0.65)而且融資 5 天減 10% 以上 → 隔天開盤買、抱 20 天,跟同一天所有股票比;再拿去做 2011 年起的模擬帳(最多同時 5 / 10 / 20 檔),跟「同一天跌一樣深、沒斷頭的隨便挑」和 0050 含息比。", "range": "2,514 檔(含已下市)・融資 2010 起;866 檔上櫃 2023 年前的融資還在補", "trig": ["margin_call"], "u": "2026-10-23"}, k: 'margin-call-bounce', u: '2026-10-23', r: 66, t: '💥 <b>「融資斷頭潮之後撿便宜」—— 一筆一筆看是真的(斷頭的股票之後 20 天比同一天全部股票多 +4.0pp、16 年 13/14 年同方向、跟跌一樣深沒斷頭的比 8/8 種深度都多),但照「錢有限、最多同時抱幾檔」實際去做:100 萬只變 1.5~1.9 倍,輸隨便挑跌一樣深的(中位 2.3~4.2 倍),遠輸 0050 含息 12 倍</b>', w: '⛔ 不拿「斷頭了」當買進理由 ・手上剛好有的照出場規則走(規則不因斷頭改變)・要吃大跌反彈 0050 就吃得到', n: '事件層級(收盤 ≤ 推估追繳線 + 融資 5 日減 ≥10%,鎖跌停那天也算買得到):n=3,007・20 日 +4.04pp(5 日 +1.79・10 日 +2.45)・前後半 +4.40 / +3.69・逐年 13/14・六關 6/6;門檻 12/12 格 > 成本(融資減 5~20% × 收盤在追繳線 100/95/90%:+3.2~+6.8pp);跌深配對(離 60 日高 22~50% × 急 / 慢)斷頭贏 8/8 格、平均 +2.37pp;拆開:只有融資大減 +1.23pp、只有跌破追繳線 +2.54pp;最多 5 個月佔 53%(2025-04 / 2020-03 / 2015-08 / 2026-07 / 2018-10),拿掉四段大跌後 +4.06pp ・組合(2011 起、隔天開盤買抱 20 天、每格 = 淨值 ÷ N):最多 5 / 10 / 20 檔 ×1.47 / ×1.55 / ×1.90(每年 2.5 / 2.9 / 4.3%、中途最多賠 −58.6 / −46.5 / −29.8%);安慰劑(同一天跌一樣深沒斷頭、隨機 ×5)中位 ×4.17 / ×3.87 / ×2.26;0050 含息 ×12.03(每年 17.6%、最多賠 −34.0%);逐年贏 0050 5 / 6 / 4 年(共 16 年)', d: '⭐ 跟「熱門股跌 3% 隔天撿」(hot-drop-reversal)同一課:事件平均被「斷頭潮那幾個月、一天幾十筆」撐起來;組合只有幾格 —— 斷頭潮剛開始的那幾檔先把格子塞滿(而且後來又再跌),最深、最後才斷頭、彈最多的那批買不到。實際買到的那些平均 +1.06%,全部候選平均 +10.95%。<br>⭐ 對你的意思:斷頭潮常常在短線低點附近 —— 但這是<b>描述</b>,⛔ 不是買點;要不要因此改出場規則(斷頭潮裡延後幾天再賣)沒有測過,放在「推薦下一步」。<br>⚠️ 866 檔上櫃 2023 年前沒有融資(補挖中,#92);市場別不知道的 174 檔一律用上市成數。', s: 'retail_inst_probe.mjs + margin_call_port.mjs・V79.6.3' },
       { col: {"s": "破解迷思", "q": "網路上說「用偏態、alpha、beta 挑 5 檔大型股,一年換一次,年化 20% 以上」,是真的嗎?", "a": "照原樣做,一年大約 6~13%,比大型股平均買、比 0050 都差。", "num": "挑「漲跌最不對稱」的 5 檔一年換一次:每年約 9.6%;大型股平均買約 11.6%;0050 含息約 20.3%。", "mean": "這類「算一個統計數字挑 5 檔」的做法,不用特地去學。", "do": ["想長抱,0050 買了放著比較穩", "想主動挑股,照決策台那一套", "看到「年化 20% 以上」的回測,先問有沒有挑事後還活著的股票、大盤有沒有算股息、有沒有扣手續費"], "warn": "每個月換一次、挑過去一年漲最多的 20 檔(alpha 最大)比大型股平均買好,但還是輸 0050 含息,而且那其實就是「追強」,決策台 👑 已經在用。", "how": "每個換股日,只用當天以前的資料挑成交額前 150 大;隔天開盤買、下次換股隔天開盤賣;扣手續費和稅;17 個不同起點各跑一次。", "range": "2012-01~2026-10・成交額前 150 大", "trig": "none", "trigWhy": "講一種選股方法有沒有用,不是某一天才發生的事", "u": "2026-10-10"}, k: 'factor-skew', u: '2026-10-10', r: 46, t: '🧮 「用偏態 / alpha / beta 挑 5 檔大型股、一年換一次,年化 20% 以上」', n: '照原樣 9.6%/年 < 大型股平均 11.6% < 0050 含息 20.3%', d: '外部 repo AlexChiang0208/Robo-Advisor-Backtesting 的做法(宣稱年化 21.9~28.6%,大盤 5.6%)。⚠️ 它的成績有三個偏誤:用 2020 年市值前 150 回頭挑 2006 年的股票(倖存者)、大盤用沒含息的價格、沒扣成本。<br>本站重測 2012-01~2026-10:母體 = 每個換股日過去 60 天成交額前 150(只用當天以前)、隔天開盤買、扣 0.44%、17 條起點、對照 = 同母體等權 + 同檔數隨機(一年才重抽)+ 0050。<br>⛔ 它的預設(年報酬偏態最大、5 檔、每 240 天換)<b>9.6%/年</b>,同母體等權 11.6%、隨機 5 檔 7.5%、0050 價格 16.6% / 含息 20.3%;贏隨機 9/17、六關 0/6。<br>其餘 31 組(alpha / beta / 日偏態 / 年偏態 × 取最大最小 × 240 天 / 每月 × 5 / 20 檔):只有「每月、alpha 最大、20 檔」六關全過(16.7%/年、贏等權 17/17、前後半都贏),但<b>贏 0050 含息 0/17</b>;它等於「過去一年漲最多」= 追強,👑 已經在用。beta 最大(每月 5 檔 18.3%)前半段輸、全靠 2019 後的多頭(前半 −6.9 / 後半 +20.3pp)。偏態、beta 最小、alpha 最小全部輸。<br>⚠️ 2012~2020 只有上市、只有 2023 年底還活著的股票(倖存者);個股沒含息(股利 2021 起才有),跟 0050 含息比會吃虧約每年 3% —— 但連「同母體等權」都贏不了的就是真的沒用。', s: 'factor_skew_probe.mjs・Repo X-Ray V79.0.9' },
       { col: {"s": "破解迷思", "q": "「量大收紅、量縮價不跌、三日均線往上」這種四大買點有用嗎?", "a": "沒有。四個買點、四個賣點,隔天買抱 10 天跟同一天其他股票幾乎一樣。", "num": "八個買法比同一天全部股票多賺 −0.13~+0.02 個百分點,一來一回的手續費和稅就要 0.44%;「三日均線剛穿過六日均線」反而比較差。", "mean": "不用照這幾條進出,照決策台的規則就好。", "do": ["看到「量大收紅」不要當成買進理由", "「三日均線穿過六日均線」不要追", "要找買點照決策台那套"], "warn": "這是全部股票的平均;某一檔剛好照這樣漲過,不代表這條有用。", "how": "2,259 檔、2021~2026,每天收盤看四個買點、四個賣點有沒有亮,隔天開盤買、抱 5 / 10 / 20 天,跟同一天全部股票比。", "range": "2021-01~2026-09・2,259 檔(含 2022 空頭)", "trig": "none", "trigWhy": "講一種做法有沒有用,不是某一天才發生的事", "u": "2026-10-10"}, k: 'grs-bestfour', u: '2026-10-10', r: 35, t: '🧭 <b>grs「四大買賣點」(量大收紅 / 量縮價不跌 / 三日均轉上 / 三日均 &gt; 六日均)—— 八條全部 ≈ 0</b>', w: '⛔ 不做(V79.0.6)', how: '外部 toomore/grs 套件的 BestFourPoint。隔天開盤買、抱 10 天,對照 = 同一天全部股票:B1 量大收紅 +0.02 ・B2 量縮價不跌 −0.02 ・B3 三日均轉上 −0.03 ・B4 三日均 &gt; 六日均 −0.01 ・grs 合併(近似)−0.02 ・有買點且沒賣點 −0.05 ・<b>3 日均剛上穿 6 日均 −0.13pp(p=0.005,方向相反)</b>;賣點 S2 量縮價跌之後少 0.13pp(當避雷 5/6,但小於成本)。⛰️ B1「量大」門檻 ×1 / 1.5 / 2 / 3 → +0.02 / −0.00 / −0.02 / −0.06,越嚴越差。', n: '2,259 檔・2021-01~2026-09・每條 8.5~23 萬筆(10 日去重)・漲停買不到剔除 7,749 筆', d: '⚠️ B1 要量增、B2 要量縮 → 「四條同時」物理上不可能,改測「三條同時」−0.08pp。grs 的合併判斷用 3 / 6 日乖離轉折,這裡用「乖離谷底翻上」近似。跟本站 <code>indicator_zoo_probe</code>(48 個指標六關 0 過)同一個結論:短天期均線與量價的單條規則沒有東西。selftest 6 條,三種注入(拿掉去重 / 晚一根進場 / 量的基準含今天)都會紅。', s: 'bestfour_probe.mjs + lib_evgate.mjs・評估紀錄㊾・V79.0.6' },
       { col: {"s": "破解迷思", "q": "帳戶賠到一個程度就先停手、等回來再買,會比較安全嗎?", "a": "不會。照決策台那套,帳戶一往下就暫停買新的,四年少賺 19~242 萬,而且有幾種停法連最大回撤都更深。", "num": "17 個起點全部比「不停手」少賺;跌破自己 20 日均線就停,最大回撤從 −23% 變成 −38%。", "mean": "別用「我最近賠了」決定要不要停手,照規則買賣就好。", "do": ["不要因為帳戶最近在賠就停止照規則買進", "要控制風險:一開始就把每筆金額定小,⛔ 不是賠了才停", "大盤空頭不買新的那條照做(那條有實測支持)"], "warn": "停手之後常常剛好錯過反彈,帳戶一直停在低點回不來。", "how": "拿決策台同一套規則跑 4 年、17 個不同起點:先算出「不停手」每天的帳戶市值,再試六種停手規則(跌破自己 20/40/60 日均線、從最高點回落 10/15/20%),每一種都跟「暫停同樣多天、但隨便挑日子」比。", "range": "2022-11~2026-10・600 檔・每筆 15 萬・本金 100 萬", "trig": "none", "trigWhy": "講一種做法有沒有用,不是某一天才發生的事", "u": "2026-10-10"}, k: 'eq-gate', u: '2026-10-10', r: 62, t: '🛡️ <b>「帳戶賠到一個程度就先停手」—— 六種停法 17 個起點全部少賺,有幾種回撤反而更深</b>', w: '⛔ 不做(V79.0.4)', how: '外部 StockSharp 的風控模組(帳戶虧損就暫停下單)。拿決策台現行那套(🧬・吊燈 ATR 2 倍・抱 20 天・空頭不買・每筆 15 萬)先跑「不停手」每天的市值淨值,再用<b>前一天</b>的淨值決定今天能不能開新倉(手上的照規則賣):<b>跌破自己 20 / 40 / 60 日均線</b> → 中位 320 / 330 / 267 萬(不停手 458 萬),17 條<b>0/17</b>,回撤 −37.5 / −31.8 / −30.1%(不停手 −22.6%);<b>從最高點回落 10 / 15 / 20%</b> → 192 / 371 / 441 萬,0/17,回撤 −20.2 / −23.3 / −24.4%。安慰劑(暫停天數一樣、整段平移 63 或 126 天):均線那三種回撤 0/17 贏過安慰劑 = 照淨值挑的暫停日比隨便挑還差。', n: '4 年 17 個起點(暖身 240~320)・六種規則 × 2 種安慰劑・357 次回測', d: '⭐ 為什麼:淨值往下的時候常常正是個股洗完要反彈的時候,停手剛好錯過那一段;而停在現金裡的帳戶淨值不會動,只能靠「不停手那條理論淨值」才開得回來(這次就是用理論淨值判,已經是對它有利的做法)。⭐ 跟「大盤空頭不買」不一樣:那條看的是大盤、有實測支持;這條看的是自己的帳戶。', s: 'portfolio_backtest EQGATE=・評估紀錄㊼・V79.0.4' },
@@ -8406,6 +8413,7 @@ const PRO = {
       { t: '📛 憑空門檻:別人隨口訂的那條線', n: '', d: '實測過的都不成立:摩卡「跳空 2~4%」(相鄰桶沒分別)、Gemini「投量比 >10%」(所有買超桶裡最弱)、權證小哥「地板股 100 檔」(實測有效的是 300)、「乖離年線 200%」(短線完全沒邊際,60 日才顯現)。⭐ 門檻一律用<b>相對自己的歷史位階</b>,⛔ 不寫死數字。', s: '多處' },
     ],
     blocked: [
+      { k: 'confcall-content', u: '2026-10-23', t: '📞 <b>法說會「簡報內容」(這次第一次提到的東西多不多、講得保不保守、有沒有給數字)跟之後股價有沒有關係 —— 還測不了:簡報 10/23 才開始讀,舊簡報回補中</b>', n: '以前只抓場次表,簡報一個字都沒讀(confcall-react 測的是「有沒有開」,⛔ 沒看內容);V79.6.3 起 confcall_deck 每天讀剛開完的,並往回補 2021-07 起的舊簡報(估計 1 萬份以上)', d: '下一步:回補讀完 → <code>confcall_content_probe.mjs</code>(已寫好;隔天開盤買、抱 5 / 10 / 20 天、d16 K 線含已下市、斷崖守門、開盤鎖漲停剔除):① 第一次提到的詞多 vs 沒有 ② 語氣淨正 vs 淨負 ③ 有沒有給數字展望;⭐ 對照兩層 —— 同一天所有股票 + <b>同一個月也有開法說會、但那個特徵低的場次</b>(量的是「內容」,⛔ 是「有開法說會」本身);扣 0.44%、前後半 / 逐年 / 拿掉最好那年 + 門檻高原(新詞 1~5 個)+ 安慰劑(同一個月裡把高低標籤打亂 300 次)。⚠️ 只有 2021-07 以後(含 2022 空頭);只有圖片的簡報讀不到字(⛔ 不 OCR)。有用 → 法說會那張卡多一行(只在產業作戰室);沒用 → 頁面維持只描述。', s: 'confcall_deck.py(採礦,已上線)+ confcall_feat_dump.py + confcall_content_probe.mjs(已寫好,等回補)' },
       { k: 'bigflow', u: '2026-10-14', t: '🧾 <b>盤中逐筆大單(≥50 張)淨買多的股票,之後會不會比較強 —— 還測不了:只存了 36 天</b>', n: 'tick_hist.json 從 2026-08-04 才開始存(每天約 80 檔的外盤 / 內盤 / 大單買 / 大單賣),能算的 33 天:淨買五分位(1 = 淨賣最多 … 5 = 淨買最多)隔天開盤→收盤 +0.28 / +0.04 / +0.09 / +0.00 / −0.44%,抱 5 天 −0.51 / +0.01 / +0.43 / +0.61 / −0.54% —— 不單調、兩端都略負', d: '使用者(2026-10-14):「分時大單攻擊是否可以知道什麼消息」。⭐ 大單只看得出有人大量在買,看不出是什麼消息;能不能預測要靠歷史,而逐筆資料以前一筆都沒存(5 分 K 只有量、分不出大單)。⏳ 等 tick_hist 滿一年(約 2027-08)用 lu_touch_probe --bigflow 重跑;⚠️ 名單是每天成交量前 80,天生只收夠熱的。', s: 'lu_touch_probe.mjs --bigflow' },
       { u: '2026-10-20', t: '💎 《不盯盤》價值規格裡量不到的那一半:Net Cash / 有形淨值 / EV/EBITDA / 負債比 / 利息保障 ・ 5~20 年回測 ・ 實際公告日', n: 'fin_deep 十五欄(2018 起;V78.6.9 加總資產 / 負債 / 流動資產負債 → 負債比、流動比做得出來);日 K 2010 起(2021 前只有上市倖存者,全市場補挖中)', d: '🔁 <b>2026-10-20 更新</b>:① <b>負債比、流動比 V78.6.9 已經有了</b>(fin_deep 加 ta / li / ca / cl);Net Cash / 有形淨值 / EV / 利息保障仍缺(沒有現金、有息負債、無形資產、利息費用欄)② 下面「最長 4.8 年」<b>已過期</b>:日 K 2010 起 16 年(含 2011 / 2015 / 2018 / 2022 空頭;⚠️ 2021 以前只有上市、只有活到現在的),變因研究正在補挖 2010~2021 全市場價格(含上櫃、下市)與 2010~2018 季報三表(<code>stock_deep</code>)③ MOPS 探針 2026-10-20 第一次在 runner 跑:連得到、不用金鑰,但參數不對 → 改版重跑中。以下是 V77.4.4 當時的紀錄。<br>規格 §3/§37 要現金、有息負債、無形資產、總資產、應收、庫藏股、股數 —— fin_deep <b>一欄都沒有</b> → Net Cash、TBV、EV、負債比、利息保障做不了;股數只能股本÷10(面額 10 假設)。§29 要 5/10/15/20 年、2010 起訓練段 —— 本站最長 4.8 年(2021-12 起),只含 2022 一次空頭。§30/§53 要 publication_date —— 本站只有法定截止日,做不了「公告後 N 天內」。§5 五感(消費者/產業/管理層)是質化,走 🔎 免費查。⏳ 這幾條要等:財報回算加欄位(要先確認 FinMind 資料集有那些欄)、K 線再累積、MOPS 探針(V77.4.3)在 runner 上跑出結果。', s: 'scripts/value_probe.mjs limits・V77.4.4' },
       { t: '🌐 <b>DRAM/NAND 現貨報價 ・ 四大雲端巨頭資本支出指引數字</b> —— 台股沒有免費結構化來源', n: '使用者上傳的「海外訊號篇」清單點名要看這兩個', d: '⭐ <b>先量,那份清單 6 項裡本站已經有 4 項</b>:台積電 ADR / 費城半導體 / 那斯達克 / <b>美國 10 年期公債殖利率(含 2 年 10 年利差倒掛判讀)</b> 都在 <code>macro_miner.py</code> 裡,而且已經做成盤前體檢分數(<code>premkt_app_probe</code> 實測:講開高偏多那天 0050 開低只有 5.3%;🔁 V79.5.4 更正:舊寫的「+0.574pp」是加權開盤價湊出來的);Fed / FOMC 會議排到 2027、輝達與美光財報日 V73.9.1 就收了。→ V77.0.2 只補了「每天 3-5 分鐘」那一層的<b>指路</b>(⛔ 沒做新卡)。<br>⛔ <b>剩下兩項做不到</b>:① <b>DRAM/NAND 現貨報價</b>(TrendForce/集邦)是<b>付費研究</b>,免費頁面只有零星新聞稿,沒有可回測的逐日序列;② <b>四大 CSP 的 CapEx 指引</b>只出現在法說會口頭與簡報 PDF,<b>沒有結構化 API</b>,而且每家口徑不同(有的含租賃、有的分季給年度區間)。<br>⭐ 硬做就是編數字 —— 那正是本站否決外部資料時最常見的理由。⚠️ 本站現有的替代是「記憶體漲價循環」那條<b>題材標籤</b>(2408/2344/2337/3006/3260/8299),⛔ 它是<b>人工整理的產業定位不是報價</b>,別拿它當價格訊號。<br>⏭️ 要真的做,唯一的路是使用者自己訂 TrendForce → ⛔ 不在本站範圍。', s: 'V77.0.2 查證(⛔ 無資料源)' },
@@ -8427,6 +8435,7 @@ const PRO = {
       { u: '2026-10-04', t: '🌡️ 台指 VIX(選擇權隱含波動率)', n: '帳號等級', d: '4 把金鑰在 FinMind 全部回「Your level is register」= 帳號在免費層。⭐ 已改走期交所官方(免費)為主。⚠️ 在那之前用 <b>實現波動率</b>(近 20 日年化 + 一年位階)當替代 —— <b>名字必須不同</b>(一個看未來、一個看過去)。<br>🔁 <b>2026-10-04 實測</b>:<code>macro_risk.json</code> 的 <code>tw_vix</code> 仍是空的,錯誤寫著「期交所 OpenAPI 全部失敗 → FinMind 等級不足」→ 照舊用實現波動率頂著,⛔ 不編數字。', s: 'V71.5.7 / V71.8.1・2026-10-04 再查' },
     ],
     next: [
+      { k: 'next-margincall-exit', u: '2026-10-23', t: '💥 手上的股票遇到融資斷頭潮,出場規則要不要延後幾天再賣?', w: '出場', n: '事件層級:斷頭的股票之後 20 天比同一天所有股票多 +4.0pp(16 年 13/14 年);但「去撿」放進模擬帳是輸的(見 ⛔「融資斷頭潮之後撿便宜」)', d: '下一步:<code>portfolio_backtest.mjs</code> 加一個出場鉤子 —— 持股收盤跌破推估追繳線且融資 5 日減 ≥10% 時,三條出場延後 N 天(N = 3 / 5 / 10)再判;兩窗口 × 17 條、照 App 買法,跟現行比總獲利與中途最多賠,再跟「同樣延後但日子隨便挑」的安慰劑比。⛔ 沒過 V75.0.9 那幾關前不改出場。', s: '(還沒寫)portfolio_backtest.mjs + retail_inst_probe.marginCallAt' },
       { k: 'next-premkt-twd', u: '2026-10-22', t: '🌅 盤前分數的「台幣(當日 + 5 日連貶)」兩項要不要也改成只列出來', w: '盤前分數', n: '2010~2026 共 4,090 天(App 這條逐日重建、0050 真開盤):拿掉之後方向猜對 72.2 → 72.4%、開反 7.0 → 6.8%;逐年方向對較多 13/17、相關較高 14/17,但開反較少只有 8/17', d: '下一步:等再累積一年(2027 年底)或試別的門檻(台幣當日 ±0.15 / ±0.4 改 ±0.3 / ±0.6、5 日連貶改 ≥1.5%)再用 <code>premkt_app_probe.mjs</code> 驗一次;判準同 V75.0.9(方向對與相關都 ≥13/17 + 開反不能變多 + 相鄰門檻也成立)。⚠️ 匯率四項一起拿掉 12/17、VIX + 美債 + 台幣一起拿掉 12/17(相關 16/17)也都沒過 —— ⛔ 不可把個別「差一點」的疊起來。', s: 'premkt_app_probe.mjs・V79.5.4' },
       { k: 'next-gene-recheck', u: '2026-10-22', t: '🔁 🔥 以前換過的兩件(位階 75 → 85、出場換吊燈 ATR 2 倍)要用全市場 + 照 App 實際買法再驗一次(第三件「大盤空頭不開新倉」V79.4.9 已驗完、改成照買)', w: '選股 / 出場', n: '那三次都是在「只抽 600 檔 + 當天觸發的裡面挑最好」上判的(同一份 600 檔裡配對比較,方向比絕對金額可靠);V79.4.8 全市場 + App 買法已經照出空頭守門翻成取捨型(開 60 vs 關 107 萬、16 年 117 vs 198 萬)', d: '下一步:同一套 App 買法(名單判到前 60 筆、斷崖守門、每檔成績只看最近 1,200 天),兩窗口 × 17 條:① 位階 75 / 80 / 85 / 90 ② 出場 吊燈 ATR 2 倍 / 唐奇安 20 日 / 唐奇安 40 日 / 移動停利 8% ③ 空頭守門開 / 關 —— V79.4.9 已驗完並換成照買(見有用欄「V79.4.9 新預設」)。⚠️ 每換一種出場都要重建一份「每天觸發都算」的交易快取(約 1 小時);名單會不會觸發的判斷跟出場無關,可以共用。照 V75.0.9 判。', s: 'portfolio_backtest.mjs ALLFIRE / LIST_TRIG・V79.4.8' },
       { k: 'next-fit-backtest', u: '2026-10-21', t: '📈 決策台預設的「符合進場」名單還沒做過組合回測', w: '整套', n: '現在只知道每個訊號自己的 16 年成績(扣成本還贏同一天平均股票的只剩「換手量」,每天新出現約 4 個);沒有「照這份名單每天買、照出場規則賣,100 萬變多少」', d: '下一步:同一個引擎,候選 = 🧬 + 今天出現過關的看多訊號,照 App 的排法、一天最多 2 檔、三條出場,兩窗口 × 17 條,跟 🔥 / 🅿️ / 👑 / 0050 放在同一張看板。', s: '(還沒寫)portfolio_backtest.mjs + signal_backtest.mjs 的訊號日' },
@@ -9044,7 +9053,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.6.2',
+  VER: 'V79.6.3',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -11032,8 +11041,11 @@ ${M.news || '(無)'}
   // ═══════════ 🎤 法說會分頁(V77.2.7;V77.2.8 搜尋跨範圍 + 一鍵開簡報 + 四個加值)═══════════
   // ⛔ 三條不可違反:① 只描述、⛔ 不給方向/部位 ② 「檔案沒產出」與「這幾天真的沒有」要分開講(陷阱 #22)
   //   ③ 深度查詢是外部網頁(使用者選的),⛔ 不叫 App 內模型(那三條鏈都不會上網)。
-  _confSel: 'all', _confQ: '', _confSym: null, _confData: undefined, _confInd: '', _confHist: null,
-  _CONF_SEL: [['all', '全部'], ['mine', '👜 我的'], ['today', '今天'], ['future', '未來'], ['sum', '已開・有內容']],
+  _confSel: 'new', _confQ: '', _confSym: null, _confData: undefined, _confInd: '', _confHist: null,
+  _confDig: undefined, _confCC: {},
+  // 📞 V79.6.3 使用者:「法說會的最新不是很重要嗎?…目前的介面我覺得很沒有用,請重新設計」
+  //   → 預設 = 🆕 剛開完(7 天):每場一張卡,公司在簡報裡說了什麼(附頁碼)、這次第一次提到什麼;👜 我的排最前
+  _CONF_SEL: [['new', '🆕 剛開完'], ['mine', '👜 我的'], ['future', '📅 接下來 14 天'], ['all', '全部']],
   _CONF_ENG: [['perplexity', 'Perplexity'], ['chatgpt', 'ChatGPT'], ['google', 'Google'], ['gemini', 'Gemini'], ['meta', 'Meta AI']],
   _confEngGet() { try { return localStorage.getItem('proWar_confEng') || 'perplexity'; } catch (_) { return 'perplexity'; } },
   confEng(k) { this.buzz(10); try { localStorage.setItem('proWar_confEng', k); } catch (_) {} this._confEngBar(); },
@@ -11078,8 +11090,28 @@ ${M.news || '(無)'}
    *     (它在名字表載不到時回空,那會讓「搜中文搜不到」看起來像「這檔沒有法說會」)。*/
   _confHay(r) {
     const ind = r.ind ? (this.IND_NAME[r.ind] || r.ind) : '';
-    return this._confNorm(`${r.s} ${r.name || ''} ${(this.nameOf && this.nameOf(r.s)) || ''} ${ind} ${r.mkt || ''} ${r.place || ''} ${r.sum || ''} ${r.other || ''}`);
+    const dg = this._confDeckOf(r);
+    // 📞 V79.6.3 簡報重點也搜得到(一句話 / 對之後的說法 / 第一次提到 / 簡報講到的產品詞)→ 「誰在講 CPO」打 CPO 就有
+    const dk = dg ? ` ${dg.one || ''} ${dg.ol || ''} ${(dg.new || []).join(' ')} ${(dg.tm || []).join(' ')}` : '';
+    return this._confNorm(`${r.s} ${r.name || ''} ${(this.nameOf && this.nameOf(r.s)) || ''} ${ind} ${r.mkt || ''} ${r.place || ''} ${r.sum || ''} ${r.other || ''}${dk}`);
   },
+  /** 📞 簡報重點(confcall_deck 讀的,data/confcall_digest.json)→ 用簡報檔名對到場次(⛔ 不靠日期:拿舊簡報去券商場重講的日期不同) */
+  _confDigMap() {
+    const D = this._confDig; if (!D || !Array.isArray(D.rows)) return null;
+    if (!this._confDigM || this._confDigM.src !== D) {
+      const m = new Map(); for (const x of D.rows) if (x && x.f) m.set(x.f, x);
+      this._confDigM = { src: D, m };
+    }
+    return this._confDigM.m;
+  },
+  _confDeckOf(r) {
+    const m = this._confDigMap(); if (!m || !r) return null;
+    for (const f of (r.pdf || [])) { const x = m.get(f); if (x) return x; }
+    return null;
+  },
+  _confDay(n) { const d = new Date(this._confToday() + 'T12:00:00+08:00'); d.setDate(d.getDate() + n); return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); },
+  /** 受邀參加券商 / 投顧辦的場次(⛔ 不是公司自己辦的)—— 跟 confcall_deck.INV_RE 同一條 */
+  _confInv(r) { return /受邀|邀請|應邀|參加.{0,24}(證券|投顧|銀行|金控|論壇|研討會|峰會|投資人會議)/.test((r && r.sum) || ''); },
   _confRows() {
     const D = this._confData; if (!D) return [];
     const today = this._confToday();
@@ -11092,9 +11124,8 @@ ${M.news || '(無)'}
     } else {
       const sel = this._confSel;
       if (sel === 'mine') { const m = this._confMine(); rows = rows.filter(r => m.has(String(r.s))); }
-      else if (sel === 'today') rows = rows.filter(r => r.d === today);
-      else if (sel === 'future') rows = rows.filter(r => r.d >= today);
-      else if (sel === 'sum') rows = rows.filter(r => r.d < today && (r.sum || (r.pdf && r.pdf.length) || r.vid));
+      else if (sel === 'new') { const lo = this._confDay(-7); rows = rows.filter(r => (r.d < today && r.d >= lo) || (r.d === today && this._confDeckOf(r))); }
+      else if (sel === 'future') { const hi = this._confDay(14); rows = rows.filter(r => r.d >= today && r.d <= hi); }
     }
     if (this._confInd) rows = rows.filter(r => (r.ind || '__none__') === this._confInd);
     rows.sort((a, b) => (a.d === b.d ? (a.t || '').localeCompare(b.t || '') : (a.d < b.d ? -1 : 1)));
@@ -11146,6 +11177,13 @@ ${M.news || '(無)'}
       arr.map(([k, v]) => `<span class="labbtn ${this._confInd === k ? 'on' : ''}" data-confind="${this._esc(k)}" onclick="PRO.confInd('${this._esc(k)}')">${k === '__none__' ? '未分類' : this._esc(this.IND_NAME[k] || k)} ${v}</span>`).join('');
   },
   /** 📊 會後股價反應 —— ⛔ **事實統計不是訊號**(採礦端 `build_react` 算好的,顯示端⛔ 不重算)。 */
+  /** 📊 真的那支法說會研究(實測總表 confcall-react)—— 標題與數字讀 LAB,⛔ 不在這裡另寫一份 */
+  _confLabLine() {
+    const L = this.LAB || {};
+    const e = [].concat(L.ok || [], L.trap || [], L.method || []).find(x => x && x.k === 'confcall-react');
+    if (!e) return '';
+    return `<br>🔬 <b>實測(同一天所有股票當對照、扣成本)</b>:${e.t || ''}<br><span style="color:var(--dim2)">${e.n || ''}</span><br>⚠️ 那份研究只看「有沒有開法說會」,⛔ 沒看簡報內容 —— 內容有沒有用還在測(回補 2021 起的簡報中)。`;
+  },
   _confReactHtml(sym) {
     const R = (this._confData || {}).react;
     if (!R || R.error) return R && R.error ? `<div class="note">📊 會後股價統計:這一輪算不出來(${this._esc(R.error)})。</div>` : '';
@@ -11160,19 +11198,148 @@ ${M.news || '(無)'}
         ・5 日上漲比例 ${R.win5 == null ? '—' : R.win5 + '%'} vs 對照組 ${B.win5 == null ? '—' : B.win5 + '%'}
         ${one ? `<br>・<b>${this._nmTxt(sym)}</b> 自己過去 ${one.n} 場:5 日中位 ${pp(one.med5)}${one.n < 10 ? ' <span class="sigtag warn">⏳ 樣本不足,⛔ 不能當結論</span>' : ''}` : ''}
         <br>🚨 ${this._esc(R.caveat || '')}${R.stale ? '<br>⚠️ 這一輪沒重算,沿用上一次的統計。' : ''}
+        ${this._confLabLine()}
       </div></details>`;
   },
   _confHtml(rows) {
     const today = this._confToday(), q = this._confQ;
-    const hi = t => this._labHi ? this._labHi(this._esc(t), q) : this._esc(t);
     if (!rows.length) {
       const D = this._confData || {};
-      return `<div class="note" data-conf-empty="1">📭 ${q ? `整份名單裡搜不到「${this._esc(q)}」` : '這個篩選下沒有法說會'}(資料日 ${this._esc(D.data_date || '—')},涵蓋前 ${(D.window || {}).past || 60} 天到後 ${(D.window || {}).future || 45} 天)。${!q && this._confSel === 'mine' ? '<br>👜 「我的」= 你的庫存 + 自選 + 決策台今天的名單;三個都空的話這裡就是空的。' : ''}${q ? '<br>🔎 已經<b>跨所有範圍</b>找過了(不是卡在目前的篩選)。擇要是公司自己寫的,用詞不一定跟你一樣 —— 也可以直接打代號。' : ''}${this._confInd ? '<br>🏭 目前還套著產業篩選,<span class="labbtn" onclick="PRO.confInd(\'\')">全部產業</span>' : ''}</div>`;
+      return `<div class="note" data-conf-empty="1">📭 ${q ? `整份名單裡搜不到「${this._esc(q)}」` : '這個篩選下沒有法說會'}(資料日 ${this._esc(D.data_date || '—')},涵蓋前 ${(D.window || {}).past || 60} 天到後 ${(D.window || {}).future || 45} 天)。${!q && this._confSel === 'mine' ? '<br>👜 「我的」= 你的庫存 + 自選 + 決策台今天的名單;三個都空的話這裡就是空的。' : ''}${q ? '<br>🔎 已經<b>跨所有範圍</b>找過了(不是卡在目前的篩選)。擇要與簡報是公司自己寫的,用詞不一定跟你一樣 —— 也可以直接打代號。' : ''}${this._confInd ? '<br>🏭 目前還套著產業篩選,<span class="labbtn" onclick="PRO.confInd(\'\')">全部產業</span>' : ''}</div>`;
     }
+    let html = '';
+    if (q) html = `<div class="note" data-conf-scope="all">🔎 搜尋「<b>${this._esc(q)}</b>」・<b>${rows.length}</b> 筆(<b>已跨所有範圍</b>,不受上面的篩選限制;簡報裡的詞也搜得到) <span class="labbtn" onclick="PRO.confSearch('')">← 回到${this._esc((this._CONF_SEL.find(x => x[0] === this._confSel) || [, '全部'])[1])}</span></div>`;
+    // 📞 V79.6.3 「剛開完 / 我的 / 搜尋」= 每場一張卡(公司說了什麼);「接下來 / 全部」= 照日期的清單
+    const cardMode = !!q || this._confSel === 'new' || this._confSel === 'mine';
+    if (!cardMode) return html + this._confListHtml(rows);
+    const mine = this._confMine();
+    const done = r => r.d < today || (r.d === today && !!this._confDeckOf(r));
+    const past = rows.filter(done), fut = rows.filter(r => !done(r));
+    const nn = r => ((this._confDeckOf(r) || {}).new_n || 0);
+    past.sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (nn(b) - nn(a)) || (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
+    if (past.length) {
+      const nDeck = past.filter(r => this._confDeckOf(r)).length;
+      html += `<div class="note" data-conf-sec="past" style="margin-top:6px">🎤 <b>已經開完 ${past.length} 場</b>・簡報讀到 ${nDeck} 份(👜 你的排最前,其餘照「這次第一次提到的東西」多寡排)</div>`;
+      html += past.map(r => this._confCardHtml(r, mine)).join('');
+    }
+    if (fut.length) {
+      html += `<div class="note" data-conf-sec="future" style="margin-top:10px">📅 <b>接下來 ${fut.length} 場</b>(還沒開;簡報多半會後才上傳)</div>`;
+      html += this._confListHtml(fut);
+    }
+    return html;
+  },
+  /** 📞 一場法說會一張卡 —— 只描述公司自己說了什麼(⛔ 不給方向、⛔ 不給部位) */
+  _confCardHtml(r, mine) {
+    const q = this._confQ;
+    const hi = t => this._labHi ? this._labHi(this._esc(t), q) : this._esc(t);
+    const md = d => String(d || '').slice(5).replace('-', '/');
+    const dg = this._confDeckOf(r);
+    const nm = this.nameOf && this.nameOf(r.s);
+    const shown = (nm && nm !== r.s) ? nm : (r.name || r.s);
+    const tags = [`<span class="sigtag">${md(r.d)}(${this._confWk(r.d)})${r.t ? ' ' + this._esc(r.t) : ''}</span>`,
+                  `<span class="sigtag" data-cc-host>${this._confInv(r) ? '券商邀請' : '自辦'}</span>`];
+    if (dg) {
+      if (dg.reuse) tags.push(`<span class="sigtag" data-cc-reuse>🔁 沿用 ${md(dg.reuse)} 那份簡報</span>`);
+      else if (dg.first) tags.push(`<span class="sigtag" data-cc-first>第一次收錄(還沒有上一份可以比)</span>`);
+      else if (dg.new_n) tags.push(`<span class="sigtag good" data-cc-new="${dg.new_n}">🆕 新東西 ${dg.new_n}</span>`);
+      else tags.push(`<span class="sigtag" data-cc-new="0">跟上一份比沒有新的詞</span>`);
+    }
+    let body = '';
+    if (dg && dg.one) body += `<div class="note" style="margin-top:3px" data-cc-one>🤖 <b>一句話</b>:${hi(dg.one)} <span style="color:var(--dim2)">(AI 只讀簡報抽出來的句子;數字都對過原文)</span></div>`;
+    else if (dg && dg.ol) body += `<div class="note" style="margin-top:3px" data-cc-ol>📌 <b>公司講到「之後」</b>:${hi(dg.ol)}</div>`;
+    if (dg && (dg.new || []).length) body += `<div class="note" style="margin-top:3px" data-cc-newlist>🆕 <b>這次第一次提到</b>${dg.prev_d ? `(跟 ${md(dg.prev_d)} 那份比)` : ''}:${dg.new.map(t => `<span class="sigtag good">${hi(t)}</span>`).join(' ')}${dg.new_n > dg.new.length ? ` <span style="color:var(--dim2)">…共 ${dg.new_n} 個</span>` : ''}</div>`;
+    if (!dg) body += `<div class="note" style="margin-top:3px" data-cc-none>📄 簡報重點:${(r.pdf || []).length ? '還沒讀到(每天收盤後讀一輪;簡報多半會後才上傳)' : '公司沒有上傳簡報'}</div>`;
+    const key = `${r.s}-${dg ? dg.f : r.d}`;
+    if (dg) body += `<details data-dk="ccd-${this._esc(key)}" ontoggle="PRO.confOpen(this, '${this._esc(r.s)}', '${this._esc(dg.f)}', '${this._esc(r.d)}')"><summary style="cursor:pointer;list-style:none;font-size:11px;color:var(--cyan);margin-top:4px">📄 看重點:公司給的數字・講到「之後」的句子・跟上一份比・開完到現在的股價 <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" data-ccd-body="${this._esc(key)}">⏳ 讀取中…</div></details>`;
+    if (r.sum) body += `<details data-dk="conf-${r.s}-${r.d}"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim)">📝 擇要訊息(公司在場次表上寫的) <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" style="margin-top:4px;white-space:pre-wrap">${hi(r.sum)}</div></details>`;
+    else if (!dg) body += `<div class="note" style="margin-top:2px">📝 擇要訊息:公司尚未提供</div>`;
+    const files = [];
+    for (const f of (r.pdf || [])) {
+      const u = this._confFileUrl(f);
+      files.push(u ? `<a class="conf-pdf" href="${this._esc(u)}" target="_blank" rel="noopener noreferrer" title="${this._esc(f)}">📄 ${this._confFileLabel(f)}</a>`
+                   : `📎 <span class="mono">${this._esc(f)}</span>`);
+    }
+    if (r.vid) files.push(`<a href="${this._esc(r.vid)}" target="_blank" rel="noopener noreferrer">🎬 影音</a>`);
+    if (r.web) files.push(`<a href="${this._esc(r.web)}" target="_blank" rel="noopener noreferrer">🌐 公司網站</a>`);
+    const hist = ((this._confData || {}).hist || {})[r.s] || [];
+    const older = hist.filter(x => x !== r.d);
+    return `<div class="bkrow done" data-conf-row="${this._esc(r.s)}" data-conf-card="1">
+      <div class="bkhd">${mine && mine.has(String(r.s)) ? '<span title="你的庫存 / 自選 / 決策台">👜</span>' : ''}<span class="starnm" onclick="PRO.openStock('${this._esc(r.s)}')">${hi(shown)}</span> <span class="starcode">${hi(r.s)}</span>${tags.join('')}</div>
+      ${body}
+      ${files.length ? `<div class="note" style="margin-top:3px">${files.join(' ・ ')}</div>` : ''}
+      <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="lbtn" onclick="PRO.confPick('${this._esc(r.s)}')">🔎 帶這一檔去深度查詢</button>
+        ${older.length ? `<button class="lbtn" data-conf-hist="${this._esc(r.s)}" onclick="PRO.confHist('${this._esc(r.s)}')">📜 歷年 ${older.length} 場</button>` : ''}
+      </div>
+      ${this._confHist === r.s && older.length ? `<div class="note" style="margin-top:3px" data-conf-histbox="${this._esc(r.s)}">📜 這一檔過去的法說會:${older.slice().reverse().map(x => `<span class="mono">${this._esc(x)}</span>`).join(' ・ ')}<br><span style="color:var(--dim2)">⏳ ${this._esc(this._confHistFrom())} 起才有紀錄,⛔ 不是公司的完整歷史。</span></div>` : ''}
+    </div>`;
+  },
+  /** 歷年場次從哪天開始有(讀資料,⛔ 不寫死) */
+  _confHistFrom() {
+    let lo = '';
+    for (const v of Object.values((this._confData || {}).hist || {})) for (const d of (v || [])) if (!lo || d < lo) lo = d;
+    return lo || '本站開始採集';
+  },
+  /** 📄 展開那一張卡 → 讀 data/cc/{sym}.json(一檔一個小檔,點了才讀)→ 畫重點 + 開完到現在的股價 */
+  async confOpen(el, sym, f, d) {
+    if (!el || !el.open) return;
+    const box = el.querySelector('[data-ccd-body]'); if (!box || box.dataset.done) return;
+    let J = this._confCC[sym];
+    if (J === undefined) { J = await this.fetchJson(`data/cc/${sym}.json`, 9000); this._confCC[sym] = J || null; }
+    const dk = J && Array.isArray(J.decks) ? (J.decks.find(x => x && x.f === f) || null) : null;
+    if (!dk) { box.innerHTML = `⚠️ 讀不到這一檔的簡報重點檔(data/cc/${this._esc(sym)}.json)—— 檔案沒產出或網路失敗,⛔ 不代表簡報沒內容。`; return; }
+    box.dataset.done = '1';
+    box.innerHTML = this._confDetailHtml(dk, sym, d);
+    const px = await this._confPxSince(sym, dk.d || d).catch(() => null);
+    const pb = box.querySelector('[data-ccd-px]');
+    if (pb) pb.innerHTML = this._confPxHtml(px);
+  },
+  _confDetailHtml(dk, sym, d) {
+    const e = t => this._esc(t);
+    const pg = p => p ? ` <span class="mono" style="color:var(--dim2)">(第 ${e(p)} 頁)</span>` : '';
+    const md = x => String(x || '').slice(5).replace('-', '/');
+    let h = '';
+    const ai = dk.ai || null;
+    if (ai && (ai.one || (ai.outlook || []).length || (ai.new || []).length || (ai.risk || []).length)) {
+      const sec = (t, arr) => (arr || []).length ? `<div style="margin-top:3px"><b>${t}</b><br>${arr.map(x => `・${e(x.t)}${pg(x.p)}`).join('<br>')}</div>` : '';
+      h += `<div data-ccd-ai>🤖 <b>AI 整理</b> <span style="color:var(--dim2)">(${e(dk.model || '')};只讀簡報抽出來的句子;寫了原文找不到的數字那一點已整點拿掉${dk.gate_drop ? `,這份拿掉 ${e(dk.gate_drop)} 點` : ''})</span>${sec('📌 對之後的說法', ai.outlook)}${sec('🆕 新的產品 / 客戶 / 投資', ai.new)}${sec('⚠️ 公司自己講的風險或保守的地方', ai.risk)}</div>`;
+    }
+    if ((dk.nums || []).length) h += `<div style="margin-top:6px" data-ccd-nums>🔢 <b>公司給的數字</b>(簡報原文,沒有改寫)<br>${dk.nums.slice(0, 8).map(([p, t]) => `・${e(t)}${pg(p)}`).join('<br>')}</div>`;
+    if ((dk.outlook || []).length) h += `<div style="margin-top:6px" data-ccd-ol>📌 <b>講到「之後」的句子</b>(簡報原文)<br>${dk.outlook.slice(0, 6).map(([p, t]) => `・${e(t)}${pg(p)}`).join('<br>')}</div>`;
+    if (dk.first) h += `<div style="margin-top:6px" data-ccd-first>🆕 這是本站第一次收錄這家公司的簡報 → 還沒有上一份可以比。</div>`;
+    else if ((dk.new || []).length) h += `<div style="margin-top:6px" data-ccd-new>🆕 <b>這次第一次提到</b>(跟 ${e(md(dk.prev_d))} 那份比;這家公司前 4 份都沒有、而且不是這一季兩成以上公司都在講的詞):${dk.new.map(([t, p]) => `${e(t)}${pg(p)}`).join('、')}</div>`;
+    else if (dk.prev_d) h += `<div style="margin-top:6px">🆕 跟 ${e(md(dk.prev_d))} 那份比,沒有第一次出現的產品 / 技術詞。</div>`;
+    if ((dk.dropped || []).length) h += `<div style="margin-top:3px" data-ccd-dropped>🔁 <b>上一份有、這次沒講</b>:${dk.dropped.map(e).join('、')}</div>`;
+    if (!(dk.nums || []).length && !(dk.outlook || []).length && dk.st === 'ok') h += `<div style="margin-top:6px">📄 這份簡報抽不出帶數字的句子(多半是圖表做成圖片)→ 直接看簡報。</div>`;
+    h += `<div style="margin-top:6px" data-ccd-px>📈 開完到現在的股價:⏳ 計算中…</div>`;
+    h += `<div style="margin-top:6px;color:var(--dim2)">⛔ 這些是公司自己說的話,不是買賣建議。「剛開完法說會」本身實測不是買進理由(下面「📊」那段);簡報內容(新東西多不多)有沒有用還在測。</div>`;
+    return h;
+  },
+  /** 📈 法說會那天收盤 → 最新收盤(事實,紅漲綠跌);同期 0050 一起列 */
+  async _confPxSince(sym, d) {
+    const ser = rows => (Array.isArray(rows) ? rows : []).filter(r => r && +r.close > 0).map(r => [String(r.date).replace(/\//g, '-').slice(0, 10), +r.close]);
+    const a = ser(await this.fetchJson(`data/${sym}.json`, 9000)), z = ser(await this.fetchJson('data/0050.json', 9000));
+    const pick = s => { const i = s.findIndex(x => x[0] >= d); return i < 0 || i >= s.length ? null : [s[i], s[s.length - 1]]; };
+    const pa = pick(a);
+    // 📅 法說會那天比最新一根 K 線還新(今天才開、晚上才更新)→ ⛔ 說成「讀不到 K 線」
+    if (!pa) return a.length ? { pending: true, d, last: a[a.length - 1][0] } : null;
+    const pz = pick(z), pct = ([x, y]) => (y[1] / x[1] - 1) * 100;
+    return { from: pa[0][0], to: pa[1][0], p: pct(pa), b: pz ? pct(pz) : null, same: pa[0][0] === pa[1][0] };
+  },
+  _confPxHtml(px) {
+    if (!px) return '📈 開完到現在的股價:讀不到 K 線(⛔ 不猜)。';
+    if (px.pending) return `📈 開完到現在的股價:法說會在 ${this._esc(String(px.d).slice(5).replace('-', '/'))},最新 K 線到 ${this._esc(String(px.last).slice(5).replace('-', '/'))} —— 還沒有開完之後的股價(收盤後採礦更新才有)。`;
+    if (px.same) return `📈 開完到現在的股價:法說會那天就是最新一根(${this._esc(px.from.slice(5).replace('-', '/'))}),還沒有之後的走勢。`;
+    const c = v => v == null ? '' : `<b style="color:${v >= 0 ? 'var(--up)' : 'var(--dn)'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</b>`;
+    return `📈 <b>開完到現在</b>(${this._esc(px.from.slice(5).replace('-', '/'))} 收盤 → ${this._esc(px.to.slice(5).replace('-', '/'))}):這檔 ${c(px.p)}${px.b != null ? ` ・同期 0050 ${c(px.b)}` : ''} <span style="color:var(--dim2)">(只是事實,⛔ 不是之後會怎麼走)</span>`;
+  },
+  /** 照日期的清單(「接下來」「全部」用;已開完、有讀到簡報的那幾場多一行重點) */
+  _confListHtml(rows) {
+    const today = this._confToday(), q = this._confQ;
+    const hi = t => this._labHi ? this._labHi(this._esc(t), q) : this._esc(t);
+    let html = '';
     const groups = new Map();
     for (const r of rows) { if (!groups.has(r.d)) groups.set(r.d, []); groups.get(r.d).push(r); }
-    let html = '';
-    if (q) html = `<div class="note" data-conf-scope="all">🔎 搜尋「<b>${this._esc(q)}</b>」・<b>${rows.length}</b> 筆(<b>已跨所有範圍</b>,不受上面的篩選限制) <span class="labbtn" onclick="PRO.confSearch('')">← 回到${this._esc((this._CONF_SEL.find(x => x[0] === this._confSel) || [, '全部'])[1])}</span></div>`;
     for (const [d, list] of groups) {
       const rel = d === today ? '<span class="sigtag good">今天</span>' : (d > today ? '<span class="sigtag">未來</span>' : '<span class="sigtag">已開</span>');
       html += `<div style="font-size:11px;font-weight:700;color:var(--dim);margin:10px 0 4px;border-left:3px solid ${d === today ? 'var(--cyan)' : 'var(--line)'};padding-left:6px">${d.slice(5).replace('-', '/')}(${this._confWk(d)}) ${rel} <span style="font-weight:400;color:var(--dim2)">${list.length} 場</span></div>`;
@@ -11197,6 +11364,9 @@ ${M.news || '(無)'}
             <span class="sigtag">${this._esc(r.mkt || '')}</span>${r.ind ? `<span class="sigtag">${this._esc(this.IND_NAME[r.ind] || r.ind)}</span>` : ''}
             <span style="margin-left:auto;font-size:11px" class="mono">${this._esc(r.t || '')}</span></div>
           <div class="note" style="margin-top:2px">📍 ${hi(r.place || '—')}</div>
+          ${(() => { const dg = past ? this._confDeckOf(r) : null; if (!dg) return '';
+                     const one = dg.one || dg.ol; const nw = dg.first ? '第一次收錄' : (dg.new_n ? `🆕 新東西 ${dg.new_n}` : '');
+                     return one || nw ? `<div class="note" style="margin-top:2px" data-cc-line>📄 ${one ? hi(one) : ''}${one && nw ? ' ・' : ''}${nw ? `<span class="sigtag${dg.new_n ? ' good' : ''}">${nw}</span>` : ''} <span class="labbtn" onclick="PRO.confSearch('${this._esc(r.s)}')">看重點</span></div>` : ''; })()}
           ${sum}
           ${files.length ? `<div class="note" style="margin-top:3px">${files.join(' ・ ')}</div>` : ''}
           ${r.other ? `<div class="note" style="margin-top:2px">ℹ️ ${hi(r.other)}</div>` : ''}
@@ -11204,7 +11374,7 @@ ${M.news || '(無)'}
             <button class="lbtn" onclick="PRO.confPick('${this._esc(r.s)}')">🔎 帶這一檔去深度查詢</button>
             ${older.length ? `<button class="lbtn" data-conf-hist="${this._esc(r.s)}" onclick="PRO.confHist('${this._esc(r.s)}')">📜 歷年 ${older.length} 場</button>` : ''}
           </div>
-          ${this._confHist === r.s && older.length ? `<div class="note" style="margin-top:3px" data-conf-histbox="${this._esc(r.s)}">📜 這一檔過去的法說會:${older.slice().reverse().map(x => `<span class="mono">${this._esc(x)}</span>`).join(' ・ ')}<br><span style="color:var(--dim2)">⏳ 從本站開始採集(2026-07)之後才會累積,⛔ 不是公司的完整歷史。</span></div>` : ''}
+          ${this._confHist === r.s && older.length ? `<div class="note" style="margin-top:3px" data-conf-histbox="${this._esc(r.s)}">📜 這一檔過去的法說會:${older.slice().reverse().map(x => `<span class="mono">${this._esc(x)}</span>`).join(' ・ ')}<br><span style="color:var(--dim2)">⏳ ${this._esc(this._confHistFrom())} 起才有紀錄,⛔ 不是公司的完整歷史。</span></div>` : ''}
         </div>`;
       }
     }
@@ -11505,9 +11675,11 @@ ${M.news || '(無)'}
     try { const ta = document.getElementById('confDeepQ'); if (ta && !ta.value) ta.value = localStorage.getItem('proWar_confQ') || ''; } catch (_) {}
     if (this._confData === undefined) {
       body.innerHTML = `<div class="note">⏳ 正在讀法說會資料…</div>`;
-      const [D] = await Promise.all([this.fetchJson('data/confcall.json'), this.loadNames ? this.loadNames() : null,
-                                     this.fetchJson('data/playbook_edge.json'), this.fetchJson('data/screener.json')]);
+      const [D, G] = await Promise.all([this.fetchJson('data/confcall.json'), this.fetchJson('data/confcall_digest.json'),
+                                        this.loadNames ? this.loadNames() : null,
+                                        this.fetchJson('data/playbook_edge.json'), this.fetchJson('data/screener.json')]);
       this._confData = D || null;
+      this._confDig = G || null;
     }
     const D = this._confData;
     if (!D) {
@@ -11523,8 +11695,13 @@ ${M.news || '(無)'}
     if (D.src_error && D.src_error.otc) errs.push(`上櫃這輪抓不到:${this._esc(D.src_error.otc)}`);
     if (D.src_error && D.src_error.names) errs.push(`產業分類這輪沒補上:${this._esc(D.src_error.names)}(🏭 那一排會少掉,⛔ 不猜)`);
     const n = D.n || {};
+    const G = this._confDig;
+    // 📄 簡報重點那份檔讀不到 ≠ 簡報沒內容(陷阱 #22)→ 一定要分開講
+    const deckLine = G && Array.isArray(G.rows)
+      ? `<br>📄 簡報重點:最近 ${G.days || 60} 天讀到 <b>${G.rows.length}</b> 份(更新 ${this._esc(String(G.updated || '').slice(0, 16).replace('T', ' '))})`
+      : `<br><span data-conf-nodigest="1">📄 簡報重點:<b>還沒產出</b>(data/confcall_digest.json 讀不到;第一次要等採礦跑完一輪)—— ⛔ 不代表簡報沒內容</span>`;
     meta.innerHTML = `📅 資料日 <b>${this._esc(D.data_date || '—')}</b>${stale >= 4 ? ` <span class="sigtag warn">⚠️ 已 ${stale} 天沒更新</span>` : ''}
-      ・未來 <b>${n.upcoming ?? (D.upcoming || []).length}</b> 場 ・已開 <b>${n.recent ?? (D.recent || []).length}</b> 場 ・有擇要 ${n.with_sum ?? '—'} ・有簡報/影音 ${n.with_files ?? '—'}
+      ・未來 <b>${n.upcoming ?? (D.upcoming || []).length}</b> 場 ・已開 <b>${n.recent ?? (D.recent || []).length}</b> 場 ・有擇要 ${n.with_sum ?? '—'} ・有簡報/影音 ${n.with_files ?? '—'}${deckLine}
       ${errs.length ? `<div class="warnbox" style="margin-top:6px" data-conf-srcerr="1">⚠️ ${errs.join('<br>')}<br>⛔ 那一邊的場次這輪是<b>舊的或缺的</b>,不是真的沒有。</div>` : ''}`;
     this._confPaint();
   },

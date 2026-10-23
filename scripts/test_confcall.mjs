@@ -91,11 +91,13 @@ const R = await pg.evaluate(() => {
 });
 ok(R.inWrap, '①d 容器在 .wrap 裡面(DOM 查得到 `.wrap #tabConf`;⛔ 留在外面會吃到 80px 底部 padding = 一大塊空白,V74.4.3)');
 ok(R.vis && errs.length === 0, '② 分頁切得過去、無 pageerror', errs.join(' | '));
-ok(R.rows.length === 5 && R.rows.includes('2330') && R.rows.includes('6488'), '②a 五場全部列出(上市 + 上櫃)', R.rows.join(','));
+ok(R.rows.slice().sort().join(',') === '2382,3231,6488', '②a 📞 V79.6.3 預設 = 🆕 剛開完(7 天內開完的三場;今天還沒開的 2330 / 未來的 1101 不在這裡)', R.rows.join(','));
+const allRows = await pg.evaluate(() => { PRO.confSel('all'); const r = [...document.querySelectorAll('#tabConf [data-conf-row]')].map(e => e.dataset.confRow); PRO.confSel('new'); return r; });
+ok(allRows.length === 5 && allRows.includes('2330') && allRows.includes('6488'), '②a2 「全部」五場都列出(上市 + 上櫃)', allRows.join(','));
 ok(/資料日/.test(R.meta) && R.meta.includes(today), '⑥a 資料日有標出來', R.meta.slice(0, 80));
 ok(R.srcerr && /上櫃這輪抓不到/.test(R.meta), '⑥b 採礦端 src_error 要顯示(⛔ 不可靜默 —— 那一邊的場次是舊的或缺的)');
 ok(R.engs.join(',') === 'perplexity,chatgpt,google,gemini,meta', '⑤c 引擎 chips = Perplexity / ChatGPT / Google / Gemini / Meta AI', R.engs.join(','));
-ok(R.sels.join(',') === 'all,mine,today,future,sum', '③a 篩選 chips 五個都在', R.sels.join(','));
+ok(R.sels.join(',') === 'new,mine,future,all', '③a 篩選 chips:🆕 剛開完 / 👜 我的 / 📅 接下來 14 天 / 全部', R.sels.join(','));
 ok(R.details.length === 2 && R.details.every(o => !o), '②b 擇要訊息預設折疊(第一眼乾淨)', String(R.details));
 ok(/公司尚未提供/.test(R.txt), '②c 沒擇要的場次要說「公司尚未提供」,⛔ 不留空');
 const DIR = /建議買進|建議賣出|利多|利空|看漲|看跌|偏多|偏空|加碼|減碼|出清|會漲|會跌/;
@@ -104,10 +106,10 @@ ok(!DIR.test(R.txt), '④ 全頁⛔ 不可出現方向/部位詞', (R.txt.match(
 // ③ 「我的」= 庫存(2330)∪ 自選(2382)∪ 決策台(3231);⛔ 1101 / 6488 不可進來
 const mine = await pg.evaluate(() => { PRO.confSel('mine'); return [...document.querySelectorAll('#tabConf [data-conf-row]')].map(e => e.dataset.confRow).sort(); });
 ok(mine.join(',') === '2330,2382,3231', '③b 「👜 我的」= 庫存 ∪ 自選 ∪ 決策台名單,不多不少', mine.join(','));
-const todayRows = await pg.evaluate(() => { PRO.confSel('today'); return [...document.querySelectorAll('#tabConf [data-conf-row]')].map(e => e.dataset.confRow); });
-ok(todayRows.join(',') === '2330', '③c 「今天」只剩今天那一場', todayRows.join(','));
-const sumRows = await pg.evaluate(() => { PRO.confSel('sum'); return [...document.querySelectorAll('#tabConf [data-conf-row]')].map(e => e.dataset.confRow).sort(); });
-ok(sumRows.join(',') === '2382,6488', '③d 「已開・有內容」只剩有擇要/簡報的已開場次', sumRows.join(','));
+const futRows = await pg.evaluate(() => { PRO.confSel('future'); return [...document.querySelectorAll('#tabConf [data-conf-row]')].map(e => e.dataset.confRow).sort(); });
+ok(futRows.join(',') === '1101,2330', '③c 「接下來 14 天」= 今天還沒開的 + 未來的', futRows.join(','));
+const newRows = await pg.evaluate(() => { PRO.confSel('new'); return [...document.querySelectorAll('#tabConf [data-conf-row]')].map(e => e.dataset.confRow).sort(); });
+ok(newRows.join(',') === '2382,3231,6488', '③d 「剛開完」= 7 天內已經開完的', newRows.join(','));
 const srch = await pg.evaluate(() => { PRO.confSel('all'); PRO.confSearch('HBM'); const el = document.getElementById('tabConf'); return { rows: [...el.querySelectorAll('[data-conf-row]')].map(e => e.dataset.confRow), mark: el.querySelectorAll('[data-conf-row] mark').length }; });
 ok(srch.rows.join(',') === '6488' && srch.mark >= 1, '③e 關鍵字搜尋會篩到擇要,而且有 <mark> 高亮', JSON.stringify(srch));
 const empty = await pg.evaluate(() => { PRO.confSearch('不存在的關鍵字zzz'); const el = document.getElementById('tabConf'); return { e: !!el.querySelector('[data-conf-empty]'), t: (el.innerText || '').replace(/\s+/g, ' ') }; });
@@ -117,7 +119,7 @@ ok(empty.e && /整份名單裡搜不到/.test(empty.t) && !/讀不到 data\/conf
 const emptyFilter = await pg.evaluate((F) => {
   PRO.confSearch('');
   PRO._confData = Object.assign({}, F, { upcoming: [], recent: [] });   // 沒有關鍵字、但這個範圍真的一場都沒有
-  PRO.confSel('today');
+  PRO.confSel('future');
   const el = document.getElementById('tabConf');
   // 🚨 量測要**全部做完**再還原 —— 第一版把 `e` 寫在 return 裡(還原之後才算)→ 永遠 false = 假失敗。
   const got = { e: !!el.querySelector('[data-conf-empty]'), t: (el.innerText || '').replace(/\s+/g, ' ') };
@@ -274,8 +276,8 @@ const hist = await pg.evaluate(() => {
   return { label, t: box ? (box.innerText || '').replace(/\s+/g, ' ') : '' };
 });
 ok(/2 場/.test(hist.label), '📜⑱ 「歷年」只算**這一場以外**的(⛔ 不可把今天這場也算進去)', hist.label);
-ok(/2026-03-14/.test(hist.t) && /2025-11-08/.test(hist.t) && /從本站開始採集/.test(hist.t),
-  '📜⑱b 展開列出歷年日期,並誠實說「不是公司的完整歷史」', hist.t.slice(0, 120));
+ok(/2026-03-14/.test(hist.t) && /2025-11-08/.test(hist.t) && /2025-11-08 起才有紀錄/.test(hist.t) && /不是公司的完整歷史/.test(hist.t),
+  '📜⑱b 展開列出歷年日期,並誠實說「從哪天起才有紀錄(讀資料,⛔ 寫死)、不是公司的完整歷史」', hist.t.slice(0, 160));
 
 // ── 📊 會後股價統計(事實,⛔ 不是訊號)
 const react = await pg.evaluate(() => {
@@ -287,6 +289,7 @@ const react = await pg.evaluate(() => {
 ok(/-1\.26 pp/.test(react) && /對照組/.test(react) && /-0\.73 pp/.test(react) && /522,732/.test(react),
   '📊⑲ 事件組**與對照組**的數字都要印(⛔ 沒有對照組的統計不可用,陷阱 #36)', react.slice(0, 160));
 ok(/不是回測/.test(react) && /0 個成立/.test(react), '📊⑲b 固定免責:不是回測 + 37 種行事曆日方向 0 個成立');
+ok(/同一天所有股票/.test(react) && /沒看簡報內容/.test(react), '📊⑲b2 📞 V79.6.3 引用真的那支法說會研究(實測總表 confcall-react,讀 LAB ⛔ 寫死)+ 說明內容還在測', react.slice(-260));
 ok(/樣本不足/.test(react) && /3 場/.test(react), '📊⑲c 這一檔 n<10 要標「樣本不足,⛔ 不能當結論」(`_wrEnough` 同一把尺)', react.slice(-120));
 ok(!DIR.test(react), '📊⑲d 統計段⛔ 不可出現方向詞', (react.match(DIR) || [])[0]);
 

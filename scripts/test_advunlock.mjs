@@ -213,6 +213,21 @@ const T = await page.evaluate(() => {
       R.fbShort = ids(run({ bars: new Map([['2454', fb(50000, 100)]]), fav: ['2454'] }));
       const sh = last => mkK(150, '2026-10-16', k => { k.forEach(r => { r.margin_balance = 1000; r.short_balance = 10; }); k[k.length - 1].short_balance = last; });
       R.sh = ids(run({ bars: new Map([['2454', sh(50)]]), fav: ['2454'] })); R.shNo = ids(run({ bars: new Map([['2454', sh(10)]]), fav: ['2454'] }));
+      // 🎭 V79.6.3 散戶在接、法人在賣:融資 10 天增 gm、三大法人每天賣 fs 股(量 1000)→ 佔量 fs/10;⛔ 最後一根三大法人都 0 = 沒公布,從前一根算
+      const rc = (gm, fs, lastZero = true) => mkK(80, '2026-10-16', k => { const n = k.length, e = lastZero ? n - 2 : n - 1;
+        k.forEach((r, i) => { r.margin_balance = i <= e - 10 ? 1000 : Math.round(1000 * (1 + gm * (i - (e - 10)) / 10)); r.foreign_net = -fs; r.trust_net = 0; r.dealer_net = 0; });
+        if (lastZero) { k[n - 1].foreign_net = 0; k[n - 1].margin_balance = k[n - 2].margin_balance; } });
+      R.rc = ids(run({ bars: new Map([['2454', rc(0.12, 40)]]), fav: ['2454'] }));
+      R.rcNoM = ids(run({ bars: new Map([['2454', rc(0.05, 40)]]), fav: ['2454'] }));
+      R.rcNoI = ids(run({ bars: new Map([['2454', rc(0.12, 20)]]), fav: ['2454'] }));
+      // 💥 V79.6.3 融資斷頭:融資在 100 元附近一路增(成本 ≈ 100 → 追繳線 78),最後 6 天跌到 70、融資 5 天減 13% → margin_call;只跌到 85(還沒破線)→ 沒有
+      const mc = lastPx => mkK(80, '2026-10-16', k => { const n = k.length, px = [95, 90, 85, 80, 75, lastPx];
+        k.forEach((r, i) => { r.margin_balance = 1000 + Math.min(i, n - 6) * 10; });
+        [1700, 1650, 1600, 1550, 1500].forEach((m, j) => { k[n - 5 + j].margin_balance = m; });
+        for (let j = 0; j < 6; j++) { const c = j === 5 ? lastPx : px[j], r = k[n - 6 + j]; Object.assign(r, { open: c, high: c * 1.01, low: c * 0.99, close: c }); } });
+      R.mc = ids(run({ bars: new Map([['2454', mc(70)]]), fav: ['2454'] }));
+      R.mcNo = ids(run({ bars: new Map([['2454', mc(85)]]), fav: ['2454'] }));
+      R.mcState = (() => { const st = app._marginCallState(mc(70), '2454'); return st ? `${st.level}:${Math.round(st.callLine)}:${Math.round(st.mgChg)}` : 'null'; })();
       const rb = mkK(80, '2026-10-16', k => { k[k.length - 1].close = 103; });
       R.rb = ids(run({ bars: new Map([['3008', rb]]), sold: new Map([['3008', { date: '2026-10-14', px: 101 }]]) }));
       R.rbNo = ids(run({ bars: new Map([['3008', rb]]), sold: new Map([['3008', { date: '2026-10-14', px: 105 }]]) }));
@@ -257,6 +272,8 @@ ok('③o 手上的收盤創 60 日新高 → nh60_held;平盤 → 沒有', has(T
 ok('③p 外資連買 5 天(最後一根 0 = 沒公布,從前一根算)→ fi_streak5;4 天 → 沒有', has(T.fi, 'fi_streak5') && !has(T.fiNo, 'fi_streak5'), JSON.stringify([T.fi, T.fiNo]));
 ok('③p2 外資單日買超 ≥ 自己過去 250 天第 99 百分位(最後一根 0 = 沒公布,看前一根)→ fi_burst;只是平常大小 / 過去不到 120 天 → 沒有', has(T.fb, 'fi_burst') && !has(T.fbNo, 'fi_burst') && !has(T.fbShort, 'fi_burst'), JSON.stringify([T.fb, T.fbNo, T.fbShort]));
 ok('③q 券資比衝到自己歷史最高 10% → short_hi;一樣 → 沒有', has(T.sh, 'short_hi') && !has(T.shNo, 'short_hi'), JSON.stringify([T.sh, T.shNo]));
+ok('③q2 🎭 融資 10 天增 12% + 三大法人 10 天賣超 4% 佔量(最後一根沒公布 → 從前一根算)→ retail_catch;融資只增 5% / 法人只賣 2% → 沒有', has(T.rc, 'retail_catch') && !has(T.rcNoM, 'retail_catch') && !has(T.rcNoI, 'retail_catch'), JSON.stringify([T.rc, T.rcNoM, T.rcNoI]));
+ok('③q3 💥 收盤跌破推估追繳線 + 融資 5 天減 13% → margin_call(追繳線讀 _marginCallState);跌到 85 還沒破線 → 沒有', has(T.mc, 'margin_call') && !has(T.mcNo, 'margin_call') && /^broken:/.test(T.mcState), JSON.stringify([T.mc, T.mcNo, T.mcState]));
 ok('③r 賣掉 2 天後收盤站回賣價 → rebuy;沒站回 / 賣掉太久 → 沒有;只賣掉的那檔⛔ 判別的條件', has(T.rb, 'rebuy') && !has(T.rbNo, 'rebuy') && !has(T.rbOld, 'rebuy') && !T.rbOnly.length, JSON.stringify([T.rb, T.rbNo, T.rbOld, T.rbOnly]));
 ok('③s 大盤剛脫離空頭 → bull_on;一路跌 → 沒有', has(T.bull, 'bull_on') && !has(T.bullNo, 'bull_on'), JSON.stringify([T.bull, T.bullNo]));
 ok('③k 週末⛔ 不判日子類', !has(T.weekend, 'settle'), JSON.stringify(T.weekend));

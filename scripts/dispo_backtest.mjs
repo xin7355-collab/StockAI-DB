@@ -140,7 +140,7 @@ export function buildCtrl(dir, syms, mktRet) {
 }
 
 // ── 一筆事件 → 樣本(進場 = 事件日隔一個交易日開盤)。回 {skip} 或 {sym,d,entryDate,pre5,ex,beat,cw,rawx} ──
-export function sampleEv(K, ctrl, mktRet, sym, evDate) {
+export function sampleEv(K, ctrl, mktRet, sym, evDate, opts = {}) {
   if (!K) return { skip: 'nok' };
   let i = lastLE(K, evDate);                        // 事件日剛好停牌/沒 K → 用事件日前最近的一根
   if (i < 0) return { skip: 'nok' };
@@ -148,7 +148,8 @@ export function sampleEv(K, ctrl, mktRet, sym, evDate) {
   const e = i + 1;
   if (e >= K.n) return { skip: 'end' };
   if (!(K.o[e] > 0)) return { skip: 'nok' };
-  if (locked(K, e)) return { skip: 'lock' };
+  // 開盤鎖死:鎖漲停一定買不到;鎖跌停其實買得到(賣的人排隊)→ opts.allowDownLock 時只擋鎖漲停(retail_inst_probe 融資斷頭用)
+  { const lk = lockedBar(K.dates[e], K.c[e - 1], K.o[e], K.h[e], K.l[e]); if (lk === 1 || (lk === -1 && !opts.allowDownLock)) return { skip: 'lock' }; }
   if (cliffIn(K, i - PRE, e)) return { skip: 'cliff' };   // 前 5 天到進場那天就有斷崖 → 前 5 日漲跌是假的
   const pre5 = i >= PRE ? (K.c[i] / K.c[i - PRE] - 1) * 100 : null;
   const out = { sym, d: evDate, entryDate: K.dates[e], pre5, ex: {}, beat: {}, cw: {}, rawx: {} };
@@ -388,5 +389,8 @@ function selftest() {
   return bad.length ? 1 : 0;
 }
 
-if (process.argv.includes('--selftest')) process.exit(selftest());
-else if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+// ⚠️ 只有「直接執行這支」才跑 selftest / main —— 別的探針 import 這支(retail_inst_probe)時帶著自己的 --selftest,
+//   ⛔ 不可在 import 的當下跑掉這支的 selftest 然後 process.exit
+const IS_MAIN = !!process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (IS_MAIN && process.argv.includes('--selftest')) process.exit(selftest());
+else if (IS_MAIN) main();
