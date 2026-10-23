@@ -100,6 +100,10 @@ SHARED_WF = ('daily_miner.yml', 'fund_sweep.yml', 'pe_band.yml', 'dividend_sweep
 BUSY_TTL = 60                    # 秒:同一分鐘內只問一次 API
 BUSY_WAIT_MIN = 5                # 有人在跑 → 每 5 分鐘再看一次
 BUSY_FAIL_MAX = 3                # API 連 3 次查不到 → 退回只靠時段表(照舊)並明說
+ZOMBIE_H = 6                     # 🧟 in_progress / queued 開跑超過這麼多小時 → 當成 GitHub 那邊的殭屍紀錄(略過並寫出來)
+#    2026-10-22 00:12 那一輪 macro_cron:job 3 分鐘就跑完(success),run 卻一直卡在 in_progress(33 小時還在)
+#    → 補挖每 5 分看一次「有人在跑」→ 第 18~21 棒整棒停手、兩天沒挖到任何東西,workflow 全綠零訊息。
+#    共用金鑰那 7 支最長的時限:pe_band 200 分、dividend 150 分、daily_miner 一個 job 90 分 → 6 小時一定不是真的還在跑。
 _BUSY = {'t': 0.0, 'v': (False, ''), 'fail': 0, 'said': ''}
 
 
@@ -116,6 +120,18 @@ def _gh_runs(status):
     return r.json().get('workflow_runs') or []
 
 
+def _run_age_h(r, now):
+    """這一筆 run 開跑多久了(小時);沒有時間欄位 → None(⛔ 不猜,照舊當成在跑)。"""
+    t = r.get('run_started_at') or r.get('created_at')
+    if not t:
+        return None
+    try:
+        ts = datetime.fromisoformat(str(t).replace('Z', '+00:00')).timestamp()
+    except ValueError:
+        return None
+    return (now - ts) / 3600
+
+
 def others_busy(fetch=None, now=None):
     """共用金鑰的那幾支 workflow 現在有沒有在跑?回 (True/False, 說明)。
     fetch(status) 可注入(selftest);預設問 GitHub API 並快取 BUSY_TTL 秒。
@@ -126,14 +142,22 @@ def others_busy(fetch=None, now=None):
     if real and _BUSY['t'] and now - _BUSY['t'] < BUSY_TTL:
         return _BUSY['v']
     try:
-        hit = set()
+        hit, ghost = set(), set()
         for st in ('in_progress', 'queued'):
             for r in fetch(st) or []:
                 wf = os.path.basename(str(r.get('path') or '').split('@')[0])
-                if wf in SHARED_WF:
-                    hit.add(f'{wf}({st})')
+                if wf not in SHARED_WF:
+                    continue
+                age = _run_age_h(r, now)
+                if age is not None and age > ZOMBIE_H:
+                    ghost.add(f'{wf}({st},已 {age:.0f} 小時)')
+                    continue
+                hit.add(f'{wf}({st})')
         _BUSY['fail'] = 0
-        v = (bool(hit), '、'.join(sorted(hit)))
+        why = '、'.join(sorted(hit))
+        if ghost:
+            why = (why + ' ・' if why else '') + f'🧟 略過殭屍紀錄 {"、".join(sorted(ghost))}(開跑超過 {ZOMBIE_H} 小時 = GitHub 那邊沒收尾,⛔ 不是真的在跑)'
+        v = (bool(hit), why)
     except Exception as e:
         _BUSY['fail'] += 1
         if _BUSY['fail'] >= BUSY_FAIL_MAX:
@@ -754,6 +778,18 @@ def selftest():
     ok('⑨ 不相干的 workflow(含補挖自己)在跑 → 照抓', not b, (b, w))
     b, w = others_busy(fetch=lambda st: [])
     ok('⑨ 沒人在跑 → 照抓', not b, (b, w))
+    # 🧟 2026-10-22 macro_cron 殭屍紀錄:job 早就跑完、run 卡在 in_progress 33 小時 → 補挖停手兩天
+    t_now = datetime(2026, 10, 23, 9, 0, tzinfo=timezone.utc).timestamp()
+    zomb = {'path': '.github/workflows/macro_cron.yml', 'run_started_at': '2026-10-22T00:12:03Z'}
+    b, w = others_busy(fetch=lambda st: [zomb] if st == 'in_progress' else [], now=t_now)
+    ok('⑨z 開跑 33 小時還 in_progress(殭屍)→ 照抓,而且原因寫出來(⛔ 不靜默)', not b and '殭屍' in w and 'macro_cron.yml' in w, (b, w))
+    fresh = {'path': '.github/workflows/macro_cron.yml', 'run_started_at': '2026-10-23T08:55:00Z'}
+    b, w = others_busy(fetch=lambda st: [fresh] if st == 'in_progress' else [], now=t_now)
+    ok('⑨z2 決定性對照:同一支 5 分鐘前才開跑 → 暫停', b and 'macro_cron.yml(in_progress)' in w and '殭屍' not in w, (b, w))
+    b, w = others_busy(fetch=lambda st: [zomb, {'path': '.github/workflows/pe_band.yml', 'run_started_at': '2026-10-23T07:00:00Z'}] if st == 'in_progress' else [], now=t_now)
+    ok('⑨z3 殭屍 + 真的在跑的 pe_band → 照樣暫停(殭屍只略過它自己)', b and 'pe_band.yml(in_progress)' in w and '殭屍' in w, (b, w))
+    b, w = others_busy(fetch=lambda st: [{'path': '.github/workflows/macro_cron.yml'}] if st == 'in_progress' else [], now=t_now)
+    ok('⑨z4 沒有時間欄位 → ⛔ 不猜,照舊當成在跑', b, (b, w))
 
     def _boom(st):
         raise RuntimeError('api down')

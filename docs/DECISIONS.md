@@ -28,6 +28,12 @@
 - 落地:實測總表三條 ⛔(`myth-bigplayer` 總整理 13 種「跟大戶 / 反散戶」做法、`myth-retail-catch`、`margin-call-bounce`)+ 專欄三篇 + 推薦下一步 `next-margincall-exit`(持股遇到斷頭潮出場延後幾天?沒測過 ⛔ 不改出場);App 觸發條件 `retail_catch` / `margin_call`(你的庫存 / 自選碰到就跳那篇專欄,只在解鎖後;`test_advunlock ③q2/③q3`)。
 - ⚠️ 866 檔上櫃 2023 年前沒有融資(#92 補挖中)→ 到齊重跑兩支。
 
+### 🧟 補挖停手兩天:GitHub 的殭屍執行紀錄(順手查到)
+- 個股深歷史補挖(`stock_deep_backfill`)第 18~21 棒整棒都在「⏸️ 共用金鑰的 macro_cron.yml(in_progress)正在跑 → 每 5 分看一次」,第 20 棒等了 3.5 小時「沒有新檔 → 不 commit」。
+- 真因:2026-10-22 00:12 那一輪 macro_cron 的 job 3 分鐘就跑完(success),**run 卻一直掛 in_progress**(33 小時後還在);取消它 GitHub 回 409「不在執行中」—— 內部知道結束了、清單 API 沒收尾 → 只能在我們這邊略過。
+- 修法:`others_busy` 開跑超過 `ZOMBIE_H`(6 小時;共用金鑰那 7 支最長時限 pe_band 200 分)就當殭屍略過,並把「🧟 略過殭屍紀錄 …」寫進紀錄(⛔ 不靜默);沒有時間欄位 ⛔ 不猜、照舊當在跑。selftest ⑨z~⑨z4(決定性對照:同一支 5 分鐘前才開跑 → 照樣暫停;注入「拿掉判斷」⑨z / ⑨z3 紅)。
+- 停掉還在白等的第 21 棒(舊程式),用修好的程式重派:排隊把融資(`margin`,#92 還差 866 檔)放最前面,後面照原本的 per → share → dt → sbl(借券賣出,④B 要用)→ fis10 / fbs10 / fcf10。
+
 ### 測試
 - `scripts/test_confcall_deck.py` ①~㉘(含 ⑰ 抽字時限、⑱ pdftotext / pypdf、⑲ 兩條路 + 總時限、⑳ 失敗原因分類、㉑~㉘ 用真簡報原文當測資的品質過濾,都有決定性對照)・`scripts/test_confcall_ui.mjs`(新,注入「拿掉 await 回來的 sym 判斷」必紅)・`test_confcall.mjs` 改新設計・`test_advunlock ③q2/③q3`・`retail_inst_probe / margin_call_port --selftest`・`dispo_backtest --selftest`(IS_MAIN 守門 + 鎖跌停也買的選項)。
 
