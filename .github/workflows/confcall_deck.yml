@@ -1,0 +1,166 @@
+name: 📞 法說會簡報讀取 (confcall_deck)
+
+# 📞 V79.6.3 把法說會「簡報內容」讀進來 —— 重點句 / 公司給的數字(附頁碼)/ 這次第一次提到的東西 / AI 一句話(數字核對過)
+#    使用者 2026-10-23:「法說會的最新不是很重要嗎?如何快速提取裡面重點,還有之前沒有做的項目,突然開始要做」
+#    以前 confcall_miner 只抓場次表(日期 / 地點 / 簡報檔名),簡報內容一個字都沒讀。
+#
+# 🚨 誰來觸發:**跟在 playbook_scan 後面**(`workflow_run`,⛔ 不新開 cron —— 排程配額已經不夠用,見 CLAUDE.md V73.9.0 / V75.2.0)。
+#    playbook_scan 同一趟會更新 data/confcall.json(場次表 + 簡報檔名)並推上 data 分支 → 這裡一定讀得到最新的。
+#
+# ⛔ 三個刻意的設計:
+#   ① 特徵存**獨立分支 cc_deep**(⛔ 不進 gh-pages):研究與「跟上一份比」才用得到全部歷史
+#   ② App 讀的兩個小產物(data/cc/{sym}.json、data/confcall_digest.json)推 gh-pages **也推 data 分支**
+#      → daily_miner 的 orphan force-push 之後 🛟 撿回會把它們帶回來(陷阱 #41;同 tick_flow / fin 切片)
+#   ③ 下載防封鎖寫在程式裡(間隔 3 秒、指數退避、連 5 份失敗收工、每輪上限、時間上限)
+#
+# ⚠️ GROQ_API_KEYS 沒設也照跑(只是沒有 AI 那一句話,機械式重點照有)
+
+on:
+  workflow_run:
+    workflows: ["🎯 明日作戰清單 (playbook_scan)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      max_files:
+        description: '這一輪最多讀幾份簡報(預設 150)'
+        required: false
+        default: ''
+      ai_max:
+        description: '這一輪最多叫 AI 幾次(預設 40;填 0 = 不叫)'
+        required: false
+        default: ''
+
+# ⛔ 不跟 gh-pages-push 共用鎖(讀簡報要 20~40 分,拿著鎖會擠掉別人的部署,V79.5.0 weekly_backtest 的教訓)
+#    → 自己一個 group;部署那步用 fetch + 重試(同 tick_flow)。
+#    ⚠️ cancel-in-progress: false —— 被新的一輪砍掉 = 讀到一半的白讀。
+concurrency:
+  group: confcall-deck
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  deck:
+    name: 📞 讀法說會簡報
+    runs-on: ubuntu-latest
+    # 只跟 playbook_scan 成功的那一輪(⛔ 失敗的那輪 confcall.json 可能沒更新);手動 dispatch 不受影響
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 60
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝(requests + pypdf;⛔ 不加進全域 requirements)
+        run: pip install -q requests "pypdf==5.1.0"
+
+      # ⚠️ git show 失敗會留下 0 bytes 的檔(陷阱 #18/#20)→ 一律驗非空
+      - name: 📂 還原場次表 (origin/data → data/confcall.json)
+        run: |
+          mkdir -p data
+          git fetch origin data --depth=1 2>/dev/null || true
+          if git show origin/data:data/confcall.json > data/confcall.json 2>/dev/null && [ -s data/confcall.json ]; then
+            echo "✅ confcall.json $(wc -c < data/confcall.json) bytes"
+          else
+            rm -f data/confcall.json; echo "❌ 讀不到場次表 → 不做"; exit 1
+          fi
+
+      - name: 📚 還原已讀過的簡報特徵 (origin/cc_deep → cc_deep/)
+        run: |
+          mkdir -p cc_deep
+          git fetch origin cc_deep --depth=1 2>/dev/null || true
+          if git rev-parse --verify -q origin/cc_deep >/dev/null; then
+            for f in $(git ls-tree --name-only -r origin/cc_deep -- cc/ 2>/dev/null); do
+              mkdir -p "cc_deep/$(dirname "$f")"
+              if git show "origin/cc_deep:$f" > "cc_deep/$f" 2>/dev/null && [ -s "cc_deep/$f" ]; then :; else
+                rm -f "cc_deep/$f"; echo "  ⚠️ $f 還原失敗(當成沒有)"
+              fi
+            done
+          else
+            echo "ℹ️ 還沒有 cc_deep 分支(第一次跑)"
+          fi
+          echo "📚 既有特徵月檔 $(ls cc_deep/cc/feat/*.json.gz 2>/dev/null | wc -l) 個"
+
+      # ⚠️ selftest 跟正式跑寫在同一個 step(check_workflow_paths 比「同一支腳本同一個機密」;selftest 沒過就⛔ 不動任何分支)
+      - name: 📞 selftest → 讀簡報
+        id: run
+        env:
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          CC_DIR: cc_deep
+          # 🔧 排程 / workflow_run 觸發時 inputs.* 是空字串 → Python 端一律 `or 預設`
+          CC_MAX: ${{ github.event.inputs.max_files }}
+          CC_AI_MAX: ${{ github.event.inputs.ai_max }}
+        run: |
+          set -o pipefail
+          python3 confcall_deck.py --selftest
+          python3 confcall_deck.py 2>&1 | tee /tmp/deck.log
+
+      - name: 🚀 推 cc_deep 分支
+        run: |
+          set -e
+          [ -s cc_deep/cc/index.json ] || { echo "❌ 沒有 index.json → 不推"; exit 1; }
+          cp -r cc_deep/cc /tmp/cc_out
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin "+refs/heads/cc_deep:refs/remotes/origin/cc_deep" 2>/dev/null || true
+          git reset --hard -q; git clean -fdxq -e cc_deep -e data
+          if git rev-parse --verify -q origin/cc_deep >/dev/null; then
+            git checkout -f -B cc_deep origin/cc_deep
+          else
+            echo "ℹ️ 第一次:建立 cc_deep 分支(orphan)"
+            git checkout -f --orphan cc_deep
+            git rm -rfq --cached . 2>/dev/null || true
+            git clean -fdq -e cc_deep -e data -e .git 2>/dev/null || true
+          fi
+          rm -rf cc && cp -r /tmp/cc_out cc
+          git add -f cc
+          if git diff --cached --quiet; then echo "無變更"; else
+            git commit -q -m "📞 法說會簡報特徵 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            pushed=0
+            for i in 1 2 3 4 5; do
+              git push origin cc_deep 2>/dev/null && { echo "✅ cc_deep push 成功 ($i)"; pushed=1; break; }
+              sleep $((i*5)); git fetch origin cc_deep 2>/dev/null || true; git pull --rebase origin cc_deep 2>/dev/null || true
+            done
+            [ "$pushed" -eq 1 ] || { echo "❌ cc_deep push 連 5 次失敗"; exit 1; }
+          fi
+          git checkout -f -q "${{ github.sha }}" 2>/dev/null || git checkout -f -q main
+
+      - name: 🚀 部署 data/cc + confcall_digest.json 到 gh-pages + data
+        run: |
+          set -e
+          [ -s data/confcall_digest.json ] || { echo "ℹ️ 沒有 confcall_digest.json → 不部署"; exit 0; }
+          rm -rf /tmp/out && mkdir -p /tmp/out && cp -r data/cc /tmp/out/cc 2>/dev/null || true
+          cp data/confcall_digest.json /tmp/out/
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          restore_files () { mkdir -p data/cc; cp -r /tmp/out/cc/. data/cc/ 2>/dev/null || true; cp /tmp/out/confcall_digest.json data/; }
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdxq 2>/dev/null || true
+            git fetch origin "$BR" 2>/dev/null || true
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
+            restore_files
+            git add -f data/cc data/confcall_digest.json
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "📞 法說會簡報重點 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              sleep $((i*5)); git fetch origin "$BR" 2>/dev/null || true
+              git reset --hard -q "origin/$BR" 2>/dev/null || true
+              restore_files; git add -f data/cc data/confcall_digest.json
+              git commit -q -m "📞 法說會簡報重點 $(date -u '+%Y-%m-%d %H:%M UTC')" || true
+            done
+          }
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "⏭️ 驗證⛔ 不可只看綠燈:git show origin/gh-pages:data/confcall_digest.json | head -c 400"
