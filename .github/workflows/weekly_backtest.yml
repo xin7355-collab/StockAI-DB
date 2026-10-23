@@ -33,6 +33,14 @@ name: 🔁 每週自動回測 (weekly_backtest)
 #   → 明日作戰清單那一輪被取消(10/13、10/14 ×2、10/16 週五、10/19 都是 1 秒內 cancelled;靠備援那一輪補回來,但晚了)。
 #   → 回測 job ⛔ 不拿鎖(只讀、不 push),產物用 artifact 交給部署 job;只有部署 job 拿鎖(約 1 分鐘)。
 #
+# 🔓 2026-10-23 部署 job 也不拿共用鎖了(⛔ 不可再放回 gh-pages-push):
+#   10/23 #57 回測全部正常,部署 job 15:57:27 要拿 gh-pages-push 時鎖被明日作戰清單的備援那輪(#218,排程遲到、
+#   跟 15:55 剛跑完的 #217 重複)佔著 → 排隊;16:05:23 news_express 也來排隊 → 每把鎖只留一個排隊的,
+#   後來的把先排隊的取消掉 → 16:05:24 部署 job cancelled,網站停在上一週那份(全綠的回測、零錯誤訊息)。
+#   → 部署 job 改用自己的鎖 weekly-backtest-deploy(只防自己兩輪疊在一起),推不上去靠下面的 5 次重試迴圈
+#     (重抓遠端 → 重放產物 → 再推,⛔ 不可拿掉);被 daily_miner 整份重推洗掉的情況由它的「🛟 撿回」接住(也推 data 分支)。
+#   同 confcall_deck / 盤中快照的做法。測試 test_backtest_edge ③c。
+#
 # 🧾 V79.5.1 成績單改成全市場 + 照 App「前一晚名單」買(使用者 10/22:放棄尾盤掃描、每週回測照樣改全市場、改用名單買法):
 #   以前抽 600 檔 + 舊買法(一筆接一筆、當天觸發的裡面挑最好)→ 跟 App 的金額對不起來(陷阱 #55 / #58)。
 #   第二趟「不挑 🧬」在名單買法下做不到 → 換成「💵 錢放現金」;build_backtest_edge.mjs 多兩道守門(名單有接上判觸發、判得夠深)。
@@ -239,7 +247,8 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
-  # 🔒 只有這個 job 拿共用部署鎖(與 deploy_pages / daily_miner deploy / playbook_scan 共用,避免同時 push gh-pages 打架)
+  # 🔓 ⛔ 不拿共用部署鎖 gh-pages-push(2026-10-23:排隊時被後到的 news_express 擠掉,見檔頭);
+  #    自己的鎖只防「手動那輪 + 自動那輪」疊在一起,撞到別支的推送靠下面的 5 次重試迴圈
   deploy:
     name: 🚀 部署到 gh-pages + data
     needs: backtest
@@ -247,7 +256,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
-      group: gh-pages-push
+      group: weekly-backtest-deploy
       cancel-in-progress: false
     steps:
       - name: 📥 下載程式碼 (main)

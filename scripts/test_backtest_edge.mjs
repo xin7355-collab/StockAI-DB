@@ -6,7 +6,8 @@
  *      🔁 V79.4.5 換設定(cfg)/ 換訊號方法(match)那一次 → 重新起算(放行 + rebase 註記);絕對下限 FLOOR 照樣要過;
  *         沒有上一版 → ⛔ 不拿內嵌的 16 年表當基準
  *   ③h workflow 的成績單設定 == App 現行預設(`_GENE_RULE` / `_DECK_TRACK49`)—— 改 App 預設忘了改這裡就紅
- *   ③ workflow:掛 daily_miner 的 workflow_run(名字逐字相同)、⛔ 無 cron、共用部署鎖 gh-pages-push 只在部署 job(V79.5.0)、推兩個分支、週五守門、還原上一版產物
+ *   ③ workflow:掛 daily_miner 的 workflow_run(名字逐字相同)、⛔ 無 cron、⛔ 不拿共用部署鎖 gh-pages-push(V79.5.0 回測 job、2026-10-23 部署 job 也不拿)、
+ *      部署 job 有 5 次重試迴圈、推兩個分支、週五守門、還原上一版產物
  *   ④ App:有產物 → `_sigEdge` 讀產物(決定性對照:把一個訊號改成 C 級要跟著變);沒有 → 讀嵌入版;讀不到檔不可 pageerror
  *   ⑤ App:`_btEdgeNote` 有產物印日期 + 差異數、沒有印「嵌入版」;⛔ 不改 `_DECK_TRACK49`
  * 注入:① build 的 diff 拿掉 grade 那條 → ①b 紅 ② 守門 0.8 改 0 → ② 紅 ③ `_sigEdge` 不讀產物 → ④ 紅 ④ workflow 加 schedule → ③ 紅
@@ -110,14 +111,21 @@ ok('②i 絕對下限有合理數值(成績單 ≥100 筆 —— 🧾 V79.5.1 �
 // ③ workflow
 ok('③a 掛 daily_miner 的 workflow_run,host 名字逐字相同(差一字永遠不觸發且零訊息)', WF.includes(`workflows: ["${HOST}"]`), HOST);
 ok('③b ⛔ 無 cron(排程配額早就不夠)', !/^\s*schedule:/m.test(WF) && !/cron:/.test(WF), '');
-// 🔒 V79.5.0 共用部署鎖只在部署 job:workflow 層級的 concurrency 讓每一輪(含開頭就收工的)跟 playbook_scan 同一秒進 gh-pages-push
-//    → 排隊中的明日作戰清單被擠掉(10/13、10/14 ×2、10/16、10/19)。⛔ 回測 job 不拿鎖、⛔ 不可搬回 workflow 層級
+// 🔒 V79.5.0 回測 job 不拿共用鎖:workflow 層級的 concurrency 讓每一輪(含開頭就收工的)跟 playbook_scan 同一秒進 gh-pages-push
+//    → 排隊中的明日作戰清單被擠掉(10/13、10/14 ×2、10/16、10/19)。⛔ 不可搬回 workflow 層級
+// 🔓 2026-10-23 部署 job 也不拿:#57 部署 job 排在 gh-pages-push 後面(鎖被明日作戰清單備援那輪佔著),
+//    news_express 來排隊 → 每把鎖只留一個排隊的 → 部署 job 1 秒內 cancelled,網站停在上一週那份。
+//    → 自己的鎖 weekly-backtest-deploy + 5 次重試迴圈(重抓遠端 → 重放產物 → 再推)
 {
     const iBt = WF.indexOf('\n  backtest:'), iDp = WF.indexOf('\n  deploy:');
     const wfTop = WF.slice(0, WF.indexOf('\njobs:')), jobBt = iBt > 0 && iDp > iBt ? WF.slice(iBt, iDp) : '', jobDp = iDp > 0 ? WF.slice(iDp) : '';
-    ok('③c 🔒 共用部署鎖(gh-pages-push、cancel-in-progress false)只在部署 job:workflow 層級 / 回測 job ⛔ 不拿',
+    const code = WF.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');   // ⛔ 只看程式,註解裡提到 gh-pages-push 不算
+    ok('③c 🔓 ⛔ 不拿共用部署鎖 gh-pages-push(workflow 層級 / 回測 job / 部署 job 都沒有);部署 job 用自己的鎖 weekly-backtest-deploy(cancel-in-progress false)',
        jobBt && jobDp && !/^concurrency:/m.test(wfTop) && !/^\s*concurrency:/m.test(jobBt)
-       && /\n {4}concurrency:\s*\n {6}group:\s*gh-pages-push\s*\n {6}cancel-in-progress:\s*false/.test(jobDp), `bt=${!!jobBt} dp=${!!jobDp}`);
+       && !/group:\s*gh-pages-push/.test(code)
+       && /\n {4}concurrency:\s*\n {6}group:\s*weekly-backtest-deploy\s*\n {6}cancel-in-progress:\s*false/.test(jobDp), `bt=${!!jobBt} dp=${!!jobDp}`);
+    ok('③c3 部署 job 推不上去會重試:最多 5 次、每次先重抓遠端 → 重放產物 → 再 commit(⛔ 不拿鎖之後這是唯一的防撞)',
+       /for i in 1 2 3 4 5; do\s*\n\s*if git push origin "\$BR"; then[\s\S]{0,400}?git fetch origin "\$BR"[\s\S]{0,120}?git reset --hard -q "origin\/\$BR"[\s\S]{0,80}?restore_files[\s\S]{0,300}?git commit[\s\S]{0,200}?\n\s*done/.test(jobDp), '');
     ok('③c2 部署 job 等回測 job 做完、只在它說有產物時才跑;產物用同一個 artifact 名字交接',
        /\n {4}needs:\s*backtest\b/.test(jobDp) && /if:\s*needs\.backtest\.outputs\.ok == '1'/.test(jobDp)
        && /ok:\s*\$\{\{\s*steps\.pack\.outputs\.ok\s*\}\}/.test(jobBt) && /upload-artifact@v4[\s\S]{0,80}name:\s*weekly-edge/.test(jobBt)
