@@ -28,7 +28,7 @@
 🚨 空過守門:若一個 Skill/腳本片段都沒抽到 → exit 1
    (這支工具最大的風險是「輸出看起來乾淨,其實根本沒驗到」)
 """
-import os, re, shutil, subprocess, sys, tempfile, time
+import json, os, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -214,6 +214,9 @@ print(len(base))
 #    → 撿回 / 部署 / 推 data 三步全部沒跑(那一步寫著「不擋部署」,卻吃得掉整個 job 的時限)。
 #    10/21 第二輪整個 job 26 分(DEPLOY_NORMAL)= 原本只剩 4 分餘裕。
 #    ⭐ 使用者 10/22 選:訊號掃描自己最多 8 分 + job 時限 30 → 40。
+#    ⏱️ V79.5.9:10/22 #637 整個 job 30.5 分(訊號掃描那步 7 分 25 秒 = 裝瀏覽器 5 分 39 秒 + 掃描 106 秒)
+#      → 瀏覽器改在並行那步背景先裝(見 ⑦),掃描上限 8 → 10(沒裝好時要在這裡補裝);
+#      DEPLOY_NORMAL 刻意留 26 不調低(搬走安裝之後平常約 23~25 分,留著當餘裕)。
 DEPLOY_NORMAL = 26
 SCAN_STEP = '🎯 今日實測訊號掃描(daily_signal_scan)'
 
@@ -270,6 +273,127 @@ ok('⑥ 決定性對照乙:job 時限退回 30 分 → 一定紅', _job30 != tex
 _others = [n for n, (c, t) in _steps.items() if c and t is None and n != SCAN_STEP]
 if _others:
     print(f"   ℹ️ 其他標了不擋部署、但沒有自己時限的步驟(目前沒卡過,先列出來):{', '.join(_others)}")
+
+
+# ── ⑦ 瀏覽器先在「⚡ 並行跑」那步背景裝好,掃描那步裝好了就不重裝(V79.5.9)────────
+# 🚨 10/22 #637:訊號掃描那步 7 分 25 秒 = 裝瀏覽器 5 分 39 秒 + 掃描 106 秒;playbook_scan 同一條只要 25 秒
+#    → 時快時慢,慢的日子會撞掉掃描自己的時限。並行那步本身 16~22 分(#637 21.5 分)→ 藏進去。
+# ⭐ 功能測試:把 yaml 裡兩段**原始 bash** 抽出來實跑(⛔ 測試裡不複製一份邏輯);
+#    npm / npx / python / git 換成假的(記下誰在哪一步被叫),node 用**真的**(才驗得到 yaml 裡那段 JS),
+#    playwright 換成一個只回「瀏覽器在哪」的假模組。
+PAR_STEP = '⚡ 並行跑 7 個 deploy 階段腳本(平行宇宙第二層)'
+
+
+def step_script(txt, name):
+    """抽 deploy job 裡某一步 `run: |` 的內容(去掉 10 格縮排);抽不到回 ''。"""
+    ls = txt.split('\n')
+    st = next((i for i, l in enumerate(ls) if l.strip() == f'- name: {name}'), -1)
+    if st < 0:
+        return ''
+    body, i = [], st + 1
+    while i < len(ls) and not re.match(r'^      - name:', ls[i]):
+        body.append(ls[i])
+        i += 1
+    blk = '\n'.join(body)
+    if 'run: |' not in blk:
+        return ''
+    rb = blk.split('run: |', 1)[1]
+    return '\n'.join(l[10:] if l.startswith(' ' * 10) else l for l in rb.split('\n')).strip('\n')
+
+
+PAR_SH = step_script(text, PAR_STEP)
+SCAN_SH = step_script(text, SCAN_STEP)
+ok('⑦ 抽得到並行那步與訊號掃描那步的腳本', len(PAR_SH.split('\n')) >= 30 and len(SCAN_SH.split('\n')) >= 10,
+   f'{len(PAR_SH.split(chr(10)))} / {len(SCAN_SH.split(chr(10)))} 行')
+ok('⑦ 並行那步:背景裝瀏覽器而且有等它(`wait $PIDPW`)',
+   'npx playwright install --with-deps chromium' in PAR_SH and 'pw.log 2>&1 &' in PAR_SH
+   and 'PIDPW=$!' in PAR_SH and 'wait $PIDPW' in PAR_SH)
+
+
+def pw_case(par_sh, scan_sh, npx_par=0, npx_scan=0, drop_browser=False, drop_log=False, strict=False):
+    """實跑兩段;回 (並行那步 rc, 輸出, 掃描那步 rc, 輸出, 被叫的指令清單)。"""
+    tmp = Path(tempfile.mkdtemp(prefix='pw_'))
+    try:
+        bindir, work, par = tmp / 'bin', tmp / 'work', tmp / 'parallel'
+        calls, browser = tmp / 'calls.log', tmp / 'ms-playwright' / 'chrome'
+        for d in (bindir, work / 'scripts', work / 'data'):
+            d.mkdir(parents=True)
+
+        def fake(name, body):
+            f = bindir / name
+            f.write_text('#!/bin/bash\n' + body + '\n')
+            f.chmod(0o755)
+        fake('python', f'echo "python $* [$PHASE]" >> "{calls}"; exit 0')
+        fake('git', f'echo "git $* [$PHASE]" >> "{calls}"; exit 0')
+        fake('npm', f'echo "npm $* [$PHASE]" >> "{calls}"; exit 0')
+        # ⚠️ 假的 npx 故意慢 1 秒:沒有 `wait $PIDPW` 的話,並行那步會在它寫完 RC 之前就結束(決定性對照乙靠這個)
+        fake('npx', f'echo "npx $* [$PHASE]" >> "{calls}"; sleep 1; '
+                    f'if [ "${{NPX_RC:-0}}" = 0 ]; then mkdir -p "{browser.parent}"; touch "{browser}"; fi; exit ${{NPX_RC:-0}}')
+        pm = work / 'node_modules' / 'playwright'
+        pm.mkdir(parents=True)
+        (pm / 'package.json').write_text('{"name":"playwright","main":"index.js"}')
+        (pm / 'index.js').write_text('module.exports={chromium:{executablePath:()=>%s}};' % json.dumps(str(browser)))
+        (work / 'scripts' / 'daily_signal_scan.mjs').write_text(
+            "import fs from 'fs'; fs.writeFileSync('data/today_signals.json', '{\"bull\":[]}'); console.log('scan ok');\n")
+        (tmp / 'par.sh').write_text(par_sh.replace('/tmp/parallel', str(par)) + '\n')
+        (tmp / 'scan.sh').write_text(scan_sh.replace('/tmp/parallel', str(par)) + '\n')
+        bash = ['bash', '--noprofile', '--norc', '-eo', 'pipefail'] if strict else ['bash', '-e']
+        env = dict(os.environ, PATH=f'{bindir}:{os.environ.get("PATH", "")}', NODE_PATH='')
+        r1 = subprocess.run(bash + [str(tmp / 'par.sh')], cwd=work, capture_output=True, text=True,
+                            env=dict(env, PHASE='par', NPX_RC=str(npx_par)), timeout=60)
+        time.sleep(1.5)   # 決定性對照乙(沒有 wait)時,讓背景那個先跑完再往下
+        if drop_browser and browser.exists():
+            browser.unlink()
+        if drop_log and (par / 'pw.log').exists():
+            (par / 'pw.log').unlink()
+        r2 = subprocess.run(bash + [str(tmp / 'scan.sh')], cwd=work, capture_output=True, text=True,
+                            env=dict(env, PHASE='scan', NPX_RC=str(npx_scan)), timeout=60)
+        cl = calls.read_text().split('\n') if calls.exists() else []
+        return r1.returncode, r1.stdout + r1.stderr, r2.returncode, r2.stdout + r2.stderr, cl
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _scan_installed(cl):
+    return any(c.startswith(('npm ', 'npx ')) and c.endswith('[scan]') for c in cl)
+
+
+if PAR_SH and SCAN_SH:
+    # 甲 平常:背景裝好 → 掃描那步不重裝
+    rc1, o1, rc2, o2, cl = pw_case(PAR_SH, SCAN_SH)
+    ok('⑦甲 並行那步照常結束(rc 0)而且印「瀏覽器已先裝好」', rc1 == 0 and '瀏覽器已先裝好' in o1, o1[-300:])
+    ok('⑦甲 安裝是在並行那步叫的(npm + npx 各一次)',
+       sum(c.endswith('[par]') and c.startswith('npm ') for c in cl) == 1
+       and sum(c.endswith('[par]') and c.startswith('npx ') for c in cl) == 1, cl)
+    ok('⑦甲 ⭐ 掃描那步⛔ 不重裝(npm / npx 一次都沒叫)', not _scan_installed(cl) and '不重裝' in o2, (cl, o2[-300:]))
+    ok('⑦甲 掃描照跑、印出安裝 / 掃描各幾秒', rc2 == 0 and 'scan ok' in o2 and '⏱️ 安裝' in o2 and 'today_signals.json' in o2, o2[-300:])
+    # 甲' 同一段在 pipefail 下也要過(哪天 workflow 加了 `shell: bash` 就是這種跑法)
+    rc1s, o1s, rc2s, o2s, cls = pw_case(PAR_SH, SCAN_SH, strict=True)
+    ok("⑦甲' 開 pipefail 照樣兩步都過、掃描不重裝", rc1s == 0 and rc2s == 0 and not _scan_installed(cls), (o1s[-200:], o2s[-200:]))
+    # 乙 背景那次裝失敗 → 並行那步⛔ 不可因此失敗;掃描那步自己補裝
+    rc1, o1, rc2, o2, cl = pw_case(PAR_SH, SCAN_SH, npx_par=1)
+    ok('⑦乙 背景安裝失敗 → 並行那步照樣 rc 0(⛔ 不擋部署)而且說出來', rc1 == 0 and '瀏覽器沒裝好' in o1, o1[-300:])
+    ok('⑦乙 掃描那步自己補裝後照跑', _scan_installed(cl) and '這裡補裝' in o2 and 'scan ok' in o2, (cl, o2[-300:]))
+    # 丙 RC=0 但瀏覽器不在(下載到一半被清掉之類)→ 補裝(驗 yaml 裡那段 JS 真的有在看檔案)
+    rc1, o1, rc2, o2, cl = pw_case(PAR_SH, SCAN_SH, drop_browser=True)
+    ok('⑦丙 RC=0 但瀏覽器檔案不在 → 掃描那步補裝', _scan_installed(cl) and 'scan ok' in o2, (cl, o2[-300:]))
+    # 丁 根本沒有 pw.log(並行那步沒跑到那段)→ 補裝
+    rc1, o1, rc2, o2, cl = pw_case(PAR_SH, SCAN_SH, drop_log=True)
+    ok('⑦丁 沒有安裝紀錄 → 掃描那步補裝', _scan_installed(cl) and 'scan ok' in o2, (cl, o2[-300:]))
+    # 決定性對照甲:把背景安裝搬回掃描那步(= 改版前)→ 掃描那步又開始自己裝 = ⑦甲那條會紅
+    _back = re.sub(r'\( T0=\$\(date \+%s\); set \+e\n.*?PIDPW=\$!\n', '', PAR_SH, flags=re.S).replace('wait $PIDPW\n', '')
+    if _back != PAR_SH:
+        rc1, o1, rc2, o2, cl = pw_case(_back, SCAN_SH)
+        ok('⑦ 決定性對照甲:拿掉背景安裝 → 掃描那步一定會自己裝(⑦甲 就是在擋這個)', _scan_installed(cl), cl)
+    else:
+        ok('⑦ 決定性對照甲:抽得到背景安裝那段(拿得掉才算有對照)', False, '樣式對不上')
+    # 決定性對照乙:拿掉 `wait $PIDPW` → 並行那步在安裝寫完 RC 之前就結束 → 印不出「已先裝好」
+    _nowait = PAR_SH.replace('wait $PIDPW\n', '')
+    if _nowait != PAR_SH:
+        rc1, o1, rc2, o2, cl = pw_case(_nowait, SCAN_SH)
+        ok('⑦ 決定性對照乙:拿掉 wait $PIDPW → 一定印不出「已先裝好」(⑦甲 第一條會紅)', '瀏覽器已先裝好' not in o1, o1[-300:])
+    else:
+        ok('⑦ 決定性對照乙:抽得到 wait $PIDPW 那行', False, '樣式對不上')
 
 run_case(single_branch=False)
 run_case(single_branch=True)

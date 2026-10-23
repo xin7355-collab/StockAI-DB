@@ -111,11 +111,41 @@ back, err = run(40120.0, '2026-07-29')
 assert called['yf'] == 0 and back == 81.0, f"③ 應只讀本地檔,yf 被呼叫 {called['yf']} 次"
 print('✅ ③ 現貨優先讀本地 data/^TWII.json(證交所權威收盤),完全沒動用 yfinance')
 
-# ④ 本地檔壞掉 → 退 yfinance 不炸
+# ④ 本地檔壞掉 → 退已發佈那份(V79.5.9)→ 再退 yfinance;全部不可用也不炸
+#   ⚠️ V79.5.9 起本機讀不到會先讀已發佈的 ^TWII.json(data 分支 raw → gh-pages)→ 這裡要把網路換成假的,
+#      ⛔ 不然測試會真的連到 GitHub(結果看網路,不是看程式)。用意不變:**每一條都不可用 → 回 (None, 原因),不炸**。
+class _NoNet:
+    @staticmethod
+    def get(*a, **k):
+        raise ConnectionError('測試:沒有網路')
+
+
+_real_http = mm.http
+mm.http = _NoNet
 (DD / '^TWII.json').write_text('{壞掉', encoding='utf-8')
 back, err = run(40120.0, '2026-07-29')
-assert back is None and err, '④ 本地壞 + yfinance 也不可用 → 應回 (None, 原因) 而不是拋例外'
-print(f'✅ ④ 本地檔壞掉 → 退 yfinance,失敗也只是回 None + 原因,不炸:{str(err)[:40]}')
+assert back is None and err, '④ 本地壞 + 已發佈的讀不到 + yfinance 也不可用 → 應回 (None, 原因) 而不是拋例外'
+print(f'✅ ④ 本地檔壞掉、已發佈的也讀不到 → 退 yfinance,失敗也只是回 None + 原因,不炸:{str(err)[:40]}')
+
+
+# ④b 本地檔壞掉但已發佈那份讀得到 → 用已發佈那份算(⛔ 不必退到落後一天的 yfinance)
+class _PubNet:
+    @staticmethod
+    def get(url, timeout=None):
+        class R:
+            status_code = 200
+
+            @staticmethod
+            def json():
+                return [{'date': '2026/07/28', 'close': 41603.36}, {'date': '2026/07/29', 'close': 40039.18}]
+        return R
+
+
+mm.http = _PubNet
+back, err = run(40120.0, '2026-07-29')
+assert err is None and back == 81.0, f'④b 應從已發佈那份算出 +81,實際 back={back} err={err}'
+print('✅ ④b 本地檔壞掉 → 改讀已發佈的 ^TWII.json,照樣算出價差(macro_cron 乾淨 checkout 就是這條路)')
+mm.http = _real_http
 
 # ⑤ 期貨日期未知 → 不擋(避免過度保守整天沒價差)
 seed_spot('2026/07/29', 40039.18)

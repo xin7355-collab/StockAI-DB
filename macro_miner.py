@@ -58,8 +58,11 @@ GROQ_URL_MM = "https://api.groq.com/openai/v1/chat/completions"
 #    Groq 下架之後每次呼叫都 404,而錯誤訊息只有「API 錯誤 404」看不出真因。
 #    這支目前用的 70b 還在,但**同一顆地雷**,一起拆掉(陷阱 #37:同一個修法要掃過所有地方)。
 #    行事曆解讀屬「質化判讀」→ 走 heavy 層(70b 比 8b 準)。
-from groq_common import groq_model as _groq_pick, invalidate as _groq_invalidate
+from groq_common import groq_model as _groq_pick, groq_apply as _groq_apply, invalidate as _groq_invalidate
 GROQ_TIER_MM = "heavy"
+# 🏷️ V79.5.9 這一輪真的拿到回答的那個模型(寫進 macro_events_ai.model;⛔ 不再事後另外問一次解析器 ——
+#    404 換過模型時,再問一次拿到的可能不是實際回答的那個 = 同名不同義)
+_GROQ_USED_MM = {"model": None}
 
 
 def _groq_chat_mm(messages, label="", max_tokens=1400, temperature=0.4):
@@ -78,7 +81,10 @@ def _groq_chat_mm(messages, label="", max_tokens=1400, temperature=0.4):
             #    又剛好被下面的 `except Exception` 吞掉只印「例外 NameError」,
             #    所以財經行事曆的 AI 解讀**從上線到現在一次都沒成功過**
             #    (實測 gh-pages 的 macro_risk.json:macro_events_ai 一直是空的)。
-            payload["model"] = payload.get("model") or _groq_pick(GROQ_KEYS_MM, GROQ_TIER_MM, avoid=_tried)
+            if not payload.get("model"):
+                # 🧠 V79.5.9 每個模型帶自己的參數(groq_common.groq_apply:qwen 不思考、gpt-oss 低強度 + 多給 400 字、
+                #    llama ⛔ 什麼都不帶);max_tokens 一律從呼叫端原本的值重算(⛔ 換模型時不可一直往上疊)
+                _groq_apply(payload, _groq_pick(GROQ_KEYS_MM, GROQ_TIER_MM, avoid=_tried), max_tokens)
             r = http.post(GROQ_URL_MM, json=payload,
                                   headers={"Authorization": f"Bearer {key}",
                                            "Content-Type": "application/json"}, timeout=45)
@@ -94,7 +100,11 @@ def _groq_chat_mm(messages, label="", max_tokens=1400, temperature=0.4):
             if r.status_code != 200:
                 print(f"  ⚠️ [Groq] HTTP {r.status_code} key#{i+1}: {r.text[:120]}")
                 continue
-            return (r.json().get("choices") or [{}])[0].get("message", {}).get("content", "").strip()
+            content = (r.json().get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
+            # 🧠 V79.5.9 有些模型會把思考過程包在 <think>…</think> 裡回來 → 先剝掉(⛔ 不然 JSON 解析會失敗)
+            content = re.sub(r"<think>.*?</think>", "", content, flags=re.S).strip()
+            _GROQ_USED_MM["model"] = payload.get("model")
+            return content
         except Exception as e:
             print(f"  ⚠️ [Groq] 例外 key#{i+1}: {type(e).__name__}")
     return None
@@ -305,7 +315,7 @@ def build_macro_events_ai(out):
         # 🧠 V71.3.9 誠實標示實際用哪個引擎產的(前端/日後除錯要看得出來)
         # ⚠️ V73.9.1 Groq 的模型名現在是動態解析的 → 這裡也要問一次同一支解析器,
         #    ⛔ 不可寫死(否則 JSON 上標的引擎跟實際用的會對不起來 = 又一個「同名不同義」)
-        "model": (_gemini_model_mm() if _engine == "gemini" else _groq_pick(GROQ_KEYS_MM, GROQ_TIER_MM)),
+        "model": (_gemini_model_mm() if _engine == "gemini" else (_GROQ_USED_MM["model"] or _groq_pick(GROQ_KEYS_MM, GROQ_TIER_MM))),
         "summary": str(data.get("summary", ""))[:400],
         "focus": [{
             "date": str(f.get("date", ""))[:10],
@@ -1932,11 +1942,82 @@ def fetch_nq_fut():   return _fetch_yf_future("NQ=F",    "那斯達克期貨")  
 def fetch_ust10y():   return _fetch_yf_close("^TNX",     "美債10年殖利率") # close 值即殖利率%(如 4.25=4.25%)
 
 
+# 📈 V79.5.9 加權指數日 K(data/^TWII.json)本機沒有就讀已發佈那份 —— 順逆價差與 60 日位階共用
+#   🚨 macro_cron 是乾淨 checkout(main 的 data/*.json 在 .gitignore)→ 本機沒有 ^TWII.json:
+#      ① 順逆價差的現貨退到 yfinance(實測落後一個交易日),而「把現貨對齊到期貨那天」要用的歷史是 0 天
+#         → 10/23 早上 06:33 / 08:09 兩輪都是「期貨 10/22、現貨 10/21、歷史 0 天 → 不計價差」=
+#            `taifex_backwardation` 整個白天都是 None(反攻雷達「價差翻正」、順逆價差判讀跟著空)
+#      ② 加權 60 日位階(twii_pos,主力出貨指數 / 風險指數有在用)一律 yfinance → 同樣慢一天
+#         (10/23 08:09 那份 twii_close 是 10/21 的 46,887.77,證交所 10/22 早就收 46,041.43)
+#   → 本機沒有就讀 data 分支 raw → gh-pages(⛔ 跟 V79.5.2 _load_prev_macro / V79.5.4 _rh_from_local_or_published 同一招);
+#     全部拿不到才退 yfinance,並印原因(⛔ 不可靜默,陷阱 #22)。
+_TWII_PUB_URLS = (
+    ("data 分支 raw", "https://raw.githubusercontent.com/xin7355-collab/StockAI-DB/data/data/%5ETWII.json"),
+    ("gh-pages", "https://xin7355-collab.github.io/StockAI-DB/data/%5ETWII.json"),
+)
+
+
+def _twii_rows(get=None):
+    """回 (rows, 從哪裡讀到的);rows = [{'date': 'YYYY-MM-DD', 'close': float}, …](由舊到新,只留收盤 > 0 的)。
+    本機 data/^TWII.json → 已發佈的(data 分支 raw → gh-pages);全部拿不到回 ([], 原因)。⛔ 永遠不丟例外。
+    `get` 可注入假的 http.get(測試用)。"""
+    def _norm(raw):
+        out = []
+        for r in (raw if isinstance(raw, list) else []):
+            r = r if isinstance(r, dict) else {}
+            d = str(r.get('date') or '').replace('/', '-')[:10]
+            try:
+                c = float(r.get('close') or 0)
+            except Exception:
+                c = 0
+            if len(d) == 10 and c > 0:
+                out.append({'date': d, 'close': c})
+        return out
+    why = []
+    try:
+        _tf = DATA_DIR / '^TWII.json'
+        if _tf.exists():
+            rows = _norm(json.loads(_tf.read_text(encoding='utf-8')))
+            if rows:
+                return rows, '本機 ^TWII.json'
+            why.append('本機檔是空的')
+        else:
+            why.append('本機沒有 ^TWII.json')
+    except Exception as e:
+        why.append(f'本機讀不到({str(e)[:40]})')
+    get = get or (lambda u: http.get(u, timeout=15))
+    for label, url in _TWII_PUB_URLS:
+        try:
+            r = get(f'{url}?t={int(time.time())}')
+            if getattr(r, 'status_code', 0) == 200:
+                rows = _norm(r.json())
+                if rows:
+                    return rows, f'線上 {label}(' + ';'.join(why) + ')'
+                why.append(f'{label} 內容是空的')
+            else:
+                why.append(f"{label} HTTP {getattr(r, 'status_code', '?')}")
+        except Exception as e:
+            why.append(f'{label} {str(e)[:60]}')
+    return [], ';'.join(why)
+
+
 def fetch_twii_position():
     """V25.4 — 算 ^TWII 在過去 60 日的位置百分位(0=最低,100=最高)
     給 marketMakerIndex 判讀「真低檔護盤」vs「高檔買超警訊」用。
     返回 {price, pos_60d, hi_60d, lo_60d}, 失敗回 {}
+    📈 V79.5.9 先用證交所收盤(_twii_rows:本機 → 已發佈那份,多帶 date / src),拿不到才退 yfinance(實測落後一個交易日)
     """
+    try:
+        _rows, _src = _twii_rows()
+        if len(_rows) >= 30:
+            _cl = [r['close'] for r in _rows[-60:]]
+            current, hi, lo = _cl[-1], max(_cl), min(_cl)
+            pos = round((current - lo) / (hi - lo) * 100, 1) if hi > lo else 50.0
+            return {'price': round(current, 2), 'pos_60d': pos, 'hi_60d': round(hi, 2), 'lo_60d': round(lo, 2),
+                    'date': _rows[-1]['date'], 'src': _src}
+        print(f"   ⚠️ 加權 60 日位階:證交所收盤不夠({len(_rows)} 天;{_src})→ 改用 yfinance(可能落後一天)")
+    except Exception as e:
+        print(f"   ⚠️ 加權 60 日位階:讀證交所收盤失敗({str(e)[:60]})→ 改用 yfinance")
     try:
         import yfinance as yf
         import time as _t
@@ -2750,26 +2831,14 @@ def fetch_taifex_backwardation():
         #      前端又把它跟當天的指數並排 → 使用者讀到不存在的價差。yfinance 留作備援。
         spot, spot_date = None, None
         twii_by_date = {}   # ⭐ V73.7.8 日期 → 收盤;期貨天生落後 1 天,要拿**同一天**的現貨來配
-        try:
-            _tf = DATA_DIR / '^TWII.json'
-            if _tf.exists():
-                _rows = json.loads(_tf.read_text(encoding='utf-8'))
-                if isinstance(_rows, list) and _rows:
-                    for _r in _rows:
-                        _d = str(_r.get('date') or '').replace('/', '-')[:10]
-                        try:
-                            _v = float(_r.get('close') or 0)
-                        except Exception:
-                            _v = 0
-                        if len(_d) == 10 and _v > 0:
-                            twii_by_date[_d] = _v
-                    _c = float(_rows[-1].get('close') or 0)
-                    if _c > 0:
-                        spot = _c
-                        spot_date = str(_rows[-1].get('date') or '').replace('/', '-')[:10]
-                        print(f"  [台指逆價差] 現貨用本地證交所收盤 {spot:.0f}({spot_date}),歷史 {len(twii_by_date)} 天")
-        except Exception as e:
-            print(f"  [台指逆價差] 本地 ^TWII.json 讀取失敗({str(e)[:50]}),改用 yfinance")
+        # 📈 V79.5.9 本機沒有 ^TWII.json(macro_cron 乾淨 checkout)就讀已發佈那份(見 _twii_rows 上面的說明)
+        _rows, _src = _twii_rows()
+        if _rows:
+            twii_by_date = {r['date']: r['close'] for r in _rows}
+            spot, spot_date = _rows[-1]['close'], _rows[-1]['date']
+            print(f"  [台指逆價差] 現貨用證交所收盤 {spot:.0f}({spot_date}),歷史 {len(twii_by_date)} 天 ← {_src}")
+        else:
+            print(f"  [台指逆價差] ^TWII 本機與已發佈的都讀不到({_src})→ 改用 yfinance(⚠️ 實測落後一個交易日)")
         if spot is None:
             try:
                 import yfinance as yf

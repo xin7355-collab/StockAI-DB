@@ -3,6 +3,25 @@
 使用者(附三張截圖):「1.跑馬燈移除 2.app 預設策略符合進場,我想要的是我要點進階才能是領頭羊策略,所以 app 內容要注意文字敘述,不要露餡,現在有些文字有點疑似露餡了 3.產業 app 裡面的成績單沒有領頭羊策略」。追問後選:預設 = 決策台的「📈 符合進場」、🔥 觸發價預設收起;👑 搬進「🔓 進階功能」;作戰室成績單永遠顯示 👑。
 
 
+## ⏱️ V79.6.0 訊號掃描的瀏覽器改在「⚡ 並行跑」那步背景先裝(部署少約 6 分)・早上的總經採礦讀不到加權指數 → 順逆價差整個白天都是空的・財經行事曆 Groq 照模型帶參數
+
+**為什麼**:10/22 #637 部署 job **30.5 分**(V79.5.5 之前的 30 分時限會被砍):「🎯 今日實測訊號掃描」那步 7 分 25 秒 = **裝瀏覽器 5 分 39 秒** + 掃描 106 秒;#636 8 分 35 秒;playbook_scan 同一條安裝只要 25 秒 → 安裝時快時慢。V79.5.5 寫的「平常 2 分」是錯的(那時候每一輪都要先裝)。慢的日子會撞掉掃描自己的 8 分時限 → 那天今日訊號不更新(部署照常)。並行那步本身 16~22 分(#637 21.5 分),裝瀏覽器藏得進去。
+
+**修法**
+- 「⚡ 並行跑 7 個 deploy 階段腳本」那步多一個背景工作:裝 playwright + chromium(log `/tmp/parallel/pw.log`,最後一行 `RC=… SEC=…`),跟其他一起 `wait`、印結果;⛔ 失敗不擋任何東西。
+- 掃描那步:`pw.log` 是 RC=0 **而且**瀏覽器檔案真的在 → 不重裝;否則在這裡補裝(⛔ 只看其中一個不夠:下載到一半斷掉時 RC 不是 0、檔案可能也不在)。印「⏱️ 安裝 X 秒・掃描 Y 秒」。時限 8 → 10(補裝那條路要有空間;job 預算 26 + 10 + 4 = 40)。
+- 部署 job 平常少約 6 分,共用部署鎖(`gh-pages-push`)也少佔 6 分。
+- `macro_miner._groq_chat_mm`:挑到模型後走 `groq_apply`(跟 universal_radar 同一支:qwen none / gpt-oss low + 不回傳思考 + 額度 +400 / 其他不帶;換模型時從呼叫端原本的 max_tokens 重算);回答裡的 `<think>…</think>` 先剝掉;`macro_events_ai.model` 改標**真的回答的那個**(以前事後再問一次解析器 → 404 換過模型時會標成被下架、清單上排第一的那個 = 同名不同義)。
+
+**🐛 順手查到的(巡邏 10/23 早上的產物時)**
+- 📈 **早上的總經採礦(macro_cron)讀不到加權指數**:它是乾淨 checkout,本機沒有 `data/^TWII.json` → ① 順逆價差的現貨退到 yfinance(實測落後一個交易日)、「對齊到期貨那天」用的歷史是 0 天 → 10/23 06:33 / 08:09 兩輪都是「期貨 10/22、現貨 10/21、共 0 天 → 不計價差」→ `taifex_backwardation` **整個白天都是 None**(反攻雷達「價差翻正」、順逆價差判讀跟著空;只有晚上 daily_miner 那輪到隔天早上之間有值)② 加權 60 日位階(`twii_pos`,主力出貨指數 / 風險指數有在用)一律 yfinance → 同樣慢一天(10/23 08:09 那份 `twii_close` 是 10/21 的 46,887.77,證交所 10/22 早就收 46,041.43);`taiex_date` 落後也讓盤前體檢「台股上一個交易日」的基準早一天。→ 新 `_twii_rows()`:本機 → data 分支 raw → gh-pages(`%5ETWII.json`),順逆價差與 60 日位階共用,全部拿不到才退 yfinance 並印原因(⛔ 跟 V79.5.2 `_load_prev_macro` / V79.5.4 `_rh_from_local_or_published` 同一招 —— 這是 macro_cron 乾淨 checkout **第三次**讓白天的數字默默退化,CLAUDE.md 連動表加一條通則)。
+
+**測試**:`test_deploy_relay.py` ⑦(把 yaml 兩段**原始 bash** 抽出來實跑:假 npm / npx / python / git + 真的 node + 假 playwright 模組;平常 / 背景裝失敗 / RC=0 但檔案不在 / 沒有紀錄 四種 + pipefail;決定性對照:拿掉背景安裝 → 掃描那步又自己裝、拿掉 `wait $PIDPW` → 印不出「已先裝好」)、⑥ 預算註解更新(DEPLOY_NORMAL 刻意留 26);新 `test_macro_groq.py`(走真的 `_groq_chat_mm` / `build_macro_events_ai`,只換網路;決定性對照兩條);`test_basis_legs.py` ⑨⑩(本機沒有 ^TWII.json → data 分支 → gh-pages、網址 `%5E`、本機有就不打網路、全部讀不到不硬算;60 日位階走同一份;決定性對照:只看本機 = 白天算不出價差);`test_taifex_dates.py` ④ 改成把網路換成假的(⛔ 不然會真的連到 GitHub)+ ④b。
+
+**為什麼白天就推**:10/23 颱風休市(新聞標題寫「下周二開盤」)→ 今天沒有收盤資料要等,白天推不會讓收盤法人缺(原本計畫等今晚 12:00 UTC 那輪跑完才推)。
+
+**上線後要看**:這次 push 觸發的那輪部署 job log —— 並行那步「🌐 瀏覽器已先裝好(RC=0 SEC=…)」且整步沒有變長、掃描那步「不重裝」+「⏱️ 安裝 0 秒・掃描 ~110 秒」、整個 job 時間;`macro_risk.json` 的 `macro_events_ai.model`;**明天早上**(macro_cron 那幾輪)`taifex_backwardation` 有值、`taiex_date` = 前一個交易日、log 印「現貨用證交所收盤 … ← 線上 data 分支 raw」。
+
 ## 🧹 V79.5.9 K 線頁「🗣️ 朱老師這樣看」只描述型態(要不要買照決策台、手上的照你的出場規則走)・選股頁清單標題寫真的檔數・巨頭財報新聞桶從 V73.9.1 起一直是空的・抓不到的新聞來源印出原因
 
 **為什麼**:V79.5.7 留了三件「還沒做」,逐一查:
@@ -25,7 +44,7 @@
 
 **測試**:`test_nodirective ⑤`(靜態掃朱老師卡 / 主升段體檢 / 共振框三支函式,⛔ 註解不算;💡 操作一律指回決策台 + 出場規則;INJECT=5 換回「順勢做多,買點守 5MA」必紅)・`test_bearholes ⑩a`(改用型態標題確認走到多頭那兩格 + 💡 操作有「照決策台」)/ ⑩f(共振框新名字)/ 新 ⑩g(空頭時 💡 操作⛔ 邀你買)・`test_radarlead ④`(標題的檔數 = 清單裡實際列的不同股票數;注入舊寫法 → 「標題 1398 / 清單 443」紅)・新 `test_techgiants.py`(每一桶都收得到、翻譯每一桶都跑、前端每一桶都有讀;抓不到要印原因;決定性對照:臨時多加一個來源 → 輸出也要有、抓得到文章 → 不印診斷)。
 
-**上線後要看**:push 觸發的 news_express 那輪 log 那 4 個來源的「🔎 實際拿到」→ 再決定換網址還是修編碼;gh-pages `tech_giants_news.json` 有 `earnings`。
+**✅ 上線後看到**(push 觸發的 news_express #354,10/23 02:56 UTC):巨頭財報 `earnings: 5 篇`(以前 0)・Groq「這輪用 qwen/qwen3.8-27b」沒有 404・那 4 個來源的「🔎 實際拿到」:鉅亨網台股與 Anue 都被導到 `cnyes.com/twstock/error.htm`(HTTP 200 的錯誤網頁)、MoneyDJ 被導到 `moneydj.com/404.htm` → **三個網址都失效了**(不是編碼問題);工商時報 HTTP 403「Just a moment...」= Cloudflare 擋機器人 → 換網址也沒用。→ 下一批停用這 4 個(留註解),要補來源得先確認新網址(⛔ 不猜,陷阱 #23)。
 
 ## 🤖 V79.5.8 Groq 把 llama 全下架 → App 走 Groq 的 AI 每次都失敗、採礦端新聞判讀抽籤抽到阿拉伯文模型 → 偏好序接 qwen → gpt-oss、⛔ allam、每個模型帶自己的參數
 
@@ -42,7 +61,7 @@
 - 取清單時把 allam(`_UNSUITED`)跟語音 / 防護類一起濾掉,log 寫出濾掉了誰;緊急退路改成照名字排序挑(同一份清單永遠同一個)。硬清單(連清單都取不到時)改 `qwen/qwen3.8-27b`。
 - 每個模型自己的參數:`groq_extra` / `groq_budget` / `groq_apply`(採礦)= `_groqExtra` / `_groqBudget` / `_groqBody`(App):qwen 明寫 none;gpt-oss low + 不回傳思考 + 額度 +400;其他什麼都不帶。404 換模型時先清掉上一個的參數、額度從原本的值重算(⛔ 不可越疊越多)。
 - `universal_radar` 每輪印「🤖 這輪用 X」(以前查不到翻譯是哪個模型做的);答案裡混了 `<think>…</think>` 先拿掉再找 JSON。
-- 沒改:`api.py` 也寫死 llama-3.3,但沒有 workflow 跑它、沒有程式 import 它(只在註解裡被提到);worker.js 不用 Groq。`macro_miner._groq_chat_mm` 會自動吃到新偏好序(qwen 不需要額外參數);gpt-oss 備援的參數等 F2 跟 daily_miner.yml 一起推(那兩個檔會觸發採礦,白天推會讓 17:00 叫醒被跳過)。
+- 沒改:`api.py` 也寫死 llama-3.3,但沒有 workflow 跑它、沒有程式 import 它(只在註解裡被提到);worker.js 不用 Groq。`macro_miner._groq_chat_mm` 會自動吃到新偏好序(qwen 不需要額外參數);gpt-oss 備援的參數等 F2 跟 daily_miner.yml 一起推(那兩個檔會觸發採礦,白天推會讓 17:00 叫醒被跳過)→ ✅ V79.6.0 已接上。
 
 **測試**:`test_groqmodel.py` ③(硬清單 ⛔ llama)⑬a~⑬h(真清單 × 20 種亂序都挑 qwen、qwen 下架換 20b / 120b、緊急退路不抽籤、三種模型的參數與額度、換到 llama 會清掉思考參數、實跑一次就中 + `<think>` 解析得掉 + log 寫模型;⭐ 決定性對照:換回舊偏好 + 舊硬清單 → 第一發就是已下架的 llama);`test_ai_model_pick.mjs` ①i①j ②i~②l ④d④e。注入 5 + 2 種舊寫法都紅。;順手:`test_macro_ai.py` ① 寫死「模型名要有 llama」→ 這次換模型就紅 → 改看三個家族(llama / qwen / gpt-oss)且 ⛔ 不是 gemini(⚠️ 那支不在四驗證清單裡,是巡邏 import macro_miner 的測試時抓到的)
 

@@ -431,6 +431,15 @@ jobs:
         run: |
           python -m pip install requests yfinance ta pandas numpy feedparser --quiet
           mkdir -p /tmp/parallel
+          # 🌐 V79.5.9 順便在背景先裝瀏覽器(給後面「🎯 今日實測訊號掃描」用)——
+          #   以前在掃描那一步才裝:10/22 #637 裝了 5 分 39 秒、#636 也 6 分多,playbook_scan 同一條卻只要 25 秒
+          #   → 時快時慢,慢的日子會撞掉掃描自己的時限。這一步本身要 16~22 分鐘(#637 21.5 分)
+          #   → 藏在這裡面,部署 job 少約 6 分、共用部署鎖也少佔 6 分。
+          #   ⛔ 失敗不擋任何東西:掃描那一步看到沒裝好(RC 不是 0 或瀏覽器不在)會自己補裝。
+          ( T0=$(date +%s); set +e
+            npm i -D playwright@1.49.1 && npx playwright install --with-deps chromium
+            echo "RC=$? SEC=$(( $(date +%s) - T0 ))" ) > /tmp/parallel/pw.log 2>&1 &
+          PIDPW=$!
           python universal_radar.py > /tmp/parallel/r1.log 2>&1 &
           PID1=$!
           python macro_miner.py     > /tmp/parallel/r2.log 2>&1 &
@@ -454,6 +463,7 @@ jobs:
           wait $PID5; RC5=$?
           wait $PID6; RC6=$?
           wait $PID7; RC7=$?
+          wait $PIDPW
           set -e
           echo ""
           echo "═════ 並行 7 腳本完成 ═════"
@@ -468,6 +478,12 @@ jobs:
             tail -40 /tmp/parallel/r${idx}.log || true
             echo ""
           done
+          # 🌐 背景裝瀏覽器的結果(RC=0 才算裝好;SEC = 花了幾秒)
+          PWEND=$(grep -E '^RC=' /tmp/parallel/pw.log 2>/dev/null | tail -1 || true)
+          case "$PWEND" in
+            RC=0\ *) echo "🌐 瀏覽器已先裝好($PWEND)" ;;
+            *) echo "⚠️ 瀏覽器沒裝好(${PWEND:-沒有結束紀錄})→ 訊號掃描那步會自己補裝"; tail -20 /tmp/parallel/pw.log || true ;;
+          esac
 
       # V17.0 — 移除 chief_ai_batch.py 已退役註解區塊(歷史包袱清掉);
       #         AI 全盤分析改前端打開個股時即時呼叫,V16.7 staleness gate 已對 stale cache 透明 fallback
@@ -506,18 +522,31 @@ jobs:
       #   ⛔ 失敗一律不擋部署(它是加值資料,前端讀不到就整條不顯示)。
       - name: 🎯 今日實測訊號掃描(daily_signal_scan)
         continue-on-error: true
-        # ⏱️ V79.5.5 自己最多 8 分(平常 2 分):「不擋部署」也要不能吃掉整個 job 的時限
+        # ⏱️ V79.5.5 起自己有時限:「不擋部署」也要不能吃掉整個 job 的時限
         #   (10/22 #634 安裝瀏覽器卡 7 分 → 後面的部署全部沒跑)。超過就跳過這一步,照常部署。
-        timeout-minutes: 8
+        # ⏱️ V79.5.9 瀏覽器改在「⚡ 並行跑」那步背景先裝好 → 這裡平常只剩掃描(#637 掃描本身 106 秒);
+        #   那邊沒裝好才在這裡補裝(慢的日子 5~7 分)→ 上限 8 → 10(job 預算 26 + 10 + 4 = 40)。
+        #   ⚠️ V79.5.5 寫的「平常 2 分」是錯的:那時候每一輪都要先裝瀏覽器(#637 7 分 25 秒)。
+        timeout-minutes: 10
         run: |
           git fetch origin main --depth=1 2>/dev/null || true
           git checkout origin/main -- index.html 2>/dev/null || true
-          npm i -D playwright@1.49.1 >/dev/null 2>&1 || { echo "⚠️ playwright 安裝失敗,略過"; exit 0; }
-          npx playwright install --with-deps chromium >/dev/null 2>&1 || { echo "⚠️ chromium 安裝失敗,略過"; exit 0; }
+          T0=$(date +%s)
+          # 前一步背景裝的:RC=0 而且瀏覽器真的在 → 不重裝(⛔ 只看其中一個不夠:下載到一半斷掉時 RC 不是 0、檔案可能也不在)
+          if grep -qE '^RC=0 ' /tmp/parallel/pw.log 2>/dev/null && \
+             node -e "process.exit(require('fs').existsSync(require('playwright').chromium.executablePath())?0:1)" 2>/dev/null; then
+            echo "🌐 瀏覽器前一步已經裝好 → 不重裝"
+          else
+            echo "🌐 前一步沒裝好 → 這裡補裝"
+            npm i -D playwright@1.49.1 >/dev/null 2>&1 || { echo "⚠️ playwright 安裝失敗,略過"; exit 0; }
+            npx playwright install --with-deps chromium >/dev/null 2>&1 || { echo "⚠️ chromium 安裝失敗,略過"; exit 0; }
+          fi
+          T1=$(date +%s)
           # 腳本內硬編的 playwright 路徑是本機開發環境用的 → CI 走 node_modules
           sed -i "s#/opt/node22/lib/node_modules/playwright/index.mjs#playwright#" scripts/daily_signal_scan.mjs
           sed -i "s#executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'##" scripts/daily_signal_scan.mjs
           node scripts/daily_signal_scan.mjs || echo "⚠️ 今日訊號掃描失敗(不擋部署)"
+          echo "⏱️ 安裝 $((T1 - T0)) 秒・掃描 $(( $(date +%s) - T1 )) 秒"
           git checkout -- scripts/daily_signal_scan.mjs 2>/dev/null || true
           [ -s data/today_signals.json ] && echo "✅ today_signals.json $(wc -c < data/today_signals.json) bytes" || echo "⚠️ 沒產出 today_signals.json"
 

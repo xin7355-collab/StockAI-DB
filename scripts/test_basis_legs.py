@@ -127,6 +127,95 @@ ok('⑧d ⛔ 對齊不到時仍不硬算', back9 is None, str(back9))
 ok('⑧e ⭐ 而且錯誤訊息要說「歷史裡沒有那一天」+ 有幾天(⛔ 不可只寫「不同交易日」)',
    bool(err9) and '沒有' in err9 and '共' in err9, str(err9)[:180])
 
+# ── ⑨ 📈 V79.5.9 本機沒有 ^TWII.json(macro_cron 乾淨 checkout)→ 讀已發佈那份 ─────────────
+#   🚨 10/23 早上 06:33 / 08:09 兩輪實測:本機沒有 ^TWII.json → 現貨退到 yfinance(落後一天,10/21)、
+#      對齊用的歷史 0 天 → 「期貨 10/22 與現貨 10/21 不同交易日 … 共 0 天,不計價差」→ 整個白天都是 None。
+class _JResp:
+    def __init__(self, code, body):
+        self.status_code, self._b = code, body
+
+    def json(self):
+        return self._b
+
+
+class _FakeGet:
+    """照網址關鍵字回應;記下每一次被問的網址。"""
+    def __init__(self, table):
+        self.table, self.urls = table, []
+
+    def get(self, url, timeout=None):
+        self.urls.append(url)
+        for key, (code, body) in self.table.items():
+            if key in url:
+                return _JResp(code, body)
+        return _JResp(404, None)
+
+
+_PUB = [{'date': '2026/07/30', 'close': 40100}, {'date': '2026/07/31', 'close': 40039}]
+_empty = tempfile.mkdtemp()          # ⭐ 沒有 ^TWII.json 的資料夾(= macro_cron 的工作區)
+_real_http = M.http
+try:
+    M.DATA_DIR = Path(_empty)
+    # ⑨a data 分支 raw 讀得到 → 算得出價差,而且說出是從哪裡讀的
+    fg = _FakeGet({'raw.githubusercontent.com': (200, _PUB)})
+    M.http = fg
+    M._LAST_TX_FUT_DATE = None
+    M._LAST_BACK_LEGS = {}
+    b9, e9 = M.fetch_taifex_backwardation()
+    ok('⑨a ⭐ 本機沒有 ^TWII.json → 讀 data 分支那份,算得出價差(⛔ 不再整個白天都是 None)', b9 == 231.0 and e9 is None, f'{b9=} {e9=}')
+    ok('⑨a 現貨那條腿 = 已發佈那份的 07/31 收盤', M._LAST_BACK_LEGS.get('taiex_close') == 40039.0
+       and M._LAST_BACK_LEGS.get('taiex_date') == '2026-07-31', str(M._LAST_BACK_LEGS))
+    ok('⑨a 網址的 ^ 要編碼成 %5E(⛔ 裸的 ^ 不是合法網址字元)',
+       fg.urls and all('%5ETWII.json' in u and '^' not in u for u in fg.urls), fg.urls)
+    rows, src = M._twii_rows(get=fg.get)
+    ok('⑨a 說得出從哪裡讀的(本機沒有 → 線上 data 分支)', '線上 data 分支' in src and '本機沒有' in src, src)
+    # ⑨b data 分支讀不到 → 退 gh-pages
+    fg2 = _FakeGet({'raw.githubusercontent.com': (404, None), 'github.io': (200, _PUB)})
+    M.http = fg2
+    M._LAST_TX_FUT_DATE = None
+    b9b, e9b = M.fetch_taifex_backwardation()
+    ok('⑨b data 分支 404 → 退 gh-pages,照樣算得出', b9b == 231.0 and e9b is None, f'{b9b=} {e9b=}')
+    rows2, src2 = M._twii_rows(get=fg2.get)
+    ok('⑨b 原因要寫出 data 分支那條為什麼沒用', 'gh-pages' in src2 and 'HTTP 404' in src2, src2)
+    # ⑨c 全部讀不到 → 退 yfinance(這裡是假的、會失敗)→ 誠實回 None + 原因
+    M.http = _FakeGet({})
+    M._LAST_TX_FUT_DATE = None
+    b9c, e9c = M.fetch_taifex_backwardation()
+    ok('⑨c 兩份都讀不到 → 不硬算、留原因', b9c is None and bool(e9c), f'{b9c=} {e9c=}')
+    # ⑨d 本機有就用本機的(daily_miner 那輪:剛合併完的最新收盤),⛔ 不去網路
+    _mk_twii_multi(_empty, [('2026/07/31', 40039)])
+    fg4 = _FakeGet({'raw.githubusercontent.com': (200, [{'date': '2026/07/31', 'close': 1}])})
+    M.http = fg4
+    M._LAST_TX_FUT_DATE = None
+    b9d, _ = M.fetch_taifex_backwardation()
+    ok('⑨d 本機有 → 用本機的、⛔ 不打網路', b9d == 231.0 and not fg4.urls, f'{b9d=} {fg4.urls=}')
+    Path(_empty, '^TWII.json').unlink()
+    # ⑨e 決定性對照:退回「只看本機」(= 10/23 早上的行為)→ 一定是 None
+    _real_rows = M._twii_rows
+    M._twii_rows = lambda get=None: ([], '只看本機(舊寫法)')
+    M.http = _FakeGet({'raw.githubusercontent.com': (200, _PUB)})
+    M._LAST_TX_FUT_DATE = None
+    b9e, e9e = M.fetch_taifex_backwardation()
+    M._twii_rows = _real_rows
+    ok('⑨e 決定性對照:只看本機(舊寫法)→ 白天算不出價差(⑨a 就是在擋這個)', b9e is None, f'{b9e=} {e9e=}')
+
+    # ── ⑩ 加權 60 日位階也走同一份(⛔ 不再一律 yfinance、慢一天)──
+    import datetime as _dt
+    _rows70 = [{'date': (_dt.date(2026, 5, 1) + _dt.timedelta(days=i)).strftime('%Y/%m/%d'), 'close': 1000 + i} for i in range(1, 71)]
+    _rows70[-1]['close'] = 1040     # 最後一天回落:近 60 天 lo=1011(第 11 天)、hi=1069 → 位階 (1040−1011)/(1069−1011)
+    M.http = _FakeGet({'raw.githubusercontent.com': (200, _rows70)})
+    pz = M.fetch_twii_position()
+    ok('⑩ ⭐ 位階用證交所收盤(最後一天 1040、近 60 天高低 1069 / 1011)',
+       pz.get('price') == 1040 and pz.get('hi_60d') == 1069 and pz.get('lo_60d') == 1011
+       and pz.get('pos_60d') == round((1040 - 1011) / (1069 - 1011) * 100, 1), pz)
+    ok('⑩ 多帶資料日期與來源(查得出是哪一天的)', pz.get('date') == _rows70[-1]['date'].replace('/', '-') and '線上' in str(pz.get('src')), pz)
+    M.http = _FakeGet({'raw.githubusercontent.com': (200, _rows70[:20])})
+    pz2 = M.fetch_twii_position()
+    ok('⑩ 不到 30 天 → 退 yfinance(這裡是假的、會失敗 → 回 {})', pz2 == {}, pz2)
+finally:
+    M.http = _real_http
+    M.DATA_DIR = Path(tmp)
+
 # ── ④ 端點自我診斷:期交所對未知路徑回「網頁」而不是 404 ───────────────
 class _Resp:
     def __init__(self, text, code=200):
