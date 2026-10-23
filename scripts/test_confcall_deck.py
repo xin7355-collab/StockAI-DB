@@ -115,7 +115,7 @@ def setup(tmp, rows, today='2026-10-23', **env):
                                                      'recent': rows, 'upcoming': []}, ensure_ascii=False), encoding='utf-8')
     os.environ['DATA_DIR'], os.environ['CC_DIR'], os.environ['CC_PACE'] = str(data), str(cc), '0'
     os.environ['CC_LIST_PACE'] = '0'
-    for k in ('CC_MAX', 'CC_LIST_FROM', 'CC_LIST_TO', 'GITHUB_OUTPUT'):
+    for k in ('CC_MAX', 'CC_AI_MAX', 'CC_LIST_FROM', 'CC_LIST_TO', 'GITHUB_OUTPUT'):
         os.environ.pop(k, None)
     for k, v in env.items():
         os.environ[k] = str(v)
@@ -872,12 +872,139 @@ f43g = _rgf(s43g, ck43g)
 b43g, e43g = f43g.get(cdm.file_urls(TPL, '641420261016M001.pdf')[1][1], parallel=True)
 ok('㊸g 分段回 206 但起點對不上 → 那份失敗(⛔ 拼出錯的檔)', b43g is None and ('起點' in e43g or '看不懂' in e43g), (e43g, s43g.calls[:6]))
 
-# ㊷ job 時限要裝得下「讀到 40 分才停止開新的 + 最後那份大簡報下載滿 + 抽字 + AI + 推檔」(被砍掉 = 整輪白讀,紀錄在最後才存)
+# ㊷ job 時限要裝得下「讀到 40 分才停止開新的 + 最後那份大簡報下載滿 + 抽字 + AI + 補摘要 + 推檔」(被砍掉 = 整輪白讀,紀錄在最後才存)
 _tm = int(re.search(r'timeout-minutes:\s*(\d+)', _wf).group(1))
 # 安裝平常 3 分、apt 慢的時候 5 分;推檔兩個分支各 5 次重試(5~25 秒)+ 接力 → 抓 5 分
-_need = 5 * 60 + cdm.BUDGET_MIN * 60 + cdm.DL_BIG_MAX_SEC + cdm.EXTRACT_MAX_SEC + cdm.AI_DEADLINE + 5 * 60
-ok('㊷ job 時限 ≥ 安裝 5 分 + 讀簡報上限 + 最後一份下載上限 + 抽字 + AI + 推檔 5 分(改其中任何一個時限要一起看)',
+_need = 5 * 60 + cdm.BUDGET_MIN * 60 + cdm.DL_BIG_MAX_SEC + cdm.EXTRACT_MAX_SEC + cdm.AI_DEADLINE + cdm.AI_FILL_SEC + cdm.AI_DEADLINE + 5 * 60
+ok('㊷ job 時限 ≥ 安裝 5 分 + 讀簡報上限 + 最後一份下載上限 + 抽字 + AI + 補摘要(+ 最後一次 AI)+ 推檔 5 分(改其中任何一個時限要一起看)',
    _tm * 60 >= _need, (_tm, round(_need / 60, 1)))
+
+
+# ㊹ 🤖 V79.6.5 補摘要:讀的那一輪 AI 次數用完 → 之後每輪用剩下的次數補(拿存好的重點句,⛔ 不重新下載)
+#    10/23 第 4 棒:讀 47 份、AI 上限 40 次 → 7 份永遠沒有一句話(讀過的 ⛔ 不會再讀)
+ANS_OK = {'one': '營收 100 億、AI 伺服器成長', 'outlook': [{'t': 'AI 伺服器成長', 'p': 1}], 'new': [], 'risk': []}
+with tempfile.TemporaryDirectory() as tmp:
+    rows = [{'s': str(4100 + i), 'name': f'補{i}', 'd': f'2026-10-{15 + i}', 't': '14:00', 'pdf': [f'{4100 + i}202610{15 + i}M001.pdf']} for i in range(3)]
+    tbl = {r['pdf'][0]: deck([['公司', 'Outlook', 'Expect AI server growth next year'], ['Revenue 100 million, up 8%']]) for r in rows}
+    cd, data, cc = setup(tmp, rows, CC_AI_MAX=1)
+    called = []
+
+    def sum_ok(name, sym, d, feat, keys, **kw):
+        called.append((sym, len(feat.get('outlook') or []) + len(feat.get('nums') or [])))
+        return dict(ANS_OK), 'qwen/qwen3.8-27b', 0
+    cd.groq_summarize = sum_ok
+    ff1 = FakeFetcher(tbl)
+    cd.run(fetcher=ff1, groq_keys=['k1'], today=date(2026, 10, 23), log=lambda x: None)
+    has_ai = lambda s: bool(((json.loads((data / 'cc' / f'{s}.json').read_text(encoding='utf-8'))['decks'] or [{}])[0]).get('ai'))
+    ok('㊹ 第一輪:AI 上限 1 次 → 最新那份(4102)有摘要、另外兩份沒有(重現 10/23 第 4 棒的缺口)',
+       has_ai('4102') and not has_ai('4101') and not has_ai('4100') and [c[0] for c in called] == ['4102'], called)
+    ff2, lg2 = FakeFetcher(tbl), []
+    called.clear()
+    cd.run(fetcher=ff2, groq_keys=['k1'], today=date(2026, 10, 23), log=lg2.append)
+    ok('㊹b 第二輪:沒有新簡報要讀 → 用剩下的 1 次補 4101(新 → 舊)、⛔ 不重新下載',
+       has_ai('4101') and not has_ai('4100') and ff2.calls == [] and [c[0] for c in called] == ['4101'] and called[0][1] > 0
+       and any('補摘要:1 份' in x for x in lg2) and any('還差 1 份' in x for x in lg2), (called, ff2.calls, [x for x in lg2 if '補摘要' in x]))
+    dg = json.loads((data / 'confcall_digest.json').read_text(encoding='utf-8'))
+    ok('㊹c 補到的摘要進得了法說會清單(digest 的 one)', next((r for r in dg['rows'] if r['s'] == '4101'), {}).get('one') == ANS_OK['one'], dg['rows'][:3])
+    cd.run(fetcher=FakeFetcher(tbl), groq_keys=['k1'], today=date(2026, 10, 23), log=lambda x: None)
+    ok('㊹d 第三輪補完最後一份;第四輪沒有要補的 → ⛔ 不叫 AI', has_ai('4100'), called)
+    called.clear()
+    cd.run(fetcher=FakeFetcher(tbl), groq_keys=['k1'], today=date(2026, 10, 23), log=lambda x: None)
+    ok('㊹d2 (第四輪)全部都有摘要 → 0 次', called == [], called)
+
+with tempfile.TemporaryDirectory() as tmp:
+    rows = [{'s': str(4200 + i), 'name': f'對{i}', 'd': f'2026-10-{15 + i}', 't': '14:00', 'pdf': [f'{4200 + i}202610{15 + i}M001.pdf']} for i in range(2)]
+    tbl = {r['pdf'][0]: deck([['公司', 'Outlook', 'Expect AI server growth next year'], ['Revenue 100 million, up 8%']]) for r in rows}
+    cd, data, cc = setup(tmp, rows, CC_AI_MAX=1)
+    cd.groq_summarize = lambda *a, **k: (dict(ANS_OK), 'qwen/qwen3.8-27b', 0)
+    cd.ai_fill = lambda *a, **k: (0, 0, set(), 0)          # ⭐ 決定性對照:拿掉補摘要(= V79.6.4 以前)
+    for _ in range(3):
+        cd.run(fetcher=FakeFetcher(tbl), groq_keys=['k1'], today=date(2026, 10, 23), log=lambda x: None)
+    a0 = json.loads((data / 'cc' / '4200.json').read_text(encoding='utf-8'))['decks'][0]
+    ok('㊹e ⭐ 決定性對照:拿掉補摘要 → 讀的時候沒拿到摘要的那份,跑幾輪都一樣沒有', not a0.get('ai'), a0)
+
+# ㊹f~㊹k 直接測 ai_fill(範圍 / 順序 / 不能用 vs 沒回 / 連 3 份沒回就停 / 自己的時限)
+cdf = importlib.reload(sys.modules['confcall_deck'])        # ⚠️ ㊹e 把 ai_fill 換成空殼 → 先換回真的
+_T = date(2026, 10, 23)
+_rec = lambda s, d, **kw: {'s': s, 'name': s, 'd': d, 'f': f'{s}x.pdf', 'st': 'ok', 'outlook': [[1, '預期明年成長']], 'nums': [], 'titles': [], **kw}
+_all = {'2026-10': [_rec('A', '2026-10-20'), _rec('B', '2026-10-01'), _rec('C', '2026-10-10', ai={'one': 'x'})],
+        '2026-08': [_rec('D', '2026-08-01')],                         # 超過 60 天(cut = 08-24)→ ⛔ 不補
+        '2026-09': [_rec('E', '2026-09-05', st='no_text'), _rec('F', '2026-09-30', outlook=[], nums=[], titles=[])]}
+seen = []
+cdf.groq_summarize = lambda name, s, d, feat, keys, **kw: (seen.append(s) or (dict(ANS_OK), 'm', 0))
+n_ok_, n_call_, tm_, left_ = cdf.ai_fill(_all, _T, ['k'], 1, log=lambda x: None)
+ok('㊹f 只補最近 60 天、狀態 ok、有重點句、還沒有摘要的;新 → 舊(預算 1 → 只補 A)',
+   seen == ['A'] and n_ok_ == 1 and n_call_ == 1 and tm_ == {'2026-10'} and left_ == 1 and _all['2026-10'][0].get('ai'), (seen, n_ok_, left_))
+seen.clear()
+cdf.ai_fill(_all, _T, ['k'], 99, log=lambda x: None)
+ok('㊹g 預算夠 → 補 B;⛔ D(超過 60 天)/ E(只有圖片)/ F(沒有句子)/ C(已有)', seen == ['B'], seen)
+_bad = {'2026-10': [_rec('G', '2026-10-20')]}
+cdf.groq_summarize = lambda *a, **k: (None, 'm', 0)          # 模型有回、但回的不能用
+for _ in range(cdf.AI_TRIES + 2):
+    cdf.ai_fill(_bad, _T, ['k'], 99, log=lambda x: None)
+calls_bad = []
+cdf.groq_summarize = lambda *a, **k: (calls_bad.append(1) or (None, 'm', 0))
+cdf.ai_fill(_bad, _T, ['k'], 99, log=lambda x: None)
+ok('㊹h 模型有回、但回的不能用 → ai_n 記到 AI_TRIES 次就不再補(⛔ 每一輪都叫同一份)',
+   _bad['2026-10'][0].get('ai_n') == cdf.AI_TRIES and calls_bad == [], _bad)
+_quota = {'2026-10': [_rec('H', '2026-10-20')]}
+for _ in range(cdf.AI_TRIES + 2):
+    cdf.groq_summarize = lambda *a, **k: (None, None, 0)     # 沒回(額度用完 / 連不上)
+    cdf.ai_fill(_quota, _T, ['k'], 99, log=lambda x: None)
+ok('㊹i 沒回(額度 / 連線)⛔ 不算這份的錯 → 不記 ai_n,下一輪還會補', not _quota['2026-10'][0].get('ai_n'), _quota)
+_many = {'2026-10': [_rec(f'M{i}', f'2026-10-{10 + i}') for i in range(8)]}
+cnt = []
+cdf.groq_summarize = lambda *a, **k: (cnt.append(1) or (None, None, 0))
+cdf.ai_fill(_many, _T, ['k'], 99, log=lambda x: None)
+ok('㊹j 連 AI_FAIL_STOP 份沒回 → 這一段就停(⛔ 每份都等)', len(cnt) == cdf.AI_FAIL_STOP, cnt)
+clk = {'t': 0.0}
+cnt.clear()
+def slow_sum(*a, **k):
+    cnt.append(1); clk['t'] += 70.0
+    return dict(ANS_OK), 'm', 0
+cdf.groq_summarize = slow_sum
+_slow = {'2026-10': [_rec(f'S{i}', f'2026-10-{10 + i}') for i in range(8)]}
+cdf.ai_fill(_slow, _T, ['k'], 99, log=lambda x: None, clock=lambda: clk['t'])
+ok('㊹k 補摘要那段自己有時限(AI_FILL_SEC):一份 70 秒 → 最多叫到超過時限的那一份就停',
+   len(cnt) == int(cdf.AI_FILL_SEC // 70) + 1, (len(cnt), cdf.AI_FILL_SEC))
+ok('㊹l 沒有金鑰 / 預算 0 → 一次都不叫', cdf.ai_fill(_slow, _T, [], 99) == (0, 0, set(), 0) and cdf.ai_fill(_slow, _T, ['k'], 0) == (0, 0, set(), 0))
+
+
+# ㊺ 🚦 接力:已經有一輪在排隊(手動派的回補 / 每天那一輪)→ ⛔ 不再派(同一組只留一個排隊的,再派會把它擠掉)
+#    ⭐ 實跑 yaml 裡那段 bash 原文(⛔ 測試裡不抄一份邏輯),gh 換成假的:api 回排隊幾輪、workflow run 記下來
+import subprocess
+_rl = _wf[_wf.index('🔁 接力(回補還沒讀完)'):]
+_rl = _rl[_rl.index('run: |') + len('run: |'):].split('\n')
+_relay = '\n'.join(ln[10:] for ln in _rl if ln.startswith(' ' * 10) or not ln.strip())
+
+
+def _relay_run(chain, pending, queued, api_fail=False):
+    with tempfile.TemporaryDirectory() as td:
+        log = Path(td) / 'calls'
+        gh = Path(td) / 'gh'
+        gh.write_text('#!/bin/bash\n'
+                      f'echo "$*" >> "{log}"\n'
+                      'if [ "$1" = api ]; then\n'
+                      + ('  exit 1\n' if api_fail else
+                         f'  case "$2" in *status=pending*) echo {pending};; *status=queued*) echo {queued};; *) echo 0;; esac\n')
+                      + 'fi\n', encoding='utf-8')
+        gh.chmod(0o755)
+        env = dict(os.environ, PATH=f'{td}:{os.environ.get("PATH", "")}', CHAIN=str(chain), LEFT='9', GH_REPO='o/r', GH_TOKEN='x')
+        r = subprocess.run(['bash', '-e', '-c', _relay], capture_output=True, text=True, env=env, timeout=30)
+        calls = log.read_text(encoding='utf-8').splitlines() if log.exists() else []
+        return r.returncode, r.stdout, [c for c in calls if c.startswith('workflow run')]
+
+
+_a = _relay_run(4, 0, 0)
+ok('㊺ ⭐ 決定性對照:沒有排隊的 → 派下一棒(chain 5)', _a[0] == 0 and _a[2] == ['workflow run confcall_deck.yml --ref main -f chain=5 -f max_files=99999'], _a)
+_b = _relay_run(4, 1, 0)
+ok('㊺b 有一輪在等(pending)→ ⛔ 不派、說出來', _b[0] == 0 and _b[2] == [] and '排隊' in _b[1], _b)
+_c = _relay_run(4, 0, 2)
+ok('㊺c 有在排隊(queued)→ ⛔ 不派', _c[0] == 0 and _c[2] == [], _c)
+_d = _relay_run(4, 0, 0, api_fail=True)
+ok('㊺d 查不到排隊狀況(API 失敗)→ 照舊派(⛔ 接力斷掉)', _d[0] == 0 and len(_d[2]) == 1, _d)
+_e = _relay_run(60, 0, 0)
+ok('㊺e 已經接力 60 棒 → 停(防無限迴圈)', _e[0] == 0 and _e[2] == [] and '60 棒' in _e[1], _e)
 
 
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))

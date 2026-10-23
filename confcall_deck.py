@@ -1202,6 +1202,9 @@ class Fetcher:
 
 AI_DEADLINE = float(os.getenv('CC_AI_DEADLINE') or 40)    # 一份簡報的 AI 最多花幾秒(⛔ 不可為了 AI 拖慢整輪讀簡報)
 AI_FAIL_STOP = 3              # 連幾份 AI 都失敗 → 這一輪不再叫(多半是額度用完)
+# 🤖 V79.6.5 補摘要:讀的那一輪 AI 次數用完(AI_MAX)或沒回的,之後每輪用剩下的次數補(拿已存的重點句,⛔ 不重新下載)
+AI_FILL_SEC = float(os.getenv('CC_AI_FILL_SEC') or 180)  # 補摘要那段最多花幾秒(job 時限要裝得下,測試 ㊷)
+AI_TRIES = 2                  # 模型有回、但回的東西不能用 → 同一份最多再試幾次(⛔ 每一輪都叫同一份;額度用完 ⛔ 算這份的錯)
 
 
 def groq_summarize(name, sym, d, feat, keys, poster=None, clock=time.time, sleeper=time.sleep):
@@ -1242,6 +1245,45 @@ def groq_summarize(name, sym, d, feat, keys, poster=None, clock=time.time, sleep
         except Exception:
             continue
     return None, None, 0
+
+
+def ai_fill(allr, today, keys, budget, log=print, clock=time.time):
+    """🤖 V79.6.5 補摘要。讀簡報那一段一輪最多叫 AI_MAX 次;下載變快之後一輪讀得比這個多(10/23 第 4 棒讀 47 份、40 份有摘要),
+    而讀過的簡報 ⛔ 不會再讀 → 那幾份「永遠沒有一句話」。額度用完 / 沒回的也一樣。
+    → 每輪用剩下的次數,拿**已存的重點句**(titles / outlook / nums)補,⛔ 不重新下載。
+    範圍跟讀簡報那段一樣:最近 DIGEST_DAYS 天(App 清單看得到的)、新 → 舊;這段自己最多 AI_FILL_SEC 秒、連 AI_FAIL_STOP 份沒回就停。
+    模型有回、但回的不能用 → ai_n +1,滿 AI_TRIES 次就不再補(⛔ 每輪一直叫同一份);沒回(額度 / 連不上)⛔ 不算這份的錯。
+    回 (補到幾份, 叫了幾次, 動到的月份, 還差幾份)。"""
+    if not keys or budget <= 0:
+        return 0, 0, set(), 0
+    cut = (today - timedelta(days=DIGEST_DAYS)).isoformat()
+    cands = [(m, r) for m, lst in allr.items() for r in lst
+             if isinstance(r, dict) and r.get('st') == 'ok' and not r.get('ai') and (r.get('d') or '') >= cut
+             and (r.get('ai_n') or 0) < AI_TRIES and (r.get('outlook') or r.get('nums') or r.get('titles'))]
+    if not cands:
+        return 0, 0, set(), 0
+    cands.sort(key=lambda x: (x[1].get('d') or '', x[1].get('f') or ''), reverse=True)
+    t0, n_call, n_ok, fail, touched = clock(), 0, 0, 0, set()
+    for m, r in cands:
+        if n_call >= budget or clock() - t0 > AI_FILL_SEC or fail >= AI_FAIL_STOP:
+            break
+        feat = {'titles': r.get('titles') or [], 'outlook': r.get('outlook') or [], 'nums': r.get('nums') or []}
+        ai, model, gd = groq_summarize(r.get('name') or r.get('s'), r.get('s'), r.get('d'), feat, keys)
+        n_call += 1
+        if ai:
+            r.update({'ai': ai, 'model': model, 'gate_drop': gd})
+            r.pop('ai_n', None)
+            n_ok, fail = n_ok + 1, 0
+            touched.add(m)
+        else:
+            fail += 1
+            if model:                       # 模型有回、但回的不能用(⛔ 沒回 = 額度 / 連線,不算這份的錯)
+                r['ai_n'] = (r.get('ai_n') or 0) + 1
+                touched.add(m)
+    left = len(cands) - n_ok
+    log(f'🤖 補摘要:{n_ok} 份(讀的時候 AI 次數用完 / 沒回的;拿存好的重點句,⛔ 不重新下載)・叫了 {n_call} 次'
+        + (f'・還差 {left} 份,下一輪接著補' if left else ''))
+    return n_ok, n_call, touched, left
 
 
 # ───────────────────────── 主流程 ─────────────────────────
@@ -1469,6 +1511,8 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
                 ai_fail = 0
             else:
                 ai_fail += 1
+                if model:
+                    rec['ai_n'] = 1             # 模型有回、但回的不能用 → 補摘要那段最多再試 AI_TRIES 次(沒回 ⛔ 算這份的錯)
                 if ai_fail >= AI_FAIL_STOP:
                     log(f'🤖 AI 連 {AI_FAIL_STOP} 份都沒回(多半是額度用完)→ 這一輪不再叫 AI,只給機械式重點')
         files[f] = {'st': 'ok', 's': s, 'd': d, 'tries': 1, 'pages': feat['pages']}
@@ -1483,6 +1527,12 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         lst = allr.setdefault(m, [])
         lst[:] = [x for x in lst if x.get('f') != rec['f']] + [rec]
         touched_m.add(m)
+    # 🤖 V79.6.5 補摘要:用這一輪剩下的 AI 次數,補「讀的時候沒拿到一句話」的(⛔ 不重新下載;新讀的優先 = 先讀完才補)
+    n_fill = 0
+    if groq_keys and ai_fail < AI_FAIL_STOP and AI_MAX - ai_used > 0:
+        n_fill, n_call, tm, _ = ai_fill(allr, today, groq_keys, AI_MAX - ai_used, log=log)
+        ai_used += n_call
+        touched_m |= tm
     for m in touched_m:
         _save_json(month_file(m + '-01'), sorted(allr.get(m, []), key=lambda x: (x.get('d') or '', x.get('f') or '')))
     idx['updated'] = datetime.now(TW).isoformat(timespec='minutes')
@@ -1501,7 +1551,7 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         route += f'・分 {DL_CONN} 段同時下載 {fetcher.par} 份'
     if getattr(fetcher, 'resumed', 0):
         route += f'・斷線續傳 {fetcher.resumed} 次'
-    log(f'📦 讀成功 {n_ok} 份 ・失敗 {n_fail} ・AI 摘要 {ai_used} 次 ・改了 {wrote} 檔 data/cc/ ・清單 {nd} 場 ・還沒讀 {left} 份({reason}){route}')
+    log(f'📦 讀成功 {n_ok} 份 ・失敗 {n_fail} ・AI 摘要 {ai_used} 次{f"(補摘要 {n_fill} 份)" if n_fill else ""} ・改了 {wrote} 檔 data/cc/ ・清單 {nd} 場 ・還沒讀 {left} 份({reason}){route}')
     _gh_out(more=1 if left else 0, reason=reason, left=left)
     if todo and n_ok == 0 and n_bad >= (BLOCK_STOP if reason == 'blocked' else 5):
         log('❌ 一份都沒讀到而且連續失敗 / 被擋 → 紅燈(⛔ 不可全綠沒資料)')
