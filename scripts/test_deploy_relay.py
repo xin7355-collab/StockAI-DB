@@ -413,6 +413,76 @@ if PAR_SH and SCAN_SH:
     else:
         ok('⑦戊 抽得到 timeout N npx 那段', False, '樣式對不上')
 
+# ═══ ⑧ 🧟 被新的一輪取代的那輪 ⛔ 不部署(2026-10-23 #640 / #641 實例)═══
+#   workflow 層級 cancel-in-progress → 舊的那輪被取消,但部署 job 是 always() → 照跑 26 分、佔著共用部署鎖,
+#   新的那輪排隊到它跑完。gate job 問 GitHub「同分支有沒有編號比較大、還沒結束的 run」,有 → go=0。
+GATE_PY = ROOT / 'scripts' / 'miner_superseded.py'
+_gi, _di = text.find('\n  gate:\n'), text.find('\n  deploy:\n')
+_gate_blk = text[_gi:_di] if 0 <= _gi < _di else ''
+_dep_hdr = text[_di:text.find('\n    steps:\n', _di)] if _di >= 0 else ''
+ok('⑧ 有 gate job,而且排在 deploy 前面(⑥ 的預算抽取器從 deploy: 讀到檔尾)', bool(_gate_blk), (_gi, _di))
+ok('⑧ gate:等採礦跑完、always()(被取消的那輪也要問得到)',
+   'needs: [mine, chips_miner]' in _gate_blk and 'if: ${{ always() }}' in _gate_blk, _gate_blk[:300])
+ok('⑧ gate:只拿讀 Actions 的權限 + 把 go 交給 deploy',
+   re.search(r'permissions:\n\s+actions: read', _gate_blk) is not None
+   and 'go: ${{ steps.chk.outputs.go }}' in _gate_blk and 'id: chk' in _gate_blk, _gate_blk[-600:])
+ok('⑧ gate:真的跑判斷程式(sparse checkout 有帶到它 + 帶 GH_TOKEN)',
+   'sparse-checkout: scripts/miner_superseded.py' in _gate_blk
+   and 'python3 scripts/miner_superseded.py daily_miner.yml' in _gate_blk
+   and 'GH_TOKEN: ${{ github.token }}' in _gate_blk, _gate_blk[-400:])
+ok('⑧ deploy:needs 有 gate', re.search(r'\n    needs: \[mine, chips_miner, gate\]', _dep_hdr) is not None, _dep_hdr[:200])
+_dif = re.search(r'\n    if: (.+)', _dep_hdr)
+_dif = _dif.group(1).strip() if _dif else ''
+ok("⑧ deploy:if = always() 而且只有 go 是 '0' 才不跑(⛔ 寫成 == '1' —— gate 失敗會連正常那輪都不部署)",
+   _dif == "${{ always() && needs.gate.outputs.go != '0' }}", _dif)
+
+
+def gate_run(runs, me, run_id=None, branch='main', fake=True, extra=None):
+    """走正式入口跑判斷程式;回 (rc, 輸出, GITHUB_OUTPUT 的內容)。⛔ 不打網路:金鑰全拿掉。"""
+    tmp = Path(tempfile.mkdtemp(prefix='gate_'))
+    try:
+        out = tmp / 'out'
+        env = {k: v for k, v in os.environ.items() if k not in ('GH_TOKEN', 'GITHUB_TOKEN')}
+        env.update(GITHUB_OUTPUT=str(out), GITHUB_RUN_NUMBER=str(me), GITHUB_REF_NAME=branch,
+                   GITHUB_REPOSITORY='xin7355-collab/StockAI-DB')
+        if run_id:
+            env['GITHUB_RUN_ID'] = str(run_id)
+        if fake:
+            fj = tmp / 'runs.json'
+            fj.write_text(json.dumps({'workflow_runs': runs}))
+            env['SUPERSEDE_RUNS_JSON'] = str(fj)
+        env.update(extra or {})
+        r = subprocess.run([sys.executable, '-I', str(GATE_PY), 'daily_miner.yml'], capture_output=True, text=True,
+                           env=env, timeout=60)
+        return r.returncode, r.stdout + r.stderr, (out.read_text() if out.exists() else '')
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _R(n, st, ev='push', br='main'):
+    return {'id': 39956000000 + n, 'run_number': n, 'status': st, 'event': ev, 'head_branch': br}
+
+
+# 10/23 實際那一刻(13:39 UTC):#640 已取消、#641 跑到一半、排程那輪 #642 排隊
+_now = [_R(642, 'pending', 'schedule'), _R(641, 'in_progress'), _R(640, 'completed'), _R(639, 'completed')]
+_seen_640 = [_R(641, 'queued'), _R(640, 'in_progress'), _R(639, 'completed')]
+rc, o, go = gate_run(_seen_640, 640, 39956000640)
+ok('⑧甲 #640 那一刻(#641 排隊中)→ go=0、說出被誰取代、exit 0', rc == 0 and go.strip() == 'go=0' and '#641' in o, (rc, o, go))
+rc, o, go = gate_run(_now, 641, 39956000641)
+ok('⑧乙 #641 被排程那輪 #642 取代 → go=0', rc == 0 and go.strip() == 'go=0' and 'schedule' in o, (o, go))
+rc, o, go = gate_run(_now, 642, 39956000642)
+ok('⑧丙 ⭐ 決定性對照:同一份清單換成最新那輪 #642 自己問 → go=1(照常部署)', rc == 0 and go.strip() == 'go=1', (o, go))
+rc, o, go = gate_run([_R(642, 'completed', 'schedule'), _R(641, 'in_progress')], 641)
+ok('⑧丁 新的那輪已經結束(排隊時被手動取消)→ go=1(⛔ 沒人部署)', go.strip() == 'go=1', (o, go))
+rc, o, go = gate_run([_R(642, 'queued', 'push', 'claude/x'), _R(641, 'in_progress')], 641)
+ok('⑧戊 別的分支有新 run → go=1(concurrency 是分支層級)', go.strip() == 'go=1', (o, go))
+rc, o, go = gate_run([], 641, fake=False)
+ok('⑧己 沒有金鑰(問不到)→ go=1、exit 0、說出原因(fail-open)', rc == 0 and go.strip() == 'go=1' and '問不到' in o, (rc, o, go))
+rc, o, go = gate_run([], 641, fake=False, extra={'SUPERSEDE_RUNS_JSON': '/nonexistent/runs.json'})
+ok('⑧庚 假清單讀不到 → go=1、exit 0', rc == 0 and go.strip() == 'go=1', (rc, o, go))
+_st = subprocess.run([sys.executable, '-I', str(GATE_PY), '--selftest'], capture_output=True, text=True, timeout=60)
+ok('⑧ 判斷程式 --selftest 全過', _st.returncode == 0 and 'selftest OK' in _st.stdout, _st.stdout[-400:])
+
 run_case(single_branch=False)
 run_case(single_branch=True)
 

@@ -44,6 +44,7 @@
 - `daily_miner.yml` 已加 workflow-level concurrency:`group: daily-miner-${{ github.ref }}` + `cancel-in-progress: true`
 - **連續 push 改 miner.py 時,舊 run 自動 cancel,只有最新版跑到完**(省配額 + 避免不同版本同寫 gh-pages 互相干擾)
 - 想手動停跑中的 daily_miner:Actions UI → 該 run → 右上「Cancel workflow」按鈕,**完全無風險**(SQLite 逐股 commit、`if: always()` 上傳 artifact、deploy job STOCKS<100 守門擋空部署)
+- 🧟 **2026-10-23 起:被新的一輪取代的那輪 ⛔ 不部署** —— 部署 job 是 `always()`(某個節點跑滿 90 分仍要部署),以前連「被取代」也照跑 26 分、佔著共用部署鎖,新的那輪只能排隊(10/23 #640 → #641 等了 27 分)。→ 部署前的 `gate` job 問 GitHub 同分支有沒有編號比較大、還沒結束的 run(`scripts/miner_superseded.py`),有才跳過;問不到一律照舊部署;自己按 Cancel(沒有新的一輪)照舊部署已採到的。⛔ 部署條件寫成 `!= '0'`(fail-open),⛔ 改成 `== '1'`。測試 `test_deploy_relay ⑧`
 - deploy_pages.yml 1 分鐘部署不會被新 push cancel(`cancel-in-progress: false`),完整性優先
 
 ### 🚨🚨🚨 V73.9.0 ⭐⭐⭐ 真因是 **GitHub 每個 repo 的排程配額**,不是 concurrency（V73.7.9 只對了一半）
@@ -778,7 +779,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
      `except Exception as _e_mh` 吞成 `margin_error`)。⛔ 誤報率高的版本已丟棄(第一版 345 筆全是閉包誤判)。
 3. `python3 scripts/check_dom_ids.py`(DOM id 唯一性 — V71.0.7 起取代已失效的 check_prompt_vars.py)
    + **`node scripts/check_dup_key.mjs`**(同一個物件字面量裡重複定義同名鍵 → 後面那個贏、前面整段變死碼 — V74.7.4 新增,實跑踩到才寫的)
-   + **`python3 scripts/test_deploy_relay.py`**(🛟 daily_miner 部署窗口的「撿回」守門 — 2026-09-10 新增,見下方陷阱 #41;⑥ V79.5.5 部署 job 時間預算:訊號掃描自己限時 + job 時限夠;⑦ V79.6.0 瀏覽器在並行那步背景先裝、掃描那步裝好就不重裝 —— 實跑 yaml 兩段 bash(平常 / 背景失敗 / 檔案不在 / 沒紀錄 + pipefail),決定性對照:拿掉背景安裝 → 掃描又自己裝、拿掉 wait → 印不出「已先裝好」;⑦戊 V79.6.4 背景安裝有時限(卡住 → RC=124 → 掃描那步補裝;決定性對照:拿掉時限 → 拖住整步))
+   + **`python3 scripts/test_deploy_relay.py`**(🛟 daily_miner 部署窗口的「撿回」守門 — 2026-09-10 新增,見下方陷阱 #41;⑥ V79.5.5 部署 job 時間預算:訊號掃描自己限時 + job 時限夠;⑦ V79.6.0 瀏覽器在並行那步背景先裝、掃描那步裝好就不重裝 —— 實跑 yaml 兩段 bash(平常 / 背景失敗 / 檔案不在 / 沒紀錄 + pipefail),決定性對照:拿掉背景安裝 → 掃描又自己裝、拿掉 wait → 印不出「已先裝好」;⑦戊 V79.6.4 背景安裝有時限(卡住 → RC=124 → 掃描那步補裝;決定性對照:拿掉時限 → 拖住整步);⑧ 2026-10-23 被新的一輪取代的那輪不部署(gate job 接線 + 走正式入口跑 `miner_superseded.py` 7 種情境;決定性對照:同一份清單換最新那輪自己問 → 照常部署))
    + **`node scripts/test_dupnum.mjs`**(🔢 同一畫面⛔ 不可有兩個數字 / 文案⛔ 不可跟實測打架 —— V77.1.4 新增:今日漲跌幅唯一來源 ・行事曆⛔ 不給部位指令 ・前綴撞名 ・產業別⛔ 不印代碼 ・全市場統計要標日期 ・clamp 夾到要說出來。⭐ 6 種注入全部叫得出來)
    + **`node scripts/test_exitdist.mjs`**(🚪 距出場線多遠 / 今天會不會碰到 / 智慧單觸發價 —— V77.4.9 新增;三條線讀既有函式、ATR 用今天、觸發價 `_floorTick`、有要盯的就⛔ 不可寫「沒有」;5 種注入全紅)
    + **`node scripts/test_beargate.mjs`**(🐻 V77.6.5 新預設的守門:App `_bear60Of` 跟回測 `notBear60` **逐日一致** ・最長天數三份實作一致 ・唐奇安 40 日 App == `auto_trade.py`(會動真錢)・決策台空頭只擋買進 + 決定性對照 ・一次性搬家只動舊預設 `don`;4 種注入全紅)

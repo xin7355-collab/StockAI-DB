@@ -276,15 +276,49 @@ jobs:
           if-no-files-found: warn
 
   # ══════════════════════════════════════════════════════════════════════════
+  # 🧟 2026-10-23:這輪是不是已經被「新的一輪」取代了?(被取代 → 下面的部署不跑)
+  #   workflow 層級 concurrency 是 cancel-in-progress → 新的一輪來了,舊的這輪被取消;
+  #   但部署 job 是 always()(刻意:某個節點跑滿 90 分被砍,已採到的仍要部署)→ 連「被取代」也照跑:
+  #   10/23 #640 採礦 21 個 job 12:53~12:55 全部被 #641 取消,部署 job 照樣跑 26 分(佔著共用部署鎖、
+  #   用舊版程式寫 gh-pages),新的那輪 #641 只能排隊到 13:21 才開始;#641 又被排程那輪 #642 取代,同一件事再一次。
+  #   → 這個小 job 問 GitHub「同分支有沒有編號比較大、還沒結束的 run」:有 → go=0(新的那輪會部署)。
+  #   ⛔ 問不到一律 go=1(照舊部署);⛔ 使用者自己按 Cancel(沒有新的一輪)照舊部署已採到的。
+  #   ⛔ 要排在 deploy 前面(test_deploy_relay 的預算抽取器從 deploy: 讀到檔尾)。測試 test_deploy_relay ⑧。
+  # ══════════════════════════════════════════════════════════════════════════
+  gate:
+    name: 🧟 這輪有沒有被新的一輪取代
+    needs: [mine, chips_miner]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      go: ${{ steps.chk.outputs.go }}
+    steps:
+      - name: 📥 下載判斷程式
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/miner_superseded.py
+          sparse-checkout-cone-mode: false
+      - name: 🧟 問 GitHub 有沒有比這輪新的 run
+        id: chk
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/miner_superseded.py daily_miner.yml
+
+  # ══════════════════════════════════════════════════════════════════════════
   # 🧬 階段二:等 mine + chips_miner 都完工後,合併資料並統一發布
   # ══════════════════════════════════════════════════════════════════════════
   deploy:
     name: 🚀 合併與部署總機
-    needs: [mine, chips_miner]   # V15.0:等 mine 跟 chips_miner 都跑完(任一 timeout 仍進 deploy 因 always())
+    needs: [mine, chips_miner, gate]   # V15.0:等 mine 跟 chips_miner 都跑完(任一 timeout 仍進 deploy 因 always())
     # always()（不加 !cancelled）：即使某 batch 跑滿 90 分被 timeout 砍（→ run 變 cancelled），
     # deploy 仍要執行——否則一個 straggler 就讓整批白做、gh-pages 永遠不更新（曾導致無限卡死）。
     # 各 batch 已 timeout-safe 修剪（manifest）+ origin/data 底層 + STOCKS<100 守門，三重保險擋空/髒部署。
-    if: ${{ always() }}
+    # 🧟 只有「被新的一輪取代」(gate 說 go=0)才不跑;gate 失敗 / 沒輸出 = 空字串 → 照跑(fail-open)。
+    if: ${{ always() && needs.gate.outputs.go != '0' }}
     runs-on: ubuntu-latest
     # ⏱️ V79.5.5 30 → 40(使用者 10/22 選):第二輪平常整個 job 就要 26 分(合併那步 16~22 分),
     #   10/22 #634 再加上訊號掃描安裝瀏覽器卡 7 分 → 撞 30 分,撿回 / 部署 / 推 data 三步全部沒跑。
