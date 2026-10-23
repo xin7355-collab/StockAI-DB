@@ -731,21 +731,31 @@ class RgResp:
     def close(s):
         pass
 class RgSess:
-    """mode:'range' 支援續傳 / 'ignore' 不理 Range(回 200 整份)/ 'wrong' 回 206 但起點不對
-       kbs:{'nas': KB/s, 'srv': KB/s} ・cut:第一次請求在第幾個 byte 斷 ・early:斷法改成提早結束不丟例外 ・clen:有沒有 Content-Length"""
-    def __init__(s, clk, body, kbs, mode='range', cut=None, early=False, clen=True):
+    """mode:'range' 支援續傳 / 'ignore' 不理 Range(回 200 整份)/ 'wrong' 回 206 但起點不對 / 'blockseg' 分段請求回被擋的網頁
+       kbs:{'nas': KB/s, 'srv': KB/s} ・cut:第一次請求在第幾個 byte 斷 ・early:斷法改成提早結束不丟例外 ・clen:有沒有 Content-Length
+       segcut:{分段起點: 第幾個 byte 斷}(只斷第一次)"""
+    def __init__(s, clk, body, kbs, mode='range', cut=None, early=False, clen=True, segcut=None):
         s.clk, s.body, s.kbs, s.mode, s.cut, s.early, s.clen, s.calls = clk, body, kbs, mode, cut, early, clen, []
+        s.segcut = dict(segcut or {})
     def get(s, url, headers=None, **kw):
         k = 'nas' if '/nas/STR/' in url else 'srv'
         rg = (headers or {}).get('Range')
         s.calls.append((k, rg))
         n = len(s.body)
         cut = s.cut if len(s.calls) == 1 else None
-        if rg and s.mode in ('range', 'wrong'):
-            a = int(rg.split('=')[1].rstrip('-'))
-            st = a if s.mode == 'range' else max(0, a - 1000)
-            return RgResp(s.clk, s.body, st, s.kbs[k], 206, {'Content-Range': f'bytes {st}-{n - 1}/{n}', 'Content-Length': str(n - st)}, cut, not s.early)
+        if rg and s.mode in ('range', 'wrong', 'blockseg'):
+            lo, _, hi = rg.split('=')[1].partition('-')
+            a, z = int(lo), (int(hi) if hi else n - 1)
+            if s.mode == 'blockseg' and hi:
+                return RgResp(s.clk, BLOCK_HTML, 0, s.kbs[k], 200, {'Content-Length': str(len(BLOCK_HTML))})
+            st = a if s.mode in ('range', 'blockseg') else max(0, a - 1000)
+            if hi and a in s.segcut:
+                c = s.segcut.pop(a)
+                return RgResp(s.clk, s.body[:z + 1], st, s.kbs[k], 206, {'Content-Range': f'bytes {st}-{z}/{n}'}, st + c, True)
+            return RgResp(s.clk, s.body[:z + 1], st, s.kbs[k], 206, {'Content-Range': f'bytes {st}-{z}/{n}', 'Content-Length': str(z - st + 1)},
+                          cut, not s.early)
         return RgResp(s.clk, s.body, 0, s.kbs[k], 200, ({'Content-Length': str(n)} if s.clen else {}), cut, not s.early)
+BLOCK_HTML = '<html><body>因為安全性考量,您的連線已被拒絕</body></html>'.encode('utf-8')
 def _rgf(sess, clk):
     return cdm.Fetcher(session=sess, pace=0, sleeper=lambda x: clk.__setitem__('t', clk['t'] + x), clock=lambda: clk['t'])
 B6 = b'%PDF-1.4\n' + b'x' * (6 * 1024 * 1024)
@@ -800,7 +810,7 @@ b41, e41, k41 = _rgf(s41, ck41).get_any(cdm.file_urls(TPL, '771520261022M001.pdf
 ok('㊶ 檔案路徑每秒 10 KB(20 秒就算得出下載不完)→ 換下載程式、只拿剩下的時間,25 KB/s 下載得完',
    b41 == B9 and k41 == 'srv' and ck41['t'] <= cdm.dl_limit(len(B9)) + 5, (e41, k41, round(ck41['t']), [c[0] for c in s41.calls]))
 ck41b = {'t': 0.0}
-s41b = RgSess(ck41b, B9, {'nas': 10, 'srv': 25}, clen=False)
+s41b = RgSess(ck41b, B9, {'nas': 10, 'srv': 25}, mode='ignore', clen=False)
 b41b, e41b, k41b = _rgf(s41b, ck41b).get_any(cdm.file_urls(TPL, '771520261022M001.pdf'))
 ok('㊶b 不知道多大、檔案路徑慢慢給到時限 → 下載程式那條沒時間了就 ⛔ 換(一份 ⛔ 拖到 480 秒)',
    b41b is None and 'srv:skip:' in e41b and all(c[0] == 'nas' for c in s41b.calls) and ck41b['t'] <= cdm.DL_MAX_SEC + 5
@@ -810,6 +820,58 @@ rs41 = RouteSess({'srv': 'pdf', 'nas': 'html'}, ck41c)
 b41c, e41c, k41c = cdm.Fetcher(session=rs41, pace=0, sleeper=lambda x: None, clock=lambda: ck41c['t']).get_any(cdm.file_urls(TPL, '233020260716M001.pdf'))
 ok('㊶c ⭐ 決定性對照:檔案路徑馬上回網頁 → 下載程式照樣有整份的時間(⛔ 誤判成沒時間)', b41c and k41c == 'srv' and rs41.calls == ['nas', 'srv'], (e41c, rs41.calls))
 ok('㊶d 原因字串的續傳紀錄不會被 err_kind 當成兩條路的分隔', cdm.err_kind('nas:ConnectionError@3s(已800KB);續傳@800KB | srv:slow:100KB/240s') == 'tmp')
+# ㊸ 🔀 檔案路徑分段同時下載(deck_dl_probe 10/23 實測:一條 19~37 KB/s、四條合計 69~149 KB/s,主機是「每條連線限速」)
+def _segs(calls):
+    return sorted(int(r.split('=')[1].split('-')[0]) for k, r in calls if r and r != 'bytes=0-' and not r.endswith('-'))
+def _ranges_ok(calls, n):
+    rr = sorted((int(a), int(b)) for k, r in calls if r and not r.endswith('-') for a, b in [r.split('=')[1].split('-')])
+    return rr and rr[0][0] == 0 and rr[-1][1] == n - 1 and all(rr[i][1] + 1 == rr[i + 1][0] for i in range(len(rr) - 1))
+ck43 = {'t': 0.0}
+s43 = RgSess(ck43, B9, {'nas': 400, 'srv': 25})
+f43 = _rgf(s43, ck43)
+b43, e43, k43 = f43.get_any(cdm.file_urls(TPL, '641420261016M001.pdf'))
+ok('㊸ 9.6 MB:先問「bytes=0-」→ 206 → 分 4 段同時下載,4 段剛好接成整份(沒有縫、沒有重疊),拼起來一個位元組都不差',
+   b43 == B9 and k43 == 'nas' and s43.calls[0] == ('nas', 'bytes=0-') and len(_segs(s43.calls)) == cdm.DL_CONN
+   and _ranges_ok(s43.calls, len(B9)) and f43.par == 1, (e43, s43.calls[:6]))
+_old_conn = cdm.DL_CONN
+cdm.DL_CONN = 1
+ck43b = {'t': 0.0}
+s43b = RgSess(ck43b, B9, {'nas': 400, 'srv': 25})
+b43b, e43b, k43b = _rgf(s43b, ck43b).get_any(cdm.file_urls(TPL, '641420261016M001.pdf'))
+cdm.DL_CONN = _old_conn
+ok('㊸b ⭐ 決定性對照:CC_DL_CONN=1(逃生門)→ 一條連線、⛔ 帶 Range,一個請求拿完整份', b43b == B9 and s43b.calls == [('nas', None)], (e43b, s43b.calls))
+ck43c = {'t': 0.0}
+s43c = RgSess(ck43c, B9, {'nas': 400, 'srv': 25}, mode='ignore')
+f43c = _rgf(s43c, ck43c)
+b43c, e43c, k43c = f43c.get_any(cdm.file_urls(TPL, '641420261016M001.pdf'))
+ok('㊸c 主機不支援分段(回 200 整份)→ 那個回應就是整份,照一條連線讀完(⛔ 多發一次請求)', b43c == B9 and s43c.calls == [('nas', 'bytes=0-')] and f43c.par == 0,
+   (e43c, s43c.calls))
+SMALL = b'%PDF-1.4\n' + b's' * (600 * 1024)
+ck43d = {'t': 0.0}
+s43d = RgSess(ck43d, SMALL, {'nas': 400, 'srv': 25})
+f43d = _rgf(s43d, ck43d)
+b43d, e43d, k43d = f43d.get_any(cdm.file_urls(TPL, '233020261015M001.pdf'))
+ok('㊸d 小檔(600 KB < 1 MB)→ 「bytes=0-」回的 206 就是整份,⛔ 分段、⛔ 再發請求', b43d == SMALL and s43d.calls == [('nas', 'bytes=0-')] and f43d.par == 0,
+   (e43d, s43d.calls))
+ck43e = {'t': 0.0}
+s43e = RgSess(ck43e, B9, {'nas': 400, 'srv': 25}, segcut={2 * len(B9) // 4: 300 * 1024})
+f43e = _rgf(s43e, ck43e)
+b43e, e43e, k43e = f43e.get_any(cdm.file_urls(TPL, '641420261016M001.pdf'))
+_st3 = 2 * len(B9) // 4
+_re = [r for k, r in s43e.calls if r and not r.endswith('-') and _st3 < int(r.split('=')[1].split('-')[0]) < 3 * len(B9) // 4]
+ok('㊸e 第 3 段下載到 300 KB 斷線 → 那一段從斷掉的地方續傳(其他段不重來),拼起來一個位元組都不差',
+   b43e == B9 and len(_re) == 1 and len(_segs(s43e.calls)) == cdm.DL_CONN + 1, (e43e, s43e.calls))
+ck43f = {'t': 0.0}
+s43f = RgSess(ck43f, B9, {'nas': 400, 'srv': 400}, mode='blockseg')
+b43f, e43f = _rgf(s43f, ck43f).get(cdm.file_urls(TPL, '641420261016M001.pdf')[1][1], parallel=True)
+ok('㊸f 分段請求回「因為安全性考量」那一頁 → 全部停、這份算被擋(⛔ 把網頁拼進 PDF)', b43f is None and e43f.startswith('blocked:') and cdm.err_kind('nas:' + e43f) == 'blocked',
+   (e43f[:160], s43f.calls[:6]))
+ck43g = {'t': 0.0}
+s43g = RgSess(ck43g, B9, {'nas': 400, 'srv': 400}, mode='wrong')
+f43g = _rgf(s43g, ck43g)
+b43g, e43g = f43g.get(cdm.file_urls(TPL, '641420261016M001.pdf')[1][1], parallel=True)
+ok('㊸g 分段回 206 但起點對不上 → 那份失敗(⛔ 拼出錯的檔)', b43g is None and ('起點' in e43g or '看不懂' in e43g), (e43g, s43g.calls[:6]))
+
 # ㊷ job 時限要裝得下「讀到 40 分才停止開新的 + 最後那份大簡報下載滿 + 抽字 + AI + 推檔」(被砍掉 = 整輪白讀,紀錄在最後才存)
 _tm = int(re.search(r'timeout-minutes:\s*(\d+)', _wf).group(1))
 # 安裝平常 3 分、apt 慢的時候 5 分;推檔兩個分支各 5 次重試(5~25 秒)+ 接力 → 抓 5 分
