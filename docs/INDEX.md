@@ -5,6 +5,7 @@
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 🔓 每週回測的部署 job 也不拿共用部署鎖:10/23 #57 回測全部正常,但部署 job 排在 `gh-pages-push` 後面(鎖被明日作戰清單的排程備援那輪佔著)、news_express 來排隊 → 每把鎖只留一個排隊的 → 1 秒內 cancelled(網站停在上一週)→ 重跑補上 + 改自己的鎖 `weekly-backtest-deploy` + 5 次重試
 - 🧟 被新的一輪取代的那輪不部署:daily_miner 部署 job 是 `always()` → 連「被取代」也照跑 26 分、佔著共用部署鎖,新的那輪排隊(10/23 #640 → #641 等 27 分)→ 部署前多一個 `gate` job(`miner_superseded.py`:同分支有編號比較大、還沒結束的 run 才跳過;問不到照舊部署)
 - 🌡️ 景氣燈號三件:FinMind 備援回 `yellowred`(App 認 `yellow-red`)→ `_bsi_light` 一份・早上 macro_cron 沿用不到上一份(讀本機檔第 4 次)→ 吃 `_load_prev_macro` 那份・政府開放資料 6099 備援(先問清單 API、只認欄位名字、燈號要跟分數對得上、解析不了把網址 + 欄位寫進 error)
 - 🗓️ Worker V22.7:Cloudflare 排程星期欄 `1-5` = 週日~週四(Cloudflare 1 = 週日)→ 每個星期五整天沒跑(盤前簡報 / 盤中提醒 / 叫醒採礦 / 週五週報從沒送過)、週日白跑 → 改 `MON-FRI` + `CRON` 集中 + 台北週末雙保險,`test_worker_cron.mjs`(照 Cloudflare 規則算星期,舊 `1-5` 必判錯)
