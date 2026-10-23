@@ -335,5 +335,33 @@ with tempfile.TemporaryDirectory() as tmp:
        and len(list((data / 'cc').glob('*.json'))) == 6, (n_ai, lg[-2:]))
 
 
+# ⑯ 🐢 下載被壓頻寬(一小塊一小塊給)→ 一份最多 DL_MAX_SEC 秒就放棄(read timeout 只管每一小塊,⛔ 不可一份等十分鐘)
+class SlowResp:
+    status_code = 200
+    def __init__(self, clk, body, per=10.0):
+        self.clk, self.body, self.per = clk, body, per
+    def iter_content(self, n):
+        for i in range(0, len(self.body), 1024):
+            self.clk['t'] += self.per            # 每一小塊要 10 秒
+            yield self.body[i:i + 1024]
+    def close(self):
+        pass
+class SlowSess:
+    def __init__(self, clk, body, per):
+        self.clk, self.body, self.per, self.n = clk, body, per, 0
+    def get(self, url, **kw):
+        self.n += 1
+        return SlowResp(self.clk, self.body, self.per)
+clk = {'t': 0.0}
+big = b'%PDF-1.4\n' + b'x' * (1024 * 40)
+fs_ = cdm.Fetcher(session=SlowSess(clk, big, 10.0), pace=0, sleeper=lambda x: None, clock=lambda: clk['t'])
+b_, err_ = fs_.get('https://x/f?fileName=a.pdf')
+ok('⑯ 下載太慢 → 放棄並回 slow(⛔ 一份等到天荒地老)', b_ is None and err_.startswith('slow') and clk['t'] <= cdm.DL_MAX_SEC + 20, (err_, clk['t']))
+clk2 = {'t': 0.0}
+fs2 = cdm.Fetcher(session=SlowSess(clk2, big, 0.1), pace=0, sleeper=lambda x: None, clock=lambda: clk2['t'])
+b2, err2 = fs2.get('https://x/f?fileName=a.pdf')
+ok('⑯b ⭐ 決定性對照:同一份檔速度正常 → 照常拿到', b2 is not None and b2[:5] == b'%PDF-' and err2 == '', (err2, clk2['t']))
+
+
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))
 sys.exit(1 if fails else 0)

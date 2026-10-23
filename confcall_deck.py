@@ -57,6 +57,7 @@ PACE = float(os.getenv('CC_PACE') or 3.0)
 BUDGET_MIN = float(os.getenv('CC_BUDGET_MIN') or 40)
 AI_MAX = int(os.getenv('CC_AI_MAX') or 40)
 MAX_BYTES = 40 * 1024 * 1024
+DL_MAX_SEC = float(os.getenv('CC_DL_MAX_SEC') or 120)   # 一份簡報最多下載幾秒(read timeout 只管每一小塊,整份要另外管)
 MAX_PAGES = 80
 KEEP_PER_SYM = 4
 DIGEST_DAYS = 60
@@ -602,16 +603,18 @@ def novelty_all(recs):
 
 # ───────────────────────── 網路(只在正式跑時用) ─────────────────────────
 class Fetcher:
-    def __init__(self, session=None, pace=PACE, sleeper=time.sleep):
-        import requests
-        self.s = session or requests.Session()
-        self.pace, self.sleep = pace, sleeper
+    def __init__(self, session=None, pace=PACE, sleeper=time.sleep, clock=time.time):
+        if session is None:
+            import requests
+            session = requests.Session()
+        self.s = session
+        self.pace, self.sleep, self.clock = pace, sleeper, clock
         self.fail_streak = 0
         self.last = 0.0
 
     def get(self, url):
         """回 (bytes|None, 原因)。暫時性錯誤指數退避重試;⛔ 不無限重試。"""
-        wait = self.pace - (time.time() - self.last)
+        wait = self.pace - (self.clock() - self.last)
         if wait > 0:
             self.sleep(wait)
         err = ''
@@ -620,17 +623,21 @@ class Fetcher:
                 self.sleep(back)
             try:
                 r = self.s.get(url, headers=UA, timeout=(10, 60), stream=True)
-                self.last = time.time()
+                self.last = self.clock()
                 if r.status_code in (429, 500, 502, 503, 504):
                     err = f'HTTP {r.status_code}'
                     continue
                 if r.status_code != 200:
                     return None, f'HTTP {r.status_code}'
                 buf = io.BytesIO()
+                t_dl = self.clock()
                 for chunk in r.iter_content(65536):
                     buf.write(chunk)
                     if buf.tell() > MAX_BYTES:
                         return None, 'too_big'
+                    if self.clock() - t_dl > DL_MAX_SEC:      # 🐢 主機把頻寬壓到很慢(一小塊一小塊給)→ ⛔ 不可一份等十分鐘
+                        r.close()
+                        return None, f'slow:{buf.tell() // 1024}KB/{DL_MAX_SEC:.0f}s'
                 b = buf.getvalue()
                 if b[:5] == b'%PDF-' or b[:4] == b'PK\x03\x04':
                     return b, ''
@@ -638,7 +645,7 @@ class Fetcher:
                 return None, f'not_file:{head[:80]}'     # 回了網頁(陷阱 #23:不存在的路徑回 200 + 網頁)
             except Exception as e:
                 err = type(e).__name__
-                self.last = time.time()
+                self.last = self.clock()
         return None, err or 'fail'
 
 
