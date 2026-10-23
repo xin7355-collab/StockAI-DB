@@ -52,6 +52,8 @@ which is different on some other cron systems」)—— 跟 GitHub Actions / Lin
 ④ 每一條的分 / 時 = 用途 ⑤ 真的呼叫 `scheduled()`:台北週五每一條都有做事、週六 / 週日五條都不做 ⑥ 各分支呼叫的東西。
 注入三種(改回 1-5 / 拿掉週末保險 / 只改設定檔的大小寫)全紅。`test_macro_kick` / `test_miner_kick` / `test_intraday_loop ⑦g` 改成找 `CRON.pre` / `CRON.eve`。
 
+⏭️ **10/30(週五)要看**:① GitHub 上 Worker 叫醒的紀錄(`live_snapshot` 08:00、`tick_flow` 09:00、`daily_miner` 17:00 的 repository_dispatch)
+**第一次出現在星期五**;② 10/25(週日)**沒有**被叫醒的紀錄;③ 週五盤後總結那則帶「📅 最近一週回顧(起訖日)」。
 ⭐ **通用**:**同一個 cron 字串,在不同系統是不同意思**(GitHub / Linux 0 = 週日、Cloudflare / Quartz 1 = 週日)
 → 寫排程前先查**那個系統自己的**文件,星期一律用英文縮寫;而且要有測試「照那個系統的規則算出來是哪幾天」,⛔ 只比字串不夠。
 ⭐ 又一次「全綠零訊息」:Cloudflare 照設定準時跑(週日~週四),每一則推播都正常,**沒有任何一個地方會報錯** —— 只有拿「哪幾天有被叫醒」去對日曆才看得到。
