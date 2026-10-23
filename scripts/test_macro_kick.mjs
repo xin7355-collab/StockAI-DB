@@ -60,7 +60,8 @@ const npName = (NP.match(/^name:\s*(.+)$/m) || [])[1]?.trim();
 ok('②c 跟車 host 名字跟 news_premarket.yml 的 name 逐字一樣', npName && onBlock.includes(`- "${npName}"`), npName);
 const ifm = MC.match(/\n    if: >-\n([\s\S]*?)\n    timeout-minutes/);
 ok('②d job if 放行非 workflow_run(repository_dispatch 進得來)', ifm && /github\.event_name != 'workflow_run'/.test(ifm[1]), ifm && ifm[1]);
-const sch = W.slice(W.indexOf("} else if (event.cron === '0 0 * * 1-5')"), W.indexOf("} else {", W.indexOf("} else if (event.cron === '0 0 * * 1-5')")));
+const _i0 = W.indexOf("} else if (event.cron === CRON.pre)");
+const sch = _i0 < 0 ? '' : W.slice(_i0, W.indexOf("} else {", _i0));
 ok('②e 台北 08:00 那一輪呼叫 macroKick', /macroKick\(env\)/.test(sch), sch.slice(0, 300));
 
 // ③④ 前端:抽出兩支方法

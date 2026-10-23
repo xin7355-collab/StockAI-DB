@@ -256,7 +256,8 @@ function tplPriceAlert(label, sym, hitPrice, livePrice, condText) {
 //   查全 repo 的 cron 才確定:台北早上 08:00~10:30 只有 4 支排程,
 //   而其中 3 支正是實測「餓死」的那幾支 → **沒有可靠的 host 可以掛 workflow_run**。
 // ⭐ `repository_dispatch` 跟 `workflow_dispatch` 一樣**不吃 schedule 配額**,
-//   而這個 Worker 的 cron 每天都在跑(使用者每天收到的 Telegram 就是證據)。
+//   而這個 Worker 的 cron 每個平日都在跑(使用者每天收到的 Telegram 就是證據;
+//   ⚠️ V22.7 以前星期五例外 —— 星期欄寫成 1-5 = Cloudflare 的週日~週四,見 CRON)。
 // ⛔ 純加值層:沒設 `GH_DISPATCH_TOKEN` 就整段跳過,絕不影響既有 Telegram 功能。
 // 🔐 金鑰只從 env 讀、只進 Authorization header —— ⛔ 絕不寫進任何 log / 訊息 / 回傳值。
 // ⚠️ `repository_dispatch` 只認 **default branch(main)** 上的 workflow 定義。
@@ -381,10 +382,24 @@ async function macroKick(env, now = Date.now(), fetchFn = fetch, dispatchFn = gh
     return { sent: !!(r && r.ok), why: r && r.why, upd, close };
 }
 
-const WORKER_VER = 'V22.6 (2026-10-17)';   // 🔕 V79.3.5 黑天鵝範本刪除・外資台指期改相對規則・重大事件併進盤前簡報
+const WORKER_VER = 'V22.7 (2026-10-23)';   // 🗓️ 排程星期欄 1-5 → MON-FRI(以前每個星期五整天沒跑)
 const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
 
-export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs };
+// 🗓️ V22.7 排程(⛔ 要跟 wrangler.toml 的 crons 一字不差 —— Cloudflare 傳進來的 event.cron 就是那串原文)
+//   ⛔ 星期欄不可寫數字:Cloudflare 的 1 = 週日 … 7 = 週六(跟 GitHub / Linux 的 0 = 週日不一樣),
+//      以前寫 "1-5" = 週日~週四 → 每個星期五整天沒跑、週日白跑(10/16、10/23 週五 GitHub 都沒有被叫醒的紀錄)。
+//   測試 scripts/test_worker_cron.mjs(兩邊一字不差 + 照 Cloudflare 的規則算出來真的是週一~週五)。
+const CRON = {
+    scan: '0,15,30,45 1-4 * * MON-FRI',   // 台北 09:00~12:45 每 15 分:盤中個人警報 + 看門狗
+    last: '0,15,30 5 * * MON-FRI',        // 台北 13:00 / 13:15 / 13:30:盤中末班
+    pre:  '0 0 * * MON-FRI',              // 🌅 台北 08:00 盤前簡報 + 👑 換倉推播 + 叫醒總經 / 盤中快照
+    open: '0 1 * * MON-FRI',              // 台北 09:00 開盤:ETF 跟單 + 叫醒逐筆內外盤
+    eve:  '0 9 * * MON-FRI',              // 🌆 台北 17:00 盤後總結 + 叫醒每日採礦
+};
+// 台北的星期幾(0 = 週日);排程時間點優先用 Cloudflare 給的 scheduledTime
+function _twWeekday(ms) { return new Date((Number(ms) || Date.now()) + 8 * 3600e3).getUTCDay(); }
+
+export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs, CRON, _twWeekday };
 export default {
     async fetch(request, env, ctx) {
         if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -417,25 +432,23 @@ export default {
     },
 
     async scheduled(event, env, ctx) {
-        // V17.5 + V21.4 — cron 排程分流(UTC → 台北 +8):
-        //   "0 21 * * 0-4"     → 05:00 台北 🌃 隔夜美股戰報
-        //   "0 0 * * 1-5"      → 08:00 台北 🌅 盤前簡報(V21.4 提前 + 精簡)
-        //   "0 1 * * 1-5"      → 09:00 台北 開盤掃 monitorList 推朱家泓 5MA 觸發 + ETF 跟單 Top 5
-        //   "0 4 * * 1-5"      → 12:00 台北 🌞 午盤戰報
-        //   "0 9 * * 1-5"      → 17:00 台北 🌆 盤後總結(加強既有)
-        //   "0,30 1-4"/"0,20 5"→ 09:00-13:20 台北 每 30 分 盤中庫存彙總掃描(runScan,末班 13:20)
+        // cron 排程分流(UTC → 台北 +8),五條排程與用途見上面的 CRON。
         // 🧹 V22 精簡:砍掉「隔夜美股戰報」「午盤戰報」兩則長篇廣播(使用者反映沒用),
         //   只留「盤前精選(08:00)」「盤後精選(17:00)」+ 開盤掃 + 盤中個人警報。
-        if (event.cron === '0 9 * * 1-5') {
+        // 🗓️ V22.7 雙保險:這支只做交易日的事 → 台北週六 / 週日一律不做
+        //   (萬一哪天星期欄又寫回數字,至少不會在週末推播、叫醒採礦)。⚠️ 要加週末排程的話,寫在這行之前。
+        const wd = _twWeekday(event.scheduledTime);
+        if (wd === 0 || wd === 6) return;
+        if (event.cron === CRON.eve) {
             ctx.waitUntil(runDailySummary(env));
             ctx.waitUntil(minerKick(env));   // ⏰ V79.1.9 資料還不是今天 → 叫醒每日採礦(換倉名單最早出來)
-        } else if (event.cron === '0 1 * * 1-5') {
+        } else if (event.cron === CRON.open) {
             // 🧹 V78.1.1 朱家泓 5MA 早上推播已刪除(使用者:設定裡沒用/過時的刪掉;它推的是沒實測過的買點)。
             //   App 端 V78.1.1 起一律送 chuMorningPush:false,舊版 worker 也會跳過;函式保留以免舊 KV 誤觸。
             ctx.waitUntil(runEtfFollowMorningPush(env));  // V17.18
             // 🚀 逐筆內外盤的窗口是 09:03 起 → 用台北 09:00 這一輪叫它(⛔ 別跟 quotes 同一輪發)
             ctx.waitUntil(ghDispatch(env, 'intraday-ticks'));
-        } else if (event.cron === '0 0 * * 1-5') {
+        } else if (event.cron === CRON.pre) {
             ctx.waitUntil(runPreMarket(env));      // V21.4 盤前簡報(台北 08:00)
             ctx.waitUntil(runLeaderRebalPush(env));   // 👑 V77.9.6 選 👑 的人:換倉日「今天開盤買 / 賣哪幾檔」
             ctx.waitUntil(macroKick(env));   // 🌅 V79.3.4 總經資料還停在美股收盤前 → 叫醒 macro_cron(盤前體檢)
@@ -443,7 +456,8 @@ export default {
             //    ⭐ 08:00 發沒問題 —— `intraday_window.py` 會自己 SLEEP 到 08:45 那一拍。
             ctx.waitUntil(ghDispatch(env, 'intraday-quotes'));
         } else {
-            ctx.waitUntil(runScan(env));           // 盤中個人警報(庫存/自選/到價/處置…)
+            // CRON.scan / CRON.last:盤中個人警報(庫存/自選/到價/處置…)
+            ctx.waitUntil(runScan(env));
             // ⏱️ 同一輪順便當看門狗(⛔ 它自己會判「太久沒更新」才發,不是每輪都發)
             ctx.waitUntil(intradayWatchdog(env));
         }
@@ -2111,7 +2125,7 @@ async function handlePrice(env, chatId, text) {
     await tg(env, chatId, `✅ 已設 *${label}* ${cond === 'gte' ? '上限' : '下限'} *${price}*\n下輪 cron 開始監控`);
 }
 
-// ── F3: 每日 17:00 台北 盤後總結(cron '0 9 * * 1-5')─────────────────
+// ── F3: 每日 17:00 台北 盤後總結(CRON.eve)─────────────────
 
 async function runDailySummary(env) {
     const t = Date.now();

@@ -5,7 +5,7 @@
  *      ⭐ 決定性對照:同一個時間點,data_date 換成今天就不可以發
  *   ② daily_miner.yml 收 repository_dispatch types: [daily-miner](事件名兩邊一致)
  *   ③ playbook_scan 的 if 收 schedule / repository_dispatch / workflow_dispatch,⛔ 不收 push
- *   ④ 台北 17:00 那一輪(0 9 * * 1-5)有呼叫 minerKick
+ *   ④ 台北 17:00 那一輪(CRON.eve = 0 9 * * MON-FRI;排程本身由 test_worker_cron 釘)有呼叫 minerKick
  * 注入:INJECT=nofresh(拿掉「已是今天就不發」)/ schedonly(playbook_scan 改回只收 schedule)—— 都要紅
  */
 import fs from 'fs';
@@ -59,7 +59,8 @@ const IF = ifm ? ifm[1] : '';
 ok('③ playbook_scan 跟 schedule / repository_dispatch / workflow_dispatch 那輪', /"schedule"/.test(IF) && /"repository_dispatch"/.test(IF) && /"workflow_dispatch"/.test(IF), IF);
 ok('③b ⛔ 不跟 push 那輪、失敗的不跟', !/push/.test(IF.replace(/#.*$/gm, '')) && /conclusion == 'success'/.test(IF), IF);
 // ④
-const sch = W.slice(W.indexOf("if (event.cron === '0 9 * * 1-5')"), W.indexOf("} else if (event.cron === '0 1 * * 1-5')"));
+const _i0 = W.indexOf("if (event.cron === CRON.eve)");
+const sch = _i0 < 0 ? '' : W.slice(_i0, W.indexOf("} else if (event.cron === CRON.open)"));
 ok('④ 台北 17:00 那一輪呼叫 minerKick', /minerKick\(env\)/.test(sch), sch.slice(0, 300));
 
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ test_miner_kick 全過');

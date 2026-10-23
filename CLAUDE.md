@@ -141,6 +141,7 @@ done
 ⛔ 兩支的 cron **一行不刪**當備援;🚨 事件名兩邊要完全一致,測試 `scripts/test_intraday_relay.py` ④
 **雙向**比(發了沒人收 / 收了沒人發 都要叫得出來)。
 ⚠️ Cloudflare 免費版 cron 上限 5 個而**已用滿** → 新功能一律掛在既有 handler 裡,⛔ 別想加第 6 個。
+🗓️ **Worker V22.7(2026-10-23)星期欄一律寫 `MON-FRI`,⛔ 不可寫數字** —— Cloudflare 的星期 1 = 週日(⛔ 跟 GitHub 的 0 = 週日不一樣),以前 `1-5` = 週日~週四 → **每個星期五整天沒跑**(盤前簡報 / 盤中提醒 / 叫醒採礦全停)、週日白跑。排程字串只在 `wrangler.toml` + `worker.js` 的 `CRON` 兩處(一字不差,`event.cron` 就是原文);`scheduled()` 台北週末一律不做。測試 `scripts/test_worker_cron.mjs`(照 Cloudflare 規則算星期,舊 `1-5` 必判錯)。
 ⚠️ 需要使用者設 `GH_DISPATCH_TOKEN`(步驟在 `cloud-worker/README.md`);沒設就整段跳過。
 ⏰ **V79.1.9 daily_miner 也由 worker 台北 17:00 叫醒**(`minerKick`,event `daily-miner`,只在 gh-pages screener 還不是今天才發);`playbook_scan` 跟 schedule / repository_dispatch / workflow_dispatch 那輪(⛔ push 不跟)。測試 `scripts/test_miner_kick.mjs`。
 📶 **V79.4.8 永豐帳號每天流量上限 524 MB(同一個帳號的 `auto_trade.py` 也吃這個額度)**:10/21 13:03 就用完 —— 逐筆內外盤每 10 分鐘把前 80 檔「開盤到現在的全部逐筆」重抓(每拍 3.5 → 26 MB,一天 449 MB = 86%)→ 13:30 收盤那拍快照與逐筆都沒有。→ 逐筆改**只抓上一拍之後的**(`tick_flow_miner.collect_ticks`:狀態存 /tmp、起點往前多抓 1 秒再用時間戳去重、每拍輪流抽一檔整天重抓對帳、對不上當天改回整天重抓;`TICK_INCR=0` 逃生門)+ 快照 timeout 300 → **345**(worker 08:00 叫醒要撐到 13:31:30)。⛔ 新增任何會用 Shioaji 的盤中採礦之前,先算一天要吃多少流量(log 每拍都印 `📶 今日流量`)。測試 `scripts/test_tick_incr.py` / `test_intraday_loop ⑦g`。
@@ -680,6 +681,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`python3 scripts/check_undefined_py.py`**(用到不存在的名字 = 潛在 NameError — V72.3.0 新增)
    + **`python3 scripts/check_dup_def.py`**(同一個檔案裡重複定義同名函式 → Python 用最後那個,前面等於死碼 — V74.6.9 新增,實跑踩到才寫的)
    + **`python3 scripts/check_env_default.py`**(🔧 workflow 從 `inputs.*` 餵的環境變數,Python 端必須 `or 預設` —— 排程觸發時是**空字串**不是不存在;V75.1.3 新增,pe_band 四個週日零產出就是這個坑,V74.7.0 intraday_probe 是第一次)
+   + **`node scripts/test_worker_cron.mjs`**(🗓️ Worker V22.7 排程:wrangler.toml == worker.js `CRON` 一字不差・星期欄 ⛔ 數字・照 Cloudflare 規則(1 = 週日)算出是週一~週五(決定性對照:舊 `1-5` = 週日~週四必判錯)・真的呼叫 `scheduled()` 週五五條都做事、週末都不做;注入三種全紅)
    + **`python3 scripts/test_intraday_relay.py`**(🛟 盤中即時檔「留不留得住」—— 2026-09-10 新增:兩支盤中 workflow 都要**也推 data 分支**,⭐ 開真的 git repo 實跑 yaml 裡抽出來的 `deploy()`,而且有**決定性對照組**(拿掉那段必須重現「daily_miner 洗版後消失」)
    + **`python3 scripts/test_tick_backup_skip.py`**(⏭️ V79.5.6 盤後才到的排程備援:今天主迴圈已經抓到 13:20 以後那一拍 → ⛔ 不再整天重抓(一次約 50 MB 永豐流量);只有「排程 + 平日 + 收盤後」才可能跳過,在登入之前判斷、原檔一個位元組不差交回;⭐ 決定性對照:同一份資料改成手動觸發 → 一定往下走)
    + **`node scripts/test_xraycache.mjs`**(💾 V79.5.6 基本頁本地快取真的寫得進去(以前 _ts ReferenceError 被吞,從 V72.5.5 起一次都沒存)・每檔一份有上限・資料日期帶著 `data/chips/{sym}.json` 檔頭的 data_date、⛔ 不可寫「資料日期未知」;INJECT=1 / 2 兩種舊寫法都紅)

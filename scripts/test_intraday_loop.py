@@ -119,7 +119,8 @@ for k, s in srcs.items():
 
 # ⑦g V79.4.8 快照的時限要蓋得住「Worker 台北 08:00 叫醒 → 13:30 收盤那拍 + 90 秒」(10/21 實測 300 分在 13:02 被砍)
 _wk = open(os.path.join(ROOT, 'cloud-worker', 'worker.js'), encoding='utf-8').read()
-_br = _wk[_wk.find("event.cron === '0 0 * * 1-5'"):]
+_i0 = _wk.find("event.cron === CRON.pre")   # 🗓️ V22.7 排程字串集中在 CRON(台北 08:00 = '0 0 * * MON-FRI',test_worker_cron 釘)
+_br = _wk[_i0:] if _i0 >= 0 else ''
 _br = _br[:_br.find('} else')]
 ok('⑦g Worker 還是在台北 08:00 那一輪叫醒快照(改了叫醒時間要回來重算下面那條)',
    "ghDispatch(env, 'intraday-quotes')" in _br, _br[:200])
