@@ -42,6 +42,8 @@ import io
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import time
 import zipfile
@@ -58,6 +60,7 @@ BUDGET_MIN = float(os.getenv('CC_BUDGET_MIN') or 40)
 AI_MAX = int(os.getenv('CC_AI_MAX') or 40)
 MAX_BYTES = 40 * 1024 * 1024
 DL_MAX_SEC = float(os.getenv('CC_DL_MAX_SEC') or 120)   # 一份簡報最多下載幾秒(read timeout 只管每一小塊,整份要另外管)
+EXTRACT_MAX_SEC = float(os.getenv('CC_EXTRACT_MAX_SEC') or 60)   # 一份簡報最多抽幾秒字(pypdf 遇到很複雜的頁面會卡好幾分鐘)
 MAX_PAGES = 80
 KEEP_PER_SYM = 4
 DIGEST_DAYS = 60
@@ -156,6 +159,24 @@ def _clean(s):
 
 
 def extract_pdf(b):
+    """⚡ 先用 pdftotext(poppler,C 寫的,中文簡報比 pypdf 快好幾倍;workflow 會裝);沒有才退回 pypdf。
+    🐢 pdftotext 也有時限(比整份抽字的時限早 5 秒 → 子程序自己砍掉它,⛔ 不留孤兒程序)。"""
+    exe = shutil.which('pdftotext')
+    if exe:
+        try:
+            r = subprocess.run([exe, '-q', '-enc', 'UTF-8', '-l', str(MAX_PAGES), '-', '-'], input=b,
+                               capture_output=True, timeout=max(5.0, EXTRACT_MAX_SEC - 5))
+        except subprocess.TimeoutExpired:
+            raise
+        except Exception:                                    # noqa: BLE001 —— 叫不起來就退回 pypdf
+            r = None
+        if r is not None and r.returncode == 0:
+            parts = r.stdout.decode('utf-8', 'ignore').split('\f')
+            if parts and not parts[-1].strip():
+                parts = parts[:-1]                           # 每頁後面都有一個換頁符號 → 最後一段是空的
+            return [_clean(x) for x in parts[:MAX_PAGES]]
+    import logging
+    logging.getLogger('pypdf').setLevel(logging.ERROR)       # 「EOF marker not found」這類警告 ⛔ 灌爆紀錄
     from pypdf import PdfReader          # 只有這支 workflow 會裝(⛔ 不加進全域 requirements)
     rd = PdfReader(io.BytesIO(b))
     pages = []
@@ -184,6 +205,32 @@ def extract_pptx(b):
                 paras.append(t)
         pages.append(_clean('\n'.join(paras)))
     return pages
+
+
+def _extract_worker(b, q):
+    """子程序裡抽字(卡住可以整個砍掉;⛔ 不可在主程序裡等一個不會回來的 pypdf)。"""
+    try:
+        q.put(('ok', extract_pptx(b) if b[:2] == b'PK' else extract_pdf(b)))
+    except Exception as e:                                   # noqa: BLE001 —— 抽不出來就回原因
+        q.put(('err', type(e).__name__))
+
+
+def extract_safe(b, timeout=None):
+    """回 (pages, '') 或 (None, 原因)。超過時限 → 砍掉子程序回 'timeout'。"""
+    import multiprocessing as mp
+    timeout = EXTRACT_MAX_SEC if timeout is None else timeout
+    ctx = mp.get_context('fork') if 'fork' in mp.get_all_start_methods() else mp.get_context()
+    q = ctx.Queue()
+    p = ctx.Process(target=_extract_worker, args=(b, q), daemon=True)
+    p.start()
+    try:
+        kind, val = q.get(timeout=timeout)
+    except Exception:                                        # noqa: BLE001 —— queue.Empty = 卡住
+        p.terminate()
+        p.join(2)
+        return None, 'timeout'
+    p.join(2)
+    return (val, '') if kind == 'ok' else (None, val)
 
 
 def page_lines(pages):
@@ -731,7 +778,9 @@ def build_outputs(recs, nov, info, today):
             row = {'s': s, 'name': r.get('name') or s, 'd': r.get('d'), 't': r.get('t') or '', 'inv': r.get('inv') or 0, 'f': r.get('f'),
                    'one': ai.get('one') or '', 'ol': ((r.get('outlook') or [[0, '']])[0][1] or '')[:80],
                    'new': [t for t, _ in (nv.get('new') or [])][:5], 'new_n': nv.get('n_new', 0), 'first': bool(nv.get('first')),
-                   'prev_d': nv.get('prev_d') or '', 'reuse': r.get('reuse') or '', 'n_nums': len(r.get('nums') or []), 'pages': r.get('pages')}
+                   'prev_d': nv.get('prev_d') or '', 'reuse': r.get('reuse') or '', 'n_nums': len(r.get('nums') or []), 'pages': r.get('pages'),
+                   # 🔎 簡報講到的產品 / 技術詞(照第一次出現的頁排,最多 30 個)→ 法說會頁可以搜「誰在講 CPO」
+                   'tm': [t for t, _ in sorted((r.get('terms') or {}).items(), key=lambda x: x[1])][:30]}
             vid = ((info.get(r.get('f')) or (None, {}))[1] or {}).get('vid')
             if vid:
                 row['vid'] = vid
@@ -808,7 +857,11 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
             files[f] = {'st': 'ppt_old', 's': s, 'd': d, 'tries': 1}
             new_recs.append(rec)
             continue
+        t_f = time.time()
         b, err = fetcher.get(file_url(tpl, f))
+        t_dl = time.time() - t_f
+        if n_try % 10 == 0:
+            log(f'  ⏳ 第 {n_try} 份 ・已 {(time.time() - t0) / 60:.1f} 分 ・成功 {n_ok} ・失敗 {n_fail}')
         if b is None:
             n_fail += 1
             prev = files.get(f) or {}
@@ -816,7 +869,7 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
             perm = (err.startswith('not_file') and not young) or err == 'too_big' or (err.startswith('HTTP 4') and err != 'HTTP 429')
             files[f] = {'st': 'too_big' if err == 'too_big' else ('bad_file' if perm else 'dl_fail'), 'err': err[:120],
                         's': s, 'd': d, 'tries': (prev.get('tries') or 0) + 1}
-            log(f'  ⚠️ {s} {d} {f} 下載失敗:{err[:80]}')
+            log(f'  ⚠️ {s} {d} {f} 下載失敗:{err[:80]}({t_dl:.0f} 秒)')
             # 「被擋」才算連續失敗(⛔ 回網頁 = 主機有回應、只是那份檔不在,不算被擋)
             if err.startswith('not_file') or err == 'too_big':
                 continue
@@ -827,14 +880,18 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
                 break
             continue
         streak = 0
-        try:
-            pages = extract_pptx(b) if b[:2] == b'PK' else extract_pdf(b)
-        except Exception as e:
-            files[f] = {'st': 'parse_fail', 'err': type(e).__name__, 's': s, 'd': d, 'tries': 1}
-            rec['st'] = 'parse_fail'
-            new_recs.append(rec)
-            continue
+        t_ai = 0.0
+        kb, t_e = len(b) // 1024, time.time()
+        pages, perr = extract_safe(b)
+        t_ex = time.time() - t_e
         del b
+        if pages is None:                                    # 抽不出來 / 抽太久 → 記原因、⛔ 不重試(同一份檔下次一樣卡)
+            files[f] = {'st': 'parse_fail', 'err': perr, 's': s, 'd': d, 'tries': 1}
+            rec['st'] = 'parse_fail'
+            rec['err'] = perr
+            new_recs.append(rec)
+            log(f'  ⚠️ {s} {d} {f} 抽不出字:{perr}({kb:,} KB ・下載 {t_dl:.0f} 秒 ・抽字 {t_ex:.0f} 秒)')
+            continue
         if sum(len(p or '') for p in pages) < 200:
             rec.update({'st': 'no_text', 'pages': len(pages)})       # 只有圖片的簡報(⛔ 不 OCR)
             files[f] = {'st': 'no_text', 's': s, 'd': d, 'tries': 1}
@@ -843,7 +900,9 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         feat = feat_of(pages, mt)
         rec.update({'st': 'ok', **feat})
         if groq_keys and ai_used < AI_MAX and ai_fail < AI_FAIL_STOP and d and d >= (today - timedelta(days=DIGEST_DAYS)).isoformat():
+            t_a = time.time()
             ai, model, gd = groq_summarize(rec['name'], s, d, feat, groq_keys)
+            t_ai = time.time() - t_a
             ai_used += 1
             if ai:
                 rec.update({'ai': ai, 'model': model, 'gate_drop': gd})
@@ -856,7 +915,8 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         new_recs.append(rec)
         n_ok += 1
         log(f'  ✅ {s} {d} {feat["pages"]} 頁 ・重點 {len(feat["outlook"])} 句 ・數字 {len(feat["nums"])} 句 ・詞 {len(feat["terms"])} 個'
-            f'{" ・AI ✓" if rec.get("ai") else ""}')
+            f'{" ・AI ✓" if rec.get("ai") else ""}'
+            f'({kb:,} KB ・下載 {t_dl:.0f} 秒 ・抽字 {t_ex:.1f} 秒{f" ・AI {t_ai:.0f} 秒" if t_ai else ""})')
     # 寫回 cc_deep(按場次月份;同一份簡報以這一輪的為準)
     for rec in new_recs:
         m = (rec.get('d') or '0000-00')[:7]

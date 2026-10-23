@@ -72,8 +72,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 📦 安裝(requests + pypdf;⛔ 不加進全域 requirements)
-        run: pip install -q requests "pypdf==5.1.0"
+      # ⚡ pdftotext(poppler)抽中文簡報比 pypdf 快好幾倍;裝不起來也照跑(程式退回 pypdf)
+      - name: 📦 安裝(requests + pypdf + pdftotext;⛔ 不加進全域 requirements)
+        run: |
+          pip install -q requests "pypdf==5.1.0"
+          if ! command -v pdftotext >/dev/null; then
+            (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils) >/dev/null 2>&1 || echo "⚠️ pdftotext 裝不起來 → 退回 pypdf(比較慢)"
+          fi
+          command -v pdftotext && pdftotext -v 2>&1 | head -1 || true
 
       # ⚠️ git show 失敗會留下 0 bytes 的檔(陷阱 #18/#20)→ 一律驗非空
       - name: 📂 還原場次表 (origin/data → data/confcall.json)
@@ -106,7 +112,10 @@ jobs:
       - name: 📞 selftest → 讀簡報
         id: run
         env:
+          # 🔑 別支 workflow 兩個都給(有的帳號只設了單數那個;10/23 第一輪 GROQ_API_KEYS 是空的 → 一次 AI 都沒叫)
           GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PYTHONUNBUFFERED: '1'
           CC_DIR: cc_deep
           # 🔧 排程 / workflow_run 觸發時 inputs.* 是空字串 → Python 端一律 `or 預設`
           CC_MAX: ${{ github.event.inputs.max_files }}
@@ -116,7 +125,8 @@ jobs:
         run: |
           set -o pipefail
           python3 confcall_deck.py --selftest
-          python3 confcall_deck.py 2>&1 | tee /tmp/deck.log
+          # ⚠️ -u:輸出 ⛔ 被管線緩衝(10/23 第一輪 40 分鐘一行進度都看不到,只看得到 pypdf 的警告)
+          python3 -u confcall_deck.py 2>&1 | tee /tmp/deck.log
 
       # ⭐ cc_deep 跟 data / gh-pages 一樣「永遠只有 1 個 commit」(orphan force-push):
       #    回補期間每一棒都會改很多月檔,累積歷史會一路長大;研究只需要最新那份。

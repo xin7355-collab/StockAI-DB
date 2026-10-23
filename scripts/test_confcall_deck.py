@@ -147,6 +147,7 @@ with tempfile.TemporaryDirectory() as tmp:
     ok('④a ⭐ 決定性對照:昨天才開完的回網頁 = 多半還沒上傳 → dl_fail(下一輪再試)', idx['888820261022M001.pdf']['st'] == 'dl_fail', idx.get('888820261022M001.pdf'))
     dg = json.loads((data / 'confcall_digest.json').read_text(encoding='utf-8'))
     ok('①e 清單只列最近 60 天、讀成功的(8/10 那場在 60 天外 → 不列;5678 有列)', [r['s'] for r in dg['rows']] == ['5678'], dg['rows'])
+    ok('①f 清單帶這份簡報講到的詞(法說會頁搜「誰在講 X」用)', '低軌衛星' in (dg['rows'][0].get('tm') or []), dg['rows'][0].get('tm'))
     ok('⑦ 沒有金鑰 → 沒有 AI 摘要', 'ai' not in d0 and 'ai' not in b)
 
     # 第二輪:1234 開了新的一場(新簡報)+ 9/20 券商場拿 8/10 那份重講;舊的那幾份 ⛔ 不再下載
@@ -361,6 +362,38 @@ clk2 = {'t': 0.0}
 fs2 = cdm.Fetcher(session=SlowSess(clk2, big, 0.1), pace=0, sleeper=lambda x: None, clock=lambda: clk2['t'])
 b2, err2 = fs2.get('https://x/f?fileName=a.pdf')
 ok('⑯b ⭐ 決定性對照:同一份檔速度正常 → 照常拿到', b2 is not None and b2[:5] == b'%PDF-' and err2 == '', (err2, clk2['t']))
+
+
+# ⑰ 🐢 抽字卡住(pypdf 遇到很複雜的頁面會卡好幾分鐘)→ 子程序時限到就砍掉、記 timeout(⛔ 整輪卡死)
+import time as _t
+_orig_pdf = cdm.extract_pdf
+cdm.extract_pdf = lambda b: (_t.sleep(5), ['x'])[1]
+t0 = _t.time()
+pg_, er_ = cdm.extract_safe(PDF_NEW, timeout=0.8)
+dt_ = _t.time() - t0
+cdm.extract_pdf = _orig_pdf
+ok('⑰ 抽字卡住 → 時限到砍掉、回 timeout(⛔ 等 5 秒)', pg_ is None and er_ == 'timeout' and dt_ < 3, (er_, round(dt_, 2)))
+pg2_, er2_ = cdm.extract_safe(PDF_NEW, timeout=20)
+ok('⑰b ⭐ 決定性對照:同一份正常的簡報 → 照常抽到字', pg2_ is not None and any('Revenue 1,350' in p for p in pg2_) and er2_ == '', (er2_, pg2_[:1] if pg2_ else None))
+
+
+# ⑱ ⚡ 抽字引擎:有 pdftotext 用它(快好幾倍),沒有退回 pypdf —— 兩條路抽到的頁數與字要一樣
+import shutil as _sh
+_pdf3 = mini_pdf([['Outlook 2026', 'Revenue 1,350 million'], ['CapEx 42 billion'], ['Thank you']])
+if _sh.which('pdftotext'):
+    a_ = cdm.extract_pdf(_pdf3)
+    _orig_which = cdm.shutil.which
+    cdm.shutil.which = lambda n: None
+    try:
+        b_ = cdm.extract_pdf(_pdf3)
+    finally:
+        cdm.shutil.which = _orig_which
+    ok('⑱ pdftotext 與 pypdf 抽到一樣的頁數(3 頁)', len(a_) == 3 and len(b_) == 3, (len(a_), len(b_)))
+    ok('⑱b ⭐ 決定性對照:沒有 pdftotext → 退回 pypdf,第 2 頁一樣抽到 CapEx 42',
+       'CapEx 42' in a_[1] and 'CapEx 42' in b_[1] and 'Revenue 1,350' in a_[0] and 'Revenue 1,350' in b_[0], (a_, b_))
+else:
+    print('ℹ️ ⑱ 這台機器沒有 pdftotext → 只驗 pypdf 那條')
+    ok('⑱ 沒有 pdftotext 也抽得到(pypdf)', len(cdm.extract_pdf(_pdf3)) == 3)
 
 
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))
