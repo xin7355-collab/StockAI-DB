@@ -2,7 +2,7 @@
 /**
  * 💰 V77.9.4 「100 萬放進去變多少」—— 把 leader_probe 的三份產物嵌成 pro.html 的 `_PROFIT_BOARD`
  *
- *   node scripts/embed_profit_board.mjs <board.json> <board2.json> <small.json> [--to 2026-09-24] [--gene gene.json]
+ *   node scripts/embed_profit_board.mjs <board.json> <board2.json> <small.json> --to 2026-09-24 [--gene gene.json]
  *   node scripts/embed_profit_board.mjs --gene gene.json   ← 只換 🧬 那幾列(V78.1.0,gene_board.mjs 產物)
  *   … board.json board2.json small.json --keep-gene  ← V79.4.6 👑 換新、🧬 那幾列沿用舊的並標 `old`(畫面寫「舊資料」;0050 起點對不上就 exit 1)
  *   node scripts/embed_profit_board.mjs --gene gene.json --keep-don  ← V79.4.8 🔥 / 🅿️ 換新、🐢(已換掉的那套)沿用舊的並標 `old`
@@ -82,7 +82,9 @@ if (cashArg) {
   console.log('✅ leadcash 列已嵌入:' + Object.entries(cur.wins).map(([k, W]) => `${k} ${Math.round(W.rows.find(r => r.k === 'leadcash').fin / 1e4)} 萬`).join(' | '));
   process.exit(0);
 }
-if (!bf || !b2f || !sf) { console.error('用法: embed_profit_board.mjs board.json board2.json small.json [--to YYYY-MM-DD]'); process.exit(2); }
+if (!bf || !b2f || !sf) { console.error('用法: embed_profit_board.mjs board.json board2.json small.json --to YYYY-MM-DD'); process.exit(2); }
+// 📅 V79.6.2 結束日必填 —— 畫面上「16 年 / 最近 4 年」的起訖日期都從這裡來(使用者:「沒有說是何時到何時」);⛔ 不可寫 null
+if (!/^\d{4}-\d{2}-\d{2}$/.test(toArg || '')) { console.error('❌ 要給 --to YYYY-MM-DD(回測算到哪一天)—— 畫面的起訖日期讀這個,⛔ 不可留空'); process.exit(2); }
 const B = JSON.parse(fs.readFileSync(bf, 'utf8')), B2 = JSON.parse(fs.readFileSync(b2f, 'utf8')), SM = JSON.parse(fs.readFileSync(sf, 'utf8'));
 const die = m => { console.error('❌ ' + m); process.exit(1); };
 

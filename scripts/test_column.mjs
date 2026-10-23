@@ -70,6 +70,9 @@ const R = await page.evaluate(async () => {
     out.hotWan = Math.round(hot.fin / 10000).toLocaleString();
     out.pick = (document.querySelector('[data-colk="pick"]') || {}).innerText || '';
     const keep = hot.fin; hot.fin = 12340000; PRO.renderCol(); out.pick2 = (document.querySelector('[data-colk="pick"]') || {}).innerText || ''; hot.fin = keep; PRO.renderCol();
+    // 📅 V79.6.2 第一篇的資料範圍要寫起訖(讀看板)
+    out.pickRange = (document.querySelector('[data-colk="pick"] [data-colrange]') || {}).textContent || '';
+    out.pickFromL = B.wins.long.from; out.pickFromA = B.wins.ai.from; out.pickTo = B.to;
     // ⑤ 🧬 vs 👑:把一篇假裝成 👑 條目 → 🧬 看不到
     const z = (PRO.LAB.ok || []).find(x => x.k === 'equal-weight'); const kz = z.k; z.k = 'leader-test-col';
     PRO.renderCol(); out.geneHasLead = !!document.querySelector('[data-colk="leader-test-col"]');
@@ -129,6 +132,8 @@ ok('② ⛔ 只有 AI 看得懂的字(專欄畫面)', !AIW.test(R.text), (R.text
 ok('③ 決定性對照:改條目 pl[5] → 專欄數字跟著變', /決定性對照數字 777/.test(R.t3 || ''), (R.t3 || '').slice(0, 80));
 ok('④ 🔁 u ≥ 2026-10-03 的 ✅ 條目都要有專欄', !R.newOkNoCol.length, JSON.stringify(R.newOkNoCol));
 ok('⑤ 🧬 模式(沒解鎖)也看得到 👑 專欄(V79.1.8 實測總表永遠有 👑)', R.geneHasLead);
+{ const ymd = d => String(d || '').slice(0, 4) + '/' + String(d || '').slice(5, 7);
+  ok('⑥b 📅 第一篇「資料範圍」寫兩段起訖(讀看板),並寫明 16 年本來就包含最近 4 年', R.pickRange.includes(ymd(R.pickFromL)) && R.pickRange.includes(ymd(R.pickFromA)) && R.pickRange.includes(ymd(R.pickTo)) && /不能加起來/.test(R.pickRange), R.pickRange); }
 ok('⑥ 第一篇金額 == _PROFIT_BOARD(決定性對照)', R.pick.includes(R.hotWan + ' 萬') && R.pick2.includes('1,234 萬'), `${R.hotWan} | ${R.pick2.slice(0, 120)}`);
 ok('⑦ 搜尋「跌停」只剩跌停那幾篇、第一篇收起', R.qN >= 2 && R.qN < R.items.length && !R.qPick, `qN=${R.qN}`);
 ok('⑦b 系列「破解迷思」只剩那一系列', R.sN.length >= 5 && R.sN.every(s => s === '破解迷思'), JSON.stringify(R.sN));

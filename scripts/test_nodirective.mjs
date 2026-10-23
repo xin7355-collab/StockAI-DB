@@ -39,8 +39,9 @@ const BAN = /(減碼|加碼|買進|賣出|賣 ?1\/3|現金比例|Call|Put|做多
 
 let src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 let file = path.join(ROOT, 'index.html');
-if (['1', '2', '3', '4', '5', '6', '7'].includes(INJ)) {
-    if (INJ === '6') src = src.replace("quiet('lowbaseIgnite', '🧊 低基期起漲',", "trigger('lowbaseIgnite', '🧊 低基期起漲',")
+if (['1', '2', '3', '4', '5', '6', '7', '8'].includes(INJ)) {
+    if (INJ === '8') src = src.replace('法說會前後股價的波動通常比較大;⛔ 別只因為「要開法說會」就買或賣', '法說前後股價常大波動(利多常「利多出盡」、財測不如預期易急殺)');
+    else if (INJ === '6') src = src.replace("quiet('lowbaseIgnite', '🧊 低基期起漲',", "trigger('lowbaseIgnite', '🧊 低基期起漲',")
                               .replace('(跌深後第一根大量;⛔ 不是買進訊號,要不要買照決策台)', ' → 跌深打底第一根攻擊量;鐵律:停損設今日最低,收盤跌破就走');
     else if (INJ === '7') src = src.replace('const _needFire = _lab6 && _chgNow >= 2,', 'const _needFire = _chgNow >= 2,');
     else if (INJ === '5') src = src.replace("'型態偏多 —— 要不要買照決策台(看這一檔自己的觸發價),手上的照你的出場規則走。'", "'順勢做多,買點守 5MA,跌破 5MA 先停利,別凹單。'");
@@ -145,6 +146,32 @@ if (m) {
        /const quiet = [^\n]*\n(?:[ \t]*\n)*[^\n]*alertStrict === false\) return trigger\(signal, title, body\)/.test(wp));
 }
 
+// ⑥l 🌇 V79.6.2 收盤後零股盤點(_afterCloseOddLotSweep)也是六脈 → 只在實驗室、只描述(V79.6.1 漏的那處,陷阱 #37)
+{
+    const L = src.split('\n');
+    const head = /^    (?:async )?([_A-Za-z0-9]+)\(.*\) *\{ *$/;
+    const i = L.findIndex(x => (x.match(head) || [])[1] === '_afterCloseOddLotSweep');
+    let j = i + 1; while (i >= 0 && j < L.length && !head.test(L[j])) j++;
+    const od = i < 0 ? '' : L.slice(i, j).map(x => x.replace(/^\s*\/\/.*$/, '').replace(/[ \t]+\/\/[^\n]*$/, '')).join('\n');
+    ok('⑥l 盤後零股盤點:一般模式不跑(先過 _labMode)、⛔「可考慮零股分批 / 先不要加碼」、只記在 🔔', od.length > 500 && /if \(!this\._labMode\(\)\) return;/.test(od)
+       && !/可考慮零股分批|先不要加碼|觀望再看/.test(od) && /_alertQuiet\(/.test(od) && !/_fireAlert\(/.test(od), od.length);
+}
+
+// ⑦ 📢 V79.6.2 法說會提醒 ⛔ 不可再印「這檔過去法說會後 5 天平均 +X%(偏多/偏空)」—— 沒扣大盤、幾次樣本就下方向,
+//    而 5 年 1.9 萬場的實測是「開完隔天買平均比同一天其他股票差」(方向相反);⛔ 註解不算
+{
+    const L = src.split('\n');
+    const head = /^    (?:async )?([_A-Za-z0-9]+)\(.*\) *\{ *$/;
+    const fn = name => { const i = L.findIndex(x => (x.match(head) || [])[1] === name); if (i < 0) return null; let j = i + 1; while (j < L.length && !head.test(L[j])) j++; return L.slice(i, j).map(x => x.replace(/^\s*\/\/.*$/, '').replace(/[ \t]+\/\/[^\n]*$/, '')).join('\n'); };
+    const er = fn('_renderStockEarningsReminder') || '';
+    ok('⑦a 空過守門:找得到法說會提醒', /法說會提醒/.test(er), er.length);
+    const BAN7 = /偏多|偏空|利多出盡|易急殺|平均 \$\{|earnHistReact|_earningsHistoryReaction/;
+    ok('⑦b 法說會提醒 ⛔ 不再印過去平均漲跌與方向(偏多 / 偏空 / 利多出盡)', er && !BAN7.test(er), (er.match(BAN7) || [])[0]);
+    ok('⑦c 只描述波動 + 手上的照出場規則走', /波動通常比較大/.test(er) && /照你的出場規則走/.test(er));
+    const code = src.split('\n').map(x => x.replace(/^\s*\/\/.*$/, '')).join('\n');
+    ok('⑦d 那支沒扣大盤的 _earningsHistoryReaction 已刪(⛔ 不可復活)', !/_earningsHistoryReaction\s*\(/.test(code));
+}
+
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
@@ -165,6 +192,23 @@ try {
         return { rows, txt };
     });
     ok('①a 7 個事件都還在(只改寫,⛔ 沒刪)', R.rows.length === 7, R.rows.map(r => r.k).join(','));
+    // ⑦e/f 📢 V79.6.2 _findEarningsEvent 先讀法說會一覽表(未來 45 天);讀不到才用財經行事曆(14 天)
+    const E = await page.evaluate(() => {
+        const keepC = app._confcallCache, keepM = app._macroRiskCache;
+        const d = new Date(); let add = 0; while (add < 20) { d.setDate(d.getDate() + 1); if (d.getDay() % 6) add++; }   // 20 個交易日後(財經行事曆只放 14 天)
+        const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        app._macroRiskCache = { upcoming_macro_events: [] };
+        app._confcallCache = { upcoming: [{ s: '9999', d: ds, t: '14:00' }], recent: [], window: { future: 45 } };
+        const a = app._findEarningsEvent('9999', 60);
+        app._confcallCache = null;
+        const b = app._findEarningsEvent('9999', 60);
+        app._macroRiskCache = { upcoming_macro_events: [{ date: ds, event: '📞 測試(9999) 法說會 14:00' }] };
+        const c = app._findEarningsEvent('9999', 60);
+        app._confcallCache = keepC; app._macroRiskCache = keepM;
+        return { ds, a, b, c };
+    });
+    ok('⑦e _findEarningsEvent 讀法說會一覽表(20 個交易日後那一場找得到)', !!E.a && E.a.date === E.ds && E.a.src === 'confcall', JSON.stringify(E));
+    ok('⑦f ⭐ 決定性對照:一覽表拿掉 → 找不到;財經行事曆有 → 照樣找得到(備援)', !E.b && !!E.c && E.c.date === E.ds, JSON.stringify(E));
     const bad = R.rows.filter(r => BAN.test(r.before) || BAN.test(String(r.after).split(SAME).join('')))
         .map(r => `${r.k}: ${(r.before.match(BAN) || r.after.split(SAME).join('').match(BAN) || [''])[0]}`);
     ok('①b 事前 / 事後 ⛔ 沒有買賣 / 部位指令', bad.length === 0, bad.join(' | '));
@@ -221,7 +265,8 @@ try {
         stub('_leaderMine', () => new Set());
         stub('_exitPrimary', () => null);
         stub('_kbarFiredToday', () => true);
-        stub('_sixMeridianCalc', d => { sixCalls++; return { okN: d.length > KD.length ? 5 : 1 }; });
+        // ⚠️ 只數「這一檔的資料」(d[0] 就是測資 KD 的第一根)—— App 初始化時別的卡也會算六脈,全數會偶爾多出幾次(V79.6.2 實測 ⑥k 偶發紅)
+        stub('_sixMeridianCalc', d => { if (Array.isArray(d) && d[0] === KD[0]) sixCalls++; return { okN: d.length > KD.length ? 5 : 1 }; });
         stub('_detectVolPriceScenario', () => [{ title: '🔴 高檔出貨量', tone: 'bear', msg: '<b>高檔爆量</b>' }]);
         stub('_detectRsiDivergence', () => []);
         stub('_detectObvDivergence', () => [{ title: 'OBV 頂背離', tone: 'bear', msg: '價創高 OBV 沒創高' }]);

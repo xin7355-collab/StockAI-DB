@@ -51,6 +51,14 @@ const run = async (strategy) => {
     o.hero = (document.getElementById('pkHero') || {}).innerText || '';
     o.rows = [...box().querySelectorAll('#pkTbl tbody tr[data-pk]')].map(tr => ({ k: tr.dataset.pk, lose: tr.classList.contains('pk-lose'), t: tr.innerText }));
     o.hdr = [...box().querySelectorAll('#pkTbl th.ybsort')].map(th => (th.getAttribute('onclick').match(/'(\w+)'/) || [])[1]);
+    o.hdrTxt = [...box().querySelectorAll('#pkTbl th.ybsort')].map(th => th.innerText.replace(/\s+/g, ' '));
+    o.winOrder = [...document.querySelectorAll('#pkHero [data-pkwin]')].map(e => e.dataset.pkwin);
+    o.merge = (document.querySelector('#pkHero [data-pkmerge]') || {}).innerText || '';
+    // 📅 V79.6.2 決定性對照:改看板的 16 年起點 → hero / 表頭的日期跟著變(⛔ 不可寫死年份)
+    { const W = PRO._PROFIT_BOARD.wins.long, keepF = W.from; W.from = '2012-02-01'; PRO.renderPick();
+      o.injFromHero = (document.getElementById('pkHero') || {}).innerText || '';
+      o.injFromHdr = [...box().querySelectorAll('#pkTbl th.ybsort')].map(th => th.innerText).join(' ');
+      W.from = keepF; PRO.renderPick(); }
     // 決定性對照:改看板一格 → 一句答案跟著變
     // V79.2.4 一句答案的「最強」= 兩段都贏 0050 裡先看 16 年、同分再看近 4 年(= renderPick / index _STRAT_RANK 同一套)→ 注入要注在**它**身上,⛔ 不是表格第一列(表格預設照近 4 年排,修尺後第一名是 🌇)
     const Bd = PRO._PROFIT_BOARD, _e50a = Bd.wins.ai.rows.find(r => r.k === '0050'), _e50l = Bd.wins.long.rows.find(r => r.k === '0050');
@@ -119,15 +127,26 @@ ok('②h 寫明「是平均,不是每年都賺」+ 16 年贏 0050 幾年', /是�
   ok('②j 📅 每一列近 4 年 / 16 年都有「每年 + 每月」,數字 == 獨立重算', G.rows.length >= 9 && !bad.length, JSON.stringify(bad.map(r => r.k + ':' + r.t.replace(/\s+/g, ' '))));
   ok('②k ⭐ 決定性對照:改看板一格 → 那一列的每月跟著變', G.rowInj.includes(`每月 ${fx(cg(98765432, B.wins.ai.from).m)}`), G.rowInjK + ' ' + G.rowInj);
 }
+// 📅 V79.6.2 使用者:「4 年 / 16 年沒有說是何時到何時,不是應該合併就好了」
+const ymd = d => d.slice(0, 4) + '/' + d.slice(5, 7);
+const rngL = `${ymd(B.wins.long.from)}~${ymd(B.to)}`, rngA = `${ymd(B.wins.ai.from)}~${ymd(B.to)}`;
+ok('②l 📅 一句答案與表頭都寫起訖日期(讀看板 from / to,⛔ 寫死)', G.hero.includes(ymd(B.wins.long.from)) && G.hero.includes(ymd(B.wins.ai.from)) && G.hero.includes(ymd(B.to))
+  && G.hdrTxt.some(t => t.includes('16 年') && t.includes(ymd(B.wins.long.from))) && G.hdrTxt.some(t => t.includes('最近 4 年') && t.includes(ymd(B.wins.ai.from))), G.hero.slice(0, 200) + ' | ' + G.hdrTxt.join(' / '));
+ok('②l2 ⭐ 決定性對照:改看板 16 年起點 → 一句答案與表頭的日期跟著變', G.injFromHero.includes('2012/02') && G.injFromHdr.includes('2012/02') && !G.injFromHero.includes(ymd(B.wins.long.from) + ' 放到'), G.injFromHero.slice(0, 200));
+ok('②m 16 年是主數字(擺在前面)+ 寫明「16 年本來就包含最近 4 年、⛔ 不能加起來」', JSON.stringify(G.winOrder) === '["l","a"]' && /包含最近 4 年/.test(G.merge) && /不能加起來/.test(G.merge), JSON.stringify(G.winOrder) + ' ' + G.merge);
+ok('②m2 ⛔ 畫面不再出現沒標日期的「近 4 年」舊稱(一律「最近 4 年」+ 起訖)', !/(^|[^最])近 4 年/.test(G.txt), (G.txt.match(/.{0,12}[^最]近 4 年.{0,12}/) || [])[0]);
 ok('②i 0050 及格線那一列也有每年 %', /每年 \+\d/.test(G.rows.find(r => r.k === '0050')?.t || ''), G.rows.find(r => r.k === '0050')?.t);
 
 // ③ 及格線
 const idx50 = G.rows.findIndex(r => r.k === '0050');
 const above = G.rows.slice(0, idx50), below = G.rows.slice(idx50 + 1).filter(r => !/太晚上市/.test(r.t));
 ok('③ 有 0050 及格線那一列,寫「比這條高才算贏」', idx50 >= 0 && /比這條高才算贏/.test(G.rows[idx50].t), JSON.stringify(G.rows.map(r => r.k)));
-ok('③b 預設照近 4 年排:線上面的都比 0050 多、線下面的都變淡', above.every(r => f(aiRows, r.k).fin > e50a.fin && !r.lose) && below.every(r => r.lose && f(aiRows, r.k).fin <= e50a.fin), JSON.stringify(G.rows));
+// 📅 V79.6.2 主數字改看 16 年(16 年那段本來就包含最近 4 年)→ 預設照 16 年排;太晚上市(16 年沒有成績)的參考 ETF 排最後、不算輸贏
+const lateL = r => { const l = f(lgRows, r.k); return !l || l.late; };
+const below2 = G.rows.slice(idx50 + 1).filter(r => !lateL(r));
+ok('③b 預設照 16 年排:線上面的都比 0050 多、線下面的都變淡', above.every(r => !lateL(r) && f(lgRows, r.k).fin > e50l.fin && !r.lose) && below2.every(r => r.lose && f(lgRows, r.k).fin <= e50l.fin), JSON.stringify(G.rows.map(r => r.k + (r.lose ? '·輸' : ''))));
 ok('③c 每一套都寫 ✅/⚠️/⛔ 跟 0050 比的結論', G.rows.filter(r => !['0050', '0052', '0056'].includes(r.k)).every(r => /[✅⚠️⛔].*0050/u.test(r.t)), JSON.stringify(G.rows));
-ok('③d 表頭每一欄可排序(做法 / 近 4 年 / 16 年 / 中途最多賠 / 贏 0050)、再點反向', JSON.stringify(G.hdr) === '["n","a","l","mdd","beat"]' && G.s1 !== G.s2, JSON.stringify(G.hdr) + G.s1 + G.s2);
+ok('③d 表頭每一欄可排序(做法 / 16 年 / 最近 4 年 / 中途最多賠 / 贏 0050)、再點反向', JSON.stringify(G.hdr) === '["n","l","a","mdd","beat"]' && G.s1 !== G.s2, JSON.stringify(G.hdr) + G.s1 + G.s2);
 ok('③e ⛔ 中途最多賠那一欄在', /中途\s*最多賠/.test(G.txt));
 ok('③f 點開一列:三行怎麼做(選股 / 賣 / 錢)+ 看證據', /選股/.test(G.det) && /賣/.test(G.det) && /錢/.test(G.det) && /看這一套的實測證據/.test(G.det), G.det);
 ok('③g 三種人怎麼選:想賺最多 / 怕大跌 / 不想每天看盤(0050)', /想賺最多/.test(G.whoTxt) && /不想每天看盤/.test(G.whoTxt), G.whoTxt);

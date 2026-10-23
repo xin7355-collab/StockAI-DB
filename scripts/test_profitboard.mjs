@@ -57,9 +57,15 @@ const R = await page.evaluate(async () => {
   o.cagrRows = [...box().querySelectorAll('#pbTbl tbody tr')].map(tr => ({ t: tr.innerText, m: (tr.querySelector('[data-pfcagr]') || {}).innerText || '' }));
   o.lateLast = (() => { const k = rows.findIndex(t => /上市晚於/.test(t)); return k < 0 || rows.slice(k).every(t => /上市晚於/.test(t)); })();
   PRO.pbTab('long'); o.long = box().innerText; o.longRows = box().querySelectorAll('#pbTbl tbody tr').length;
-  PRO.pbTab('small'); o.small = box().innerText;
+  PRO._pbSW = 'ai'; PRO.pbTab('small'); o.small = box().innerText;   // 📅 V79.6.2 小資金預設改 16 年 → 這幾條驗的是最近 4 年那張(147 萬)
   o.smallCagr = [...box().querySelectorAll('#pbSmallTbl [data-pfcagr]')].length;
   PRO.pbSet('Cap', 1e6); PRO.pbSet('Add', 10000); o.small2 = box().innerText; o.small2Cagr = [...box().querySelectorAll('#pbSmallTbl [data-pfcagr]')].length; PRO.pbSet('Cap', 1e5); PRO.pbSet('Add', 0);
+  // 📅 V79.6.2 預設頁籤 = 16 年(主數字);頁籤與標題寫起訖日期(讀看板),⛔「到今天」
+  PRO._pbWin = null; PRO._pbSW = null; PRO.renderProfit();
+  o.defTab = (box().querySelector('.ybchips button.on') || {}).innerText || '';
+  o.tabs = [...box().querySelectorAll('.ybchips button')].map(b => b.innerText);
+  o.defTxt = box().innerText;
+  { const W = PRO._PROFIT_BOARD.wins.long, keepF = W.from; W.from = '2012-02-01'; PRO.renderProfit(); o.injTab = [...box().querySelectorAll('.ybchips button')].map(b => b.innerText).join(' '); W.from = keepF; PRO.renderProfit(); }
   PRO.pbTab('ai');
   o.sx = (window.scrollTo(80, 0), window.scrollX);
   { const t = document.getElementById('pbTbl'); o.fit = t.scrollWidth - t.parentElement.clientWidth; }
@@ -88,6 +94,13 @@ ok('④c 切到 100 萬 + 每月 1 萬 → 投入總額跟著變(147 萬)', /總
   const bad = B.wins.ai.rows.filter(r => !r.late).filter(r => !live.some(x => x.m.includes(`每月 ${fx(cg(r.fin))}`)));
   ok('④d 📅 回測數字每一列都有「每年 / 每月」,每月 == 獨立重算', live.length >= 10 && live.every(r => /每年 [+−]\d/.test(r.m) && /每月 [+−]\d/.test(r.m)) && !bad.length, JSON.stringify(bad.map(r => r.k)));
   ok('④e 小資金:不加錢時每列有每月;選「每月再投」⛔ 不換算', R.smallCagr >= 4 && R.small2Cagr === 0, `${R.smallCagr} / ${R.small2Cagr}`);
+}
+{
+  const ymd = d => d.slice(0, 4) + '/' + d.slice(5, 7);
+  ok('④f 📅 預設頁籤是 16 年,頁籤寫起訖(讀看板)、16 年在前', /16 年/.test(R.defTab) && R.defTab.includes(ymd(B.wins.long.from)) && R.tabs[0].includes('16 年') && R.tabs.some(t => /最近 4 年/.test(t) && t.includes(ymd(B.wins.ai.from))), JSON.stringify(R.tabs) + ' / ' + R.defTab);
+  ok('④g 📅 標題寫「放到 YYYY/MM/DD」,⛔「到今天」(資料只算到看板的 to)', R.defTxt.includes('放到 ' + B.to.replace(/-/g, '/')) && !/到今天變多少/.test(R.defTxt + R.txt), (R.defTxt.match(/100 萬放進去.{0,30}/) || [])[0]);
+  ok('④h ⭐ 決定性對照:改看板 16 年起點 → 頁籤日期跟著變', R.injTab.includes('2012/02'), R.injTab);
+  ok('④i 口徑寫明「含已下市」(⛔ 舊的「現在還在交易的股票」講反了)', /含已下市/.test(R.defTxt) && !/用的是現在還在交易的股票/.test(R.defTxt), (R.defTxt.match(/倖存者.{0,30}/) || [])[0]);
 }
 ok('⑤ 舊的逐年總表 + 情境庫仍在,收進「研究用」摺疊(預設關)', R.research && R.researchClosed);
 ok('⑤b 390px 不橫捲,而且 5 欄一眼看得完(表格不超出外框)', R.sx <= 2 && R.fit <= 2, `${R.sx} / ${R.fit}`);
