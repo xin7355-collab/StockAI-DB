@@ -37,19 +37,26 @@ class _Resp:
         return self._j
 
 
-def twse_json(n_rows=600):
-    # ⚠️ 這是 **TWSE** 的欄名(rwd MI_MARGN 舊 schema)。
-    #    🚨 V75.1.3 的錯就是拿這一組去測 TPEx —— TPEx 用的是簡寫「資餘額/券餘額」,
-    #    測資跟程式一起錯 → 兩邊「對得上」→ 12 條全綠但真實資料完全對不上(陷阱 #40)。
-    #    ⛔ 不可再把這組欄名用在 tpex 的 fixture 上;TPEx 的在下面 `tpex_json()`。
-    fields = ['股票代號', '股票名稱', '融資買進', '融資賣出', '融資現金償還', '融資前日餘額', '融資今日餘額', '融資限額',
-              '融券買進', '融券賣出', '融券現券償還', '融券前日餘額', '融券今日餘額', '融券限額', '資券互抵', '註記']
+def twse_json(n_rows=600, d=date(2026, 9, 8)):
+    # ⚠️ 這是 **TWSE** rwd MI_MARGN 的**真實**格式(🧾 V79.6.6 改;2026/06 起證交所回的就是這樣,
+    #    daily_miner #644 log:tables 標題=['115年09月29日 信用交易統計', '115年09月29日 融資融券彙總 (全部)']):
+    #    表名帶日期、id 欄叫「代號」、欄名沒有「融資 / 融券」(兩段「買進・賣出・償還・前日餘額・今日餘額・限額」+ groups)。
+    #    舊版測資用「股票代號 / 融資今日餘額」那組欄名而且表名沒有日期 → 跟真實格式不一樣(陷阱 #40)。
+    #    數字照「今日 = 前日 + 買 − 賣 − 償還」排(miner 會驗這條,⛔ 對不上整張不收)。
+    #    🚨 V75.1.3 的錯是拿 TWSE 的欄名去測 TPEx —— ⛔ 不可再把這組欄名用在 tpex 的 fixture 上(在下面 `tpex_json()`)。
+    fields = ['代號', '名稱', '買進', '賣出', '現金償還', '前日餘額', '今日餘額', '次一營業日限額',
+              '買進', '賣出', '現券償還', '前日餘額', '今日餘額', '次一營業日限額', '資券互抵', '註記']
+    groups = [{'start': 2, 'span': 6, 'title': '融資'}, {'start': 8, 'span': 6, 'title': '融券'}]
     data = []
     for i in range(n_rows):
         sid = str(1100 + i)
-        data.append([sid, f'股{i}', '1', '1', '0', '100', str(1000 + i), '9999', '1', '1', '0', '10', str(50 + i), '999', '0', ''])
-    data[0][0] = '2330'; data[0][6] = '77777'; data[0][12] = '888'
-    return {'stat': 'OK', 'tables': [{'title': '個股', 'fields': fields, 'data': data}]}
+        mt, st = 1000 + i, 50 + i
+        data.append([sid, f'股{i}', '3', '1', '0', str(mt - 2), str(mt), '9999', '1', '2', '0', str(st - 1), str(st), '999', '0', ''])
+    data[0][0] = '2330'; data[0][5] = '77775'; data[0][6] = '77777'; data[0][11] = '887'; data[0][12] = '888'
+    roc = f"{d.year - 1911}年{d.month:02d}月{d.day:02d}日"
+    return {'stat': 'OK', 'date': d.strftime('%Y%m%d'),
+            'tables': [{'title': f'{roc} 信用交易統計', 'fields': ['項目', '買進', '賣出', '現金(券)償還', '前日餘額', '今日餘額'], 'data': []},
+                       {'title': f'{roc} 融資融券彙總 (全部)', 'fields': fields, 'groups': groups, 'data': data}]}
 
 
 calls = {'twse': 0, 'tpex': 0, 'fm': 0, 'fm_urls': []}
@@ -211,7 +218,7 @@ def _twse_rwd_dead(url, headers=None, timeout=15, **kw):
         return _Resp(tpex_json())
     return _Resp(None, 404, '')
 
-for _lat, _exp, _lbl in [(True, 1, '最新交易日 → 要用'), (False, 0, '⛔ 非最新交易日 → 不可用')]:
+for _lat, _exp, _lbl in [(True, 1, '最新交易日 → 會去問(🧾 V79.6.6 起還要證明得了日期才收,見 test_margin_dated)'), (False, 0, '⛔ 非最新交易日 → 不可用')]:
     calls['oapi'] = 0
     miner.http_session.get, miner.fm_request, miner.time.sleep = _twse_rwd_dead, fake_fm, (lambda *a, **k: None)
     miner._FINMIND_BLOCKED = False

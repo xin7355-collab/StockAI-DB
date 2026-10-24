@@ -515,6 +515,7 @@ def _on_tick(p, etf=False) -> bool:
 
 _YF_OFFGRID = {'rows': 0, 'syms': set()}   # 本輪被跳動單位守門擋掉的 yfinance 列(log 用)
 _YF_ZEROVOL = {'rows': 0, 'syms': set()}   # 🌀 V79.6.5 本輪被擋掉的 yfinance 量 0 佔位列(休市日;log 用)
+_MARGIN_FIX = {'rows': 0, 'syms': 0, 'fill': 0}   # 🧾 V79.6.6 本輪拿證交所帶日期那份蓋掉的融資列(log 用)
 
 
 # ── yfinance OHLCV 補洞（TWSE/TPEX 回應不全時用 Yahoo Finance 補檔）─────────
@@ -908,142 +909,256 @@ def fetch_market_institutional(d: date) -> dict:
     return res
 
 
-def fetch_market_margin(d: date, is_latest: bool = True) -> dict:
+def _num_tw(v):
+    """證交所表格的數字欄('1,234' / ' 56 ')→ int;空白、'-'、解析不了 → None"""
+    s = str(v if v is not None else '').replace(',', '').strip()
+    if not s or s in ('-', '--', '—'):
+        return None
+    try:
+        return int(float(s))
+    except Exception:
+        return None
+
+
+def _twse_margin_cols(fields, groups=None):
+    """🧾 V79.6.6 證交所「融資融券彙總」表(rwd MI_MARGN,帶日期)找欄位 —— ⛔ 不猜位置。
+
+    2026/06 起那張表的欄名沒有「融資 / 融券」字樣(買進・賣出・現金償還・前日餘額・今日餘額・限額 × 兩段),
+    id 欄叫「代號」→ 舊版找「股票代號 / 證券代號」找不到就整張放棄,改用**沒有日期參數**的 OpenAPI
+    → 那份永遠是「最新一天」,卻被寫成當天 → 上市股融資從 2026-05 起錯位(V79.6.6 實測)。
+    ① 有 groups(官方表頭分組,標題有「融資」「融券」)→ 在各自的範圍裡找欄名
+    ② 沒有 groups → 用兩次出現的「買進」切兩段,而且第一段要有「現金償還」(融資才有)、第二段要有「現券償還」(融券才有)
+    回 {'id': i, 'm': {...}, 's': {...}}(各段的 buy / sell / repay / prev / today 位置);任何一個找不到 → None。"""
+    f = [str(x or '').strip() for x in (fields or [])]
+    i_id = next((i for i, x in enumerate(f) if x in ('代號', '股票代號', '證券代號')), None)
+    if i_id is None:
+        return None
+    seg = {}
+    for g in (groups or []):
+        try:
+            t = str(g.get('title') or '')
+            st = int(g.get('start')); sp = int(g.get('span'))
+        except Exception:
+            continue
+        if '融資' in t and 'm' not in seg:
+            seg['m'] = (st, st + sp)
+        elif '融券' in t and 's' not in seg:
+            seg['s'] = (st, st + sp)
+    if 'm' not in seg or 's' not in seg:
+        buys = [i for i, x in enumerate(f) if x == '買進']
+        if len(buys) < 2:
+            return None
+        seg = {'m': (buys[0], buys[1]), 's': (buys[1], len(f))}
+    def find(name, lo, hi):
+        hit = [i for i in range(max(0, lo), min(len(f), hi)) if f[i] == name]
+        return hit[0] if len(hit) == 1 else None      # ⛔ 同一段出現兩次 = 看不懂這張表
+    _off = [i for i, x in enumerate(f) if x == '資券互抵']
+    out = {'id': i_id, 'off': _off[0] if len(_off) == 1 else None}   # 資券互抵(當日資券相抵):有這種交易的列,今日餘額可能再扣掉它
+    for k, rep in (('m', '現金償還'), ('s', '現券償還')):
+        lo, hi = seg[k]
+        c = {'buy': find('買進', lo, hi), 'sell': find('賣出', lo, hi), 'repay': find(rep, lo, hi),
+             'prev': find('前日餘額', lo, hi), 'today': find('今日餘額', lo, hi)}
+        if any(v is None for v in c.values()):
+            return None
+        out[k] = c
+    return out
+
+
+def _twse_margin_parse(j, d):
+    """🧾 V79.6.6 證交所 rwd MI_MARGN(帶日期)→ (res, prev, why)
+    res  = {sid: {'margin_balance', 'short_balance', 'dt': 1}}(dt = 帶日期而且驗過,下游可以拿來蓋掉舊值)
+    prev = {sid: 前一個交易日的融資餘額}(給最新一天驗 OpenAPI 用)
+    why  = 收不下來的原因(收得下來 = '')
+    ⛔ 五道關卡,任何一道沒過整張不收(寧可那天沒有,也不要錯位的數字 —— 陷阱 #22 / #34):
+      ① stat = OK ② 表名或 j['date'] 的日期 = d ③ 欄位照 _twse_margin_cols 找得到
+      ④ 每一列「今日 = 前日 + 買進 − 賣出 − 現金償還」(融券:前日 + 賣出 − 買進 − 現券償還;
+         有資券互抵的列再扣一次也算對),有餘額的列七成以上對得上(抓錯欄位 / 欄位對調時這條一定不成立)
+      ⑤ 至少 300 檔、融資合計 > 融券合計"""
+    if not isinstance(j, dict):
+        return {}, {}, '回應不是 JSON 物件'
+    if j.get('stat') != 'OK':
+        return {}, {}, f"stat={str(j.get('stat'))[:40]}"
+    d8 = d.strftime('%Y%m%d')
+    roc = f"{d.year - 1911}年{d.month:02d}月{d.day:02d}日"
+    jd = str(j.get('date') or '').strip()
+    if jd and jd != d8:
+        return {}, {}, f'回應日期 {jd} ≠ 要的 {d8}'
+    tabs = [t for t in (j.get('tables') or []) if isinstance(t, dict)]
+    tab = next((t for t in tabs if '融資融券彙總' in str(t.get('title') or '')), None)
+    if tab is None:      # 標題改了 → 退回「有代號欄、而且合法股號最多」那張
+        best = None
+        for t in tabs:
+            fs = [str(x or '').strip() for x in (t.get('fields') or [])]
+            ii = next((i for i, x in enumerate(fs) if x in ('代號', '股票代號', '證券代號')), None)
+            if ii is None:
+                continue
+            nv = sum(1 for r in (t.get('data') or []) if len(r) > ii and _valid_stock(str(r[ii]).strip()))
+            if nv > 50 and (best is None or nv > best[0]):
+                best = (nv, t)
+        tab = best[1] if best else None
+    if tab is None:
+        return {}, {}, f"找不到個股表(標題={[str(t.get('title'))[:24] for t in tabs]})"
+    title = str(tab.get('title') or '')
+    m_t = re.search(r'(\d{2,3})年(\d{1,2})月(\d{1,2})日', title)
+    if m_t:
+        if f"{int(m_t.group(1))}年{int(m_t.group(2)):02d}月{int(m_t.group(3)):02d}日" != roc:
+            return {}, {}, f'表名日期「{m_t.group(0)}」≠ 要的 {roc}'
+    elif not jd:
+        return {}, {}, f'表名與回應都沒有日期,看不出是哪一天(表名={title[:30]})'
+    cols = _twse_margin_cols(tab.get('fields'), tab.get('groups'))
+    if not cols:
+        return {}, {}, f"欄位看不懂 fields={(tab.get('fields') or [])[:16]} groups={tab.get('groups')}"
+    res, prev = {}, {}
+    chk = {'m': [0, 0], 's': [0, 0]}
+    tot_m = tot_s = 0
+    for r in (tab.get('data') or []):
+        if not isinstance(r, (list, tuple)) or len(r) <= cols['id']:
+            continue
+        sid = str(r[cols['id']]).strip()
+        if not _valid_stock(sid):
+            continue
+        vals = {}
+        for k in ('m', 's'):
+            c = cols[k]
+            v = {x: (_num_tw(r[c[x]]) if len(r) > c[x] else None) for x in c}
+            vals[k] = v
+        if vals['m']['today'] is None or vals['s']['today'] is None:
+            continue
+        vm, vs = vals['m'], vals['s']
+        off = (_num_tw(r[cols['off']]) if cols.get('off') is not None and len(r) > cols['off'] else None) or 0
+        if None not in vm.values() and (vm['prev'] or vm['today']):
+            chk['m'][1] += 1
+            _e = vm['prev'] + vm['buy'] - vm['sell'] - vm['repay']
+            chk['m'][0] += int(vm['today'] in (_e, _e - off))
+        if None not in vs.values() and (vs['prev'] or vs['today']):
+            chk['s'][1] += 1
+            _e = vs['prev'] + vs['sell'] - vs['buy'] - vs['repay']
+            chk['s'][0] += int(vs['today'] in (_e, _e - off))
+        res[sid] = {'margin_balance': vm['today'], 'short_balance': vs['today'], 'dt': 1}
+        if vm['prev'] is not None:
+            prev[sid] = vm['prev']
+        tot_m += vm['today']; tot_s += vs['today']
+    if len(res) < 300:
+        return {}, {}, f'只解出 {len(res)} 檔(正常約 1,300)'
+    for k, nm in (('m', '融資'), ('s', '融券')):
+        ok_n, n = chk[k]
+        if n >= 50 and ok_n / n < 0.7:     # 欄位對的時候幾乎每列都對得上;抓錯欄位通常只剩 0~5%
+            return {}, {}, f'{nm}「今日 = 前日 + 買 − 賣 − 償還」只有 {ok_n}/{n} 列對得上 → 欄位可能抓錯,整張不收'
+        if n < 50:
+            return {}, {}, f'{nm}有餘額的列只有 {n} 列,驗不了'
+    if tot_m <= tot_s:
+        return {}, {}, f'融資合計 {tot_m:,} ≤ 融券合計 {tot_s:,}(正常融資遠大於融券)→ 可能欄位對調'
+    return res, prev, ''
+
+
+def _twse_oapi_check(rows_oapi, prev_twse):
+    """🧾 V79.6.6 OpenAPI(沒有日期參數,永遠回最新一天)只在「能證明它就是今天」時才收。
+    證明法:它的「融資前日餘額」要等於本輪帶日期抓到的**前一個交易日**「今日餘額」(九成以上)。
+    回 (res, why);它的「今日餘額」反而等於前一天 → 證交所還沒更新(那份其實是前一天的)→ ⛔ 不收。"""
+    if not prev_twse:
+        return {}, '沒有前一個交易日帶日期的資料可以比對 → 驗不了日期,⛔ 不收'
+    res = {}
+    same_prev = same_today = n = 0
+    for row in (rows_oapi or []):
+        if not isinstance(row, dict):
+            continue
+        sid = str(row.get('股票代號') or row.get('Code') or row.get('證券代號') or '').strip()
+        if not _valid_stock(sid):
+            continue
+        mt = _num_tw(row.get('融資今日餘額', row.get('MarginPurchaseTodayBalance')))
+        mp = _num_tw(row.get('融資前日餘額', row.get('MarginPurchaseYesterdayBalance')))
+        st = _num_tw(row.get('融券今日餘額', row.get('ShortSaleTodayBalance')))
+        if mt is None or st is None:
+            continue
+        res[sid] = {'margin_balance': mt, 'short_balance': st, 'dt': 1}
+        pv = prev_twse.get(sid)
+        if pv and mp is not None:
+            n += 1
+            same_prev += int(mp == pv)
+            same_today += int(mt == pv)
+    if n < 300:
+        return {}, f'能比對的只有 {n} 檔,驗不了日期,⛔ 不收'
+    if same_prev / n >= 0.9:
+        return res, ''
+    if same_today / n >= 0.9:
+        return {}, f'它的今日餘額 {same_today}/{n} 檔 = 前一個交易日 → 證交所還沒更新(其實是前一天的),⛔ 不收'
+    return {}, f'對不上(前日 = 前一天 {same_prev}/{n}・今日 = 前一天 {same_today}/{n}),⛔ 不收'
+
+
+def fetch_twse_margin_rwd(d: date):
+    """🧾 V79.6.6 上市融資融券(證交所 rwd MI_MARGN,帶日期)→ (res, prev, why);第一次印欄位給 log 對照。"""
+    url = f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&date={d.strftime("%Y%m%d")}&selectType=ALL'
+    try:
+        j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
+    except Exception as e:
+        return {}, {}, f'抓不到:{str(e)[:80]}'
+    if not getattr(fetch_twse_margin_rwd, '_shown', False) and isinstance(j, dict) and j.get('stat') == 'OK':
+        fetch_twse_margin_rwd._shown = True
+        for t in (j.get('tables') or [])[:3]:
+            if isinstance(t, dict):
+                print(f"  🔎 [MI_MARGN rwd] 表「{str(t.get('title'))[:30]}」fields={t.get('fields')} groups={t.get('groups')}"
+                      f" 第一列={((t.get('data') or [[]])[0])[:16]}(本輪只印這一次)")
+    return _twse_margin_parse(j, d)
+
+
+def fetch_market_margin(d: date, is_latest: bool = True, prev_twse=None, twse_only: bool = False) -> dict:
     """整合 TWSE (上市) 與 TPEX (上櫃) 的融資融券餘額；TWSE 失敗時用 FinMind fallback
 
-    is_latest:`d` 是不是這一批要抓的**最新交易日**。
-      🚨 V75.1.4:step 1.5 的 TWSE OpenAPI 端點**沒有日期參數 → 永遠回最新一天**,
-         而呼叫端是拿最近 20 個交易日逐日呼叫 → 舊日期會被填進「最新那天」的數字。
-         實證(gh-pages margin_cache_stock.json):2330 的 20 天 margin_balance
-         **全部是 27,577**(2317/2603 同樣只有 1 種值)。
-      ⭐ 目前還沒造成明顯髒資料(下游「只補 0」擋住了),但那是未爆彈 →
-         非最新交易日一律**不採用** OpenAPI,留給 deploy job 那條**帶日期**的回補路徑。
-      ⛔ 預設 True 是為了向後相容(其他呼叫端行為不變)。
+    🧾 V79.6.6 上市改走證交所**帶日期**的那份(fetch_twse_margin_rwd,五道關卡驗過 → 每檔帶 dt:1,
+       下游 _margin_apply 會拿它蓋掉 K 線上錯位的舊值);OpenAPI(沒有日期參數)只在最新一天、
+       而且證明得了它就是今天的時候才收(_twse_oapi_check)。
+       prev_twse:本輪前一個交易日帶日期抓到的 {sid: 融資今日餘額}(驗 OpenAPI 用)。
+       twse_only:只抓上市(回補舊日子用,⛔ 不打 TPEx / FinMind)。
+    is_latest:`d` 是不是這一批要抓的**最新交易日**(只有最新一天才可能用 OpenAPI)。
+      🚨 V75.1.4:那個 OpenAPI 端點**沒有日期參數 → 永遠回最新一天**(2330 的 20 天融資曾全部是 27,577)。
+      🚨 V79.6.6:最新一天也不行 —— 證交所傍晚還沒更新時,那份是**前一天**的,以前照樣寫成今天
+         → 2026-06 起上市股融資大多錯一天(逐日相關:當天漲跌跟「隔天那格」的融資變化最相關)。
     """
     res = {}
-    d8 = d.strftime('%Y%m%d')
     d_iso = d.strftime('%Y-%m-%d')
     roc_y = d.year - 1911
     d_tpex = f"{roc_y}/{d.strftime('%m/%d')}"
     # 💳 V75.1.3 來源計數(寫進結果的 `_src`,呼叫端存進 margin_cache):
     #   ⭐ 沒有這幾個數字,「上櫃全 0」會被誤讀成「上櫃本來就沒融資」(實際是 TPEx 對 runner 403 一個月)。
-    _src = {'twse': 0, 'tpex': 0, 'finmind': 0, 'why': ''}
+    _src = {'twse': 0, 'tpex': 0, 'finmind': 0, 'why': '', 'twse_dated': False, 'twse_why': ''}
     _n_before = 0
+    fetch_market_margin.last_twse = None
 
-    # 1. 抓取上市 (TWSE MI_MARGN)
+    # 1. 上市:證交所 rwd MI_MARGN(帶日期)
     try:
-        url = f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&date={d8}&selectType=ALL'
-        j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
-        print(f"  [MI_MARGN] stat={j.get('stat')} tables={len(j.get('tables', []) or [])}")
-        if j.get('stat') != 'OK':
-            # 🔍 診斷強化:stat 非 OK 時印 raw 前 300 字,GHA log 一眼看出是限流/無資料/格式變更
-            print(f"  ⚠️ [MI_MARGN] stat != OK,raw={str(j)[:300]}")
-        if j.get('stat') == 'OK':
-            tables = j.get('tables', []) or []
-            # 🛡️【關鍵修復】MI_MARGN 回傳多個 table，舊版誤抓「市場總計表」(僅 3-7 列、
-            # key 變成 8,873,952 之類的總計數字)。改為：在每個含「股票代號」欄位的 table 中，
-            # 挑「id 欄含最多合法股號」的那張個股表（~1500 列），徹底避開總計表。
-            best = None  # (valid_count, table, idx_id)
-            for t in tables:
-                fields = t.get('fields', []) or []
-                idx_id = next((i for i, f in enumerate(fields)
-                               if '股票代號' in (f or '') or '證券代號' in (f or '')), None)
-                if idx_id is None:
-                    continue
-                data = t.get('data', []) or []
-                valid = sum(1 for r in data
-                            if len(r) > idx_id and _valid_stock(str(r[idx_id]).strip()))
-                if valid > 50 and (best is None or valid > best[0]):
-                    best = (valid, t, idx_id)
-
-            if best is None:
-                # 🚨 V75.1.4:這條路現在**必定失敗**,而且不是 bug —— rwd 端點 2026/06 起改回彙總表:
-                #    id 欄叫「代號」(這裡找的是「股票代號/證券代號」),而且**整張表的欄名裡
-                #    完全沒有「融資/融券」字樣**(是「買進/賣出/現金償還/前日餘額/今日餘額」,
-                #    前半融資、後半融券,只靠位置區分)→ 就算修好 id 比對,下面的 _find_col 一樣回 None。
-                # ⛔ **別再試圖修 rwd 的解析** —— 硬修就要靠位置猜融資/融券,比現在更脆弱;
-                #    實際供料的是下面 step 1.5 的 TWSE OpenAPI(欄位是具名的,安全得多)。
-                # ⚠️ 警告降成一次性:呼叫端一輪跑 20 個交易日,每天印一次 = 20 行雜訊,
-                #    而雜訊會讓人養成忽略警告的習慣。
-                if not getattr(fetch_market_margin, '_rwd_warned', False):
-                    fetch_market_margin._rwd_warned = True
-                    titles = [t.get('title', '') for t in tables]
-                    print(f"  ℹ️ [MI_MARGN rwd] 找不到個股表(2026/06 起改彙總表,已知且預期)→ 改走 OpenAPI;"
-                          f"tables 標題={titles}(本輪只印這一次)")
-            else:
-                _, target_table, idx_id = best
-                fields = target_table.get('fields', [])
-                # 🔍 欄位定位多級 fallback:先精確(融資+今日/現在餘額)→ 再寬鬆(含「資/券」+「餘」排除買賣進出)
-                def _find_col(fields, key1):
-                    # key1 = '融資' or '融券';先精確後寬鬆,涵蓋 TWSE 各種 schema 變體
-                    exact = next((i for i, f in enumerate(fields) if key1 in (f or '') and ('今日餘額' in f or '現在餘額' in f)), None)
-                    if exact is not None:
-                        return exact
-                    loose = next((i for i, f in enumerate(fields) if key1 in (f or '') and '餘額' in f and '買進' not in f and '賣出' not in f and '償還' not in f), None)
-                    if loose is not None:
-                        return loose
-                    # 最寬鬆:單字「資/券」+「餘」(對付欄名被簡寫)
-                    short_key = key1[-1]   # '資' or '券'
-                    return next((i for i, f in enumerate(fields) if short_key in (f or '') and '餘' in (f or '') and '買' not in (f or '') and '賣' not in (f or '')), None)
-                idx_mb = _find_col(fields, '融資')
-                idx_sb = _find_col(fields, '融券')
-                print(f"  [MI_MARGN] 選中個股表：{best[0]} 檔 | 融資欄 idx={idx_mb} 融券欄 idx={idx_sb} | fields={fields}")
-                if idx_mb is None or idx_sb is None:
-                    # 🔍 找不到欄位印完整 fields(已在上行),GHA log 比對真實欄名後可再放寬條件
-                    print(f"  ⚠️ 融資/融券餘額欄位找不到(idx_mb={idx_mb} idx_sb={idx_sb})，完整 fields={fields}")
-                else:
-                    short_zero = 0
-                    for r in target_table.get('data', []):
-                        sid = str(r[idx_id]).strip()
-                        if not _valid_stock(sid):   # 跳過總計列 / 非個股列
-                            continue
-                        try:
-                            sb = int(str(r[idx_sb]).replace(',', ''))
-                            res[sid] = {
-                                'margin_balance': int(str(r[idx_mb]).replace(',', '')),
-                                'short_balance':  sb,
-                            }
-                            if sb == 0:
-                                short_zero += 1
-                        except Exception:
-                            pass
-                    # 🔍 若融券「全部」為 0(實務不可能,2330/2603 一定有券)= 欄位抓錯,印警告供診斷
-                    if res and short_zero == len(res):
-                        print(f"  ⚠️ [MI_MARGN] 融券餘額全 0({len(res)} 檔),疑欄位 idx_sb={idx_sb} 抓錯,fields={fields}")
-    except Exception as e: print(f"  ⚠️ 上市融資券失敗: {e}")
+        tw_res, tw_prev, tw_why = fetch_twse_margin_rwd(d)
+        if tw_res:
+            res.update(tw_res)
+            _src['twse_dated'] = True
+            fetch_market_margin.last_twse = {s: v['margin_balance'] for s, v in tw_res.items()}
+            print(f"  [上市融資券] {d} 證交所帶日期 {len(tw_res)} 檔(五道關卡都過)")
+        else:
+            _src['twse_why'] = tw_why
+            print(f"  ⏭️ [上市融資券] {d} 證交所帶日期那份不收:{tw_why}")
+    except Exception as e:
+        _src['twse_why'] = f'例外:{str(e)[:80]}'
+        print(f"  ⚠️ 上市融資券失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
 
-    # 🏛️ 1.5. TWSE OpenAPI v1 第二條源:rwd 端點 2026/06 起改回彙總表後,改試官方 OpenAPI
-    #    端點:https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN(RESTful list[dict])
-    #    僅在 step 1 沒拿到任何個股(res 空)時試,避免徒耗 API。OpenAPI 成功則直接補上市段
+    # 🏛️ 1.5. TWSE OpenAPI:只在「帶日期那份今天還沒有」+「最新一天」+「證明得了就是今天」才收
     if not res and not is_latest:
         print(f"  ⏭️ [TWSE OpenAPI] {d} 不是最新交易日 → 跳過(該端點沒有日期參數,只會回最新一天)")
-    if not res and is_latest:
+    if not res and is_latest and not twse_only:
         try:
-            url_oapi = 'https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN'
-            r_oapi = http_session.get(url_oapi, headers=_rnd_hdrs(), timeout=15)
+            r_oapi = http_session.get('https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN', headers=_rnd_hdrs(), timeout=15)
             if r_oapi.status_code == 200:
                 rows_oapi = r_oapi.json()
                 if isinstance(rows_oapi, list) and rows_oapi:
                     print(f"  [TWSE OpenAPI] 首筆 keys: {list(rows_oapi[0].keys())[:8]}")
-                    cnt_oapi = 0
-                    for row in rows_oapi:
-                        if not isinstance(row, dict):
-                            continue
-                        sid = str(row.get('Code') or row.get('股票代號') or row.get('證券代號') or '').strip()
-                        if not _valid_stock(sid):
-                            continue
-                        try:
-                            mb_raw = row.get('MarginPurchaseTodayBalance') or row.get('融資今日餘額') or row.get('融資現在餘額') or 0
-                            sb_raw = row.get('ShortSaleTodayBalance')      or row.get('融券今日餘額') or row.get('融券現在餘額') or 0
-                            res[sid] = {
-                                'margin_balance': int(str(mb_raw).replace(',', '') or 0),
-                                'short_balance':  int(str(sb_raw).replace(',', '') or 0),
-                            }
-                            cnt_oapi += 1
-                        except Exception:
-                            continue
-                    print(f"  [TWSE OpenAPI 融資券] 命中 {cnt_oapi} 檔")
+                    o_res, o_why = _twse_oapi_check(rows_oapi, prev_twse)
+                    if o_res:
+                        res.update(o_res)
+                        _src['twse_dated'] = True
+                        fetch_market_margin.last_twse = {s: v['margin_balance'] for s, v in o_res.items()}
+                        print(f"  [TWSE OpenAPI 融資券] 證明得了是 {d} 的 → 收 {len(o_res)} 檔")
+                    else:
+                        _src['twse_why'] = (_src['twse_why'] + ' ・OpenAPI ' + o_why).strip(' ・')
+                        print(f"  ⏭️ [TWSE OpenAPI 融資券] {o_why}")
                 else:
                     print(f"  ⚠️ [TWSE OpenAPI] 回應非 list 或為空:{type(rows_oapi).__name__}")
             else:
@@ -1051,6 +1166,10 @@ def fetch_market_margin(d: date, is_latest: bool = True) -> dict:
         except Exception as e:
             print(f"  ⚠️ [TWSE OpenAPI] 失敗(不影響 TPEX/FinMind/yfinance fallback):{str(e)[:80]}")
         time.sleep(random.uniform(2.0, 4.0))
+    if twse_only:
+        _src['twse'] = len(res)
+        fetch_market_margin.last_src = _src
+        return res
 
     # 2. 抓取上櫃 (TPEX)
     #   🚨 V75.1.3:舊站 `margin_bal_result.php` 對 GitHub runner 早就 403(V73.6.1 實測整站 403),
@@ -3044,6 +3163,8 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
         print(f"  📏 yfinance 跳動單位守門:擋掉 {_YF_OFFGRID['rows']} 列 / {len(_YF_OFFGRID['syms'])} 檔(還原價 ⛔ 不寫)")
     if _YF_ZEROVOL['rows']:
         print(f"  🌀 yfinance 量 0 佔位列:擋掉 {_YF_ZEROVOL['rows']} 列 / {len(_YF_ZEROVOL['syms'])} 檔(休市日 Yahoo 給的假 K ⛔ 不寫)")
+    print(f"  🧾 上市融資校正:{_MARGIN_FIX['syms']} 檔 {_MARGIN_FIX['rows']} 列換成證交所帶日期那份"
+          f"(⛔ 跟它一樣的不動)・補上原本是 0 的 {_MARGIN_FIX['fill']} 列")
 
 
 # ── 動態監控清單（全市場批次版）────────────────────────────────────────────
@@ -3122,6 +3243,36 @@ def get_trading_days(n=30):
     return sorted(days)
 
 
+def _margin_apply(existing_map: dict, margin_cache: dict, sym: str):
+    """🧾 V79.6.6 把融資券快取寫進這一檔的 K 線列 → 回 (補上幾列, 校正幾列)
+    ・K 線那一格原本是 0 → 補上(舊規則,任何來源)
+    ・快取那一格帶 dt(證交所帶日期、五道關卡驗過)而且跟 K 線不一樣 → 蓋掉
+      ⭐ 2026-05 起上市股融資錯位(沒有日期的 OpenAPI 被寫成當天),而舊規則「只補 0」讓錯的永遠留著
+    ⛔ 沒有 dt 的(上櫃 / FinMind / yfinance / 舊快取)照舊只補 0 —— 不拿來源不明的數字蓋掉已經有的。"""
+    filled = fixed = 0
+    for date_dash, by_sym in (margin_cache or {}).items():
+        if str(date_dash).startswith('_') or not isinstance(by_sym, dict):
+            continue
+        v = by_sym.get(sym)
+        if not isinstance(v, dict):
+            continue
+        rec = existing_map.get(str(date_dash).replace('-', '/'))
+        if rec is None:
+            continue
+        mb = v.get('margin_balance', 0) or 0
+        sb = v.get('short_balance', 0) or 0
+        old_mb = rec.get('margin_balance', 0) or 0
+        old_sb = rec.get('short_balance', 0) or 0
+        if old_mb == 0:
+            if (mb, sb) != (old_mb, old_sb):
+                rec.update({'margin_balance': mb, 'short_balance': sb})
+                filled += 1
+        elif v.get('dt') and (mb, sb) != (old_mb, old_sb):
+            rec.update({'margin_balance': mb, 'short_balance': sb})
+            fixed += 1
+    return filled, fixed
+
+
 def seed_db_from_json(watchlist: list) -> None:
     """🌱 把 checkout 下來的 data/<sym>.json 種回 SQLite，保留完整歷史。
 
@@ -3180,6 +3331,31 @@ def run():
     MARGIN_CACHE_FILE = Path('margin_cache_stock.json')
     INST_CACHE_FILE   = Path('inst_cache_stock.json')
     if not SKIP_GLOBAL:
+        # 🧾 V79.6.6 上市融資回補:2026-05 起上市股融資錯位(帶日期那份沒讀到、改用沒有日期的 OpenAPI)。
+        #    手動派 daily_miner 時把 margin_twse_days 設大(例:120)→ 更早的平日也用證交所帶日期那份抓一次
+        #    (⛔ 只抓上市:不打法人 / 上櫃 / FinMind),下游 _margin_apply 看到 dt 就蓋掉 K 線上錯位的舊值。
+        #    排程 / push 那幾輪這個值是空字串 → 0 → 不回補(check_env_default)。
+        try:
+            _rep_n = int(os.environ.get('MARGIN_TWSE_DAYS') or 0)
+        except Exception:
+            _rep_n = 0
+        _rep_days = [x for x in get_trading_days(_rep_n) if x < trading_days[0]] if _rep_n > len(trading_days) else []
+        _prev_twse = None
+        if _rep_days:
+            print(f"\n🧾 上市融資回補:{_rep_days[0]} ~ {_rep_days[-1]}({len(_rep_days)} 個平日,只抓證交所帶日期那份)")
+            _rep_ok = 0
+            for d in _rep_days:
+                dd = d.strftime('%Y-%m-%d')
+                try:
+                    marg = fetch_market_margin(d, is_latest=False, twse_only=True)
+                    if marg:
+                        margin_cache[dd] = marg
+                        _rep_ok += 1
+                    _prev_twse = getattr(fetch_market_margin, 'last_twse', None) or _prev_twse
+                    margin_cache.setdefault('_src', {})[dd] = dict(getattr(fetch_market_margin, 'last_src', {}) or {}, repair=1)
+                except Exception as e:
+                    print(f"  ⚠️ 上市融資回補 {dd} 例外,跳過:{e}")
+            print(f"  🧾 上市融資回補:{_rep_ok}/{len(_rep_days)} 天收得下來(其餘是休市或證交所沒給,原因印在上面每一天)")
         print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日）...")
         for d in trading_days:
             dd = d.strftime('%Y-%m-%d')
@@ -3193,7 +3369,9 @@ def run():
             time.sleep(0.8)
             try:
                 # ⭐ V75.1.4:只有最新交易日才准用 TWSE OpenAPI(那個端點沒有日期參數)
-                marg = fetch_market_margin(d, is_latest=(d == trading_days[-1]))
+                # 🧾 V79.6.6:而且要證明得了它就是今天 —— 拿本輪前一個交易日帶日期那份去比(prev_twse)
+                marg = fetch_market_margin(d, is_latest=(d == trading_days[-1]), prev_twse=_prev_twse)
+                _prev_twse = getattr(fetch_market_margin, 'last_twse', None) or _prev_twse
                 if marg:
                     margin_cache[dd] = marg
                     print(f"  融券 {dd}: {len(marg)} 筆")
@@ -3206,6 +3384,14 @@ def run():
             except Exception as e:
                 print(f"  ⚠️ fetch_market_margin({dd}) 例外，跳過：{e}")
             time.sleep(0.8)
+        try:
+            _srcs = margin_cache.get('_src') or {}
+            _dated = sorted(k for k, v in _srcs.items() if isinstance(v, dict) and v.get('twse_dated'))
+            _undated = sorted(k for k, v in _srcs.items() if isinstance(v, dict) and not v.get('twse_dated') and k in margin_cache)
+            print(f"  🧾 上市融資帶日期:{len(_dated)} 天收下來" + (f"(最新 {_dated[-1]})" if _dated else '')
+                  + (f";有資料但上市沒收的:{', '.join(_undated[-5:])}(原因見上面)" if _undated else ''))
+        except Exception:
+            pass
         # 防呆：抓成功才覆寫,失敗時保留 last-good 不覆寫(避免一天的網路異常洗掉前端歷史資料)
         # 若既無新資料也無既有檔,才寫失敗標記給下游 batch 知道狀態
         def _has_real_payload(path):
@@ -3521,7 +3707,11 @@ def run():
                         changed = True
                     # 補寫尚未有的籌碼資料
                     if rec.get('foreign_net', 0) == 0 and (chip.get('foreign_net', 0) != 0 or chip.get('margin_balance', 0) != 0):
-                        rec.update(chip)
+                        # 🧾 V79.6.6:融資那兩欄只在快取真的有值時才寫(⛔ 拿 0 蓋掉 K 線上已經有的融資 ——
+                        #    法人先到、融資那天還沒抓到時,以前會把那一格融資歸 0)
+                        _has_m = bool(chip.get('margin_balance') or chip.get('short_balance'))
+                        rec.update({k: v for k, v in chip.items()
+                                    if _has_m or k not in ('margin_balance', 'short_balance')})
                         changed = True
                     continue
 
@@ -3544,16 +3734,14 @@ def run():
                     })
                     changed = True
                     
-            for date_dash, by_sym in margin_cache.items():
-                if sym not in by_sym:
-                    continue
-                fmt_date = date_dash.replace('-', '/')
-                if fmt_date in existing_map and existing_map[fmt_date].get('margin_balance', 0) == 0:
-                    existing_map[fmt_date].update({
-                        'margin_balance': by_sym[sym].get('margin_balance', 0),
-                        'short_balance':  by_sym[sym].get('short_balance', 0),
-                    })
-                    changed = True
+            # 🧾 V79.6.6 _margin_apply:原本是 0 → 補上;證交所帶日期那份(dt)跟 K 線不一樣 → 蓋掉
+            _mf, _mx = _margin_apply(existing_map, margin_cache, sym)
+            if _mf or _mx:
+                changed = True
+                _MARGIN_FIX['fill'] += _mf
+                if _mx:
+                    _MARGIN_FIX['rows'] += _mx
+                    _MARGIN_FIX['syms'] += 1
 
             if changed:
                 combined = sorted(existing_map.values(), key=lambda x: x['date'])[-1200:]

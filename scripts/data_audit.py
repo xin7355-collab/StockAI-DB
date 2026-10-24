@@ -384,6 +384,40 @@ def c_findings(f, j):
     return out
 
 
+# ── G. 上市融資券有沒有用到證交所「帶日期」那份(V79.6.6)────────────────
+#   2026-05 起上市股融資錯位:帶日期那份讀不到 → 改用沒有日期參數的 OpenAPI 寫成當天
+#   (傍晚證交所還沒更新時那份是前一天的);05-13~06-11 更是每天都跟前一天一模一樣。A~F 類全部放過它
+#   (檔案在、能解析、沒有 *_error)。→ 讀 margin_cache_stock.json 的 `_src`(採礦每一天記的來源)。
+def g_findings(mc):
+    """回 [(圖示, 訊息)]。⛔ 傍晚還沒公布那一天沒收是正常的 → 只給 ⚠️;兩天一模一樣才是 ❌。"""
+    out = []
+    if not isinstance(mc, dict):
+        return out
+    days = sorted(k for k, v in mc.items() if not str(k).startswith('_') and isinstance(v, dict) and v)
+    if not days:
+        return out
+    srcs = mc.get('_src') if isinstance(mc.get('_src'), dict) else {}
+    if 'twse_dated' not in (srcs.get(days[-1]) or {}):
+        out.append(('⚠️', f'margin_cache_stock.json 最新一天 {days[-1]} 的來源紀錄沒有 twse_dated'
+                          '(V79.6.6 之前的格式)→ 看不出上市那份有沒有帶日期'))
+    miss = [d for d in days[-5:] if 'twse_dated' in (srcs.get(d) or {}) and not (srcs.get(d) or {}).get('twse_dated')]
+    for d in miss:
+        out.append(('⚠️', f'上市融資券 {d} 沒有收(原因:{str((srcs.get(d) or {}).get("twse_why") or "?")[:70]})'
+                          ' —— 傍晚還沒公布是正常的、下一輪會補;連好幾天都這樣才是壞掉'))
+    dated = [d for d in days if sum(1 for x in mc[d].values() if isinstance(x, dict) and x.get('dt')) >= 300]
+    _last = dated[-4:]
+    for a, b in zip(_last, _last[1:]):        # 相鄰兩天(⛔ zip(x[-4:], x[-3:]) 會變成自己跟自己比)
+        A, B = mc[a], mc[b]
+        com = [k for k, v in A.items() if isinstance(v, dict) and v.get('dt') and (v.get('margin_balance') or 0) > 0
+               and isinstance(B.get(k), dict) and B[k].get('dt')]
+        if len(com) >= 300:
+            same = sum(1 for k in com if A[k].get('margin_balance') == B[k].get('margin_balance'))
+            if same / len(com) >= 0.9:
+                out.append(('❌', f'上市融資 {a} 與 {b} 有 {same}/{len(com)} 檔一模一樣 → 很可能同一份資料寫成兩天'
+                                  '(2026-05~06 那次就是這樣;正常一天只有一成左右沒變)'))
+    return out
+
+
 # ── F. 日 K 不是官方成交價(陷阱 #46,V77.7.0)────────────────────────
 #   判準:收盤價不在台股跳動單位格上 = 不是官方成交價(還原價 / 盤中殘值)。
 #   ⚠️ 分割還原過的舊列本來就不在格上 → 只看 2023-05 起 + 只算上市/上櫃個股(⛔ ETF、興櫃另一套)。
@@ -769,6 +803,19 @@ def audit(ref):
     except Exception as _ex:
         add('⚠️', 'F', f'F 類跑不動:{_ex}')
 
+    # ── G. 上市融資券帶日期(V79.6.6)──────────────────────────────────
+    print('\n── G. 上市融資券有沒有用到證交所帶日期那份 ──────────────────')
+    _mc, _e = read_json(ref, 'margin_cache_stock.json')
+    if not isinstance(_mc, dict):
+        add('⚠️', 'G', f'margin_cache_stock.json 讀不到({_e})→ G 類沒檢查到(⛔ 不可讀成沒問題)')
+    else:
+        _gs = g_findings(_mc)
+        _dd = sorted(k for k, v in (_mc.get('_src') or {}).items() if isinstance(v, dict) and v.get('twse_dated'))
+        print(f'   帶日期收下來的日子:{len(_dd)} 天' + (f'(最新 {_dd[-1]})' if _dd else ''))
+        for _lv, _msg in _gs:
+            add(_lv, 'G', _msg)
+        print(f'   完成,問題 {len(_gs)} 件')
+
     # ── 總結 ─────────────────────────────────────────────────────────
     print('\n' + '═' * 66)
     bad = [p for p in problems if p[0] == '❌']
@@ -899,6 +946,22 @@ def selftest():
     ok('⑨c ETF(00 開頭)⛔ 不算進來', st['tot'].get('twse') == len(_good), st)
     fs2, _ = f_findings({'2222': [dict(r, date='2022/01/01') for r in _bad]}, _mkt)
     ok('⑨d 2023-05 以前的列不算(分割還原過的舊列本來就不在格上)', fs2 == [], fs2)
+
+    print('🧪 G 類(V79.6.6)—— 上市融資「兩天一模一樣」與「沒帶日期」叫不叫得出來')
+    def _day(seed, n=400, dt=1):
+        return {str(1100 + i): ({'margin_balance': 1000 + (i * 7 + seed * 13) % 900, 'short_balance': 5, 'dt': 1} if dt
+                                else {'margin_balance': 1000 + i, 'short_balance': 5}) for i in range(n)}
+    _ok = {'2026-10-20': _day(1), '2026-10-21': _day(2), '2026-10-22': _day(3),
+           '_src': {'2026-10-20': {'twse_dated': True}, '2026-10-21': {'twse_dated': True}, '2026-10-22': {'twse_dated': True}}}
+    ok('⑩ 正常(每天都不一樣、都帶日期)→ 不報', g_findings(_ok) == [], g_findings(_ok))
+    _frz = dict(_ok); _frz['2026-10-22'] = _day(2)
+    ok('⑩b 兩天一模一樣 → ❌', any(l == '❌' for l, _m in g_findings(_frz)), g_findings(_frz))
+    _und = dict(_ok); _und['_src'] = dict(_ok['_src'], **{'2026-10-22': {'twse_dated': False, 'twse_why': 'stat=很抱歉'}})
+    ok('⑩c 最新一天沒收 → ⚠️(附原因)', any(l == '⚠️' and '很抱歉' in m for l, m in g_findings(_und)), g_findings(_und))
+    _old = {'2026-10-22': _day(3, dt=0), '_src': {'2026-10-22': {'twse': 1298}}}
+    ok('⑩d 舊格式(沒有 twse_dated)→ ⚠️ 看不出來', any('沒有 twse_dated' in m for _l, m in g_findings(_old)), g_findings(_old))
+    _frz_old = {'2026-10-21': _day(2, dt=0), '2026-10-22': _day(2, dt=0), '_src': {}}
+    ok('⑩e 沒帶 dt 的不拿來比「一模一樣」(那是上櫃 / 舊快取)', not any(l == '❌' for l, _m in g_findings(_frz_old)), g_findings(_frz_old))
 
     print(f"\n{'✅ 全過' if not fails else '❌ 失敗 ' + str(len(fails)) + ' 條:' + ', '.join(fails)}")
     return 1 if fails else 0

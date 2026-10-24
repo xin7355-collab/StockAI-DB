@@ -22,6 +22,14 @@ on:
     - cron: '0 12 * * 1-5'
   workflow_dispatch:
     # 手動觸發時，直接點擊 Run workflow，就會自動啟動 5 台機器併發！
+    # 🧾 V79.6.6 margin_twse_days:上市融資回補用(預設空 = 照舊只抓最近 20 個交易日)。
+    #    2026-05 起上市股融資錯位 → 修好後手動派一次填 120,把更早的日子也用證交所帶日期那份蓋掉;
+    #    其他節點用的是上一輪的快取 → 回補那輪跑完再派一輪(不填)才會全部換好。
+    inputs:
+      margin_twse_days:
+        description: '上市融資回補幾個平日(空 = 不回補;修錯位時填 120)'
+        required: false
+        default: ''
   # ⏰ V79.1.9 使用者:「換倉名單請改成最早的時間,不然沒時間看」——
   #   GitHub 排程在這個 repo 常遲到好幾小時(10/12 那輪凌晨 02:03 才跑)→
   #   Cloudflare Worker 台北 17:00 那一輪看到資料還不是今天就發 `daily-miner`(⛔ 不吃排程配額)。
@@ -119,6 +127,7 @@ jobs:
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
           BATCH_INDEX: ${{ matrix.batch }}
           TOTAL_BATCHES: 20
+          MARGIN_TWSE_DAYS: ${{ github.event.inputs.margin_twse_days }}
         run: |
           # 只有節點 0 負責抓取全球總經/期貨/法人等共用資料，節點 1~4 只專心抓個股
           if [ "${{ matrix.batch }}" != "0" ]; then
