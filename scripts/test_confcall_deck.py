@@ -1126,5 +1126,11 @@ ok('㊼l 空白頁保留、超過上限截斷並標 cut、總字數記原本的'
    and _tp2['p'] == ['a' * 10, 'b' * 5, ''] and _tp2['cut'] == 1 and _tp2['n'] == 30, (_tp, _tp2))
 
 
+# ㊽ 總經背景排後面:「利率」⛔ 吃到「毛利率 / 淨利率 / 營利率」(10/24 實跑:講毛利率的那句被扣 3 分排到最後)
+ok('㊽a 「毛利率 / 淨利率 / 營利率」⛔ 算總經', not any(cd.MACRO_RE.search(x) for x in ['毛利率維持 30% 以上', '淨利率可望提升', '營利率將回升']))
+ok('㊽b ⭐ 決定性對照:「聯準會降息、利率走低」照樣算總經', bool(cd.MACRO_RE.search('預期聯準會降息,利率走低')) and bool(cd.MACRO_RE.search('利率將維持高檔')))
+_bo2 = cd.best_outlook([[3, '預期明年持續成長'], [5, '預期第四季毛利率將回升至 25%']])
+ok('㊽c 講毛利率又有數字的那句排第一(⛔ 被當成總經排到最後)', _bo2 == [5, '預期第四季毛利率將回升至 25%'], _bo2)
+
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))
 sys.exit(1 if fails else 0)

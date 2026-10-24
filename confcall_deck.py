@@ -145,7 +145,8 @@ NOTE_RE = re.compile(r'^\s*(註|＊|\*|※|資料來源|來源|出處|Source|Ref
 # 只有標題字(「2026 年第 4 季市場展望」「營運展望」)⛔ 不算一句話
 TITLE_RE = re.compile(r'(展望|規劃|計畫|計劃|目標|策略|outlook|guidance|plan)\s*$', re.I)
 # 總經背景(OECD / IMF / 全球經濟 …)⛔ 是公司自己的展望 —— 挑「最有代表性的一句」時排後面
-MACRO_RE = re.compile(r'OECD|IMF|世界銀行|全球經濟|經濟成長|經濟展望|GDP|通膨|聯準會|Fed\b|利率|主計總處', re.I)
+# ⚠️ 10/24 實跑:裸的「利率」會吃到「毛利率 / 淨利率 / 營利率」→ 講毛利率的那一句被當成總經背景排到最後
+MACRO_RE = re.compile(r'OECD|IMF|世界銀行|全球經濟|經濟成長|經濟展望|GDP|通膨|聯準會|Fed\b|(?<![毛淨營])利率|主計總處', re.I)
 COMPANY_RE = re.compile(r'本公司|公司|我們|集團|本集團|營收|訂單|產能|出貨|客戶|新產品|量產')
 POS_RE = re.compile(r'成長|增加|提升|強勁|優於|創新高|新高|擴產|樂觀|回溫|復甦|看好|倍增|growth|increase|strong|record|recover', re.I)
 NEG_RE = re.compile(r'下滑|減少|衰退|疲弱|保守|審慎|謹慎|調整|庫存去化|逆風|不確定|放緩|下修|decline|decrease|weak|cautious|headwind|soft', re.I)
