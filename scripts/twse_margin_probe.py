@@ -104,6 +104,16 @@ def main():
     code, rows = get_json(OAPI)
     if isinstance(rows, list) and rows:
         print(f'   {len(rows):,} 列・首列 keys={list(rows[0].keys())[:14]}')
+        # 三欄各有幾列是空字串 / 不是數字(V79.6.6 第一次實跑:1,302 列只有 736 列三欄都解得出數字)
+        for k in ('融資今日餘額', '融資前日餘額', '融券今日餘額'):
+            vals = [r.get(k) for r in rows if isinstance(r, dict)]
+            emp = [v for v in vals if not str(v if v is not None else '').strip()]
+            bad = [v for v in vals if str(v if v is not None else '').strip() and miner._num_tw(v) is None]
+            print(f'   {k}:空的 {len(emp):,} 列・不是數字 {len(bad):,} 列' + (f'(例:{bad[:3]})' if bad else ''))
+        ex = [r for r in rows if isinstance(r, dict) and any(not str(r.get(k) if r.get(k) is not None else '').strip()
+                                                             for k in ('融資今日餘額', '融券今日餘額'))][:2]
+        for r in ex:
+            print(f'   空值的例子:{ {k: r.get(k) for k in list(r.keys())[:14]} }')
         if len(ds) >= 2:
             last, before = ds[-1], ds[-2]
             if not (0 < (last - before).days <= 5):

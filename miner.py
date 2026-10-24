@@ -934,12 +934,16 @@ def _twse_margin_cols(fields, groups=None):
     if i_id is None:
         return None
     seg = {}
+    pos = 0          # 🧾 證交所真實的 groups 只有 span 沒有 start(2026-10-24 macro_probe twse_margin 實測)→ 從左往右累加
     for g in (groups or []):
         try:
             t = str(g.get('title') or '')
-            st = int(g.get('start')); sp = int(g.get('span'))
+            sp = int(g.get('span'))
+            st = int(g['start']) if g.get('start') is not None else pos
         except Exception:
-            continue
+            seg = {}
+            break    # ⛔ 一組看不懂,後面的位置就都不可信 → 整份 groups 不用,退回錨點
+        pos = st + sp
         if '融資' in t and 'm' not in seg:
             seg['m'] = (st, st + sp)
         elif '融券' in t and 's' not in seg:
@@ -1059,15 +1063,25 @@ def _twse_oapi_check(rows_oapi, prev_twse):
         return {}, '沒有前一個交易日帶日期的資料可以比對 → 驗不了日期,⛔ 不收'
     res = {}
     same_prev = same_today = n = 0
+
+    def _ov(row, *keys):
+        # 🧾 OpenAPI 的 0 有時是空字串(2026-10-24 實測 1,302 列只有 736 列三欄都是數字;V79.6.5 舊版是 `or 0`)
+        #    → 欄位在、但是空的 = 0;⛔ 欄位根本不在才是「不知道」
+        for k in keys:
+            if k in row:
+                v = row.get(k)
+                return 0 if not str(v if v is not None else '').strip() else _num_tw(v)   # '-' 這種照舊 = 不知道(V79.6.5 也是整列跳過)
+        return None
+
     for row in (rows_oapi or []):
         if not isinstance(row, dict):
             continue
         sid = str(row.get('股票代號') or row.get('Code') or row.get('證券代號') or '').strip()
         if not _valid_stock(sid):
             continue
-        mt = _num_tw(row.get('融資今日餘額', row.get('MarginPurchaseTodayBalance')))
-        mp = _num_tw(row.get('融資前日餘額', row.get('MarginPurchaseYesterdayBalance')))
-        st = _num_tw(row.get('融券今日餘額', row.get('ShortSaleTodayBalance')))
+        mt = _ov(row, '融資今日餘額', 'MarginPurchaseTodayBalance')
+        mp = _ov(row, '融資前日餘額', 'MarginPurchaseYesterdayBalance')
+        st = _ov(row, '融券今日餘額', 'ShortSaleTodayBalance')
         if mt is None or st is None:
             continue
         res[sid] = {'margin_balance': mt, 'short_balance': st, 'dt': 1}

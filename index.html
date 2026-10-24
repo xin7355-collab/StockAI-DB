@@ -8611,6 +8611,7 @@ ${list}
     _CHANGELOG: [
         { v: 'V79.6.6', d: [
             '💳 上市股的融資餘額改照證交所當天公布的那一份:以前常常是前一天的數字(5~6 月有一段甚至每天都一樣),籌碼頁的融資走勢和融資追繳那一格會跟著變準',
+            '🕘 證交所當天的融資晚上才公布:傍晚看的時候最新那一天會先空著(融資走勢只畫到前一天),晚上或隔天自動補上',
         ], dt: '2026-10-24' },
         { v: 'V79.6.5', d: [
             '⏸️ 法說會延期會標出來:公司公告延期(例如颱風停班)的那一場,提醒和個股「基本」頁照新的日期講,不會再寫成「已經開完」',
@@ -12943,6 +12944,17 @@ const marginByDate = {};
         }
     },
 
+    // 🧾 V79.6.6 融資走勢只畫到「最後一天有融資資料」那根 —— 證交所當天的融資晚上才公布,傍晚那輪採礦時
+    //    最新一根還是空的(0);以前那一格放的是前一天的數字(錯位,陷阱 #60),現在是空的 → ⛔ 不可畫成「融資一天掉到 0」
+    _marginTrimTail(arr) {
+        const a = Array.isArray(arr) ? arr : [];
+        const v = d => +(d?.margin_balance ?? d?.margin_bal ?? d?.margin ?? 0) || 0;
+        const w = d => +(d?.short_balance ?? d?.short_bal ?? d?.short ?? 0) || 0;
+        let e = a.length;
+        while (e > 0 && v(a[e - 1]) === 0 && w(a[e - 1]) === 0) e--;
+        return e > 0 ? a.slice(0, e) : a;
+    },
+
     _renderChipTimeline(instData, marginData) {
         const instEl = document.getElementById('chipInstChart');
         const marginEl = document.getElementById('chipMarginChart');
@@ -13021,15 +13033,16 @@ const marginByDate = {};
             return;
         }
         const marginChart = echarts.getInstanceByDom(marginEl) || echarts.init(marginEl, 'dark');   // ⚡ V69.8.5 P1-5
+        const mLine = this._marginTrimTail(marginData);   // 🧾 V79.6.6 最後幾根還沒公布(0)的不畫
         marginChart.setOption({
             backgroundColor: 'transparent',
             tooltip: { trigger: 'axis', textStyle: { fontSize: 10 }, formatter: params => params.map(p => `${p.marker}${p.seriesName} ${p.value}K`).join('<br>') },
             legend: { data: ['融資'], top: 2, right: 4, textStyle: { color: '#9ca3af', fontSize: 11 }, itemWidth: 10, itemHeight: 8 },
             grid: gridCfg,
-            xAxis: { type: 'category', data: marginData.map(d => d.date.slice(5)), axisLabel: { ...labelStyle }, axisLine: { lineStyle: { color: '#374151' } } },
+            xAxis: { type: 'category', data: mLine.map(d => d.date.slice(5)), axisLabel: { ...labelStyle }, axisLine: { lineStyle: { color: '#374151' } } },
             yAxis: { type: 'value', axisLabel: { ...labelStyle, formatter: v => v + 'K' }, splitLine: { lineStyle: { color: '#1f2937' } } },
             series: [
-                { name: '融資', type: 'line', data: marginData.map(d => d.margin_balance ?? d.margin_bal ?? d.margin ?? 0), smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#f87171', width: 1.5 }, itemStyle: { color: '#f87171' } }
+                { name: '融資', type: 'line', data: mLine.map(d => d.margin_balance ?? d.margin_bal ?? d.margin ?? 0), smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#f87171', width: 1.5 }, itemStyle: { color: '#f87171' } }
             ]
         });
     },
