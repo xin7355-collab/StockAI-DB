@@ -460,6 +460,52 @@ const b = await chromium.launch({
   ok(errs.length === 0, '散戶 App(V79.6.4)0 個 pageerror', errs.join(' | '));
   await pg.close();
 }
+// ══════════ ⏸️ V79.6.5 法說會延期(2026-10-23 颱風:南亞「如台北市停班,順延至 10/27」)—— 散戶 App 的卡片與提醒 ══════════
+{
+  const pg = await b.newPage({ viewport: { width: 390, height: 844 } });
+  const errs = []; pg.on('pageerror', e => errs.push(String(e).slice(0, 160)));
+  await pg.route('**/*', r => (r.request().url().startsWith('file://') ? r.continue() : r.abort()));
+  await pg.goto(pathToFileURL(resolve('index.html')).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await pg.waitForFunction(() => typeof app !== 'undefined' && !!app._renderCorpConfCall && !!app._findEarningsEvent, null, { timeout: 30000 });
+  const D0 = dOff(-1), MV = dOff(3);
+  const deck = { s: '1303', decks: [{ d: D0, f: fOf('1303', D0), st: 'ok', inv: 1, outlook: [[12, '第四季合併營收將持續攀升']], nums: [[7, '第3季EPS達4.90元']] }] };
+  const rowMv = Object.assign(row('1303', '南亞', D0, '14:00', '本公司受邀參加台新證券舉辦之法人說明會', [fOf('1303', D0)]),
+    { other: '如台北市政府公告115/10/23停止上班，本說明會將順延至115/10/27 14:00(線上會議)', mv: MV, mvc: 1 });
+  const rowPlain = Object.assign({}, rowMv); delete rowPlain.mv; delete rowPlain.mvc;
+  const R = await pg.evaluate(async ({ deck, rowMv, rowPlain, CONF, MV, D0 }) => {
+    const o = {};
+    const el = document.getElementById('corpConfCall');
+    const show = async (r) => {
+      app._confcallCache = Object.assign({}, CONF, { upcoming: [r], recent: [] }); app._ccCache = { 1303: deck }; app.currentSymbolId = '1303';
+      await app._renderCorpConfCall('1303');
+      return (el.innerText || el.textContent || '').replace(/\s+/g, ' ');
+    };
+    o.mv = await show(rowMv); o.mvHtml = el.innerHTML;
+    o.plain = await show(rowPlain);
+    // 提醒:照新日期算(把「還有幾個交易日」釘住,⛔ 讓測試跟今天星期幾有關)
+    const keep = app._tradingDaysUntil;
+    app._tradingDaysUntil = d => (d === MV ? 1 : d === D0 ? -1 : 9);
+    app._confcallCache = Object.assign({}, CONF, { upcoming: [rowMv], recent: [] });
+    o.ev = app._findEarningsEvent('1303', 2);
+    app._renderStockEarningsReminder('1303');
+    o.rem = ((document.getElementById('stockEarningsReminder') || {}).innerText || '').replace(/\s+/g, ' ');
+    app._confcallCache = Object.assign({}, CONF, { upcoming: [], recent: [rowPlain] });
+    o.evPlain = app._findEarningsEvent('1303', 2);
+    o.list = await app._loadEarningsCalls.call(Object.assign(Object.create(app), { _earnCallCache: null, _confcallCache: Object.assign({}, CONF, { upcoming: [rowMv], recent: [] }) }), '1303');
+    app._tradingDaysUntil = keep;
+    return o;
+  }, { deck, rowMv, rowPlain, CONF, MV, D0 });
+  ok(/data-corp-cc-moved/.test(R.mvHtml) && /⏸️ 公司公告:法說會遇停班就延到/.test(R.mv) && /法說會簡報\(會議還沒開\)/.test(R.mv) && !/最近一次法說會說了什麼/.test(R.mv),
+     '⏸️⑮ 簡報先上傳、會議延期還沒開 → ⛔ 寫成「最近一次法說會說了什麼」,要講延到哪天、問答要開完才有', R.mv.slice(0, 220));
+  ok(/最近一次法說會說了什麼/.test(R.plain) && !/延到/.test(R.plain), '⏸️⑮b 決定性對照:同一場拿掉延期 → 照舊「最近一次法說會說了什麼」', R.plain.slice(0, 120));
+  ok(R.ev && R.ev.date === MV && R.ev.moved && R.ev.moved.from === D0 && /原訂/.test(R.ev.text) && /⏸️ 原訂/.test(R.rem),
+     '⏸️⑯ 法說會提醒照延後的日期算,並寫出原訂日期(週一就會跳 10/27 那場)', JSON.stringify(R.ev) + ' | ' + R.rem.slice(0, 160));
+  ok(R.evPlain === null, '⏸️⑯b 決定性對照:沒有延期 → 那場已經過了,⛔ 提醒', JSON.stringify(R.evPlain));
+  ok(Array.isArray(R.list) && R.list.some(x => x.date === MV.replace(/-/g, '/')) && !R.list.some(x => x.date === D0.replace(/-/g, '/')),
+     '⏸️⑯c 報告頁用的法說會日期清單也是延後那天(⛔ 原訂那天)', JSON.stringify(R.list));
+  ok(errs.length === 0, '散戶 App(V79.6.5 延期)0 個 pageerror', errs.join(' | '));
+  await pg.close();
+}
 await b.close();
 console.log(bad ? `❌ test_confcall_ui 失敗 ${bad} 條` : '✅ CONFCALL_UI_PASS(全部通過)');
 process.exit(bad ? 1 : 0);

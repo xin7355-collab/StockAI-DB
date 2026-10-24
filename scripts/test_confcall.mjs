@@ -295,6 +295,9 @@ ok(!DIR.test(react), '📊⑲d 統計段⛔ 不可出現方向詞', (react.match
 
 // ── 🔎 法人視角提示詞
 const pr = await pg.evaluate(() => {
+  // 📎 V79.6.5 confPick 會去讀四個小檔 → 先把快取擺成「讀不到」(null),⛔ 不讓測試去碰本機 data/ 的殘留檔
+  for (const k of ['data/chips/2382.json', 'data/fin/2382.json', 'data/2382.json']) PRO._cache[k] = null;
+  PRO._confCC['2382'] = null; PRO._confPrepAt = {};
   PRO.confPick('2382');
   const ta = document.getElementById('confDeepQ'); ta.value = 'HBM 出貨';
   return { full: PRO._confDeepPrompt('2382', 'HBM 出貨', false), short: PRO._confDeepPrompt('2382', 'HBM 出貨', true) };
@@ -308,8 +311,10 @@ ok(/⛔ 不要給買賣建議/.test(pr.full) && /⛔ 不要評分或星等/.test
   '🔎⑳c ⛔ 不可叫外部 AI 給買賣建議/評分/部位');
 ok(/查不到就寫「查不到」/.test(pr.full) && /⛔ 不要留模板空格/.test(pr.full),
   '🔎⑳d 查不到要寫查不到(⛔ 留空格給 AI 填,它就會編 —— V76.3.7 的教訓)');
-ok(/現價 312\.50/.test(pr.full) && /一年位階 88\.00%/.test(pr.full) && /⛔ 不要自己重算/.test(pr.full),
-  '🔎⑳e 本站算好的數字要塞進去(禁 AI 算數學鐵律)', pr.full.slice(0, 200));
+ok(/一年位階 88\.0%/.test(pr.full) && /本益比 21\.30 倍 ← 證交所用「最近四季已公告 EPS」算/.test(pr.full) && /⛔ 不要自己重算/.test(pr.full),
+  '🔎⑳e 本站算好的數字要塞進去 + 每個數字都寫是怎麼來的(禁 AI 算數學鐵律;V79.6.5 本益比 / 殖利率要寫口徑)', pr.full.slice(0, 400));
+ok(/本站讀不到:K 線、每檔基本面[^\n]*財報切片、簡報原文/.test(pr.full) && !/undefined|NaN|null/.test(pr.full),
+  '🔎⑳e2 讀不到的資料要說出來(⛔ 印 undefined / NaN / null,⛔ 讓 AI 以為那幾項沒有)', (pr.full.match(/本站讀不到[^\n]*/) || [''])[0]);
 ok(/mopsov\.twse\.com\.tw\/server-java\/FileDownLoad/.test(pr.full),
   '🔎⑳f 簡報 PDF 網址要附上去(探針實測 GET 就開得了 → 外部 AI 讀得到)');
 ok(pr.short.length < 200 && pr.full.length > 500, '🔎⑳g 精簡版給網址、完整版給剪貼簿(⛔ 完整版塞網址會在 iOS 交棒時帶不過去,V76.2.1)',
@@ -332,6 +337,85 @@ ok(promptOrder.seq.join(',') === 'copy,click', '🔎⑳h 先複製再開(⛔ 順
 ok(promptOrder.hasEight && promptOrder.copiedLen > 500, '🔎⑳i 剪貼簿拿到的是**完整版**(八個面向)', String(promptOrder.copiedLen));
 ok(promptOrder.hrefLen < 1500, '🔎⑳j 網址帶的是精簡版(⛔ 完整版編碼後上萬字元,iOS 帶不過去)', String(promptOrder.hrefLen));
 
+// ── 📞 V79.6.5 使用者拿 GPT 跑南亞那份 → 數字帶日期 / 季別 / 口徑、公司備註、簡報原文、散戶格式、藏在裡面的訊息
+const today2 = dOff(0);
+const V = await pg.evaluate(({ td, d1, d2, d3, d4, dPrev }) => {
+  const sl = d => d.replace(/-/g, '/');
+  PRO._cache['data/screener.json'].data_date = d3;
+  PRO._cache['data/2382.json'] = [
+    { date: sl(d1), close: 296, volume: 1000 }, { date: sl(d2), close: 320.5, volume: 1000 },
+    { date: sl(d3), close: 301, volume: 1000 }, { date: sl(d4), close: 301, volume: 0 }];   // 最後一根 = 颱風休市的假 K(量 0)
+  PRO._cache['data/chips/2382.json'] = { fundamentals: {
+    quarterly_eps: [{ period: '2025-03-31', eps: 0.06 }, { period: '2025-06-30', eps: -0.52 }, { period: '2025-09-30', eps: 0.41 },
+                    { period: '2025-12-31', eps: 0.62 }, { period: '2026-03-31', eps: 1.8 }, { period: '2026-06-30', eps: 3.37 }],
+    monthly_revenue_history: [{ ym: '2026-06', rev: 27134592000 }, { ym: '2026-07', rev: 30572583000 }, { ym: '2026-08', rev: 30601000000 }, { ym: '2026-09', rev: 34423266000 }],
+    revenue_yoy: 55.3, total_dividend: 0.8, total_dividend_4q: 0.8, quarterly_dividends: [{ ex_date: '2026-07-08', cash: 0.8 }] } };
+  PRO._cache['data/fin/2382.json'] = { q: [{ p: '2025-12-31', gm: 9.3 }, { p: '2026-03-31', gm: 11.9 },
+    { p: '2026-06-30', pub: '2026-08-14', gm: 18.9, oim: 13.6, opi: 11357281000, ni: 27550181000, ocf: 3119754000, doi: 80 }],
+    ni4: 51002248000, fcf4: -9114435000 };
+  PRO._confCC['2382'] = { decks: [
+    { d: PRO._cache['data/confcall.json'].recent[0].d, f: '238220260916M001.pdf', pages: 15, st: 'ok', prev_d: dPrev,
+      nums: [[7, '推升2026年第3季EPS達4.90元,改寫單季歷史新高。'], [8, '營收占比提升至58.1%。']],
+      outlook: [[12, '第四季合併營收將持續攀升,整體績效將優於第三季。']], new: [['AI 伺服器', 13]], dropped: ['ABF', '載板'] },
+    { d: dPrev, f: '238220260906M001.pdf', pages: 15, st: 'ok', nums: [[10, '上半年EPS 5.17元,創下歷史新高。']], outlook: [] }] };
+  PRO._confPrepAt = { '2382': 'ok' };
+  // 這一場被延期(颱風假):公司備註原文照南亞那一則
+  const R = PRO._cache['data/confcall.json'].recent[0];
+  R.other = '如台北市政府公告115/10/23停止上班，本說明會將順延至115/10/27 14:00(線上會議)'; R.mv = td; R.mvc = 1;
+  PRO._confData = PRO._cache['data/confcall.json'];
+  PRO.confSearch(''); PRO.confSel('new'); PRO.confPick('2382');
+  const full = PRO._confDeepPrompt('2382', '', false), short = PRO._confDeepPrompt('2382', '', true);
+  // 對照:同一列改成「沒有條件的延期」(公司直接說改到哪天)→ ⛔ 不可寫「若停班」
+  R.mvc = 0; const fullU = PRO._confDeepPrompt('2382', '', false), shortU = PRO._confDeepPrompt('2382', '', true); R.mvc = 1;
+  const el = document.getElementById('tabConf');
+  const facts = el.querySelector('[data-conf-facts="2382"]');
+  if (facts) facts.open = true;                 // ⚠️ 關著的 <details> 讀不到 innerText(CLAUDE.md 去重那條的坑)
+  const card = el.querySelector('[data-conf-card][data-conf-row="2382"]');
+  const lrow = el.querySelector('[data-conf-row="2382"]:not([data-conf-card])');
+  const alert = (document.getElementById('confAlert') || {}).innerText || '';
+  // 決定性對照:同一列拿掉 mv → 回到「已經開完」那一區的卡片
+  delete R.mv; delete R.mvc; PRO._confPaint();
+  const card2 = el.querySelector('[data-conf-card][data-conf-row="2382"]');
+  R.mv = td; R.mvc = 1; PRO._confPaint();
+  return { full, short, fullU, shortU, factsTxt: facts ? facts.innerText : '', card: !!card, lrowTxt: lrow ? lrow.innerText.replace(/\s+/g, ' ') : '',
+           alert: alert.replace(/\s+/g, ' '), card2: !!card2, factsN: facts ? (facts.querySelector('summary') || {}).innerText : '' };
+}, { td: dOff(3), d1: dOff(-6), d2: dOff(-5), d3: dOff(-4), d4: dOff(-3), dPrev: dOff(-12) });
+const md2 = d => d.slice(5).replace('-', '/');
+ok(new RegExp(`最近一個交易日 ${md2(dOff(-4))}\\(.\\)收盤 301\\.00 元,當天 -6\\.08%;前一天 ${md2(dOff(-5))}\\(.\\)\\+8\\.28%`).test(V.full),
+  '🔎㉑a 價格帶日期 + 當天漲跌由本站 K 線算;⛔ 量 0 那根(颱風休市的假 K)不算 —— 南亞那份 GPT 照抄了「今日 0.00%」', (V.full.match(/價格[^\n]*/) || [''])[0]);
+ok(!V.full.includes(md2(dOff(-3)) + '('), '🔎㉑a2 決定性對照:量 0 那天的日期 ⛔ 不可出現在價格那一行');
+const WK = d => '日一二三四五六'[new Date(d + 'T00:00:00Z').getUTCDay()];
+ok(V.full.includes(`最近一個交易日 ${md2(dOff(-4))}(${WK(dOff(-4))})`), '🔎㉑a3 星期要對(🐛 以前瀏覽器不在 UTC+8 時差一天)', `${dOff(-4)} = ${WK(dOff(-4))}`);
+const has = (t, ...ps) => ps.every(x => t.includes(x));
+ok(has(V.full, '本益比 21.30 倍 ← 證交所用「最近四季已公告 EPS」算,最新一季 = 2026Q2(四季:2025Q3 0.41、2025Q4 0.62、2026Q1 1.80、2026Q2 3.37,合計 6.20 元,本站加總)', '⚠️ 這次法說會如果公布了新一季的自結 EPS,還沒算進這個本益比'),
+  '🔎㉑b 本益比寫出用到哪一季、四季各多少、本站加總;新一季還沒算進去要講', (V.full.match(/本益比[^\n]*/) || [''])[0]);
+ok(has(V.full, '殖利率 2.40% ← 用最近配的現金股利 0.80 元算(07/08 除息);⚠️ 是過去配的錢'), '🔎㉑c 殖利率寫出用哪一次配息', (V.full.match(/殖利率[^\n]*/) || [''])[0]);
+ok(has(V.full, '2026/09 344.23 億,年增 +55.30%;7~9 月合計 955.97 億(本站加總,可以拿來對簡報的 2026Q3 營收)'),
+  '🔎㉑d 季底月份 → 三個月加總(南亞那份 GPT 的 956.0 億就是這樣對得上)', (V.full.match(/月營收[^\n]*/) || [''])[0]);
+ok(has(V.full, '最新已公告財報 2026Q2(08/14 公布):毛利率 9.3% → 11.9% → 18.9%(2025Q4 → 2026Q2)・營業利益率 13.6%・營業利益 113.57 億 vs 稅後淨利 275.50 億(營業利益是稅後淨利的 0.41 倍',
+       '近四季(到 2026Q2):稅後淨利合計 510.02 億、自由現金流合計 -91.14 億'),
+  '🔎㉑e 財報帶季別:毛利率走勢、本業 vs 稅後、帳面 vs 現金(⛔ 只給一個沒標季別的毛利率)', (V.full.match(/最新已公告財報[^\n]*/) || [''])[0]);
+ok(has(V.full, '15 頁):\n・p7 推升2026年第3季EPS達4.90元', '・講到之後 p12 第四季合併營收將持續攀升', '這次第一次提到:AI 伺服器(p13)', '上一份有、這次沒講:ABF、載板',
+       '):\n・p10 上半年EPS 5.17元', '以簡報 PDF 為準') && /上一份\(/.test(V.full),
+  '🔎㉑f 簡報原文附頁碼 + 上一份的原文(GPT 說拿不到上一份不能比)+ 註明不完整');
+ok(!/🤖|AI 整理|一句話/.test((V.full.match(/【本站從官方簡報抽出的原文[\s\S]*?(?=\n【|\n\n)/) || [''])[0]), '🔎㉑f2 ⛔ 不放本站 AI 摘要(本站 AI 把乙二醇那句讀反過)');
+ok(has(V.full, '【公司備註(公司自己寫在法說會一覽表上的)】如台北市政府公告', '→ ⚠️ 這場可能延到 ', ',可能還沒開:⛔ 還沒開就不要寫 Q&A,只整理簡報', `(公司公告若停班就延到 ${dOff(3)})`),
+  '🔎㉑g 公司備註要帶 + 還沒開就不要寫 Q&A(南亞那份:颱風延到 10/27,GPT 不知道)', (V.full.match(/【公司備註[^\n]*/) || [''])[0]);
+ok(/⚠️公司公告若停班延到/.test(V.short) && V.short.length < 200, '🔎㉑g2 精簡版(網址)也帶延期那一句,而且還是 < 200 字', `len=${V.short.length}`);
+ok(V.fullU.includes(`(公司公告延到 ${dOff(3)})`) && /⚠️公司公告延到/.test(V.shortU) && !/若停班/.test(V.fullU.split('\n')[0] + V.shortU),
+  '🔎㉑g3 有條件(若停班才延)才寫「若停班」;公司直接改日期就照寫「延到」(決定性對照:同一列只換 mvc)', V.fullU.split('\n')[0].slice(0, 90));
+ok(['0️⃣ 30 秒看懂', '📄 公司原話', '🗣️ 白話翻譯', '📌 這代表什麼', '9️⃣ 🕵️ 藏在裡面的訊息', ' a 賺的錢從哪來', ' b 帳面 vs 現金', ' c 成長靠漲價還是賣得更多',
+    ' d 一次性或外部事件', ' e 用詞溫度', ' f 沒講的', ' g 數字對不對得上', ' h 最近 30 天的重大訊息', ' i 本益比 / 殖利率的口徑', '📖 名詞小字典', '⚠️ 我查不到']
+   .every(k => V.full.includes(k)), '🔎㉑h 散戶格式(30 秒看懂 / 原話 → 白話 → 這代表什麼)+ 九項藏在裡面的訊息 + 名詞小字典');
+ok(/⛔ 不要說「利多 \/ 利空 \/ 會漲 \/ 會跌」/.test(V.full) && /⛔ 不可以把別場或去年的 Q&A 當成這一場/.test(V.full) && /寫出算式和兩個原文數字/.test(V.full),
+  '🔎㉑i 新規則:⛔ 利多利空會漲會跌、⛔ 別場的 Q&A、比例要寫算式');
+ok(!/undefined|NaN|null|\[object/.test(V.full), '🔎㉑j 資料齊的時候也沒有 undefined / NaN / null');
+ok(/🧾 會一起帶給 AI 的本站數字/.test(V.factsN) && /最近一個交易日/.test(V.factsTxt) && /公司備註/.test(V.factsTxt) && /簡報原文/.test(V.factsTxt),
+  '🔎㉑k 送出前看得到「會一起帶給 AI 的本站數字」(跟提示詞同一份 _confFacts)', V.factsN);
+ok(!V.card && /⏸️ 可能延到/.test(V.lrowTxt) && /原訂/.test(V.lrowTxt), '⏸️㉒a 延期還沒開 → 排在「接下來」、⛔ 不在「已經開完」那一區;要有 ⏸️ 標籤', V.lrowTxt.slice(0, 160));
+ok(V.card2, '⏸️㉒b 決定性對照:同一列拿掉 mv → 回到「已經開完」的卡片(證明 ㉒a 靠的是延期日期)');
+ok(/廣達 還有 3 天 ⏸️/.test(V.alert), '⏸️㉒c 你的清單提醒照新日期算天數,並標 ⏸️', V.alert.slice(0, 160));
+
 // ② 檔案沒產出 → 專屬文案(⛔ 不可跟「沒有法說會」一樣)
 const nofile = await pg.evaluate(() => { PRO._cache['data/confcall.json'] = null; PRO._confData = undefined; return PRO.renderConf().then(() => { const el = document.getElementById('tabConf'); return { nf: !!el.querySelector('[data-conf-nofile]'), t: (el.innerText || '').replace(/\s+/g, ' ') }; }); });
 ok(nofile.nf && /讀不到 data\/confcall\.json/.test(nofile.t) && /不代表這幾天真的沒有法說會/.test(nofile.t), '②e 檔案沒產出 → 「讀不到 …」+「不代表真的沒有」', nofile.t.slice(0, 120));
@@ -353,3 +437,6 @@ process.exit(bad ? 1 : 0);
 //   E. renderConf 的 !D 分支改成印「這幾天沒有法說會」→ ②e
 //   F. _confMine 拿掉自選那一段 → ③b
 //   G. gemini 改成帶 ?q= → ⑤g
+//   H. _confDeepPrompt 拿掉【公司備註】那一段 → ㉑g
+//   I. _confFacts 價格那一段不跳過量 0 → ㉑a / ㉑a2
+//   J. _confHtml 的 done 改回只看 r.d → ㉒a

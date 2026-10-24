@@ -9053,7 +9053,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.6.4',
+  VER: 'V79.6.5',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -11061,6 +11061,7 @@ ${M.news || '(無)'}
   confPick(sym) {
     this.buzz(10); this._confSym = sym ? String(sym) : null;
     this._confSymPaint();
+    if (this._confSym) this._confPrep(this._confSym).catch(() => {});   // 📎 V79.6.5 先讀好要一起帶的本站數字
     // 📊 挑了一檔之後,統計那一格要多出「這一檔自己過去 N 場」→ ⛔ 不可只重畫 confDeepSym(第一版就漏了)
     const rc = document.getElementById('confReact'); if (rc) rc.innerHTML = this._confReactHtml(this._confSym);
     window.scrollTo(0, document.getElementById('confDeepQ') ? document.getElementById('confDeepQ').offsetTop - 80 : 0);
@@ -11084,6 +11085,17 @@ ${M.news || '(無)'}
   _confAll() {
     const D = this._confData; if (!D) return [];
     return [].concat(D.upcoming || [], D.recent || []).filter(r => r && r.s && r.d);
+  },
+  /** ⏸️ V79.6.5 這一場「實際」哪天開 —— 公司備註寫了延期、新日期比原訂晚就用新日期
+   *  (`mv` 是 confcall_miner.parse_move 解析好的,⛔ 前端不再解析文字;2026-10-23 颱風:南亞 / 欣銓 延到 10/27) */
+  _confEff(r) { const d = String((r && r.d) || ''), mv = String((r && r.mv) || ''); return mv && mv > d ? mv : d; },
+  /** ⏸️ 延期標籤(沒有延期 → 空字串);mvc = 有條件(如 / 若停班)、mvq = 寫了延期但沒寫日期 */
+  _confMoveTag(r) {
+    if (!r) return '';
+    const md = x => String(x || '').slice(5).replace('-', '/');
+    if (r.mv && r.mv > r.d) return `<span class="sigtag warn" data-cc-move="${this._esc(r.mv)}">⏸️ ${r.mvc ? '可能' : ''}延到 ${md(r.mv)}(${this._confWk(r.mv)})${r.mvc ? ',若停班' : ''}</span>`;
+    if (r.mvq) return `<span class="sigtag warn" data-cc-move="q">⏸️ 公司說${r.mvc ? '可能' : '會'}延期(見備註)</span>`;
+    return '';
   },
   /** 這一列拿去比對關鍵字的全文(代號 / 官方簡稱 / 股名表 / 產業 / 地點 / 擇要 / 其他)。
    *  ⭐ `r.name` 是 confcall 自帶的**官方公司簡稱**(918 列全有)→ ⛔ 不可只靠 `nameOf()`
@@ -11140,13 +11152,14 @@ ${M.news || '(無)'}
       const sel = this._confSel;
       if (sel === 'mine') { const m = this._confMine(); rows = rows.filter(r => m.has(String(r.s))); }
       else if (sel === 'new') { const lo = this._confDay(-7); rows = rows.filter(r => (r.d < today && r.d >= lo) || (r.d === today && this._confDeckOf(r))); }
-      else if (sel === 'future') { const hi = this._confDay(14); rows = rows.filter(r => r.d >= today && r.d <= hi); }
+      else if (sel === 'future') { const hi = this._confDay(14); rows = rows.filter(r => { const e = this._confEff(r); return e >= today && e <= hi; }); }
     }
     if (this._confInd) rows = rows.filter(r => (r.ind || '__none__') === this._confInd);
     rows.sort((a, b) => (a.d === b.d ? (a.t || '').localeCompare(b.t || '') : (a.d < b.d ? -1 : 1)));
     return rows;
   },
-  _confWk(d) { try { return ['日', '一', '二', '三', '四', '五', '六'][new Date(d + 'T00:00:00+08:00').getDay()]; } catch (_) { return ''; } },
+  // 🐛 V79.6.5 以前用「台北午夜 + getDay()」→ 瀏覽器不在 UTC+8 時(雲端測試、出國)星期差一天(10/27 週二印成「一」)→ 一律用 UTC 算日期本身的星期
+  _confWk(d) { try { const w = new Date(String(d).slice(0, 10) + 'T00:00:00Z').getUTCDay(); return Number.isFinite(w) ? ['日', '一', '二', '三', '四', '五', '六'][w] : ''; } catch (_) { return ''; } },
   /** 📄 簡報網址 —— ⭐ 一律從**採礦產物給的樣板**組(`src.file`),⛔ 前端不可寫死網址。
    *  探針 Actions #35406340327 實測:GET 就回真 PDF(application/pdf ・%PDF-1.5 ・2.67MB)。
    *  樣板缺了就回空字串 → 顯示端退回「只印檔名」,⛔ 不硬湊一個網址出來。 */
@@ -11167,12 +11180,12 @@ ${M.news || '(無)'}
     const mine = this._confMine(); if (!mine.size) return '';
     const today = this._confToday();
     const end = (() => { const d = new Date(today + 'T00:00:00+08:00'); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); })();
-    const hits = this._confAll().filter(r => mine.has(String(r.s)) && r.d >= today && r.d <= end)
-      .sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+    const hits = this._confAll().filter(r => { const e = this._confEff(r); return mine.has(String(r.s)) && e >= today && e <= end; })
+      .sort((a, b) => { const x = this._confEff(a), y = this._confEff(b); return x < y ? -1 : x > y ? 1 : 0; });
     if (!hits.length) return `<div class="note" data-conf-alert="0">🔔 你的清單(庫存 + 自選 + 決策台)裡,未來 ${days} 天<b>沒有</b>法說會。</div>`;
     const li = hits.map(r => {
-      const dd = Math.max(0, Math.round((new Date(r.d + 'T00:00:00+08:00') - new Date(today + 'T00:00:00+08:00')) / 864e5));
-      return `<span class="labbtn" onclick="PRO.confSearch('${this._esc(r.s)}')">${this._nmTxt(r.s)} <span class="mono">${dd === 0 ? '今天' : '還有 ' + dd + ' 天'}</span></span>`;
+      const dd = Math.max(0, Math.round((new Date(this._confEff(r) + 'T00:00:00+08:00') - new Date(today + 'T00:00:00+08:00')) / 864e5));
+      return `<span class="labbtn" onclick="PRO.confSearch('${this._esc(r.s)}')">${this._nmTxt(r.s)} <span class="mono">${dd === 0 ? '今天' : '還有 ' + dd + ' 天'}</span>${(r.mv && r.mv > r.d) || r.mvq ? ' ⏸️' : ''}</span>`;
     }).join(' ');
     return `<div class="warnbox" data-conf-alert="${hits.length}"><b>🔔 你的清單裡,未來 ${days} 天有 ${hits.length} 場法說會</b><div style="margin-top:4px">${li}</div>
       <div class="note" style="margin-top:4px">⚠️ 那幾天<b>波動常變大</b>;該盯的是擇要/簡報裡的<b>營收、毛利率、資本支出、產能</b>有沒有兌現。
@@ -11228,7 +11241,8 @@ ${M.news || '(無)'}
     const cardMode = !!q || this._confSel === 'new' || this._confSel === 'mine';
     if (!cardMode) return html + this._confListHtml(rows);
     const mine = this._confMine();
-    const done = r => r.d < today || (r.d === today && !!this._confDeckOf(r));
+    // ⏸️ V79.6.5 延期的照新日期判(延到 10/27 的 ⛔ 算「已經開完」—— 那是 GPT 找不到 Q&A 的原因)
+    const done = r => { const e = this._confEff(r); return e < today || (e === today && !!this._confDeckOf(r)); };
     const past = rows.filter(done), fut = rows.filter(r => !done(r));
     const nn = r => { const dg = this._confDeckOf(r); return this._confOk(dg) && !this._confReused(r, dg) ? (dg.new_n || 0) : 0; };
     past.sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (nn(b) - nn(a)) || (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
@@ -11253,8 +11267,9 @@ ${M.news || '(無)'}
     const ok = this._confOk(dgAny), dg = ok ? dgAny : null, reused = ok && this._confReused(r, dg);
     const nm = this.nameOf && this.nameOf(r.s);
     const shown = (nm && nm !== r.s) ? nm : (r.name || r.s);
-    const tags = [`<span class="sigtag">${md(r.d)}(${this._confWk(r.d)})${r.t ? ' ' + this._esc(r.t) : ''}</span>`,
+    const tags = [`<span class="sigtag">${(r.mv && r.mv > r.d) ? '原訂 ' : ''}${md(r.d)}(${this._confWk(r.d)})${r.t ? ' ' + this._esc(r.t) : ''}</span>`,
                   `<span class="sigtag" data-cc-host>${this._confInv(r) ? '券商邀請' : '自辦'}</span>`];
+    const mvTag = this._confMoveTag(r); if (mvTag) tags.push(mvTag);
     if (dg) {
       if (reused) tags.push(`<span class="sigtag" data-cc-reuse>🔁 沿用 ${md(dg.d)} 那場的簡報</span>`);
       else if (dg.reuse) tags.push(`<span class="sigtag" data-cc-reuse>🔁 沿用 ${md(dg.reuse)} 那份簡報</span>`);
@@ -11270,9 +11285,11 @@ ${M.news || '(無)'}
     if (!dg && dgAny) body += `<div class="note" style="margin-top:3px" data-cc-stline>📄 簡報重點:${this._esc(this._confStTxt(dgAny))}</div>`;
     else if (!dg) body += `<div class="note" style="margin-top:3px" data-cc-none>📄 簡報重點:${(r.pdf || []).length ? '還沒讀到(每天收盤後讀一輪;簡報多半會後才上傳)' : '公司沒有上傳簡報'}</div>`;
     const key = `${r.s}-${dg ? dg.f : r.d}`;
-    if (dg) body += `<details data-dk="ccd-${this._esc(key)}" ontoggle="PRO.confOpen(this, '${this._esc(r.s)}', '${this._esc(dg.f)}', '${this._esc(r.d)}')"><summary style="cursor:pointer;list-style:none;font-size:11px;color:var(--cyan);margin-top:4px">📄 看重點:公司給的數字・講到「之後」的句子・跟上一份比・開完到現在的股價 <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" data-ccd-body="${this._esc(key)}">⏳ 讀取中…</div></details>`;
+    if (dg) body += `<details data-dk="ccd-${this._esc(key)}" ontoggle="PRO.confOpen(this, '${this._esc(r.s)}', '${this._esc(dg.f)}', '${this._esc(this._confEff(r))}')"><summary style="cursor:pointer;list-style:none;font-size:11px;color:var(--cyan);margin-top:4px">📄 看重點:公司給的數字・講到「之後」的句子・跟上一份比・開完到現在的股價 <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" data-ccd-body="${this._esc(key)}">⏳ 讀取中…</div></details>`;
     if (r.sum) body += `<details data-dk="conf-${r.s}-${r.d}"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim)">📝 擇要訊息(公司在場次表上寫的) <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" style="margin-top:4px;white-space:pre-wrap">${hi(r.sum)}</div></details>`;
     else if (!dg) body += `<div class="note" style="margin-top:2px">📝 擇要訊息:公司尚未提供</div>`;
+    // 📢 V79.6.5 公司備註(延期 / 報名 / 會後上傳…)卡片也要印 —— 以前只有清單印,🆕 剛開完看不到「延到 10/27」
+    if (r.other) body += `<div class="note" style="margin-top:2px" data-cc-other>📢 公司備註:${hi(r.other)}${mvTag ? ' <b>→ 這場還沒開,簡報是先上傳的</b>' : ''}</div>`;
     const files = [];
     for (const f of (r.pdf || [])) {
       const u = this._confFileUrl(f);
@@ -11361,12 +11378,15 @@ ${M.news || '(無)'}
     const hi = t => this._labHi ? this._labHi(this._esc(t), q) : this._esc(t);
     let html = '';
     const groups = new Map();
-    for (const r of rows) { if (!groups.has(r.d)) groups.set(r.d, []); groups.get(r.d).push(r); }
-    for (const [d, list] of groups) {
+    // ⏸️ V79.6.5 延期的排在新日期那一天(標「原訂 MM/DD」)
+    for (const r of rows) { const k = this._confEff(r); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
+    const keys = [...groups.keys()].sort();
+    const g2 = new Map(keys.map(k => [k, groups.get(k)]));
+    for (const [d, list] of g2) {
       const rel = d === today ? '<span class="sigtag good">今天</span>' : (d > today ? '<span class="sigtag">未來</span>' : '<span class="sigtag">已開</span>');
       html += `<div style="font-size:11px;font-weight:700;color:var(--dim);margin:10px 0 4px;border-left:3px solid ${d === today ? 'var(--cyan)' : 'var(--line)'};padding-left:6px">${d.slice(5).replace('-', '/')}(${this._confWk(d)}) ${rel} <span style="font-weight:400;color:var(--dim2)">${list.length} 場</span></div>`;
       for (const r of list) {
-        const past = r.d < today;
+        const past = this._confEff(r) < today;
         const sum = r.sum ? `<details data-dk="conf-${r.s}-${r.d}"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim)">📝 擇要訊息 <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" style="margin-top:4px;white-space:pre-wrap">${hi(r.sum)}</div></details>`
                           : `<div class="note" style="margin-top:2px">📝 擇要訊息:公司尚未提供${past ? '' : '(通常會後才貼)'}</div>`;
         const files = [];
@@ -11384,9 +11404,10 @@ ${M.news || '(無)'}
         html += `<div class="bkrow ${past ? 'done' : 'hold'}" data-conf-row="${this._esc(r.s)}">
           <div class="bkhd"><span class="starnm" onclick="PRO.openStock('${this._esc(r.s)}')">${hi(shown)}</span> <span class="starcode">${hi(r.s)}</span>
             <span class="sigtag">${this._esc(r.mkt || '')}</span>${r.ind ? `<span class="sigtag">${this._esc(this.IND_NAME[r.ind] || r.ind)}</span>` : ''}
+            ${this._confMoveTag(r)}${(r.mv && r.mv > r.d) ? `<span class="sigtag">原訂 ${this._esc(String(r.d).slice(5).replace('-', '/'))}</span>` : ''}
             <span style="margin-left:auto;font-size:11px" class="mono">${this._esc(r.t || '')}</span></div>
           <div class="note" style="margin-top:2px">📍 ${hi(r.place || '—')}</div>
-          ${(() => { const dg0 = past ? this._confDeckOf(r) : null; if (!dg0) return '';
+          ${(() => { const dg0 = (past || (r.mv && r.mv > r.d)) ? this._confDeckOf(r) : null; if (!dg0) return '';   // ⏸️ 延期的簡報常常先上傳
                      // 📋 V79.6.4 讀不成的寫原因;拿舊簡報重講的 ⛔ 標「新東西」
                      if (!this._confOk(dg0)) return `<div class="note" style="margin-top:2px" data-cc-line data-cc-st="${this._esc(dg0.st)}">📄 ${this._esc(this._confStTxt(dg0))}</div>`;
                      const dg = dg0, rs = this._confReused(r, dg);
@@ -11416,9 +11437,20 @@ ${M.news || '(無)'}
   },
   _confSymPaint() {
     const el = document.getElementById('confDeepSym'); if (!el) return;
-    el.innerHTML = this._confSym
-      ? `📌 會帶上:<b>${this._nmc(this._confSym, `PRO.openStock('${this._esc(this._confSym)}')`)}</b> <button class="lbtn" onclick="PRO.confPick(null)">✕ 不帶</button>`
-      : `<span style="color:var(--dim2)">沒有指定公司 → 用關鍵字查整個市場;想查某一檔,在上面清單按「帶這一檔去深度查詢」。</span>`;
+    if (!this._confSym) {
+      el.innerHTML = `<span style="color:var(--dim2)">沒有指定公司 → 用關鍵字查整個市場;想查某一檔,在上面清單按「帶這一檔去深度查詢」。</span>`;
+      return;
+    }
+    const sym = this._confSym;
+    const st = (this._confPrepAt || {})[sym];
+    // 🧾 V79.6.5 送出前看得到:會一起帶給 AI 的本站數字(⛔ 跟提示詞同一份 `_confFacts`)
+    const r = this._confPickRow(sym);
+    const FX = this._confFacts(sym, r);
+    const n = FX.lines.length + (FX.deck.length ? 1 : 0) + (FX.note ? 1 : 0);
+    const prev = st === 'loading' ? `<span style="color:var(--dim2)"> ⏳ 正在讀要一起帶的本站數字…</span>`
+      : `<details data-conf-facts="${this._esc(sym)}" style="margin-top:4px"><summary style="cursor:pointer;list-style:none;font-size:11px;color:var(--cyan)">🧾 會一起帶給 AI 的本站數字(${n} 項)<span style="color:var(--dim2)"> 展開 ▾</span></summary>
+         <div class="note" style="margin-top:4px;white-space:pre-wrap">${[FX.note ? '📢 公司備註:' + FX.note : '', ...FX.lines.map(x => '・' + x), ...(FX.deck.length ? ['📄 簡報原文:', ...FX.deck] : []), FX.miss.length ? `(本站讀不到:${FX.miss.join('、')})` : ''].filter(Boolean).map(x => this._esc(x)).join('\n')}</div></details>`;
+    el.innerHTML = `📌 會帶上:<b>${this._nmc(sym, `PRO.openStock('${this._esc(sym)}')`)}</b> <button class="lbtn" onclick="PRO.confPick(null)">✕ 不帶</button>${prev}`;
   },
   _confPaint() {
     this._confBar();
@@ -11733,41 +11765,189 @@ ${M.news || '(無)'}
       ${errs.length ? `<div class="warnbox" style="margin-top:6px" data-conf-srcerr="1">⚠️ ${errs.join('<br>')}<br>⛔ 那一邊的場次這輪是<b>舊的或缺的</b>,不是真的沒有。</div>` : ''}`;
     this._confPaint();
   },
+  /** 這一檔要拿哪一場來問:原訂日期 ≤ 今天的最後一場(延期的也算 —— 簡報多半已經先上傳);都還沒到就拿最早那場。
+   *  ⚠️ V79.6.5 延期還沒開的場次在 upcoming(排在 recent 前面)→ ⛔ 不可再用「過濾後最後一個」,一律照日期排 */
+  _confPickRow(sym) {
+    if (!sym) return null;
+    const by = (a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
+    const rows = this._confAll().filter(x => String(x.s) === String(sym)).sort(by), today = this._confToday();
+    return rows.filter(x => x.d <= today).slice(-1)[0] || rows[0] || null;
+  },
+  /** 📎 V79.6.5 挑了一檔要帶去深度查詢 → 先把四個小檔讀進快取(⛔ 複製提示詞的時候不可以 await:iOS 會擋剪貼簿,V76.2.1)。
+   *  簡報原文 data/cc/{sym}.json ・每檔基本面 data/chips/{sym}.json(12 個月營收 / 8 季 EPS / 股利)・財報切片 data/fin/{sym}.json ・K 線 data/{sym}.json */
+  async _confPrep(sym) {
+    if (!sym) return;
+    sym = String(sym);
+    this._confPrepAt = this._confPrepAt || {};
+    if (this._confPrepAt[sym] === 'ok') return;
+    this._confPrepAt[sym] = 'loading';
+    const jobs = [this.fetchJson(`data/chips/${sym}.json`, 9000), this.fetchJson(`data/fin/${sym}.json`, 9000), this.fetchJson(`data/${sym}.json`, 9000)];
+    if (this._confCC[sym] === undefined) jobs.push(this.fetchJson(`data/cc/${sym}.json`, 9000).then(J => { this._confCC[sym] = J || null; }));
+    await Promise.allSettled(jobs);
+    this._confPrepAt[sym] = 'ok';
+    if (this._confSym === sym) this._confSymPaint();
+  },
+  /** 🧾 V79.6.5 會一起帶給外部 AI 的「本站數字」—— 提示詞與畫面預覽共用這一份(⛔ 一個數字都不叫 AI 算)。
+   *  ⭐ 每個數字都帶日期 / 季別 / 怎麼算的:南亞那份 GPT 報告把「今日 0.00%」(颱風休市的假 K)、
+   *     「本益比 48.55 倍」(用到 2026Q2 的四季)、「毛利率 18.9%」(第 2 季)照抄,因為本站給的時候沒標。
+   *  回 { lines:[字串…], deck:[字串…], note:字串|'', miss:[讀不到的資料] } */
+  _confFacts(sym, r) {
+    const out = { lines: [], deck: [], note: '', miss: [] };
+    if (!sym) return out;
+    sym = String(sym);
+    const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(+v)) ? null : +v;
+    const f2 = v => (+v).toFixed(2), f1 = v => (+v).toFixed(1);
+    const sg = v => (v > 0 ? '+' : '') + f2(v);
+    const iso = d => String(d || '').replace(/\//g, '-').slice(0, 10);
+    const md = d => iso(d).slice(5).replace('-', '/');
+    const wk = d => this._confWk(iso(d));
+    const qlab = p => { const m = /^(\d{4})-(\d{2})/.exec(String(p || '')); return m ? `${m[1]}Q${Math.ceil(+m[2] / 3)}` : String(p || ''); };
+    const yi = v => f2(v / 1e8);           // 元 → 億(本站換算)
+    // ① 價格:K 線(⛔ 沒有成交的那根不算 —— 2026-10-23 颱風休市那根假 K 量是 0)
+    const K = this._cache[`data/${sym}.json`];
+    const bars = Array.isArray(K) ? K.filter(b => b && num(b.close) > 0 && num(b.volume) > 0) : [];
+    if (bars.length >= 3) {
+      const a = bars[bars.length - 1], b = bars[bars.length - 2], c = bars[bars.length - 3];
+      out.lines.push(`價格(本站 K 線,沒有成交的日子不算):最近一個交易日 ${md(a.date)}(${wk(a.date)})收盤 ${f2(a.close)} 元,當天 ${sg((a.close / b.close - 1) * 100)}%;前一天 ${md(b.date)}(${wk(b.date)})${sg((b.close / c.close - 1) * 100)}%`);
+    } else out.miss.push('K 線');
+    const SD = (this._cache['data/screener.json'] || {}).data_date || '';
+    const c20 = num(this._scrV(sym, 'chg20')), p252 = num(this._scrV(sym, 'pos252')), a20 = num(this._scrV(sym, 'amp20'));
+    const sp = [];
+    if (c20 !== null) sp.push(`近 20 個交易日 ${sg(c20)}%`);
+    if (p252 !== null) sp.push(`一年位階 ${f1(p252)}%(100% = 一年最高、0% = 一年最低)`);
+    if (a20 !== null) sp.push(`近 20 日平均振幅 ${f2(a20)}%`);
+    if (sp.length) out.lines.push(`股價位置(選股快照${SD ? ' ' + md(SD) : ''}):${sp.join('・')}`);
+    // ② 估值:本益比用到哪一季、殖利率用的是哪一次配息
+    const F = (this._cache[`data/chips/${sym}.json`] || {}).fundamentals || null;
+    if (!F) out.miss.push('每檔基本面(月營收 / 每季 EPS / 股利)');
+    const pe = num(this._scrV(sym, 'pe')), yld = num(this._scrV(sym, 'yld'));
+    const qe = F && Array.isArray(F.quarterly_eps) ? F.quarterly_eps.filter(x => x && x.period && num(x.eps) !== null) : [];
+    if (pe !== null) {
+      if (qe.length >= 4) {
+        const l4 = qe.slice(-4), sum = l4.reduce((t, x) => t + +x.eps, 0);
+        out.lines.push(`本益比 ${f2(pe)} 倍 ← 證交所用「最近四季已公告 EPS」算,最新一季 = ${qlab(l4[3].period)}(四季:${l4.map(x => `${qlab(x.period)} ${f2(x.eps)}`).join('、')},合計 ${f2(sum)} 元,本站加總)。⚠️ 這次法說會如果公布了新一季的自結 EPS,還沒算進這個本益比`);
+      } else out.lines.push(`本益比 ${f2(pe)} 倍 ← 證交所用「最近四季已公告 EPS」算(本站讀不到是哪四季)`);
+    }
+    if (yld !== null) {
+      const dv = F ? num(F.total_dividend_4q !== undefined && F.total_dividend_4q !== null ? F.total_dividend_4q : F.total_dividend) : null;
+      const qd = F && Array.isArray(F.quarterly_dividends) ? F.quarterly_dividends.filter(x => x && x.ex_date).slice(-1)[0] : null;
+      out.lines.push(`殖利率 ${f2(yld)}% ← ${dv !== null ? `用最近配的現金股利 ${f2(dv)} 元算${qd ? `(${md(qd.ex_date)} 除息)` : ''}` : '用最近配的股利算'};⚠️ 是過去配的錢,跟今年賺多少無關`);
+    }
+    // ③ 月營收:最新月份 + 季底月份時三個月加總(可拿來對簡報的季營收)
+    const mh = F && Array.isArray(F.monthly_revenue_history) ? F.monthly_revenue_history.filter(x => x && /^\d{4}-\d{2}$/.test(String(x.ym || '')) && num(x.rev) > 0) : [];
+    if (mh.length) {
+      const L = mh[mh.length - 1], yoy = num(F.revenue_yoy !== undefined ? F.revenue_yoy : this._scrV(sym, 'yoy'));
+      const [yy, mm] = L.ym.split('-').map(Number);
+      let t = `月營收(公司公布):${yy}/${String(mm).padStart(2, '0')} ${yi(L.rev)} 億${yoy !== null ? `,年增 ${sg(yoy)}%` : ''}`;
+      if (mm % 3 === 0 && mh.length >= 3) {
+        const q3 = mh.slice(-3), ok = q3.every((x, i) => { const [y2, m2] = x.ym.split('-').map(Number); return (y2 * 12 + m2) === (yy * 12 + mm) - (2 - i); });
+        if (ok) t += `;${mm - 2}~${mm} 月合計 ${yi(q3.reduce((s2, x) => s2 + +x.rev, 0))} 億(本站加總,可以拿來對簡報的 ${yy}Q${mm / 3} 營收)`;
+      }
+      out.lines.push(t);
+    }
+    // ④ 最新已公告財報(季別):毛利率走勢、營業利益 vs 稅後淨利、現金流、存貨
+    const FN = this._cache[`data/fin/${sym}.json`];
+    const q = FN && Array.isArray(FN.q) ? FN.q.filter(x => x && x.p) : [];
+    if (q.length) {
+      const L = q[q.length - 1], parts = [];
+      const g3 = q.slice(-3).filter(x => num(x.gm) !== null);
+      if (g3.length >= 2) parts.push(`毛利率 ${g3.map(x => f1(x.gm) + '%').join(' → ')}(${qlab(g3[0].p)} → ${qlab(g3[g3.length - 1].p)})`);
+      if (num(L.oim) !== null) parts.push(`營業利益率 ${f1(L.oim)}%`);
+      if (num(L.opi) !== null && num(L.ni) !== null) {
+        parts.push(`營業利益 ${yi(L.opi)} 億 vs 稅後淨利 ${yi(L.ni)} 億` + (L.ni > 0 ? `(營業利益是稅後淨利的 ${f2(L.opi / L.ni)} 倍,本站算;小於 1 = 稅後淨利有一大塊不是本業賺的)` : ''));
+      }
+      if (num(L.ocf) !== null) parts.push(`營業現金流 ${yi(L.ocf)} 億`);
+      if (num(L.doi) !== null) parts.push(`存貨天數 ${Math.round(L.doi)} 天`);
+      if (parts.length) out.lines.push(`最新已公告財報 ${qlab(L.p)}${L.pub ? `(${md(L.pub)} 公布)` : ''}:${parts.join('・')}`);
+      if (num(FN.ni4) !== null && num(FN.fcf4) !== null) out.lines.push(`近四季(到 ${qlab(L.p)}):稅後淨利合計 ${yi(FN.ni4)} 億、自由現金流合計 ${yi(FN.fcf4)} 億(本站加總;兩個差很多 = 帳面賺的錢沒有同樣變成現金)`);
+    } else out.miss.push('財報切片');
+    // ⑤ 簡報原文(本站從官方 PDF 抽的;⛔ 不放本站 AI 摘要 —— 本站 AI 讀反過,錯的不要再被放大)
+    const J = this._confCC[sym];
+    const decks = J && Array.isArray(J.decks) ? J.decks.filter(x => x && x.d && (!x.st || x.st === 'ok')) : [];
+    const cut = t => { const z = String(t || '').replace(/\s+/g, ' ').trim(); return z.length > 110 ? z.slice(0, 110) + '…' : z; };
+    const dk = (r && decks.find(x => (r.pdf || []).includes(x.f))) || decks[0] || null;
+    if (dk) {
+      const prev = decks.find(x => x.d < dk.d && x.f !== dk.f) || null;
+      const pg = p => p ? `p${p} ` : '';
+      out.deck.push(`這一份(${md(dk.d)} 那場的簡報,${dk.pages || '?'} 頁):`);
+      for (const [p, t] of (dk.nums || []).slice(0, 6)) out.deck.push(`・${pg(p)}${cut(t)}`);
+      for (const [p, t] of (dk.outlook || []).slice(0, 4)) out.deck.push(`・講到之後 ${pg(p)}${cut(t)}`);
+      if ((dk.new || []).length) out.deck.push(`・這次第一次提到:${dk.new.slice(0, 8).map(([t, p]) => `${t}${p ? `(p${p})` : ''}`).join('、')}`);
+      if ((dk.dropped || []).length) out.deck.push(`・上一份有、這次沒講:${dk.dropped.slice(0, 8).join('、')}`);
+      if (prev) {
+        out.deck.push(`上一份(${md(prev.d)} 那場的簡報):`);
+        for (const [p, t] of (prev.nums || []).slice(0, 4)) out.deck.push(`・${pg(p)}${cut(t)}`);
+        for (const [p, t] of (prev.outlook || []).slice(0, 3)) out.deck.push(`・講到之後 ${pg(p)}${cut(t)}`);
+      }
+      out.deck.push('⚠️ 本站只抽得到文字:圖片裡的字、表格和部分句子抽不到 → 這份清單不完整,以簡報 PDF 為準');
+    } else out.miss.push('簡報原文');
+    // ⑥ 公司備註(延期 / 報名 / 會後上傳…)
+    if (r && r.other) {
+      const moved = r.mv && r.mv > r.d;
+      out.note = `${r.other}` + (moved || r.mvq ? ` → ⚠️ 這場${r.mvc ? '可能' : ''}${moved ? `延到 ${md(r.mv)}(${wk(r.mv)})` : '延期了'},可能還沒開:⛔ 還沒開就不要寫 Q&A,只整理簡報` : '');
+    }
+    return out;
+  },
   /** 🔎 法人視角的深度查詢提示詞(V77.2.8 使用者:「把重要東西挖出來、摘要重點、法人會看的、**未來展望**」)。
    *  ⭐ 本站算好的數字直接塞進去(禁 AI 算數學鐵律);⛔ 不要求它評分/給部位/給買賣建議。
-   *  ⚠️ 完整版 700~900 字 → 網址只帶**精簡版**(V76.2.1:iOS 交棒帶不動長網址),完整版走剪貼簿。 */
+   *  ⚠️ 完整版很長 → 網址只帶**精簡版**(V76.2.1:iOS 交棒帶不動長網址),完整版走剪貼簿。
+   *  📞 V79.6.5 使用者拿 GPT 跑南亞那份:「改成散戶看得懂的、把藏著的東西挖出來」→
+   *     數字一律走 `_confFacts`(帶日期 / 季別 / 口徑)+ 公司備註 + 這一份與上一份的簡報原文;
+   *     輸出改成「30 秒看懂 → 每項:公司原話 → 白話 → 這代表什麼」+ 🕵️ 九項藏在裡面的訊息 + 名詞小字典。 */
   _confDeepPrompt(sym, kw, short) {
-    const rows = sym ? this._confAll().filter(r => String(r.s) === String(sym)) : [];
-    const today = this._confToday();
-    const r = rows.filter(x => x.d <= today).slice(-1)[0] || rows[0] || null;
+    const r = this._confPickRow(sym);
     const who = sym ? `${this._nmTxt(sym)}(${sym})` : '(沒有指定公司)';
-    if (short) return `台股法說會 ${who}${r ? ` ${r.d}` : ''}:${kw || '重點整理'}\n請整理未來展望/財測、產能與資本支出、訂單能見度、價格與成本、Q&A 管理層的說法,每一點附日期與來源網址;查不到寫「查不到」,⛔ 不要給買賣建議。`;
-    const f = [];
-    const put = (k, v, u) => { if (v !== null && v !== undefined && v !== '' && Number.isFinite(+v)) f.push(`${k} ${(+v).toFixed(2)}${u || ''}`); };
-    if (sym) {
-      put('現價', this._scrV(sym, 'c')); put('今日', this._scrV(sym, 'chg'), '%');
-      put('近20日', this._scrV(sym, 'chg20'), '%'); put('一年位階', this._scrV(sym, 'pos252'), '%');
-      put('20日振幅', this._scrV(sym, 'amp20'), '%'); put('本益比', this._scrV(sym, 'pe'), '倍');
-      put('殖利率', this._scrV(sym, 'yld'), '%'); put('月營收年增', this._scrV(sym, 'yoy'), '%');
-      put('毛利率', this._scrV(sym, 'gm'), '%');
+    const md = d => String(d || '').slice(5).replace('-', '/');
+    const moved = !!(r && r.mv && r.mv > r.d);
+    if (short) {
+      const mvTxt = moved ? `⚠️公司公告${r.mvc ? '若停班' : ''}延到${md(r.mv)},還沒開就⛔寫Q&A\n` : (r && r.mvq ? '⚠️公司公告可能延期,先確認有沒有開\n' : '');
+      return `台股法說會 ${who}${r ? ` ${r.d}` : ''}:${kw || '重點整理'}\n${mvTxt}先用 3 句白話講重點,再整理未來展望/財測、產能與資本支出、訂單能見度、價格與成本、Q&A 管理層的說法,每一點附日期與來源網址;查不到寫「查不到」,⛔ 不要給買賣建議。`;
     }
+    const FX = this._confFacts(sym, r);
     const pdfU = (r && (r.pdf || []).map(x => this._confFileUrl(x)).filter(Boolean)) || [];
-    return `台股法說會深度整理:${who}${r ? ` ・${r.d} ${r.t || ''} ・${r.place || ''}` : ''}
-${kw ? `【我想知道】${kw}\n` : ''}${r && r.sum ? `【官方擇要(公司自己填的)】${r.sum}\n` : ''}${pdfU.length ? `【官方簡報 PDF】${pdfU.join(' ')}\n` : ''}${r && r.vid ? `【影音】${r.vid}\n` : ''}${r && r.web ? `【公司 IR】${r.web}\n` : ''}${f.length ? `【本站已經算好的數字,⛔ 不要自己重算】${f.join(' ・ ')}\n` : ''}
-【請把這幾件挖出來並摘要重點 —— 這是法人真正在看的】
-① 未來展望/財測:下一季與全年的營收、毛利率區間;有沒有上修或下修;⭐ **跟上一次法說會比,說法變了什麼**
+    const head = `台股法說會深度整理(要給一般散戶看):${who}${r ? ` ・${moved ? `原訂 ${r.d}(公司公告${r.mvc ? '若停班就' : ''}延到 ${r.mv})` : r.d} ${r.t || ''} ・${r.place || ''}${this._confInv(r) ? ' ・券商邀請' : ''}` : ''}`;
+    const blk = [];
+    if (kw) blk.push(`【我想知道】${kw}`);
+    if (FX.note) blk.push(`【公司備註(公司自己寫在法說會一覽表上的)】${FX.note}`);
+    if (r && r.sum) blk.push(`【官方擇要(公司自己填的)】${r.sum}`);
+    if (pdfU.length) blk.push(`【官方簡報 PDF】${pdfU.join(' ')}`);
+    if (r && r.vid) blk.push(`【影音】${r.vid}`);
+    if (r && r.web) blk.push(`【公司 IR】${r.web}`);
+    if (FX.lines.length) blk.push(`【本站已經算好的數字,⛔ 不要自己重算;引用時連日期 / 季別一起寫】\n${FX.lines.map(x => '・' + x).join('\n')}`);
+    if (FX.deck.length) blk.push(`【本站從官方簡報抽出的原文(附頁碼,不是 AI 寫的)】\n${FX.deck.join('\n')}`);
+    if (FX.miss.length && sym) blk.push(`(本站讀不到:${FX.miss.join('、')} → 這幾項沒放進來,⛔ 不要自己補數字)`);
+    return `${head}
+${blk.join('\n')}
+
+【請照這個格式寫 —— 讀的人是一般散戶,要國中生也看得懂】
+0️⃣ 30 秒看懂:3 句白話(每句 30 字以內),講這次最重要的事
+①~⑧ 每一項都寫三行:📄 公司原話(附頁碼或日期 + 來源網址)→ 🗣️ 白話翻譯 → 📌 這代表什麼(只講事實,⛔ 不講會漲會跌)
+① 未來展望/財測:下一季與全年的營收、毛利率區間;有沒有上修或下修;⭐ **跟上一次法說會比,說法變了什麼**(本站有附上一份簡報的原文)
 ② 產能與資本支出:新廠/擴產時程、資本支出金額、稼動率
 ③ 訂單能見度:在手訂單、能見度幾個月、客戶集中度有沒有變化
 ④ 價格與成本:平均售價走勢、原料、匯率、關稅
 ⑤ 新產品/新製程的量產時間表
 ⑥ 庫存水位與去化狀況
-⑦ Q&A:法人問了什麼、**管理層對哪些問題講得保守或避開**
+⑦ Q&A:法人問了什麼、**管理層對哪些問題講得保守或避開**(⛔ 不可以把別場或去年的 Q&A 當成這一場;這場還沒開就寫「還沒開」)
 ⑧ 公司自己講的風險與不確定性
+9️⃣ 🕵️ 藏在裡面的訊息(逐條回答,查不到寫「查不到」):
+ a 賺的錢從哪來:本業(營業利益)與業外(轉投資 / 匯兌 / 處分 / 一次性)各多少;業外主要是哪一家轉投資(寫股票代號),它下一次公布營收或開法說會是哪天
+ b 帳面 vs 現金:獲利跟營業現金流有沒有一起變多(本站有附)
+ c 成長靠漲價還是賣得更多:原文有沒有「漲價、缺貨、供應緊缺、價量齊揚、稼動率」這類字;是景氣循環型,還是新產品 / 新客戶
+ d 一次性或外部事件:天災、戰爭、對手停產、匯率 —— 那件事過去之後會不會回去
+ e 用詞溫度:跟上一次比,形容詞有沒有變(樂觀 → 審慎、全年 → 下半年);有沒有給「數字」的展望,還是只有方向
+ f 沒講的:上一次有講、這次沒講的產品 / 客戶 / 擴產(本站比對結果在上面)
+ g 數字對不對得上:簡報 vs 新聞稿 vs 本站月營收加總;單季還是累計、合併還是個體、自結還是會計師核閱過
+ h 最近 30 天的重大訊息與澄清(日期 + 一句話),那幾天股價怎麼動(本站有附最近兩天)
+ i 本益比 / 殖利率的口徑:本站的數字用到哪一季、這次公布的數字有沒有算進去
+🔟 下次法說會最該追的問題(最多 5 個)
+⚠️ 我查不到 / 不確定的地方(誠實列出來)
+📖 名詞小字典:這份用到的專有名詞,每個一句白話(例:權益法投資收益 = 公司持有別家公司的股份,那家公司賺錢、照持股比例分到的帳面獲利,不是自己賣東西賺的)
 
 【規則】
 ・每一點附上**日期**與**來源網址**;查不到就寫「查不到」,⛔ 不要猜、⛔ 不要留模板空格
-・數字照抄原文,⛔ 不要自己換算單位
-・⛔ 不要給買賣建議、⛔ 不要評分或星等、⛔ 不要講幾成部位
+・數字照抄原文(連單位、名稱一起),⛔ 不要自己換算單位;需要算比例時,寫出算式和兩個原文數字(讓人按計算機就驗得到)
+・⛔ 不要給買賣建議、⛔ 不要評分或星等、⛔ 不要講幾成部位、⛔ 不要說「利多 / 利空 / 會漲 / 會跌」
 ・繁體中文、白話、條列`;
   },
   confAsk() {
@@ -11779,14 +11959,14 @@ ${kw ? `【我想知道】${kw}\n` : ''}${r && r.sum ? `【官方擇要(公司�
     const r = this._askAi(short, this._confEngGet(), full);
     if (!r) return null;
     const nm = (this._CONF_ENG.find(x => x[0] === r.eng) || [])[1] || r.eng;
-    this.toast(r.carried ? `🔎 已帶去 ${nm};⭐ **完整版**(八個面向)已複製到剪貼簿,貼上可問更深` : `📋 完整提示詞已複製;${nm} 不吃網址帶字 → 開了之後長按貼上`, 3000);
+    this.toast(r.carried ? `🔎 已帶去 ${nm};⭐ **完整版**(八個面向 + 藏在裡面的訊息 + 本站數字)已複製到剪貼簿,貼上可問更深` : `📋 完整提示詞已複製;${nm} 不吃網址帶字 → 開了之後長按貼上`, 3000);
     return r;
   },
   confCopyPrompt() {
     const ta = document.getElementById('confDeepQ');
     const kw = String((ta && ta.value) || '').trim();
     const full = this._confDeepPrompt(this._confSym, kw, false);
-    this.toast(this._copySync(full) ? '📋 完整提示詞已複製(八個面向)' : '⚠️ 複製失敗,請長按下方文字自己選取', 2600);
+    this.toast(this._copySync(full) ? '📋 完整提示詞已複製(八個面向 + 藏在裡面的訊息 + 本站數字)' : '⚠️ 複製失敗,請長按下方文字自己選取', 2600);
     return full;
   },
 

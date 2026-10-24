@@ -19,7 +19,9 @@
      hist:{ "2330":["2026-07-17", …] }   // 只存過去日期,每檔 ≤ HIST_MAX 筆,從舊檔合併(累積型)
      n:{sii, otc, upcoming, recent, with_sum, with_files} }
    row = { s, name, mkt:"上市"|"上櫃", d:"YYYY-MM-DD", t:"HH:MM", place, sum(≤400 字),
-           pdf:[檔名…](⚠️ 只有檔名 —— MOPS 用 POST 表單下載,⛔ 沒有可直接開的網址), web, vid }
+           pdf:[檔名…](⚠️ 只有檔名 —— MOPS 用 POST 表單下載,⛔ 沒有可直接開的網址), web, vid, other,
+           mv?:"YYYY-MM-DD"(⏸️ V79.6.5 公司備註寫的延期新日期), mvc?:1(延期有條件:如/若停班), mvq?:1(寫了延期但沒寫日期) }
+   ⏸️ 「已經開了沒」一律看 `eff_date(row)`(有 mv 且比 d 晚就用 mv)—— upcoming / recent / hist / 行事曆都照它分。
 
 ⛔ 四條不可改掉:
    ① **每個市場各自 try/except**(陷阱 #44)—— 上櫃掛掉⛔ 不可拖累上市;掛的那邊要寫 `src_error`(陷阱 #22)。
@@ -74,6 +76,65 @@ def _strip(html):
     return re.sub(r'\s+', ' ', t).strip()
 
 
+# ⏸️ V79.6.5 公司在「其他應敘明事項」寫延期(颱風假 / 臨時改期)→ 新日期。2026-10-23 颱風「薔琵」實例(逐字):
+#   南亞 1303「如台北市政府公告115/10/23停止上班，本說明會將順延至115/10/27 14:00(線上會議)」
+#   欣銓 3264「視公司所在地若因薔琵颱風影響，停止上班上課，原訂115/10/23法說會將順延至10/27召開」
+#   高興昌 2008「若因薔琵颱風影响,本公司115/10/23原訂法說會延後一個工作日舉辦.」(沒寫日期)
+#   泰宗 4169「原10/23法說會，因遇薔琵颱風改期至10/27。…」(場次表的日期已經改成 10/27 → ⛔ 不算延期)
+# ⛔ 只認延期動詞**後面**的日期(原訂日期寫在前面,⛔ 不可被當成新日期);⛔ 不維護節日行事曆(「延後一個工作日」只標 mvq)。
+_MOVE_VERB = r'(?:順延|延期|改期|延後|延至|改至|移至|延到|改到|挪至)'
+_MOVE_RE = re.compile(_MOVE_VERB + r'\s*(?:至|到|於)?\s*(?:(\d{2,4})\s*[/年.\-]\s*)?(\d{1,2})\s*[/月.\-]\s*(\d{1,2})')
+_MOVE_ANY = re.compile(_MOVE_VERB)
+_MOVE_CTX = re.compile(r'法說|說明會|會議|召開|舉辦|本場|本次')     # 「簡報延後上傳」這種 ⛔ 不是會議延期
+_MOVE_IF = re.compile(r'如|若|視|倘')
+
+
+def parse_move(other, d):
+    """公司備註 → {'mv': 'YYYY-MM-DD'} / {'mvq': 1} / {}(有條件再加 'mvc': 1)。
+    新日期 ⛔ 不晚於原訂日 → {}(場次表已經改好日期);晚超過 120 天 → 只標 mvq(⛔ 不信)。"""
+    t = str(other or '')
+    if not t or not _MOVE_ANY.search(t) or not _MOVE_CTX.search(t):
+        return {}
+    try:
+        d0 = date.fromisoformat(str(d)[:10])
+    except Exception:
+        return {}
+    out = {}
+    m = _MOVE_RE.search(t)
+    if m:
+        y, mo, dd = m.group(1), int(m.group(2)), int(m.group(3))
+        if y:
+            yy = int(y)
+            yy = yy + 1911 if yy < 1000 else yy
+        else:
+            yy = d0.year
+        try:
+            nd = date(yy, mo, dd)
+        except ValueError:
+            nd = None
+        if nd and not y and nd < d0 - timedelta(days=180):
+            nd = date(nd.year + 1, mo, dd)        # 沒寫年份又跨年(12/30 → 1/5)
+        if nd is None:
+            out['mvq'] = 1
+        elif nd <= d0:
+            return {}
+        elif nd > d0 + timedelta(days=120):
+            out['mvq'] = 1
+        else:
+            out['mv'] = nd.isoformat()
+    else:
+        out['mvq'] = 1
+    if _MOVE_IF.search(t):
+        out['mvc'] = 1
+    return out
+
+
+def eff_date(r):
+    """⏸️ 這一場「實際」哪天開:公司備註寫了延期、而且新日期比原訂晚 → 新日期;否則原訂日。"""
+    d, mv = str((r or {}).get('d') or ''), str((r or {}).get('mv') or '')
+    return mv if mv and mv > d else d
+
+
 def parse_rows(html, mkt):
     """把 ajax_t100sb02_1 回的 HTML 表格 → [row]。⛔ 只認 12 欄的資料列(表頭與空表不算)。"""
     out = []
@@ -101,6 +162,7 @@ def parse_rows(html, mkt):
             'vid': vid[0] if vid else '',
             'other': '' if other in ('無', '無。', '') else other[:160],
         })
+        out[-1].update(parse_move(out[-1]['other'], d))   # ⏸️ V79.6.5 延期(只在有的時候才多這幾欄)
     return out
 
 
@@ -155,19 +217,21 @@ def to_macro_events(rows, today, window_days=14):
        ⛔ 改格式會讓報告頁 §12 / 個股頁提醒整個對不到(陷阱 #37)。"""
     end = today + timedelta(days=window_days)
     seen, out = set(), []
-    for r in sorted(rows, key=lambda x: x['d']):
+    for r in sorted(rows, key=lambda x: eff_date(x)):
+        ed = eff_date(r)                                   # ⏸️ V79.6.5 延期的照新日期
         try:
-            d = date.fromisoformat(r['d'])
+            d = date.fromisoformat(ed)
         except Exception:
             continue
         if not (today <= d <= end):
             continue
-        ev = f"📞 {r.get('name') or ''}({r['s']}) 法說會" + (f" {r['t']}" if r.get('t') else '')
-        k = (r['d'], ev)
+        ev = (f"📞 {r.get('name') or ''}({r['s']}) 法說會" + (f" {r['t']}" if r.get('t') else '')
+              + (f"(原訂 {r['d'][5:].replace('-', '/')},公司公告延期)" if ed != r['d'] else ''))
+        k = (ed, ev)
         if k in seen:
             continue
         seen.add(k)
-        out.append({'date': r['d'], 'event': ev})
+        out.append({'date': ed, 'event': ev})
     return out
 
 
@@ -179,10 +243,11 @@ def merge_hist(old_hist, rows, today):
             hist[str(k)] = [x for x in v if isinstance(x, str)]
     t = today.isoformat()
     for r in rows:
-        if r['d'] < t:
+        ed = eff_date(r)                                   # ⏸️ V79.6.5 延期還沒開的 ⛔ 算進歷年
+        if ed < t:
             hist.setdefault(r['s'], [])
-            if r['d'] not in hist[r['s']]:
-                hist[r['s']].append(r['d'])
+            if ed not in hist[r['s']]:
+                hist[r['s']].append(ed)
     for k in list(hist):
         hist[k] = sorted(set(hist[k]))[-HIST_MAX:]
         if not hist[k]:
@@ -411,8 +476,8 @@ def build(rows_sii, err_sii, rows_otc, err_otc, today, old=None):
             r['ind'] = c
         else:
             r.pop('ind', None)
-    upcoming = [r for r in rows if r['d'] >= t]
-    recent = [r for r in rows if r['d'] < t]
+    upcoming = [r for r in rows if eff_date(r) >= t]     # ⏸️ V79.6.5 延期還沒開的算「未來」
+    recent = [r for r in rows if eff_date(r) < t]
     hist = merge_hist(old.get('hist'), rows, today)
     # 📊 會後股價反應(V77.2.8;⛔ 事實統計不是訊號)——算不出來就沿用舊的,⛔ 不編一組
     react = build_react(hist, today)

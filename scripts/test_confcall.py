@@ -354,6 +354,51 @@ _o3, _m3 = C.backfill(1900, date(2026, 10, 2), _fake, {})
 ok('📚f 沒有舊檔 → ⛔ 不補', _o3 is None, _m3)
 C.PAST, C.FUTURE = 60, 45   # 還原(backfill 改過 global)
 
+
+# ── ⏸️ V79.6.5 公司備註寫延期(2026-10-23 颱風「薔琵」)—— 備註原文逐字抄自 data/confcall.json,走正式入口 parse_rows ──
+def _mv_row(code, name, roc, tm, other, mkt='上市'):
+    return (f"<tr class='even' data-type='body' ><td>{code}</td><td>{name}</td><td align='center'>{roc}</td>"
+            f"<td align='center'>{tm}</td><td>線上法說會</td><td>本公司受邀參加證券舉辦之法人說明會，說明本公司之營運概況</td>"
+            f"<td></td><td></td><td></td><td></td><td>{other}</td><td></td></tr>")
+MV_HTML = '<table>' + ''.join([
+    _mv_row('1303', '南亞', '115/10/23', '14:00', '如台北市政府公告115/10/23停止上班，本說明會將順延至115/10/27 14:00(線上會議)'),
+    _mv_row('3264', '欣銓', '115/10/23', '14:00', '視公司所在地若因薔琵颱風影響，停止上班上課，原訂115/10/23法說會將順延至10/27召開', '上櫃'),
+    _mv_row('2008', '高興昌', '115/10/23', '14:00', '若因薔琵颱風影响,本公司115/10/23原訂法說會延後一個工作日舉辦.'),
+    _mv_row('4169', '泰宗', '115/10/27', '14:30', '原10/23法說會，因遇薔琵颱風改期至10/27。報名網址https://reurl.cc/0k0lMY', '上櫃'),
+    _mv_row('6530', '創威', '115/10/27', '14:00', '簡報內容檔案於當日會後公告於公開資訊觀測站。'),
+    _mv_row('6548', '長科', '115/10/28', '14:00', '活動報名，請洽凱基證券 鄭小姐 02-2181-8167'),
+    _mv_row('9001', '測試', '115/12/30', '14:00', '因故本次法說會改期至1/6舉行'),
+    _mv_row('9002', '測試二', '115/10/23', '14:00', '簡報延後至10/30上傳'),
+]) + '</table>'
+mv_rows = {r['s']: r for r in C.parse_rows(MV_HTML, '上市')}
+ok('⏸️a 南亞:民國年「順延至115/10/27」→ mv 2026-10-27、有條件(如台北市停班)',
+   mv_rows['1303'].get('mv') == '2026-10-27' and mv_rows['1303'].get('mvc') == 1 and 'mvq' not in mv_rows['1303'], mv_rows['1303'])
+ok('⏸️b 欣銓:「原訂115/10/23…順延至10/27」→ 原訂日期 ⛔ 不可被當新日期;沒寫年份照原訂那年',
+   mv_rows['3264'].get('mv') == '2026-10-27' and mv_rows['3264'].get('mvc') == 1, mv_rows['3264'])
+ok('⏸️c 高興昌:「延後一個工作日」沒寫日期 → 只標 mvq(⛔ 不維護節日行事曆,⛔ 猜哪天)',
+   mv_rows['2008'].get('mvq') == 1 and 'mv' not in mv_rows['2008'] and mv_rows['2008'].get('mvc') == 1, mv_rows['2008'])
+ok('⏸️d 泰宗:場次表日期已經改成 10/27 → 新日期不晚於原訂日 → ⛔ 不算延期', not ({'mv', 'mvq', 'mvc'} & set(mv_rows['4169'])), mv_rows['4169'])
+ok('⏸️e 一般備註(簡報會後上傳 / 報名資訊)→ 沒有延期欄位',
+   not ({'mv', 'mvq', 'mvc'} & set(mv_rows['6530'])) and not ({'mv', 'mvq', 'mvc'} & set(mv_rows['6548'])))
+ok('⏸️f 沒寫年份又跨年(12/30 → 1/6)→ 2027-01-06', mv_rows['9001'].get('mv') == '2027-01-06', mv_rows['9001'])
+ok('⏸️g 「簡報延後上傳」不是會議延期 → ⛔ 不標', not ({'mv', 'mvq', 'mvc'} & set(mv_rows['9002'])), mv_rows['9002'])
+# build:延期還沒開的算「未來」、⛔ 不進歷年;行事曆照新日期
+_T = date(2026, 10, 24)
+_mvout = C.build(list(mv_rows.values()), None, [], None, _T, old={})
+_up = {r['s'] for r in _mvout['upcoming']}; _rc = {r['s'] for r in _mvout['recent']}
+ok('⏸️h build:南亞 / 欣銓(延到 10/27)在「未來」、⛔ 不在「已開」;高興昌(沒有日期)照原訂日算已開',
+   {'1303', '3264'} <= _up and not ({'1303', '3264'} & _rc) and '2008' in _rc, (_up, _rc))
+ok('⏸️i 延期還沒開的 ⛔ 進歷年 hist', '1303' not in _mvout['hist'] and '3264' not in _mvout['hist'], _mvout['hist'])
+_ev = {e['event']: e['date'] for e in C.to_macro_events(list(mv_rows.values()), _T, 14)}
+_ev1303 = [k for k in _ev if '(1303)' in k]
+ok('⏸️j 行事曆照新日期、文字寫出原訂日(⛔ 代號 / 「法說」照留,index.html 靠它比對)',
+   _ev1303 and _ev[_ev1303[0]] == '2026-10-27' and '原訂 10/23' in _ev1303[0] and '法說' in _ev1303[0], _ev)
+# 決定性對照:同一列拿掉延期欄位 → 回到「已開」
+_plain = dict(mv_rows['1303']); [_plain.pop(k, None) for k in ('mv', 'mvc', 'mvq')]
+_o4 = C.build([_plain], None, [], None, _T, old={})
+ok('⏸️k 決定性對照:同一列拿掉 mv → 回到「已開」、進歷年(證明 ⏸️h/⏸️i 靠的是 mv)',
+   [r['s'] for r in _o4['recent']] == ['1303'] and _o4['hist'].get('1303') == ['2026-10-23'], (_o4['recent'], _o4['hist']))
+
 print()
 if fails:
     print(f'❌ CONFCALL_TEST_FAIL: {fails}')
