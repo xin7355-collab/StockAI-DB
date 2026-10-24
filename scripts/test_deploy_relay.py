@@ -68,7 +68,7 @@ def line_of(needle):
 # ── ① 基準指紋的位置 ─────────────────────────────────────────
 l_base = line_of('/tmp/base_md5.json')
 l_floor = line_of('🗄️ 鋪設底層資料')
-l_artifact = line_of('📥 下載並自動合併')
+l_artifact = line_of('📥 下載 20 個平行宇宙的資料')
 ok('① 有算「基準指紋」(/tmp/base_md5.json)', l_base > 0)
 ok('① 基準指紋在「鋪設底層資料」那步裡(⛔ 不可搬到 artifact 疊加之後)',
    0 < l_floor < l_base < l_artifact, f'floor={l_floor} base={l_base} artifact={l_artifact}')
@@ -482,6 +482,50 @@ rc, o, go = gate_run([], 641, fake=False, extra={'SUPERSEDE_RUNS_JSON': '/nonexi
 ok('⑧庚 假清單讀不到 → go=1、exit 0', rc == 0 and go.strip() == 'go=1', (rc, o, go))
 _st = subprocess.run([sys.executable, '-I', str(GATE_PY), '--selftest'], capture_output=True, text=True, timeout=60)
 ok('⑧ 判斷程式 --selftest 全過', _st.returncode == 0 and 'selftest OK' in _st.stdout, _st.stdout[-400:])
+
+# ── ⑨ 🧩 2026-10-24 #647:artifact 只帶改過的檔 + 依序合併 + 部署前 JSON 體檢 ─────────────
+#   🚨 #647 部署把 confcall.json / confcall_digest.json / screener.json 寫壞(完整 JSON + 舊版尾巴 / 亂碼),
+#      playbook_edge.json 改回 10/23 那份:每一包 artifact 都帶整個 data/(開跑那一刻的版本),
+#      節點開跑時間不同 → 包跟包內容不同 → `merge-multiple: true` 同時寫同一個檔。
+def _step_body(name, start=0):
+    i = next((k for k in range(start, len(lines)) if '- name:' in lines[k] and name in lines[k]), -1)   # ⚠️ 只認步驟標題(註解裡也會提到步驟名)
+    if i < 0:
+        return -1, ''
+    j = i + 1
+    while j < len(lines) and not re.match(r'^      - name:', lines[j]) and not re.match(r'^  [a-z_]+:', lines[j]):
+        j += 1
+    return i + 1, '\n'.join(lines[i:j])
+
+
+l_restore, b_restore = _step_body('📂 還原昨天的快取 (取得基準資料)')
+l_mine, _ = _step_body('⛏️ 執行採礦 (專屬節點')
+l_trim, b_trim = _step_body('🧹 修剪 artifact')
+l_up, _ = _step_body('📤 上傳該節點的採礦結果到暫存區')
+ok('⑨a 節點還原完當下記指紋(art_merge snap),在採礦之前',
+   'art_merge.py snap data /tmp/restored_md5.json' in b_restore and 0 < l_restore < l_mine, (l_restore, l_mine))
+ok('⑨b 上傳前拿掉沒動過的檔(art_merge trim),在「修剪 artifact」那步、上傳之前',
+   'art_merge.py trim data /tmp/restored_md5.json' in b_trim and 0 < l_trim < l_up and 'always()' in b_trim,
+   (l_trim, l_up))
+l_dl, b_dl = _step_body('📥 下載 20 個平行宇宙的資料')
+l_mg, b_mg = _step_body('🧩 依序合併 20 個平行宇宙')
+l_chips, _ = _step_body('📥 下載 chips_miner artifact')
+_dl_code = '\n'.join(x for x in b_dl.split('\n') if not x.lstrip().startswith('#'))
+ok('⑨c ⛔ 下載 mine-data-* ⛔ 不可用 merge-multiple(會同時寫同一個檔)',
+   l_dl > 0 and 'merge-multiple' not in _dl_code and 'path: /tmp/art' in _dl_code, _dl_code[-300:])
+ok('⑨c 依序合併那步存在、在下載之後、chips 之前、撿回之前',
+   'art_merge.py merge /tmp/art .' in b_mg and l_dl < l_mg < l_chips < l_relay, (l_dl, l_mg, l_chips, l_relay))
+ok('⑨c 全檔 ⛔ 不可再出現 merge-multiple: true',
+   not any(re.match(r'\s*merge-multiple:\s*true', x) for x in lines))
+l_gd, b_gd = _step_body('🩺 部署前 JSON 體檢')
+_, b_floor = _step_body('🗄️ 鋪設底層資料')
+ok('⑨d 部署前 JSON 體檢:在撿回之後、gh-pages 部署之前',
+   'art_merge.py guard data' in b_gd and l_relay < l_gd < l_ghp, (l_relay, l_gd, l_ghp))
+ok('⑨d 體檢會換回部署前那份(鋪底層時記下 data 分支 → /tmp/base_sha)+ 遠端那份(/tmp/relay)',
+   '/tmp/base_sha' in b_floor and '--base-ref' in b_gd and '/tmp/base_sha' in b_gd and '--alt-dir /tmp/relay' in b_gd)
+ok('⑨d 體檢 ⛔ 不可擋掉部署(|| true)', '|| true' in b_gd)
+_am = subprocess.run([sys.executable, str(ROOT / 'scripts/art_merge.py'), '--selftest'], capture_output=True, text=True, timeout=120)
+ok('⑨e art_merge --selftest 全過(含決定性對照:舊做法整包上傳 → 別支剛推的檔被改回舊版)',
+   _am.returncode == 0 and 'selftest 全過' in _am.stdout, _am.stdout[-600:])
 
 run_case(single_branch=False)
 run_case(single_branch=True)

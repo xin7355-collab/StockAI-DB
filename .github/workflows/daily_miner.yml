@@ -100,6 +100,8 @@ jobs:
         run: |
           git fetch origin data --depth=1 2>/dev/null || echo "data 分支尚未建立"
           git checkout origin/data -- data/ 2>/dev/null || echo "從零開始"
+          # 🧩 2026-10-24 還原完當下記下 data/ 每個檔的指紋 → 上傳前把「沒動過的」拿掉(見「🧹 修剪 artifact」)
+          python3 scripts/art_merge.py snap data /tmp/restored_md5.json || echo "⚠️ 指紋沒記到 → 這一批照舊整包上傳"
           git fetch origin gh-pages --depth=1 2>/dev/null || true
           git checkout origin/gh-pages -- futures_cache.json      2>/dev/null || true
           git checkout origin/gh-pages -- macro_cache.json        2>/dev/null || true
@@ -164,6 +166,12 @@ jobs:
                       Path(c).unlink(missing_ok=True)
                   print('🧹 SKIP_GLOBAL：已移除 chips / 全域快取（僅 batch 0 提供）')
           PY
+          # 🧩 2026-10-24 #647:artifact 只帶「本批真的改過 / 新產的」檔 ——
+          #    以前整個 data/ 都上傳 → 每一包都帶一份「開跑那一刻」的 confcall / screener / playbook_edge…
+          #    → 節點跑的時候別支推了新版,部署時舊版疊回去(🛟 撿回當成本輪改的)= 新版被改回舊版;
+          #       節點開跑時間不同 → 有的包是舊版、有的是新版 → 同時寫同一個檔 = 寫壞(完整 JSON + 舊版尾巴)。
+          #    部署那邊用最新的 data 分支鋪底層,⛔ 不需要節點再帶一份舊的。⛔ 只動 data/(根目錄四個快取只有節點 0 帶)
+          python3 scripts/art_merge.py trim data /tmp/restored_md5.json || echo "⚠️ 修剪沒做成 → 整包照舊上傳"
 
       - name: 📤 上傳該節點的採礦結果到暫存區
         if: always()   # 即使該 batch 超時或失敗，已採完的部分資料仍上傳，避免下次重跑歸零
@@ -364,6 +372,7 @@ jobs:
           git fetch origin data --depth=1 2>/dev/null || echo "data 分支尚未建立"
           if git rev-parse --verify -q origin/data >/dev/null; then
             git archive origin/data | tar -x -C . 2>/dev/null || echo "⚠️ 底層展開失敗，改由 artifact 提供"
+            git rev-parse origin/data > /tmp/base_sha 2>/dev/null || true   # 🩺 部署前 JSON 體檢:壞掉的換回這一份
           fi
           echo "底層舊資料：$(ls data/*.json 2>/dev/null | wc -l) 檔"
           # ⭐ 本輪的基準:鋪完底層當下的「內容指紋」(此時 data/ 就是 origin/data 的快照)。
@@ -395,11 +404,18 @@ jobs:
           print(f'基準指紋:{len(base)} 檔')
           BASEMD5
 
-      - name: 📥 下載並自動合併 20 個平行宇宙的資料 (疊在底層之上)
+      # 🚨 2026-10-24 #647:以前 `merge-multiple: true` 一次解好幾包到同一個資料夾 ——
+      #    註解寫「各 batch 已無同名衝突」是錯的:每一包都帶著同一批非股票檔(confcall.json…),
+      #    包跟包內容不同時(節點開跑時間不同)同一個檔被同時寫 → confcall.json / screener.json 寫壞。
+      #    ⛔ 不可改回 merge-multiple。各包各一個資料夾,下一步一包一包依序寫(節點 0 最後寫)。
+      - name: 📥 下載 20 個平行宇宙的資料(各包各一個資料夾)
         uses: actions/download-artifact@v4
         with:
           pattern: mine-data-*
-          merge-multiple: true   # 各 batch 已無同名衝突，直接疊上底層覆蓋成最新
+          path: /tmp/art
+
+      - name: 🧩 依序合併 20 個平行宇宙(疊在底層之上,一個檔一個檔寫)
+        run: python3 scripts/art_merge.py merge /tmp/art .
 
       # V15.0:下載 chips_miner artifact(含 fundamentals + radar + top_picks + futures + macro)
       - name: 📥 下載 chips_miner artifact(平行採礦結果)
@@ -666,6 +682,12 @@ jobs:
               print(f'  …另外還有 {len(picked) - 40} 檔')
           print(f'比對基準 {len(base)} 檔 ・遠端沒動 {same} 檔 ・本輪自己改過 {kept} 檔 ・🛟 撿回別支的 {back} 檔')
           RELAY
+
+      # 🩺 2026-10-24 #647 那次 confcall.json / screener.json 寫壞了照樣推上去(手機整頁讀不出來)。
+      #    ⭐ 推之前每個 .json 解析一次:壞的換回部署前那份(鋪底層時的 data 分支)/ 遠端最新那份;
+      #       都救不回才原樣留著並印 ❌。⛔ 一律 exit 0(這是保護,⛔ 不可擋掉其他檔的部署);⛔ 不可排到部署之後。
+      - name: 🩺 部署前 JSON 體檢(壞的換回部署前那份)
+        run: python3 scripts/art_merge.py guard data --base-ref "$(cat /tmp/base_sha 2>/dev/null)" --alt-dir /tmp/relay || true
 
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |

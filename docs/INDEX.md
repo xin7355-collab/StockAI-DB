@@ -5,6 +5,8 @@
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 📞 V79.6.7 法說會 3.0「講了什麼 → 做到了沒 → 有沒有用」:參考資料評估(FinMind 已在用 / node-twstock 重複 / 方格子那篇是假說不是資料 / 第 12 款本站已有 / 一家一個 repo ⛔)+ 研究價值在「對答案」+ 第一步每份簡報存全文(已讀過的排最後補存,⛔ 重叫 AI)
+- 🩺 V79.6.7 daily_miner 合併把別支剛推的檔寫壞 / 改回舊版(10/24 #647:confcall / digest / screener 讀不出來、playbook_edge 回到 10/23)→ 節點只上傳改過的(art_merge snap/trim)+ 依序合併(⛔ merge-multiple)+ 部署前 JSON 體檢 + 累積檔讀法 lib_jsonsafe(⛔ except: return {} 把 5 年法說會歷史當成沒有)
 - 💳 V79.6.6 上市股融資從 2026-05 起錯位(帶日期那份沒讀到、改用沒有日期的 OpenAPI)→ 五道關卡 + OpenAPI 要證明日期 + dt 才蓋掉 + 回補 margin_twse_days + 體檢 G 類 + 推之前先用真實回應驗(macro_probe which=twse_margin:groups 只有 span、OpenAPI 的 0 是空字串)+ 融資走勢剪掉還沒公布的尾巴 + 簡報摘要「風險」只收對公司不利的 → `docs/DECISIONS.md`「💳 V79.6.6」
 - 📞 V79.6.5 南亞法說會 GPT 報告核對:GPT 數字對得上、三個錯是本站餵的(延期沒帶 / 颱風休市假 K「今日 0.00%」/ 本益比毛利率殖利率沒標口徑)→ 提示詞改走 `_confFacts`(帶日期季別口徑 + 公司備註 + 這一份與上一份簡報原文)+ 散戶格式 + 🕵️ 九項藏在裡面的訊息;法說會延期 `parse_move`(192 則命中 3 則全真);颱風假假 K(Yahoo 量 0 佔位列 + 加權最新日之後九成量 0 不動整天刪);本站抽簡報漏掉第 12 頁展望(下一步量過再補)
 - 🔓 每週回測的部署 job 也不拿共用部署鎖:10/23 #57 回測全部正常,但部署 job 排在 `gh-pages-push` 後面(鎖被明日作戰清單的排程備援那輪佔著)、news_express 來排隊 → 每把鎖只留一個排隊的 → 1 秒內 cancelled(網站停在上一週)→ 重跑補上 + 改自己的鎖 `weekly-backtest-deploy` + 5 次重試
