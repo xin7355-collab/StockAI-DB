@@ -1,0 +1,107 @@
+{
+  "updated": "2026-10-24 10:05",
+  "stocks": {
+    "2033": {
+      "status": "⚠️ 注意股",
+      "threshold": "注意條款觸發"
+    },
+    "2424": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-28"
+    },
+    "3167": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-27"
+    },
+    "3287": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-23"
+    },
+    "3354": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-28"
+    },
+    "6716": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-27"
+    },
+    "2221": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-23"
+    },
+    "3230": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-23"
+    },
+    "3597": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-23"
+    },
+    "4979": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-23"
+    },
+    "8111": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-22"
+    }
+  },
+  "diag": {
+    "tw_notice": {
+      "hit": "notetrans",
+      "n": 1,
+      "tried": [
+        {
+          "u": "notetrans",
+          "ok": true,
+          "n": 1
+        }
+      ]
+    },
+    "tw_punish": {
+      "hit": "punish",
+      "n": 2,
+      "tried": [
+        {
+          "u": "punish",
+          "ok": true,
+          "n": 2
+        }
+      ]
+    },
+    "otc_notice": {
+      "hit": null,
+      "n": 0,
+      "note": "TPEx 未開放上櫃注意 OpenAPI(V67.10 實測 11 slug 全 404),不再打"
+    },
+    "otc_punish": {
+      "hit": "tpex_disposal_information",
+      "n": 8,
+      "tried": [
+        {
+          "u": "tpex_disposal_information",
+          "ok": true,
+          "n": 8
+        }
+      ]
+    }
+  }
+}

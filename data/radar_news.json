@@ -1,0 +1,197 @@
+{
+  "updated": "2026-10-24 10:06 UTC",
+  "count": 14,
+  "data": [
+    {
+      "source_name": "自由財經",
+      "title": "中油每公升吸收逾11元 下週油價仍凍漲",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5617532",
+      "published_time": "Sat, 24 Oct 2026 17:17:33 +0800",
+      "matched_keywords": [
+        "戰爭",
+        "油價"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "中油吸收成本超300億，財務壓力大",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台灣攻50％稀土需求自給自足 訂出時間 降低中國斷供風險",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5617536",
+      "published_time": "Sat, 24 Oct 2026 17:16:17 +0800",
+      "matched_keywords": [
+        "出口管制"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利多",
+      "ai_reason": "降低稀土斷供風險，強化供應鏈韌性",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "伊朗戰爭顛覆能源市場！主要產國卡達向美採購LNG至2054年",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5617516",
+      "published_time": "Sat, 24 Oct 2026 17:15:34 +0800",
+      "matched_keywords": [
+        "戰爭"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "能源市場劇烈波動，推升原物料成本",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "東北地區重災！全台復電率破9成 台電力拚今晚全數復電",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5617473",
+      "published_time": "Sat, 24 Oct 2026 16:14:43 +0800",
+      "matched_keywords": [
+        "颱風",
+        "停電"
+      ],
+      "cat": "🔥 事故天災",
+      "ai_sentiment": "利空",
+      "ai_reason": "大規模停電恐衝擊半導體產能",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "AMD 玩家福音！新模組讓 Radeon 也能跑 NVIDIA DLSS，首度解鎖光線重建",
+      "link": "https://technews.tw/2026/10/24/all-dlss-features-including-ray-reconstruction-have-been-ported-to-rdna-4-and-3/",
+      "published_time": "Sat, 24 Oct 2026 07:00:10 +0000",
+      "matched_keywords": [
+        "突破"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "AMD顯卡生態擴充，利好台系零組件",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台積電繳超強財報股價卻下跌？外媒給出答案",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5617138",
+      "published_time": "Sat, 24 Oct 2026 14:34:00 +0800",
+      "matched_keywords": [
+        "財報",
+        "毛利率",
+        "資本支出"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "毛利率季減與資本支出攀升引發股價回檔壓力",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "薔琵遠離全台仍有4.5萬戶停電中 新北1.4萬戶最多",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5617244",
+      "published_time": "Sat, 24 Oct 2026 12:51:15 +0800",
+      "matched_keywords": [
+        "颱風",
+        "停電"
+      ],
+      "cat": "🔥 事故天災",
+      "ai_sentiment": "利空",
+      "ai_reason": "大規模停電恐衝擊半導體及製造業生產",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "今年績效最飆的台股基金不是主動式ETF！  而是它",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5617241",
+      "published_time": "Sat, 24 Oct 2026 12:35:35 +0800",
+      "matched_keywords": [
+        "新高"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利多",
+      "ai_reason": "台股指數漲幅居冠，反映市場強勁",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "產品遭停供下載　訊連：占去年營收比重近15%、已提申訴",
+      "link": "https://www.cna.com.tw/news/afe/202610240065.aspx",
+      "published_time": "Sat, 24 Oct 2026 11:38:25 +0800",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "產品遭蘋果停供下載，營收占比近15%",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "AWS 產能預訂至 2028 年，亞馬遜示警電力、記憶體短缺難解",
+      "link": "https://technews.tw/2026/10/24/aws-capacity-booked-2028-amazon-warns-power-memory-shortages/",
+      "published_time": "Sat, 24 Oct 2026 03:26:55 +0000",
+      "matched_keywords": [
+        "供不應求"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI需求強勁，記憶體與電力短缺利好供應鏈",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "颱風薔琵全台逾28萬戶曾停電　已復電約8成",
+      "link": "https://www.cna.com.tw/news/afe/202610240041.aspx",
+      "published_time": "Sat, 24 Oct 2026 10:38:34 +0800",
+      "matched_keywords": [
+        "颱風",
+        "停電"
+      ],
+      "cat": "🔥 事故天災",
+      "ai_sentiment": "利空",
+      "ai_reason": "颱風致大規模停電，衝擊電力及製造業營運",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台股下週二開盤刺激了？網掀兩派論戰「這樣說」",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5617119",
+      "published_time": "Sat, 24 Oct 2026 10:30:12 +0800",
+      "matched_keywords": [
+        "颱風"
+      ],
+      "cat": "🔥 事故天災",
+      "ai_sentiment": "中立",
+      "ai_reason": "台股因颱風及光復節休市，下週二復牌",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "薔琵颱風釀全台30.3萬戶停電 新北、宜蘭逾1萬戶待復電",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5617107",
+      "published_time": "Sat, 24 Oct 2026 10:21:10 +0800",
+      "matched_keywords": [
+        "颱風",
+        "停電"
+      ],
+      "cat": "🔥 事故天災",
+      "ai_sentiment": "利空",
+      "ai_reason": "大規模停電恐衝擊台積電等半導體產能",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "台積電明年營收能否破 8 兆？不只看輝達，更要看蘇姿丰",
+      "link": "https://technews.tw/2026/10/24/tsmc-revenue-exceed-8-trillion-next-year-nvidia-lisa-su/",
+      "published_time": "Sat, 24 Oct 2026 02:00:32 +0000",
+      "matched_keywords": [
+        "法說",
+        "財報",
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "台積電財報優異，營收有望突破八兆",
+      "important": true
+    }
+  ]
+}
