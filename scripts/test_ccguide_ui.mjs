@@ -7,6 +7,7 @@
 //   ③ 散戶 App 基本頁那一格:這次講的最多 2 句 + 之前講過、已經有答案的最多 2 句;⛔ 研究字樣 / 方向詞(V78.3.4)
 //   ④ 兩邊的判讀文字(_ccPeriod / _ccWhen / _ccWhat / _ccClaim)原始碼一字不差 + 同一批資料輸出一樣
 //   ⑤ 公司原話一律跳脫(⛔ 可以塞 HTML);沒有 g → 兩邊都 ⛔ 多一個字(決定性對照)
+//   ⑦ 散戶那一格引公司原話太長只引前面一段 → 截掉的一定補「…」(⛔ 讓人以為話講到這裡就完了)
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PW_MODULE || '/opt/node22/lib/node_modules/playwright');
@@ -154,6 +155,19 @@ let proOut = null;
   ok(!BAD.test(R.txt), '③ 畫面上 ⛔ 研究字樣 / 方向詞', (R.txt.match(BAD) || [])[0]);
   ok(JSON.stringify(R.out) === JSON.stringify(proOut), '④ 同一批資料:散戶 App 與產業作戰室的判讀文字輸出一模一樣',
      JSON.stringify(R.out).slice(0, 200) + ' ≠ ' + JSON.stringify(proOut).slice(0, 200));
+  // ✂️ ⑦ 公司原話太長只引前面一段 → 截掉的一定補「…」(10/24 截圖:南亞那句剛好切在「優於第三季,」看起來像話講完了)
+  const Q = await pg.evaluate(() => {
+    const S = '2026年南亞前三季表現站上歷史新高，第四季合併營收將持續攀升，主要仍受惠於應用在電子科技領域的各項電子材料需求暢旺，整體績效將優於第三季，如同年初預期，今年會是亮麗的一年。';
+    const L = S + S;   // 一定超過 90 字
+    const card = (t) => { const d = document.createElement('div');
+      d.innerHTML = app._corpConfCallHtml('1303', { s: '1303', name: '南亞', decks: [{ d: '2026-10-23', f: 'x.pdf', st: 'ok', pages: 15,
+        g: [{ p: 13, t, m: 'rev', dir: 'up', h: '2026Q4', ok: 1, r: { res: 'pending', cur: '2026Q4', base: '2026Q3' } }], outlook: [], nums: [] }] });
+      return d.querySelector('[data-corp-cc-g]')?.textContent || ''; };
+    return { len: S.length, fit: app._ccQuote(S, 120), cut: app._ccQuote(S, 70), long: card(L), short: card(S) };
+  });
+  ok(Q.fit.length === Q.len && !/…$/.test(Q.fit), '⑦ 整句放得下 → 原文一個字都不少、⛔ 補「…」', Q.fit.slice(-12));
+  ok(/…$/.test(Q.cut) && !/[，,、;；:：]…$/.test(Q.cut) && Q.cut.length <= 71, '⑦ 截短 → 尾巴補「…」、⛔ 留逗號', Q.cut.slice(-12));
+  ok(/…」/.test(Q.long) && !/…」/.test(Q.short), '⑦ ⭐ 決定性對照:卡片上太長的那句才有「…」,放得下的照原文', JSON.stringify({ long: Q.long.slice(-40), short: Q.short.slice(-40) }));
   ok(!errs.length, '⓪ 散戶 App 沒有 pageerror', errs.join(' | '));
   await pg.close();
 }

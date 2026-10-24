@@ -567,7 +567,7 @@ def parse_ai_json(txt):
         return None
 
 
-def feat_of(pages, meta):
+def _deck_lines(pages):
     lines = page_lines(pages)
     # 🧾 免責聲明那一頁(同一頁 ≥2 行在講「預測性資訊 / 實際結果可能不同」)整頁拿掉 —— 一句一句擋會漏(10/23 實跑兩份漏掉)
     dpg = {}
@@ -575,7 +575,19 @@ def feat_of(pages, meta):
         if DISCLAIM_RE.search(ln):
             dpg[p] = dpg.get(p, 0) + 1
     lines = [(p, ln) for p, ln in lines if dpg.get(p, 0) < 2]
-    lines = drop_translation(lines)
+    return drop_translation(lines)
+
+
+def show_of(pages):
+    """🧩 V79.7.0 畫面上那三樣(標題 / 講到之後 / 公司給的數字)有存全文就照「現在的」規則重抽。
+    🚨 10/24 南亞那份是在「PDF 斷行接回整句」之前讀的 →「…淨利率達30.9%。轉投資也因記憶體價格持續」「上漲,南亞科…」被切成兩句;
+       特徵檔(研究用)⛔ 動,只換寫給 App 的那份(data/cc)。⛔ 叫 AI、⛔ 重新下載。"""
+    lines = _deck_lines(pages)
+    return refilter({'st': 'ok', 'titles': titles_of(lines), 'outlook': rank_outlook(outlook_of(lines)), 'nums': nums_of(lines)})
+
+
+def feat_of(pages, meta):
+    lines = _deck_lines(pages)
     ol = rank_outlook(outlook_of(lines))
     return {
         'pages': len(pages),
@@ -1375,6 +1387,7 @@ class _GuideData:
         import confcall_guidance as G        # 函式裡才 import(confcall_guidance 也 import 這支)
         self.G, self.files, self.today, self.log = G, files, today, log
         self.cache, self.fin, self.err, self.n = {}, {}, 0, 0
+        self.show = {}                       # 🧩 V79.7.0 檔名 → show_of(全文)(畫面那三樣照現在的規則重抽)
         fy = _load_json(DATA / 'fund_yoy_gm.json', {}) if (DATA / 'fund_yoy_gm.json').exists() else {}
         self.months = {k: G.months_of(v) for k, v in fy.items() if isinstance(v, dict)} if isinstance(fy, dict) else {}
 
@@ -1404,6 +1417,11 @@ class _GuideData:
 
     def _calc(self, s, r, pages):
         f = r.get('f')
+        if pages:
+            try:
+                self.show[f] = show_of(pages)
+            except Exception as e:                       # noqa: BLE001 —— 重抽失敗就用存著的那份(⛔ 拖垮整輪)
+                self.log(f'⚠️ 全文重抽句子失敗 {f}:{type(e).__name__}: {str(e)[:120]}')
         try:
             self.cache[f] = self.G.deck_claims(r, pages, self._quarters(s), self.months.get(s), self.today)
             self.n += 1
@@ -1450,6 +1468,9 @@ def build_outputs(recs, nov, info, today, files=None, cite=None, log=print):
         decks = []
         for r in lst[:KEEP_PER_SYM]:
             x = {k: r.get(k) for k in keys if r.get(k) not in (None, '', [], 0) or k in ('d', 'f', 'st')}
+            for k, v in (gd.show.get(r.get('f')) or {}).items():   # 🧩 有全文 → 畫面那三樣用現在的規則重抽(⛔ 重抽是空的就留舊的)
+                if k in ('titles', 'outlook', 'nums') and v:
+                    x[k] = v
             if x.get('titles'):
                 x['titles'] = x['titles'][:12]
             x.update(nov.get(r.get('f')) or {})
@@ -1466,10 +1487,11 @@ def build_outputs(recs, nov, info, today, files=None, cite=None, log=print):
             if r.get('st') != 'ok' or not in_dg(r.get('f'), r.get('d')):
                 continue
             nv, ai = nov.get(r.get('f')) or {}, r.get('ai') or {}
+            sh = gd.show.get(r.get('f')) or {}
             row = {'s': s, 'name': r.get('name') or s, 'd': r.get('d'), 't': r.get('t') or '', 'inv': r.get('inv') or 0, 'f': r.get('f'), 'st': 'ok',
-                   'one': ai.get('one') or '', 'ol': ((best_outlook(r.get('outlook') or []) or [0, ''])[1] or '')[:80],
+                   'one': ai.get('one') or '', 'ol': ((best_outlook(sh.get('outlook') or r.get('outlook') or []) or [0, ''])[1] or '')[:80],
                    'new': [t for t, _ in (nv.get('new') or [])][:5], 'new_n': nv.get('n_new', 0), 'first': bool(nv.get('first')),
-                   'prev_d': nv.get('prev_d') or '', 'reuse': r.get('reuse') or '', 'n_nums': len(r.get('nums') or []), 'pages': r.get('pages'),
+                   'prev_d': nv.get('prev_d') or '', 'reuse': r.get('reuse') or '', 'n_nums': len(sh.get('nums') or r.get('nums') or []), 'pages': r.get('pages'),
                    # 🔎 簡報講到的產品 / 技術詞(照第一次出現的頁排,最多 30 個)→ 法說會頁可以搜「誰在講 CPO」
                    'tm': [t for t, _ in sorted((r.get('terms') or {}).items(), key=lambda x: x[1])][:30],
                    # 📋 這份簡報有幾句「可以對答案的展望」(法說會頁的徽章;內容在 data/cc/{sym}.json 的 g)

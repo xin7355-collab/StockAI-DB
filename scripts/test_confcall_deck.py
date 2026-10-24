@@ -1189,6 +1189,25 @@ with tempfile.TemporaryDirectory() as tmp:
     cdx._load_json = _orig_lj
     _g13 = [json.loads((datax / 'cc' / f'{x}.json').read_text(encoding='utf-8'))['decks'][0].get('g') for x in ('1303', '1304')]
     ok('㊿g 同一個月兩份簡報 → 那個月的全文只解壓一次,兩份都抽得到', len([h for h in _hits if '2026-10' in h]) == 1 and all(_g13), (_hits, _g13))
+    # ㊿h 🧩 V79.7.0 畫面上那三樣(標題 / 講到之後 / 公司給的數字)有全文就照現在的規則重抽
+    #     (10/24 南亞那份是在「PDF 斷行接回整句」之前讀的 → 存著的「公司給的數字」被切成兩半)
+    half = [[1, '帶動電子材料產品營業利益季增96.1%，淨利率達30.9%。轉投資也因記憶體價格持續'],
+            [1, '上漲，南亞科挹注顯著投資收益，推升2026年第3季EPS達4.90元，改寫單季歷史新高。']]
+    rec5 = dict(rec, s='1305', f='130520261022M001.pdf', d='2026-10-22', nums=half)
+    page5 = ('因應產業需求,適時調漲售價,\n帶動電子材料產品營業利益季增96.1%，淨利率達30.9%。轉投資也因記憶體價格持續\n'
+             '上漲，南亞科挹注顯著投資收益，推升2026年第3季EPS達4.90元，改寫單季歷史新高。\n')
+    files5 = {rec5['f']: {'st': 'ok', 'd': '2026-10-22', 's': '1305', 'tx': '2026-10'}}
+    cdx._save_json(cdx.text_file('2026-10'), {rec5['f']: cdx.text_pack([page5])})
+    cdx.build_outputs([rec5], cdx.novelty_all([rec5]), {}, date(2026, 10, 24), files=files5, log=_logs.append)
+    n5 = json.loads((datax / 'cc' / '1305.json').read_text(encoding='utf-8'))['decks'][0].get('nums') or []
+    dg5 = [x for x in json.loads((datax / 'confcall_digest.json').read_text(encoding='utf-8'))['rows'] if x.get('f') == rec5['f']]
+    ok('㊿h 有全文 → 公司給的數字照現在的規則重抽(斷行接回整句:「轉投資也因記憶體價格持續上漲,…」是同一句)',
+       any(t.startswith('轉投資也因記憶體價格持續上漲') for _, t in n5) and not any(t.endswith('持續') for _, t in n5)
+       and dg5 and dg5[0].get('n_nums') == len(n5), (n5, dg5))
+    cdx.build_outputs([rec5], cdx.novelty_all([rec5]), {}, date(2026, 10, 24), files={}, log=_logs.append)
+    n6 = json.loads((datax / 'cc' / '1305.json').read_text(encoding='utf-8'))['decks'][0].get('nums') or []
+    ok('㊿h ⭐ 決定性對照:沒有全文 → 照舊用存著的那兩半句(⛔ 編、⛔ 弄丟)', n6 == half, n6)
+    ok('㊿h 存著的那份(研究用的特徵)⛔ 被改:重抽只寫進給 App 的 data/cc', rec5['nums'] == half, rec5['nums'])
 
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))
 sys.exit(1 if fails else 0)
