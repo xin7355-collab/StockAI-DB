@@ -1,0 +1,91 @@
+name: 🎙️ 法說會影音 / 圖片頁量測 (confcall_av_probe)
+
+# 🎙️ V79.7.3 第 0 步:法說會影音抓不抓得到、轉逐字稿準不準、簡報圖片頁讀不讀得出來 —— **只量,⛔ 不推任何分支**
+#    使用者 2026-10-24:「法說會目前也有影音…需要抓取逐字稿判讀嗎?」「Pdf 轉逐字稿有適合做嗎?」
+#    樣本一律是**已經開完、簡報也讀過**的歷史場次(⛔ 南亞 10/27 那種還沒開的不挑)。
+#    結果 = Actions 附件(report.json + 逐字稿 + 圖片頁與讀出來的字),給人看完再決定要不要正式做。
+# ⛔ 只手動跑(不吃排程配額、不跟任何 workflow 搶鎖)
+
+on:
+  workflow_dispatch:
+    inputs:
+      trans_n:
+        description: 'Groq 整場轉幾場(預設 4)'
+        required: false
+        default: ''
+      local_n:
+        description: '本機 faster-whisper 量速度幾場(每場只轉第一段 10 分;預設 2)'
+        required: false
+        default: ''
+      ocr_n:
+        description: '簡報圖片頁送視覺模型幾頁(預設 16)'
+        required: false
+        default: ''
+      avail_per_year:
+        description: '證交所 mp4 逐年問幾場還在不在(只問檔頭;預設 20)'
+        required: false
+        default: ''
+
+concurrency:
+  group: confcall-av-probe
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: 🎙️ 量測
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝(ffmpeg + pdftoppm + yt-dlp + faster-whisper;⛔ 不加進全域 requirements)
+        run: |
+          (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg poppler-utils) >/dev/null 2>&1 || echo "⚠️ apt 裝不起來"
+          pip install -q requests "pypdf==5.1.0" yt-dlp faster-whisper
+          ffmpeg -version | head -1 || true
+          command -v pdftoppm || echo "⚠️ 沒有 pdftoppm → ⑤ 圖片頁那段會跳過"
+
+      - name: 🧪 selftest(⛔ 沒過不開工)
+        run: python3 scripts/confcall_av_probe.py --selftest
+
+      # ⚠️ git archive 失敗不可當成空的 → 檢查清單檔真的在
+      - name: 📂 還原簡報清單與全文(origin/cc_deep → ccd/)
+        run: |
+          mkdir -p ccd
+          git archive origin/cc_deep | tar -x -C ccd
+          test -s ccd/cc/backlog.json.gz && test -s ccd/cc/index.json || { echo "❌ cc_deep 沒有清單檔"; exit 1; }
+          echo "✅ 全文 $(ls ccd/cc/text | wc -l) 個月"
+
+      - name: 🎙️ 量測
+        env:
+          CC_DIR: ccd
+          OUT: /tmp/av
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          AV_TRANS_N: ${{ inputs.trans_n }}
+          AV_LOCAL_N: ${{ inputs.local_n }}
+          AV_OCR_N: ${{ inputs.ocr_n }}
+          AV_AVAIL_PER_YEAR: ${{ inputs.avail_per_year }}
+          AV_DEADLINE_MIN: '140'
+        run: |
+          set -o pipefail
+          python3 scripts/confcall_av_probe.py 2>&1 | tee /tmp/av_log.txt
+
+      - name: 📤 報告附件
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: confcall-av-probe
+          path: |
+            /tmp/av/
+            /tmp/av_log.txt
+          retention-days: 14
