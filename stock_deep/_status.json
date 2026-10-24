@@ -55,16 +55,15 @@
    "ShortSaleTodayBalance",
    "ShortSaleYesterdayBalance"
   ],
-  "have": 1682,
+  "have": 1846,
   "of": 2548,
   "chk": [
-   425,
-   425
+   44,
+   44
   ],
-  "at": "2026-10-21",
+  "at": "2026-10-24",
   "done": false,
-  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
-  "fail": "有資料的只有 371/866(< 50%)"
+  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/"
  },
  "rev": {
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
@@ -127,12 +126,12 @@
    "SBLShortSalesQuota",
    "SBLShortSalesShortCovering"
   ],
-  "have": 2110,
+  "have": 2548,
   "of": 2548,
   "chk": [
    0,
    0
   ],
-  "done": false
+  "done": true
  }
 }
