@@ -15,6 +15,13 @@
 
 跑法(Actions:🎙️ 法說會影音 / 圖片頁量測):CC_DIR=<git archive origin/cc_deep 解開的目錄> OUT=/tmp/av python3 scripts/confcall_av_probe.py
      python3 scripts/confcall_av_probe.py --selftest(純函式,不連網)
+
+🏢 V79.7.5 `AV_MODE=qa`(使用者 10/24 選「先挑問答多的大型公司」):市值前 N 名
+  ① 從清單裡那家自己的投資人網址找**官方逐字稿**(transcript / 逐字稿 / 會議紀錄 PDF)、對到哪幾場
+  ② 讀幾份:切「簡報 / 問答」、數提問、「只在問答出現」的數字句比例(vs 同一場簡報 + 逐字稿前半段)
+  ③ 大型公司在證交所影音網站的那幾場 → Groq 辨識 → 簡轉繁 + 幻覺字過濾 → 同樣切問答
+  ④ 過關門檻寫死(QA_GATE_CALLS / QA_GATE_SHARE)→ 報告最後印 PASS / FAIL
+  ⚠️ 官方逐字稿有 LSEG / FactSet 版權註記 → ⛔ 全文不寫進報告附件以外的地方,log 只印一兩百字
 """
 import base64
 import difflib
@@ -54,6 +61,13 @@ VISION_PREF = [m for m in (os.getenv('AV_VISION_MODEL') or '').split(',') if m] 
 VISION_RE = re.compile(r'llama-4|vision|-vl|qwen3\.6', re.I)
 OCR_PROMPT = ('逐字抄出這張投影片上看得到的所有文字與數字(含圖表上的標籤、座標軸、數值、圖例);'
               '表格轉成 Markdown 表格;看不清楚的寫 [?]。⛔ 不要解釋、不要摘要、不要補圖上沒有的內容。')
+QA_TOP = int(os.getenv('AV_QA_TOP') or 100)            # qa 模式:市值前幾名
+QA_READ = int(os.getenv('AV_QA_READ') or 40)            # 讀幾份官方逐字稿
+QA_ASR_N = int(os.getenv('AV_QA_ASR_N') or 8)           # 大型公司的證交所影片轉幾場(Groq 一天約 8 小時錄音)
+QA_ASR_TOP = int(os.getenv('AV_QA_ASR_TOP') or 150)
+QA_MAX_MIN = float(os.getenv('AV_QA_MAX_MIN') or 90)    # 一場超過幾分鐘不轉(額度)
+QA_GATE_CALLS = 150      # 過關:估計有 ≥150 場「至少 3 個提問」
+QA_GATE_SHARE = 0.30     # 過關:問答裡的數字句 ≥30% 是簡報 / 前半段沒講的
 THIN = 40                     # 一頁抽得到的字不到這麼多 = 多半是圖片頁(10/24 量:107,608 頁裡 22.3%)
 
 UA = {'User-Agent': 'Mozilla/5.0 (StockAI-DB research probe)'}
@@ -178,15 +192,21 @@ def term_match(trans_text, terms):
     return {'n': len(terms), 'hit': len(hit), 'rate': round(len(hit) / len(terms), 3), 'miss': miss[:20]}
 
 
-QA_RE = re.compile(r'Q\s*&\s*A|問答|提問|開放.{0,6}(發問|問題|提問)|有沒有.{0,8}問題|第一個問題|第一位')
+QA_RE = re.compile(r'(?<![A-Za-z])Q\s*&?\s*A(?![A-Za-z])|問答|提問|開放.{0,6}(發問|問題|提問)|有沒有.{0,8}問題|第一個問題|第一位')
 ASK_RE = re.compile(r'請問|想請教|想問一下|問題是')
 
 
-def qa_split(cues):
+def qa_split(cues, min_frac=0.0):
     """問答段從哪裡開始:第一個「問答 / 提問 / 開放發問」出現的時間;之後「請問」幾次(= 大約幾個問題)。
-    cues = [{'start','end','text'}];切不到回 None(⛔ 硬猜)。"""
-    for i, c in enumerate(cues or []):
-        if QA_RE.search(c.get('text') or ''):
+    cues = [{'start','end','text'}];切不到回 None(⛔ 硬猜)。
+    🏢 min_frac:主持人開場常先講「簡報後有 Q&A」(10/24 曜越在第 21 秒)→ 優先挑那個時間點之後的第一個,都在前面才退回第一個。"""
+    cues = cues or []
+    total0 = (cues[-1].get('end') or 0) if cues else 0
+    marks = [i for i, c in enumerate(cues) if QA_RE.search(c.get('text') or '')]
+    late = [i for i in marks if total0 and (cues[i].get('start') or 0) >= total0 * min_frac]
+    first = (late or marks or [None])[0]
+    for i, c in enumerate(cues):
+        if i == first:
             rest = ' '.join(x.get('text') or '' for x in cues[i:])
             total = (cues[-1].get('end') or 0) or 1
             return {'at': round(c.get('start') or 0), 'frac': round((c.get('start') or 0) / total, 3),
@@ -206,6 +226,164 @@ def similarity(a, b, cap=4000):
 def thin_pages(pages, thin=THIN):
     """抽得到的字不到 thin 的頁(頁碼從 1 開始);⛔ 封面(第 1 頁)不算 —— 它本來就只有標題。"""
     return [i + 1 for i, p in enumerate(pages or []) if i > 0 and len(re.sub(r'\s', '', p or '')) < thin]
+
+
+# ───────────────────────── 🏢 qa 模式的純函式 ─────────────────────────
+_CN_Q = {'一': 1, '二': 2, '三': 3, '四': 4, '1': 1, '2': 2, '3': 3, '4': 4}
+
+
+def yq_of(s):
+    """從連結文字 / 檔名抓「哪一年哪一季」:2Q25 / 2Q2025 / Q2 2025 / 2025Q2 / 2025/q2 / 2025年第二季 / 114年第2季 → (2025, 2);抓不到 None。"""
+    t = (s or '').replace('%20', ' ').replace('+', ' ')
+    pats = [(r'(?<![\dA-Za-z])([1-4])\s*Q\s*[\'’]?(\d{4}|\d{2})(?!\d)', lambda m: (m.group(2), m.group(1))),
+            (r'(?<![A-Za-z])Q([1-4])[\s_\-/,]*[\'’]?(\d{4}|\d{2})(?!\d)', lambda m: (m.group(2), m.group(1))),
+            (r'(?<!\d)(\d{4})\s*[-_ /]?\s*Q([1-4])(?!\d)', lambda m: (m.group(1), m.group(2))),
+            (r'(?<!\d)(\d{4})\s*年\s*第\s*([1-4一二三四])\s*季', lambda m: (m.group(1), m.group(2))),
+            (r'(?<!\d)(1[01]\d)\s*年\s*(?:度\s*)?第\s*([1-4一二三四])\s*季', lambda m: (str(int(m.group(1)) + 1911), m.group(2)))]
+    for rx, get in pats:
+        m = re.search(rx, t, re.I)
+        if m:
+            y, q = get(m)
+            y = int(y) + (2000 if len(y) == 2 else 0)
+            if 2005 <= y <= 2035:
+                return (y, _CN_Q[q])
+    return None
+
+
+def reported_q(d):
+    """法說會日期 → 多半在報告的那一季(1~3 月開的報上一年第 4 季)。"""
+    y, m = int(d[:4]), int(d[5:7])
+    return (y - 1, 4) if m <= 3 else (y, (m - 1) // 3)
+
+
+def prev_q(yq):
+    y, q = yq
+    return (y, q - 1) if q > 1 else (y - 1, 4)
+
+
+TRANS_RE = re.compile(r'transcript|逐字稿|會議實錄|会议实录|會議紀錄|會議記錄|问答纪录|問答紀錄|問答記錄', re.I)
+NOT_TRANS_RE = re.compile(r'presentation|slides?\b|簡報|简报|financial\s+statements?|財報|webcast\s+replay', re.I)
+DOC_RE = re.compile(r'\.pdf|\.docx?|download|file|attach', re.I)
+NAV_RE = re.compile(r'法說|法人說明|投資人說明|investor\s*conference|quarterly\s*results|earnings|financial\s*results|季報|業績發表|營運報告', re.I)
+
+
+def links_of(html, base):
+    """頁面上的連結 [(絕對網址, 文字)];也收 JS 裡直接寫的 .pdf 網址(文字用檔名)。"""
+    import html as H
+    from urllib.parse import urljoin
+    out, seen = [], set()
+    for m in re.finditer(r'<a\b[^>]*?href\s*=\s*["\']([^"\'#]+)["\'][^>]*>(.*?)</a>', html or '', re.S | re.I):
+        u = urljoin(base, H.unescape(m.group(1)).strip())
+        t = re.sub(r'\s+', ' ', H.unescape(re.sub(r'<[^>]+>', ' ', m.group(2)))).strip()
+        if u not in seen and u.startswith('http'):
+            seen.add(u)
+            out.append((u, t))
+    for m in re.finditer(r'["\']([^"\'\s<>]+?\.pdf)["\']', html or '', re.I):
+        u = urljoin(base, H.unescape(m.group(1)))
+        if u not in seen and u.startswith('http'):
+            seen.add(u)
+            out.append((u, u.rsplit('/', 1)[-1]))
+    return out
+
+
+def is_transcript(u, t):
+    from urllib.parse import unquote
+    blob = unquote(u) + ' ' + (t or '')
+    return bool(TRANS_RE.search(blob)) and bool(DOC_RE.search(u)) and not (NOT_TRANS_RE.search(t or '') and not TRANS_RE.search(t or ''))
+
+
+def is_nav(u, t, host):
+    from urllib.parse import urlparse
+    return urlparse(u).netloc == host and bool(NAV_RE.search((t or '') + ' ' + u))
+
+
+QA_HDR_RE = re.compile(r'QUESTIONS?\s*(?:AND|&)\s*ANSWERS?|QUESTION[- ]AND[- ]ANSWER|Q\s*&\s*A\s*(?:SESSION|SECTION)|問答(?:時間|環節|階段|時段)|開放.{0,6}(?:提問|發問)|接下來.{0,6}(?:Q\s*&?\s*A|問答|提問)', re.I)
+
+
+def split_qa_text(text, min_frac=0.15):
+    """逐字稿全文 → (簡報那段, 問答那段, 問答從幾成開始);切不到回 None(⛔ 硬猜)。
+    ⚠️ 目錄 / 主持人開場常先講一次「之後有 Q&A」→ 優先挑 min_frac 之後的第一個;都在前面才退回第一個。"""
+    t = text or ''
+    ms = list(QA_HDR_RE.finditer(t))
+    if not ms or not t:
+        return None
+    m = next((x for x in ms if x.start() >= len(t) * min_frac), ms[0])
+    return t[:m.start()], t[m.start():], round(m.start() / len(t), 3)
+
+
+def count_questions(qa):
+    """問答段大約幾個提問:官方逐字稿看「Q」那一行 / 「- 分析師」/ 主持人說「下一個問題」;中文看「請問」那類。取最大的那個。"""
+    t = qa or ''
+    a = len(re.findall(r'^\s*Q\s*[:：.]?\s*$|^\s*Q\s*[:：]', t, re.M))
+    b = len(re.findall(r'\s[-–—]\s*(?:Analyst|分析師)\b', t))
+    c = len(re.findall(r'(?i)\b(?:next|first|following|last)\s+question\b', t))
+    d = len(ASK_RE.findall(t))
+    return max(a, b, c, d)
+
+
+def sentences_of(text):
+    """切句:中文句號 / 問號 / 分號、英文「. 」後面接大寫、空行;⛔ 切小數點。"""
+    t = re.sub(r'-\n(?=[a-z])', '', text or '')
+    parts = re.split(r'(?<=[。？！；;?!])\s*|(?<=[a-z0-9%)])\.\s+(?=[A-Z“"(])|\n\s*\n', t)
+    return [re.sub(r'\s+', ' ', x).strip() for x in parts if x and len(re.sub(r'\s', '', x)) >= 6]
+
+
+def only_in_qa(qa_text, ref_text, cd=None, min_val=1):
+    """問答段的「數字句」(講營運 KPI + 有數字,照 confcall_deck.nums_of 的判法)與「展望句」(outlook_of)裡,
+    數字是簡報 / 前半段沒有的佔幾成。⭐ 決定性對照:問答段換成 ref 原文 → 比例 = 0。"""
+    if cd is None:
+        import confcall_deck as cd
+    lines = [(1, x) for x in sentences_of(qa_text)]
+    num_s = cd.nums_of(lines, limit=10000)
+    out_s = cd.outlook_of(lines, limit=10000)
+    ref = nums_in(ref_text, min_val=min_val)
+    only = [x for _, x in num_s if nums_in(x, min_val=min_val) - ref]
+    ol_num = [x for _, x in out_s if nums_in(x, min_val=min_val)]
+    ol_only = [x for x in ol_num if nums_in(x, min_val=min_val) - ref]
+    return {'num_sent': len(num_s), 'only_num_sent': len(only), 'share': round(len(only) / len(num_s), 3) if num_s else None,
+            'outlook': len(out_s), 'outlook_num': len(ol_num), 'outlook_only': len(ol_only), 'eg': only[:3]}
+
+
+JUNK_RE = re.compile(r'不吝点赞|不吝點讚|订阅|訂閱|转发|轉發|打赏|打賞|字幕志愿者|字幕志願者|字幕由|明镜与点点|明鏡與點點|独播剧场|獨播劇場|'
+                     r'YoYo Television|Amara\.org|谢谢观看|謝謝觀看|请订阅|請訂閱')
+
+
+def clean_cues(cues):
+    """Whisper 在靜音 / 片頭音樂會冒固定的幻覺字(10/24 實測:「请不吝点赞 订阅…」「字幕志愿者 李宗盛」)→ 那幾段整句丟掉;
+    連續一模一樣的句子只留一句。回 (乾淨的, 丟掉幾段)。"""
+    out, drop, last = [], 0, None
+    for c in cues or []:
+        t = (c.get('text') or '').strip()
+        if not t or JUNK_RE.search(t):
+            drop += 1
+            continue
+        if t == last:
+            drop += 1
+            continue
+        last = t
+        out.append(c)
+    return out, drop
+
+
+_CC = []
+
+
+def to_trad(text):
+    """簡轉繁(OpenCC s2twp:臺灣用字 + 慣用詞);沒裝就原樣回傳。"""
+    if not _CC:
+        try:
+            from opencc import OpenCC
+            _CC.append(OpenCC('s2twp'))
+        except Exception:
+            _CC.append(None)
+    return _CC[0].convert(text) if _CC[0] else text
+
+
+def qa_gate(n_calls_3q, share_med):
+    """第 1 步過不過關:估計有幾場「至少 3 個提問」+ 問答數字句「只在問答」比例中位數。"""
+    ok_n = (n_calls_3q or 0) >= QA_GATE_CALLS
+    ok_s = share_med is not None and share_med >= QA_GATE_SHARE
+    return {'pass': ok_n and ok_s, 'calls_3q': n_calls_3q, 'share_med': share_med, 'need_calls': QA_GATE_CALLS, 'need_share': QA_GATE_SHARE}
 
 
 def pick_samples(rows, ok_files, rng, per_year, other_per_kind):
@@ -724,6 +902,242 @@ def main():
     return 0
 
 
+def _get(url, timeout=20, max_mb=40):
+    """GET 一個網址 → (狀態碼, Content-Type, bytes);失敗回 (None, 錯誤, b'')。"""
+    import requests
+    try:
+        with requests.get(url, timeout=timeout, stream=True, headers=UA, allow_redirects=True) as r:
+            buf, got = [], 0
+            for ch in r.iter_content(1 << 16):
+                buf.append(ch)
+                got += len(ch)
+                if got > max_mb * 1048576:
+                    break
+            return r.status_code, (r.headers.get('Content-Type') or ''), b''.join(buf)
+    except Exception as e:
+        return None, f'{type(e).__name__}', b''
+
+
+def _html_text(b, ctype=''):
+    m = re.search(r'charset=([\w-]+)', ctype or '', re.I) or re.search(rb'charset=["\']?([\w-]+)', b[:3000] or b'', re.I)
+    enc = (m.group(1).decode() if isinstance(m.group(1), bytes) else m.group(1)) if m else 'utf-8'
+    for e in (enc, 'utf-8', 'big5', 'cp950'):
+        try:
+            return b.decode(e)
+        except Exception:
+            continue
+    return b.decode('utf-8', 'replace')
+
+
+def main_qa():
+    """🏢 qa 模式:大型公司的官方逐字稿 + 證交所影片 → 問答量測 → 過關門檻。"""
+    from urllib.parse import urlparse
+    import statistics as st
+    cc_dir = Path(os.getenv('CC_DIR') or 'ccd')
+    out = Path(os.getenv('OUT') or '/tmp/av')
+    (out / 'qa').mkdir(parents=True, exist_ok=True)
+    import confcall_deck as cd
+    bl = json.loads(gzip.decompress((cc_dir / 'cc' / 'backlog.json.gz').read_bytes()))
+    idx = json.loads((cc_dir / 'cc' / 'index.json').read_text(encoding='utf-8'))
+    ok_files = {f for f, x in (idx.get('files') or {}).items() if x.get('st') == 'ok'}
+    scr = json.loads(Path(os.getenv('AV_SCREENER') or 'scr.json').read_text(encoding='utf-8'))
+    cols = scr.get('cols') or []
+    ci, ei = cols.index('mcap'), cols.index('etf')
+    mc = {sy: v[ci] for sy, v in (scr.get('rows') or {}).items() if len(sy) == 4 and v[ci] and not v[ei]}
+    rank = sorted(mc, key=lambda x: -mc[x])
+    today = time.strftime('%Y-%m-%d')
+    rows = [r for r in (bl.get('rows') or []) if (r.get('d') or '') and r['d'] <= today]
+    by_s = {}
+    for r in rows:
+        by_s.setdefault(r['s'], []).append(r)
+    rep = {'at': time.strftime('%Y-%m-%d %H:%M'), 'top': QA_TOP, 'co': [], 'read': [], 'asr': [], 'notes': []}
+    print(f'🏢 qa 模式:市值前 {QA_TOP} 名(screener {scr.get("data_date")})・清單 {len(rows):,} 場', flush=True)
+
+    # ① 找官方逐字稿
+    trans, ok_pages = {}, [0]
+    for sy in rank[:QA_TOP]:
+        if time.time() > DEADLINE - 60 * 60:
+            rep['notes'].append('時間到,找逐字稿停在 ' + sy)
+            break
+        rs = sorted(by_s.get(sy) or [], key=lambda r: r['d'], reverse=True)
+        if not rs:
+            continue
+        pages = []
+        for r in rs:
+            v = (r.get('vid') or '').strip()
+            if v and kind_of(v) == 'other' and v not in pages:
+                pages.append(v)
+                if '/chinese/' in v and v.replace('/chinese/', '/english/') not in pages:
+                    pages.append(v.replace('/chinese/', '/english/'))
+        pages = pages[:6]
+        found, fetched, nav_done = {}, 0, set()
+        queue = list(pages)
+        while queue and fetched < 10:
+            u = queue.pop(0)
+            code, ctype, b = _get(u)
+            fetched += 1
+            if code != 200 or not b or 'html' not in (ctype or 'html').lower():
+                continue
+            ok_pages[0] += 1
+            html = _html_text(b, ctype)
+            host = urlparse(u).netloc
+            for lu, lt in links_of(html, u):
+                if is_transcript(lu, lt):
+                    found.setdefault(lu, {'t': lt[:80], 'yq': yq_of(lt) or yq_of(lu)})
+                elif is_nav(lu, lt, host) and lu not in nav_done and lu not in pages and len(nav_done) < 4 and not found:
+                    nav_done.add(lu)
+                    queue.append(lu)
+        calls = [r for r in rs if r['d'] >= '2021-07-01']
+        yqs = {x['yq'] for x in found.values() if x['yq']}
+        # 對到幾季:法說會那幾季(2021-07 起,同一季開好幾場算一季)有幾季找得到逐字稿
+        cq = {reported_q(r['d']) for r in calls}
+        hit = len({x for x in cq if x in yqs or prev_q(x) in yqs})
+        name = rs[0].get('name')
+        rec = {'s': sy, 'name': name, 'calls': len(calls), 'call_q': len(cq), 'pages': fetched, 'trans': len(found), 'yq_n': len(yqs),
+               'yq_from': min(yqs) if yqs else None, 'yq_to': max(yqs) if yqs else None, 'calls_hit': hit,
+               'eg': [{'u': u, **x} for u, x in list(found.items())[:3]]}
+        rep['co'].append(rec)
+        if found:
+            trans[sy] = found
+        print(f"🔎 {sy} {name}:問 {fetched} 頁 → 逐字稿連結 {len(found)} 個(有季別 {len(yqs)} 季:{rec['yq_from']}~{rec['yq_to']})"
+              f"・2021-07 起開過 {len(cq)} 季、對到 {hit} 季", flush=True)
+    co_with = [c for c in rep['co'] if c['trans']]
+    calls_with = sum(c['yq_n'] for c in rep['co'])           # 回測用得到的:每一季一份(2010 起都算,價格有到那麼早)
+    print(f'\n🔎 有官方逐字稿的公司 {len(co_with)}/{len(rep["co"])} 家 ・有季別的逐字稿 {calls_with} 份'
+          f" ・2021-07 起對到 {sum(c['calls_hit'] for c in rep['co'])} / {sum(c['call_q'] for c in rep['co'])} 季", flush=True)
+
+    # ② 讀幾份
+    order, ptr = [], {sy: sorted(v.items(), key=lambda kv: kv[1]['yq'] or (0, 0), reverse=True) for sy, v in trans.items()}
+    while len(order) < QA_READ and any(ptr.values()):
+        for sy in list(ptr):
+            if ptr[sy]:
+                order.append((sy,) + ptr[sy].pop(0))
+            if len(order) >= QA_READ:
+                break
+    for sy, u, x in order:
+        if time.time() > DEADLINE - 40 * 60:
+            rep['notes'].append('時間到,讀逐字稿停')
+            break
+        rec = {'s': sy, 'u': u, 'yq': x['yq']}
+        code, ctype, b = _get(u, timeout=60)
+        if code != 200 or not b:
+            rec['err'] = f'下載不到 {code} {ctype}'[:80]
+            rep['read'].append(rec)
+            continue
+        if b[:5] != b'%PDF-':
+            rec['err'] = f'不是 PDF({ctype[:30]})'
+            rep['read'].append(rec)
+            continue
+        pages, err = cd.extract_safe(b)
+        text = '\n'.join(pages or [])
+        rec['pages'] = len(pages or [])
+        rec['chars'] = len(re.sub(r'\s', '', text))
+        sp = split_qa_text(text)
+        if not sp:
+            rec['qa'] = None
+            rep['read'].append(rec)
+            print(f"📄 {sy} {x['yq']}:{rec['pages']} 頁 {rec['chars']:,} 字 ・⛔ 切不到問答", flush=True)
+            continue
+        pres, qa, at = sp
+        rec.update(qa_at=at, qa_chars=len(re.sub(r'\s', '', qa)), q_n=count_questions(qa))
+        # 對同一場的簡報(已讀的)
+        call = next((r for r in by_s.get(sy, []) if x['yq'] and reported_q(r['d']) == x['yq']), None) or \
+            next((r for r in by_s.get(sy, []) if x['yq'] and prev_q(reported_q(r['d'])) == x['yq']), None)
+        deck = next((f for f in ((call or {}).get('pdf') or []) if f in ok_files), None)
+        dtext = '\n'.join(pages_of(cc_dir, deck, call['d']) or []) if deck else ''
+        rec['vs_pres'] = only_in_qa(qa, pres, cd)
+        rec['vs_both'] = only_in_qa(qa, pres + '\n' + dtext, cd) if dtext else None
+        rec['deck'] = bool(dtext)
+        rep['read'].append(rec)
+        vb = rec['vs_both'] or rec['vs_pres']
+        print(f"📄 {sy} {x['yq']}:{rec['pages']} 頁 {rec['chars']:,} 字 ・問答從 {at:.0%} 開始 {rec['qa_chars']:,} 字 ・提問 {rec['q_n']}"
+              f" ・數字句 {vb['num_sent']} 句,只在問答 {vb['only_num_sent']}({vb['share']}){' ・含簡報比' if dtext else ''}", flush=True)
+        if vb['eg']:
+            print(f"   例:{vb['eg'][0][:140]}", flush=True)
+
+    # ③ 大型公司的證交所影片 → Groq
+    keys = _keys()
+    gq = Groq(keys)
+    top_asr = set(rank[:QA_ASR_TOP])
+    cand = [r for r in rows if r['s'] in top_asr and r.get('vid') and kind_of(r['vid']) == 'ir_mp4'
+            and any(f in ok_files for f in (r.get('pdf') or []))]
+    cand.sort(key=lambda r: r['d'], reverse=True)
+    seen_s, pick = set(), []
+    for r in cand:                                   # 一家先一場,分散
+        if r['s'] not in seen_s:
+            seen_s.add(r['s'])
+            pick.append(r)
+    pick = pick[:QA_ASR_N]
+    rep['asr_pool'] = len(cand)
+    print(f'\n🎙️ 前 {QA_ASR_TOP} 名在證交所影音網站、簡報讀過的 {len(cand)} 場({len({r["s"] for r in cand})} 家)→ 轉 {len(pick)} 場', flush=True)
+    for r in pick if keys else []:
+        if time.time() > DEADLINE - 15 * 60:
+            rep['notes'].append('時間到,辨識停')
+            break
+        rec = {'s': r['s'], 'name': r.get('name'), 'd': r['d']}
+        h = head_mp4(r['vid'])
+        if h.get('sec') and h['sec'] > QA_MAX_MIN * 60:
+            rec['err'] = f"太長 {h['sec'] // 60} 分"
+            rep['asr'].append(rec)
+            continue
+        with tempfile.TemporaryDirectory() as td:
+            try:
+                path, dl = download(r['vid'], 'ir_mp4', td)
+                chunks = to_chunks(path, td)
+                cues = []
+                for j, c in enumerate(chunks):
+                    for cu in gq.asr(c):
+                        cues.append({'start': cu['start'] + j * SEG, 'end': cu['end'] + j * SEG, 'text': to_trad(cu['text'])})
+            except Exception as e:
+                rec['err'] = str(e)[:120]
+                rep['asr'].append(rec)
+                print(f"🎙️ {r['s']} {r['d']} ❌ {rec['err']}", flush=True)
+                continue
+        cues, drop = clean_cues(cues)
+        total = cues[-1]['end'] if cues else 0
+        rec.update(min=round(total / 60, 1), junk=drop)
+        q = qa_split(cues, min_frac=0.25)
+        deck = next(f for f in r['pdf'] if f in ok_files)
+        dtext = '\n'.join(pages_of(cc_dir, deck, r['d']) or [])
+        if q:
+            qa_txt = '。'.join(c['text'] for c in cues if c['start'] >= q['at'])
+            pre_txt = '。'.join(c['text'] for c in cues if c['start'] < q['at'])
+            rec.update(qa_at=q['frac'], q_n=count_questions(qa_txt), qa_chars=len(re.sub(r'\s', '', qa_txt)),
+                       vs_both=only_in_qa(qa_txt, pre_txt + '\n' + dtext, cd))
+        rep['asr'].append(rec)
+        vb = rec.get('vs_both') or {}
+        print(f"🎙️ {r['s']} {r.get('name')} {r['d']}:{rec['min']} 分 ・幻覺丟 {drop} 段 ・問答 {q and q['frac']} ・提問 {rec.get('q_n')}"
+              f" ・數字句 {vb.get('num_sent')} 只在問答 {vb.get('only_num_sent')}({vb.get('share')})", flush=True)
+        (out / 'qa' / f"{r['s']}_{r['d']}.txt").write_text('\n'.join(f"[{int(c['start'] // 60):02d}:{int(c['start'] % 60):02d}] {c['text']}" for c in cues), encoding='utf-8')
+        if q:
+            tail = [c['text'] for c in cues if c['start'] >= q['at']][:12]
+            print('   ── 問答開頭 ──\n   ' + '\n   '.join(tail), flush=True)
+    rep['groq_audio_sec'] = round(gq.used_sec)
+
+    # ④ 過關?
+    rd = [x for x in rep['read'] if x.get('q_n') is not None]
+    ar = [x for x in rep['asr'] if x.get('q_n') is not None]
+    f3_off = sum(1 for x in rd if x['q_n'] >= 3) / len(rd) if rd else 0
+    f3_asr = sum(1 for x in ar if x['q_n'] >= 3) / len(ar) if ar else 0
+    est = round(calls_with * f3_off + rep['asr_pool'] * f3_asr)
+    shares = [(x.get('vs_both') or x.get('vs_pres') or {}).get('share') for x in rd + ar]
+    shares = [v for v in shares if v is not None]
+    med = round(st.median(shares), 3) if shares else None
+    rep['gate'] = qa_gate(est, med)
+    rep['gate'].update(off_read=len(rd), off_3q=round(f3_off, 3), asr_read=len(ar), asr_3q=round(f3_asr, 3),
+                       calls_off=calls_with, calls_asr_pool=rep['asr_pool'])
+    (out / 'qa_report.json').write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding='utf-8')
+    g = rep['gate']
+    print(f"\n════ 過關門檻 ════\n官方逐字稿:對到 {calls_with} 場、讀 {len(rd)} 份裡 ≥3 個提問 {g['off_3q']:.0%}\n"
+          f"證交所影片:大公司 {rep['asr_pool']} 場、轉 {len(ar)} 場裡 ≥3 個提問 {g['asr_3q']:.0%}\n"
+          f"→ 估計 ≥3 個提問的場次 {est}(要 ≥{QA_GATE_CALLS})・問答數字句「只在問答」中位 {med}(要 ≥{QA_GATE_SHARE})\n"
+          f"{'✅ PASS → 做第 2 步' if g['pass'] else '⛔ FAIL → 結論寫進實測總表收工'}", flush=True)
+    if not ok_pages[0]:
+        print('❌ 投資人網站一頁都抓不到(網路被擋?)→ 紅燈(報告照寫)', flush=True)
+        return 1
+    return 0
+
+
 def selftest():
     ok = fail = 0
 
@@ -820,9 +1234,64 @@ def selftest():
             sys.modules['requests'] = old
         else:
             sys.modules.pop('requests', None)
+    # ── 🏢 qa 模式 ──
+    chk('⑮ yq_of:2Q25 / Q2 2025 / 2025Q2 / 2025/q2 / 2025年第二季 / 114年第2季 / 抓不到 None',
+        yq_of('TSMC 2Q25 Transcript.pdf') == (2025, 2) and yq_of('Q2 2025 Earnings Call') == (2025, 2)
+        and yq_of('UMC_2025Q2_transcript.pdf') == (2025, 2) and yq_of('/quarterly-results/2025/q2') == (2025, 2)
+        and yq_of('2025年第二季法說會逐字稿') == (2025, 2) and yq_of('114年第2季') == (2025, 2)
+        and yq_of('TSMC%203Q20%20transcript_0.pdf') == (2020, 3) and yq_of('annual report') is None)
+    chk('⑯ reported_q:1~3 月開的報上一年第 4 季;7 月報第 2 季;prev_q 跨年',
+        reported_q('2026-01-15') == (2025, 4) and reported_q('2025-07-17') == (2025, 2) and reported_q('2025-10-16') == (2025, 3)
+        and prev_q((2026, 1)) == (2025, 4))
+    html_fx = ('<a href="/english/encrypt/files/x/TSMC%202Q25%20Transcript.pdf">Transcript</a>'
+               '<a href="/english/encrypt/files/x/TSMC%202Q25%20Presentation.pdf">Presentation</a>'
+               '<a href="https://ir.x.com/c/events.php">法人說明會</a><a href="https://other.com/q">earnings</a>'
+               '<script>var f="https://ir.x.com/files/2025Q1_逐字稿.pdf";</script>')
+    L = links_of(html_fx, 'https://ir.x.com/c/index.php')
+    tr = [u for u, t in L if is_transcript(u, t)]
+    nv = [u for u, t in L if is_nav(u, t, 'ir.x.com')]
+    chk('⑰ 找逐字稿連結:Transcript 收、Presentation ⛔ 收、JS 裡的 .pdf 也收;法說會頁(同主機)當下一層、別的主機 ⛔ 跟',
+        len(tr) == 2 and all('Presentation' not in u for u in tr) and any('逐字稿' in u for u in tr)
+        and nv == ['https://ir.x.com/c/events.php'])
+    tx = ('Contents ... Questions and Answers ... page 9\n' + 'Prepared remarks. Revenue was US$30.1 billion. ' * 20 +
+          '\nQUESTIONS AND ANSWERS\nOperator\nThe first question is from Gokul Hariharan.\n'
+          'Gokul Hariharan, J.P. Morgan - Analyst\nWhat about 2026 capex? Will gross margin reach 59.5%?\n'
+          'Jen-Chau Huang - CFO\nWe expect capex of US$42.5 billion.\nOperator\nThe next question is from Charlie Chan.\n'
+          'Charlie Chan, Morgan Stanley - Analyst\nOn N2 ramp?\n')
+    sp = split_qa_text(tx)
+    chk('⑱ split_qa_text:目錄裡先出現的「Questions and Answers」⛔ 當開始(挑 15% 之後那個);切不到 → None',
+        sp is not None and sp[1].startswith('QUESTIONS AND ANSWERS') and sp[2] > 0.5 and split_qa_text('only prepared remarks') is None)
+    chk('⑲ count_questions:分析師那一行 / 下一個問題 / 「Q」那一行 / 中文「請問」取最大',
+        count_questions(sp[1]) == 2 and count_questions('Q:\nA:\nQ:\nA:\nQ:\n') == 3 and count_questions('請問毛利 想請教資本支出') == 2)
+    o1 = only_in_qa(sp[1], sp[0])
+    o0 = only_in_qa(sp[0], sp[0])
+    chk('⑳ only_in_qa:問答講到簡報沒有的數字(59.5% / 42.5)→ 算「只在問答」;⭐ 決定性對照:拿前半段自己比 → 0',
+        o1['num_sent'] >= 1 and o1['only_num_sent'] >= 1 and o0['num_sent'] >= 1 and o0['only_num_sent'] == 0 and o0['share'] == 0)
+    cc, dr = clean_cues([{'text': '请不吝点赞 订阅 转发 打赏支持明镜与点点栏目'}, {'text': '字幕志愿者 李宗盛'}, {'text': '各位好'},
+                         {'text': '各位好'}, {'text': '今天報告營收'}])
+    chk('㉑ clean_cues:幻覺固定句丟掉、連續一樣的只留一句', [c['text'] for c in cc] == ['各位好', '今天報告營收'] and dr == 3)
+    _CC.clear()
+    t1 = to_trad('请问毛利率 软件')
+    _CC.clear()
+    _CC.append(None)
+    t0 = to_trad('请问毛利率')
+    _CC.clear()
+    try:
+        import opencc  # noqa: F401
+        has_cc = True
+    except Exception:
+        has_cc = False
+    chk('㉒ to_trad:裝了 OpenCC 就轉臺灣用字(请问 → 請問、软件 → 軟體);沒裝原樣回傳', t0 == '请问毛利率' and (t1 == '請問毛利率 軟體' if has_cc else t1 == '请问毛利率 软件'))
+    cues2 = [{'start': 21, 'end': 25, 'text': '簡報後再進行 Q&A'}, {'start': 600, 'end': 610, 'text': '今天營收'},
+             {'start': 1500, 'end': 1510, 'text': '接下來是 QA 時間'}, {'start': 1510, 'end': 2000, 'text': '請問毛利率'}]
+    q2 = qa_split(cues2, min_frac=0.25)
+    chk('㉓ qa_split(min_frac):開場先講「之後有 Q&A」⛔ 當開始 → 挑後面那個;不給 min_frac 照舊挑第一個',
+        q2['at'] == 1500 and qa_split(cues2)['at'] == 21)
+    chk('㉔ qa_gate:兩個條件都要過', qa_gate(200, 0.4)['pass'] and not qa_gate(100, 0.4)['pass'] and not qa_gate(200, 0.2)['pass']
+        and not qa_gate(200, None)['pass'])
     print(f'\n{"✅ 全部通過" if not fail else f"❌ {fail} 條失敗"}({ok} 條)')
     return 1 if fail else 0
 
 
 if __name__ == '__main__':
-    sys.exit(selftest() if '--selftest' in sys.argv else main())
+    sys.exit(selftest() if '--selftest' in sys.argv else (main_qa() if (os.getenv('AV_MODE') or '') == 'qa' else main()))
