@@ -290,6 +290,14 @@ ok(/-1\.26 pp/.test(react) && /對照組/.test(react) && /-0\.73 pp/.test(react)
   '📊⑲ 事件組**與對照組**的數字都要印(⛔ 沒有對照組的統計不可用,陷阱 #36)', react.slice(0, 160));
 ok(/不是回測/.test(react) && /0 個成立/.test(react), '📊⑲b 固定免責:不是回測 + 37 種行事曆日方向 0 個成立');
 ok(/同一天所有股票/.test(react) && /沒看簡報內容/.test(react), '📊⑲b2 📞 V79.6.3 引用真的那支法說會研究(實測總表 confcall-react,讀 LAB ⛔ 寫死)+ 說明內容還在測', react.slice(-260));
+const reactCC = await pg.evaluate(() => {
+  const L = PRO.LAB || {}; const c = [].concat(L.trap || [], L.ok || [], L.blocked || []).find(x => x && x.k === 'confcall-content');
+  const t0 = c ? c.t : null; const a = PRO._confLabLine();
+  if (c) c.t = '注入測試字串XYZ'; const b = PRO._confLabLine(); if (c) c.t = t0;
+  return { has: !!c, a, b };
+});
+ok(reactCC.has && /簡報內容/.test(reactCC.a) && /一格都沒過/.test(reactCC.a) && /注入測試字串XYZ/.test(reactCC.b) && !/注入測試字串XYZ/.test(reactCC.a),
+  '📊⑲b3 📞 V79.7.3 簡報內容那份研究也引用(實測總表 confcall-content,讀 LAB ⛔ 寫死;⭐ 決定性對照:改 LAB 標題 → 畫面跟著變)', reactCC.a.slice(-200));
 ok(/樣本不足/.test(react) && /3 場/.test(react), '📊⑲c 這一檔 n<10 要標「樣本不足,⛔ 不能當結論」(`_wrEnough` 同一把尺)', react.slice(-120));
 ok(!DIR.test(react), '📊⑲d 統計段⛔ 不可出現方向詞', (react.match(DIR) || [])[0]);
 
