@@ -312,15 +312,38 @@ def download(url, kind, dest):
     if kind == 'ir_mp4' or kind == 'file':
         import requests
         p = Path(dest) / 'in.mp4'
-        with requests.get(url, timeout=60, stream=True, headers=UA) as r:
-            r.raise_for_status()
-            got = 0
-            with open(p, 'wb') as fh:
-                for chunk in r.iter_content(1 << 20):
-                    fh.write(chunk)
-                    got += len(chunk)
-                    if got > MAX_MB * 1048576:
-                        raise RuntimeError(f'超過 {MAX_MB:.0f} MB')
+        # 🔁 V79.7.3 第一輪實測:480 MB 那場下載到 1 MB 就斷線(IncompleteRead)→ 斷了用 Range 從斷點續傳,最多 6 次
+        got, total, tries = 0, None, 0
+        with open(p, 'wb') as fh:
+            while True:
+                hdr = dict(UA, Range=f'bytes={got}-') if got else dict(UA)
+                try:
+                    with requests.get(url, timeout=60, stream=True, headers=hdr) as r:
+                        r.raise_for_status()
+                        if got and r.status_code != 206:          # 主機不理 Range → 整份重來
+                            fh.seek(0)
+                            fh.truncate()
+                            got = 0
+                        if total is None:
+                            cl = r.headers.get('Content-Length')
+                            total = (int(cl) + got) if cl and cl.isdigit() else None
+                        for chunk in r.iter_content(1 << 20):
+                            fh.write(chunk)
+                            got += len(chunk)
+                            if got > MAX_MB * 1048576:
+                                raise RuntimeError(f'超過 {MAX_MB:.0f} MB')
+                    if total is None or got >= total:
+                        break
+                except RuntimeError:
+                    raise
+                except Exception as e:  # 斷線 → 續傳
+                    if tries >= 6:
+                        raise RuntimeError(f'續傳 {tries} 次仍斷線({got >> 20} MB / {(total or 0) >> 20} MB):{str(e)[:60]}')
+                tries += 1
+                if tries > 6:
+                    raise RuntimeError(f'續傳 {tries} 次仍不完整({got >> 20} MB / {(total or 0) >> 20} MB)')
+                time.sleep(2 * tries)
+        download.retries = tries
         return p, time.time() - t0
     import yt_dlp
     opts = {'quiet': True, 'no_warnings': True, 'format': 'bestaudio/best', 'outtmpl': str(Path(dest) / 'in.%(ext)s')}
@@ -494,6 +517,8 @@ def main():
                 path, dl = download(r['vid'], 'ir_mp4', td)
                 rec['dl_sec'] = round(dl)
                 rec['mb'] = round(path.stat().st_size / 1048576, 1)
+                rec['dl_retries'] = getattr(download, 'retries', 0)
+                rec['mb_per_s'] = round(rec['mb'] / max(dl, 1), 2)
                 chunks = to_chunks(path, td)
                 rec['audio_min'] = round(sum(_dur(c) for c in chunks) / 60, 1)
             except Exception as e:
@@ -518,6 +543,11 @@ def main():
                         print(f'③ 本機 {mname}:{asec:.0f} 秒音訊花 {spent:.0f} 秒(×{spent / max(asec, 1):.2f})', flush=True)
                     except Exception as e:
                         rep['local'].append({'s': r['s'], 'model': mname, 'err': str(e)[:120]})
+            for m, t in first_local.items():          # 🔁 沒有 Groq 也存本機那段,並對簡報數字(只有前 10 分鐘)
+                (out / 'tx' / f"{r['s']}_{r['d']}_local_{m}.txt").write_text(t, encoding='utf-8')
+                if deck_text:
+                    rec.setdefault('local_num', {})[m] = num_match(t, deck_text)
+                rec.setdefault('local_chars', {})[m] = len(re.sub(r'\s', '', t))
             if i < TRANS_N and keys:
                 t0 = time.time()
                 cues = []
@@ -667,6 +697,55 @@ def selftest():
         (Path(td) / 'cc' / 'index.json').write_text(json.dumps({'files': {'X.pdf': {'st': 'ok', 'tx': '2026-10'}}}), encoding='utf-8')
         (Path(td) / 'cc' / 'text' / '2026-10.json.gz').write_bytes(gzip.compress(json.dumps({'X.pdf': {'p': ['一', '二']}}).encode()))
         chk('⑬ pages_of 照 index 的 tx 月份找全文', pages_of(td, 'X.pdf', '2026-09-30') == ['一', '二'])
+    # ⑭ 下載斷線 → Range 續傳(第一輪實測 480 MB 那場斷在 1 MB);主機不理 Range → 整份重來
+    import types
+    FULL = bytes(range(256)) * 40
+    class _R:
+        def __init__(self, body, code, cl, cut=None):
+            self.body, self.status_code, self.cut = body, code, cut
+            self.headers = {'Content-Length': str(cl)}
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+        def raise_for_status(self):
+            pass
+        def iter_content(self, n):
+            for k in range(0, len(self.body), 1000):
+                if self.cut is not None and k >= self.cut:
+                    raise ConnectionError('IncompleteRead')
+                yield self.body[k:k + 1000]
+    def _fake(mode):
+        calls = []
+        def get(url, timeout=None, stream=None, headers=None):
+            rg = (headers or {}).get('Range')
+            calls.append(rg)
+            if not rg:
+                return _R(FULL, 200, len(FULL), cut=3000)
+            st = int(rg.split('=')[1].rstrip('-'))
+            if mode == 'ignore':
+                return _R(FULL, 200, len(FULL), cut=None if len(calls) > 2 else 3000)
+            return _R(FULL[st:], 206, len(FULL) - st)
+        return types.SimpleNamespace(get=get), calls
+    old = sys.modules.get('requests')
+    try:
+        for mode in ('range', 'ignore'):
+            fk, calls = _fake(mode)
+            sys.modules['requests'] = fk
+            _sl, time.sleep = time.sleep, (lambda *_: None)
+            try:
+                with tempfile.TemporaryDirectory() as td:
+                    pth, _ = download('http://x/a.mp4', 'ir_mp4', td)
+                    okb = pth.read_bytes() == FULL
+            finally:
+                time.sleep = _sl
+            chk(f'⑭ 下載斷線續傳({mode}):檔案完整、{"第二次帶 Range 從斷點接" if mode == "range" else "主機不理 Range → 整份重來"}',
+                okb and len(calls) >= 2 and calls[1] == 'bytes=3000-')
+    finally:
+        if old is not None:
+            sys.modules['requests'] = old
+        else:
+            sys.modules.pop('requests', None)
     print(f'\n{"✅ 全部通過" if not fail else f"❌ {fail} 條失敗"}({ok} 條)')
     return 1 if fail else 0
 

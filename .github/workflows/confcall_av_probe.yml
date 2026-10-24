@@ -71,6 +71,8 @@ jobs:
           CC_DIR: ccd
           OUT: /tmp/av
           GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          # ⚠️ 第一輪只給了 GROQ_API_KEYS → 空的(本 repo 其他採礦兩個都給,實際有值的是單數那個)→ ②⑤ 整段沒跑
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           AV_TRANS_N: ${{ inputs.trans_n }}
           AV_LOCAL_N: ${{ inputs.local_n }}
           AV_OCR_N: ${{ inputs.ocr_n }}
