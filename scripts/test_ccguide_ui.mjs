@@ -124,7 +124,18 @@ let proOut = null;
     const pend = JSON.parse(JSON.stringify(DK_OLD)); pend.g.forEach(c => { c.r = { res: 'pending', cur: c.h, base: '2026Q2' }; });
     const b2 = mk([DK_NEW, pend]);
     const c = mk([Object.assign({}, DK_NEW, { g: undefined })]);
-    return { gNew, gPast, noPast: !b2.querySelector('[data-corp-cc-past]'), noG: !c.querySelector('[data-corp-cc-g]') && !c.querySelector('[data-corp-cc-past]'),
+    // 📞 報告頁(專報)§7:跟基本頁同一支 _corpConfCallHtml;還沒載過 → 先回空 + 背景載
+    app.currentSymbolId = '1303';
+    app._ccCache = { 1303: { s: '1303', name: '南亞', decks: [DK_NEW, DK_OLD] }, 2317: null };
+    const rp = document.createElement('div'); rp.innerHTML = app._rpConfHtml({ sym: '1303' });
+    const rpT = rp.querySelector('summary')?.textContent || '', rpBody = rp.querySelector('[data-corp-cc-g]')?.textContent || '';
+    let loads = 0; const _orig = app._renderCorpConfCall; app._renderCorpConfCall = async () => { loads++; };
+    const rpNone = app._rpConfHtml({ sym: '9999' }), rpNull = app._rpConfHtml({ sym: '2317' });
+    app._renderCorpConfCall = _orig;
+    const order = ['rpFund', 'rpConf', 'rpChip'].map(id => document.getElementById(id));
+    const inOrder = order.every(Boolean) && (order[0].compareDocumentPosition(order[1]) & 4) && (order[1].compareDocumentPosition(order[2]) & 4);
+    return { rpT, rpBody, rpNone, rpNull, loads, inOrder: !!inOrder,
+             gNew, gPast, noPast: !b2.querySelector('[data-corp-cc-past]'), noG: !c.querySelector('[data-corp-cc-g]') && !c.querySelector('[data-corp-cc-past]'),
              xss: !!window.__xss || !!a.querySelector('img'), txt: (a.textContent || '').replace(/\s+/g, ' '), out: fx(PRO_OR_APP, SAMPLE) };
   }, { DK_NEW, DK_OLD, SAMPLE, fxs: fx.toString() });
   ok(/📋 公司講的展望/.test(R.gNew) && (R.gNew.match(/⏳/g) || []).length === 2 && /第四季合併營收將持續攀升/.test(R.gNew) && /第 13 頁/.test(R.gNew)
@@ -134,6 +145,10 @@ let proOut = null;
      '③ 之前講過、已經有答案的:日期 + 公司原話 + ✅ / ❌ + 數字', R.gPast);
   ok(R.noPast, '③ ⭐ 決定性對照:之前那份還沒到期 → ⛔ 列「之前講的,做到了沒」');
   ok(R.noG, '⑤ ⭐ 決定性對照:沒有 g → 那兩段一個字都沒有');
+  ok(/§7 法說會:公司講了什麼、做到了沒/.test(R.rpT) && /📋 公司講了 2 句可以對答案的展望 ・✅ 0 ・❌ 0 ・⏳ 2/.test(R.rpT) && /第四季合併營收將持續攀升/.test(R.rpBody),
+     '⑥ 報告頁(專報)§7:標題寫出幾句展望 + ✅ / ❌ / ⏳ 各幾句,內容跟基本頁同一支', R.rpT);
+  ok(R.rpNone === '' && R.loads === 1 && R.rpNull === '', '⑥ 還沒載過 → 先回空、背景載一次;讀不到(null)→ 整格不顯', JSON.stringify({ n: R.rpNone, l: R.loads, z: R.rpNull }));
+  ok(R.inOrder, '⑥ 報告頁照 § 由小到大:§4~§6 財報 → §7 法說會 → §10 籌碼');
   ok(!R.xss, '⑤ 公司原話一律跳脫');
   const BAD = /實測|回測|勝率|期望值|贏大盤|偏多|偏空|利多|利空|會漲|會跌/;
   ok(!BAD.test(R.txt), '③ 畫面上 ⛔ 研究字樣 / 方向詞', (R.txt.match(BAD) || [])[0]);

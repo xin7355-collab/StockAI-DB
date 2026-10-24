@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.6.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.6.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.6.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.6.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2542,6 +2542,8 @@
                      ⛔ §0(資料日期)例外排最後:它是附錄不是內容。 -->
                 <div id="rpInd" class="hidden"></div>
                 <div id="rpFund" class="hidden"></div>
+                <!-- 📞 V79.6.8 §7 法說會:公司講了什麼、做到了沒(跟「基本」頁那一格同一份 _corpConfCallHtml) -->
+                <div id="rpConf" class="hidden"></div>
                 <div id="rpChip" class="hidden"></div>
                 <div id="rpWalls" class="hidden"></div>
                 <!-- 📊 V77.4.6 歷史機率(使用者:「機率我還是想要」)—— 接在價格牆之後:
@@ -8605,10 +8607,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.6.8',
+    _APP_VERSION: 'V79.6.9',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.6.9', d: [
+            '📖 個股「報告」頁多了 §7 法說會:公司在簡報上講了什麼、之後做到了沒(跟「基本」頁那一格同一份內容,標題直接寫出 ✅ / ❌ / ⏳ 各幾句)',
+        ], dt: '2026-10-24' },
         { v: 'V79.6.8', d: [
             '📋 法說會多了「公司講的展望」:個股「基本」頁那一格會列出公司在簡報上說的話(例如「第四季營收會比第三季好」),之後月營收、財報出來就自動對答案 —— ✅ 做到了 / ❌ 沒做到 / ⏳ 還沒到期,附實際數字與哪天知道',
             '📄 簡報裡 PDF 抽出來的怪字(「成⾧」)會自動換成一般字;講毛利率的那句也不會再被當成總經新聞排到最後',
@@ -8815,7 +8820,6 @@ ${list}
         { v: 'V78.6.2', d: ['🐟 股海釣手改回每天換:魚 = 今天排行前 10 名(不再扣掉決策台那一批)','📒 決策台 👑 還是每 10 個交易日換一批,不改'] },
         { v: 'V78.6.1', d: ['🐟 股海釣手的新魚當觀察名單就好;要照規則買賣,請看決策台 👑 那一批'] },
         { v: 'V78.6.0', d: ['👑 決策台領頭羊名單改成只列「這一批」:平常日子列的是上次換倉那天的 10 檔(10 天不變),右邊寫它今天排第幾名;換倉那天才換成新的一批', '🎣 股海釣手改成每天釣「這一批以外」的新魚,跟決策台那 10 檔不會重複'] },
-        { v: 'V78.5.9', d: ['👑 決策台領頭羊名單的「換倉價」改成「09/24價」(換這一批那天的收盤):以前只有那天也在名單上的才有價格、其他寫「—」,現在每一檔都補上那天的價,底下是那天到現在漲跌多少'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -25736,6 +25740,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._rpSet('rpProb', this._rpProbHtml(ctx), sym);      // 📊 歷史機率(V77.4.6)
         this._rpSet('rpVal', this._rpValHtml(ctx), sym);
         this._rpSet('rpFund', this._rpFundHtml(ctx), sym);
+        this._rpSet('rpConf', this._rpConfHtml(ctx), sym);      // 📞 §7 法說會(V79.6.8)
         this._rpSet('rpInd', this._rpIndHtml(ctx), sym);
         this._rpSet('rpChip', this._rpChipHtml(ctx), sym);
         this._rpSet('rpRisk', this._rpRiskHtml(ctx), sym);
@@ -25744,6 +25749,30 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         //   `_rpLongHtml` 讀 `this._rpLast`(上面才存好),而 `_rpApplyView` 要等 `<details>` 真的進 DOM。
         this._rpSet('rpView', this._rpViewBarHtml(), sym);
         try { this._rpApplyView(); } catch (_) {}
+    },
+
+    // 📞 V79.6.8 報告頁 §7 管理層與法說會訊號 —— 本站讀簡報的那一份:跟「基本」頁那一格**同一支** _corpConfCallHtml(⛔ 第二份)。
+    //   ⚠️ data/cc 是非同步讀的:還沒載過 → 先回空(整格不顯)、背景載完再補畫這一格(綁 sym,陷阱 #19)
+    _rpConfHtml(C) {
+        const sym = String((C && C.sym) || this.currentSymbolId || '');
+        const J = (this._ccCache || {})[sym];
+        if (J === undefined) { this._rpConfLoad(sym); return ''; }
+        const body = J ? this._corpConfCallHtml(sym, J) : '';
+        if (!body) return '';
+        const dk = (J.decks || []).find(x => x && x.st === 'ok');
+        const g = ((dk && dk.g) || []).filter(c => c && c.ok);
+        const cnt = r => g.filter(c => (c.r || {}).res === r).length;
+        const note = g.length ? `📋 公司講了 ${g.length} 句可以對答案的展望 ・✅ ${cnt('hit')} ・❌ ${cnt('miss')} ・⏳ ${cnt('pending')}`
+                              : '公司原話 + 頁碼(這份簡報沒有可以拿財報對答案的展望)';
+        return this._rpDetails('📞 §7 法說會:公司講了什麼、做到了沒', note, body);
+    },
+    async _rpConfLoad(sym) {
+        if (!sym || this._rpConfBusy === sym) return;
+        this._rpConfBusy = sym;
+        try { await this._renderCorpConfCall(sym); } catch (_) {}   // 同一份快取 _ccCache(基本頁那一格順便畫好)
+        this._rpConfBusy = null;
+        if (String(this.currentSymbolId) !== sym || (this._ccCache || {})[sym] === undefined) return;
+        this._rpSet('rpConf', this._rpConfHtml({ sym }), sym);
     },
 
     // 📊 V77.4.6 歷史機率 —— ⛔ 純轉述 `_probBox()`(全 App 唯一那一份),⛔ 不在這裡算第二套
@@ -33692,7 +33721,7 @@ ${this._reportFacts(sym)}
                 'marginCallBox',                          // 融資追繳壓力區(V71.7.1)
                 // 🗑️ chipRadarPanel 已於 V74.2.0 刪除(instcost_probe 實測無優勢)
                 // 📄 V75.1.1 報告分頁九段(全是 async 才填;不清會顯上一檔的估值/籌碼)
-                'rpLead', 'rpQuick', 'rpPaste', 'rpImg', 'rpWalls', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc',
+                'rpLead', 'rpQuick', 'rpPaste', 'rpImg', 'rpWalls', 'rpVal', 'rpFund', 'rpConf', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc',
                 'ovWhyBox',                               // 🧭 V76.0.7 主卡收進摺疊區的那一半(_renderOvCommand 才填)
                 'ovOpenBox', 'ovColBox',     // 🌅📰 V78.5.2 / V78.4.3 開盤卡(含明天收盤那一行)/ 這一檔的專欄(_renderOvCommand 才填)
                 'corpConfCall',                           // 📞 V79.6.3 最近一次法說會說了什麼(async 讀 data/cc/{sym}.json)

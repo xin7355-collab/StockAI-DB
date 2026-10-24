@@ -87,6 +87,7 @@ MoneyDJ 第 12 款公告)+ 一個「Data → Transcript → Analysis → App」�
 - 散戶 App 基本頁法說會那格:這次講的最多 2 句 + 之前講過、已經有答案的最多 2 句 —— 只放事實(公司原話 + 財報數字),⛔ 說到做到率 / 研究數字(V78.3.4)。
 - 判讀文字兩個檔案各一份(`_ccPeriod / _ccWhen / _ccWhat / _ccClaim`),`test_ccguide_ui.mjs` 原始碼一字不差 + 同一批資料輸出一樣;4 種注入全紅。
 - 換回:`git revert` 這一版;或只拿掉畫面:pro `_confDetailHtml` / index `_corpConfCallHtml` 裡 `data-ccd-g` / `data-corp-cc-g` 那兩段(資料 `g` 不影響其他欄位)。
+- 📖 V79.6.9 專報(個股「報告」頁)多一節 **§7 法說會:公司講了什麼、做到了沒**(`_rpConfHtml`,排在 §4~§6 財報與 §10 籌碼之間;內容就是基本頁那一格 `_corpConfCallHtml`,⛔ 第二份;還沒載過 data/cc → 先不顯示、背景載完補畫,綁 sym;切股清空清單加 `rpConf`)。
 
 ## 🩺 V79.6.7 daily_miner 合併把別支剛推的檔「寫壞」或「改回舊版」(10/24 #647,陷阱 #61)
 
