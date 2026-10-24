@@ -91,17 +91,33 @@
    "PER",
    "PBR"
   ],
-  "have": 2103,
+  "have": 2548,
+  "of": 2548,
+  "chk": [
+   0,
+   0
+  ],
+  "done": true
+ },
+ "share": {
+  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
+  "at": "2026-10-24",
+  "probe_first": "2010-01-04",
+  "cols": [
+   "ForeignInvestmentRemainingShares",
+   "ForeignInvestmentShares",
+   "ForeignInvestmentRemainRatio",
+   "ForeignInvestmentSharesRatio",
+   "ChineseInvestmentUpperLimitRatio",
+   "NumberOfSharesIssued"
+  ],
+  "have": 153,
   "of": 2548,
   "chk": [
    0,
    0
   ],
   "done": false
- },
- "share": {
-  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
-  "at": "2026-10-20"
  },
  "dt": {
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
