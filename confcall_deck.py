@@ -78,6 +78,10 @@ MAX_PAGES = 80
 KEEP_PER_SYM = 4
 DIGEST_DAYS = 60
 PREV_DECKS = 4                # 「第一次提到」跟這家公司前幾份比
+# 📝 V79.6.7 法說會 3.0 第一步:每份簡報的全文存進 cc_deep/cc/text/(研究「講了什麼 → 做到了沒」要從全文抽,⛔ 只存幾句重點不夠)
+#    實測 2,409 份:中位 5,071 字・第 99 百分位 29,336・最大 64,839 → 一份最多存 TEXT_MAX 字(頁碼照舊對得上)
+TEXT_MAX = 80000
+TEXT_TRIES = 3               # 已讀過、當時沒存全文的 → 補存時下載失敗最多試幾天(⛔ 把它的「已讀」狀態改掉)
 COMMON_SHARE = 0.20           # 這一季超過兩成公司都在講的詞 ⛔ 不算「新」
 COMMON_MIN_DECKS = 30         # 樣本太少就不判「大家都在講」
 TRANSIENT_TRIES = 3           # 下載失敗(暫時性)最多試幾輪
@@ -595,6 +599,35 @@ def month_file(d):
     return CC / 'cc' / 'feat' / f'{d[:7]}.json.gz'
 
 
+def text_file(m):
+    """📝 全文月檔(依場次月份):{檔名: {'p': [第 1 頁的字, 第 2 頁…], 'n': 原本總字數, 'cut': 1(超過 TEXT_MAX 才有)}}。
+    ⚠️ 場次日期之後被 fix_dates 改早,全文 ⛔ 跟著搬 —— 索引 files[檔名]['tx'] 記著它在哪個月檔。"""
+    return CC / 'cc' / 'text' / f'{m[:7]}.json.gz'
+
+
+def text_pack(pages):
+    """每頁的字照順序存(頁碼 = 第幾個 + 1,⛔ 不可把空白頁拿掉 —— 引用頁碼會對不上);總長超過 TEXT_MAX 後面的頁存空字串。"""
+    out, n = [], 0
+    tot = sum(len(x or '') for x in pages)
+    for x in pages:
+        x = x or ''
+        keep = x[:max(0, TEXT_MAX - n)]
+        out.append(keep)
+        n += len(keep)
+    rec = {'p': out, 'n': tot}
+    if tot > TEXT_MAX:
+        rec['cut'] = 1
+    return rec
+
+
+def load_text(f, files):
+    """讀某一份簡報的全文(沒有 → None)。研究腳本 / 之後的展望抽取都走這支。"""
+    m = (files.get(f) or {}).get('tx')
+    if not m or m == '-':
+        return None
+    return (_load_json(text_file(m), {}) or {}).get(f)
+
+
 def load_index():
     return _load_json(CC / 'cc' / 'index.json', {'files': {}})
 
@@ -774,11 +807,24 @@ def _readable(st, today=None):
     return True
 
 
+def _need_text(st, today=None):
+    """📝 V79.6.7 已讀過(ok)但當時沒存全文 → 要補存。⛔ 下載失敗滿 TEXT_TRIES「天」就不再試;今天試過的明天再試。"""
+    if not st or st.get('st') != 'ok' or st.get('tx'):
+        return False
+    if (st.get('txtries') or 0) >= TEXT_TRIES:
+        return False
+    if today is not None and st.get('txlast') == today.isoformat():
+        return False
+    return True
+
+
 def plan_todo(recent_rows, backlog_rows, files, today):
     """要讀哪些簡報、照什麼順序。回 (todo[(row, 檔名, 原因)…], earliest{檔名: (日期, row)})。
     順序:① 最近 60 天場次表裡的(新 → 舊)
+         ①b 📝 最近 60 天已讀過、當時沒存全文的(補存;原因 'text')
          ② 這些公司前 PREV_DECKS 份(新 → 舊;「這次第一次提到」要跟它們比,⭐ 回補時先讀這些 App 才馬上有得比)
          ③ 其他回補的(新 → 舊)
+         ④ 📝 其他已讀過、當時沒存全文的(補存,排最後:⛔ 擋到還沒讀過的)
     同一份簡報只排一次;日期用「最早引用它的那一場」(拿舊簡報去券商場重講的 ⛔ 不算新的一場)。"""
     t = today.isoformat()
     earliest = {}
@@ -800,12 +846,17 @@ def plan_todo(recent_rows, backlog_rows, files, today):
     by_sym = {}
     for f, (d, r, _) in earliest.items():
         by_sym.setdefault(str(r.get('s')), []).append((d, f))
-    tier = {f: 0 for f in recent_f}
+    prev_f = set()
     for s in recent_s:
         older = [f for d, f in sorted(by_sym.get(s, []), reverse=True) if f not in recent_f]
-        for f in older[:PREV_DECKS]:
-            tier.setdefault(f, 1)
-    todo = [(tier.get(f, 2), d, f, r, why) for f, (d, r, why) in earliest.items() if _readable(files.get(f), today)]
+        prev_f.update(older[:PREV_DECKS])
+    todo = []
+    for f, (d, r, why) in earliest.items():
+        st = files.get(f)
+        if _readable(st, today):
+            todo.append((0 if f in recent_f else (2 if f in prev_f else 3), d, f, r, why))
+        elif _need_text(st, today):
+            todo.append((1 if f in recent_f else 4, d, f, r, 'text'))
     todo.sort(key=lambda x: (x[1], x[2]), reverse=True)        # 新 → 舊
     todo.sort(key=lambda x: x[0])                              # 再照優先序(穩定排序)
     return [(r, f, why) for _, _, f, r, why in todo], {f: (d, r) for f, (d, r, _) in earliest.items()}
@@ -1424,6 +1475,7 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         log(f'🗓️ {moved} 份簡報找到更早引用它的場次 → 日期改成那一場(⛔ 不重新下載)')
     fetcher = fetcher or (Fetcher() if todo else None)
     new_recs, ai_used, ai_fail, n_ok, n_fail, streak, n_try = [], 0, 0, 0, 0, 0, 0
+    texts, n_tx_old = {}, 0      # 📝 這一輪要存的全文 {月份: {檔名: …}}・補存了幾份(已讀過的)
     n_bad, blk = 0, 0             # n_bad = 暫時性 / 被擋(紅燈只看這種;「還沒上傳」⛔ 算壞掉)・blk = 連續被擋幾份
     tday = today.isoformat()
     reason = 'done'
@@ -1463,8 +1515,12 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
             perm = (ek == 'nf' and not young) or ek in ('too_big', '4xx')
             # 📅 一天只算一次(同一天又失敗 ⛔ 再扣)・🛡️ 被擋 ⛔ 算這份檔的錯(tries 不動)
             tries = (prev.get('tries') or 0) + (0 if (ek == 'blocked' or prev.get('last') == tday) else 1)
-            files[f] = {'st': 'too_big' if ek == 'too_big' else ('bad_file' if perm else 'dl_fail'), 'err': err[:160],
-                        's': s, 'd': d, 'tries': tries, 'last': tday}
+            if why == 'text':        # 📝 補存全文失敗:⛔ 把「已讀」改掉(特徵 / 摘要都還在),只記補存試了幾天
+                files[f] = {**prev, 'txerr': err[:160], 'txlast': tday,
+                            'txtries': (prev.get('txtries') or 0) + (0 if (ek == 'blocked' or prev.get('txlast') == tday) else 1)}
+            else:
+                files[f] = {'st': 'too_big' if ek == 'too_big' else ('bad_file' if perm else 'dl_fail'), 'err': err[:160],
+                            's': s, 'd': d, 'tries': tries, 'last': tday}
             log(f'  ⚠️ {s} {d} {f} 下載失敗:{err[:140]}({t_dl:.0f} 秒)')
             if ek == 'blocked':
                 n_bad += 1
@@ -1494,6 +1550,18 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         pages, perr = extract_safe(b)
         t_ex = time.time() - t_e
         del b
+        m_tx = (d or '0000-00')[:7]
+        if why == 'text':                                    # 📝 補存全文:只存字,⛔ 重算特徵、⛔ 重叫 AI、⛔ 改「已讀」
+            prev = files.get(f) or {}
+            if pages is None:
+                files[f] = {**prev, 'txerr': perr, 'txlast': tday, 'txtries': TEXT_TRIES}   # 同一份檔下次一樣卡 → 不再試
+            elif sum(len(x or '') for x in pages) < 200:
+                files[f] = {**prev, 'tx': '-'}                # 這次抽不到字(⛔ 一直重試)
+            else:
+                texts.setdefault(m_tx, {})[f] = text_pack(pages)
+                files[f] = {**{k: v for k, v in prev.items() if k not in ('txerr', 'txlast', 'txtries')}, 'tx': m_tx}
+                n_tx_old += 1
+            continue
         if pages is None:                                    # 抽不出來 / 抽太久 → 記原因、⛔ 不重試(同一份檔下次一樣卡)
             files[f] = {'st': 'parse_fail', 'err': perr, 's': s, 'd': d, 'tries': 1}
             rec['st'] = 'parse_fail'
@@ -1522,7 +1590,8 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
                     rec['ai_n'] = 1             # 模型有回、但回的不能用 → 補摘要那段最多再試 AI_TRIES 次(沒回 ⛔ 算這份的錯)
                 if ai_fail >= AI_FAIL_STOP:
                     log(f'🤖 AI 連 {AI_FAIL_STOP} 份都沒回(多半是額度用完)→ 這一輪不再叫 AI,只給機械式重點')
-        files[f] = {'st': 'ok', 's': s, 'd': d, 'tries': 1, 'pages': feat['pages']}
+        texts.setdefault(m_tx, {})[f] = text_pack(pages)     # 📝 全文(研究「講了什麼 → 做到了沒」用)
+        files[f] = {'st': 'ok', 's': s, 'd': d, 'tries': 1, 'pages': feat['pages'], 'tx': m_tx}
         new_recs.append(rec)
         n_ok += 1
         log(f'  ✅ {s} {d} {feat["pages"]} 頁 ・重點 {len(feat["outlook"])} 句 ・數字 {len(feat["nums"])} 句 ・詞 {len(feat["terms"])} 個'
@@ -1542,6 +1611,11 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         touched_m |= tm
     for m in touched_m:
         _save_json(month_file(m + '-01'), sorted(allr.get(m, []), key=lambda x: (x.get('d') or '', x.get('f') or '')))
+    # 📝 全文月檔:舊的留著、這一輪的加進去(⛔ 整份重寫成只剩這一輪的);先存全文、再存索引(索引的 tx 才對得上)
+    for m, add in texts.items():
+        cur = _load_json(text_file(m), {}) or {}
+        cur.update(add)
+        _save_json(text_file(m), cur)
     idx['updated'] = datetime.now(TW).isoformat(timespec='minutes')
     _save_json(CC / 'cc' / 'index.json', idx)
     _gh_out(ran=1)                # 💾 紀錄已存 → 就算等一下紅燈,workflow 也要把 cc_deep 推上去(⛔ 不然「試過幾次」永遠存不住)
@@ -1558,6 +1632,9 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         route += f'・分 {DL_CONN} 段同時下載 {fetcher.par} 份'
     if getattr(fetcher, 'resumed', 0):
         route += f'・斷線續傳 {fetcher.resumed} 次'
+    n_tx = sum(len(v) for v in texts.values())
+    if n_tx:
+        log(f'📝 存全文 {n_tx} 份(其中補存已讀過的 {n_tx_old} 份)→ cc/text/ {len(texts)} 個月檔')
     log(f'📦 讀成功 {n_ok} 份 ・失敗 {n_fail} ・AI 摘要 {ai_used} 次{f"(補摘要 {n_fill} 份)" if n_fill else ""} ・改了 {wrote} 檔 data/cc/ ・清單 {nd} 場 ・還沒讀 {left} 份({reason}){route}')
     _gh_out(more=1 if left else 0, reason=reason, left=left)
     if todo and n_ok == 0 and n_bad >= (BLOCK_STOP if reason == 'blocked' else 5):

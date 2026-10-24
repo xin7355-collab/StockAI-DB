@@ -1035,5 +1035,96 @@ ok('㊻c 其他三格的格式沒動(one / outlook / new 照舊,JSON 骨架完�
    all(k in _um for k in ('"one":', '"outlook":[{"t":', '"new":[{"t":', '"risk":[{"t":')) and _um.count('"p":頁碼') == 3, _um)
 
 
+# ㊼ 📝 V79.6.7 法說會 3.0 第一步:每份簡報的全文存起來(研究「講了什麼 → 做到了沒」要從全文抽)
+#    ① 新讀的:全文進 cc/text/{場次月份}.json.gz、頁碼對得上、索引記 tx
+#    ② 已讀過、當時沒存的:排進待讀(最近 60 天的排在回補之前、其他排最後)、只下載 + 抽字
+#       ⛔ 重算特徵、⛔ 重叫 AI、⛔ 把「已讀」改掉;下載失敗只記補存試了幾天
+with tempfile.TemporaryDirectory() as tmp:
+    rows = [{'s': '4444', 'name': '測試己', 'd': '2026-10-20', 't': '14:00', 'pdf': ['444420261020M001.pdf']},
+            {'s': '5555', 'name': '測試庚', 'd': '2026-10-21', 't': '14:00', 'pdf': ['555520261021M001.pdf']}]
+    cd, data, cc = setup(tmp, rows)
+    D_NEW = deck([['Results', 'Revenue 300 million'], ['Outlook', 'Q4 revenue will keep rising, better than Q3']])
+    D_OLD = deck([['Results', 'Revenue 200 million'], ['Outlook', 'Second half demand stays strong']])
+    # 5555 這份「以前就讀過」(舊版:index 只有 ok、沒有 tx;特徵檔裡有 AI 摘要)
+    old_rec = {'s': '5555', 'd': '2026-10-21', 'f': '555520261021M001.pdf', 'name': '測試庚', 'kind': 'pdf', 'st': 'ok', 'pages': 3,
+               'chars': 300, 'titles': [], 'outlook': [[2, 'Second half demand stays strong']], 'nums': [], 'terms': {}, 'tone': [1, 0],
+               'ai': {'one': '下半年需求強', 'outlook': [], 'new': [], 'risk': []}, 'model': 'qwen/qwen3.8-27b', 'gate_drop': 0}
+    (cc / 'cc' / 'feat').mkdir(parents=True, exist_ok=True)
+    cd._save_json(cc / 'cc' / 'feat' / '2026-10.json.gz', [old_rec])
+    cd._save_json(cc / 'cc' / 'index.json', {'v': 2, 'files': {'555520261021M001.pdf': {'st': 'ok', 's': '5555', 'd': '2026-10-21', 'tries': 1, 'pages': 3}}})
+    ai_syms = []
+    cd.groq_summarize = lambda name, sym, *a, **k: (ai_syms.append(sym), (None, None, 0))[1]
+    ffx = FakeFetcher({'444420261020M001.pdf': D_NEW, '555520261021M001.pdf': D_OLD})
+    lg = []
+    rcx = cd.run(fetcher=ffx, groq_keys=['k1'], today=date(2026, 10, 23), log=lg.append)
+    idx = cd.load_index()['files']
+    tx = cd._load_json(cd.text_file('2026-10'), {})
+    ok('㊼a 新讀的那份:全文存進 cc/text/2026-10.json.gz、索引 tx = 2026-10',
+       rcx == 0 and idx['444420261020M001.pdf'].get('tx') == '2026-10' and '444420261020M001.pdf' in tx, (rcx, idx, list(tx)))
+    pg = (cd.load_text('444420261020M001.pdf', idx) or {}).get('p') or []
+    ok('㊼b 頁碼對得上:第 2 頁就是第 2 個(Outlook 那頁)、總字數記著', len(pg) == 3 and 'better than Q3' in pg[1] and 'Revenue 300' in pg[0]
+       and tx['444420261020M001.pdf']['n'] == sum(len(x) for x in pg), pg)
+    ok('㊼c 已讀過、沒全文的那份 → 有下載(補存)、全文存了、tx 記上', '555520261021M001.pdf' in ffx.calls
+       and idx['555520261021M001.pdf'].get('tx') == '2026-10' and 'demand stays strong' in ''.join(tx['555520261021M001.pdf']['p']), (ffx.calls, idx['555520261021M001.pdf']))
+    recs = cd._load_json(cc / 'cc' / 'feat' / '2026-10.json.gz', [])
+    r55 = [r for r in recs if r['f'] == '555520261021M001.pdf']
+    ok('㊼d ⭐ 補存 ⛔ 重算特徵、⛔ 動 AI 摘要(還是原本那一份)、「已讀」照舊', len(r55) == 1 and r55[0].get('ai', {}).get('one') == '下半年需求強'
+       and r55[0].get('chars') == 300 and idx['555520261021M001.pdf']['st'] == 'ok', r55)
+    ok('㊼e 補存 ⛔ 叫 AI(只有新讀的 4444 叫過;5555 一次都沒有)', '4444' in ai_syms and '5555' not in ai_syms, ai_syms)
+    ok('㊼f log 寫出存了幾份、補存幾份', any('存全文 2 份(其中補存已讀過的 1 份)' in x for x in lg), [x for x in lg if '全文' in x])
+    # ㊼g 第二輪:都有全文了 → ⛔ 再下載
+    ffy = FakeFetcher({'444420261020M001.pdf': D_NEW, '555520261021M001.pdf': D_OLD})
+    cd.run(fetcher=ffy, groq_keys=[], today=date(2026, 10, 24), log=[].append)
+    ok('㊼g 第二輪:兩份都有全文了 → 一份都 ⛔ 再下載', ffy.calls == [], ffy.calls)
+    # ㊼h 月檔是「加進去」不是「整份重寫」:同月再讀一份新的 → 舊的兩份全文還在
+    rows2 = rows + [{'s': '6666', 'name': '測試辛', 'd': '2026-10-22', 't': '14:00', 'pdf': ['666620261022M001.pdf']}]
+    cd, data, cc = setup(tmp, rows2)
+    cd.run(fetcher=FakeFetcher({'666620261022M001.pdf': D_NEW}), groq_keys=[], today=date(2026, 10, 24), log=[].append)
+    tx2 = cd._load_json(cd.text_file('2026-10'), {})
+    ok('㊼h 同一個月檔再加一份 → 舊的兩份全文還在(⛔ 整份重寫成只剩這一輪的)', set(tx2) == {'444420261020M001.pdf', '555520261021M001.pdf', '666620261022M001.pdf'}, list(tx2))
+
+# ㊼i 補存下載失敗:⛔ 把「已讀」改掉;同一天 ⛔ 再試;隔天再試;滿 TEXT_TRIES 天放棄
+with tempfile.TemporaryDirectory() as tmp:
+    rows = [{'s': '5555', 'name': '測試庚', 'd': '2026-10-21', 't': '14:00', 'pdf': ['555520261021M001.pdf']}]
+    cd, data, cc = setup(tmp, rows)
+    (cc / 'cc' / 'feat').mkdir(parents=True, exist_ok=True)
+    cd._save_json(cc / 'cc' / 'index.json', {'v': 2, 'files': {'555520261021M001.pdf': {'st': 'ok', 's': '5555', 'd': '2026-10-21', 'tries': 1, 'pages': 3}}})
+    cd._save_json(cc / 'cc' / 'feat' / '2026-10.json.gz', [dict(old_rec)])
+    seen = []
+    for day in (23, 23, 24, 25, 26):
+        f_ = FakeFetcher({})                         # 下載一律失敗(ConnectionError)
+        cd.run(fetcher=f_, groq_keys=[], today=date(2026, 10, day), log=[].append)
+        seen.append(len(f_.calls))
+    st = cd.load_index()['files']['555520261021M001.pdf']
+    ok('㊼i 補存失敗 → 「已讀」照舊(st=ok)、記 txtries;同一天 ⛔ 再試、隔天再試、滿 3 天放棄',
+       st['st'] == 'ok' and st.get('txtries') == 3 and seen == [1, 0, 1, 1, 0], (st, seen))
+    r55 = [r for r in cd._load_json(cc / 'cc' / 'feat' / '2026-10.json.gz', []) if r['f'] == '555520261021M001.pdf']
+    ok('㊼i2 特徵與 AI 摘要都還在(⛔ 被當成沒讀過重讀)', r55 and r55[0].get('ai', {}).get('one') == '下半年需求強', r55)
+
+# ㊼j 讀的順序:最近 60 天沒讀的 → 最近 60 天補存 → 這些公司前幾份 → 其他回補 → 其他補存
+_rr = [{'s': '1111', 'd': '2026-10-20', 'pdf': ['111120261020M001.pdf']}, {'s': '2222', 'd': '2026-10-19', 'pdf': ['222220261019M001.pdf']}]
+_bk = [{'s': '1111', 'd': '2026-07-20', 'pdf': ['111120260720M001.pdf']}, {'s': '3333', 'd': '2026-06-10', 'pdf': ['333320260610M001.pdf']},
+       {'s': '4444', 'd': '2026-05-10', 'pdf': ['444420260510M001.pdf']}]
+_fs = {'222220261019M001.pdf': {'st': 'ok'}, '444420260510M001.pdf': {'st': 'ok'}, '333320260610M001.pdf': {'st': 'ok', 'tx': '2026-06'}}
+_todo, _ = cd.plan_todo(_rr, _bk, _fs, date(2026, 10, 23))
+_ord = [(f[:4], w) for _, f, w in _todo]
+ok('㊼j 順序:最近沒讀的 1111 → 最近補存 2222 → 1111 上一份 → (3333 已有全文 ⛔ 排)→ 最後補存 4444',
+   _ord == [('1111', ''), ('2222', 'text'), ('1111', ''), ('4444', 'text')], _ord)
+# ㊼k ⭐ 決定性對照:拿掉補存那一關 → 已讀過的永遠沒有全文(⛔ 會被排進來)
+_orig = cd._need_text
+cd._need_text = lambda *a, **k: False
+_todo2, _ = cd.plan_todo(_rr, _bk, _fs, date(2026, 10, 23))
+cd._need_text = _orig
+ok('㊼k 決定性對照:拿掉補存那一關 → 已讀過的 2222 / 4444 一份都不會排進來', [f[:4] for _, f, _w in _todo2] == ['1111', '1111'], _todo2)
+# ㊼l text_pack:頁碼照順序、空白頁保留(⛔ 拿掉 = 引用頁碼對不上)、超過上限後面的頁存空字串 + cut
+_tp = cd.text_pack(['a' * 10, '', 'b' * 10])
+_old_max = cd.TEXT_MAX
+cd.TEXT_MAX = 15
+_tp2 = cd.text_pack(['a' * 10, 'b' * 10, 'c' * 10])
+cd.TEXT_MAX = _old_max
+ok('㊼l 空白頁保留、超過上限截斷並標 cut、總字數記原本的', _tp['p'] == ['a' * 10, '', 'b' * 10] and 'cut' not in _tp
+   and _tp2['p'] == ['a' * 10, 'b' * 5, ''] and _tp2['cut'] == 1 and _tp2['n'] == 30, (_tp, _tp2))
+
+
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))
 sys.exit(1 if fails else 0)
