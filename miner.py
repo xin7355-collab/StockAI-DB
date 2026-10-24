@@ -514,6 +514,7 @@ def _on_tick(p, etf=False) -> bool:
 
 
 _YF_OFFGRID = {'rows': 0, 'syms': set()}   # 本輪被跳動單位守門擋掉的 yfinance 列(log 用)
+_YF_ZEROVOL = {'rows': 0, 'syms': set()}   # 🌀 V79.6.5 本輪被擋掉的 yfinance 量 0 佔位列(休市日;log 用)
 
 
 # ── yfinance OHLCV 補洞（TWSE/TPEX 回應不全時用 Yahoo Finance 補檔）─────────
@@ -551,9 +552,20 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
             out = []
             _etf = str(symbol).startswith('00')
             _rej = 0
+            _zero = 0
             for idx, row in hist.iterrows():
                 cls = float(row.get('Close', 0) or 0)
                 if cls <= 0:
+                    continue
+                # 🌀 V79.6.5 休市日(颱風假 / 國定假日)Yahoo 會給一筆「成交量 0、開高低收 = 前一天收盤」的佔位列
+                #    → 2026-10-23 颱風休市,10/24 凌晨那輪把它當成 10/23 的 K 棒補進全市場(陷阱 #48 第二例)。
+                #    ⛔ 量 0 不收 —— 跟 `bar_is_complete` 同一個判準(收盤與成交量都 > 0 才算一根)。
+                try:
+                    _vol = float(row.get('Volume', 0) or 0)
+                except (TypeError, ValueError):
+                    _vol = 0.0
+                if _vol <= 0:
+                    _zero += 1
                     continue
                 # 🚨 V77.7.0 陷阱 #46:yfinance 給的台股 Close 就算 auto_adjust=False 仍常是**還原過除權息/配股**的價
                 #    (實測上櫃 40.7% 的歷史列是這樣進來的,偏差中位 4%、P90 23%)→ 收盤不在跳動單位格上 = 不是官方成交價
@@ -574,6 +586,9 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
                 _YF_OFFGRID['rows'] += _rej
                 _YF_OFFGRID['syms'].add(symbol)
                 print(f"  📏 {symbol} yfinance {_rej} 列收盤不在跳動單位格上(還原價)→ ⛔ 不寫")
+            if _zero:
+                _YF_ZEROVOL['rows'] += _zero
+                _YF_ZEROVOL['syms'].add(symbol)
             return out
         except Exception as e:
             err = str(e)
@@ -2458,22 +2473,31 @@ def _twii_calendar(path=None):
     return set(ds), ds[0], ds[-1], ''
 
 
-def _holiday_ghost_dates(day_stats, cal, lo, hi, min_n=20, min_same=0.5):
+def _holiday_ghost_dates(day_stats, cal, lo, hi, min_n=20, min_same=0.5, min_zero=0.9):
     """🎑 V77.9.2 找出「確定沒開盤、卻被寫了 K 棒」的日子。
 
-    day_stats = {'YYYY/MM/DD': (有幾檔在那天有一根, 其中幾根收盤 = 前一根收盤)}
+    day_stats = {'YYYY/MM/DD': (有幾檔在那天有一根, 其中幾根收盤 = 前一根收盤[, 其中幾根「量 0 且收盤 = 前一根」])}
     一個日子要**兩個條件同時成立**才算:
       ① 落在加權指數的日期範圍內(lo ≤ d < hi),而加權那天**沒有**一根
       ② 那天的 K 棒有**過半**收盤跟前一天一模一樣(真的交易日實測只有約一成)
     ⛔ ② 是防「加權自己漏一天」的保險:那種日子個股是真的有交易,收盤相同的比例很低 → 不會被刪。
     ⛔ 那天不到 min_n 檔 → 樣本太少判不出來,⛔ 不刪(寧可不砍)。
-    ⛔ hi(加權最新那天)之後的日子一律不判 —— 加權還沒更新到,無法分辨。
+    ⛔ hi(加權最新那天)之後的日子「加權還沒更新到」跟「休市」分不出來 → 原則上不判;
+    🌀 V79.6.5 唯一的例外:那天**九成以上**的 K 棒是「成交量 0 而且收盤 = 前一天」—— 真的交易日就算加權還沒更新,
+       個股量也都 > 0,物理上不可能九成量 0 → 一定是休市日的佔位列(2026-10-23 颱風休市,Yahoo 給的那種)。
+       沒有第 3 欄(舊呼叫端)= 0 → 這條永遠不成立,行為跟以前一模一樣。
     """
     out = set()
     if not cal:
         return out
-    for d, (n, same) in day_stats.items():
-        if not (lo <= d < hi) or d in cal:
+    for d, v in day_stats.items():
+        n, same = v[0], v[1]
+        zflat = v[2] if len(v) > 2 else 0
+        if d in cal or d < lo:
+            continue
+        if d >= hi:
+            if n >= min_n and (zflat or 0) / n >= min_zero:
+                out.add(d)
             continue
         if n >= min_n and same / n >= min_same:
             out.add(d)
@@ -2878,16 +2902,20 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
     else:
         try:
             _stats = {}
-            for d, n, same in conn.execute("""
-                SELECT trade_date, COUNT(*), SUM(CASE WHEN close = prev THEN 1 ELSE 0 END)
-                FROM (SELECT trade_date, close,
+            # 🌀 V79.6.5 第 3 欄:量 0 且收盤 = 前一根(休市日佔位列的長相)→ 加權最新日之後的日子靠它判
+            for d, n, same, zflat in conn.execute("""
+                SELECT trade_date, COUNT(*), SUM(CASE WHEN close = prev THEN 1 ELSE 0 END),
+                       SUM(CASE WHEN close = prev AND COALESCE(volume, 0) = 0 THEN 1 ELSE 0 END)
+                FROM (SELECT trade_date, close, volume,
                              LAG(close) OVER (PARTITION BY symbol ORDER BY trade_date) AS prev
                       FROM stock_history)
                 GROUP BY trade_date"""):
-                _stats[str(d).replace('-', '/')] = (n, same or 0)
+                _stats[str(d).replace('-', '/')] = (n, same or 0, zflat or 0)
             _ghost = _holiday_ghost_dates(_stats, _cal, _clo, _chi)
             if _ghost:
-                print(f"  🎑 假日幽靈 K:{sorted(_ghost)} 加權沒有開盤 → 匯出時整天刪掉")
+                _after = sorted(x for x in _ghost if x > _chi)
+                print(f"  🎑 假日幽靈 K:{sorted(_ghost)} 加權沒有開盤 → 匯出時整天刪掉"
+                      + (f"(其中 {_after} 在加權最新日 {_chi} 之後:那天九成以上量 0 且收盤沒動)" if _after else ''))
         except Exception as e:
             print(f"  ⚠️ 假日幽靈 K 判斷失敗(不影響匯出,這輪不刪): {e}")
             _ghost = set()
@@ -3014,6 +3042,8 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
         print("  🧱 還原價修復:⏭️ 沒有 KLINES_DEEP_DIR → 這一輪沒修(陷阱 #46)")
     if _YF_OFFGRID['rows']:
         print(f"  📏 yfinance 跳動單位守門:擋掉 {_YF_OFFGRID['rows']} 列 / {len(_YF_OFFGRID['syms'])} 檔(還原價 ⛔ 不寫)")
+    if _YF_ZEROVOL['rows']:
+        print(f"  🌀 yfinance 量 0 佔位列:擋掉 {_YF_ZEROVOL['rows']} 列 / {len(_YF_ZEROVOL['syms'])} 檔(休市日 Yahoo 給的假 K ⛔ 不寫)")
 
 
 # ── 動態監控清單（全市場批次版）────────────────────────────────────────────
