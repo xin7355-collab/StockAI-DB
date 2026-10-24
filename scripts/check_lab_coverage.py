@@ -24,9 +24,13 @@ probes = {p.split('/')[-1] for p in
           re.findall(r'`((?:scripts/)?\w+_probe\.(?:py|mjs))`', cm)}
 srcs = ' '.join(re.findall(r"s:\s*'([^']+)'", pro) + re.findall(r's:\s*"([^"]+)"', pro))
 
-miss = sorted(p for p in probes if p.split('_probe')[0] not in srcs)
+# 🧾 資料格式探針(只驗外部來源長怎樣,沒有研究結論 → ⛔ 不進實測總表);⛔ 研究探針不可放進來
+NOT_RESEARCH = {'twse_margin_probe.py'}   # 💳 V79.6.6 證交所融資融券帶日期那份的真實格式
+miss = sorted(p for p in probes if p.split('_probe')[0] not in srcs and p not in NOT_RESEARCH)
 print(f'📋 探針登記表(docs/PROBES.md + INDEX + CLAUDE.md):{len(probes)} 支')
 print(f'🔬 PRO.LAB 來源欄字數:{len(srcs)}')
+if NOT_RESEARCH & probes:
+    print(f'🧾 資料格式探針(不進 LAB):{", ".join(sorted(NOT_RESEARCH & probes))}')
 if miss:
     print(f'\n⚠️ 登記表有、但 LAB 來源欄找不到的 {len(miss)} 支(要人工確認是不是真的漏收):')
     for m in miss:

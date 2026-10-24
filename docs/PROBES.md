@@ -3,6 +3,12 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 💳 V79.6.6(2026-10-24)`scripts/twse_margin_probe.py` —— 上市融資融券「證交所帶日期那份」的真實格式(⛔ 不是研究探針,不進實測總表)
+- **回答什麼**:證交所 rwd MI_MARGN 現在長怎樣(表名 / fields / groups / 前兩列)、`miner._twse_margin_parse` 收不收(走正式入口,⛔ 不抄解析)、
+  相鄰兩天「後一天的前日餘額 == 前一天的今日餘額」幾 %、OpenAPI(沒有日期參數)用 `miner._twse_oapi_check` 驗收不收。
+- **跑法**:Actions → 🔬 總經採礦驗證探針(macro_probe.yml)→ which=`twse_margin`(約 1 分;只讀、⛔ 不寫檔、⛔ 不需要金鑰;沙箱連不到證交所)。`PROBE_DAYS` 可調最近幾個平日(預設 8)+ 固定抽 2026-06-15 / 05-20 / 03-16 / 2025-10-01 / 2024-06-03。
+- **何時該重跑**:資料體檢 G 類報「上市那份沒帶日期」或 daily_miner log 出現「[上市融資券] 不收:欄位看不懂 …」(= 證交所又改表了)。證交所有回、新解析一天都收不下來 → exit 1。
+
 ### 🔥 V79.4.9(2026-10-22)換預設之前「三件合起來」重測的跑法(🅿️ 新預設 = 照平均排・空頭照買・停 0050)
 - **🪞 App 對齊開關**(`portfolio_backtest.mjs`,⛔ 不設時逐位相同,`test_pbmirror.mjs`):`SELF=high+hivolat+nobear`(個股自己收盤同時跌破 20 與 60 日線不買 = playbook_scan bear / `_deckBuyOf` / auto_trade;🧬 第一次觸發裡 2.87%)・`MIN_MKT_N=0`(拿掉「型態全市場樣本 ≥20」,App 沒有這一關;不設 = 20)・`NOLOCK=1`(收盤鎖漲停的當成買不到,壓力測試用)・`PARK_RESERVE_PCT`(停 0050 時留幾 % 現金)・`EOD_DUMP=<檔>`(每天尾盤候選照排序寫出來,給 V80.0.0 的 13:20 核對 / 重播測試)。⚠️ 🧬 四捨五入:App 用**一位小數**(playbook_scan `Math.round(x*10)/10`),差 0.21% → 不加開關;⛔ 用整數四捨五入去量會誤報成 3.12%。
 - **名單判斷判到全部候選**:新舊兩種排法各 dump 一份(`LIST_DUMP_N=99999`,`MIN_N=8 LB_Z=0 LB_TOP=99` / `LB_Z=1.28 LB_TOP=2`)→ 合併 → `list_trig.mjs TOPN=99999 SKIP=<已判過的>` 3 片 → 只留會觸發的(`trigkeep.py`)→ `LIST_TRIG=trig_mall.ndjson`;summary `listk.inexact` = 0。

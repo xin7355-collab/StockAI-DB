@@ -1007,5 +1007,18 @@ _e = _relay_run(60, 0, 0)
 ok('㊺e 已經接力 60 棒 → 停(防無限迴圈)', _e[0] == 0 and _e[2] == [] and '60 棒' in _e[1], _e)
 
 
+# ㊻ 🧭 V79.6.6 摘要的「風險」只收對公司不利的 —— 南亞 10/23 那份把「中東產能受損、乙二醇到港量受影響」
+#    (對手的事,對南亞是報價有撐)列成風險。⛔ 不釘整句,只釘用意:風險那格的定義要把「對公司有利的外部事件」排除,
+#    而且要舉出真的算風險的例子(不然模型會連原料缺貨也一起丟掉)
+_sm, _um, _ = cdf.ai_prompt('南亞', '1303', '2026-10-23', [], [(7, '化工產品乙二醇也因中東產能受損尚未修復')], [])
+_rk = _um[_um.index('"risk":[{"t":"') + len('"risk":[{"t":"'):]
+_rk = _rk[:_rk.index('","p"')]
+ok('㊻ 風險的定義:對公司不利 / 會變差才算,⛔ 對手停產、報價上漲不算',
+   '不利' in _rk and '不算' in _rk and '對手停產' in _rk and '報價上漲' in _rk, _rk)
+ok('㊻b 也要寫出真的算風險的例子(原料、成本)—— 只寫排除的話,公司自己缺料也會被丟掉', '原料' in _rk and '成本' in _rk, _rk)
+ok('㊻c 其他三格的格式沒動(one / outlook / new 照舊,JSON 骨架完整)',
+   all(k in _um for k in ('"one":', '"outlook":[{"t":', '"new":[{"t":', '"risk":[{"t":')) and _um.count('"p":頁碼') == 3, _um)
+
+
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))
 sys.exit(1 if fails else 0)

@@ -15,6 +15,7 @@ on:
           - macro    # 🌐 完整總經採礦(~2 分,打十幾個外部 API)
           - overseas # 🌏 台股 vs 美股/日股/韓股 大盤層級對照(~1 分,只讀 Yahoo/stooq)
           - both
+          - twse_margin # 💳 V79.6.6 上市融資融券(證交所帶日期那份)真實格式 + 新解析收不收(~1 分,只讀證交所)
 
 permissions:
   contents: read
@@ -49,6 +50,12 @@ jobs:
       - name: 🌏 台股 vs 美日韓對照探針
         if: ${{ inputs.which == 'overseas' || inputs.which == 'both' }}
         run: python3 scripts/overseas_probe.py
+
+      # 💳 V79.6.6 上市融資融券格式探針 —— 沙箱連不到證交所,新的解析(miner._twse_margin_parse)只能在這裡用真實回應驗。
+      #   ⛔ 只讀、只印:不寫檔、不碰任何分支、不需要任何機密;一天都解不出來(而證交所有回)→ 紅燈
+      - name: 💳 上市融資融券(證交所帶日期那份)格式探針
+        if: ${{ inputs.which == 'twse_margin' }}
+        run: python3 scripts/twse_margin_probe.py
 
       - name: 🌐 執行總經採礦
         if: ${{ inputs.which == 'macro' || inputs.which == 'both' }}
