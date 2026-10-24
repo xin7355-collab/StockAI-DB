@@ -51,7 +51,7 @@ jobs:
       - name: 📦 安裝(ffmpeg + pdftoppm + yt-dlp + faster-whisper;⛔ 不加進全域 requirements)
         run: |
           (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg poppler-utils) >/dev/null 2>&1 || echo "⚠️ apt 裝不起來"
-          pip install -q requests "pypdf==5.1.0" yt-dlp faster-whisper
+          pip install -q requests "pypdf==5.1.0" yt-dlp faster-whisper yfinance
           ffmpeg -version | head -1 || true
           command -v pdftoppm || echo "⚠️ 沒有 pdftoppm → ⑤ 圖片頁那段會跳過"
 
@@ -73,6 +73,9 @@ jobs:
           GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
           # ⚠️ 第一輪只給了 GROQ_API_KEYS → 空的(本 repo 其他採礦兩個都給,實際有值的是單數那個)→ ②⑤ 整段沒跑
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          # 🖼️ 第二輪實測 Groq 清單上已經沒有視覺模型 → 讀圖改用 Gemini(金鑰放標頭)
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           AV_TRANS_N: ${{ inputs.trans_n }}
           AV_LOCAL_N: ${{ inputs.local_n }}
           AV_OCR_N: ${{ inputs.ocr_n }}

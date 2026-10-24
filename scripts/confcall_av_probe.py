@@ -52,6 +52,8 @@ VISION_PREF = [m for m in (os.getenv('AV_VISION_MODEL') or '').split(',') if m] 
     'meta-llama/llama-4-maverick-17b-128e-instruct', 'meta-llama/llama-4-scout-17b-16e-instruct',
     'qwen/qwen3.6-27b', 'qwen/qwen2.5-vl-32b-instruct']
 VISION_RE = re.compile(r'llama-4|vision|-vl|qwen3\.6', re.I)
+OCR_PROMPT = ('逐字抄出這張投影片上看得到的所有文字與數字(含圖表上的標籤、座標軸、數值、圖例);'
+              '表格轉成 Markdown 表格;看不清楚的寫 [?]。⛔ 不要解釋、不要摘要、不要補圖上沒有的內容。')
 THIN = 40                     # 一頁抽得到的字不到這麼多 = 多半是圖片頁(10/24 量:107,608 頁裡 22.3%)
 
 UA = {'User-Agent': 'Mozilla/5.0 (StockAI-DB research probe)'}
@@ -431,11 +433,55 @@ class Groq:
     def vision(self, model, png_bytes):
         b64 = base64.b64encode(png_bytes).decode()
         body = {'model': model, 'temperature': 0, 'max_tokens': 1500, 'messages': [{'role': 'user', 'content': [
-            {'type': 'text', 'text': ('逐字抄出這張投影片上看得到的所有文字與數字(含圖表上的標籤、座標軸、數值、圖例);'
-                                      '表格轉成 Markdown 表格;看不清楚的寫 [?]。⛔ 不要解釋、不要摘要、不要補圖上沒有的內容。')},
+            {'type': 'text', 'text': OCR_PROMPT},
             {'type': 'image_url', 'image_url': {'url': f'data:image/png;base64,{b64}'}}]}]}
         j = self._post(GROQ_CHAT_URL, json_body=body, timeout=120)
         return ((j.get('choices') or [{}])[0].get('message') or {}).get('content') or ''
+
+
+def _gem_keys():
+    raw = os.getenv('GEMINI_API_KEYS') or os.getenv('GEMINI_API_KEY') or ''
+    return [k.strip() for k in re.split(r'[,\s]+', raw) if k.strip()]
+
+
+def gem_model(keys):
+    """🔁 第二輪實測 Groq 清單上已經沒有視覺模型 → 讀圖改用 Gemini(同一個挑模型規則:macro_miner._pick_gemini_model,⛔ 第四份)。"""
+    import requests
+    ids = []
+    for k in keys:
+        try:
+            r = requests.get('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', headers={'x-goog-api-key': k}, timeout=20)
+            if r.status_code == 200:
+                ids = [str(m.get('name', '')).replace('models/', '', 1) for m in (r.json().get('models') or [])
+                       if 'generateContent' in (m.get('supportedGenerationMethods') or ['generateContent'])]
+                break
+        except Exception:
+            continue
+    try:
+        import macro_miner as mm
+        return mm._pick_gemini_model(ids, mm.GEMINI_MODEL_MM)
+    except Exception as e:
+        print(f'  ⚠️ 讀不到 macro_miner 的挑模型規則({type(e).__name__})→ 用 gemini-2.5-flash', flush=True)
+        return 'gemini-2.5-flash'
+
+
+def gem_vision(keys, model, png_bytes):
+    """Gemini 讀一張圖(🔐 金鑰放標頭);429 換下一把。"""
+    import requests
+    body = {'contents': [{'role': 'user', 'parts': [{'text': OCR_PROMPT},
+                                                   {'inline_data': {'mime_type': 'image/png', 'data': base64.b64encode(png_bytes).decode()}}]}],
+            'generationConfig': {'temperature': 0, 'maxOutputTokens': 2000, 'thinkingConfig': {'thinkingBudget': 0}}}
+    last = ''
+    for k in keys:
+        r = requests.post(f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
+                          headers={'x-goog-api-key': k, 'Content-Type': 'application/json'}, json=body, timeout=120)
+        if r.status_code == 200:
+            c = (r.json().get('candidates') or [{}])[0]
+            return ''.join(p.get('text', '') for p in ((c.get('content') or {}).get('parts') or []))
+        last = f'HTTP {r.status_code} {r.text[:80]}'
+        if r.status_code not in (429, 403, 500, 503):
+            break
+    raise RuntimeError(last)
 
 
 def local_asr(chunk, model_name):
@@ -578,13 +624,19 @@ def main():
     rep['groq_notes'] = gq.notes[-10:]
 
     # ⑤ 圖片頁 → 視覺模型
-    if keys and OCR_N > 0 and time.time() < DEADLINE - 10 * 60:
-        ids = gq.models()
+    gkeys = _gem_keys()
+    if (keys or gkeys) and OCR_N > 0 and time.time() < DEADLINE - 10 * 60:
+        ids = gq.models() if keys else []
+        rep['groq_models'] = ids
         model = next((m for m in VISION_PREF if m in ids), None) or next((m for m in ids if VISION_RE.search(m)), None)
-        rep['vision_model'] = model
         rep['vision_candidates'] = [m for m in ids if VISION_RE.search(m)][:10]
-        print(f'⑤ 視覺模型:{model}(清單上像視覺的:{rep["vision_candidates"]})', flush=True)
-        if model and shutil.which('pdftoppm'):
+        print(f'⑤ Groq 視覺模型:{model}(清單 {len(ids)} 個,像視覺的:{rep["vision_candidates"]})', flush=True)
+        gmodel = None
+        if not model and gkeys:
+            gmodel = gem_model(gkeys)
+            print(f'⑤ Groq 沒有視覺模型 → 改用 Gemini {gmodel}', flush=True)
+        rep['vision_model'] = model or (f'gemini:{gmodel}' if gmodel else None)
+        if (model or gmodel) and shutil.which('pdftoppm'):
             # 挑「圖片頁比較多」的簡報,最近兩年優先(圖表數字最有用的那種)
             cands = []
             for f, x in (idx.get('files') or {}).items():
@@ -625,7 +677,7 @@ def main():
                         (out / 'ocr' / f'{tag}.png').write_bytes(png)
                         try:
                             t0 = time.time()
-                            txt = gq.vision(model, png)
+                            txt = gq.vision(model, png) if model else gem_vision(gkeys, gmodel, png)
                             spent = time.time() - t0
                         except Exception as e:
                             rep['ocr'].append({'f': f, 'p': pno, 'err': str(e)[:120]})
@@ -643,6 +695,28 @@ def main():
 
     (out / 'report.json').write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding='utf-8')
     print(f'💾 {out}/report.json', flush=True)
+    # 🧾 附件下載不到時也看得到:重點直接印進 log(逐字稿只印頭尾一小段)
+    print('\n════ 摘要 ════', flush=True)
+    for rec in rep['groq']:
+        print(f"🎙️ {rec.get('s')} {rec.get('name')} {rec.get('d')} ・{rec.get('mb')} MB ・下載 {rec.get('dl_sec')} 秒"
+              f"({rec.get('mb_per_s')} MB/s、續傳 {rec.get('dl_retries')} 次)・{rec.get('audio_min')} 分 ・Groq {rec.get('asr_sec')} 秒"
+              f" ・本機 vs Groq 相似度 {rec.get('vs_local')} ・本機前 10 分數字 {rec.get('local_num')} ・{rec.get('err') or rec.get('asr_err') or ''}", flush=True)
+        if rec.get('terms'):
+            print(f"   產品詞沒聽到:{rec['terms'].get('miss')}", flush=True)
+        f = out / 'tx' / f"{rec.get('s')}_{rec.get('d')}.txt"
+        if f.exists():
+            t = f.read_text(encoding='utf-8')
+            print('   ── 逐字稿開頭 ──\n' + t[:700] + '\n   ── 結尾 ──\n' + t[-500:], flush=True)
+        for m in ('large-v3-turbo', 'small'):
+            g = out / 'tx' / f"{rec.get('s')}_{rec.get('d')}_local_{m}.txt"
+            if g.exists():
+                print(f'   ── 本機 {m} 開頭 ──\n' + g.read_text(encoding='utf-8')[:400], flush=True)
+    for x in rep['ocr']:
+        print(f"🖼️ {x}", flush=True)
+        tag = f"{str(x.get('f', '')).replace('.pdf', '')}_p{x.get('p')}"
+        g = out / 'ocr' / f'{tag}.txt'
+        if g.exists():
+            print('   ── 讀出來的 ──\n' + g.read_text(encoding='utf-8')[:600], flush=True)
     any_ok = any(v['ok'] for v in rep['avail_ir'].values())
     if not any_ok:
         print('❌ 證交所 mp4 一場都拿不到 → 紅燈(報告照寫)', flush=True)
