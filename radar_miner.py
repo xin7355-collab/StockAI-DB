@@ -611,13 +611,11 @@ def fetch_attention_disposal_status():
     try:
         HIST_FILE = DATA_DIR / "attention_history.json"
         today_iso = datetime.now().strftime("%Y-%m-%d")
-        # 讀舊資料
-        hist = {}
-        if HIST_FILE.exists():
-            try:
-                hist = json.loads(HIST_FILE.read_text(encoding='utf-8'))
-            except Exception:
-                hist = {}
+        # 讀舊資料(🩺 10/24 巡邏:讀壞了 ⛔ 當成「本來沒有」—— 舊寫法 except → {} → 90 天注意 / 處置紀錄被今天 1 天蓋掉)
+        from lib_jsonsafe import load_accum
+        hist, _hist_ok = load_accum(HIST_FILE, {}, what='data/attention_history.json')
+        if not _hist_ok:
+            raise RuntimeError('attention_history.json 讀不出來 → ⛔ 這輪不寫回(先修檔)')
         if not isinstance(hist, dict):
             hist = {}
         if "history" not in hist or not isinstance(hist["history"], dict):

@@ -14,6 +14,7 @@ ETF 順風車採礦機 — 自動追蹤「績效前段班」主動式 ETF + 每�
 import json
 import re
 import random
+import sys
 import time
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -638,12 +639,14 @@ def diff_holdings(prev, curr):
 
 
 def load_prev_tracking():
-    if OUT.exists():
-        try:
-            return json.loads(OUT.read_text(encoding="utf-8"))
-        except Exception:
-            return None
-    return None
+    """上一份 etf_tracking.json(換股紀錄 / 換股頻率是一天一天累積的,⛔ 重建不回來)。
+    🩺 10/24 巡邏:舊寫法讀壞了回 None → main 當成 {} → 這一輪把每一檔的換股歷史蓋成空的(10/20 那次就是手動救回來的)。
+       → 尾巴多一段用前面那份;真的救不回來 → raise,main ⛔ 不寫(壞檔留著等人修)。"""
+    from lib_jsonsafe import load_accum
+    j, ok = load_accum(OUT, None, what='data/etf_tracking.json(上一份)')
+    if not ok:
+        raise RuntimeError('etf_tracking.json 讀不出來 → ⛔ 這輪不寫(換股紀錄重建不回來,先修檔)')
+    return j if isinstance(j, dict) else None
 
 
 # ── 主流程 ──────────────────────────────────────────────────────────────────
@@ -736,7 +739,11 @@ def fetch_etf_premium():
 
 
 def main():
-    prev = load_prev_tracking() or {}
+    try:
+        prev = load_prev_tracking() or {}
+    except RuntimeError as e:          # 🩺 上一份救不回來 → ⛔ 這輪不寫(壞檔留著等人修)
+        print(f'❌ {e}')
+        return 1
     # 🐛 V72.3.1:diff 基準必須用「完整持股清單」(hold_all)。
     #   舊版只存前 15 大(holdings 截斷),卻拿完整 curr_h 去 diff 截斷的 prev
     #   → 排名 16 名以後的持股「每天」被重標 added(實測 added=38 > holdings=15,
@@ -1027,4 +1034,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)

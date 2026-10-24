@@ -463,11 +463,12 @@ def main():
     #   空間:80 檔 × 約 55 bytes × 250 個交易日 ≈ 1.2MB,很便宜。
     try:
         hist_path = 'tick_hist.json'
-        try:
-            with open(hist_path, 'r', encoding='utf-8') as f:
-                hist = json.load(f)
-        except Exception:
-            hist = {}
+        # 🩺 10/24 巡邏:讀壞了 ⛔ 當成「本來沒有」(舊寫法 except → {} → 這一拍把 250 天歷史蓋成 1 天)
+        from pathlib import Path as _Path
+        from lib_jsonsafe import load_accum
+        hist, _writable = load_accum(_Path(hist_path), {}, what='tick_hist.json')
+        if not _writable:
+            raise RuntimeError('tick_hist.json 讀不出來 → ⛔ 這一拍不寫回(先修檔)')
         if not isinstance(hist, dict) or not isinstance(hist.get('d'), dict):
             hist = {'d': {}}
         today_key = datetime.now(TW).strftime('%Y-%m-%d')

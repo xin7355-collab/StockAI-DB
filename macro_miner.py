@@ -3848,13 +3848,12 @@ def main():
     #          讀既有(deploy 底層 git archive origin/data 會保留)→ 同日去重 → 留最近 90 筆 → 寫回
     try:
         rh_file = DATA_DIR / 'risk_history.json'
-        hist = []
-        if rh_file.exists():
-            try:
-                _prev = json.loads(rh_file.read_text(encoding='utf-8'))
-                hist = _prev if isinstance(_prev, list) else (_prev.get('data') or [])
-            except Exception:
-                hist = []
+        # 🩺 10/24 巡邏:讀壞了 ⛔ 當成「本來沒有」(舊寫法 except → [] → 90 天快照被今天 1 筆蓋掉;外資期貨「相對自己」的基準也跟著沒了)
+        from lib_jsonsafe import load_accum
+        _prev, _rh_ok = load_accum(rh_file, [], what='data/risk_history.json')
+        if not _rh_ok:
+            raise RuntimeError('risk_history.json 讀不出來 → ⛔ 這輪不寫回(先修檔)')
+        hist = _prev if isinstance(_prev, list) else ((_prev.get('data') or []) if isinstance(_prev, dict) else [])
         today_str = (out.get('updated') or '')[:10] or datetime.now().strftime('%Y-%m-%d')
         snap = {
             'date': today_str,

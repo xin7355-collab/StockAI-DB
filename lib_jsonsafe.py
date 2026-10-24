@@ -53,6 +53,21 @@ def load_json_safe(path, default=None, log=print, what=''):
         return default, 'corrupt', msg
 
 
+def load_accum(path, default, what='', log=print):
+    """累積檔(讀自己上一份 → 加上今天 → 寫回)的讀法:回 (obj, 這輪能不能寫回)。
+    missing → (default, True)    第一次跑:從頭建
+    ok / salvaged → (讀到的, True)
+    corrupt → (default, False)   ⛔ 這輪不可寫回 —— 用今天一天蓋掉整段歷史就再也回不來;壞檔留著等人修
+    (10/24 巡邏:tick_hist / risk_history / 注意股歷史 / 集保 / ETF 換股紀錄… 舊寫法都是 except → 當成沒有)"""
+    obj, st, _ = load_json_safe(path, None, log=log, what=what)
+    if st == 'corrupt':
+        log(f'   → ⛔ 這輪不寫回 {what or path}(歷史重建不回來,先修檔)')
+        return default, False
+    if obj is None:
+        return default, True
+    return obj, True
+
+
 def _selftest():
     import tempfile
     from pathlib import Path
@@ -80,6 +95,16 @@ def _selftest():
     ok('⑥ 截斷(後面沒了)→ corrupt', q()[1] == 'corrupt')
     p.write_text('123 456', encoding='utf-8')
     ok('⑦ 前面不是物件 / 陣列 → corrupt(⛔ 不拿一個數字當舊檔)', q()[1] == 'corrupt')
+    # ⑧ load_accum:累積檔的讀法(四種結果各自能不能寫回)
+    acc = lambda: load_accum(p, {'d': {}}, log=lambda *_: None)
+    p.unlink()
+    ok('⑧a 檔案不在 → 預設值 + 可以寫回', acc() == ({'d': {}}, True))
+    p.write_text('{"d":{"2026-10-22":1}}', encoding='utf-8')
+    ok('⑧b 正常 → 讀到的 + 可以寫回', acc() == ({'d': {'2026-10-22': 1}}, True))
+    p.write_text('{"d":{"2026-10-22":1}}{"d":{}}', encoding='utf-8')
+    ok('⑧c 完整 JSON + 尾巴 → 前面那份 + 可以寫回', acc() == ({'d': {'2026-10-22': 1}}, True))
+    p.write_text('{"d":{"2026-10-22":1', encoding='utf-8')
+    ok('⑧d 救不回來 → ⛔ 不可寫回(⛔ 當成第一次跑)', acc() == ({'d': {}}, False))
     bad = [n for n, c in out if not c]
     for n, c in out:
         print(('✅ ' if c else '❌ ') + n)

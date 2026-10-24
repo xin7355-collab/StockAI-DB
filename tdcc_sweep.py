@@ -105,15 +105,16 @@ def build(parsed, old):
 def main():
     print('🏦 TDCC 股權分散表週採礦開始…')
     # 讀舊檔(workflow 會先從 origin/data 還原)以滾動累積歷史
-    old = {}
-    if os.path.exists(OUT_FILE):
-        try:
-            with open(OUT_FILE, 'r', encoding='utf-8') as f:
-                old = json.load(f)
-            print(f'  ↩️ 舊檔載入:{len([k for k in old if not k.startswith("_")])} 檔(續累歷史)')
-        except Exception as e:
-            print(f'  ⚠️ 舊檔解析失敗(忽略,重建):{e}')
-            old = {}
+    # 🩺 10/24 巡邏:讀壞了 ⛔「忽略,重建」(那會把每檔累積的週資料蓋成只剩這一週)→ 救得回用前面那份,救不回 ⛔ 寫
+    from pathlib import Path as _Path
+    from lib_jsonsafe import load_accum
+    old, _old_ok = load_accum(_Path(OUT_FILE), {}, what=OUT_FILE)
+    if not _old_ok:
+        sys.exit(1)
+    if not isinstance(old, dict):
+        old = {}
+    if old:
+        print(f'  ↩️ 舊檔載入:{len([k for k in old if not k.startswith("_")])} 檔(續累歷史)')
 
     try:
         txt = fetch_csv()

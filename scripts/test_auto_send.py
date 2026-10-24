@@ -235,6 +235,41 @@ with tempfile.TemporaryDirectory() as home:
     ok('⑧g9 舊檔從頭到尾一個位元組都沒動', open(oldp, 'rb').read() == before)
 _ms = open(os.path.join(ROOT, 'auto_trade.py'), encoding='utf-8').read()
 ok('⑧h main() 每天重置之後就做(要在任何買賣之前)', re.search(r"st = reset_day\(st, today\)\n\s+_legacy_check\(st\)", _ms) is not None)
+# ⑧i 🩺 10/24 巡邏:狀態檔讀不出來 ⛔ 當成空手(舊寫法回 {} → 該賣的不賣、已經有的再買一次)
+with tempfile.TemporaryDirectory() as home:
+    simp = os.path.join(home, '.stockai_auto_trade.sim.json')
+    full = json.dumps({'pos': {'2330': {'e': 900.0, 'sl': 850.0, 'd': '2026-10-01', 'sh': 1485}}}, ensure_ascii=False)
+    for name, raw in (('截斷', full[:len(full) // 2]), ('0 bytes(清空之後還沒寫進去就被關掉)', ''),
+                      ('尾巴多一段', full + '}"x"}'), ('不是一份紀錄', '[1, 2]')):
+        with open(simp, 'w', encoding='utf-8') as f:
+            f.write(raw)
+        before = open(simp, 'rb').read()
+        out = run_sub(home, LOAD)
+        ok(f'⑧i {name} → load_state 回 None(⛔ 回空手)、印 🚨 + 怎麼修、壞檔一個位元組都沒動',
+           loaded(out) is None and '🚨' in out and '改名' in out and open(simp, 'rb').read() == before, out[-300:])
+    with open(simp, 'w', encoding='utf-8') as f:
+        f.write(full)
+    ok('⑧i2 ⭐ 決定性對照:同一份內容完整 → 讀得到 2330(⛔ 被當成壞檔)',
+       loaded(run_sub(home, LOAD)).get('pos', {}).get('2330', {}).get('sh') == 1485)
+    os.unlink(simp)
+    ok('⑧i3 檔案不在(第一次跑)→ 照舊空手開始', loaded(run_sub(home, LOAD)) == {})
+    oldp = os.path.join(home, '.stockai_auto_trade.json')
+    with open(oldp, 'w', encoding='utf-8') as f:
+        f.write(full[:10])
+    out = run_sub(home, LOAD)
+    ok('⑧i4 模擬帳戶第一次跑新版、要接著用的以前那個檔壞了 → 一樣回 None、⛔ 寫任何檔',
+       loaded(out) is None and not os.path.exists(simp) and open(oldp, encoding='utf-8').read() == full[:10], out[-300:])
+    os.unlink(oldp)
+    run_sub(home, "import auto_trade as A; A.save_state({'pos': {'2454': {'sh': 150}}})")
+    ok('⑧j 寫狀態檔:先寫暫存檔再整個換過去(讀回來一樣、⛔ 留下 .tmp)',
+       json.load(open(simp, encoding='utf-8')) == {'pos': {'2454': {'sh': 150}}} and not os.path.exists(simp + '.tmp'))
+    out = run_sub(home, "import os, auto_trade as A\ndef _bad(*a, **k):\n    raise OSError('locked')\n"
+                        "os.replace = _bad\nA.save_state({'pos': {'2603': {'sh': 1000}}})")
+    ok('⑧j2 換名失敗(別的程式開著那個檔)→ 退回直接寫、⛔ 留下 .tmp、log 講出來',
+       json.load(open(simp, encoding='utf-8')) == {'pos': {'2603': {'sh': 1000}}} and not os.path.exists(simp + '.tmp')
+       and '換名失敗' in out, out[-300:])
+ok('⑧k main() 讀到 None → 任何買賣之前就結束(return 1)',
+   re.search(r"st = load_state\(\)\n\s+if st is None:[^\n]*\n\s+return 1", _ms) is not None)
 
 # ⑨ 👑 換倉日賣單只送出一部分 → 剩下的今天就賣完(⛔ 等到下次換倉)
 COLS = ['c', 'chg', 'chg10', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf', 'pos252']

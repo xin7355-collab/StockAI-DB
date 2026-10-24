@@ -96,11 +96,12 @@ def main():
     #   (付費額度用完),2,369 檔只成功 618 檔,舊版直接用這 618 檔整份覆蓋 → 1,625 → 618,代號 6~9 開頭全沒了,
     #   而 workflow 全綠(618 ≥ MIN_OK)。→ 抓不到的沿用上一輪那一筆(它自帶 `d` = 那筆的資料日,前端看得出是舊的);
     #   「歷史太短」是**資料本身**的結論 → 照舊拿掉。
-    old = {}
-    try:
-        old = (json.loads(OUT.read_text(encoding='utf-8')) or {}).get('data') or {}
-    except Exception:
-        old = {}
+    # 🩺 10/24 巡邏:上一份讀壞了 ⛔ 當成「第一次跑」(那會只剩這一輪抓到的幾百檔,正是 V78.1.2 那個洞)
+    from lib_jsonsafe import load_accum
+    _prev, _prev_ok = load_accum(OUT, {}, what='data/pe_band.json(上一份)')
+    if not _prev_ok:
+        return 1
+    old = ((_prev.get('data') or {}) if isinstance(_prev, dict) else {}) or {}
     # 🔁 V78.1.3 輪動:先抓「檔案裡沒有的」,再照舊那筆的資料日 `d` 由舊到新
     #   (同 fund_sweep 滾動補齊)—— 額度不夠時每晚補最需要的那一批,而不是每次都從 1101 重頭燒。
     order = sorted(syms, key=lambda s: (s in old, str((old.get(s) or {}).get('d') or ''), s))

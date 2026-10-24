@@ -110,15 +110,18 @@ def load_universe() -> list:
     return sorted(set(uni))
 
 
+_EXISTING_BAD = False    # 🩺 上一份全市場檔救不回來(load_existing 設定;⛔ 這時不可寫全檔)
+
+
 def load_existing() -> dict:
-    if OUT_PATH.exists():
-        try:
-            d = json.loads(OUT_PATH.read_text(encoding='utf-8'))
-            if isinstance(d, dict):
-                return d
-        except Exception as e:
-            print(f"⚠️ 讀舊 {OUT_PATH} 失敗(當空的重建):{e}")
-    return {}
+    """上一份 fund_yoy_gm.json(滾動補了好幾晚才補滿全市場)。
+    🩺 10/24 巡邏:舊寫法讀壞了「當空的重建」→ 這一晚只寫得出這一晚抓到的 1,500 檔,其餘全市場要再補好幾晚。
+       → 尾巴多一段用前面那份;救不回來 → _EXISTING_BAD,寫全檔的兩條路(單一 job / merge)⛔ 寫。"""
+    global _EXISTING_BAD
+    from lib_jsonsafe import load_accum
+    d, ok = load_accum(OUT_PATH, {}, what=str(OUT_PATH))
+    _EXISTING_BAD = not ok
+    return d if isinstance(d, dict) else {}
 
 
 def pick_targets(universe: list, existing: dict) -> list:
@@ -139,6 +142,9 @@ def main():
         # 不寫檔 → workflow 用檔案 mtime/內容判斷是否部署
         return 0
     existing = load_existing()
+    if _EXISTING_BAD and SHARD_TOTAL <= 1:
+        print(f"❌ 上一份 {OUT_PATH} 救不回來 → ⛔ 這晚不抓也不覆寫(先修檔)")
+        return 2
     targets = pick_targets(universe, existing)
     never = sum(1 for s in universe if s not in existing)
     print(f"🌙 全市場 {len(universe)} 檔 | 從未補 {never} 檔 | 本晚預算 {BUDGET} → 實抓 {len(targets)} 檔 | 節流 {SLEEP}s/檔")
@@ -293,6 +299,9 @@ def merge_mode():
        疊法:老檔打底,每個 shard 的 partition entries 覆蓋上去(partition 互斥,無衝突)。
        gate:所有 shard 本晚總命中 < MIN_HITS → 不覆寫、不部署(回 2),保留線上舊檔。"""
     merged = load_existing()               # 老的全市場檔(workflow 已從 origin/data 還原)
+    if _EXISTING_BAD:
+        print(f"❌ 上一份 {OUT_PATH} 救不回來 → ⛔ 不合併、不部署(只疊這晚的 shard 會把全市場縮成幾千檔;先修檔)")
+        return 2
     base_keys = sum(1 for k in merged if not str(k).startswith('__'))
     total_hits = 0
     shards_seen = 0

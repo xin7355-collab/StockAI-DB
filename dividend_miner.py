@@ -137,11 +137,14 @@ def _f(x):
 
 
 def load_old(path):
-    try:
-        j = json.loads(path.read_text(encoding='utf-8'))
-        return j.get('d') or {} if isinstance(j, dict) else {}
-    except Exception:
-        return {}
+    """上一份 dividends_hist.json 的 d(每檔歷年除息,抓不到的那幾檔靠它沿用)。
+    🩺 10/24 巡邏:舊寫法讀壞了回 {} → 這一輪抓不到的全部從檔案消失(付費金鑰失效後很多補不回來)
+       → 尾巴多一段用前面那份;救不回來回 None,main ⛔ 寫。"""
+    from lib_jsonsafe import load_accum
+    j, ok = load_accum(path, {}, what=str(path))
+    if not ok:
+        return None
+    return (j.get('d') or {}) if isinstance(j, dict) else {}
 
 
 def merge(old, new):
@@ -188,6 +191,9 @@ def main(argv=None):
         print(f'❌ 探路失敗(2330 除權息拿不到:{note})→ 需要付費層金鑰,⛔ 不覆寫舊檔。原因統計:{STAT["reasons"]}')
         return 1
     old = load_old(OUT_HIST)
+    if old is None:
+        print(f'❌ 上一份 {OUT_HIST} 救不回來 → ⛔ 這輪不抓也不覆寫(先修檔)')
+        return 1
     syms = order_syms(syms, old)
     new, t0, left = {}, time.time(), 0
     for i, s in enumerate(syms):

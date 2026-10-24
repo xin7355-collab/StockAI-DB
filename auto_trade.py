@@ -153,17 +153,38 @@ def tpe_now():
     return n, n.hour * 60 + n.minute, n.strftime('%Y-%m-%d')
 
 
+def _read_state_file(path):
+    """🩺 10/24 巡邏:讀狀態檔。檔案不在 → {}(第一次跑);讀不出來 → None。
+    🚨 舊寫法讀不出來就回 {} = 當成「手上沒有任何股票」→ 該賣的不賣(它只賣自己記得的)、已經有的再買一次。
+       → ⛔ 不猜:回 None,main 今天 ⛔ 下單(壞檔一個位元組都不動,留給你看)。
+    ⚠️ 0 bytes 也算讀不出來(⛔ 當成第一次跑)—— 舊的寫法在「清空檔案 → 寫進去」中間被關掉,留下的就是 0 bytes。
+    ⚠️ 刻意 ⛔ 用 lib_jsonsafe:這支跑在你自己的電腦上,少一個檔就整支起不來;而且「尾巴多一段」也一律不拿來下單。"""
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding='utf-8') as f:
+            st = json.load(f)
+        if isinstance(st, dict):
+            return st
+        why = '內容不是一份完整的紀錄'
+    except Exception as e:
+        why = f'{type(e).__name__}: {str(e)[:80]}'
+    log(f"🚨 狀態檔讀不出來:{path}({why})")
+    log("   ⛔ 今天不下單 —— 當成空手的話,手上的部位該賣的不會賣、已經有的會再買一次")
+    log(f"   👉 用文字編輯器打開它看最後面是不是被截斷;救不回來就把它改名(例如後面加 .bad)再開,"
+        "程式會從空手開始(⚠️ 那時手上的部位要自己手動管)")
+    return None
+
+
 def load_state():
+    """回狀態 dict;狀態檔讀不出來回 None(main 看到 None ⛔ 下單)。"""
     # 📒 V79.4.9 模擬帳戶改用自己的檔(.sim.json)→ 第一次跑新版時新檔還不存在:接著用以前那個檔的紀錄
     #   (使用者 10/22:「永豐自動買賣我都是拿來參考,看模擬買賣賺不賺錢」→ ⛔ 不可讓以前模擬的部位一夜之間不見、成績斷掉)。
     #   ⛔ 舊檔一個字都不動(之後寫進新檔);自己設了 STATE_PATH 就照你設的。
     if not LIVE and not os.getenv('STATE_PATH') and not os.path.exists(STATE_PATH) and os.path.exists(_STATE_LIVE):
-        try:
-            with open(_STATE_LIVE, encoding='utf-8') as f:
-                st = json.load(f)
-        except Exception:
-            return {}
-        st = st if isinstance(st, dict) else {}
+        st = _read_state_file(_STATE_LIVE)
+        if st is None:
+            return None
         for k, book in (st.pop('legacy', None) or {}).items():   # 真實帳戶第一次跑時搬走的舊部位 = 模擬留下的 → 放回原本那本帳
             for sym, p in (book or {}).items():
                 st.setdefault(k, {}).setdefault(sym, p)
@@ -176,11 +197,7 @@ def load_state():
         n = sum(len(st.get(k) or {}) for k in ('pos', 'lead', 'lead2'))
         log(f"📒 模擬帳戶改用自己的狀態檔({STATE_PATH})→ 這次先接著用以前的紀錄({_STATE_LIVE},{n} 筆部位;⛔ 那個檔不會被改)")
         return st
-    try:
-        with open(STATE_PATH, encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    return _read_state_file(STATE_PATH)
 
 
 _DRY_SAVE_LOGGED = False
@@ -195,9 +212,24 @@ def save_state(st):
             _DRY_SAVE_LOGGED = True
         return
     # ⚠️ 寫失敗不可讓整支掛掉(但要講出來 —— 沒存成功 = 可能重複下單)
+    # 🩺 10/24 巡邏:先寫暫存檔再整個換過去 —— 直接覆寫時程式剛好被關掉(關機 / 斷電 / Ctrl+C)會留下半截的檔,
+    #    下次就讀不出來(現在讀不出來會 ⛔ 下單,但能不壞最好)。換名失敗(別的程式開著那個檔)才退回直接寫。
     try:
-        with open(STATE_PATH, 'w', encoding='utf-8') as f:
+        tmp = STATE_PATH + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
             json.dump(st, f, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        try:
+            os.replace(tmp, STATE_PATH)
+        except OSError as e:
+            log(f"⚠️ 狀態檔換名失敗({e})→ 改成直接寫")
+            with open(STATE_PATH, 'w', encoding='utf-8') as f:
+                json.dump(st, f, ensure_ascii=False)
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
     except Exception as e:
         log(f"🚨 狀態檔寫入失敗({e})—— 重複下單的防護失效,請立刻停掉檢查")
 
@@ -1240,6 +1272,8 @@ def main():
         log("🔐 憑證已啟用")
 
     st = load_state()
+    if st is None:      # 🩺 狀態檔讀不出來 → ⛔ 今天不下單(原因與修法 load_state 已經印了)
+        return 1
     _, _, today = tpe_now()
     # ⚠️ `done`(今天買過誰)每天重置,但部位(`pos` / `lead` / `lead2` / `park`)與延後要賣的(`lead_defer`)⛔ 絕不可跟著清掉
     st = reset_day(st, today)

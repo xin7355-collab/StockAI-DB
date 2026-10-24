@@ -3,6 +3,50 @@
 使用者(附三張截圖):「1.跑馬燈移除 2.app 預設策略符合進場,我想要的是我要點進階才能是領頭羊策略,所以 app 內容要注意文字敘述,不要露餡,現在有些文字有點疑似露餡了 3.產業 app 裡面的成績單沒有領頭羊策略」。追問後選:預設 = 決策台的「📈 符合進場」、🔥 觸發價預設收起;👑 搬進「🔓 進階功能」;作戰室成績單永遠顯示 👑。
 
 
+## 🩺 V79.7.1 累積檔讀壞了 ⛔ 當成「本來沒有」—— 第二波 11 處 + 自動下單狀態檔(陷阱 #61 補完)
+
+### 為什麼
+#647 那次只修了 confcall / pick_history / 法說會簡報這三個讀法。巡邏(AST 掃「讀 JSON 的 try → except 設成空的」119 處,
+人工挑出「讀自己上一份 → 加上今天 → 寫回」的)還有 11 處是同一個寫法:讀到壞的就當成第一次跑 → 用今天一天蓋掉整段歷史。
+
+| 檔 | 誰寫 | 舊寫法遇到壞檔會怎樣 | 現在 |
+|---|---|---|---|
+| tick_hist.json | tick_flow_miner | 250 天逐筆歷史 → 1 天 | ⛔ 寫回(這一拍的 tick_flow 照寫) |
+| risk_history.json | macro_miner | 90 天風險快照 → 1 筆(外資期貨「相對自己」的基準也沒了) | ⛔ 寫回 |
+| attention_history.json | radar_miner | 90 天注意 / 處置紀錄 → 1 天 | ⛔ 寫回 |
+| etf_tracking.json | etf_miner | 每檔換股紀錄、換股頻率歸零(10/20 那次是手動救回的) | ⛔ 寫,rc 1 |
+| tdcc_holders.json | tdcc_sweep | 每檔累積的週資料 → 只剩這一週 | exit 1 |
+| pe_band.json | pe_band_miner | 只剩這一輪抓到的(= V78.1.2 那個洞) | return 1 |
+| fund_yoy_gm.json | fund_sweep | 全市場 → 這一晚的 1,500 檔 | 單一 job / merge 回 2(⛔ 部署) |
+| fundamentals_rotation.json | rotation_miner | 輪了好幾輪的全市場 → 這一批 | exit 1 |
+| paper_trades.json | paper_trade | 累積的紙上交易 → 只剩今天新增 | return 1 |
+| dividends_hist.json | dividend_miner | 抓不到的那幾檔從檔案消失(付費金鑰失效後補不回來) | return 1 |
+| breadth.json | miner | 整段重算 | 尾巴多一段用前面那份;救不回才整段回算(⭐ 唯一例外:它本來就回算得出來) |
+
+規則:`lib_jsonsafe.load_accum(path, default)` → 檔案不在照舊從頭建 / 讀得出來・尾巴多一段照常 / 救不回回 `(default, False)`
+→ 呼叫端 ⛔ 寫回、壞檔一個位元組都不動(daily_miner 部署前的 JSON 體檢會換回部署前那份;兩邊都壞就留著,A 類體檢會報出來)。
+⛔ workflow 那一層「還原上一份那步拉不到 data 分支」也查了:tdcc_sweep / tick_flow / kbar5 的 checkout 都是 `fetch-depth: 0`(checkout 時 data 分支已經拉下來),後面那次 `git fetch … || true` 失敗也還有剛拉的那份 → 原寫法安全,加守門反而會無謂停下 → ⛔ 不改;pe_band(還原 <500 檔就停)/ dividend(MIN_OK)/ playbook_scan(掃描空過守門)/ rotation(universe 空就不寫)/ daily_miner(STOCKS<100)各自已經擋住。
+⛔ 沒改的(讀了也不寫回 / 本來就重建得出來):各 probe、`data/chips/{sym}.json` 基本面快取、market_stats、kbar5 月檔(早就是讀壞了直接 raise)、confcall_deck 的 cc_deep 月檔(沒跑完 ran≠1 ⛔ 推)。
+
+### 自動下單狀態檔(auto_trade.py,⚠️ 這個最要緊)
+- 舊:`~/.stockai_auto_trade(.sim).json` 讀不出來 → `{}` = 當成「手上沒有任何股票」→ 它只賣自己記得的部位 → **該賣的不賣**;🔥 名單上又出現已經有的 → **再買一次**。
+- 怎麼會壞:舊的寫法是 `open('w')` 直接覆寫 → 寫到一半被關掉(關機 / 斷電 / Ctrl+C)就留下半截或 **0 bytes**(0 bytes 以前也是當成第一次跑)。
+- 現在:① 讀不出來(截斷 / 0 bytes / 尾巴多一段 / 不是一份紀錄)→ `load_state` 回 None → `main` 在任何買賣之前 return 1,log 印原因 + 怎麼修(改名成 .bad 再開 = 從空手開始,手上的部位自己管)
+  ② 寫入改成暫存檔 + fsync + `os.replace`(換名失敗才退回直接寫,log 講出來)。
+- ⛔ 刻意不用 lib_jsonsafe:那支跑在使用者自己的電腦上,多依賴一個檔就多一個起不來的理由;而且「尾巴多一段」也一律不拿來下單。
+- ⛔ 這不是「會動真錢的開關」:只會讓它在狀態檔壞掉時停下來,不會多下任何一筆單。
+
+### 測試
+- 新 `scripts/test_accum_safe.py`(49 條):靜態(舊寫法 ⛔ 回來;每條 regex 先對 HEAD 舊版確認抓得到 = 有鑑別力)+ 走正式入口
+  (etf / tdcc / rotation / pe_band / fund merge / paper_trade / dividend;網路那一步換成 BaseException 的假函式)→ 壞檔 ⛔ 寫、尾巴多一段照常往下、⭐ 決定性對照:內容完整照常往下。
+- `test_auto_send ⑧i~⑧k`:截斷 / 0 bytes / 尾巴多一段 / 不是 dict → None、壞檔沒動;決定性對照;模擬帳戶第一次跑要接的舊檔壞了也 None;原子寫入 + 換名失敗退回。
+- 注入:etf / pe_band / paper_trade 退回舊寫法 → test_accum_safe 7 條紅;auto_trade 讀不出來回 {} → test_auto_send 5 條紅。
+- `test_peband_carry` ⑥ 決定性對照的注入點跟著新寫法改(舊注入字串找不到 → 那條會報「注入沒注進去」,⛔ 靜默變綠);它用 spec 載入 → 補上 repo 根目錄進 sys.path(正式跑法就是在根目錄)。
+
+### 怎麼換回
+`git revert <這個 commit>`(資料一筆都沒動)。
+
+
 ## 📞 V79.6.7 法說會 3.0「講了什麼 → 做到了沒 → 有沒有用」:參考資料評估 + 第一步存全文
 
 ### 使用者的問題(10/24)

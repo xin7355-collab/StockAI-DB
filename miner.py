@@ -5517,12 +5517,14 @@ def build_breadth_history():
 
     try:
         _bd_path = Path(DATA_DIR) / 'breadth.json'
-        _bd = {}
-        if _bd_path.exists():
-            try:
-                _bd = json.loads(_bd_path.read_text(encoding='utf-8')) or {}
-            except Exception:
-                _bd = {}
+        # 🩺 10/24 巡邏:尾巴多一段 → 用前面那份(⛔ 整份重算);真的救不回來才從 data/*.json 整段回算
+        #   (⛔ 這一檔例外:它本來就回算得出來,所以「救不回」不擋寫入 —— 其他累積檔是 ⛔ 寫,見 lib_jsonsafe.load_accum)
+        from lib_jsonsafe import load_json_safe
+        _bd, _bd_st, _ = load_json_safe(_bd_path, {}, what='data/breadth.json')
+        if _bd_st == 'corrupt':
+            print('  ⚠️ breadth.json 救不回來 → 從 data/*.json 整段回算(實跑那幾天會變成回算 bf:1)')
+        if not isinstance(_bd, dict):
+            _bd = {}
         _hist = _bd.get('history')
         if not isinstance(_hist, list):
             _hist = []

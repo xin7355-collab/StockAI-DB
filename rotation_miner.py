@@ -16,6 +16,7 @@
 """
 import os
 import re
+import sys
 import json
 import time
 import random
@@ -174,14 +175,13 @@ def main():
         return
     N = len(universe)
 
-    # 讀既有累積檔
-    acc = {}
-    if OUT.exists():
-        try:
-            acc = json.loads(OUT.read_text(encoding='utf-8')) or {}
-        except Exception as e:
-            print(f"  ⚠️ 既有 fundamentals_rotation.json parse 失敗,重建:{e}")
-            acc = {}
+    # 讀既有累積檔(🩺 10/24 巡邏:讀壞了 ⛔「重建」—— 那會把輪了好幾輪的全市場蓋成只剩這一批;救不回 ⛔ 寫)
+    from lib_jsonsafe import load_accum
+    acc, _acc_ok = load_accum(OUT, {}, what='data/fundamentals_rotation.json')
+    if not _acc_ok:
+        sys.exit(1)
+    if not isinstance(acc, dict):
+        acc = {}
     cursor = int(acc.get('__cursor', 0)) % N
 
     # 取這批(可跨界 wrap)

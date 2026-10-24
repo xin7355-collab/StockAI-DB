@@ -46,14 +46,16 @@ def _find_idx_by_date(rows, target_date):
 
 
 def _read_trades():
-    """讀既有 paper_trades.json;不存在或解析失敗回空 list"""
-    if not OUTPUT_FILE.exists():
+    """讀既有 paper_trades.json;不存在回空 list。
+    🩺 10/24 巡邏:舊寫法讀壞了也回空 list → 這一輪把累積的紙上交易紀錄蓋成只剩今天新增的
+       → 尾巴多一段用前面那份;救不回來回 None,main ⛔ 寫(壞檔留著等人修)。"""
+    from lib_jsonsafe import load_accum
+    d, ok = load_accum(OUTPUT_FILE, None, what='data/paper_trades.json')
+    if not ok:
+        return None
+    if d is None:
         return []
-    try:
-        d = json.loads(OUTPUT_FILE.read_text(encoding='utf-8'))
-        return d.get('trades', []) if isinstance(d, dict) else (d if isinstance(d, list) else [])
-    except Exception:
-        return []
+    return d.get('trades', []) if isinstance(d, dict) else (d if isinstance(d, list) else [])
 
 
 def record_today_signals(attention_set, today):
@@ -308,6 +310,9 @@ def main():
     print(f"   排除處置股:{len(attention_set)} 檔")
 
     trades = _read_trades()
+    if trades is None:
+        print("❌ 上一份 paper_trades.json 救不回來 → ⛔ 這輪不寫(先修檔)")
+        return 1
     print(f"   既有 trade 累計:{len(trades)} 筆")
 
     # Step 1: 記錄今日訊號(去重:同日同股同訊號不重加)
@@ -370,6 +375,6 @@ def main():
 
 if __name__ == '__main__':
     try:
-        main()
+        sys.exit(main() or 0)
     except Exception as e:
         print(f"💥 paper_trade 頂層例外(不影響其他):{e}")

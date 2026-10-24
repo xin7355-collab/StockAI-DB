@@ -32,6 +32,9 @@ def ok(n, c, e=''):
 
 
 def load(src_text=None):
+    # 正式跑法是在 repo 根目錄 `python3 pe_band_miner.py` → 根目錄在 sys.path(lib_jsonsafe 在那裡)
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
     spec = importlib.util.spec_from_file_location('pbm', ROOT / 'pe_band_miner.py')
     m = importlib.util.module_from_spec(spec)
     if src_text is None:
@@ -109,9 +112,8 @@ ok('④ 跑到上限沒輪到的也沿用(2330/3008/6415/9999 都在)',
 
 # ⑥ 決定性對照:拿掉沿用(注入)→ ② 要紅
 src = (ROOT / 'pe_band_miner.py').read_text(encoding='utf-8')
-inj = src.replace("    old = {}\n    try:", "    old = {}\n    if False:\n      try:", 1)   # 舊版行為 = 根本不讀上一輪
-inj = inj.replace("        old = (json.loads(OUT.read_text(encoding='utf-8')) or {}).get('data') or {}\n    except Exception:\n        old = {}",
-                  "        old = (json.loads(OUT.read_text(encoding='utf-8')) or {}).get('data') or {}\n      except Exception:\n        old = {}", 1)
+# 舊版行為 = 根本不讀上一輪(V79.7.x 起上一份走 lib_jsonsafe.load_accum)
+inj = src.replace("_prev, _prev_ok = load_accum(OUT, {}, what='data/pe_band.json(上一份)')", "_prev, _prev_ok = {}, True", 1)
 assert inj != src, '注入沒注進去'
 mi = load(inj)
 _, outi = run(mi)
