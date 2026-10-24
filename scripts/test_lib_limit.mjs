@@ -53,6 +53,8 @@ const MIGRATED = [
     'scripts/regime_probe.mjs',
     // 💰 V79.4.6 重大訊息事件研究(減資類公告就是會出現斷崖的那種)
     'scripts/mops_event_probe.py',
+    // 📞 V79.7.3 法說會隔天反應研究
+    'scripts/confcall_event_probe.mjs',
 ];
 const BANNED = [
     [/\*\s*1\.095\b/, '× 1.095(寫死 ±10% 的鎖漲停)'],

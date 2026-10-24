@@ -648,6 +648,127 @@ def grade_all(cc_dir, fin, today, log=print):
     return summ, rows
 
 
+# ───────────────────────── 研究第二步:做到 / 沒做到 → 之後股價(`--price`)─────────────────────────
+PRICE_HS = (5, 10, 20)
+PRICE_COST = 0.44
+
+
+def _load_k(path):
+    try:
+        r = json.loads(open(path, encoding='utf-8').read())
+    except (OSError, ValueError):
+        return None
+    r = r if isinstance(r, list) else (r.get('data') or [])
+    out = []
+    for x in r:
+        try:
+            o, c = float(x.get('open') or 0), float(x.get('close') or 0)
+        except (TypeError, ValueError):
+            continue
+        if o > 0 and c > 0:
+            out.append((str(x.get('date'))[:10].replace('/', '-'), o, c))
+    return out
+
+
+def fwd_at(K, entry_after, h, dates=None):
+    """答案公布那天(entry_after)**之後**第一個交易日開盤進,抱 h 天收盤賣(%)。⛔ 前視:公布那天的漲跌不算。
+    dates = 這一檔的日期清單(有給就用二分搜尋,全市場對照才跑得動)。"""
+    import bisect
+    ds = dates if dates is not None else [k[0] for k in K]
+    i = bisect.bisect_right(ds, entry_after)
+    if i >= len(K):
+        return None, None
+    j = i + h - 1
+    if j >= len(K):
+        return None, K[i][0]
+    return (K[j][2] / K[i][1] - 1) * 100 - PRICE_COST, K[i][0]
+
+
+def _stat(v):
+    if not v:
+        return {'n': 0, 'inc': None, 't': None}
+    m = sum(v) / len(v)
+    sd = (sum((a - m) ** 2 for a in v) / len(v)) ** 0.5
+    return {'n': len(v), 'inc': round(m, 3), 't': round(m / (sd / len(v) ** 0.5), 2) if sd else None}
+
+
+def price_step(rows, data_dir, hs=PRICE_HS, min_day=300, log=print, fin=None, today=None):
+    """--grade 的結果(rows:s / known / res)→ 答案公布之後股價:做到 vs 沒做到,減同一天所有股票同樣做法的平均。
+    ⭐ 對照(fin 有給才做):同一段時間、同一個指標與方向,**沒有講這句話的其他公司**用同一把尺對答案
+       (= 營收真的往那個方向走的公司之後本來就怎麼走)→ 差中差 = 「公司有講、而且做到」多出來的那一塊。
+    ⚠️ 只是研究:答案公布(月營收 / 季報)那天市場也同時看到了 —— 量的是之後還有沒有後勁。"""
+    from pathlib import Path
+    Ks, DS = {}, {}
+    for f in Path(data_dir).glob('*.json'):
+        if re.fullmatch(r'\d{4}', f.stem):
+            K = _load_k(f)
+            if K:
+                Ks[f.stem] = K
+                DS[f.stem] = [k[0] for k in K]
+    ctrl_cache = {}
+
+    def ctrl(d, h):
+        key = (d, h)
+        if key not in ctrl_cache:
+            vals = []
+            pd_ = _prev_day(d)
+            for sy, K in Ks.items():
+                v, ed2 = fwd_at(K, pd_, h, DS[sy])
+                if v is not None and ed2 == d:
+                    vals.append(v)
+            ctrl_cache[key] = sum(vals) / len(vals) if len(vals) >= min_day else None
+        return ctrl_cache[key]
+    out = {}
+    for h in hs:
+        own = {'hit': [], 'miss': []}
+        peer = {'hit': [], 'miss': []}
+        evs = []
+        for r in rows:
+            if r.get('res') not in ('hit', 'miss') or not r.get('known') or r['s'] not in Ks:
+                continue
+            x, ed = fwd_at(Ks[r['s']], r['known'], h, DS[r['s']])
+            c = ctrl(ed, h) if x is not None else None
+            if c is not None:
+                own[r['res']].append(x - c)
+                evs.append({'s': r['s'], 'd': r.get('d'), 'known': r['known'], 'ed': ed, 'res': r['res'], 'm': r.get('m'), 'v': round(x - c, 3)})
+            if fin is None:
+                continue
+            claim = {'m': r['m'], 'dir': r['dir'], 'h': r['h'], 'cmp': r.get('cmp'), 'd': r['d'], 'ok': 1}
+            pv = {'hit': [], 'miss': []}
+            for sy, qs in fin.items():
+                if sy == r['s'] or sy not in Ks:
+                    continue
+                g = grade(claim, qs, today=today)
+                if g.get('res') not in ('hit', 'miss') or not g.get('known'):
+                    continue
+                y, ed2 = fwd_at(Ks[sy], g['known'], h, DS[sy])
+                c2 = ctrl(ed2, h) if y is not None else None
+                if c2 is not None:
+                    pv[g['res']].append(y - c2)
+            for k in pv:                     # 每一句只當一票(⛔ 讓某一句的 2,000 家同業淹掉其他句)
+                if pv[k]:
+                    peer[k].append(sum(pv[k]) / len(pv[k]))
+        res = {k: _stat(v) for k, v in own.items()}
+        res['ev'] = evs
+        if fin is not None:
+            res['peer'] = {k: _stat(v) for k, v in peer.items()}
+            hi, mi, ph, pm = (res['hit']['inc'], res['miss']['inc'], res['peer']['hit']['inc'], res['peer']['miss']['inc'])
+            res['did'] = round((hi - mi) - (ph - pm), 3) if None not in (hi, mi, ph, pm) else None
+        out[h] = res
+        line = (f"   抱 {h} 天:做到 n={res['hit']['n']} {res['hit']['inc']}pp(t={res['hit']['t']}) ・"
+                f"沒做到 n={res['miss']['n']} {res['miss']['inc']}pp(t={res['miss']['t']})")
+        if fin is not None:
+            line += (f" ・沒講這句的公司:往那個方向走 {res['peer']['hit']['inc']} / 沒有 {res['peer']['miss']['inc']}"
+                     f" → 差中差 {res['did']}pp")
+        log(line)
+    return out
+
+
+def _prev_day(d):
+    from datetime import timedelta
+    return (date.fromisoformat(d) - timedelta(days=1)).isoformat()
+
+
 # ───────────────────────── 量測(雲端拿真的全文跑,人工看) ─────────────────────────
 def measure(cc_dir, n=40, seed=7):
     CD.CC = __import__('pathlib').Path(cc_dir)
@@ -884,6 +1005,32 @@ def selftest():
     nv_pub = naive_dir(cq3, {**FIN['2222'], (2025, 2): dict(FIN['2222'][(2025, 2)], rev=999)})
     ok('⑫d naive 前視守門:9/1 講第三季,第三季(11/14 才公布)改成 999 ⛔ 影響;⭐ 對照:已公布的第二季改 999 → 跟著變',
        nv0 == 'down' and nv_fut == 'down' and nv_pub == 'up', (nv0, nv_fut, nv_pub))
+    # ⑬ --price:埋「做到的那幾檔公布後 5 天每天 +1%」→ 做到 > 0、沒做到 ≈ 0;公布當天大漲 ⛔ 算(隔天開盤才進)
+    pdir = _P(_tf.mkdtemp())
+    days = []
+    d0 = date(2025, 1, 2)
+    while len(days) < 80:
+        if d0.weekday() < 5:
+            days.append(d0.isoformat())
+        d0 = date.fromordinal(d0.toordinal() + 1)
+    known = days[30]
+    for k in range(12):
+        sym = str(5000 + k)
+        c, rows_k = 50.0, []
+        for i, d in enumerate(days):
+            o = c
+            r = 0.0
+            if i == 30:
+                r = 0.09                      # 公布當天大漲(⛔ 算進去)
+            if k < 6 and 31 <= i <= 35:
+                r = 0.01                      # 做到的那幾檔之後 5 天每天 +1%
+            c = o * (1 + r)
+            rows_k.append({'date': d, 'open': o, 'close': c})
+        (pdir / f'{sym}.json').write_text(json.dumps(rows_k), encoding='utf-8')
+    prow = [{'s': str(5000 + k), 'known': known, 'res': 'hit' if k < 6 else 'miss'} for k in range(12)]
+    pr = price_step(prow, str(pdir), hs=(5,), min_day=5, log=lambda *_: None)
+    ok('⑬ --price:做到的那半之後每天 +1% → 比同一天平均好、沒做到的比較差;公布當天的 +9% ⛔ 算進去',
+       pr[5]['hit']['n'] == 6 and pr[5]['hit']['inc'] > 2 and pr[5]['miss']['inc'] < -1 and pr[5]['hit']['inc'] < 4, pr)
     print('\n' + ('❌ confcall_guidance selftest 失敗 %d 條' % len(fails) if fails else '✅ confcall_guidance selftest 全過'))
     return 1 if fails else 0
 
@@ -899,6 +1046,16 @@ if __name__ == '__main__':
         if os.getenv('OUT'):
             from pathlib import Path
             Path(os.environ['OUT']).write_text(json.dumps({'summary': summ, 'rows': rows}, ensure_ascii=False, indent=1), encoding='utf-8')
+        sys.exit(0)
+    if '--price' in sys.argv:
+        # GRADE=--grade 的 OUT DATA_DIR=<d16> python3 confcall_guidance.py --price
+        g = json.loads(open(os.environ['GRADE'], encoding='utf-8').read())
+        print(f"📈 做到 / 沒做到 → 答案公布之後第一個交易日開盤進(扣 {PRICE_COST}%、減同一天所有股票)")
+        fin = load_fin(os.environ['FIN']) if os.getenv('FIN') else None
+        out = price_step(g.get('rows') or [], os.getenv('DATA_DIR') or 'data', fin=fin,
+                         today=date.fromisoformat(os.getenv('TODAY') or date.today().isoformat()))
+        if os.getenv('OUT'):
+            open(os.environ['OUT'], 'w', encoding='utf-8').write(json.dumps(out, ensure_ascii=False, indent=1))
         sys.exit(0)
     if '--measure' in sys.argv:
         i = sys.argv.index('--measure')
