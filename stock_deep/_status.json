@@ -55,14 +55,14 @@
    "ShortSaleTodayBalance",
    "ShortSaleYesterdayBalance"
   ],
-  "have": 2447,
+  "have": 2548,
   "of": 2548,
   "chk": [
-   178,
-   178
+   0,
+   0
   ],
   "at": "2026-10-24",
-  "done": false,
+  "done": true,
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/"
  },
  "rev": {
@@ -84,14 +84,14 @@
  },
  "per": {
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
-  "at": "2026-10-22",
+  "at": "2026-10-24",
   "probe_first": "2010-01-04",
   "cols": [
    "dividend_yield",
    "PER",
    "PBR"
   ],
-  "have": 1001,
+  "have": 1500,
   "of": 2548,
   "chk": [
    0,
