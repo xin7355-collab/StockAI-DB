@@ -978,7 +978,9 @@ _rl = _rl[_rl.index('run: |') + len('run: |'):].split('\n')
 _relay = '\n'.join(ln[10:] for ln in _rl if ln.startswith(' ' * 10) or not ln.strip())
 
 
-def _relay_run(chain, pending, queued, api_fail=False):
+def _relay_run(chain, pending, queued, api_fail=False, wr_queued=0):
+    """pending / queued = 手動派 / 接力那種(workflow_dispatch)在排隊幾輪;
+    wr_queued = 跟在 playbook_scan 後面那種(workflow_run)在排隊幾輪 —— 查詢沒帶 event=workflow_dispatch 才會被算進去"""
     with tempfile.TemporaryDirectory() as td:
         log = Path(td) / 'calls'
         gh = Path(td) / 'gh'
@@ -986,7 +988,8 @@ def _relay_run(chain, pending, queued, api_fail=False):
                       f'echo "$*" >> "{log}"\n'
                       'if [ "$1" = api ]; then\n'
                       + ('  exit 1\n' if api_fail else
-                         f'  case "$2" in *status=pending*) echo {pending};; *status=queued*) echo {queued};; *) echo 0;; esac\n')
+                         f'  case "$2" in *event=workflow_dispatch*) W=0;; *) W={wr_queued};; esac\n'
+                         f'  case "$2" in *status=pending*) echo $(({pending} + W));; *status=queued*) echo $(({queued} + W));; *) echo 0;; esac\n')
                       + 'fi\n', encoding='utf-8')
         gh.chmod(0o755)
         env = dict(os.environ, PATH=f'{td}:{os.environ.get("PATH", "")}', CHAIN=str(chain), LEFT='9', GH_REPO='o/r', GH_TOKEN='x')
@@ -1005,6 +1008,18 @@ _d = _relay_run(4, 0, 0, api_fail=True)
 ok('㊺d 查不到排隊狀況(API 失敗)→ 照舊派(⛔ 接力斷掉)', _d[0] == 0 and len(_d[2]) == 1, _d)
 _e = _relay_run(60, 0, 0)
 ok('㊺e 已經接力 60 棒 → 停(防無限迴圈)', _e[0] == 0 and _e[2] == [] and '60 棒' in _e[1], _e)
+# ㊺f 🔗 V79.6.6 10/24 接力斷掉那次:排隊的是跟在 playbook_scan 後面那種(上游不是成功 → 整輪跳過)
+#    ⭐ 決定性對照:舊寫法(查詢不分哪一種)同一個情境一定不派
+_f = _relay_run(4, 0, 0, wr_queued=1)
+ok('㊺f 排隊的只有 workflow_run 那種(可能整輪跳過)→ 照樣派下一棒(⛔ 接力斷掉)',
+   _f[0] == 0 and _f[2] == ['workflow run confcall_deck.yml --ref main -f chain=5 -f max_files=99999'], _f)
+_relay_old = _relay
+_relay = _relay.replace('&event=workflow_dispatch', '')
+_f2 = _relay_run(4, 0, 0, wr_queued=1)
+_relay = _relay_old
+ok('㊺f2 ⭐ 決定性對照:查詢拿掉 event=workflow_dispatch(= 10/24 那版)→ 同一個情境不派 = 接力斷掉', _f2[2] == [], _f2)
+_g = _relay_run(4, 1, 0, wr_queued=1)
+ok('㊺g 手動派的回補在等 + workflow_run 也在等 → 照舊不派(⛔ 擠掉手動派的)', _g[2] == [], _g)
 
 
 # ㊻ 🧭 V79.6.6 摘要的「風險」只收對公司不利的 —— 南亞 10/23 那份把「中東產能受損、乙二醇到港量受影響」

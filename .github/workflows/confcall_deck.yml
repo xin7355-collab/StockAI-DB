@@ -205,11 +205,13 @@ jobs:
         run: |
           C=$(( ${CHAIN:-0} + 1 ))
           if [ "$C" -gt 60 ]; then echo "⛔ 已經接力 60 棒 → 停(防無限迴圈);還沒讀 $LEFT 份,下一個每天那一輪會再接"; exit 0; fi
-          # 🚦 V79.6.5 已經有一輪在排隊(手動派的回補 / 每天那一輪)→ ⛔ 不再派:同一組只留一個排隊的,再派會把它擠掉
+          # 🚦 V79.6.5 已經有一輪在排隊(手動派的回補 / 接力)→ ⛔ 不再派:同一組只留一個排隊的,再派會把它擠掉
           #    (10/23 手動派的「2021-07 起回補」差點被下一棒擠掉);排隊那一輪跑完自己也會接力 → ⛔ 不會斷。查不到就照舊派
+          # 🔗 V79.6.6 只算手動派 / 接力的(workflow_dispatch):跟在 playbook_scan 後面的那種(workflow_run)上游不是成功就整輪跳過
+          #    → 10/24 #28 看到它在排隊就不派,它跳過之後接力就斷了(還沒讀 1.9 萬份)。擠掉它也沒關係:接力這一輪做的事一樣
           WAIT=0
           for st in pending queued; do
-            n=$(gh api "repos/$GH_REPO/actions/workflows/confcall_deck.yml/runs?status=$st&per_page=5" --jq '.total_count' 2>/dev/null || echo 0)
+            n=$(gh api "repos/$GH_REPO/actions/workflows/confcall_deck.yml/runs?status=$st&event=workflow_dispatch&per_page=5" --jq '.total_count' 2>/dev/null || echo 0)
             case "$n" in ''|*[!0-9]*) n=0;; esac
             WAIT=$((WAIT + n))
           done
