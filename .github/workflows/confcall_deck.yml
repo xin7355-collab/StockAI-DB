@@ -94,6 +94,15 @@ jobs:
           else
             rm -f data/confcall.json; echo "❌ 讀不到場次表 → 不做"; exit 1
           fi
+          # 📋 V79.6.7 法說會 3.0:「公司講的展望 → 做到了沒」要拿季報(data/fin)+ 月營收(fund_yoy_gm.json)對答案
+          #    ⛔ 讀不到照跑(展望照列,對答案那格寫「還沒到期 / 量不到」),⛔ 不擋讀簡報
+          git archive origin/data data/fin 2>/dev/null | tar -x 2>/dev/null || true
+          echo "📋 季報 $(ls data/fin 2>/dev/null | wc -l) 檔"
+          if git show origin/data:data/fund_yoy_gm.json > data/fund_yoy_gm.json 2>/dev/null && [ -s data/fund_yoy_gm.json ]; then
+            echo "📋 月營收 $(wc -c < data/fund_yoy_gm.json) bytes"
+          else
+            rm -f data/fund_yoy_gm.json; echo "⚠️ 讀不到月營收 → 營收那幾句只用季報對答案"
+          fi
 
       - name: 📚 還原已讀過的簡報特徵 (origin/cc_deep → cc_deep/)
         run: |

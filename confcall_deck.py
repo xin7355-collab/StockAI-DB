@@ -46,6 +46,7 @@ import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 import zipfile
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -209,11 +210,27 @@ def file_urls(tpl, name):
 
 
 _PUA_RE = re.compile('[\ue000-\uf8ff\ufffd]')
+# 🈶 V79.6.7:PDF 字型把一般字對到「部首」區(「成⾧」的 ⾧ = U+2FA7、「⻑期」的 ⻑ = U+2ED1)——
+#    10/24 量 150 份有 27 份 → 「成⾧」⛔ 對到「成長」(展望的方向、語氣、搜尋全部漏掉)。
+#    康熙部首(U+2F00~2FD5)NFKC 就換得回來;部首補充區(U+2E80~2EF3)沒有對應 → 只換台灣簡報實際出現的那幾個
+_RAD_RE = re.compile('[\u2e80-\u2fdf]')
+_RAD_SUP = {'⻑': '長', '⻒': '長', '⻓': '長', '⻝': '食', '⻞': '食', '⻟': '食', '⻠': '食', '⻄': '西', '⻃': '西',
+            '⻅': '見', '⻆': '角', '⻇': '角', '⻋': '車', '⻔': '門', '⻢': '馬', '⻣': '骨', '⻤': '鬼', '⻩': '黃',
+            '⻘': '青', '⻜': '飛', '⻦': '鳥', '⻭': '齒', '⻮': '齒', '⻯': '龍', '⻰': '龍', '⻐': '金', '⻉': '貝',
+            '⻥': '魚', '⻨': '麥', '⺟': '母', '⻳': '龜'}
+
+
+def norm_radicals(s):
+    """部首字 → 一般字(其他字一個都不動;⛔ 整段 NFKC —— 那會把全形標點也換掉)。"""
+    if not s or not _RAD_RE.search(s):
+        return s
+    return ''.join(_RAD_SUP.get(ch) or (unicodedata.normalize('NFKC', ch) if '\u2f00' <= ch <= '\u2fdf' else ch) for ch in s)
 
 
 def _clean(s):
     s = _html.unescape(str(s or '')).replace('　', ' ').replace('\xa0', ' ')
     s = _PUA_RE.sub('', s)          # 🔣 PDF 字型的私用區字元(項目符號 \uf06e、\uf0b7…)在手機上是方框(V79.6.4 巡邏)
+    s = norm_radicals(s)
     s = re.sub(r'[ \t]+', ' ', s)
     return s
 
@@ -661,7 +678,7 @@ def refilter(rec):
     for k in ('outlook', 'nums', 'titles'):
         v = rec.get(k)
         if isinstance(v, list):
-            rec[k] = [[x[0], re.sub(r'[ \t]+', ' ', _PUA_RE.sub('', str(x[1]))).strip()] for x in v
+            rec[k] = [[x[0], norm_radicals(re.sub(r'[ \t]+', ' ', _PUA_RE.sub('', str(x[1]))).strip())] for x in v
                       if isinstance(x, (list, tuple)) and len(x) == 2 and _PUA_RE.sub('', str(x[1])).strip()]
     ol = [x for x in (rec.get('outlook') or []) if isinstance(x, (list, tuple)) and len(x) == 2 and not _not_said(x[1]) and not _is_title(x[1])]
     nm = [x for x in (rec.get('nums') or []) if isinstance(x, (list, tuple)) and len(x) == 2 and not _not_said(x[1]) and _has_figure(x[1])
@@ -1350,7 +1367,65 @@ def _today():
     return datetime.now(TW).date()
 
 
-def build_outputs(recs, nov, info, today, files=None, cite=None):
+class _GuideData:
+    """📋 V79.6.7 法說會 3.0:每份簡報「公司講的展望 → 做到了沒」要用的資料(季報 data/fin、月營收 fund_yoy_gm、全文 cc/text)。
+    讀不到就照樣列展望、對答案那格寫「還沒到期 / 量不到」;⛔ 不擋讀簡報、⛔ 靜默(壞掉的份數印在紀錄)。"""
+
+    def __init__(self, files, today, log=print):
+        import confcall_guidance as G        # 函式裡才 import(confcall_guidance 也 import 這支)
+        self.G, self.files, self.today, self.log = G, files, today, log
+        self.cache, self.fin, self.err, self.n = {}, {}, 0, 0
+        fy = _load_json(DATA / 'fund_yoy_gm.json', {}) if (DATA / 'fund_yoy_gm.json').exists() else {}
+        self.months = {k: G.months_of(v) for k, v in fy.items() if isinstance(v, dict)} if isinstance(fy, dict) else {}
+
+    def prefetch(self, pairs):
+        """先照全文的月份分組一次算完 —— ⛔ 把每個月的全文都留在記憶體(1.6 萬份回補完約 1 GB);一次只解壓一個月。"""
+        by_m = {}
+        for s, r in pairs:
+            f = r.get('f')
+            if not f or f in self.cache:
+                continue
+            m = (self.files.get(f) or {}).get('tx')
+            by_m.setdefault(m if m and m != '-' else '', []).append((s, r))
+        for m in sorted(by_m):
+            texts = (_load_json(text_file(m), {}) or {}) if m else {}
+            for s, r in by_m[m]:
+                self._calc(s, r, (texts.get(r.get('f')) or {}).get('p'))
+            del texts
+
+    def _quarters(self, s):
+        if s not in self.fin:
+            p = DATA / 'fin' / f'{s}.json'
+            try:
+                self.fin[s] = (json.loads(p.read_text(encoding='utf-8')).get('q') or []) if p.exists() else []
+            except (OSError, ValueError):
+                self.fin[s] = []
+        return self.fin[s]
+
+    def _calc(self, s, r, pages):
+        f = r.get('f')
+        try:
+            self.cache[f] = self.G.deck_claims(r, pages, self._quarters(s), self.months.get(s), self.today)
+            self.n += 1
+        except Exception as e:                           # noqa: BLE001 —— 一份算錯 ⛔ 拖垮整輪,但要數出來
+            self.cache[f] = []
+            self.err += 1
+            if self.err <= 3:
+                self.log(f'⚠️ 展望對答案失敗 {f}:{type(e).__name__}: {str(e)[:120]}')
+
+    def claims(self, s, r):
+        if r.get('f') not in self.cache:
+            self.prefetch([(s, r)])
+        return self.cache.get(r.get('f')) or []
+
+    def report(self):
+        n_g = sum(1 for v in self.cache.values() for c in v if c.get('ok'))
+        n_done = sum(1 for v in self.cache.values() for c in v if (c.get('r') or {}).get('res') in ('hit', 'miss'))
+        self.log(f'📋 展望:{self.n} 份簡報 ・可以對答案 {n_g} 句(已經有答案 {n_done})・季報 {sum(1 for v in self.fin.values() if v)} 檔'
+                 f' ・月營收 {len(self.months)} 檔' + (f' ・⚠️ 失敗 {self.err} 份' if self.err else ''))
+
+
+def build_outputs(recs, nov, info, today, files=None, cite=None, log=print):
     """App 讀的兩個檔:data/cc/{sym}.json(每檔最近 4 份)+ data/confcall_digest.json(最近 60 天每場一列)。
     ⛔ 每檔的檔案裡沒有「每輪都變」的時間戳 → 內容沒變就不改檔(不然每輪上千個檔都算變更)。
     📋 V79.6.4 巡邏:清單也列「讀不成的」(只有狀態 st:只有圖片 / 舊格式 / 抽不出字 / 檔案不在 / 太大 / 下載失敗)
@@ -1367,6 +1442,9 @@ def build_outputs(recs, nov, info, today, files=None, cite=None):
     in_dg = lambda f, d: (d or '') >= cut or (f in cite)
     keys = ('d', 't', 'inv', 'f', 'kind', 'pages', 'st', 'reuse', 'outlook', 'nums', 'titles', 'tone', 'ai', 'model', 'gate_drop')
     wrote, digest, seen = 0, [], set()
+    gd = _GuideData(files or {}, today, log)
+    srt = lambda lst: sorted(lst, key=lambda r: (r.get('d') or '', r.get('f') or ''), reverse=True)
+    gd.prefetch([(s, r) for s, lst in by_sym.items() for r in srt(lst)[:KEEP_PER_SYM] if r.get('st') == 'ok'])
     for s, lst in sorted(by_sym.items()):
         lst.sort(key=lambda r: (r.get('d') or '', r.get('f') or ''), reverse=True)
         decks = []
@@ -1375,6 +1453,9 @@ def build_outputs(recs, nov, info, today, files=None, cite=None):
             if x.get('titles'):
                 x['titles'] = x['titles'][:12]
             x.update(nov.get(r.get('f')) or {})
+            g = gd.claims(s, r) if r.get('st') == 'ok' else []
+            if g:
+                x['g'] = g                  # 📋 公司講的展望 → 做到了沒(confcall_guidance)
             decks.append(x)
         body = json.dumps({'s': s, 'name': lst[0].get('name') or s, 'decks': decks}, ensure_ascii=False, separators=(',', ':'))
         p = out_dir / f'{s}.json'
@@ -1390,7 +1471,9 @@ def build_outputs(recs, nov, info, today, files=None, cite=None):
                    'new': [t for t, _ in (nv.get('new') or [])][:5], 'new_n': nv.get('n_new', 0), 'first': bool(nv.get('first')),
                    'prev_d': nv.get('prev_d') or '', 'reuse': r.get('reuse') or '', 'n_nums': len(r.get('nums') or []), 'pages': r.get('pages'),
                    # 🔎 簡報講到的產品 / 技術詞(照第一次出現的頁排,最多 30 個)→ 法說會頁可以搜「誰在講 CPO」
-                   'tm': [t for t, _ in sorted((r.get('terms') or {}).items(), key=lambda x: x[1])][:30]}
+                   'tm': [t for t, _ in sorted((r.get('terms') or {}).items(), key=lambda x: x[1])][:30],
+                   # 📋 這份簡報有幾句「可以對答案的展望」(法說會頁的徽章;內容在 data/cc/{sym}.json 的 g)
+                   'gn': sum(1 for c in gd.cache.get(r.get('f')) or [] if c.get('ok'))}
             vid = ((info.get(r.get('f')) or (None, {}))[1] or {}).get('vid')
             if vid:
                 row['vid'] = vid
@@ -1423,6 +1506,7 @@ def build_outputs(recs, nov, info, today, files=None, cite=None):
         digest.append(st_row(f, st.get('s') or ((e[1] or {}).get('s') if e else ''), d, st['st'], e[1] if e else None, ex))
         seen.add(f)
     digest.sort(key=lambda x: (x['d'] or '', x['new_n']), reverse=True)
+    gd.report()
     _save_json(DATA / 'confcall_digest.json', {'updated': datetime.now(TW).isoformat(timespec='minutes'),
                                                'days': DIGEST_DAYS, 'n': len(digest), 'n_ok': n_ok, 'rows': digest})
     return wrote, n_ok
@@ -1622,7 +1706,7 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
     _gh_out(ran=1)                # 💾 紀錄已存 → 就算等一下紅燈,workflow 也要把 cc_deep 推上去(⛔ 不然「試過幾次」永遠存不住)
     recs = [x for lst in allr.values() for x in lst]
     nov = novelty_all(recs)
-    wrote, nd = build_outputs(recs, nov, earliest, today, files=files, cite=recent_fs)
+    wrote, nd = build_outputs(recs, nov, earliest, today, files=files, cite=recent_fs, log=log)
     left = max(0, len(todo) - n_try) + sum(1 for r, f, w in todo[:n_try] if (files.get(f) or {}).get('st') == 'dl_fail'
                                            and (files.get(f) or {}).get('tries', 0) < TRANSIENT_TRIES)
     if reason == 'done' and left:

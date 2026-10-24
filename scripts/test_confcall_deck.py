@@ -1132,5 +1132,63 @@ ok('㊽b ⭐ 決定性對照:「聯準會降息、利率走低」照樣算總經
 _bo2 = cd.best_outlook([[3, '預期明年持續成長'], [5, '預期第四季毛利率將回升至 25%']])
 ok('㊽c 講毛利率又有數字的那句排第一(⛔ 被當成總經排到最後)', _bo2 == [5, '預期第四季毛利率將回升至 25%'], _bo2)
 
+# ㊾ 部首字(10/24 量 150 份有 27 份):「成⾧」⛔ 對到「成長」→ 抽字時換回一般字;舊特徵 refilter 也換(冪等)
+ok('㊾a _clean:「營收成⾧」「⻑期」→ 一般字;全形標點 ⛔ 跟著換', cd._clean('營收成⾧，⻑期：⾼階') == '營收成長，長期：高階')
+_rf = cd.refilter({'st': 'ok', 'outlook': [[3, '預期明年營收成⾧ 15%']], 'nums': [[4, '毛利率⾼於 30%']], 'titles': [[1, '營運⻑期展望']], 'terms': {}})
+ok('㊾b refilter 把舊特徵的部首字換掉,語氣跟著算得到「成長」',
+   _rf['outlook'] == [[3, '預期明年營收成長 15%']] and _rf['nums'] == [[4, '毛利率高於 30%']] and _rf['titles'] == [[1, '營運長期展望']]
+   and _rf['tone'][0] >= 1, _rf)
+ok('㊾c ⭐ 決定性對照:沒換之前「成⾧」對不到 POS_RE', not cd.POS_RE.search('預期明年營收成⾧') and cd.POS_RE.search(cd.norm_radicals('預期明年營收成⾧')))
+
+# ㊿ 📋 法說會 3.0:data/cc/{sym}.json 每份簡報多一個 g =「公司講的展望 → 做到了沒」(confcall_guidance)
+with tempfile.TemporaryDirectory() as tmp:
+    cdx, datax, ccx = setup(tmp, [])
+    rec = {'s': '1303', 'name': '南亞', 'd': '2026-10-23', 'f': '130320261022M001.pdf', 'st': 'ok', 'pages': 3,
+           'outlook': [[3, '年初預期，今年會是亮麗的一年。']], 'nums': [], 'terms': {}, 'tone': [0, 0]}
+    cdx._save_json(cdx.month_file('2026-10-01'), [rec])
+    files = {rec['f']: {'st': 'ok', 'd': '2026-10-23', 's': '1303', 'tx': '2026-10'}}
+    cdx._save_json(cdx.text_file('2026-10'), {rec['f']: cdx.text_pack(['', '第四季合併營收將持續攀升,整體績效將優於第三季。', '年初預期，今年會是亮麗的一年。'])})
+    (datax / 'fin').mkdir()
+    (datax / 'fin' / '1303.json').write_text(json.dumps({'sym': '1303', 'q': [
+        {'p': '2026-06-30', 'pub': '2026-08-14', 'rev': 83646883000}, {'p': '2026-09-30', 'pub': '2026-11-14', 'rev': 95597000000}]}), encoding='utf-8')
+    mrh = [[f'2026-{m:02d}', v] for m, v in zip(range(7, 13), (30573, 30601, 34423, 33000, 34000, 35000))]
+    (datax / 'fund_yoy_gm.json').write_text(json.dumps({'1303': {'mrh': mrh}}), encoding='utf-8')
+    allx = cdx.load_all()
+    _logs = []
+    cdx.build_outputs([x for l in allx.values() for x in l], cdx.novelty_all([rec]), {}, date(2027, 1, 12), files=files, cite={rec['f']}, log=_logs.append)
+    cc1303 = json.loads((datax / 'cc' / '1303.json').read_text(encoding='utf-8'))
+    g = cc1303['decks'][0].get('g') or []
+    dg = json.loads((datax / 'confcall_digest.json').read_text(encoding='utf-8'))
+    ok('㊿a 從全文抽到第 2 頁那句(舊規則漏掉的)→ 營收・往上・2026Q4;月營收 10~12 月 1,020 億 vs 7~9 月 955.97 億 → ✅ 做到了,1/10 公布',
+       g and g[0]['p'] == 2 and g[0]['m'] == 'rev' and g[0]['r']['res'] == 'hit' and g[0]['r']['src'] == 'm' and g[0]['r']['a'] == 1020.0
+       and g[0]['r']['b'] == 955.97 and g[0]['r']['known'] == '2027-01-10', g)
+    ok('㊿b 清單那一列帶「可以對答案的展望」幾句(gn)', dg['rows'][0].get('gn') == 1, dg['rows'][0])
+    ok('㊿c 紀錄印出幾份 / 幾句 / 讀到幾檔季報與月營收', any('📋 展望' in str(x) and '季報 1 檔' in str(x) and '月營收 1 檔' in str(x) for x in _logs), _logs)
+    # ⭐ 決定性對照:同一份簡報、10~12 月營收合計 900 億 → ❌ 沒做到
+    (datax / 'fund_yoy_gm.json').write_text(json.dumps({'1303': {'mrh': mrh[:3] + [['2026-10', 28000], ['2026-11', 30000], ['2026-12', 32000]]}}), encoding='utf-8')
+    cdx.build_outputs([x for l in allx.values() for x in l], cdx.novelty_all([rec]), {}, date(2027, 1, 12), files=files, log=_logs.append)
+    g2 = json.loads((datax / 'cc' / '1303.json').read_text(encoding='utf-8'))['decks'][0].get('g') or []
+    ok('㊿d ⭐ 決定性對照:10~12 月合計 900 億 → ❌ 沒做到', g2 and g2[0]['r']['res'] == 'miss', g2)
+    # 讀不到季報 / 月營收 / 全文 → 照樣列(舊的「講到之後」句子),對答案那格 ⛔ 編
+    (datax / 'fund_yoy_gm.json').unlink()
+    (datax / 'fin' / '1303.json').unlink()
+    cdx.build_outputs([x for l in allx.values() for x in l], cdx.novelty_all([rec]), {}, date(2026, 10, 24), files={}, log=_logs.append)
+    cc3 = json.loads((datax / 'cc' / '1303.json').read_text(encoding='utf-8'))
+    ok('㊿e 讀不到季報 / 月營收 / 全文 → 不出錯;「今年會是亮麗的一年」沒有指標 ⛔ 硬列', 'g' not in cc3['decks'][0], cc3['decks'][0].get('g'))
+    rec2 = dict(rec, outlook=[[12, '第四季合併營收將持續攀升,整體績效將優於第三季。']])
+    cdx.build_outputs([rec2], cdx.novelty_all([rec2]), {}, date(2026, 10, 24), files={}, log=_logs.append)
+    g4 = json.loads((datax / 'cc' / '1303.json').read_text(encoding='utf-8'))['decks'][0].get('g') or []
+    ok('㊿f 沒有全文 → 用以前存的句子;季報月營收都還沒有 → ⏳ 還沒到期(⛔ 編答案)', g4 and g4[0]['p'] == 12 and g4[0]['r']['res'] == 'pending', g4)
+    # ㊿g 全文照月份分組:同一個月兩份簡報 → 那個月的全文檔只解壓一次(⛔ 每份各讀一次 / ⛔ 全部月份同時留在記憶體)
+    rec3 = dict(rec, s='1304', f='130420261020M001.pdf', d='2026-10-20')
+    files2 = dict(files, **{rec3['f']: {'st': 'ok', 'd': '2026-10-20', 's': '1304', 'tx': '2026-10'}})
+    cdx._save_json(cdx.text_file('2026-10'), {rec['f']: cdx.text_pack(['第四季合併營收將持續攀升']), rec3['f']: cdx.text_pack(['第四季營收將較上季成長'])})
+    _orig_lj, _hits = cdx._load_json, []
+    cdx._load_json = lambda p, d=None: (_hits.append(str(p)) if 'text' in str(p) else None) or _orig_lj(p, d)
+    cdx.build_outputs([rec, rec3], cdx.novelty_all([rec, rec3]), {}, date(2026, 10, 24), files=files2, log=_logs.append)
+    cdx._load_json = _orig_lj
+    _g13 = [json.loads((datax / 'cc' / f'{x}.json').read_text(encoding='utf-8'))['decks'][0].get('g') for x in ('1303', '1304')]
+    ok('㊿g 同一個月兩份簡報 → 那個月的全文只解壓一次,兩份都抽得到', len([h for h in _hits if '2026-10' in h]) == 1 and all(_g13), (_hits, _g13))
+
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))
 sys.exit(1 if fails else 0)

@@ -5,6 +5,7 @@
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 📋 V79.6.8 法說會 3.0「做到了沒」第一版:第一次對答案 32 句說到做到 84%(隨便一家公司 55%・用當天數字猜 70%,樣本小、⛔ 還沒看股價)+ data/cc 每份簡報的 g(營收用月營收加總對答案)+ 作戰室卡片 / 散戶基本頁(只放事實)+ PDF 部首字修正 + MACRO_RE 吃到毛利率
 - 📞 V79.6.7 法說會 3.0「講了什麼 → 做到了沒 → 有沒有用」:參考資料評估(FinMind 已在用 / node-twstock 重複 / 方格子那篇是假說不是資料 / 第 12 款本站已有 / 一家一個 repo ⛔)+ 研究價值在「對答案」+ 第一步每份簡報存全文(已讀過的排最後補存,⛔ 重叫 AI)
 - 🩺 V79.6.7 daily_miner 合併把別支剛推的檔寫壞 / 改回舊版(10/24 #647:confcall / digest / screener 讀不出來、playbook_edge 回到 10/23)→ 節點只上傳改過的(art_merge snap/trim)+ 依序合併(⛔ merge-multiple)+ 部署前 JSON 體檢 + 累積檔讀法 lib_jsonsafe(⛔ except: return {} 把 5 年法說會歷史當成沒有)
 - 💳 V79.6.6 上市股融資從 2026-05 起錯位(帶日期那份沒讀到、改用沒有日期的 OpenAPI)→ 五道關卡 + OpenAPI 要證明日期 + dt 才蓋掉 + 回補 margin_twse_days + 體檢 G 類 + 推之前先用真實回應驗(macro_probe which=twse_margin:groups 只有 span、OpenAPI 的 0 是空字串)+ 融資走勢剪掉還沒公布的尾巴 + 簡報摘要「風險」只收對公司不利的 → `docs/DECISIONS.md`「💳 V79.6.6」

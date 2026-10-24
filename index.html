@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.6.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.6.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.6.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.6.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8605,10 +8605,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.6.7',
+    _APP_VERSION: 'V79.6.8',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.6.8', d: [
+            '📋 法說會多了「公司講的展望」:個股「基本」頁那一格會列出公司在簡報上說的話(例如「第四季營收會比第三季好」),之後月營收、財報出來就自動對答案 —— ✅ 做到了 / ❌ 沒做到 / ⏳ 還沒到期,附實際數字與哪天知道',
+            '📄 簡報裡 PDF 抽出來的怪字(「成⾧」)會自動換成一般字;講毛利率的那句也不會再被當成總經新聞排到最後',
+        ], dt: '2026-10-24' },
         { v: 'V79.6.7', d: [
             '🩺 修好週六早上「選股快照、法說會一覽表讀不出來」:採礦把 20 台機器的結果合在一起時,剛好遇到別的流程更新同一個檔,寫成一半新一半舊;現在一台一台依序寫,推上網站前每個檔都會先檢查讀不讀得出來',
             '📞 法說會的歷年紀錄、推薦紀錄讀到壞掉的檔會先救回前面完整的那份,⛔ 不會再用今天一天蓋掉整份歷史',
@@ -8812,7 +8816,6 @@ ${list}
         { v: 'V78.6.1', d: ['🐟 股海釣手的新魚當觀察名單就好;要照規則買賣,請看決策台 👑 那一批'] },
         { v: 'V78.6.0', d: ['👑 決策台領頭羊名單改成只列「這一批」:平常日子列的是上次換倉那天的 10 檔(10 天不變),右邊寫它今天排第幾名;換倉那天才換成新的一批', '🎣 股海釣手改成每天釣「這一批以外」的新魚,跟決策台那 10 檔不會重複'] },
         { v: 'V78.5.9', d: ['👑 決策台領頭羊名單的「換倉價」改成「09/24價」(換這一批那天的收盤):以前只有那天也在名單上的才有價格、其他寫「—」,現在每一檔都補上那天的價,底下是那天到現在漲跌多少'] },
-        { v: 'V78.5.8', d: ['📈 策略比較表多了「每年平均、每月平均」:100 萬變多少之外,直接看得到平均一年、一個月大約賺幾 %(是平均,不是每年都賺)'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -25417,6 +25420,45 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.innerHTML = h;
         el.classList.toggle('hidden', !h);
     },
+    // 📋 V79.6.7 法說會 3.0:「公司講的展望 → 做到了沒」(data/cc 每份簡報的 g,confcall_guidance 算的)—— ⛔ 只放事實
+    //   ⚠️ 散戶 App(index.html)與產業作戰室(pro.html)各有一份同樣的 _ccPeriod / _ccWhen / _ccWhat / _ccClaim,
+    //      test_ccguide_ui 跨檔比對輸出(⛔ 只改一邊)
+    _CC_MN: { rev: '營收', gm: '毛利率', om: '營益率', nm: '淨利率', opi: '營業利益', ni: '稅後淨利' },
+    _ccPeriod(h) {
+      const s = String(h || ''); let m;
+      if ((m = s.match(/^(\d{4})Q([1-4])$/))) return `${m[1]} 第 ${m[2]} 季`;
+      if ((m = s.match(/^(\d{4})H([12])$/))) return `${m[1]} ${m[2] === '1' ? '上' : '下'}半年`;
+      if (/^\d{4}$/.test(s)) return `${s} 全年`;
+      return s;
+    },
+    _ccWhen(c) {
+      const s = String(((c && c.r) || {}).cur || (c && c.h) || ''), m = s.match(/^(\d{4})(?:Q([1-4])|H([12]))?$/);
+      if (!m) return '';
+      const y = +m[1], q = m[2] ? +m[2] : m[3] ? (m[3] === '1' ? 2 : 4) : 4;
+      if (c.m === 'rev') {
+        const lm = q * 3, ny = lm === 12 ? y + 1 : y, nm = lm === 12 ? 1 : lm + 1;
+        return `${lm} 月營收出來(${ny}/${String(nm).padStart(2, '0')}/10 前)就知道`;
+      }
+      const dl = { 1: `${y}/05/15`, 2: `${y}/08/14`, 3: `${y}/11/14`, 4: `${y + 1}/03/31` }[q];
+      return `第 ${q} 季財報出來(${dl} 前)就知道`;
+    },
+    _ccWhat(c) {
+      const r = (c && c.r) || {}, mn = this._CC_MN[c && c.m] || '', per = (r.cur || (c && c.h)) ? this._ccPeriod(r.cur || c.h) : '';
+      if (c && c.dir === 'pos') return `${per}${mn}要賺錢`;
+      const dw = { up: '比較好', down: '比較差', flat: '差不多' }[c && c.dir] || '';
+      return r.base ? `${per}${mn}比 ${this._ccPeriod(r.base)}${dw}` : `${per}${mn}${dw}`;
+    },
+    _ccClaim(c) {
+      const r = (c && c.r) || {}, mn = this._CC_MN[c && c.m] || '', mg = ['gm', 'om', 'nm'].includes(c && c.m);
+      const v = x => x == null ? '—' : mg ? `${(+x).toFixed(1)}%` : `${(+x).toLocaleString('zh-TW', { maximumFractionDigits: 2 })} 億`;
+      if (!c || !c.ok) return { ic: '➖', res: 'skip', txt: c && c.seg ? '只講某個產品線 / 事業 → 不拿全公司的財報對答案' : '沒講清楚哪一段時間,或不是財報量得到的東西 → 不對答案' };
+      if (r.res === 'pending') return { ic: '⏳', res: 'pending', txt: `還沒到期:${this._ccWhen(c)}` };
+      if (r.res !== 'hit' && r.res !== 'miss') return { ic: '➖', res: 'na', txt: '財報缺那一段 → 量不到' };
+      const hit = r.res === 'hit', per = this._ccPeriod(r.cur || c.h);
+      if (c.dir === 'pos') return { ic: hit ? '✅' : '❌', res: r.res, txt: `${hit ? '做到了' : '沒做到'}:${per} ${mn} ${v(r.a)}(${hit ? '有賺錢' : '還是虧損'})・季報` };
+      const chg = r.chg == null ? '' : mg ? `(${r.chg >= 0 ? '+' : ''}${(+r.chg).toFixed(1)} 個百分點)` : `(${r.chg >= 0 ? '+' : ''}${(+r.chg).toFixed(1)}%)`;
+      return { ic: hit ? '✅' : '❌', res: r.res, txt: `${hit ? '做到了' : '沒做到'}:${per} ${mn} ${v(r.a)} vs ${this._ccPeriod(r.base)} ${v(r.b)}${chg}・${r.src === 'm' ? '月營收加總' : '季報'}` };
+    },
     _corpConfCallHtml(sym, J) {
         const decks = J && Array.isArray(J.decks) ? J.decks.filter(x => x && x.d) : [];
         const dk = decks.find(x => x.st === 'ok') || null;
@@ -25458,6 +25500,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             else if (dk.first) h += `<div class="text-[11px] text-gray-500 mt-1">🆕 第一次收錄這家公司的簡報,還沒有上一份可以比。</div>`;
             const nums = (dk.nums || []).slice(0, 3);
             if (nums.length) h += `<div class="text-[11px] text-gray-300 mt-1" data-corp-cc-nums>🔢 公司給的數字:<br>${nums.map(([p, t]) => `・${e(t)}${pg(p)}`).join('<br>')}</div>`;
+            // 📋 V79.6.7 法說會 3.0:公司講的展望 → 做到了沒(只放事實:公司原話 + 財報數字)
+            const gs = (dk.g || []).filter(c => c && c.ok).slice(0, 2);
+            if (gs.length) h += `<div class="text-[11px] text-gray-300 mt-1" data-corp-cc-g>📋 公司講的展望:${gs.map(c => { const x = this._ccClaim(c); return `<br>${x.ic} 「${e(String(c.t).slice(0, 70))}」${pg(c.p)} <span class="text-gray-400">→ ${e(x.txt)}</span>`; }).join('')}</div>`;
+            const past = [];
+            for (const x of decks) {
+                if (x === dk || x.st !== 'ok') continue;
+                for (const c of (x.g || [])) if (c && c.ok && c.r && (c.r.res === 'hit' || c.r.res === 'miss')) past.push([x, c]);
+            }
+            if (past.length) h += `<div class="text-[11px] text-gray-300 mt-1" data-corp-cc-past>📋 之前講的,做到了沒:${past.slice(0, 2).map(([x, c]) => { const y = this._ccClaim(c); return `<br>${y.ic} ${e(dw(x.d))} 說「${e(String(c.t).slice(0, 50))}」→ ${e(y.txt)}`; }).join('')}</div>`;
             if (!h) h = `<div class="text-[11px] text-gray-500">📄 這份簡報抽不出帶數字的句子(多半是圖表做成圖片)→ 直接看簡報。</div>`;
         } else {
             h = `<div class="text-[11px] text-gray-500" data-corp-cc-noimg>📄 簡報是圖片做的,抽不出字(⛔ 不猜)→ 直接看簡報。</div>`;
