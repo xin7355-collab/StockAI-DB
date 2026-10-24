@@ -439,12 +439,19 @@ def fetch_market(typek, today, session=None, months=None):
     return uniq, err
 
 
+# 🩺 2026-10-24:上一份讀不讀得出來(build 會把它寫進 hist_error;⛔ 讀不到不可當成「本來就沒有」)
+_OLD_STATE = {'status': 'missing', 'msg': ''}
+
+
 def _load_old():
-    try:
-        j = json.loads(OUT.read_text(encoding='utf-8'))
-        return j if isinstance(j, dict) else {}
-    except Exception:
-        return {}
+    """上一份 data/confcall.json(hist 是 5 年累積的,只能靠它延續)。
+    🚨 10/24 #647:檔案被寫成「完整 JSON + 舊版的尾巴」→ 舊版 `except: return {}` 把 5 年歷史當成沒有
+       → 這一輪只寫得出窗口內那幾百場。→ 一律走 lib_jsonsafe:尾巴多一段就用前面那份完整的;
+       真的救不回來才回 {},而且記下原因(build 寫進 hist_error,⛔ 不靜默)。"""
+    from lib_jsonsafe import load_json_safe
+    j, st, msg = load_json_safe(OUT, None, what='data/confcall.json(上一份)')
+    _OLD_STATE.update(status=st, msg=msg)
+    return j if isinstance(j, dict) else {}
 
 
 def build(rows_sii, err_sii, rows_otc, err_otc, today, old=None):
@@ -495,6 +502,9 @@ def build(rows_sii, err_sii, rows_otc, err_otc, today, old=None):
         'src_error': {'sii': err_sii, 'otc': err_otc, 'names': ind_err},
         'window': {'past': PAST, 'future': FUTURE},
         'upcoming': upcoming, 'recent': recent, 'hist': hist, 'react': react,
+        # 🩺 上一份救不回來 → hist 只剩這一輪的,要說出來(陷阱 #22);補回 = hist_backfill which=confcall
+        'hist_error': (f"上一份讀不出來({_OLD_STATE['msg']})→ 歷年只剩這一輪抓到的;"
+                       f"要補回請跑 hist_backfill(which=confcall)") if _OLD_STATE['status'] == 'corrupt' else None,
         'n': {'sii': len(rows_sii), 'otc': len(rows_otc), 'upcoming': len(upcoming), 'recent': len(recent),
               'with_sum': sum(1 for r in rows if r['sum']),
               'with_files': sum(1 for r in rows if r['pdf'] or r['vid']),

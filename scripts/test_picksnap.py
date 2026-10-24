@@ -97,6 +97,34 @@ with tempfile.TemporaryDirectory() as td:
     _, out = run(d)
     ok('⑤ 累積不足要印「還在累積 N/20」', '還在累積' in out, out[:200])
 
+# ⑦ 🩺 2026-10-24 #647:累積檔被寫成「完整 JSON + 舊版尾巴」/ 亂碼
+#   ⛔ 舊寫法讀不到就當「本來沒有」→ 用今天一天蓋掉 400 天(⛔ 重建不回來)
+_prev_days = [{'d': f'2026-07-{i:02d}', 'pb': [{'s': '2330'}]} for i in range(1, 21)]
+_prev = json.dumps({'note': 'x', 'days': _prev_days}, ensure_ascii=False)
+with tempfile.TemporaryDirectory() as td:
+    d = Path(td); seed(d)
+    (d / 'pick_history.json').write_text(_prev + '方向實測 0 個成立,⛔ 不給多空。"}', encoding='utf-8')
+    rc, out = run(d)
+    h = json.loads((d / 'pick_history.json').read_text(encoding='utf-8'))
+    ok('⑦a 尾巴多一段 → 用前面那份完整的接著存(舊的 20 天 + 今天 = 21 天)',
+       rc == 0 and h.get('n_days') == 21 and '多了' in out, f'rc={rc} n={h.get("n_days")} {out[:200]}')
+with tempfile.TemporaryDirectory() as td:
+    d = Path(td); seed(d)
+    bad = _prev.encode('utf-8')[:300] + b'\x8a\x8a' + _prev.encode('utf-8')[302:]
+    (d / 'pick_history.json').write_bytes(bad)
+    rc, out = run(d)
+    ok('⑦b 救不回來(亂碼)→ exit 1、⛔ 不寫(壞檔原封不動留著等人修)',
+       rc == 1 and (d / 'pick_history.json').read_bytes() == bad and '⛔ 這輪不寫' in out, f'rc={rc} {out[:200]}')
+    env = dict(os.environ, DATA_DIR=str(d))
+    r2 = subprocess.run([sys.executable, str(ROOT / 'pick_snapshot.py'), '--leader'], capture_output=True, text=True, env=env)
+    ok('⑦c 領頭羊那條路(--leader)也一樣 ⛔ 不寫', r2.returncode == 1 and (d / 'pick_history.json').read_bytes() == bad,
+       (r2.returncode, (r2.stdout + r2.stderr)[:200]))
+with tempfile.TemporaryDirectory() as td:
+    d = Path(td); seed(d)
+    rc, out = run(d)
+    ok('⑦d 決定性對照:檔案不在(第一次跑)→ 照常從頭建', rc == 0 and json.loads((d / 'pick_history.json').read_text())['n_days'] == 1,
+       f'rc={rc} {out[:150]}')
+
 # ⑥ ⭐⭐ 累積型檔案的佈線(踩過三次:存了但沒推 = 每天歸零,零錯誤訊息)
 wf = (ROOT / '.github/workflows/playbook_scan.yml').read_text(encoding='utf-8')
 ok('⑥ workflow 有呼叫 pick_snapshot.py', 'python3 pick_snapshot.py' in wf, '')

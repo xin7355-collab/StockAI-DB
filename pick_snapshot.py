@@ -47,11 +47,24 @@ def _load(p, d=None):
         return d
 
 
+def _load_hist():
+    """上一份 pick_history.json(400 天「App 那天真的推薦了什麼」,⛔ 重建不回來)。
+    🚨 10/24 #647:累積檔被寫成「完整 JSON + 舊版的尾巴」;舊寫法讀不到就當「本來沒有」→ 整份歸零。
+       → 尾巴多一段:用前面那份完整的;真的救不回來:回 None,呼叫端 ⛔ 不寫(壞檔留著等人修,⛔ 用今天一天蓋掉 400 天)。"""
+    from lib_jsonsafe import load_json_safe
+    h, st, msg = load_json_safe(OUT, None, what='data/pick_history.json')
+    if st == 'corrupt':
+        print(f'❌ {msg} → ⛔ 這輪不寫榜單快照(400 天紀錄重建不回來,先修檔)')
+        return None
+    if not isinstance(h, dict) or 'days' not in h:
+        h = {'note': '每天實際產出的榜單快照,用來事後驗證。⛔ 只存事實不存結論。', 'days': []}
+    return h
+
+
 def main():
-    hist = _load(OUT, None)
-    if not isinstance(hist, dict) or 'days' not in hist:
-        hist = {'note': '每天實際產出的榜單快照,用來事後驗證。⛔ 只存事實不存結論。',
-                'days': []}
+    hist = _load_hist()
+    if hist is None:
+        return 1
 
     day = {}
     # ── ① 明日作戰清單(playbook_edge)──
@@ -260,9 +273,9 @@ def _ghost_ahead(tdays):
 
 def leader_main():
     import lib_leader as LL
-    hist = _load(OUT, None)
-    if not isinstance(hist, dict) or 'days' not in hist:
-        hist = {'note': '每天實際產出的榜單快照,用來事後驗證。⛔ 只存事實不存結論。', 'days': []}
+    hist = _load_hist()
+    if hist is None:
+        return 1
     bydate = {x.get('d'): x for x in hist['days'] if isinstance(x, dict) and x.get('d')}
 
     tw = _load(DATA / '^TWII.json') or []

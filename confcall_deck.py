@@ -568,13 +568,17 @@ def feat_of(pages, meta):
 
 # ───────────────────────── 狀態 / 特徵檔(cc_deep 分支) ─────────────────────────
 def _load_json(p, dflt):
-    try:
-        if p.suffix == '.gz':
+    if p.suffix == '.gz':
+        try:
             with gzip.open(p, 'rt', encoding='utf-8') as f:
                 return json.load(f)
-        return json.loads(p.read_text(encoding='utf-8'))
-    except Exception:
-        return dflt
+        except Exception:
+            return dflt
+    # 🩺 10/24:data/confcall.json 被寫成「完整 JSON + 舊版的尾巴」→ 舊寫法整份讀不到 → 這輪不做、接力斷掉
+    #    → 尾巴多一段就用前面那份完整的(lib_jsonsafe,同 confcall_miner / pick_snapshot)
+    from lib_jsonsafe import load_json_safe
+    j, st, _ = load_json_safe(p, dflt, what=p.name)
+    return j if st in ('ok', 'salvaged') else dflt
 
 
 def _save_json(p, obj):

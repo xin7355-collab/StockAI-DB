@@ -399,6 +399,40 @@ _o4 = C.build([_plain], None, [], None, _T, old={})
 ok('⏸️k 決定性對照:同一列拿掉 mv → 回到「已開」、進歷年(證明 ⏸️h/⏸️i 靠的是 mv)',
    [r['s'] for r in _o4['recent']] == ['1303'] and _o4['hist'].get('1303') == ['2026-10-23'], (_o4['recent'], _o4['hist']))
 
+# ── ⑬ 🩺 2026-10-24 #647:上一份被寫成「完整 JSON + 舊版尾巴」/ 亂碼 ─────────────────
+#   🚨 舊寫法 `except: return {}` → 以為本來沒有歷史 → 5 年 hist 只剩這一輪那幾百場(全綠零訊息)
+import tempfile as _tf
+_old_out = C.OUT
+_good = {'hist': {'2330': ['2021-07-15', '2022-01-20'], '1303': ['2024-04-01']}, 'upcoming': [], 'recent': []}
+try:
+    with _tf.TemporaryDirectory() as _td:
+        C.OUT = Path(_td) / 'confcall.json'
+        C.OUT.write_text(json.dumps(_good, ensure_ascii=False) + '方向實測 0 個成立,⛔ 不給多空。"}', encoding='utf-8')
+        _o = C._load_old()
+        ok('🩺⑬a 尾巴多一段 → 救回前面那份(歷年還在)', C._OLD_STATE['status'] == 'salvaged' and _o.get('hist', {}).get('2330') == _good['hist']['2330'],
+           (C._OLD_STATE, _o))
+        _b = C.build(list(mv_rows.values()), None, [], None, _T, old=_o)
+        ok('🩺⑬a2 build 接著用救回的歷年(2330 / 1303 的舊場次留著)、hist_error 是空的',
+           '2021-07-15' in (_b['hist'].get('2330') or []) and _b.get('hist_error') is None, (_b['hist'].get('2330'), _b.get('hist_error')))
+        # 決定性對照:舊寫法(讀不到就 {})在同一份檔上 → 歷年整份不見
+        try:
+            _legacy = json.loads(C.OUT.read_text(encoding='utf-8'))
+        except Exception:
+            _legacy = {}
+        ok('🩺⑬b 決定性對照:舊寫法同一份檔讀到 {}(= 5 年歷史不見)', _legacy == {}, _legacy)
+        C.OUT.write_bytes(json.dumps(_good).encode('utf-8')[:20] + b'\x8a\x8a' + b'"}')
+        _o = C._load_old()
+        _b = C.build(list(mv_rows.values()), None, [], None, _T, old=_o)
+        ok('🩺⑬c 救不回來 → 照寫(手機要能用)但 hist_error 要說出來 + 教怎麼補回',
+           C._OLD_STATE['status'] == 'corrupt' and _b.get('hist_error') and 'hist_backfill' in _b['hist_error'], _b.get('hist_error'))
+        C.OUT.unlink()
+        _o = C._load_old()
+        _b = C.build(list(mv_rows.values()), None, [], None, _T, old=_o)
+        ok('🩺⑬d 檔案不在(第一次跑)→ hist_error 空的(⛔ 誤報)', C._OLD_STATE['status'] == 'missing' and _b.get('hist_error') is None, C._OLD_STATE)
+finally:
+    C.OUT = _old_out
+    C._OLD_STATE.update(status='missing', msg='')
+
 print()
 if fails:
     print(f'❌ CONFCALL_TEST_FAIL: {fails}')
