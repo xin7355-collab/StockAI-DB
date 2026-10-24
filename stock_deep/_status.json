@@ -110,7 +110,7 @@
  },
  "sbl": {
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
-  "at": "2026-10-23",
+  "at": "2026-10-24",
   "probe_first": "2010-01-04",
   "cols": [
    "MarginShortSalesPreviousDayBalance",
@@ -127,7 +127,7 @@
    "SBLShortSalesQuota",
    "SBLShortSalesShortCovering"
   ],
-  "have": 1277,
+  "have": 1505,
   "of": 2548,
   "chk": [
    0,
