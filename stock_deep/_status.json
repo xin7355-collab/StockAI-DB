@@ -128,13 +128,13 @@
    "BuyAmount",
    "SellAmount"
   ],
-  "have": 2415,
+  "have": 2548,
   "of": 2548,
   "chk": [
    0,
    0
   ],
-  "done": false
+  "done": true
  },
  "sbl": {
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
@@ -162,5 +162,30 @@
    0
   ],
   "done": true
+ },
+ "fis10": {
+  "first_by_type": {
+   "CostOfGoodsSold": "2010-03-31",
+   "Revenue": "2010-03-31",
+   "EPS": "2010-03-31",
+   "IncomeAfterTaxes": "2013-03-31",
+   "OperatingIncome": "2010-03-31"
+  },
+  "probe_first": "2010-03-31",
+  "cols": [
+   "CostOfGoodsSold",
+   "Revenue",
+   "EPS",
+   "IncomeAfterTaxes",
+   "OperatingIncome"
+  ],
+  "have": 468,
+  "of": 2548,
+  "chk": [
+   443,
+   443
+  ],
+  "at": "2026-10-25",
+  "done": false
  }
 }
