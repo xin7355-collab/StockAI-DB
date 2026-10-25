@@ -19,7 +19,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const ORIG = SRC, INJ = process.env.INJECT || '';
 if (INJ === 'peek') SRC = SRC.replace("const op = +b[i + 1].open; if (!(op > 0)) return null;", "const op = +b[i].open; if (!(op > 0)) return null;");
-if (INJ === 'nobase') SRC = SRC.replace(" ・一般股票${D.ev}(${G.from} 起 ${Number(G.n).toLocaleString()} 次)→ ${this._occPct(G.p)}", '');
+if (INJ === 'nobase') SRC = SRC.replace("return x ? `${x.s} ・${x.g.replace(/^🎲 /, '')}` : '';", "return x ? x.s : '';").replace("h.occS = x.s; h.occG = x.g;", "h.occS = x.s;");
 if (INJ === 'nodedup') SRC = SRC.replace("if (i - last < D.gap || !this._colEvAt(id, b, i, sym)) continue;", "if (!this._colEvAt(id, b, i, sym)) continue;");
 if (INJ && SRC === ORIG) { console.log('❌ 注入沒有注進去'); process.exit(1); }
 const fails = [];
@@ -27,7 +27,7 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 
 const A = buildApp(SRC);
 A._COL_BASE = (0, eval)('({' + (SRC.match(/\n    (_COL_BASE: \{.*\}),\n/) || [, '_COL_BASE: {}'])[1] + '})')._COL_BASE;
-for (const k of ['_occPct', '_colOccTxt', '_colMktOccTxt']) {
+for (const k of ['_occPct', '_colOccParts', '_colOccTxt', '_colMktOccTxt']) {
     const m = new RegExp(`\\n    ${k}\\(`).exec(SRC); const s = SRC.indexOf('{', m.index); let d = 0, i = s;
     for (; i < SRC.length; i++) { if (SRC[i] === '{') d++; else if (SRC[i] === '}' && --d === 0) break; }
     A[k] = (0, eval)('({' + SRC.slice(m.index + 5, i + 1) + '})')[k];
@@ -79,12 +79,12 @@ ok('③ 決定性對照:第 i+1 根開盤改成平盤 → 隔天開盤漲停變�
 // ④ 那一行
 const G0 = A._COL_BASE.stk || {};
 const t1 = A._colOccTxt('lu', bLu, '9999', M);
-ok('④ 三個比例一起(這檔 5 次 → 3 次 / 這檔平常 / 一般股票 N 次 → p%)', /這檔過去收盤鎖漲停 5 次 → 3 次/.test(t1) && /這檔平常隨便一天 [\d.]+%/.test(t1) && t1.includes(`一般股票收盤鎖漲停(${G0.lu && G0.lu.from} 起 ${G0.lu && Number(G0.lu.n).toLocaleString()} 次)→ ${A._occPct(G0.lu && G0.lu.p)}`), t1);
+ok('④ 三個比例一起(這檔 5 次 → 3 次 / 這檔平常 / 一般股票 N 次 → p%)', /這檔過去收盤鎖漲停 5 次 → 隔天開盤就在漲停 3 次/.test(t1) && /這檔平常隨便一天 [\d.]+%/.test(t1) && t1.includes(`一般股票收盤鎖漲停(${G0.lu && G0.lu.from} 起 ${G0.lu && Number(G0.lu.n).toLocaleString()} 次)→ 隔天開盤就在漲停 ${A._occPct(G0.lu && G0.lu.p)}`), t1);
 const t1b = A._colOccTxt('nh60_held', bNh, '9999', M);
 ok('④ 次數 <5 → 先看一般股票那個比例;一律寫「⛔ 不是會漲或會跌」', /次數少/.test(t1b) && /不是會漲或會跌/.test(t1) && /不是會漲或會跌/.test(t1b), t1b);
 const keep = JSON.stringify(A._COL_BASE); A._COL_BASE.stk = A._COL_BASE.stk || {}; A._COL_BASE.stk.lu = { ...G0.lu, n: 12345, p: 66.6 };
 const t2 = A._colOccTxt('lu', bLu, '9999', M); A._COL_BASE = JSON.parse(keep);
-ok('④ 決定性對照:`_COL_BASE` 換數字 → 畫面跟著變', /12,345 次\)→ 67%/.test(t2), t2);
+ok('④ 決定性對照:`_COL_BASE` 換數字 → 畫面跟著變', /12,345 次\)→ 隔天開盤就在漲停 67%/.test(t2), t2);
 ok('④ ETF(00 開頭)/ K 線太短 → 不印', A._colOccTxt('lu', bLu, '0050', M) === '' && A._colOccTxt('lu', bLu.slice(0, 100), '9999', M) === '');
 ok('④ 一般股票沒有那一條 → 不印(⛔ 只印這檔自己的)', (() => { const k = JSON.stringify(A._COL_BASE); delete A._COL_BASE.stk.lu; const t = A._colOccTxt('lu', bLu, '9999', M); A._COL_BASE = JSON.parse(k); return t === ''; })());
 const bMany = mk((i, p) => i % 40 === 20 ? { c: A._floorTick(p * 1.1) } : { c: +(p * 1.0005).toFixed(4) });
@@ -93,7 +93,7 @@ const own = v => { const k = JSON.stringify(A._COL_BASE); A._COL_BASE.stk.lu = {
 const tF = own(false), tT = own(true);
 ok('④ 次數夠 + 一般股票說「這檔自己的次數猜不準」→ 寫出來;說猜得準 → 不寫(決定性對照)', /猜不準/.test(tF) && !/猜不準|次數少/.test(tT), JSON.stringify([tF, tT]).slice(0, 300));
 const tm = A._colMktOccTxt('bear_on');
-ok('④ 大盤那一行:加權幾次 → 幾次 + 平常隨便一天', /加權剛轉成空頭 \d+ 次 → \d+ 次/.test(tm) && /平常隨便一天 [\d.]+%/.test(tm), tm);
+ok('④ 大盤那一行:加權幾次 → 幾次 + 平常隨便一天', /加權剛轉成空頭 \d+ 次 → 20 個交易日後加權上漲 \d+ 次/.test(tm) && /平常隨便一天 [\d.]+%/.test(tm), tm);
 
 // ⑤ 大盤四條:App 真的 `_colTrigEval` == mktEvents
 const twR = (() => { let c = 10000; seed = 11; return days(700, 2015).map((d, i) => { const r = i > 300 && i < 360 ? -0.012 : i > 500 && i < 520 ? -0.035 * (i % 4 === 0) : (rnd() - 0.47) * 0.03; c = +(c * (1 + r)).toFixed(2); return { date: d, open: c, high: c, low: c, close: c }; }); })();
@@ -120,7 +120,11 @@ try {
         const b = bLu.slice(0, 401);
         const hits = app._colTrigEval({ tw: twR.slice(0, 520).map((r, j) => ({ ...r, date: b[Math.min(j, b.length - 1)].date })), today: { tdy: '2099-01-07', wk: 3, weekday: true }, held: new Map([['9999', { cost: 50 }]]), bars: new Map([['9999', b]]), fav: [], events: [] });
         const box = document.createElement('div'); box.innerHTML = app._deckColHtml(app._colTrigGroups(hits));
-        return { mis, cnt, tried, luOcc: (hits.find(h => h.id === 'lu_held') || {}).occ || '', stk: (box.querySelector('[data-occ="stk"]') || {}).innerText || '', mkt: !!box.querySelector('[data-occ="mkt"]'), mktIds: hits.filter(h => !h.sym).map(h => h.id) };
+        const many = app._colTrigEval({ tw: twR.slice(0, 520).map((r, j) => ({ ...r, date: b[Math.min(j, b.length - 1)].date })), today: { tdy: '2099-01-07', wk: 3, weekday: true }, held: new Map([['9999', { cost: 50 }], ['9998', { cost: 50 }], ['9997', { cost: 50 }]]), bars: new Map([['9999', b], ['9998', b], ['9997', b]]), fav: [], events: [] });
+        const box2 = document.createElement('div'); box2.innerHTML = app._deckColHtml(app._colTrigGroups(many));
+        const luBox = [...box2.querySelectorAll('[data-colhit]')].find(x => x.querySelector('[data-occ="stk"]'));
+        return { mis, cnt, tried, luOcc: (hits.find(h => h.id === 'lu_held') || {}).occ || '', stk: [...box.querySelectorAll('[data-occ="stk"]')].map(x => x.innerText).join('\n'),
+                 nS: luBox ? luBox.querySelectorAll('[data-occ="stk"]:not([data-occg])').length : 0, nG: luBox ? luBox.querySelectorAll('[data-occg]').length : 0, mkt: !!box.querySelector('[data-occ="mkt"]'), mktIds: hits.filter(h => !h.sym).map(h => h.id) };
     }, { twR, evArr, bLu });
 } finally { await browser.close(); try { fs.unlinkSync(TMP); } catch (_) {} }
 const mis = W.mis || [], cnt = W.cnt || {}, tried = W.tried || 0;
@@ -132,6 +136,7 @@ ok('⑤ 有鑑別力:合成加權上四條都成立過', Object.values(cnt).ever
 ok('⑥ 決策台 / 個股總覽同一支 `_deckColHtml`:個股 data-occ = stk / cc,大盤 = mkt', /data-occ="\$\{h\.occk \|\| 'stk'\}"/.test(SRC) && /data-occ="mkt"/.test(SRC) && /occk = 'cc'/.test(SRC));
 const nOcc = (SRC.match(/occ\('(\w+)', b, sym\)/g) || []).length, nMocc = (SRC.match(/mocc\('(\w+)'\)/g) || []).length;
 ok('⑥ 實跑:持有的這檔今天鎖漲停 → 決策台那一格 data-occ="stk" 有 🎲 三個比例', /一般股票收盤鎖漲停/.test(W.stk || '') && /這檔過去收盤鎖漲停/.test(W.luOcc || ''), JSON.stringify([W.luOcc, W.stk]).slice(0, 300));
+ok('⑥ 同一篇 3 檔:每檔一行「這檔」+「一般股票」那段只印一次', W.nS === 3 && W.nG === 1, JSON.stringify([W.nS, W.nG]));
 ok('⑥ 實跑:大盤條件有成立 → 那一行掛 data-occ="mkt"', (W.mktIds || []).length === 0 || W.mkt, JSON.stringify(W.mktIds));
 ok('⑥ 11 個個股條件 + 4 個大盤條件都接上 🎲', nOcc === Object.keys(A._COL_OCC).length && nMocc === 4, JSON.stringify([nOcc, nMocc]));
 

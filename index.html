@@ -21912,20 +21912,23 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     /** 比例的寫法:10% 以下留一位小數(「0.3%」⛔ 寫成 0%) */
     _occPct(x) { return x == null || !Number.isFinite(+x) ? '—' : (+x < 10 ? (+x).toFixed(1).replace(/\.0$/, '') : Math.round(+x)) + '%'; },
-    /** 🎲 那一行(散戶 App 准印的「發生率」,`data-occ`):這檔 / 這檔平常 / 一般股票三個一起;一般股票沒有 / ETF / K 線太短 → 不印 */
-    _colOccTxt(id, b, sym, M) {
+    /** 🎲 發生率(散戶 App 准印的,`data-occ`):s = 這檔(過去 N 次 → 幾次 ・平常隨便一天)、g = 一般股票 16 年;
+     *  兩段一定一起出現(決策台同一篇有好幾檔時 g 只印一次);一般股票沒有 / ETF / K 線太短 → null */
+    _colOccParts(id, b, sym, M) {
         const D = this._COL_OCC[id], G = (this._COL_BASE || {}).stk && this._COL_BASE.stk[id];
-        if (!D || !G || !(G.n > 0) || /^00/.test(String(sym || ''))) return '';
-        const r = this._colOcc(id, b, sym, M); if (!r || !(r.bn >= 120)) return '';
-        const own = r.n ? `這檔過去${D.ev} ${r.n} 次 → ${r.k} 次` : `這檔過去沒有${D.ev}過`;
-        const few = r.n < 5 ? '(這檔次數少,先看一般股票那個比例)' : (G.own === false ? '(這檔自己的次數猜不準下一次,先看一般股票那個比例)' : '');
-        return `🎲 「${D.out}」的比例:${own} ・這檔平常隨便一天 ${this._occPct(100 * r.bk / r.bn)} ・一般股票${D.ev}(${G.from} 起 ${Number(G.n).toLocaleString()} 次)→ ${this._occPct(G.p)}${few} —— 過去發生過的比例,⛔ 不是會漲或會跌`;
+        if (!D || !G || !(G.n > 0) || /^00/.test(String(sym || ''))) return null;
+        const r = this._colOcc(id, b, sym, M); if (!r || !(r.bn >= 120)) return null;
+        const own = r.n ? `這檔過去${D.ev} ${r.n} 次 → ${D.out} ${r.k} 次` : `這檔過去沒有${D.ev}過`;
+        const s = `🎲 ${own} ・這檔平常隨便一天 ${this._occPct(100 * r.bk / r.bn)}${r.n && r.n < 5 ? '(次數少,先看一般股票那個比例)' : ''}`;
+        const g = `🎲 一般股票${D.ev}(${G.from} 起 ${Number(G.n).toLocaleString()} 次)→ ${D.out} ${this._occPct(G.p)}${G.own === false ? ' ・各檔自己的次數猜不準下一次,先看這個比例' : ''} —— 過去發生過的比例,⛔ 不是會漲或會跌`;
+        return { s, g };
     },
+    _colOccTxt(id, b, sym, M) { const x = this._colOccParts(id, b, sym, M); return x ? `${x.s} ・${x.g.replace(/^🎲 /, '')}` : ''; },
     /** 🎲 大盤 / 日子那幾條:2010 年起加權發生幾次 → 之後怎樣(⛔ 沒有「這檔」可比) */
     _colMktOccTxt(id) {
         const G = (this._COL_BASE || {}).mkt && this._COL_BASE.mkt[id];
         if (!G || !(G.n > 0)) return '';
-        return `🎲 「${G.out}」的比例:${G.from} 起加權${G.ev} ${G.n} 次 → ${G.k} 次(${this._occPct(100 * G.k / G.n)})・平常隨便一天 ${this._occPct(G.base)} —— 過去發生過的比例,⛔ 不是會漲或會跌`;
+        return `🎲 ${G.from} 起加權${G.ev} ${G.n} 次 → ${G.out} ${G.k} 次(${this._occPct(100 * G.k / G.n)})・平常隨便一天 ${this._occPct(G.base)} —— 過去發生過的比例,⛔ 不是會漲或會跌`;
     },
     _COL_BASE: {"built":"2026-10-25","src":"scripts/col_rate_base.mjs(d16,含已下市)","syms":2425,"win":["2010-01-04","2026-10-22"],"stk":{"lu":{"n":120973,"k":14659,"p":12.1,"base":0.4,"own":true,"from":"2010"},"lu_touch":{"n":54908,"k":20531,"p":37.4,"base":43.3,"own":false,"from":"2010"},"ma20_break":{"n":205245,"k":83579,"p":40.7,"base":41.6,"own":false,"from":"2010"},"near_ma20":{"n":262182,"k":106345,"p":40.6,"base":41.6,"own":false,"from":"2010"},"ma5_break":{"n":297787,"k":124061,"p":41.7,"base":41.6,"own":false,"from":"2010"},"nh60_held":{"n":83394,"k":36766,"p":44.1,"base":41.6,"own":false,"from":"2010"},"fi_streak5":{"n":76691,"k":32832,"p":42.8,"base":41.6,"own":false,"from":"2012"},"fi_burst":{"n":57101,"k":23969,"p":42,"base":41.6,"own":false,"from":"2012"},"short_hi":{"n":33770,"k":13708,"p":40.6,"base":41.6,"own":false,"from":"2010"},"retail_catch":{"n":23975,"k":9885,"p":41.2,"base":41.6,"own":false,"from":"2012"},"margin_call":{"n":3158,"k":1872,"p":59.3,"base":41.6,"own":false,"from":"2010"}},"mkt":{"bear_on":{"ev":"剛轉成空頭","out":"20 個交易日後加權上漲","n":46,"k":26,"base":61.4,"from":"2010"},"bull_on":{"ev":"剛脫離空頭","out":"20 個交易日後加權上漲","n":37,"k":27,"base":61.4,"from":"2010"},"crash20":{"ev":"離一年最高點跌 20% 以上","out":"20 個交易日後加權上漲","n":19,"k":12,"base":61.4,"from":"2010"},"idx_drop3":{"ev":"單日跌 3% 以上","out":"20 個交易日後加權上漲","n":27,"k":19,"base":61.4,"from":"2010"}}},
     /** 只回「碰到了哪些條件」(純判斷,方便測試直接餵資料);ctx = { tw, today, held:Map(sym→{cost}), bars:Map(sym→K), fav:[sym], div, events, floor, premkt:{sPct}, sold:Map(sym→{date,px}) } */
@@ -21936,7 +21939,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const lastD = tw.length ? iso(tw[tw.length - 1].date) : '';
         const M = new Map(tw.map(r => [iso(r.date), +r.close]));
         const mocc = id => { const h = hits[hits.length - 1]; let t = ''; try { t = this._colMktOccTxt(id); } catch (_) {} if (h && t) h.occ = t; };
-        const occ = (id, b, sym) => { const h = hits[hits.length - 1]; if (!h || h.id === undefined) return; let t = ''; try { t = this._colOccTxt(id, b, sym, M); } catch (_) {} if (t) h.occ = t; };
+        const occ = (id, b, sym) => { const h = hits[hits.length - 1]; if (!h || h.id === undefined) return; let x = null; try { x = this._colOccParts(id, b, sym, M); } catch (_) {} if (x) { h.occ = `${x.s} ・${x.g.replace(/^🎲 /, '')}`; h.occS = x.s; h.occG = x.g; } };
         const T = ctx.today || this._colToday();
         // 👜⭐ 個股類(⛔ ETF 不判 K 線型態;⛔ K 線日期追不上大盤最新收盤的不判)
         // 🔎 V78.4.3 `ctx.view`(Set):個股總覽「正在看的這一檔」—— 沒在庫存也判持股類條件(要成本的 gain20 除外),scope = view
@@ -22149,10 +22152,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const item = g => {
             const sc = this._COL_SC[g.sc] || ['📅', '', 9], c = g.col;
             const who = g.why.slice(0, 5).map(h => h.sym
-                ? `<span onclick="app.analyze('${h.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="cursor-pointer text-gray-200 underline decoration-dotted">${this._nmPair(h.sym)}</span> ${esc(h.why)}${h.occ ? `<div data-occ="${h.occk || 'stk'}" class="text-[10px] text-amber-200/80 leading-snug mt-0.5">${esc(h.occ)}</div>` : ''}`
+                ? `<span onclick="app.analyze('${h.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="cursor-pointer text-gray-200 underline decoration-dotted">${this._nmPair(h.sym)}</span> ${esc(h.why)}${h.occ ? `<div data-occ="${h.occk || 'stk'}" class="text-[10px] text-amber-200/80 leading-snug mt-0.5">${esc(h.occS || h.occ)}</div>` : ''}`
                 : esc(h.why) + (h.occ ? `<div data-occ="mkt" class="text-[10px] text-amber-200/80 leading-snug mt-0.5">${esc(h.occ)}</div>` : '')).join('<br>') + (g.why.length > 5 ? `<br><span class="text-gray-500">…還有 ${g.why.length - 5} 個</span>` : '');
+            const occG = [...new Set(g.why.slice(0, 5).map(h => h.occG).filter(Boolean))];   // 🎲 一般股票那段:同一篇只印一次
             return `<div class="py-2 border-b border-[#21262d]" data-colhit="${esc(c.k)}" data-colsc="${g.sc}">
-                <div class="text-[10px] text-gray-400 leading-snug"><span class="text-gray-500">${sc[0]} ${sc[1]}</span>・${who}</div>
+                <div class="text-[10px] text-gray-400 leading-snug"><span class="text-gray-500">${sc[0]} ${sc[1]}</span>・${who}</div>${occG.map(t => `<div data-occ="stk" data-occg="1" class="text-[10px] text-amber-200/80 leading-snug mt-1">${esc(t)}</div>`).join('')}
                 <div class="text-[12px] font-bold text-gray-100 mt-1 leading-snug">📰 ${esc(c.q)}</div>
                 <details class="mt-0.5"><summary class="cursor-pointer select-none text-[10px] text-sky-300" style="list-style:none">怎麼做 ▾</summary>
                     <ul class="mt-1 text-[11px] text-gray-300 leading-relaxed list-disc pl-4">${(c.do || []).map(d => `<li>${esc(d)}</li>`).join('')}</ul>
