@@ -179,11 +179,40 @@
    "IncomeAfterTaxes",
    "OperatingIncome"
   ],
-  "have": 2268,
+  "have": 2548,
   "of": 2548,
   "chk": [
-   173,
-   173
+   99,
+   99
+  ],
+  "at": "2026-10-25",
+  "done": true
+ },
+ "fbs10": {
+  "first_by_type": {
+   "Inventories": "2012-12-31",
+   "Equity": "2012-12-31",
+   "OrdinaryShare": "2012-12-31",
+   "TotalAssets": "2012-12-31",
+   "Liabilities": "2012-12-31",
+   "CurrentAssets": "2012-12-31",
+   "CurrentLiabilities": "2012-12-31"
+  },
+  "probe_first": "2012-12-31",
+  "cols": [
+   "Inventories",
+   "Equity",
+   "OrdinaryShare",
+   "TotalAssets",
+   "Liabilities",
+   "CurrentAssets",
+   "CurrentLiabilities"
+  ],
+  "have": 324,
+  "of": 2548,
+  "chk": [
+   306,
+   306
   ],
   "at": "2026-10-25",
   "done": false
