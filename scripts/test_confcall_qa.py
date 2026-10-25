@@ -147,8 +147,8 @@ class Net:
 
 
 class R:
-    def __init__(self, code, body=None):
-        self.status_code, self._b = code, body
+    def __init__(self, code, body=None, headers=None):
+        self.status_code, self._b, self.headers = code, body, headers or {}
 
     def json(self):
         return self._b
@@ -178,7 +178,7 @@ class Poster:
         if self.script:
             code = self.script.pop(0)
             if code != 200:
-                return R(code, {})
+                return R(code, {}, {'x-ratelimit-reset-tokens': '7.5s'} if code == 429 else None)
         return R(200, fake_answer(json['messages'][1]['content']))
 
 
@@ -310,10 +310,12 @@ ok('⑥ 補到 RETRY_MAX 次 → ⛔ 再下載、⛔ 再叫 AI', not net5.get_ca
 fresh()
 po7 = Poster(script=[404, 429])
 net7 = Net({f'{BASE}/2026/q3': page_html('3Q26')}, {'3Q26%20Transcript': PDF_Q3})
-ai7 = mk_ai(po7)
+waits7 = []
+ai7 = Q.AI(['k1', 'k2'], poster=po7, picker=picker, sleeper=waits7.append)
 Q.run(fetch_page=net7.fetch_page, fetcher=net7, ai=ai7, today='2026-10-25', log=lambda *a: None)
 ok('⑦ 404 → 換下一個模型(m-a → m-b)', po7.calls[0]['model'] == 'm-a' and po7.calls[1]['model'] == 'm-b' and ai7.model == 'm-b', [c['model'] for c in po7.calls[:3]])
 ok('⑦ 429 → 換下一把金鑰', po7.calls[1]['key'] != po7.calls[2]['key'], [c['key'] for c in po7.calls[:3]])
+ok('⑦ 429 → 照 Groq 給的秒數等(7.5 秒;⛔ 只等 1 秒)', 7.5 in waits7, waits7)
 ok('⑦ 產物記下真的回答的模型', {q['yq']: q for q in out_of()['quarters']}['2026Q3']['model'] == 'm-b')
 
 # ── ⑤ 認不出講者 ──

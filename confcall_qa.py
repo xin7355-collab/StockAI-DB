@@ -44,7 +44,8 @@ BUDGET_MIN = float(os.getenv('QA_BUDGET_MIN') or 20)
 DRY = (os.getenv('QA_DRY') or '').strip().lower() in ('1', 'true', 'yes')
 RETRY_MAX = 3                                         # 有幾題 AI 沒回的那一季,之後最多再補幾輪
 UNIT_MAX = 9000                                       # 一題餵給 AI 的原文最多幾個字(10/25 實測台積電一位分析師問兩件事、2.5~7.6 千字;太長的截掉)
-AI_DEADLINE = 45                                      # 一題最多花幾秒在 AI 上(換金鑰 / 換模型都算)
+AI_DEADLINE = 90                                      # 一題最多花幾秒在 AI 上(換金鑰 / 換模型 / 照 Groq 說的等都算)
+WAIT_MAX = 20                                         # 被限流時照 Groq 給的秒數等,最多等幾秒(10/25 第一輪只等 1 秒 → 34 題 23 題沒回)
 MAX_TOKENS = 1000
 PAGE_PACE = 3.0
 
@@ -247,6 +248,25 @@ def shape_lines(text, n=15):
 
 
 # ───────────────────────── AI ─────────────────────────
+def _retry_after(h):
+    """Groq 被限流時要等幾秒:retry-after(秒)或 x-ratelimit-reset-tokens / -requests(「7.66s」「1m2.5s」「120ms」)。抓不到回 0。"""
+    def sec(v):
+        v = str(v or '').strip()
+        if not v:
+            return 0.0
+        try:
+            return float(v)
+        except ValueError:
+            pass
+        t = 0.0
+        for n, u in re.findall(r'([\d.]+)\s*(ms|h|m|s)', v):
+            t += float(n) * {'ms': 0.001, 's': 1, 'm': 60, 'h': 3600}[u]
+        return t
+    get = (lambda k: h.get(k) or h.get(k.title())) if hasattr(h, 'get') else (lambda k: None)
+    return max(sec(get('retry-after')), sec(get('x-ratelimit-reset-tokens')), sec(get('x-ratelimit-reset-requests')))
+
+
+
 class AI:
     """一題一次 Groq(照 confcall_deck.groq_summarize:429 換下一把、404 換模型最多 3 次;一題有時限)。"""
 
@@ -261,6 +281,7 @@ class AI:
         self.tried = set()
         self.ki = 0
         self.dead = False
+        self.why = {}                                           # 沒回的原因統計(log 用)
 
     def ask(self, sys_msg, user):
         """回 (ai dict|None, 原因)。"""
@@ -300,7 +321,8 @@ class AI:
                     continue
                 if r.status_code == 429:
                     why = 'HTTP 429'
-                    self.sleep(1.0)
+                    # ⏳ 照 Groq 給的秒數等(每分鐘用量上限;10/25 第一輪只等 1 秒 → 一題 3 千字左右的連續被擋)
+                    self.sleep(min(max(_retry_after(getattr(r, 'headers', None) or {}), 1.0), WAIT_MAX))
                     continue
                 if r.status_code != 200:
                     why = f'HTTP {r.status_code}'
@@ -310,6 +332,7 @@ class AI:
                 ai = cd.parse_ai_json(txt)
                 if not ai:
                     self.fail += 1
+                    self.why['bad_json'] = self.why.get('bad_json', 0) + 1
                     return None, 'bad_json'
                 self.ok += 1
                 return ai, ''
@@ -317,6 +340,7 @@ class AI:
                 why = type(e).__name__
                 continue
         self.fail += 1
+        self.why[why] = self.why.get(why, 0) + 1
         if self.fail >= 6 and self.ok == 0:
             self.dead = True                                    # 連 6 題都沒回 → 這一輪不再叫(⛔ 白等)
         return None, why
@@ -399,7 +423,8 @@ def do_quarter(sym, cfg, yq, prev, fetch_page, fetcher, ai, hist, log, deadline,
            'parse': {'an': pc['an'], 'co': pc['co']}, 'at': date.today().isoformat(),
            'tries': int((prev or {}).get('tries') or 0) + 1}
     shown = sum(1 for x in items if not x.get('skip'))
-    log(f'   ✅ {key} 整理 {shown} 句(數字對不上丟 {drop}・不是中文丟 {lang}・AI 沒回 {len(miss)} 題)')
+    why = '、'.join(f'{k} ×{v}' for k, v in sorted(ai.why.items(), key=lambda kv: -kv[1])) if miss else ''
+    log(f'   ✅ {key} 整理 {shown} 句(數字對不上丟 {drop}・不是中文丟 {lang}・AI 沒回 {len(miss)} 題{"(到目前為止沒回的原因:" + why + ")" if why else ""})')
     return rec, None
 
 
@@ -557,6 +582,10 @@ def selftest():
     sys_m, user, _ = ai_prompt('台積電', src)
     ok('⑫ 提示詞:⛔ 換算 / ⛔ 利多利空 / ⛔ 人名 / ⛔ 照抄英文 / 固定分類清單',
        all(x in sys_m for x in ('換算', '利多利空', '人名', '英文')) and all(t in user for t in TAGS))
+    ok('⑬ _retry_after:retry-after 秒數 / 「7.66s」「1m2.5s」「120ms」/ 抓不到 0',
+       _retry_after({'retry-after': '3'}) == 3.0 and abs(_retry_after({'x-ratelimit-reset-tokens': '7.66s'}) - 7.66) < 1e-9
+       and abs(_retry_after({'x-ratelimit-reset-tokens': '1m2.5s'}) - 62.5) < 1e-9 and abs(_retry_after({'x-ratelimit-reset-requests': '120ms'}) - 0.12) < 1e-9
+       and _retry_after({}) == 0 and _retry_after(None) == 0)
     print(f'\n{"✅ 全部通過" if not bad else "❌ 有失敗"}({ok_n} 過 / {bad} 失敗)')
     return 1 if bad else 0
 
