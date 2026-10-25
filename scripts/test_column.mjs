@@ -15,6 +15,12 @@
  *   ⑪ 封面數字章從「數字說話」抓(決定性對照:改 pl[5] → 封面章跟著變;「100 萬」本金不當封面)
  *   ⑫ 閱讀時間跟著字數變 ・⑬ 分類篇數 == 實際篇數 ・⑭ NEW 只標最新那天 ・⑮ ⛔ 沒有瀏覽 / 按讚 / 留言數(沒有後端,只能編)
  *   ⑯ 👑 模式:多出 👑 領頭羊 分類、也⛔ AI 才懂的字;🧬 模式沒有那個分類
+ *   🆕 V79.8.5 數字統一 + 排序(使用者:「專欄沒有排序,而且有些是寫錢,有些寫百分比」):
+ *   ⑲ 每一篇都有 col.fig(pct 是數字 + what / rate 是 0~100 + rw / 兩個都沒有就要寫 na 原因)
+ *   ⑳ 封面章 == fig(📈 百分比 / 🎲 發生率),⛔ 再從文字抓(決定性對照:把「數字說話」改成「開低 2% 以上 2.4 萬次」→ 封面不變)
+ *   ㉑ 金額只由 pct 換算(決定性對照:pct 改 −0.35 → 「−3,500 元」、改 520 → 「+520 萬」)
+ *   ㉒ 排序:同一顆再按一次反向、沒有那個數字的不管哪個方向都在最後、⭐ == _starRank、🏆 有用在前
+ *   注入:INJECT=badge(封面章寫死)/ INJECT=money(金額寫死)/ INJECT=sortdir(反向不生效)/ INJECT=nofig(拿掉一篇的 fig)
  * 注入(逐一確認會紅):INJECT=nocol(把一篇的 col.warn 拿掉)/ INJECT=pp(在一篇裡塞「+0.9pp」)/ INJECT=copy(數字改成抄 col.num)
  *   / INJECT=range(拿掉一篇的 range)/ INJECT=badge(封面章寫死)
  *   🆕 V78.4.2 觸發式專欄(使用者:「觸發專欄有的條件就跳出來…爾後都記住,不要我想到才做」):
@@ -33,7 +39,10 @@ if (INJ === 'nocol') SRC = SRC.replace(/"warn": "只買 2 檔[^"]*", /, '');
 if (INJ === 'pp') SRC = SRC.replace('"q": "一天要買幾檔?"', '"q": "一天要買幾檔?多賺 +0.9pp"');
 if (INJ === 'copy') SRC = SRC.replace("const a = C.a || pl[3] || '', num = C.num || pl[5] || ''", "const a = C.a || pl[3] || '', num = C.num || '固定的數字'");
 if (INJ === 'range') SRC = SRC.replace(/"range": "36 個月・600 檔", /, '');
-if (INJ === 'badge') SRC = SRC.replace("return all[0] || '';", "return '+99%';");
+if (INJ === 'badge') SRC = SRC.replace("return { pct: this._figPct(f.pct), rate: this._figRate(f.rate) };", "return { pct: '+99%', rate: '' };");
+if (INJ === 'money') SRC = SRC.replace("`${sg}${this._figNum(p, 1)} 萬`", "'+1 萬'");
+if (INJ === 'sortdir') SRC = SRC.replace('      return c * dir;', '      return -c;');
+if (INJ === 'nofig') SRC = SRC.replace(/, "fig": \{"pct": 181, [^}]*\}/, '');
 if (INJ === 'notrig') SRC = SRC.replace('"trig": ["lu_held"], ', '');
 if (INJ === 'nowhy') SRC = SRC.replace(/"trigWhy": "[^"]*", /, '');
 if (INJ && SRC === ORIG) { console.log('❌ 注入沒有注進去'); process.exit(1); }
@@ -86,14 +95,61 @@ const R = await page.evaluate(async () => {
     PRO.colSeries('破解迷思');
     // ⑩ range
     out.noRange = all.filter(x => !x.col.range).map(x => x.k);
-    // ⑪ 封面數字章
-    PRO._colS = ''; PRO._colQ = '';
+    // ⑲⑳㉑ 封面數字章只讀 fig
+    PRO._colS = ''; PRO._colQ = ''; PRO._colSort = 'u'; PRO._colDir = -1;
+    out.figBad = all.map(x => {
+      const f = x.col.fig;
+      if (!f) return x.k + ' 沒有 fig';
+      const okP = f.pct == null || (typeof f.pct === 'number' && isFinite(f.pct) && String(f.what || '').trim());
+      const okR = f.rate == null || (typeof f.rate === 'number' && f.rate >= 0 && f.rate <= 100 && String(f.rw || '').trim());
+      const any = f.pct != null || f.rate != null || String(f.na || '').trim();
+      return okP && okR && any ? null : x.k + ' ' + JSON.stringify(f);
+    }).filter(Boolean);
+    PRO.renderCol();
+    out.badgeBad = [...document.querySelectorAll('#colList details.colart')].map(d => {
+      const x = all.find(y => y.k === d.dataset.colk), f = (x && x.col.fig) || {};
+      const b = (d.querySelector('[data-colbadge]') || {}).textContent || '', r = (d.querySelector('[data-colrate]') || {}).textContent || '';
+      const wb = f.pct != null ? '📈 ' + PRO._figPct(f.pct) : '', wr = f.rate != null ? '🎲 ' + PRO._figRate(f.rate) : '';
+      return b === wb && r === wr ? null : `${d.dataset.colk} [${b}|${r}] vs [${wb}|${wr}]`;
+    }).filter(Boolean);
+    out.pctN = all.filter(x => x.col.fig && x.col.fig.pct != null).length;
+    out.rateN = all.filter(x => x.col.fig && x.col.fig.rate != null).length;
     const e2 = (PRO.LAB.ok || []).find(x => x.k === 'two-a-day');
-    const k5 = e2.pl[5]; e2.pl[5] = '對照 +77.7% 這樣'; PRO.renderCol();
-    out.badge1 = ((document.querySelector('[data-colk="two-a-day"] [data-colbadge]') || {}).textContent || '');
-    e2.pl[5] = '本金 100 萬放 4 年變 555 萬'; PRO.renderCol();
-    out.badge2 = ((document.querySelector('[data-colk="two-a-day"] [data-colbadge]') || {}).textContent || '');
-    e2.pl[5] = k5;
+    const k5 = e2.pl[5], f0 = e2.col.fig ? { ...e2.col.fig } : null;
+    if (!f0) e2.col.fig = {};
+    const art2 = () => { PRO.renderCol(); const d = document.querySelector('[data-colk="two-a-day"]'); d.open = true; return { b: (d.querySelector('[data-colbadge]') || {}).textContent || '', m: (d.querySelector('[data-figmoney]') || {}).textContent || '', line: (d.querySelector('[data-figpct]') || {}).textContent || '' }; };
+    out.base = art2();
+    e2.pl[5] = '開低 2% 以上 2.4 萬次'; out.textOnly = art2(); e2.pl[5] = k5;
+    e2.col.fig.pct = -0.35; out.small = art2();
+    e2.col.fig.pct = 520; out.big = art2();
+    e2.col.fig.pct = 7.77; out.mid = art2();
+    e2.col.fig = f0;
+    // ㉒ 排序
+    const order = () => [...document.querySelectorAll('#colList details.colart')].map(d => d.dataset.colk);
+    const figOf = k => (all.find(y => y.k === k) || {}).col.fig || {};
+    const sortCase = (key, val) => {
+      PRO._colSort = 'u'; PRO._colDir = -1; PRO.colSortBy(key); const a = order(), onA = (document.querySelector('#colSort .colsortb.on') || {}).dataset;
+      PRO.colSortBy(key); const b = order();
+      const vA = a.map(val), vB = b.map(val);
+      const tail = v => { const i = v.findIndex(z => z == null); return i < 0 || v.slice(i).every(z => z == null); };
+      const mono = (v, dir) => v.filter(z => z != null).every((z, i, arr) => i === 0 || (dir < 0 ? arr[i - 1] >= z : arr[i - 1] <= z));
+      return { on: onA && onA.colsort === key, descOk: mono(vA, -1) && tail(vA), ascOk: mono(vB, 1) && tail(vB), flipped: JSON.stringify(a) !== JSON.stringify(b), n: a.length };
+    };
+    out.sPct = sortCase('pct', k => figOf(k).pct == null ? null : Math.abs(figOf(k).pct));
+    out.sRate = sortCase('rate', k => figOf(k).rate == null ? null : figOf(k).rate);
+    PRO._colSort = 'u'; PRO._colDir = -1; PRO.colSortBy('r'); const ro = order();
+    out.rOkFirst = ro.findIndex(k => all.find(y => y.k === k).c === 'trap') > ro.findIndex(k => all.find(y => y.k === k).c === 'ok')
+      && ro.slice(ro.findIndex(k => all.find(y => y.k === k).c === 'trap')).every(k => all.find(y => y.k === k).c === 'trap');
+    PRO._colSort = 'u'; PRO._colDir = -1; PRO.colSortBy('star');
+    out.starHd = [...document.querySelectorAll('#colList [data-colstar]')].map(e => e.dataset.colstar);
+    out.starWant = PRO._starRank(PRO._colItems()).map(x => x.k);
+    out.starAll = order().length;
+    PRO.colSortBy('star'); out.starRev = [...document.querySelectorAll('#colList [data-colstar]')].map(e => e.dataset.colstar);
+    PRO._colSort = 'u'; PRO._colDir = -1; PRO.renderCol();
+    out.uDefault = JSON.stringify(order()) === JSON.stringify(PRO._colItems().map(x => x.k));
+    out.pickDefault = !!document.querySelector('[data-colk="pick"]');
+    PRO.colSortBy('u'); out.pickRev = !!document.querySelector('[data-colk="pick"]'); out.uRev = JSON.stringify(order()) === JSON.stringify(PRO._colItems().map(x => x.k).reverse());
+    PRO._colSort = 'u'; PRO._colDir = -1; PRO.renderCol();
     // ⑫ 閱讀時間
     const kh = e2.col.how; PRO.renderCol();
     const m1 = (document.querySelector('[data-colk="two-a-day"] [data-colmins]') || {}).textContent || '';
@@ -142,8 +198,16 @@ ok('⑦b 系列「破解迷思」只剩那一系列', R.sN.length >= 5 && R.sN.e
 const badMyth = R.items.filter(x => x.c === 'trap' && (!x.pl) && x.myth.length < 3);
 ok('⑧ 破解迷思(沒有 pl)要自帶 a / num / mean', !badMyth.length, JSON.stringify(badMyth));
 ok('⑩ 每一篇都有 📏 資料範圍', !R.noRange.length, JSON.stringify(R.noRange));
-ok('⑪ 封面數字章讀「數字說話」(決定性對照)', R.badge1 === '+77.7%', R.badge1);
-ok('⑪b 「100 萬」是本金 ⛔ 不當封面', R.badge2 === '555萬', R.badge2);
+ok('⑲ 每一篇都有 fig(結果 % + 說明 / 發生率 + 說明 / 都沒有就寫原因)', !R.figBad.length && R.items.length > 0, JSON.stringify(R.figBad.slice(0, 5)));
+ok('⑲b 大部分有結果 %、不少有發生率(⛔ 只是空殼)', R.pctN >= 90 && R.rateN >= 40, `pct ${R.pctN} rate ${R.rateN}`);
+ok('⑳ 每一篇的封面章 == fig(📈 百分比 / 🎲 發生率)', !R.badgeBad.length, JSON.stringify(R.badgeBad.slice(0, 5)));
+ok('⑳b 決定性對照:「數字說話」改成「開低 2% 以上 2.4 萬次」→ 封面章⛔ 跟著變(不再從文字抓條件 / 次數)', R.textOnly.b === R.base.b && /^📈 [+−]/.test(R.base.b), JSON.stringify([R.base.b, R.textOnly.b]));
+ok('㉑ 金額只由 pct 換算:−0.35% → −3,500 元、+520% → +520 萬、+7.77% → +7.8 萬(封面章同步)', R.small.m === '−3,500 元' && R.small.b === '📈 −0.35%' && R.big.m === '+520 萬' && R.big.b === '📈 +520%' && R.mid.m === '+7.8 萬' && /每放 100 萬/.test(R.mid.line), JSON.stringify([R.small, R.big, R.mid]));
+ok('㉒ 📈 影響大小:由大到小、再按一次反向、沒有數字的都在最後', R.sPct.on && R.sPct.descOk && R.sPct.ascOk && R.sPct.flipped, JSON.stringify(R.sPct));
+ok('㉒b 🎲 發生率:由大到小、再按一次反向、沒有發生率的都在最後', R.sRate.on && R.sRate.descOk && R.sRate.ascOk && R.sRate.flipped, JSON.stringify(R.sRate));
+ok('㉒c 🏆 名次:有用的在前、破解迷思在後', R.rOkFirst);
+ok('㉒d ⭐ 可信度 == _starRank、再按一次整排反過來、沒星的也還在(在最後)', R.starHd.length > 10 && JSON.stringify(R.starHd) === JSON.stringify(R.starWant) && JSON.stringify(R.starRev) === JSON.stringify(R.starWant.slice().reverse()) && R.starAll === R.n, JSON.stringify([R.starHd.length, R.starAll, R.n]));
+ok('㉒e 🆕 預設 = 新 → 舊、「選哪一套」那一行只在預設排序出現、反向 = 整排倒過來', R.uDefault && R.pickDefault && !R.pickRev && R.uRev);
 ok('⑫ 閱讀時間跟著字數變', R.mins[0] && R.mins[0] !== R.mins[1], JSON.stringify(R.mins));
 ok('⑬ 分類篇數 == 實際篇數', !R.pillBad.length, JSON.stringify(R.pillBad));
 ok('⑭ NEW 只標最新那一天(而且有標)', R.newN > 0 && R.newBad === 0, `${R.newN} / bad ${R.newBad}`);

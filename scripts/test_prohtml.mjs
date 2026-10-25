@@ -87,8 +87,11 @@ ok('①c deploy_pages 的 push paths 有 pro.html(改它才會觸發部署)',
     const live = raw.replace(/(?<![\w\"'\/])\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     ok('②z 🚧 空過守門:剝掉註解後仍要留著大部分內容(⛔ 否則下面那條是假通過)',
        live.length > raw.length * 0.6, `${live.length}/${raw.length}`);
-    ok('② ⛔ index.html 不可出現 pro.html 連結(使用者明示不掛在 App 內)',
-       !/pro\.html/.test(live), (live.match(/.{0,40}pro\.html.{0,40}/) || [''])[0]);
+    // 🏭 V79.8.4 唯一例外(使用者明示):「🔓 進階功能 › 🏭 產業 pro」打開才出現的左上角「產」→ openProTerm(只准那一處,test_labmode ④ 釘行為)
+    const hits = live.match(/.{0,60}pro\.html.{0,40}/g) || [];
+    const other = hits.filter(h => !/new URL\('pro\.html', ghBase\)/.test(h));
+    ok('② ⛔ index.html 不可出現 pro.html 連結(使用者明示不掛在 App 內;只准 V79.8.4 藏在進階功能的那一個入口)',
+       !other.length && hits.length <= 1 && (live.match(/app\.openProTerm\(/g) || []).length === 1, other[0] || hits.join(' | '));
 }
 // ⑰ ⛔ 不可用 window.open(iOS PWA 空白分頁)
 ok('⑰ ⛔ 問 AI 不可用 window.open(iOS PWA 會留空白分頁)', !/window\.open\(/.test(src));
@@ -709,11 +712,11 @@ const DEDUP = await page.evaluate(async () => {
     // ⭐ 可信度排行:實測總表與專欄同一份順序
     // ⭐ V79.8.0 可信度排行只在專欄(實測總表那顆搬走了;selLab('star') 會帶你過去)—— 兩邊照樣是同一支 _starRank
     PRO.selLab('star');
-    out.starGo = PRO._tab === 'col' && PRO._colS === PRO.STAR_SER;
+    out.starGo = PRO._tab === 'col' && PRO._colSort === 'star' && PRO._colDir === -1;
     out.labStar = PRO._starRank((PRO.LAB.ok || []).map(x => ({ ...x, _col: 'ok' }))).map(x => x.k);
-    PRO._colS = PRO.STAR_SER; PRO._colQ = ''; PRO.switchTab('col', true);
+    PRO._colS = ''; PRO._colSort = 'star'; PRO._colDir = -1; PRO._colQ = ''; PRO.switchTab('col', true);
     out.colStar = [...document.querySelectorAll('#colList [data-colstar]')].map(e => e.dataset.colstar);
-    out.colPill = [...document.querySelectorAll('#colBar .colpill.on')].some(b => b.dataset.colser === PRO.STAR_SER);
+    out.colPill = [...document.querySelectorAll('#colSort .colsortb.on')].some(b => b.dataset.colsort === 'star');
     const stars = PRO.LAB.ok.filter(x => out.colStar.includes(x.k)).map(x => ({ k: x.k, c: +x.pl[2] }));
     const byK = Object.fromEntries(stars.map(x => [x.k, x.c]));
     out.mono = out.colStar.every((k, i) => i === 0 || byK[k] <= byK[out.colStar[i - 1]]);
@@ -721,7 +724,7 @@ const DEDUP = await page.evaluate(async () => {
     const last = PRO.LAB.ok.find(x => x.k === out.colStar[out.colStar.length - 1]);
     const c0 = last.pl[2]; last.pl[2] = 3; PRO.renderCol();
     out.moved = [...document.querySelectorAll('#colList [data-colstar]')].map(e => e.dataset.colstar).indexOf(last.k);
-    last.pl[2] = c0; PRO._colS = ''; PRO.renderCol();
+    last.pl[2] = c0; PRO._colS = ''; PRO._colSort = 'u'; PRO._colDir = -1; PRO.renderCol();
     // 從總表跳到專欄那一篇
     PRO.colGo(out.labStar[0]);
     const art = [...document.querySelectorAll('#colList details.colart')].find(d => d.dataset.colk === out.labStar[0]);
@@ -733,10 +736,10 @@ ok('㊿a ✅ 有用那頁:有專欄的⛔ 不再重印(條目 0 條)+ 一行指�
 ok('㊿b ⛔ 沒用那頁只列沒寫成專欄的', DEDUP.trapItems === DEDUP.trapNoCol && DEDUP.trapNoCol > 0, `${DEDUP.trapItems} vs ${DEDUP.trapNoCol}`);
 ok('㊿c 決定性對照:關掉去重 → 有專欄的回來(證明是去重擋掉的)', DEDUP.trapAll > DEDUP.trapItems, `${DEDUP.trapAll} > ${DEDUP.trapItems}`);
 ok('㊿d 搜尋到有專欄的 → 只留一行「📰 看專欄」(⛔ 不重印內容)', DEDUP.searchColRows >= 1 && /看專欄/.test(DEDUP.searchLinkTxt), DEDUP.searchLinkTxt);
-ok('㊿e ⭐ 可信度排行 == _starRank(專欄那一頁);總表的舊按鈕 selLab(\'star\') 會帶到專欄的 ⭐ 系列', DEDUP.starGo && DEDUP.labStar.length > 10 && JSON.stringify(DEDUP.labStar) === JSON.stringify(DEDUP.colStar), JSON.stringify([DEDUP.starGo, DEDUP.labStar.slice(0, 5), DEDUP.colStar.slice(0, 5)]));
+ok('㊿e ⭐ 可信度排行 == _starRank(專欄那一頁);總表的舊按鈕 selLab(\'star\') 會帶到專欄的 ⭐ 排序', DEDUP.starGo && DEDUP.labStar.length > 10 && JSON.stringify(DEDUP.labStar) === JSON.stringify(DEDUP.colStar), JSON.stringify([DEDUP.starGo, DEDUP.labStar.slice(0, 5), DEDUP.colStar.slice(0, 5)]));
 ok('㊿f ⭐ 照星數由多到少', DEDUP.mono);
 ok('㊿g 決定性對照:排最後那條改成 ★★★ → 名次往前', DEDUP.moved >= 0 && DEDUP.moved < DEDUP.colStar.length - 1, DEDUP.moved);
-ok('㊿h 專欄有「⭐ 可信度排行」那顆,點了會亮', DEDUP.colPill);
+ok('㊿h 專欄排序列有「⭐ 可信度」那顆,選了會亮(V79.8.5 從分類鈕搬進排序)', DEDUP.colPill);
 ok('㊿i 總表「📰 看專欄」會打開那一篇', DEDUP.goOpen);
 ok('㊿j 星星統一 ★★☆(⛔ 不再用 ●○)', DEDUP.stars === '★★☆' && !/'●'\.repeat/.test(src), DEDUP.stars);
 

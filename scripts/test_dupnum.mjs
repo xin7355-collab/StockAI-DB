@@ -391,7 +391,10 @@ await page.waitForTimeout(2500);
        /\(T0\.ni4 > 0\) === \(T4\.ni4 > 0\)/.test(s) && /\(T0\.fcf4 > 0\) === \(T4\.fcf4 > 0\)/.test(s), '');
     ok('ⓛs4 門檻讀 `_FIN_STRUCT_BASE.t`(⛔ 不可 inline 寫死數字)', /const B = this\._FIN_STRUCT_BASE, TH = B\.t/.test(s), '');
     const r = await page.evaluate(() => {
-        const mk = (ni, fcf) => ({ p: '2026-06-30', ni, fcf, eq: 1e10, rev: 1e9, gm: 30, eps: 1, nm: 10, capex: -1e8 });
+        // 🗓️ V79.8.5 季別要是 8 個連續的季底 —— V79.8.2 起近 4 季照季別對齊(`_qBack`),舊測資 8 季都寫同一天 = 湊不出近 4 季(假失敗)
+        const PS = ['2024-09-30', '2024-12-31', '2025-03-31', '2025-06-30', '2025-09-30', '2025-12-31', '2026-03-31', '2026-06-30'];
+        let _qi = 0;
+        const mk = (ni, fcf) => ({ p: PS[(_qi++) % 8], ni, fcf, eq: 1e10, rev: 1e9, gm: 30, eps: 1, nm: 10, capex: -1e8 });
         // 8 季:前 4 季 ni=100 fcf=100;後 4 季 ni=200(+100%)fcf=50(−50%) → 一定要亮
         const q = [...Array(4)].map(() => mk(1e8, 1e8)).concat([...Array(4)].map(() => mk(2e8, 5e7)));
         const T = app._finTrend({ fin: { q, updated: '2026-09-15' } });
