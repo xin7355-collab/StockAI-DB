@@ -90,6 +90,7 @@ const b = await chromium.launch({
   await pg.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO.renderConf, null, { timeout: 30000 });
   await pg.evaluate(() => { try { localStorage.setItem('proTerminalInv', JSON.stringify([{ symbol: '2330', cost: 900, shares: 1 }])); localStorage.removeItem('proTerminalFavGroups'); } catch (_) {} });
   await pg.evaluate(({ CONF, DIGEST, CC2382, K2382, K0050 }) => {
+    PRO._confReset();   // 🏠 V79.8.0 開頁先到「今天」→ 法說會資料已經先讀過一次(真的那份);要用假資料就先丟掉
     PRO._cache['data/confcall.json'] = CONF;
     PRO._cache['data/confcall_digest.json'] = DIGEST;
     PRO._cache['data/cc/2382.json'] = CC2382;
@@ -283,6 +284,7 @@ const b = await chromium.launch({
     nums: [[4, '資本支出 300 億元']], new: [['低軌衛星', 5]], n_new: 4, prev_d: dOff(-130) }] };
   const K2412 = [{ date: D0.replace(/-/g, '/'), close: 100 }, { date: DR.replace(/-/g, '/'), close: 110 }, { date: dOff(-1).replace(/-/g, '/'), close: 121 }];
   await pg.evaluate(({ CONF2, DIG2, CC2412, K2412, K0050 }) => {
+    PRO._confReset();   // 🏠 V79.8.0 開頁先到「今天」→ 法說會資料已經先讀過一次(真的那份);要用假資料就先丟掉
     PRO._cache['data/confcall.json'] = CONF2;
     PRO._cache['data/confcall_digest.json'] = DIG2;
     PRO._cache['data/cc/2412.json'] = CC2412;

@@ -38,8 +38,10 @@ const errs = []; page.on('pageerror', e => errs.push(e.message));
 await page.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO.renderProfit, null, { timeout: 30000 });
 const R = await page.evaluate(async () => {
-  try { await PRO.switchTab('calc'); } catch (_) {}
-  PRO._labSel = 'bt'; PRO._pfSort = null; PRO._pbWin = 'ai'; PRO.renderLab();
+  // 💰 V79.8.0 「100 萬放進去變多少」看板只留一份:🔬 研究 › 🏆 選哪一套 最下面的「📋 完整表」(#pkFull)
+  try { await PRO.switchTab('pick'); } catch (_) {}
+  PRO._labSel = 'pick'; PRO._pfSort = null; PRO._pbWin = 'ai'; PRO.renderLab();
+  { const pf = document.getElementById('pkFull'); if (pf) pf.open = true; }
   const box = () => document.getElementById('profitBody'), o = {};
   o.txt = box().innerText;
   o.firstRow = (box().querySelector('#pbTbl tbody tr td') || {}).innerText || '';
@@ -71,8 +73,12 @@ const R = await page.evaluate(async () => {
   { const t = document.getElementById('pbTbl'); o.fit = t.scrollWidth - t.parentElement.clientWidth; }
   o.research = !!document.querySelector('#btResearch #yearlyBody') && !!document.querySelector('#btResearch #calcOld');
   o.researchClosed = !document.getElementById('btResearch').open;
+  // ⑥ V79.8.0 只留一份:回測數字頁⛔ 再印看板,改一行連到選哪一套
+  PRO.selLab('bt'); o.btPf = box().innerText; o.btGo = !!document.querySelector('#labIntro [data-labbtgo]');
+  o.btGoTxt = (document.querySelector('#labIntro [data-labbtgo]') || {}).innerText || '';
   return o;
 });
+ok('⑥ 💰 看板只留一份:回測數字頁⛔ 再印第二份、改一行連到「選哪一套」', R.btPf.trim() === '' && R.btGo && /選哪一套/.test(R.btGoTxt), JSON.stringify([R.btPf.slice(0, 40), R.btGoTxt]));
 ok('② 畫面有 👑 / 0050 / 科技 ETF 各列', /領頭羊/.test(R.txt) && /0050 元大台灣50/.test(R.txt) && /00892/.test(R.txt));
 ok('②b ⭐ 決定性對照:改 `_PROFIT_BOARD` 一格,畫面跟著變', R.inj);
 ok('②c 表頭每一欄都可排序(做法 / 變成 / 最差 / 中途最多賠 / 贏 0050)', JSON.stringify(R.hdr) === JSON.stringify(['n', 'fin', 'worst', 'mdd', 'beat']), JSON.stringify(R.hdr));

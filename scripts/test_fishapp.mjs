@@ -465,7 +465,7 @@ ok(M && M.name === '股海釣手' && /pro\.html\?app=fish/.test(M.start_url) && 
 const IDX = readFileSync('index.html', 'utf8');
 ok(!/id="tabBtnRod"/.test(SRC) && !/app=fish/.test(IDX) && !/PRO\._fishPoolK='fam';PRO\.switchTab\(/.test(SRC) && (SRC.match(/app=fish/g) || []).length <= 3,
   'ⓘ ⭐ 其它程式都連不進來:作戰室沒有釣魚鈕 / 放下水鈕、散戶救星沒有連結(pro.html 裡的 app=fish 只准出現在偵測那幾行)', String((SRC.match(/app=fish/g) || []).length));
-ok(/_saveNav\(\) \{\n    if \(this\._appFish\) return;/.test(SRC) && /if \(s\.tab === 'rod'\) s\.tab = 'val';/.test(SRC), 'ⓙ App ⛔ 不記分頁;作戰室⛔ 還原到釣魚頁');
+ok(/_saveNav\(\) \{\n    if \(this\._appFish\) return;/.test(SRC) && /if \(s\.tab === 'rod' \|\| s\.tab === 'noise'\) s\.tab = 'home';/.test(SRC), 'ⓙ App ⛔ 不記分頁;作戰室⛔ 還原到釣魚頁(V79.8.0 起回 🏠 今天)');
 ok(!errs.length, 'ⓚ 無 pageerror', errs.join(' | '));
 await b.close();
 console.log(bad ? `\n❌ ${bad} 條沒過` : '\n✅ FISHAPP_PASS');

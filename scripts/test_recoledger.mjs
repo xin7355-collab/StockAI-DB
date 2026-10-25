@@ -450,8 +450,9 @@ ok(!C.same || C.stop === C.n,
   });
   ok(!/🏆/u.test(Q.t1.split('筆數夠了')[0].replace(/只賣掉[^]*$/, '')) && !/🏆冠軍句/.test(Q.t1) && /只賣掉 1 筆/.test(Q.t1), '🏁f 筆數 ≥10 但已賣 <10 → ⛔ 不給 🏆(帳面不算)', Q.t1.slice(0, 200));
   ok(/🏆/u.test(Q.t2), '🏁f2 ⭐ 決定性對照:已賣改成 10 筆 → 才出現 🏆', Q.t2.slice(0, 120));
-  ok(/沒有組合回測/.test(Q.fit) && /合在一起/.test(Q.mix) && Q.pb.includes(Q.hotWan + ' 萬') && Q.corr,
-    '🏁g 📈「沒有組合回測」・🧪「合在一起」・🔥 數字 == _PROFIT_BOARD ・有「一起漲跌」那句', JSON.stringify([Q.fit, Q.pb, Q.hotWan]));
+  // 💰 V79.8.0 回測金額只留「選哪一套」那一份 → 🔥 這一列改成一行連過去(⛔ 再印金額;⛔ 用 🏆 —— 這張表的 🏆 是冠軍)
+  ok(/沒有組合回測/.test(Q.fit) && /合在一起/.test(Q.mix) && /選哪一套/.test(Q.pb) && !/萬/.test(Q.pb) && !/🏆/u.test(Q.pb) && Q.corr,
+    '🏁g 📈「沒有組合回測」・🧪「合在一起」・🔥 一行連到選哪一套(⛔ 金額、⛔ 🏆)・有「一起漲跌」那句', JSON.stringify([Q.fit, Q.pb, Q.hotWan]));
 }
 
 await b.close();

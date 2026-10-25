@@ -46,6 +46,8 @@ const run = async (strategy) => {
     o.txt = box().innerText;
     o.bar = document.getElementById('labBar').innerText;
     o.big = [...document.querySelectorAll('#labBar .labbig .lbg')].map(e => e.innerText + (e.classList.contains('on') ? '*' : ''));
+    o.hd = (document.getElementById('labHdT') || {}).textContent || '';
+    o.searchHidden = (document.querySelector('#tabLab .labsearch') || { classList: { contains: () => false } }).classList.contains('hidden');
     o.subRows = document.querySelectorAll('#labBar .labrow').length;
     o.listHidden = document.getElementById('labList').style.display === 'none';
     o.hero = (document.getElementById('pkHero') || {}).innerText || '';
@@ -77,11 +79,15 @@ const run = async (strategy) => {
     o.names = Object.values(PRO.STRAT_NAMES).map(m => m.n);
     // 子頁籤:為什麼 / 原始數字
     PRO.selLab('ok'); o.whyBar = document.getElementById('labBar').innerText; o.whySub = document.querySelectorAll('#labBar .labrow').length; o.pickClearedOnWhy = document.getElementById('pickBody').innerHTML === '';
+    o.whyBig = [...document.querySelectorAll('#labBar .labbig .lbg')].map(e => e.innerText); o.okCnt = PRO._labCnt('ok');
     PRO.selLab('bt'); o.numBar = document.getElementById('labBar').innerText;
     document.getElementById('btResearch').open = true;   // ⚠️ 逐年表收在關著的摺疊裡,關著讀不到 innerText
     o.yb = (document.getElementById('yearlyBody') || {}).innerText || '';
-    o.pf = (document.getElementById('profitBody') || {}).innerText || '';
+    o.pfBt = (document.getElementById('profitBody') || {}).innerText || '';
     PRO.selLab('pick');
+    // 💰 V79.8.0 看板只留選哪一套那一份(最下面的「📋 完整表」)
+    { const pf = document.getElementById('pkFull'); if (pf) pf.open = true; }
+    o.pf = (document.getElementById('profitBody') || {}).innerText || '';
     o.sx = (window.scrollTo(80, 0), window.scrollX);
     { const t = document.getElementById('pkTbl'); o.fit = t ? t.scrollWidth - t.parentElement.clientWidth : 999; }
     return o;
@@ -161,15 +167,19 @@ ok('④d 逐年成績單也改用名字表(🅿️ 現行 / 🧊 上一套 / �
 
 // ⑤ 策略開關
 // 🔬 V79.1.8 使用者選「整個實測總表都顯示」→ 沒解鎖也看得到 👑;但「你現在用的」仍照你選的(🔥)
-ok('⑤ 🧬 模式(沒解鎖):選哪一套 / 回測數字 / 逐年表都看得到 👑 領頭羊', /👑 領頭羊/.test(G.txt) && /👑/.test(G.pf) && /👑/.test(G.yb), [G.txt, G.pf, G.yb].map(t => /👑/.test(t)).join(','));
+ok('⑤ 🧬 模式(沒解鎖):選哪一套(含最下面的完整表)/ 逐年表都看得到 👑 領頭羊', /👑 領頭羊/.test(G.txt) && /👑/.test(G.pf) && /👑/.test(G.yb), [G.txt, G.pf, G.yb].map(t => /👑/.test(t)).join(','));
 ok('⑤a 🧬 模式:「你現在用的」仍是 🔥 高檔飆股(⛔ 不因為看得到 👑 就改)', /你現在用的是\s*🔥 高檔飆股|這就是你現在用的/.test(G.hero) && G.rows.some(r => r.k === 'hot' && /你現在用的/.test(r.t)) && !G.rows.some(r => /^lead/.test(r.k) && /你現在用的/.test(r.t)), G.hero);
 const leadA = f(aiRows, 'lead');
 ok('⑤b 👑 模式:答案換成 👑 領頭羊+停車 0050、金額 == 看板(決定性對照)', /👑 領頭羊\+停車 0050/.test(L.hero) && L.hero.includes(wan(leadA.fin)), L.hero);
 
 // ⑥ 版面
-ok('⑥ 一進來預設是 🏆 選哪一套', G.defSel === 'pick' && G.big[0] === '🏆 選哪一套*', JSON.stringify(G.big) + G.defSel);
-ok('⑥b 三顆大頁籤;選哪一套沒有子頁籤、清單藏起來', G.big.length === 3 && G.subRows === 0 && G.listHidden, JSON.stringify(G.big) + G.subRows);
-ok('⑥c 🔬 為什麼:子頁籤有 有用 / 沒用 / 坑 / 還沒測;切走時選哪一套清空', G.whySub === 1 && /有用/.test(G.whyBar) && /沒用/.test(G.whyBar) && /坑/.test(G.whyBar) && /還沒測/.test(G.whyBar) && G.pickClearedOnWhy, G.whyBar);
+// 🧭 V79.8.0 「🏆 選哪一套」變成研究底下自己一個子頁(上面那排導覽)→ 這一頁標題換成它、⛔ 不再有大頁籤 / 搜尋
+ok('⑥ 一進來預設是 🏆 選哪一套(標題就是它)', G.defSel === 'pick' && G.hd === '🏆 選哪一套', G.hd + ' / ' + G.defSel);
+ok('⑥b 選哪一套那頁沒有大頁籤、沒有子頁籤、沒有搜尋,清單藏起來', G.big.length === 0 && G.subRows === 0 && G.listHidden && G.searchHidden, JSON.stringify(G.big) + G.subRows + G.searchHidden);
+ok('⑥c 🔬 實測總表剩兩顆大頁籤(為什麼 / 原始數字);為什麼的子頁籤有 沒用 / 坑 / 還沒測(有用 只在還有沒寫成專欄的條目時出現);切走時選哪一套清空',
+  G.whyBig.length === 2 && /為什麼/.test(G.whyBig[0]) && /原始數字/.test(G.whyBig[1]) && G.whySub === 1 && /沒用/.test(G.whyBar) && /坑/.test(G.whyBar) && /還沒測/.test(G.whyBar)
+  && (G.okCnt > 0 ? /有用/.test(G.whyBar) : !/有用/.test(G.whyBar)) && G.pickClearedOnWhy, JSON.stringify([G.whyBig, G.whyBar, G.okCnt]));
+ok('⑥c2 💰 看板只留一份:回測數字頁⛔ 再印', !G.pfBt.trim(), G.pfBt.slice(0, 60));
 ok('⑥d 📊 原始數字:子頁籤有 回測數字 / 情境 / 機率 / 指標', /回測數字/.test(G.numBar) && /情境/.test(G.numBar) && /機率/.test(G.numBar) && /指標/.test(G.numBar), G.numBar);
 ok('⑥e 390px 不橫捲、表格不超出外框', G.sx <= 2 && G.fit <= 2 && L.fit <= 2, `${G.sx} / ${G.fit} / ${L.fit}`);
 ok('⑥f ⛔ 無 🔴🟢', !/[🔴🟢]/u.test(G.txt + L.txt));

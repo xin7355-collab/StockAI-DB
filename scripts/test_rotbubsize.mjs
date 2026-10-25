@@ -77,7 +77,7 @@ const R = await page.evaluate(async () => {
     o.leg = (document.getElementById('rotBubLeg') || {}).textContent || '';
     o.amtOK = P._rotAmtOK;
     // 🔬 實測總表
-    P.switchTab('lab'); await new Promise(r => setTimeout(r, 800));
+    P.navGo('lab'); await new Promise(r => setTimeout(r, 800));   // 🧭 V79.8.0 搜尋在「🔬 實測總表」那一頁(選哪一套那頁沒有搜尋)
     const tp = () => document.getElementById('labTopics');
     o.tpHidden0 = tp() ? tp().classList.contains('hidden') : null;
     P.labSearch('分點'); await new Promise(r => setTimeout(r, 400));

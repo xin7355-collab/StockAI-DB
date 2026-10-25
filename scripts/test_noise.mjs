@@ -88,22 +88,16 @@ ok('⑤ ⛔ 不可用紅綠 emoji(講的是有沒有用,不是漲跌)', !/[🔴�
 ok('⑤b ⛔ 不可出現操作指令(這頁是列管清單不是訊號)',
     !/(可以買|建議買進|進場價|買點推播|停損價)/.test(R.txt), R.txt.slice(0, 150));
 
-// ⑥ 🧹 V74.5.6 使用者:「雜訊清單移到實測總表右手邊」
+// ⑥ 🧹 V74.5.6 使用者:「雜訊清單移到實測總表右手邊」→ V74.6.2 變成真的分頁 →
+//   🧭 V79.8.0 分頁改五大類:雜訊清單⛔ 再自己一個分頁,改住在「🔬 實測總表 › ⛔ 沒用」最下面的摺疊(使用者選「去重 + 雜訊清單併進實測總表」)
+//   ⛔ 「不可以有第二份數據」「延遲載入」「讀不到要說」三條鐵則照舊
 const PRO_SRC = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
-const tabs = (PRO_SRC.match(/<div class="tabs">[\s\S]*?<\/div>/) || [''])[0];
-// 🧽 V77.2.5 使用者:「雜訊清單的掃把圖示移除」→ 斷言改釘**用意**(入口在、排右邊),
-//   ⛔ 不再釘 emoji 那個字面(那釘的是實作);⭐ 順便釘住「⛔ 不可把掃把加回來」。
-ok('⑥ 產業作戰室的分頁列有「雜訊清單」入口', /雜訊清單/.test(tabs), tabs.slice(0, 200));
-ok('⑥b ⭐ 而且排在「實測總表」**右邊**',
-    tabs.indexOf('實測總表') > 0 && tabs.indexOf('雜訊清單') > tabs.indexOf('實測總表'));
-// 🚨 斷言原始碼之前**要先剝掉註解** —— 這一段的 HTML 註解裡就引用著舊的「🧹 雜訊清單」,
-//   不剝的話會被自己的註解判成「還沒移除」(本 repo 第 N 次踩到,已寫進 CLAUDE.md)。
-const tabsNoC = tabs.replace(/<!--[\s\S]*?-->/g, '');
-ok('⑥b2 🧽 分頁鈕⛔ 不可再有掃把圖示(使用者明示移除)', !/🧹\s*雜訊清單/.test(tabsNoC), tabsNoC.slice(0, 300));
-// 🚨 V74.6.2 ⑥c/⑥d 是**刻意推翻** V74.5.6 的(使用者要求它變成真的分頁)。
-//   ⛔ 但「不可以有第二份數據」那條鐵則沒有被推翻 —— 改成釘更強的東西:
-//      pro.html 必須是「fetch index.html 再解析」,⛔ 不可把那些文字抄過來。
-ok('⑥c 它是真的分頁(⛔ 不再是跳走的鈕)', /PRO\.switchTab\('noise'\)/.test(tabs) && !/↗/.test(tabs));
+const PRO_NC = PRO_SRC.replace(/<!--[\s\S]*?-->/g, '');
+const labSec = PRO_NC.slice(PRO_NC.indexOf('<div id="tabLab"'), PRO_NC.indexOf('<div id="tabPoli"'));
+ok('⑥ 雜訊清單住在實測總表裡(⛔ 不再是自己一個分頁)', /id="labNoiseWrap"/.test(labSec) && /雜訊清單/.test(labSec) && !/id="tabNoise"/.test(PRO_SRC) && !/id="tabBtnNoise"/.test(PRO_SRC), labSec.slice(0, 120));
+ok('⑥b ⭐ 排在實測總表清單的下面(⛔ 擋在結論前面)', labSec.indexOf('id="labNoiseWrap"') > labSec.indexOf('id="labList"'));
+ok('⑥b2 🧽 ⛔ 不可再有掃把圖示(使用者明示移除)', !/🧹\s*(<b>)?雜訊清單/.test(PRO_NC.replace(/\/\/[^\n]*/g, '')), (PRO_NC.match(/.{0,40}🧹\s*(<b>)?雜訊清單.{0,20}/) || [''])[0]);
+ok('⑥c 舊入口(switchTab(\'noise\') / ?noise=1)照樣進得來 → 實測總表「沒用」+ 打開那一段', /noise: \['lab', 'trap'\]/.test(PRO_SRC) && /_labNoiseOpen/.test(PRO_SRC));
 ok('⑥c2 🚨 pro.html ⛔ 不可抄一份資料過去 —— 必須 fetch index.html 現場解析',
     /fetch\('index\.html\?t='/.test(PRO_SRC) && /_cutLiteral\(src, name\)/.test(PRO_SRC)
     // ⛔ 只准出現在「解析用的名字字串」裡,不可出現成 pro.html 自己的資料定義
@@ -111,13 +105,12 @@ ok('⑥c2 🚨 pro.html ⛔ 不可抄一份資料過去 —— 必須 fetch inde
     && !/_CHANGELOG:\s*\[/.test(PRO_SRC) && !/_TIDY:\s*\[/.test(PRO_SRC));
 ok('⑥c3 🚨 讀不到要誠實說出來 + 留一條路(⛔ 不可靜默空白)',
     /_idxErr/.test(PRO_SRC) && /讀不到散戶救星的資料/.test(PRO_SRC) && /index\.html\?lab=1&noise=1/.test(PRO_SRC));   // 🔬 V78.3.8 雜訊清單只在實驗室模式開 → 退路要帶 lab=1
-ok('⑥d ⭐ 延遲載入(index.html 有 2.8MB,⛔ 不可開頁就抓)',
-    // ⚠️ V77.9.4 loadIdx 改成「同時呼叫共用一個 promise」(舊寫法第二個呼叫者直接 return,拿不到資料)→ 仍是延遲載入
+ok('⑥d ⭐ 延遲載入(index.html 有 2.8MB,⛔ 不可開頁就抓)—— 摺疊打開才讀',
     (/if \(this\._idxData \|\| this\._idxLoading\) return;/.test(PRO_SRC) || (/if \(this\._idxData\) return Promise\.resolve\(\);/.test(PRO_SRC) && /if \(this\._idxP\) return this\._idxP;/.test(PRO_SRC)))
-    && /if \(t === 'noise'\) this\.renderNoise\(\);/.test(PRO_SRC));
-ok('⑥d2 分頁容器要在 .wrap 裡面(⛔ V74.4.3 那次 #tabLab 被留在外面 → 一大塊空白)',
-    (() => { const i = PRO_SRC.indexOf('<div id="tabNoise"'); const w = PRO_SRC.indexOf('<div class="wrap">');
-             const e = PRO_SRC.indexOf('<div id="stkSheet"'); return i > w && i < e; })());
+    && /ontoggle="if\(this\.open\)PRO\.renderNoise\(\)"/.test(PRO_SRC));
+ok('⑥d2 更新紀錄自己一頁(研究 › 🆕 更新紀錄),容器在 .wrap 裡面(⛔ V74.4.3 那次 #tabLab 被留在外面 → 一大塊空白)',
+    (() => { const i = PRO_SRC.indexOf('<div id="tabLog"'); const w = PRO_SRC.indexOf('<div class="wrap">');
+             const e = PRO_SRC.indexOf('<div id="stkSheet"'); return i > w && i < e; })() && /\['log', 'Log'\]/.test(PRO_SRC));
 await browser.close();
 
 // ⑦ ⭐ 決定性的一關:pro.html **實跑**把資料解析出來並渲染
@@ -130,19 +123,19 @@ p2.on('pageerror', () => {});
 await p2.goto('file://' + path.join(ROOT, 'pro.html') + '?noise=1', { waitUntil: 'domcontentloaded' });
 await p2.waitForFunction(() => typeof PRO !== 'undefined', null, { timeout: 20000 });
 const R3 = await p2.evaluate(async () => {
-    PRO._noiseSub = 'noise'; await PRO.renderNoise(); await PRO.renderNoise();
+    await PRO.renderNoise(); await PRO.renderNoise();
     const nb = document.getElementById('noiseBody');
     const noise = { txt: nb.innerText, html: nb.innerHTML, err: PRO._idxErr,
                     ver: PRO._idxData && PRO._idxData.ver,
                     nEdge: PRO._idxData ? Object.keys(PRO._idxData.SIGNAL_EDGE || {}).length : 0,
                     nTidy: PRO._idxData ? (PRO._idxData.TIDY || []).length : 0,
                     nLog: PRO._idxData ? (PRO._idxData.CHANGELOG || []).length : 0 };
-    PRO._noiseSub = 'log'; await PRO.renderNoise();
-    noise.logTxt = document.getElementById('noiseBody').innerText;
+    await PRO.renderLog();   // 🧭 V79.8.0 更新紀錄自己一頁
+    noise.logTxt = document.getElementById('logBody').innerText;
     // 🚨 換一份假表 → 畫面數字必須跟著變(⛔ 證明它不是寫死的)
     PRO._idxData.SIGNAL_EDGE = { x: ['A', 9, 0, 0, 0, 0, 0, 1], y: ['C', 9, 0, 0, 0, 0, 0, -1] };
     PRO._idxData.TIDY = [['zz', '假卡片名稱', '假理由']];
-    PRO._noiseSub = 'noise'; await PRO.renderNoise();
+    await PRO.renderNoise();
     noise.fakeTxt = document.getElementById('noiseBody').innerText;
     // 📰 V79.0.8 決定性對照:專欄一篇都沒有 → 那幾條要回來
     const bk = PRO._colItems; PRO._colItems = () => [];

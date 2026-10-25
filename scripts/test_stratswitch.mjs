@@ -121,7 +121,8 @@ const P = await pro.evaluate(async () => {
     const o = {};
     const set = (st, un) => localStorage.setItem('proTerminalSettings', JSON.stringify({ strategy: st, stratUnlock: un }));
     const snap = () => {
-        const B = PRO._PROFIT_BOARD; PRO._labSel = 'bt'; PRO._pbWin = 'ai'; PRO._pfSort = null; PRO.renderLab();
+        const B = PRO._PROFIT_BOARD; PRO._labSel = 'pick'; PRO._pbWin = 'ai'; PRO._pfSort = null; PRO.renderLab();   // 💰 V79.8.0 看板只留選哪一套那一份(完整表 #pkFull)
+        { const pf = document.getElementById('pkFull'); if (pf) pf.open = true; }
         const pb = document.getElementById('profitBody').innerText;
         let n = 0; for (const t of PRO.LAB_TABS) n += (PRO._labOf(t[0]) || []).length;
         const labT = []; for (const t of PRO.LAB_TABS) for (const it of (PRO._labOf(t[0]) || [])) labT.push(String(it.t || ''));
@@ -139,7 +140,7 @@ const P = await pro.evaluate(async () => {
 });
 ok('⑤ 產業作戰室預設 🧬;存了 lead 沒解鎖 → 仍 🧬', P.def.lead === false && P.locked.lead === false && P.on.lead === true);
 // 🔬 V79.1.8 使用者選「整個實測總表都顯示」(`_labLeadOn`)→ 沒解鎖也看得到 👑 的列、「錢不多的話」、👑 條目
-ok('⑤b 🧬(沒解鎖):回測數字頁也有 👑 的列與「錢不多的話」(V79.1.8 `_labLeadOn`)', /領頭羊/.test(P.def.pb) && /錢不多/.test(P.def.pb) && /領頭羊/.test(P.on.pb) && /錢不多/.test(P.on.pb), [P.def.pb.slice(0, 80)]);
+ok('⑤b 🧬(沒解鎖):選哪一套的完整表也有 👑 的列與「錢不多的話」(V79.1.8 `_labLeadOn`;V79.8.0 看板只留這一份)', /領頭羊/.test(P.def.pb) && /錢不多/.test(P.def.pb) && /領頭羊/.test(P.on.pb) && /錢不多/.test(P.on.pb), [P.def.pb.slice(0, 80)]);
 ok('⑤c 🧬(沒解鎖):實測總表列出全部條目(含 👑),跟解鎖時一樣多', P.def.labLead > 0 && P.def.labN === P.on.labN && P.def.labLead === P.on.labLead, JSON.stringify([P.def.labN, P.on.labN, P.def.labLead]));
 ok('⑤g ⛔ 只放寬實測總表:更新紀錄 / 釣魚池子 / 拋竿 / 「你現在用的」照舊讀 _isLead', /this\._isLead\(\) \? e : \(\{ \.\.\.e/.test(PS0) && /const _lead = this\._isLead\(\);\n\s*if \(!_lead\) \{ for \(let i = pools/.test(PS0) && /const cur = this\._isLead\(\) \? \(this\._isPark\(\)/.test(PS0) && /_labLeadOn\(\) \{ return true; \}/.test(PS0));
 // 📒 V79.1.2 使用者:「產業 app 裡面的成績單沒有領頭羊策略」→ 選「作戰室成績單永遠顯示 👑」(只放寬成績單;⑤b/⑤c 回測數字・實測總表照舊要解鎖)

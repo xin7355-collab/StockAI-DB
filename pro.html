@@ -59,17 +59,52 @@ a{color:var(--cyan)}
   height:0;overflow:hidden;background:linear-gradient(180deg,rgba(61,139,253,.18),transparent);
   font-size:12px;color:var(--cyan);z-index:80;transition:height .12s;pointer-events:none}
 /* ── 頂欄 ── */
-.topbar{position:sticky;top:0;z-index:50;background:rgba(7,11,18,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
-.topbar-in{max-width:1180px;margin:0 auto;padding:11px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(7,11,18,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1180px;margin:0 auto;padding:6px 12px;display:flex;align-items:center;column-gap:10px;row-gap:0;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px}
 .brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#123,#154);border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-size:18px}
 .brand h1{font-size:17px;font-weight:900;letter-spacing:.5px}
 .brand .ver{font-size:10px;color:var(--dim2);font-weight:400}
-.tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;max-width:100%}   /* 📐 V74.3.5:8 顆分頁鈕在 390 寬會爆 12px → 換行(header 變高由 _syncHdrVar 接手) */
+.tabs{display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:100%;max-width:100%}   /* 🧭 V79.8.0 大類一排(5 顆),⛔ 再換行(以前 10 顆排 3 行 = 手機 22% 螢幕) */
 .tab-btn{border:1px solid var(--line2);background:var(--panel);color:var(--sub);padding:7px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
 .tab-btn.on{background:linear-gradient(135deg,rgba(61,139,253,.22),rgba(34,211,238,.12));color:#cfe3ff;border-color:#2f5f9e}
 .datebadge{font-size:10px;color:var(--dim2);font-family:var(--mono)}
 .swipehint{font-size:9px;color:var(--dim2);width:100%;text-align:center;margin-top:-2px}
+/* 🧭 V79.8.0 導覽兩層(使用者 10/25:「版面可以重新設計,很多我還是覺得不好用」)——
+   品牌列(logo / 版本號 / 資料日期)⛔ 不固定、捲走;固定的只剩「大類一排 + 子頁一排」。
+   ⚠️ 手機 390 直立:有子頁的大類 ≤ 96px、只有一頁的 ≈ 50px;≥760px(橫拿 / 桌機)兩排合成一排。高度由 test_nav 量。 */
+.brandbar{border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+.brandbar-in{max-width:1180px;margin:0 auto;padding:9px 16px 7px;display:flex;align-items:center;gap:12px}
+.tabs::-webkit-scrollbar,.subtabs::-webkit-scrollbar{display:none}
+.tabs .tab-btn{flex:1 0 auto;padding:7px 8px;font-size:12.5px;white-space:nowrap}
+.subtabs{display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:100%;padding:5px 0 1px}
+.subtabs.hidden,.sub-btn.hidden{display:none}
+.sub-btn{flex:0 0 auto;border:1px solid var(--line);background:transparent;color:var(--sub);padding:4px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
+.sub-btn.on{background:rgba(34,211,238,.12);border-color:rgba(34,211,238,.5);color:#cffafe}
+@media (min-width:760px){
+  .topbar-in{flex-wrap:nowrap}
+  .tabs{width:auto;flex:0 0 auto}
+  .tabs .tab-btn{flex:0 0 auto;padding:7px 12px}
+  .subtabs{width:auto;flex:1 1 auto;padding:0 0 0 10px;border-left:1px solid var(--line)}
+}
+html.app-fish .brandbar{display:none!important}
+/* 🏠 V79.8.0 今天(⛔ 每一格都是別頁已經算好的,這裡只排版) */
+.hm-sec{padding:10px 0 12px;border-bottom:1px solid var(--line)}
+.hm-sec:last-child{border-bottom:0}
+.hm-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:14px}
+.hm-go{margin-left:auto;border:1px solid var(--line2);background:transparent;color:var(--cyan);font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.hm-row{display:flex;align-items:baseline;gap:6px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px;min-width:0}
+.hm-row:last-child{border-bottom:0}
+.hm-row .v{margin-left:auto;font-family:var(--mono);font-weight:900;white-space:nowrap}
+.hm-sub{font-size:11px;color:var(--dim2);line-height:1.6}
+.golnk{color:var(--cyan);font-weight:700;cursor:pointer;white-space:nowrap;text-decoration:underline;text-underline-offset:3px}
+/* 📰 V79.8.0 專欄收起時一行(問題 + 數字章 + 日期 + NEW);封面與內文打開才出現(以前每篇一整張封面 ≈ 350px × 128 篇) */
+.colline{display:flex;flex-direction:column;gap:3px;padding:9px 2px}
+.colline .cl-q{font-size:14px;font-weight:800;color:#e6edf3;line-height:1.45}
+.colline .cl-m{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:11px;color:var(--dim2)}
+.colline .colbadge{position:static;display:inline-block;margin:0;font-size:11px;padding:1px 8px}
+.colart:not([open]) .colfull{display:none}
+.colart[open] .colfull .cq{display:none}
 /* ── 面板 ── */
 /* 🧱 V77.0.0 全站無框(使用者:「整個系統比照無框邏輯製作」)—— 判準見 CLAUDE.md「🧱 去框判準」。
    ⭐ class 名稱**一個都不改** —— `test_prohtml` 拿 `.closest('.panel')` 當**結構**選擇器在用
@@ -769,6 +804,8 @@ details.colart[open] .colmore{display:none}
 .colread{padding:2px 14px 14px;border-top:1px dashed #3a2f17}
 .colrange{margin-top:10px;font-size:12px;color:#d9c08a;background:#17130a;border-left:3px solid #b8913d;padding:6px 9px;border-radius:0 8px 8px 0;line-height:1.6}
 details.colart[open] .colsum{display:none}
+details.colart:not([open]){margin-bottom:6px}
+.colline .colmeta{margin-top:0;font-size:11px}
 .colread details>summary{list-style:none}
 .colread details>summary::-webkit-details-marker{display:none}
 @media (min-width:900px){#tabCol .panel{max-width:780px;margin-left:auto;margin-right:auto}}
@@ -948,32 +985,58 @@ details.colart[open] .colsum{display:none}
 </head>
 <body>
 <div id="ptr"></div>
-<div class="topbar"><div class="topbar-in">
+<div class="brandbar"><div class="brandbar-in">
   <div class="brand"><div class="logo">🛰️</div><div><h1>產業作戰室 <span style="color:var(--cyan)">PRO</span></h1><div class="ver"><span class="verno" id="proVer" onclick="PRO._verTap()">—</span> 估值 × 籌碼 × AI 產業鏈 <span class="datebadge" id="dataDate"></span></div></div></div>
-  <div class="tabs">
-    <button class="tab-btn on" id="tabBtnVal" onclick="PRO.switchTab('val')">產業估值</button>
-    <button class="tab-btn" id="tabBtnChain" onclick="PRO.switchTab('chain')">AI 產業鏈</button>
-    <button class="tab-btn" id="tabBtnRot" onclick="PRO.switchTab('rot')">板塊輪動</button>
-    <button class="tab-btn" id="tabBtnStar" onclick="PRO.switchTab('star')">關聯星圖</button>
-    <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">📒 成績單</button>
-    <!-- 🎣 V77.9.8 釣魚已獨立成「股海釣手」—— 使用者:「其它程式都不能連進來」→ ⛔ 作戰室不放任何入口,只能從它自己的網址 / 主畫面圖示打開 -->
-    <button class="tab-btn" id="tabBtnConf" onclick="PRO.switchTab('conf')" title="法說會時間表 + 官方擇要;只描述,不下多空">法說會</button>
-    <button class="tab-btn" id="tabBtnPoli" onclick="PRO.switchTab('poli')" title="政治人物申報的持股,照著抱的話報酬多少(跟 0050 比)">🏛️ 政治人物持股</button>
-    <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
-    <button class="tab-btn" id="tabBtnCol" onclick="PRO.switchTab('col')" title="把實測總表裡有價值的結論寫成白話文章">📰 專欄</button>
-    <!-- 🧹 V74.6.2 使用者:「把散戶救星裡面的 V74.6.1 及 🧹 雜訊清單搬移到產業作戰室裡面」
-         ⭐ 這**推翻了 V74.5.6** 的做法(當時只做一顆會跳走的鈕)。
-         ⛔ 但「不可以複製第二份數據」那條鐵則沒有被推翻 —— 解法是
-            **pro.html 去 fetch index.html,把 `_SIGNAL_EDGE`/`_TIDY`/`_NOISE_*`/`_CHANGELOG`
-            原地解析出來再自己渲染**(同 `miner._themes_from_pro()` 讀 pro.html 那招)。
-            → 資料只有一份(住在它描述的那個檔案裡),渲染在這裡。 -->
-    <button class="tab-btn" id="tabBtnNoise" onclick="PRO.switchTab('noise')" title="哪些訊號實測沒用、哪些已經刪掉了 + 更新紀錄">雜訊清單</button>
+</div></div>
+<div class="topbar"><div class="topbar-in">
+  <!-- 🧭 V79.8.0 五大類 + 子頁(大類一排固定、子頁一排固定;同一大類裡左右滑)—— 登記表 = PRO.NAV,⛔ 再平鋪按鈕。
+       ⭐ 各分頁的 tabBtnXxx 按鈕 id 一個都沒改(搬到子頁那排),測試與別頁的 onclick 照舊找得到。
+       🎣 V77.9.8 釣魚已獨立成「股海釣手」—— 使用者:「其它程式都不能連進來」→ ⛔ 作戰室不放任何入口 -->
+  <div class="tabs" id="navTop" role="tablist">
+    <button class="tab-btn" id="navG_home" data-g="home" onclick="PRO.switchGroup('home')">🏠 今天</button>
+    <button class="tab-btn" id="navG_ind" data-g="ind" onclick="PRO.switchGroup('ind')">🏭 產業</button>
+    <button class="tab-btn" id="navG_conf" data-g="conf" onclick="PRO.switchGroup('conf')">📞 法說會</button>
+    <button class="tab-btn" id="navG_reco" data-g="reco" onclick="PRO.switchGroup('reco')">📒 成績單</button>
+    <button class="tab-btn" id="navG_res" data-g="res" onclick="PRO.switchGroup('res')">🔬 研究</button>
+  </div>
+  <div class="subtabs hidden" id="navSub">
+    <button class="sub-btn hidden" id="tabBtnHome" data-g="home" data-sub="home" onclick="PRO.navGo('home')">🏠 今天</button>
+    <button class="sub-btn hidden" id="tabBtnRot" data-g="ind" data-sub="rot" onclick="PRO.navGo('rot')">板塊輪動</button>
+    <button class="sub-btn hidden" id="tabBtnChain" data-g="ind" data-sub="chain" onclick="PRO.navGo('chain')">AI 產業鏈</button>
+    <button class="sub-btn hidden" id="tabBtnStar" data-g="ind" data-sub="star" onclick="PRO.navGo('star')">關聯星圖</button>
+    <button class="sub-btn hidden" id="tabBtnVal" data-g="ind" data-sub="val" onclick="PRO.navGo('val')">產業估值</button>
+    <button class="sub-btn hidden" id="tabBtnConf" data-g="conf" data-sub="conf" onclick="PRO.navGo('conf')" title="法說會時間表 + 官方擇要;只描述,不下多空">法說會</button>
+    <button class="sub-btn hidden" id="tabBtnFish" data-g="reco" data-sub="fish" onclick="PRO.navGo('fish')">📒 成績單</button>
+    <button class="sub-btn hidden" id="tabBtnPoli" data-g="reco" data-sub="poli" onclick="PRO.navGo('poli')" title="政治人物申報的持股,照著抱的話報酬多少(跟 0050 比)">🏛️ 政治人物持股</button>
+    <button class="sub-btn hidden" id="tabBtnPick" data-g="res" data-sub="pick" onclick="PRO.navGo('pick')">🏆 選哪一套</button>
+    <button class="sub-btn hidden" id="tabBtnCol" data-g="res" data-sub="col" onclick="PRO.navGo('col')" title="把實測總表裡有價值的結論寫成白話文章">📰 專欄</button>
+    <button class="sub-btn hidden" id="tabBtnLab" data-g="res" data-sub="lab" onclick="PRO.navGo('lab')">🔬 實測總表</button>
+    <!-- 🧹 雜訊清單 V79.8.0 併進實測總表「⛔ 沒用」那一頁最下面(摺疊,打開才讀 index.html);資料照舊 fetch index.html 現場解析,⛔ 不抄一份 -->
+    <button class="sub-btn hidden" id="tabBtnLog" data-g="res" data-sub="log" onclick="PRO.navGo('log')">🆕 更新紀錄</button>
   </div>
 </div></div>
 
 <div class="wrap">
+<!-- ═══════════ 🏠 V79.8.0 今天 ═══════════
+     ⛔ 一個新算法都沒有:每一格都呼叫既有函式(盤前分數 / 早上那份準不準 / 除權息 / 100 萬同一天起跑 / 你清單上的法說會 / 板塊名次 / 主題雷達),
+        點「看完整 ›」到那一頁。盤前與除權息的 id(colPremkt / colPremktTrack / sigDiv)原封從專欄頁搬過來。 -->
+<div id="tabHome">
+  <div class="panel">
+    <div class="hm-sub" style="margin-bottom:2px">🏠 打開先看這幾件 ・每一格都是別頁算好的,點「看完整 ›」到那一頁</div>
+    <div id="homeBody">
+      <section class="hm-sec" id="homeSecPre"><div class="hm-hd"><b>🌅 開盤前</b></div>
+        <div id="colPremkt"></div>
+        <details class="sbnote" id="homeDivWrap" style="margin-top:6px"><summary class="rotmore">📅 未來 30 天除權息 <span style="color:var(--dim2)">展開 ▾</span></summary><div id="sigDiv" style="margin-top:6px"></div></details>
+      </section>
+      <section class="hm-sec" id="homeSecRace"><div class="hm-hd"><b>📒 你的策略今天</b><button class="hm-go" onclick="PRO.navGo('fish')">看完整 ›</button></div><div id="homeRace"></div></section>
+      <section class="hm-sec" id="homeSecConf"><div class="hm-hd"><b>📞 你清單上的法說會</b><button class="hm-go" onclick="PRO.navGo('conf')">看完整 ›</button></div><div id="homeConf"></div></section>
+      <section class="hm-sec" id="homeSecRot"><div class="hm-hd"><b>🏭 板塊最強 / 最弱</b><button class="hm-go" onclick="PRO.navGo('rot')">看完整 ›</button></div><div id="homeRot"></div></section>
+      <section class="hm-sec" id="homeSecRad"><div class="hm-hd"><b>🛰️ 主題雷達</b><button class="hm-go" onclick="PRO._homeConfGo('', 'radar')">看完整 ›</button></div><div id="homeRad"></div></section>
+    </div>
+  </div>
+</div>
 <!-- ═══════════ 📊 產業估值 ═══════════ -->
-<div id="tabVal">
+<div id="tabVal" class="hidden">
   <div class="panel">
     <h2>🛡️ 進階產業估值系統 <span class="sub">防幻覺架構・全部真實數字,零模擬值</span></h2>
     <div class="inrow">
@@ -1242,7 +1305,7 @@ details.colart[open] .colsum{display:none}
     <!-- 🔍 V74.9.0 使用者:「右手邊那句副標刪除,把搜尋視窗放在這」
          ⭐ 搜尋擺在標題列 = 一進來就看得到(⛔ 原本在頁籤列下面,要先看完 7 個頁籤才發現)。
          🔍 V74.7.6 搜尋**跨全部判定欄**(168 條分 7 欄,靠翻頁籤很慢)。 -->
-    <h2 class="labhd">🔬 實測總表
+    <h2 class="labhd"><span id="labHdT">🔬 實測總表</span>
       <span class="labsearch">
         <input id="labQ" type="search" inputmode="search" placeholder="🔍 搜尋(例:出場、外資、0050)"
                oninput="PRO.labSearch(this.value)" autocomplete="off">
@@ -1266,7 +1329,11 @@ details.colart[open] .colsum{display:none}
     <!-- 💰 V77.9.4 使用者:「使用者只想看到獲利」→ 最上面一張「100 萬放進去變多少」(領頭羊 / ETF / 小資金),舊的逐年總表 + 情境庫收進研究用摺疊(⛔ 一行不刪) -->
     <!-- 🏆 V78.1.0 使用者:「我看不出最強策略到底能賺多少錢?到底有沒有比 0050 還強」→ 實測總表一進來先回答這一題 -->
     <div id="pickBody"></div>
-    <div id="profitBody"></div>
+    <!-- 💰 V79.8.0 「100 萬放進去變多少」看板只留這一份(以前回測數字頁、專欄第一篇、成績單每一列各印一次)——
+         全部 ETF・運氣最差的起點・錢不多的話 收在選哪一套最下面;其他地方一律一行連過來 -->
+    <details id="pkFull" class="labgloss" style="display:none;margin-top:12px"><summary>📋 <b>完整表</b>:全部 ETF ・運氣最差的起點 ・錢不多的話(10 萬 / 30 萬 / 每月加碼)<span style="color:var(--dim2);font-weight:400"> 展開 ▾</span></summary>
+      <div id="profitBody" style="margin-top:6px"></div>
+    </details>
     <details id="btResearch" class="labgloss" style="display:none;margin-top:14px"><summary>📦 <b>研究用</b>:79 種做法逐年成績 + 情境庫(🆕 最前面兩組「🔥 變因」是 V79.4.8 全市場新算的)<span style="color:var(--dim2);font-weight:400">(⚠️ 其他是修好日 K 之前、舊預設那一輪跑的 ・展開 ▾)</span></summary>
     <div id="btResearchIntro"></div>
     <div id="yearlyBody"></div>
@@ -1277,6 +1344,10 @@ details.colart[open] .colsum{display:none}
     </details>
     </details>
     <div id="labList"></div>
+    <!-- 🧹 V79.8.0 雜訊清單(以前自己一個分頁)→ 只在「⛔ 沒用」那一頁最下面;打開才去讀 index.html(2.8MB,⛔ 開頁就抓) -->
+    <details id="labNoiseWrap" class="labgloss hidden" style="margin-top:14px" ontoggle="if(this.open)PRO.renderNoise()"><summary><b>雜訊清單</b>:K 棒訊號分級 ・收起的卡片 ・刻意留著的 / 已經刪掉的<span style="color:var(--dim2);font-weight:400"> 展開 ▾</span></summary>
+      <div id="noiseBody" style="margin-top:6px"></div>
+    </details>
   </div>
 </div>
 
@@ -1308,21 +1379,17 @@ details.colart[open] .colsum{display:none}
       <div class="sub">回測研究・怎麼買怎麼賣・常見迷思</div>
       <div class="desc">把這裡做過的回測寫成看得懂的問答:每一篇都寫明資料範圍、怎麼測的、最後更新日,也講清楚什麼時候不靈。數字跟實測總表是同一份,重新回測後會一起更新。</div>
     </div>
-    <!-- 📅 V79.0.8 今日訊號頁刪除(使用者:「沒有用的話就刪除」)→ 只有它有的兩塊搬來這裡:盤前分數(實測 6 年同向)+ 未來 30 天除權息 -->
-    <details id="colCal" class="labgloss" style="margin:0 0 8px"><summary>📅 <b>今天的盤前分數 + 未來 30 天除權息</b></summary>
-      <div id="colPremkt" style="margin-top:6px"></div>
-      <div id="sigDiv" style="margin-top:6px"></div>
-    </details>
+    <!-- 📅 V79.8.0 盤前分數 + 未來 30 天除權息搬到「🏠 今天」(id 照舊);這裡只留一行指路 -->
+    <div class="note" id="colCalGo" style="margin:0 0 8px">📅 今天的盤前分數、早上那份準不準、未來 30 天除權息 → 在 <a class="golnk" onclick="PRO.navGo('home')">🏠 今天 ›</a></div>
     <div class="labsearch" style="margin:0 0 4px"><input id="colQ" type="search" inputmode="search" placeholder="🔍 搜尋(例:停損、跌停、外資)" oninput="PRO.colSearch(this.value)" autocomplete="off"></div>
     <div id="colBar" class="colpills"></div>
     <div id="colList"></div>
   </div>
 </div>
-<div id="tabNoise" class="hidden">
+<div id="tabLog" class="hidden">
   <div class="panel">
-    <h2>雜訊清單 / 🆕 更新紀錄 <span class="sub">哪些實測沒用、哪些刪掉了、這一版改了什麼</span></h2>
-    <div class="labbar" id="noiseBar"></div>
-    <div id="noiseBody"></div>
+    <h2>🆕 更新紀錄 <span class="sub">這幾版改了什麼(讀散戶救星的紀錄,⛔ 這裡不另存一份)</span></h2>
+    <div id="logBody"></div>
   </div>
 </div>
 
@@ -1399,11 +1466,23 @@ const PRO = {
       if (path === 'data/screener.json') this._syncDataDate();   // ⚠️ early return 這條也要填
       return this._cache[path];
     }
-    try {
-      const r = await fetch(new URL(path, location.href).href + (path.includes('?') ? '&' : '?') + 't=' + Date.now(),
-                            { signal: AbortSignal.timeout(timeout) });
-      if (r.ok) this._cache[path] = await r.json();   // ⚠️ 只快取成功 —— 失敗不快取,下次點會重試
-    } catch (_) {}
+    // 🏠 V79.8.0 「🏠 今天」開頁就抓好幾個檔 → ① 同一個檔同時只抓一次 ② **先寫的贏**:
+    //   抓回來時快取裡已經有了(別處先放的)就⛔ 蓋掉(測試會先放假資料再切頁;下拉重整換了一個新的 _cache,舊的請求也⛔ 寫進新的)
+    const C = this._cache;
+    this._fjP = this._fjP || {};
+    let job = this._fjP[path];
+    if (!job || job.c !== C) {
+      const run = (async () => {
+        try {
+          const r = await fetch(new URL(path, location.href).href + (path.includes('?') ? '&' : '?') + 't=' + Date.now(),
+                                { signal: AbortSignal.timeout(timeout) });
+          if (r.ok) { const j = await r.json(); if (C[path] === undefined) C[path] = j; }   // ⚠️ 只快取成功 —— 失敗不快取,下次點會重試
+        } catch (_) {}
+      })();
+      job = this._fjP[path] = { c: C, p: run };
+      run.finally(() => { if (this._fjP[path] === job) delete this._fjP[path]; });
+    }
+    await job.p;
     // 🚨 V74.7.9 資料日期**在這裡統一填**(⛔ 不要在各頁各填一次)——
     //   舊版只有「產業估值」按鈕與「AI 產業鏈」頁會填 → 直接開「關聯星圖」的人**永遠看不到日期**,
     //   而那正是最需要它的一頁(星脈圖的漲跌就是那一天的)。使用者實測回報:標題列日期時有時無。
@@ -1592,7 +1671,7 @@ const PRO = {
     if (this._appFish) return;               // 🎣 App 模式⛔ 不記分頁(否則回作戰室會停在沒有按鈕的釣魚頁)
     try {
       sessionStorage.setItem('proWar_nav', JSON.stringify({
-        y: window.scrollY, tab: this._tab, lv: this._lvSel, layer: this._layerSel,
+        y: window.scrollY, tab: this._navCur(), lv: this._lvSel, layer: this._layerSel,
         sk: this._sortK, sd: this._sortD,
         ind: (document.getElementById('inIndustry') || {}).value || '',
         codes: (document.getElementById('inCodes') || {}).value || '',
@@ -1612,8 +1691,9 @@ const PRO = {
       if (s.news) document.getElementById('inNews').value = s.news;
       this._lvSel = s.lv ?? null; this._layerSel = s.layer ?? null;
       if (s.sk) { this._sortK = s.sk; this._sortD = s.sd || -1; }
-      if (s.tab === 'rod') s.tab = 'val';     // 🎣 V77.9.7 釣魚已獨立成股海釣手 → 作戰室⛔ 不再停在釣魚頁
-      if (s.tab && s.tab !== 'val') this.switchTab(s.tab, true);
+      if (s.tab === 'rod' || s.tab === 'noise') s.tab = 'home';     // 🎣 V77.9.7 釣魚已獨立成股海釣手 → 作戰室⛔ 不再停在釣魚頁
+      if (s.val) this._valAuto = 1;           // 下面那行自己會跑一次,⛔ 跑兩次
+      if (s.tab) this.switchTab(s.tab, true);
       if (s.val) await this.runValuation(true);
       // 兩次 rAF:等 DOM 真的排版完再捲(⛔ 直接 scrollTo 會捲不到,因為內容還沒撐開)
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -2007,7 +2087,6 @@ const PRO = {
   //   ③ 抓不到 / 解析失敗要**誠實說出來 + 留一條跳回散戶救星的路**,⛔ 不可靜默空白(陷阱 #22)
   //   ④ ⛔ 不用紅綠 emoji(講的是「有沒有用」不是漲跌方向)
   // ═══════════════════════════════════════════════════════════════════════
-  _noiseSub: 'noise',
   _idxData: null,          // { SIGNAL_EDGE, TIDY, NOISE_GONE, NOISE_KEEP, CHANGELOG, ver }
   _idxErr: null,
   _idxLoading: false,
@@ -2074,13 +2153,111 @@ const PRO = {
     this._idxLoading = false;
   },
 
+  // ═══ 🏠 V79.8.0 今天(使用者 10/25:「版面可以重新設計,很多我還是覺得不好用」→ 選「5 大類 + 新首頁」)═══
+  //   ⛔ 一個新算法都沒有:每一格都呼叫別頁本來就有的那一支(test_home 把被呼叫的函式換掉,🏠 要跟著變 = 證明是轉述)
+  //     🌅 開盤前 = 專欄頁原本那塊(_renderColCal:_premktHtml / _renderPremktTrack / _renderDivCal,id 照舊)
+  //     📒 你的策略今天 = 成績單「100 萬同一天起跑」那份(_raceEnsure,兩邊共用同一次計算)
+  //     📞 你清單上的法說會 = 法說會頁 🔔 那一份(_confMineRows)
+  //     🏭 板塊最強 / 最弱 = 板塊輪動頁的名次與那三行(_rotRankAt / _rotVerdictHtml,官方產業)
+  //     🛰️ 主題雷達 = 法說會頁雷達的「比一年前更多公司在講」(_radarCalc / _confHotHtml)
+  //   ⛔ 開頁不讀 index.html(2.8MB);每一格讀不到都要說「讀不到」⛔ 不可長得像「今天沒有」(陷阱 #22)。
+  async renderHome(force) {
+    if (!document.getElementById('homeBody')) return;
+    const safe = (id, f) => Promise.resolve().then(f).catch(e => {
+      const el = document.getElementById(id); if (el) el.innerHTML = `<div class="note">⚠️ 這一格這次算不出來(${this._esc(String(e && e.message || e).slice(0, 80))}),⛔ 不是沒有。</div>`;
+    });
+    await Promise.allSettled([
+      safe('colPremkt', () => this._renderColCal()),
+      safe('homeConf', () => this._homeConf()),
+      safe('homeRot', () => this._homeRot()),
+      safe('homeRace', () => this._homeRace()),   // 最重的放最後(先放「計算中」)
+    ]);
+  },
+  /** 🏠 → 法說會頁(k = 打開那一場的公司檔案 / sel = 切範圍 / q = 搜這個詞);等法說會頁畫好再動(⛔ 不然點了沒反應) */
+  async _homeConfGo(k, sel, q) {
+    this.navGo('conf');
+    try { await this._confP; } catch (_) {}
+    if (q) this.confSearch(q); else if (sel) this.confSel(sel);
+    if (k) this.confOpenD(k);
+  },
+  async _homeConf() {
+    const el = document.getElementById('homeConf'), rad = document.getElementById('homeRad');
+    if (el) el.innerHTML = '<div class="hm-sub">⏳ 正在讀法說會資料…</div>';
+    if (rad) rad.innerHTML = '<div class="hm-sub">⏳ 正在讀主題雷達…</div>';
+    await this._confEnsure();
+    if (el) {
+      const M = this._confMineRows(14);
+      if (!M) el.innerHTML = `<div class="warnbox" data-home-conf="nofile">⚠️ <b>讀不到 data/confcall.json</b> —— ⛔ 不代表這幾天沒有法說會(檔案還沒產出,或網路失敗)。</div>`;
+      else if (!M.mine) el.innerHTML = `<div class="hm-sub" data-home-conf="empty">👜 你的清單(散戶救星的庫存 + 自選 + 決策台今天的名單)是空的 → 這一格沒有東西可以列。全部場次在 <a class="golnk" onclick="PRO.navGo('conf')">📞 法說會 ›</a>。</div>`;
+      else if (!M.hits.length) el.innerHTML = `<div class="hm-sub" data-home-conf="0">🔔 你的清單裡,未來 14 天<b>沒有</b>法說會。</div>`;
+      else {
+        const md = d => String(d || '').slice(5).replace('-', '/');
+        el.innerHTML = M.hits.slice(0, 8).map(r => `<div class="hm-row" data-home-conf-row="${this._ea(String(r.s))}" style="cursor:pointer" data-k="${this._ea(this._confKey(r))}" onclick="PRO._homeConfGo(this.dataset.k)">
+            <b>${this._esc(this._nmTxt(r.s))}</b><span class="hm-sub">${this._esc(String(r.s))}</span>
+            <span class="v" style="font-size:12px">${md(this._confEff(r))}(${this._confWk(this._confEff(r))})${M.dd(r) === 0 ? ' 今天' : ` 還有 ${M.dd(r)} 天`}${(r.mv && r.mv > r.d) || r.mvq ? ' ⏸️ 延期' : ''}</span></div>`).join('')
+          + (M.hits.length > 8 ? `<div class="hm-sub">… 另外 ${M.hits.length - 8} 場在法說會頁</div>` : '')
+          + `<div class="hm-sub" style="margin-top:4px">⚠️ 那幾天波動常變大;⛔ 這不是叫你買或賣(法說會講的內容,本站實測看不出之後的股價)。</div>`;
+      }
+    }
+    if (rad) {
+      const R = this._radarCalc();
+      if (!R) rad.innerHTML = `<div class="hm-sub" data-home-rad="nofile">⏳ 主題雷達的檔(data/cc_radar.json)讀不到或還沒產出 —— ⛔ 不是沒有題材。</div>`;
+      else {
+        const chips = this._confHotHtml(true);
+        rad.innerHTML = `<div class="hm-sub" data-home-rad="${R.upN}">一千多家公司的法說會簡報一起看:${this._esc(this._radQ(R.qs[R.li]))}比一年前同一季<b>更多公司在講</b>的題材 <b class="mono">${R.upN}</b> 個${R.part ? '(最近一季還在進行,只當參考)' : ''}。</div>`
+          + (chips ? `<div class="cc-chips" style="margin-top:6px">${chips}</div>` : '<div class="hm-sub">這一季沒有明顯變多的題材。</div>')
+          + `<div class="hm-sub" style="margin-top:4px">⛔ 只描述「誰在講」,不是買賣訊號。</div>`;
+      }
+    }
+  },
+  async _homeRot() {
+    const el = document.getElementById('homeRot'); if (!el) return;
+    el.innerHTML = '<div class="hm-sub">⏳ 正在讀板塊輪動…</div>';
+    const J = await this.fetchJson('data/sector_rot.json');
+    if (!J || !J.days || !J.days.length || !J.ind) { el.innerHTML = `<div class="hm-sub" data-home-rot="nofile">⏳ 板塊輪動的歷史檔(data/sector_rot.json)還沒產出或讀不到 —— ⛔ 不是今天沒有輪動。</div>`; return; }
+    const G = this._rotSetOf('ind', J), k = J.days.length - 1;
+    const list = this._rotRankAt(k, G);
+    if (list.length < 3) { el.innerHTML = `<div class="hm-sub" data-home-rot="few">⏳ ${this._esc(J.days[k])} 算得出名次的產業不到 3 個 —— 排名沒有意義,⛔ 不硬排。</div>`; return; }
+    el.innerHTML = `<div class="hm-sub" data-home-rot="${list.length}">${this._esc(J.days[k])} ・官方產業 ${list.length} 個 ・照近 20 日漲幅排(跟板塊輪動頁同一份)</div>` + this._rotVerdictHtml(list, G, true);
+  },
+  /** 🏠 點「為什麼?」→ 板塊輪動頁的說明書(等那一頁畫好再切) */
+  async _homeRotDoc() {
+    this.navGo('rot');
+    try { await this._rotP; } catch (_) {}
+    this.rotSwitchSub('doc');
+  },
+  async _homeRace() {
+    const el = document.getElementById('homeRace'); if (!el) return;
+    el.innerHTML = `<div class="hm-sub" data-home-race="loading">⏳ 正在把每一套從 ${this._esc(this._recoStart())} 收盤起逐日算一遍…(跟 📒 成績單「100 萬同一天起跑」同一份)</div>`;
+    const R = await this._raceEnsure();
+    if (!R) return;
+    const md = d => String(d || '').slice(5).replace('-', '/');
+    if (R.err && !(R.rows || []).length) { el.innerHTML = `<div class="hm-sub" data-home-race="err">⚠️ 算不出來(${this._esc(String(R.err))}),⛔ 不是 0 元。</div>`; return; }
+    if (!R.days) { el.innerHTML = `<div class="hm-sub" data-home-race="wait">⏳ 起算日 ${this._esc(R.S)} 還沒有收盤資料 —— 那天收盤之後(採礦跑完)才開始算。</div>`; return; }
+    const money = v => v == null ? '—' : Math.round(v).toLocaleString() + ' 元';
+    const row = r => `<div class="hm-row" data-home-race-row="${r.k}">
+        <span style="min-width:0">${this._esc(r.name)}${r.cur ? ' <span style="font-size:10px;color:var(--cyan)">(你現在用的)</span>' : ''}
+          ${r.err ? `<span class="hm-sub" style="display:block">⚠️ 這一套算不出來(${this._esc(String(r.err))}),⛔ 不是 0 元</span>`
+          : `<span class="hm-sub" style="display:block">${r.vs50 != null ? (Math.abs(r.vs50) < 0.5 ? '跟 0050 一樣' : `比 0050 ${r.vs50 >= 0 ? '多' : '少'} ${Math.abs(Math.round(r.vs50)).toLocaleString()} 元`) : ''}${r.k === 'lead' && r.nextLeft != null ? ` ・🔄 ${r.nextLeft ? `下次換倉還有 ${r.nextLeft} 個交易日` : '今天是換倉日'}` : ''}</span>`}</span>
+        <span class="v ${this.cls(r.pnl)}" data-home-race-v="${r.v == null ? '' : Math.round(r.v)}">${money(r.v)}</span></div>`;
+    // 明天要看的(🔥 / 🅿️ = 前一晚名單前 N 名,收盤到觸發價才買;👑 = 下次換倉那份)
+    let nxt = '';
+    if (this._isLead()) {
+      const L = (R.rows || []).find(r => r.k === 'lead');
+      const buy = L && L.plan && L.plan.plan && Array.isArray(L.plan.plan.buy) ? L.plan.plan.buy : [];
+      if (buy.length) nxt = `<div class="hm-sub" data-home-next="lead" style="margin-top:4px">👑 下次換倉要買:${buy.map(s => this._esc(this._nmTxt(String(s)))).join('、')}</div>`;
+    } else if (R.lastList && R.lastList[1] && R.lastList[1].length) {
+      const [d, L] = R.lastList;
+      nxt = `<div class="hm-sub" data-home-next="hot" style="margin-top:4px">🔥 ${md(d)} 那一晚的名單(下一個交易日收盤到觸發價才買):${L.map(q => `<b>${this._esc(this._nmTxt(String(q.s)))}</b> ${+q.trig > 0 ? '觸發價 ' + this._px(q.trig) : '<span title="沒有觸發價 = 自動下單不買">沒有觸發價</span>'}`).join(' ・')}</div>`;
+    }
+    el.innerHTML = `<div class="hm-sub">每一套都從 <b>${md(R.S)} 收盤</b>拿 100 萬開始,照 App 真正的買法算;數字 = 今天收盤全部賣掉拿回多少(已扣手續費、稅;紙上成績)。</div>`
+      + (R.rows || []).map(row).join('') + nxt;
+  },
+  // 🧹 雜訊清單 —— V79.8.0 起住在實測總表「⛔ 沒用」那一頁最下面的摺疊(#labNoiseWrap),打開才讀 index.html
   async renderNoise() {
-    const bar = document.getElementById('noiseBar'), body = document.getElementById('noiseBody');
-    if (!bar || !body) return;
+    const body = document.getElementById('noiseBody');
+    if (!body) return;
     // 🧽 V77.2.5 使用者:「雜訊清單的掃把圖示移除」→ ⛔ 分頁鈕與標題都不留 emoji(註解可以留)
-    const TB = [['noise', '雜訊清單'], ['log', '🆕 更新紀錄']];
-    bar.innerHTML = TB.map(([k, l]) =>
-      `<span class="labbtn ${this._noiseSub === k ? 'on' : ''}" onclick="PRO.selNoise('${k}')">${l}</span>`).join('');
     if (!this._idxData && !this._idxErr) {
       body.innerHTML = `<div class="note">⏳ 正在讀散戶救星的資料…(這幾個數字是它自己現算的,⛔ 這裡不另存一份)</div>`;
       await this.loadIdx();
@@ -2092,9 +2269,23 @@ const PRO = {
         <button class="lbtn" style="margin-top:8px" onclick="location.href='index.html?lab=1&noise=1'">→ 直接到散戶救星看</button></div>`;
       return;
     }
-    body.innerHTML = this._noiseSub === 'log' ? this._logHtml() : this._noiseHtml();
+    body.innerHTML = this._noiseHtml();
   },
-  selNoise(k) { this.buzz(10); this._noiseSub = k; this.renderNoise(); },
+  // 🆕 更新紀錄 —— V79.8.0 自己一頁(研究 › 🆕 更新紀錄);⛔ 內容一律讀 index.html 的 _CHANGELOG
+  async renderLog() {
+    const body = document.getElementById('logBody');
+    if (!body) return;
+    if (!this._idxData && !this._idxErr) {
+      body.innerHTML = `<div class="note">⏳ 正在讀散戶救星的更新紀錄…(⛔ 這裡不另存一份)</div>`;
+      await this.loadIdx();
+    }
+    if (this._idxErr) {
+      body.innerHTML = `<div class="warnbox">⚠️ 讀不到散戶救星的更新紀錄(${this._esc(this._idxErr)})—— ⛔ 不是沒有更新。<br>
+        <button class="lbtn" style="margin-top:8px" onclick="location.href='index.html?lab=1&noise=1'">→ 直接到散戶救星看</button></div>`;
+      return;
+    }
+    body.innerHTML = this._logHtml();
+  },
   _esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); },
 
   // 🧹 雜訊清單 —— 分級數字**現算自 _SIGNAL_EDGE**、收起的卡**現算自 _TIDY**(⛔ 不寫死)
@@ -2144,7 +2335,7 @@ const PRO = {
       + sec('🗑️ 已經刪掉的', '寫在這裡是決策紀錄 —— 免得日後有人再做一次',
           `<ul class="nul">${gone.map(x =>
             `<li>・<b>${x[0]}</b> <span class="nwh">${x[1]}</span><br><span class="nnum">${bold(x[2])}</span></li>`).join('')}</ul>${colMore(goneAll.length - gone.length)}`)
-      + `<div class="note">💡 完整的「哪些做法實測有用 / 沒用 / 還測不了」在<b>🔬 實測總表</b>那一頁(每一條都附數字)。</div>`;
+      + `<div class="note">💡 這份清單現在住在<b>🔬 實測總表 › ⛔ 沒用</b>最下面;上面那幾頁(有用 / 沒用 / 坑 / 還沒測)每一條都附數字。</div>`;
   },
 
   // 🆕 更新紀錄 —— ⛔ 內容一律讀 index.html 的 _CHANGELOG,這裡不抄
@@ -2177,10 +2368,11 @@ const PRO = {
   //   ① 起點在可橫向捲動的容器(表格)裡 → 不攔截,否則表格滑不動。
   //   ② 水平位移要明顯大於垂直(2 倍以上)才算左右滑,否則正常上下捲會誤觸發。
   //   ③ 下拉重新整理只在 scrollY <= 0 時起算,而且要拉超過 70px 才觸發。
-  /** 🧭 左右滑能去的分頁:只收有按鈕的(⛔ rod);股海釣手模式回空陣列 = 不滑 */
+  /** 🧭 左右滑能去的子頁:V79.8.0 起只在**同一大類**裡(⛔ 跨大類、⛔ rod 不在任何大類);股海釣手模式回空陣列 = 不滑 */
   _swipeKeys() {
     if (this._appFish || document.documentElement.classList.contains('app-fish')) return [];
-    return this.TABS.map(x => x[0]).filter(k => k !== 'rod');
+    const G = this.NAV.find(x => x[2].includes(this._navCur()));
+    return G ? G[2].slice() : [];
   },
   _initGestures() {
     let x0 = 0, y0 = 0, t0 = 0, lock = '', inScroller = false, pull = 0;
@@ -2219,9 +2411,9 @@ const PRO = {
       if (lock === 'h' && !inScroller && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 2 && dt < 600) {
         // 三個分頁 → 用索引前後移動(⛔ 別再寫死 val↔chain,加第三頁時一定會漏)
         // 🧭 V79.7.9 只在「看得到按鈕的分頁」之間滑:⛔ 滑進釣魚頁(rod,V77.9.8 起沒有按鈕)、⛔ 股海釣手模式整個不滑
-        const ks = this._swipeKeys();
-        const i = ks.indexOf(this._tab) + (dx < 0 ? 1 : -1);
-        if (ks.indexOf(this._tab) >= 0 && i >= 0 && i < ks.length) { this.buzz(20); this.switchTab(ks[i]); }
+        const ks = this._swipeKeys(), cur = this._navCur();
+        const i = ks.indexOf(cur) + (dx < 0 ? 1 : -1);
+        if (ks.indexOf(cur) >= 0 && i >= 0 && i < ks.length) { this.buzz(20); this.navGo(ks[i]); }
       }
       lock = ''; pull = 0;
     }, { passive: true });
@@ -2237,30 +2429,72 @@ const PRO = {
     if (this._tab === 'poli') { this._poliD = undefined; this._poliK = {}; await this.renderPoli(); }
     // 🔄 V79.7.9 以前這四頁下拉重整什麼都沒做(法說會的資料存在 _confData、實測總表 / 雜訊清單讀的 index.html 存在 _idxData)
     if (this._tab === 'conf') { this._confReset(); await this.renderConf(); if (this._confSelK) this._confDossierPaint(); }
-    if (this._tab === 'lab' || this._tab === 'noise') { this._idxData = null; this._idxErr = null; this._idxP = null; }
-    if (this._tab === 'lab') this.renderLab();
-    if (this._tab === 'noise') await this.renderNoise();
+    if (this._tab === 'lab' || this._tab === 'log') { this._idxData = null; this._idxErr = null; this._idxP = null; }
+    if (this._tab === 'lab') { this.renderLab(); const nw = document.getElementById('labNoiseWrap'); if (nw && nw.open) await this.renderNoise(); }
+    if (this._tab === 'log') await this.renderLog();
     if (this._tab === 'col') this.renderCol();
+    if (this._tab === 'home') { this._recoReset(); this._confReset(); await this.renderHome(true); }
     if (this._valRows && this._valRows.length) await this.runValuation(true);
     this.toast('✅ 已更新');
   },
 
-  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['conf', 'Conf'], ['poli', 'Poli'], ['lab', 'Lab'], ['col', 'Col'], ['noise', 'Noise']],
+  TABS: [['home', 'Home'], ['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['conf', 'Conf'], ['poli', 'Poli'], ['lab', 'Lab'], ['col', 'Col'], ['log', 'Log']],
+  // 🧭 V79.8.0 五大類(使用者 10/25 選的)—— ⛔ 作戰室新增頁面一律登記在這裡,⛔ 再平鋪按鈕
+  //   (以前 10 顆排 3 行 = 手機直立 192px、橫拿 39% 螢幕)。第三欄 = 子頁(分頁代號);
+  //   pick = 實測總表的「🏆 選哪一套」(跟 lab 共用 #tabLab,靠 _labSel 分)。
+  NAV: [
+    ['home', '🏠 今天', ['home']],
+    ['ind', '🏭 產業', ['rot', 'chain', 'star', 'val']],
+    ['conf', '📞 法說會', ['conf']],
+    ['reco', '📒 成績單', ['fish', 'poli']],
+    ['res', '🔬 研究', ['pick', 'col', 'lab', 'log']],
+  ],
+  // 舊書籤 / 深連結 / 別頁的按鈕 → 住在實測總表裡的那幾個(⛔ 不可整個失效)
+  NAV_ALIAS: { pick: ['lab', 'pick'], calc: ['lab', 'bt'], noise: ['lab', 'trap'] },
+  _navCur() { return this._tab === 'lab' && this._labSel === 'pick' ? 'pick' : this._tab; },
+  _navGroupOf(sub) { const g = this.NAV.find(x => x[2].includes(sub)); return g ? g[0] : null; },
+  _navLast() { try { return JSON.parse(localStorage.getItem('proWar_navLast') || '{}') || {}; } catch (_) { return {}; } },
+  /** 點大類 → 回到那一類上次看的子頁(沒有就第一個) */
+  switchGroup(g) {
+    const G = this.NAV.find(x => x[0] === g); if (!G) return;
+    this.buzz(10);
+    const last = this._navLast()[g];
+    this.navGo(G[2].includes(last) ? last : G[2][0]);
+  },
+  /** 子頁按鈕 / 左右滑 / 🏠 的「看完整 ›」都走這支 —— 🔬 實測總表要從「選哪一套」換到結論那一層(⛔ 停在 pick = 按了沒反應) */
+  navGo(sub) {
+    if (sub === 'lab') { if (this._labSel === 'pick') this._labSel = this._labCnt('ok') > 0 ? 'ok' : 'trap'; this.switchTab('lab'); return; }
+    this.switchTab(sub);
+  },
+  /** ⭐ 全頁唯一設 .on 的地方(大類 + 子頁);畫完再量 header 高度(子頁那排會出現 / 消失) */
+  _navPaint() {
+    const cur = this._navCur(), g = this._navGroupOf(cur) || 'home';
+    const G = this.NAV.find(x => x[0] === g);
+    document.querySelectorAll('#navTop [data-g]').forEach(b => b.classList.toggle('on', b.dataset.g === g));
+    const sub = document.getElementById('navSub');
+    if (sub) {
+      sub.querySelectorAll('[data-sub]').forEach(b => { b.classList.toggle('hidden', b.dataset.g !== g); b.classList.toggle('on', b.dataset.sub === cur); });
+      sub.classList.toggle('hidden', !G || G[2].length < 2);
+    }
+    if (!this._appFish && cur !== 'rod') { try { const m = this._navLast(); m[g] = cur; localStorage.setItem('proWar_navLast', JSON.stringify(m)); } catch (_) {} }
+    this._syncHdrVar();
+  },
   switchTab(t, silent) {
+    // 🧭 V79.8.0 別名:pick / calc / noise 都住在實測總表裡(舊書籤、深連結、別頁的按鈕照樣進得來)
+    const al = this.NAV_ALIAS[t];
+    if (al) { this._labSel = al[1]; if (t === 'noise') this._labNoiseOpen = true; t = al[0]; }
+    if (!this.TABS.some(([k]) => k === t)) t = 'home';
     this.closeStock();                    // 🔗 切頁一律收起快捷面板(⛔ 不可蓋在別頁上面)
     this.closeModal();                    // 📖 懸浮視窗同理
-    this._syncHdrVar();          // 分頁列會換行 → header 高度會變 → sticky 的 top 要跟著改
     this._tab = t;
-    for (const [k, C] of this.TABS) {
-      document.getElementById('tab' + C).classList.toggle('hidden', t !== k);
-      const bt = document.getElementById('tabBtn' + C); if (bt) bt.classList.toggle('on', t === k);   // 🎣 rod 沒有按鈕了(V77.9.8)
-    }
+    for (const [k, C] of this.TABS) document.getElementById('tab' + C).classList.toggle('hidden', t !== k);
     if (t !== 'rot') this.rotStop();          // ⛔ 切走要停掉動畫,不然背景一直跑
     if (t !== 'rod') this.fishStop();         // 🎣 同理:魚池的 rAF 迴圈切走就停(V77.3.9 起魚池住 #tabRod)
     if (t !== 'conf') {                       // 📞 法說會的公司檔案在手機是整頁蓋上來的 → 切走要收起來、底下解鎖
       document.body.classList.remove('cc-lock');
       const cd = document.getElementById('confDossier'); if (cd) cd.classList.remove('on');
     }
+    if (t === 'home') this.renderHome();
     if (t === 'chain') this.renderChain();
     if (t === 'rot') this._rotP = this.renderRot();   // 💧 存 promise:「它的板塊」要等資料讀好再開明細頁
     if (t === 'star') this.renderStar();
@@ -2268,13 +2502,14 @@ const PRO = {
     // 🎣 ⭐ 存 promise(⛔ 不是裸呼叫)—— `_fishPick` 從 📒 成績單跳過來時要 `await this._rodP`,
     //    否則 `renderRod` 結尾的 `_fishRebuild()` 會把剛畫好的 `fishCard` 清成空白(競態)。
     if (t === 'rod') this._rodP = this.renderRod();
-    if (t === 'noise') this.renderNoise();
-    if (t === 'conf') this.renderConf();
+    if (t === 'conf') this._confP = this.renderConf();   // 📞 存 promise:🏠 今天點一場 → 等法說會頁畫好再打開那家的公司檔案
     if (t === 'poli') this.renderPoli();
     if (t === 'col') this.renderCol();
-    // 📊 'calc' 已併進實測總表(V74.5.0)—— 舊書籤/舊連結進來時自動導到那一欄,⛔ 不可整個失效
-    if (t === 'calc') { this._tab = 'lab'; this._labSel = 'bt'; document.getElementById('tabLab').classList.remove('hidden'); document.getElementById('tabBtnLab').classList.add('on'); }
+    if (t === 'log') this.renderLog();
+    // 🧮 V79.8.0 產業估值第一次打開就用輸入框裡的預設組合跑一次(以前是空白頁,要先按鈕)
+    if (t === 'val' && !this._valAuto) { this._valAuto = 1; if (!(this._valRows && this._valRows.length)) this.runValuation(true); }
     if (this._tab === 'lab') this.renderLab();
+    this._navPaint();
     if (!silent) window.scrollTo(0, 0);
   },
 
@@ -5701,7 +5936,7 @@ const PRO = {
   },
   /** 成績單算好的東西全部丟掉(換起算日 / 下拉重整共用 —— ⛔ 兩處各寫一份清單,改一邊就漏一邊) */
   _recoReset() {
-    this._cmpAllSig = null; this._cmpAll = null; this._rlSig = null; this._rl = null; this._rlCmpSig = null; this._rlCmp = null; this._raceSig = null; this._race = null;
+    this._cmpAllSig = null; this._cmpAll = null; this._rlSig = null; this._rl = null; this._rlCmpSig = null; this._rlCmp = null; this._raceSig = null; this._race = null; this._raceP = null;
   },
   _recoPicks(pb, rule) {
     const rows = (pb || []).filter(x => x && x.s && ('hq' in x));
@@ -6296,6 +6531,7 @@ const PRO = {
       const p = this._recoPicks(day.pb, day.rule); if (p) lists.set(d, p);
     }
     out.listN = lists.size;
+    out.lastList = [...lists.entries()].slice(-1)[0] || null;   // 🏠 今天「明天要看的」(最後一晚的名單)
     const K = this._rlK = this._rlK || {};
     for (const L of lists.values()) for (const q of L) {
       const s = String(q.s);
@@ -6359,15 +6595,24 @@ const PRO = {
       <text x="${L}" y="${Hh - 3}" font-size="9" fill="#6b7280">${md(ser[0].eq[0].d)}</text>
       <text x="${W - R}" y="${Hh - 3}" text-anchor="end" font-size="9" fill="#6b7280">${md(ser[0].eq[ser[0].eq.length - 1].d)}</text></svg>`;
   },
+  _raceSigNow() { return ['race', this._recoStart(), this._exitRule(), this._isPark() ? 1 : 0, this._isLead() ? 1 : 0].join('|'); },
+  /** 🏁 100 萬同一天起跑:算一次,📒 成績單與 🏠 今天共用(⛔ 兩邊各算一份 —— 數字會不一樣,也多花一倍時間) */
+  _raceEnsure() {
+    const sig = this._raceSigNow();
+    if (this._raceSig === sig && this._race) return Promise.resolve(this._race);
+    if (this._raceSig === sig && this._raceP) return this._raceP;
+    this._raceSig = sig; this._race = null;
+    const p = this._raceP = this._raceLoad()
+      .catch(e => ({ err: String(e).slice(0, 100), rows: [] }))
+      .then(r => { if (this._raceSig === sig) this._race = r; return this._raceSig === sig ? r : null; })
+      .finally(() => { if (this._raceP === p) this._raceP = null; });
+    return p;
+  },
   _raceRender() {
     const el = document.getElementById('recoRace'); if (!el) return;
-    const sig = ['race', this._recoStart(), this._exitRule(), this._isPark() ? 1 : 0, this._isLead() ? 1 : 0].join('|');
+    const sig = this._raceSigNow();
     if (this._raceSig !== sig || !this._race) {
-      if (this._raceSig !== sig) {
-        this._raceSig = sig; this._race = null;
-        this._raceLoad().then(r => { if (this._raceSig !== sig) return; this._race = r; this._raceRender(); })
-          .catch(e => { if (this._raceSig !== sig) return; this._race = { err: String(e).slice(0, 100), rows: [] }; this._raceRender(); });
-      }
+      this._raceEnsure().then(r => { if (r && this._raceSig === sig) this._raceRender(); });
       el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-race="loading"><div class="big">🏁 100 萬同一天起跑</div>${this._recoStartBar()}
         <div class="note">⏳ 正在把每一套從 ${this._recoStart()} 收盤起逐日算一遍…</div></div>`;
       return;
@@ -6474,12 +6719,11 @@ const PRO = {
   },
   // 📊 V78.2.3 每一套「有沒有回測過」(讀 `_PROFIT_BOARD`,⛔ 不寫死)—— 使用者看帳面問「📈 是不是比較厲害」
   _cmpBtTag(k) {
+    // 💰 V79.8.0 回測金額只留「🏆 選哪一套」那一份(⛔ 成績單每一列再印一次 —— 數字一更新就要改好幾個地方)
     const B = this._PROFIT_BOARD, w = B && B.wins;
-    const g = (win, key) => w && w[win] && (w[win].rows || []).find(r => r.k === key);
-    const wan = v => Math.round(v / 10000).toLocaleString() + ' 萬';
-    const line = key => { const a = g('ai', key), l = g('long', key), ea = g('ai', '0050'), el = g('long', '0050');
-      if (!a || !l || !ea || !el) return '⏳ 回測數字沒載到';
-      return `📊 回測 100 萬:${this._winOf('long').full} ${wan(l.fin)}(0050 ${wan(el.fin)})・${this._winOf('ai').full} ${wan(a.fin)}(0050 ${wan(ea.fin)})${a.old ? ' ・⏳ 舊資料(只抽 600 檔)' : ''}`; };
+    const has = key => !!(w && ['ai', 'long'].every(win => w[win] && (w[win].rows || []).some(r => r.k === key)));
+    // ⚠️ 這張表的 🏆 = 「目前最多」(冠軍)→ 連結字⛔ 用 🏆,不然看起來像得獎
+    const line = key => has(key) ? `📊 有整套資金的回測 → <a class="golnk" onclick="event.stopPropagation();PRO.navGo('pick')">研究 › 選哪一套</a>` : '⏳ 回測數字沒載到';
     if (k === 'pb') return line('hot');
     if (k === 'lead') return line(this._isPark() ? 'lead' : 'leadcash');
     if (k === 'fit') return '⛔ 沒有組合回測(一天可以列十幾檔、沒有上限;扣完來回成本常是負的)→ 只當候選';
@@ -7120,14 +7364,19 @@ const PRO = {
       <div class="note">
         📊 ${P.from} 年起 <b>${b.n.toLocaleString()}</b> 個同樣「${face}」的日子,0050 開盤:<b>開高 ${b.up}%</b> ・開平 ${b.flat}% ・<b>開低 ${b.dn}%</b>
         (隨便挑一天:開高 ${P.all.up}% / 開低 ${P.all.dn}%)。
-        <br>🎯 講「開高 / 開低」的日子方向猜對 <b>${P.hit}%</b>、開反 ${P.wrong}%;最近一年 <b>${P.hit250}%</b> / ${P.wrong250}%;每一年在 ${P.yrLo}~${P.yrHi}% 之間。
+        <br>⚠️ <b>只預測開盤</b>,而且只是今天的氣氛 ——<b>⛔ 不是叫你買什麼</b>。
+      </div>
+      <!-- 🏠 V79.8.0 搬到「🏠 今天」之後攤開在第一屏 → 長說明收進摺疊(一個字都沒刪) -->
+      <details style="margin-top:4px"><summary class="rotmore">📖 準不準 ・開盤之後 ・亞股為什麼不算分 <span style="color:var(--dim2)">展開 ▾</span></summary>
+      <div class="note">
+        🎯 講「開高 / 開低」的日子方向猜對 <b>${P.hit}%</b>、開反 ${P.wrong}%;最近一年 <b>${P.hit250}%</b> / ${P.wrong250}%;每一年在 ${P.yrLo}~${P.yrHi}% 之間。
         <br>🕘 <b>它只預測開盤</b>:開盤到收盤,高分日只比低分日多 <b>${P.ioSpread} 個百分點</b>,扣完買賣成本是負的 → 開盤之後怎麼走 ⛔ 不預測。
         (🔁 更正:以前寫的「開盤之後多 0.57 個百分點」是用加權指數的開盤價算的,那個開盤價是湊出來的。)
         <br>🧪 亞股(日經 / 韓股 / 恆指)V79.5.4 起只列出來不算分 —— 早上看得到的是前一天的收盤,台股前一天已經一起反映;
         算進去的時候方向猜對 ${P.asia.hit}%、開反 ${P.asia.wrong}%,拿掉之後 17 年有 ${P.asia.years} 年比較準。
         <br>⚠️ 這只是<b>今天的氣氛,⛔ 不是叫你買什麼</b>;而且實測<b>拿大盤方向篩個股反而會少賺</b> → 用它<b>調心理預期跟部位大小</b>就好。
         <br>⚠️ 台指期夜盤 / 恐懼貪婪 / 那指期沒有歷史 → 上面的歷史數字沒有算到這三項(今天有資料的話照樣算進分數)。
-      </div>
+      </div></details>
       <details style="margin-top:6px"><summary class="rotmore">今天這 ${r.n} 項各貢獻幾分</summary>
         <div class="memrow" style="margin-top:6px">${r.parts.map(x =>
           `<span class="memchip">${x.label} ${x.v >= 0 ? '+' : ''}${(+x.v).toFixed(2)} → <b>${x.d >= 0 ? '+' : ''}${x.d}</b></span>`).join('')}</div>
@@ -7761,8 +8010,8 @@ const PRO = {
       ${calm && calm !== most ? `<br>🛡️ <b>怕大跌</b>、但還是想贏 0050 → <b>${calm.n}</b>(16 年 ${wan(calm.l.fin)}、中途最多賠 ${pc(calm.l.mdd)})` : ''}
       <br>😴 <b>不想每天看盤</b> → <b>${line.n.replace('(及格線)', '')}</b> 買了放著(16 年 ${wan(e50l.fin)}、最近 4 年 ${wan(e50a.fin)}、16 年裡中途最多賠 ${pc(e50l.mdd)})
       ${!both.length ? '<br>⛔ 目前<b>沒有任何一套兩段都贏 0050</b> → 不想研究的話,0050 買了放著就是最好的選擇。' : ''}</div>`;
-    const foot = `<div class="sigfrom" style="margin-top:10px">📏 <b>口徑</b>:每一列都用<b>同一組 ${P} 個起點</b>(16 年從 ${WL.from} 起、最近 4 年從 ${WA.from} 起,每隔 ${B.step} 個交易日挪一次)算到 ${B.to || '最新'},取中間那一條;「變成」= 一開始的 100 萬<b>加上</b>賺的(複利、含息、已扣手續費和稅)。
-      ${'⚠️ 含上櫃、後來下市的股票與 2010 起的個股股利;🔥 / 🅿️ 照 App <b>實際怎麼買</b>算(前一晚名單前 2 檔、隔天尾盤到觸發價才買)' + (S.some(x => x.a.old) ? ';標 ⏳ 的那一列還是<b>舊資料</b>(只抽 600 檔現在還在交易的股票、2010~2020 沒算個股股利)' : '')},而且<b>過去 ≠ 未來</b>。想看每一年、每一種變化 → 「📊 原始數字」。</div>`;
+    const foot = `<div class="sigfrom" style="margin-top:10px">📏 <b>口徑</b>:每一列都用<b>同一組 ${P} 個起點</b>(16 年從 ${WL.from} 起、最近 4 年從 ${WA.from} 起,每隔 ${B.step} 個交易日挪一次)算到 ${B.to || '最新'},取中間那一條;「變成」= 一開始的 100 萬<b>加上</b>賺的(複利、含息、已扣手續費和稅,⛔ 不是毛利)。
+      ${'⚠️ 含上櫃、後來下市的股票與 2010 起的個股股利;🔥 / 🅿️ 照 App <b>實際怎麼買</b>算(前一晚名單前 2 檔、隔天尾盤到觸發價才買)' + (S.some(x => x.a.old) ? ';標 ⏳ 的那一列還是<b>舊資料</b>(只抽 600 檔現在還在交易的股票、2010~2020 沒算個股股利)' : '')},而且<b>過去 ≠ 未來</b>。想看每一年、每一種變化 → <a class="golnk" onclick="PRO.switchTab('calc')">🔬 實測總表 › 📊 原始數字</a>。</div>`;
     box.innerHTML = hero + tbl + who + foot;
   },
   // 💰 V77.9.4 「100 萬放進去變多少」—— ⛔ 數字一律讀 `_PROFIT_BOARD`(scripts/embed_profit_board.mjs 產生),⛔ 不寫死、不現算
@@ -8130,20 +8379,23 @@ const PRO = {
     const badge = this._colBadge(num);
     const hook = a.length > 44 ? a.slice(0, 43) + '…' : a;
     const tags = myth ? ['常見說法', '實測不成立'] : [pl[1] !== ser ? pl[1] : '', pl[2] ? '可信度 ' + this._stars(pl[2]) : ''].filter(Boolean);
+    // 📰 V79.8.0 收起時只有一行(以前每篇一整張封面 ≈ 350px × 128 篇 = 手機 54 個螢幕);封面與內文打開才出現(.colfull,CSS 管)
     return `<details class="colart" data-colk="${esc(x.k || '')}" data-cols="${esc(ser)}">
       <summary>
-        <div class="colcover">
-          <div class="brand">📰 台股白話專欄 ・ ${myth ? '🧱 破解迷思' : esc(ser)}</div>
-          <div class="cq">${esc(C.q)}</div>
-          ${hook ? `<div class="hook">${esc(hook)}</div>` : ''}
-          ${badge ? `<div class="colbadge" data-colbadge>${esc(badge)}</div>` : ''}
+        <div class="colline">
+          <div class="cl-q">${esc(C.q)}</div>
+          <div class="cl-m"><span class="colchip">${myth ? '🧱 破解迷思' : esc(ser)}</span>${badge ? `<span class="colbadge" data-colbadge>${esc(badge)}</span>` : ''}<span class="colmeta">🗓️ ${esc(d)} ・ <span data-colmins>閱讀約 ${this._colMins(x)} 分鐘</span></span>${newest && d === newest ? '<span class="colnew" data-colnew>NEW</span>' : ''}<span style="margin-left:auto;color:var(--cyan)">▾</span></div>
         </div>
-        <div class="colbody">
-          <span class="colchip">${myth ? '🧱 破解迷思' : esc(ser)}</span>${newest && d === newest ? '<span class="colnew" data-colnew>NEW</span>' : ''}
-          <div class="colmeta">🗓️ ${esc(d)} ・ <span data-colmins>閱讀約 ${this._colMins(x)} 分鐘</span></div>
-          ${mean ? `<div class="colsum">${esc(mean)}</div>` : ''}
-          <div class="coltags">${tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>
-          <div class="colmore">展開閱讀 ▾</div>
+        <div class="colfull">
+          <div class="colcover">
+            <div class="brand">📰 台股白話專欄 ・ ${myth ? '🧱 破解迷思' : esc(ser)}</div>
+            <div class="cq">${esc(C.q)}</div>
+            ${hook ? `<div class="hook">${esc(hook)}</div>` : ''}
+          </div>
+          <div class="colbody">
+            ${mean ? `<div class="colsum">${esc(mean)}</div>` : ''}
+            <div class="coltags">${tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>
+          </div>
         </div>
       </summary>
       <div class="colread">
@@ -8157,54 +8409,12 @@ const PRO = {
       </div>
     </details>`;
   },
-  /** 🏆 第一篇:該選哪一套 —— 讀 `_PROFIT_BOARD`(⛔ 不手打金額) */
+  /** 🏆 「100 萬放進去,哪一套最後變最多?」—— V79.8.0 起只留一行連到 🔬 研究 › 🏆 選哪一套(⛔ 再抄第二份看板:
+   *  以前回測數字頁、專欄第一篇、成績單每一列各印一次,數字一更新就要改四個地方) */
   _colPickArt() {
-    const B = this._PROFIT_BOARD; if (!B || !B.wins) return '';
-    const keys = this._labLeadOn() ? ['lead', 'stable', 'hot', 'park', '0050'] : ['hot', 'park', '0050'];
-    const w = (win, k) => ((B.wins[win] && B.wins[win].rows) || []).find(r => r.k === k);
-    const wan = v => v == null ? '—' : `${Math.round(v / 10000).toLocaleString()} 萬`;
-    const esc = v => this._esc(String(v || ''));
-    const WL = this._winOf('long'), WA = this._winOf('ai');   // 📅 V79.6.2 主數字看 16 年(它本來就包含最近 4 年)
-    const rowsL = keys.map(k => w('long', k)).filter(r => r && r.fin != null && !r.late);
-    const max = Math.max(1, ...rowsL.map(r => r.fin));
-    const top = rowsL.filter(r => r.k !== '0050').sort((p, q) => q.fin - p.fin)[0];
-    const bars = rowsL.map(r => `<div class="colbar" data-colbar="${esc(r.k)}"><span>${esc(r.n)}</span><span class="bt"><i class="${r.k === '0050' ? 'pass' : ''}" style="width:${Math.max(2, Math.round(r.fin / max * 100))}%"></i></span><span style="font-family:var(--mono)">${wan(r.fin)}${r.k === '0050' ? ' ・及格線' : ''}</span></div>`).join('');
-    const rows = keys.map(k => {
-      const a = w('ai', k), l = w('long', k); if (!a && !l) return '';
-      const nm = (a || l).n;
-      return `<tr data-colpick="${esc(k)}"><td style="padding:4px 6px 4px 0">${esc(nm)}</td><td style="text-align:right;padding:4px 6px;font-family:monospace">${l && l.fin != null && !l.late ? wan(l.fin) : '—'}</td><td style="text-align:right;padding:4px 6px;font-family:monospace">${a && a.fin != null ? wan(a.fin) : '—'}</td><td style="text-align:right;padding:4px 0;font-family:monospace">${l && l.mdd != null && !l.late ? l.mdd.toFixed(0) + '%' : (a && a.mdd != null ? a.mdd.toFixed(0) + '%' : '—')}</td></tr>`;
-    }).join('');
-    const sec = (h, body) => `<div style="margin-top:10px"><div style="font-size:12px;color:#c9a95c;font-weight:800">${h}</div><div style="font-size:14px;line-height:1.75;color:#e6edf3">${body}</div></div>`;
-    // 🎯 V79.4.8 「怎麼做」照數字講(⛔ 不寫死「照決策台那一套」—— 🔥 照 App 實際買法兩段都輸 0050 含息時,那句等於推銷)
-    const e50a = w('ai', '0050'), e50l = w('long', '0050');
-    const beat = keys.filter(k => k !== '0050').filter(k => { const a = w('ai', k), l = w('long', k); return a && l && e50a && e50l && !a.old && a.fin > e50a.fin && l.fin > e50l.fin; });
-    const beatHow = beat.length
-      ? `<ol style="margin:2px 0 0 18px;padding:0" data-colpickhow="beat"><li>不想看盤 → 0050 買了放著</li><li>想多賺一點、能忍中途賠到四成 → ${beat.map(k => esc((w('ai', k) || {}).n)).join('、')}(兩段都贏 0050)</li><li>沒用到的錢先停 0050</li></ol>`
-      : `<ol style="margin:2px 0 0 18px;padding:0" data-colpickhow="none"><li>不想看盤 → 0050 買了放著(上面這幾套<b>沒有一套</b>兩段都贏它)</li><li>還是想照決策台做 → 沒用到的錢先停 0050(比放現金多賺很多,但仍輸 0050 買了放著)</li><li>⛔ 別把「照決策台做」當成會贏大盤 —— 過去兩段都沒有</li></ol>`;
-    return `<details class="colart" open data-colk="pick" data-cols="🏆 先看這篇">
-      <summary>
-        <div class="colcover">
-          <div class="brand">📰 台股白話專欄 ・ 🏆 先看這篇</div>
-          <div class="cq">100 萬放進去,哪一套最後變最多?</div>
-          <div class="hook">先決定你能忍受「中途最多賠多少」,再挑最後變最多的那一套;0050 買了放著是及格線。</div>
-          ${top ? `<div class="colbadge" data-colbadge>${esc(top.n)} ${wan(top.fin)}</div>` : ''}
-        </div>
-        <div class="colbody">
-          <span class="colchip">🏆 先看這篇</span>
-          <div class="colmeta">🗓️ ${esc(B.asof || '')} ・ 閱讀約 2 分鐘</div>
-          <div class="colmore">展開閱讀 ▾</div>
-        </div>
-      </summary>
-      <div class="colread">
-        <div class="colrange" data-colrange>📏 資料範圍:${esc(WL.full)} 與 ${esc(WA.full)} 兩段(16 年那段本來就包含最近 4 年,⛔ 兩個不能加起來),各 ${B.paths || 17} 個起跑日取中間值,含股利</div>
-        ${sec(`📊 ${esc(WL.full)},100 萬最後變多少`, bars)}
-        <div style="overflow-x:auto;margin-top:8px"><table style="font-size:12px;color:#e6edf3;border-collapse:collapse;min-width:100%">
-          <thead><tr style="color:#8b949e;font-size:11px"><th style="text-align:left;padding:2px 6px 2px 0">做法</th><th style="text-align:right;padding:2px 6px">16 年<br>${esc(WL.rng)}</th><th style="text-align:right;padding:2px 6px">最近 4 年<br>${esc(WA.rng)}</th><th style="text-align:right;padding:2px 0">中途最多賠<br>(16 年)</th></tr></thead>
-          <tbody>${rows}</tbody></table></div>
-        ${sec('👉 怎麼做', beatHow)}
-        ${sec('⚠️ 什麼時候不靈', `這是過去的成績,不保證未來;起跑日不同結果也不同(表上是 ${B.paths || 17} 個起跑日的中間值)。${keys.some(k => (w('ai', k) || {}).old) ? '<br>⏳ 標 ⏳ 的那幾列還是<b>舊資料</b>(只抽 600 檔、2010~2020 沒算個股股利)。' : ''}`)}
-      </div>
-    </details>`;
+    if (!this._PROFIT_BOARD || !this._PROFIT_BOARD.wins) return '';
+    return `<div class="note" data-colk="pick" style="margin:0 0 10px">🏆 <b>100 萬放進去,哪一套最後變最多?</b>每一套的金額、0050 及格線、中途最多賠 →
+      <a class="golnk" onclick="PRO.navGo('pick')">🏆 選哪一套 ›</a></div>`;
   },
   colSearch(v) { this._colQ = String(v || '').trim(); this.renderCol(); },
   colSeries(s) { this._colS = this._colS === s ? '' : s; this.renderCol(); },
@@ -8237,7 +8447,6 @@ const PRO = {
   },
   renderCol() {
     const list = document.getElementById('colList'), bar = document.getElementById('colBar'); if (!list) return;
-    this._renderColCal();
     const all = this._colItems();
     const q = this._colQ.toLowerCase();
     const hit = x => !q || [x.col.q, x.col.a, x.col.num, x.col.mean, x.col.warn, x.col.range, (x.col.do || []).join(' '), ...(Array.isArray(x.pl) ? x.pl.slice(3) : [])].join(' ').toLowerCase().includes(q);
@@ -8246,7 +8455,7 @@ const PRO = {
     const shown = STAR ? this._starRank(all).filter(hit) : all.filter(x => hit(x) && (!this._colS || ser(x) === this._colS));
     const newest = all.reduce((m, x) => { const d = String(x.col.u || x.u || ''); return d > m ? d : m; }, '');
     const nNew = all.filter(x => String(x.col.u || x.u || '') === newest).length;
-    if (bar) bar.innerHTML = `<button class="colpill${this._colS ? '' : ' on'}" data-colser="" onclick="PRO._colS='';PRO.renderCol()">全部<span class="c">${all.length + 1}</span>${nNew ? '<span class="colnew">NEW</span>' : ''}</button>`
+    if (bar) bar.innerHTML = `<button class="colpill${this._colS ? '' : ' on'}" data-colser="" onclick="PRO._colS='';PRO.renderCol()">全部<span class="c">${all.length}</span>${nNew ? '<span class="colnew">NEW</span>' : ''}</button>`
       + `<button class="colpill${STAR ? ' on' : ''}" data-colser="${this._esc(this.STAR_SER)}" onclick="PRO.colSeries(PRO.STAR_SER)">${this.STAR_SER}<span class="c" data-colcnt>${this._starRank(all).length}</span></button>`
       + this.COL_SERIES.slice(1).filter(s => all.some(x => ser(x) === s))
         .map(s => `<button class="colpill${this._colS === s ? ' on' : ''}" data-colser="${this._esc(s)}" onclick="PRO.colSeries('${s}')">${s === '破解迷思' ? '🧱 ' : ''}${s}<span class="c" data-colcnt>${all.filter(x => ser(x) === s).length}</span></button>`).join('');
@@ -8258,7 +8467,7 @@ const PRO = {
     const _h4 = _hr('ai'), _h16 = _hr('long');
     const oldNote = (_h4 && _h16 && !_h4.old && !_h16.old) ? `<div class="note" data-colold="1" style="margin:4px 0 8px">⚠️ 2026-10-21 以前寫的 🔥 / 🧬 那幾篇,「100 萬變多少」大多是<b>只抽 600 檔、用舊的買法</b>跑的,絕對金額偏高很多(只能看同一輪裡誰比較好)。全市場、照 App 實際怎麼買:🔥 ${this._winOf('long').full} 100 萬 → <b>${Math.round(_h16.fin / 1e4)} 萬</b>、${this._winOf('ai').full} → <b>${Math.round(_h4.fin / 1e4)} 萬</b>。</div>` : '';
     list.innerHTML = pick + oldNote + starHd + (shown.length ? shown.map(art).join('') : `<div style="font-size:12px;color:#8b949e;padding:12px 0">沒有符合的專欄。</div>`)
-      + `<div style="font-size:11px;color:#6e7681;padding-top:8px">📰 ${all.length + 1} 篇 ・ 每一篇的數字都跟實測總表同一份,重新回測後會一起更新。</div>`;
+      + `<div style="font-size:11px;color:#6e7681;padding-top:8px">📰 ${all.length} 篇 ・ 每一篇的數字都跟實測總表同一份,重新回測後會一起更新。</div>`;
   },
 
 
@@ -8930,13 +9139,23 @@ const PRO = {
     // 🏆 V78.1.0 使用者:「重新規劃介面,不是微調 —— 讓人一眼知道要用什麼策略」→ 三層:
     //   ① 🏆 選哪一套(預設,每一套 100 萬變多少 + 0050 及格線)② 🔬 為什麼(有用/沒用/坑/還沒測 的實測結論)③ 📊 原始數字(整張表)
     //   ⛔ 子頁籤只在所屬那一層顯示(以前 9 顆頁籤平鋪,手機要找半天)
-    const WHY = ['star', 'ok', 'trap', 'method', 'blocked', 'next'], NUM = ['bt', 'rm', 'prob', 'zoo'];
-    const lay = this._labSel === 'pick' ? 'pick' : WHY.includes(this._labSel) ? 'why' : 'num';
+    // 🧭 V79.8.0 「🏆 選哪一套」變成研究底下自己一個子頁(上面那排導覽)→ 這裡只剩兩顆大頁籤;
+    //   ⭐ 可信度併到 📰 專欄的「⭐ 可信度排行」(同一支 _starRank,⛔ 兩個地方各排一份);
+    //   ✅ 有用 那顆只在「還有沒寫成專欄的條目」時才出現(V79.8.0 實測 62 條全都在專欄 → 那顆是 0 條的空按鈕)。
+    if (this._labSel === 'star') this._labSel = this._labCnt('ok') > 0 ? 'ok' : 'trap';
+    const isPickV = this._labSel === 'pick';
+    { const hd = document.getElementById('labHdT'); if (hd) hd.textContent = isPickV ? '🏆 選哪一套' : '🔬 實測總表'; }
+    { const sb = document.querySelector('#tabLab .labsearch'); if (sb) sb.classList.toggle('hidden', isPickV); }   // 搜尋 / 匯出是實測總表的
+    if (isPickV) { const ex = document.getElementById('labExport'); if (ex) ex.classList.add('hidden'); }
+    if (this._tab === 'lab') this._navPaint();
+    const WHY = ['ok', 'trap', 'method', 'blocked', 'next'], NUM = ['bt', 'rm', 'prob', 'zoo'];
+    const lay = isPickV ? 'pick' : WHY.includes(this._labSel) ? 'why' : 'num';
     const big = (k, t, go) => `<span class="lbg ${!searching && lay === k ? 'on' : ''}" onclick="PRO.selLab('${go}')">${t}</span>`;
-    const whyN = ['ok', 'trap', 'method', 'blocked', 'next'].reduce((a, k) => a + this._labCnt(k), 0);
-    document.getElementById('labBar').innerHTML = `<div class="labtabs">
-      <div class="labbig">${big('pick', '🏆 選哪一套', 'pick')}${big('why', `🔬 為什麼(${whyN})`, 'star')}${big('num', '📊 原始數字', 'bt')}</div>
-      ${lay === 'why' || (searching && lay === 'pick') ? `<div class="labrow"><span class="labrl">結論</span>${['star', 'ok', 'trap', 'method'].map(k => btn(k, this._labCnt(k))).join('')}${btn('blocked', this._labCnt('blocked') + this._labCnt('next'))}</div>` : ''}
+    const okN = this._labCnt('ok');
+    const whyN = WHY.reduce((a, k) => a + this._labCnt(k), 0);
+    document.getElementById('labBar').innerHTML = isPickV ? '' : `<div class="labtabs">
+      <div class="labbig">${big('why', `🔬 為什麼(${whyN})`, okN > 0 ? 'ok' : 'trap')}${big('num', '📊 原始數字', 'bt')}</div>
+      ${lay === 'why' ? `<div class="labrow"><span class="labrl">結論</span>${(okN > 0 ? ['ok', 'trap', 'method'] : ['trap', 'method']).map(k => btn(k, this._labCnt(k))).join('')}${btn('blocked', this._labCnt('blocked') + this._labCnt('next'))}</div>` : ''}
       ${lay === 'num' ? `<div class="labrow"><span class="labrl">數字表</span>${['bt', 'rm', 'prob', 'zoo'].map(k => btn(k, this._labCnt(k))).join('')}</div>` : ''}</div>`;
     // 📌 主題列(橫切 7 個判定欄)—— ⛔ 只顯示「真的有東西」的主題,不留空按鈕
     {
@@ -8950,7 +9169,7 @@ const PRO = {
         + (this._labTopic ? `<span class="tpc" onclick="PRO.labTopic('')">✕ 全部主題</span>` : '');
       // 📌 V74.9.0 使用者:「主題標籤隱藏起來,我要的是搜尋時才列出來」
       //   ⛔ 「已經選了主題」也要顯示 —— 否則點完主題整排消失,使用者沒辦法取消(會卡住)。
-      if (tp) tp.classList.toggle('hidden', !searching && !this._labTopic);
+      if (tp) tp.classList.toggle('hidden', isPickV || (!searching && !this._labTopic));
     }
     const meta = this.LAB_TABS.find(x => x[0] === this._labSel);
     // 📊 V74.5.0「回測數字」欄(原回測計算機)—— 兩塊內容互斥顯示,⛔ 不可同時出現(那又變成兩張很像的表)
@@ -8960,21 +9179,27 @@ const PRO = {
     document.getElementById('btResearch').style.display = isBt ? '' : 'none';
     document.getElementById('profitBody').innerHTML = '';
     document.getElementById('yearlyBody').innerHTML = '';
-    const isPick = this._labSel === 'pick' && !searching && !this._labTopic;
+    // 🧹 雜訊清單只在「⛔ 沒用」那一頁最下面(打開才讀 index.html)
+    { const nw = document.getElementById('labNoiseWrap');
+      if (nw) { const on = !isPickV && this._labSel === 'trap' && !searching && !this._labTopic; nw.classList.toggle('hidden', !on);
+        if (on && this._labNoiseOpen) { this._labNoiseOpen = false; nw.open = true; this.renderNoise(); } } }
+    const pkFull = document.getElementById('pkFull');
+    if (pkFull) pkFull.style.display = isPickV ? '' : 'none';
     document.getElementById('pickBody').innerHTML = '';
-    if (isPick) {
+    if (isPickV) {
       document.getElementById('labIntro').innerHTML = '';
       document.getElementById('labList').style.display = 'none';
       this.renderPick();
+      this.renderProfit();       // 💰 完整表(全部 ETF・運氣最差的起點・錢不多的話)收在選哪一套最下面 —— 全站只剩這一份
       return;
     }
     document.getElementById('calcIntro').innerHTML = '';
     document.getElementById('calcBody').innerHTML = '';
     document.getElementById('labList').style.display = isBt ? 'none' : '';
     if (isBt) {
-      document.getElementById('labIntro').innerHTML = '';
+      // 💰 V79.8.0 「100 萬放進去變多少」只留一份(選哪一套那一頁)→ 這裡一行指過去,⛔ 再印第二份
+      document.getElementById('labIntro').innerHTML = `<div class="note" data-labbtgo="1" style="margin:4px 0 8px">💰 每一套「100 萬放進去變多少」(含全部 ETF・運氣最差的起點・錢不多的話)→ <a class="golnk" onclick="PRO.navGo('pick')">🏆 選哪一套 ›</a>;這裡放研究用的逐年成績與情境庫。</div>`;
       document.getElementById('btResearchIntro').innerHTML = `<div class="note">${meta ? meta[2] : ''}</div>`;   // 研究用那一堆的總說明跟著收進摺疊
-      this.renderProfit();
       this.renderYearly();
       this.renderCalc();
       return;
@@ -9009,21 +9234,7 @@ const PRO = {
       }).join('');
       return;
     }
-    // ⭐ V79.0.8 可信度排行(跟專欄同一支 `_starRank` / `_stars`,⛔ 不另排)—— 一條一行 + 「📰 看專欄」,⛔ 不重印內容
-    if (this._labSel === 'star' && !searching && !this._labTopic) {
-      const okAll = (this._labOf('ok') || []).map(x => ({ ...x, _col: 'ok' }));
-      const R = this._starRank(okAll);
-      document.getElementById('labIntro').innerHTML = this._labColNote(meta);
-      document.getElementById('labList').innerHTML = R.map((x, i) => {
-        const P = this._labPlainOf(x);
-        return `<div class="labstar" data-labstar="${this._esc(x.k || '')}" style="display:flex;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line,#21262d)">
-          <span class="mono" style="min-width:30px;color:var(--dim2)">#${i + 1}</span>
-          <span style="color:#c9a95c;letter-spacing:1px;white-space:nowrap">${this._stars(P.c)}</span>
-          <span style="flex:1;min-width:0">${P.icon ? P.icon + ' ' : ''}${this._labHi(P.p, '')}${P.pn ? `<span class="lpn" style="display:block">${this._labHi(P.pn, '')}</span>` : ''}</span>
-          ${x.col && x.col.q ? `<button class="lbtn" style="white-space:nowrap" onclick="PRO.colGo('${this._esc(x.k || '')}')">📰 看專欄</button>` : ''}</div>`;
-      }).join('') || '<div class="emp">還沒有帶可信度的條目。</div>';
-      return;
-    }
+    // ⭐ V79.8.0 可信度排行只在 📰 專欄(selLab('star') 會帶你過去;同一支 _starRank)
     // 📖 名詞速查(V74.4.5 使用者:「文字敘述請用一般散戶看得懂的方式」)——
     //    ⛔ 不可把這些字從內文裡全部拿掉(那會讓每一條變得又臭又長),
     //    ⭐ 改成「頂部解釋一次 + 內文照用」;新增條目若用了新術語,要補進這裡。
@@ -9120,7 +9331,7 @@ const PRO = {
       for (const k of order) html += sec(k ? this._labTopicName(k) : other, bySeg.get(k).length, '', false, bySeg.get(k).map(row).join(''));
     }
     const colNote = (!searching && !this._labTopic && inColN) ? `<div class="note" data-labincol style="margin:6px 0 8px">📰 這一欄另有 <b>${inColN} 條</b>已經寫成專欄,⛔ 這裡不再重複列 →
-      <button class="lbtn" onclick="PRO._colS='${col === 'trap' ? '破解迷思' : ''}';PRO.switchTab('col')">📰 看專欄</button>${col === 'ok' ? ` <button class="lbtn" onclick="PRO.selLab('star')">⭐ 可信度排行</button>` : ''}</div>` : '';
+      <button class="lbtn" onclick="PRO._colS='${col === 'trap' ? '破解迷思' : ''}';PRO.switchTab('col')">📰 看專欄</button>${col === 'ok' ? ` <button class="lbtn" onclick="PRO.selLab('star')">⭐ 可信度排行(在專欄)</button>` : ''}</div>` : '';
     document.getElementById('labList').innerHTML = (items.length || colNote) ? colNote + html
     // ⛔ 找不到 ≠ 留白 —— 要說清楚查了什麼、並給可以直接按的建議(陷阱 #22)
     : `<div class="warnbox">🔍 <b>「${Q || this._labTopicName(this._labTopic)}」找不到符合的紀錄。</b><br>
@@ -9229,7 +9440,12 @@ const PRO = {
     if (k === 'star') return this._starRank((this._labOf('ok') || []).map(x => ({ ...x, _col: 'ok' }))).length;
     return (this._labOf(k) || []).filter(x => !this._labInCol(x, k)).length;
   },
-  selLab(k) { this.buzz(10); this._labSel = k; this.renderLab(); },
+  selLab(k) {
+    this.buzz(10);
+    // ⭐ V79.8.0 可信度排行搬到專欄(同一支 _starRank)—— 舊按鈕 / 書籤照樣帶得到
+    if (k === 'star') { this._colQ = ''; this._colS = this.STAR_SER; const qi = document.getElementById('colQ'); if (qi) qi.value = ''; this.navGo('col'); return; }
+    this._labSel = k; this.renderLab();
+  },
   // 📰 V79.0.8 使用者:「有進專欄的就把原本刪除,實測總表也一樣,我不要重複訊息」
   //   ⭐ 專欄就是讀這些條目產生的(`_colItems`)→ ⛔ 資料一筆都不刪,只在總表**畫面上**不再重印:
   //   有專欄的條目在 ✅/⛔ 清單裡不出現;搜尋到時只留一行「📰 看專欄」。判準跟 `_colItems` 同一條(ok/trap 欄 + col.q)。
@@ -9263,7 +9479,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.7.9',
+  VER: 'V79.8.0',
   _ROT: {
     win: 20, spread: 1.95, top: 1.06, bot: -0.88,
     q1: 2.48, q2: 1.42, exBest: 1.83,
@@ -9432,28 +9648,32 @@ const PRO = {
     if (!on) this.toast('全部取消 = 顯示全部(空畫面不是篩選)');
     this.renderRot();
   },
+  /** 🏭 第 k 天的板塊名次(近 20 日漲幅;照板塊頁目前的平滑設定 —— 預設關 = 原始值)。
+   *  勾選列 / 「前 8 強」/ 🏠 今天 共用這一支(⛔ 各排一份:平滑一開,三個地方的名次就會不一樣) */
+  _rotRankAt(k, G) {
+    G = G || this._rotSet();
+    return Object.keys(G.grp || {}).map(c => ({ c, v: this._sm((G.grp[c] || {}).r20, k) }))
+      .filter(x => x.v != null).sort((a, b) => b.v - a.v);
+  },
   rotPickTop() {
     const G = this._rotSet(), J = this._rotData; if (!J) return;
-    const k = J.days.length - 1;
-    const rank = Object.keys(G.grp).map(c => ({ c, v: (G.grp[c].r20 || [])[k] }))
-      .filter(x => x.v != null).sort((a, b) => b.v - a.v).slice(0, 8).map(x => x.c);
-    this._rotPick = new Set(rank);
+    this._rotPick = new Set(this._rotRankAt(J.days.length - 1, G).slice(0, 8).map(x => x.c));
     this.renderRot();
   },
   _rotPickBar() {
     const G = this._rotSet(), J = this._rotData; if (!J) return;
-    const k = J.days.length - 1;
-    const all = Object.keys(G.grp).map(c => ({ c, v: (G.grp[c].r20 || [])[k] }))
-      .filter(x => x.v != null).sort((a, b) => b.v - a.v);
+    const all = this._rotRankAt(J.days.length - 1, G);
     const on = c => !this._rotPick || this._rotPick.has(c);
     document.getElementById('rotPick').innerHTML = all.map(x =>
       `<span class="rotchip ${on(x.c) ? 'on' : ''}" onclick="PRO.rotTogglePick('${x.c}')">${on(x.c) ? '☑︎ ' : '☐ '}${G.nm(x.c)}</span>`).join('');
     document.getElementById('rotPickN').textContent =
       this._rotPick ? `只看 ${this._rotVisible(all.map(x => x.c)).length} / ${all.length} 個` : '全部';
   },
-  _rotSet() {
-    const J = this._rotData || {};
-    if (this._rotMode === 'th' && J.themes) {
+  _rotSet() { return this._rotSetOf(this._rotMode); },
+  /** mode = 'ind' 官方產業 / 'th' 題材;J 不給就用板塊頁讀過的那份(🏠 今天自己讀、一律官方產業) */
+  _rotSetOf(mode, J) {
+    J = J || this._rotData || {};
+    if (mode === 'th' && J.themes) {
       return { grp: J.themes, nm: c => (J.theme_names || {})[c] || c, th: true };
     }
     return { grp: J.ind || {}, nm: c => this.IND_NAME[c] || c, th: false };
@@ -10651,7 +10871,11 @@ const PRO = {
       `<span class="rotchip ${this.cls(x.v)} ${this._rotSel === x.c ? 'on' : ''}${this._lowCoh(x.c) ? ' lowcoh' : ''}" onclick="PRO.rotOpen('${x.c}')" style="${i < 3 ? 'border-color:var(--amber)' : i >= N - 3 ? 'border-color:var(--dim2)' : ''}">${i < 3 ? '🎯' : i >= N - 3 ? '⛔' : ''}${this._lowCoh(x.c) ? '🧲' : ''}${this._rotSet().nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('');
   },
   _rotVerdict(list, N) {
-    const G = this._rotSet(), nm = c => G.nm(c);
+    document.getElementById('rotVerdict').innerHTML = this._rotVerdictHtml(list, this._rotSet());
+  },
+  /** 那三行(最強 / 最弱 / 實測一句)—— 板塊輪動頁與 🏠 今天共用(fromHome:「為什麼?」先切到板塊頁) */
+  _rotVerdictHtml(list, G, fromHome) {
+    const nm = c => G.nm(c);
     const t3 = list.slice(0, 3), b3 = list.slice(-3);
     const f = a => a.map(x => `${nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}%`).join('・');
     // ⛔ 固定三行 —— 內容每一格都會變,行數一變下面的圖就會被推動(使用者回報過)
@@ -10666,14 +10890,14 @@ const PRO = {
     const line3 = G.th
       ? `⚠️ 題材名單是<b>人工挑的</b> → 動能排序的實測數字<b>只驗過官方 33 產業</b>,⛔ 不可套在題材版上`
       : `⭐ <b>挑最強、避開最弱都有用</b>:最強 3 個 <b>+${this._ROT.top}pp</b>、最弱 3 個 <b>${this._ROT.bot}pp</b>(16 年)`;
-    document.getElementById('rotVerdict').innerHTML = few
+    return few
       ? `<div class="note" style="margin-top:6px;line-height:1.7">
           ☑️ 你只勾了 <b>${list.length}</b> 個板塊:${f(list)}
           <br>⚠️ <b>排名要至少 3 個才有意義</b> —— 現在「最強」跟「最弱」會是同一個。
           按上面「全選」看全貌。</div>`
       : `<div class="note" style="margin-top:6px;line-height:1.7">
           🎯 <b>最強</b>:${f(t3)}<br>⛔ <b>最弱</b>:${f(b3)}
-          <br>${line3}<span class="rotmore" style="padding:0;margin-left:4px" onclick="PRO.rotSwitchSub('doc')">為什麼?→</span></div>`;
+          <br>${line3}<span class="rotmore" style="padding:0;margin-left:4px" onclick="${fromHome ? 'PRO._homeRotDoc()' : "PRO.rotSwitchSub('doc')"}">為什麼?→</span></div>`;
   },
 
   // 👥 三大法人 + 散戶代理 —— 打勾疊加
@@ -11505,24 +11729,33 @@ ${M.news || '(無)'}
     if (t) rail.scrollLeft = Math.max(0, t.offsetLeft - 3 * (t.offsetWidth + 4));
   },
   /** 🛰️ 比一年前更多公司在講的題材(雷達算的)→ 點了直接搜(誰在講) */
-  _confHotHtml() {
+  _confHotHtml(go) {
     const R = this._radarCalc(); if (!R) return '';
     const up = R.rows.filter(x => x.up).sort((a, b) => b.pp - a.pp).slice(0, 8);
     if (!up.length) return '';
+    // 🏠 V79.8.0 go = 從「🏠 今天」點 → 先切到法說會頁再搜(⛔ 在首頁原地搜 = 按了沒反應)
     return `<span class="cc-hot-l">🛰️ 比一年前更多公司在講</span>`
-      + up.map(x => `<button class="cc-chip" data-conf-hot="${this._ea(x.t)}" data-t="${this._ea(x.t)}" onclick="PRO.confSearch(this.dataset.t)">${this._esc(x.t)} <span class="mono">▲${x.pp.toFixed(1)}</span></button>`).join('')
-      + `<button class="cc-chip ghost" onclick="PRO.confSel('radar')">看雷達 ›</button>`;
+      + up.map(x => `<button class="cc-chip" data-conf-hot="${this._ea(x.t)}" data-t="${this._ea(x.t)}" onclick="${go ? "PRO._homeConfGo('', '', this.dataset.t)" : 'PRO.confSearch(this.dataset.t)'}">${this._esc(x.t)} <span class="mono">▲${x.pp.toFixed(1)}</span></button>`).join('')
+      + `<button class="cc-chip ghost" onclick="${go ? "PRO._homeConfGo('', 'radar')" : "PRO.confSel('radar')"}">看雷達 ›</button>`;
   },
   /** 🔔 你的清單裡,接下來幾天有幾場(⛔ 只講「那幾天波動常變大」,不給方向、不給部位)。收起來只剩一行,點名字開公司檔案。 */
-  _confAlertHtml(days = 14) {
-    const D = this._confData; if (!D) return '';
-    const mine = this._confMine(); if (!mine.size) return '';
-    const today = this._confToday();
+  /** 👜 你的清單(庫存 + 自選 + 決策台)裡,未來 days 天的場次(照延期後的日期排)—— 🔔 提醒與 🏠 今天共用(⛔ 各寫一份)。
+   *  回 null = 法說會資料沒讀到(⛔ 跟「沒有」不一樣);{mine:0} = 清單是空的 */
+  _confMineRows(days = 14) {
+    const D = this._confData; if (!D) return null;
+    const mine = this._confMine(), today = this._confToday();
+    const dd = r => Math.max(0, Math.round((new Date(this._confEff(r) + 'T00:00:00+08:00') - new Date(today + 'T00:00:00+08:00')) / 864e5));
+    if (!mine.size) return { mine: 0, hits: [], today, dd };
     const end = (() => { const d = new Date(today + 'T00:00:00+08:00'); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); })();
     const hits = this._confAll().filter(r => { const e = this._confEff(r); return mine.has(String(r.s)) && e >= today && e <= end; })
       .sort((a, b) => { const x = this._confEff(a), y = this._confEff(b); return x < y ? -1 : x > y ? 1 : 0; });
+    return { mine: mine.size, hits, today, dd };
+  },
+  _confAlertHtml(days = 14) {
+    const M = this._confMineRows(days);
+    if (!M || !M.mine) return '';
+    const hits = M.hits, dd = M.dd;
     if (!hits.length) return `<div class="note" data-conf-alert="0">🔔 你的清單(庫存 + 自選 + 決策台)裡,未來 ${days} 天<b>沒有</b>法說會。</div>`;
-    const dd = r => Math.max(0, Math.round((new Date(this._confEff(r) + 'T00:00:00+08:00') - new Date(today + 'T00:00:00+08:00')) / 864e5));
     const lab = r => `${dd(r) === 0 ? '今天' : '還有 ' + dd(r) + ' 天'}`;
     const mvI = r => ((r.mv && r.mv > r.d) || r.mvq ? ' ⏸️' : '');
     const li = hits.map(r => `<button class="cc-chip" data-k="${this._ea(this._confKey(r))}" onclick="PRO.confOpenD(this.dataset.k)">${this._esc(this._nmTxt(r.s))} <span class="mono">${lab(r)}</span>${mvI(r)}</button>`).join('');
@@ -12575,13 +12808,9 @@ ${M.news || '(無)'}
     if (!body || !meta) return;
     this._confEngBar(); this._confSymPaint(); this._confKeysOn();
     try { const ta = document.getElementById('confDeepQ'); if (ta && !ta.value) ta.value = localStorage.getItem('proWar_confQ') || ''; } catch (_) {}
-    if (this._confData === undefined) {
+    if (this._confData === undefined || this._confData === null) {   // null = 上一次讀不到(例如 🏠 開頁那次網路抖)→ 再讀一次
       body.innerHTML = `<div class="note">⏳ 正在讀法說會資料…</div>`;
-      const [D, G] = await Promise.all([this.fetchJson('data/confcall.json'), this.fetchJson('data/confcall_digest.json'),
-                                        this.loadNames ? this.loadNames() : null,
-                                        this.fetchJson('data/playbook_edge.json'), this.fetchJson('data/screener.json'), this._confRadarLoad()]);
-      this._confData = D || null;
-      this._confDig = G || null;
+      await this._confEnsure();
     }
     const D = this._confData;
     if (!D) {
@@ -12630,7 +12859,21 @@ ${M.news || '(無)'}
   /** 📎 V79.6.5 挑了一檔要帶去深度查詢 → 先把四個小檔讀進快取(⛔ 複製提示詞的時候不可以 await:iOS 會擋剪貼簿,V76.2.1)。
    *  簡報原文 data/cc/{sym}.json ・每檔基本面 data/chips/{sym}.json(12 個月營收 / 8 季 EPS / 股利)・財報切片 data/fin/{sym}.json ・K 線 data/{sym}.json */
   /** 🔄 法說會頁讀過的東西全部丟掉(下拉重整用;下一次 renderConf 會重新抓) */
+  /** 📞 法說會頁的資料讀一次(🏠 今天與法說會頁共用 —— ⛔ 各讀一份);下拉重整丟掉之後,舊的請求⛔ 寫回來 */
+  _confEnsure() {
+    // 上一次讀不到(null)→ 這一次重讀(⛔ 讀不到一次就永遠「讀不到」:🏠 開頁就先讀,網路抖一下法說會頁就壞到下拉重整為止)
+    if (this._confData === null && !this._confEnsP) { this._confData = undefined; if (this._confRad === null) this._confRad = undefined; }
+    if (this._confData !== undefined) return Promise.resolve(this._confData);
+    if (this._confEnsP) return this._confEnsP;
+    const p = this._confEnsP = Promise.all([this.fetchJson('data/confcall.json'), this.fetchJson('data/confcall_digest.json'),
+                                            this.loadNames ? this.loadNames() : null,
+                                            this.fetchJson('data/playbook_edge.json'), this.fetchJson('data/screener.json'), this._confRadarLoad()])
+      .then(([D, G]) => { if (this._confEnsP === p && this._confData === undefined) { this._confData = D || null; this._confDig = G || null; } return this._confData; })
+      .finally(() => { if (this._confEnsP === p) this._confEnsP = null; });
+    return p;
+  },
   _confReset() {
+    this._confEnsP = null;
     this._confData = undefined; this._confDig = undefined; this._confRad = undefined; this._radC = null;
     this._confCC = {}; this._confQaJ = {}; this._confQaMiss = {}; this._confPrepAt = {}; this._confCCing = {}; this._confQaBg = 0;
   },
@@ -13163,16 +13406,17 @@ ${blk.join('\n')}
     addEventListener('orientationchange', () => setTimeout(() => this._syncHdrVar(), 250));
     this.loadNames().catch(() => {});
     if (this._fpvOn()) { await this._fpvBoot(); return; }   // 🎣 V77.9.7 股海釣手:⛔ 不還原作戰室的上次分頁
-    await this._restoreNav();
-    // 🧹 V74.6.2 深連結:散戶救星設定中心那兩顆鈕帶 ?noise=1 / ?log=1 過來
+    const restored = await this._restoreNav();
+    // 🧹 V74.6.2 深連結:散戶救星設定中心那兩顆鈕帶 ?noise=1 / ?log=1 過來;V79.8.0 再加 ?tab=(分頁代號或別名)
     //   ⛔ 要排在 _restoreNav 之後(否則會被「回到上次那一頁」蓋掉)
+    let deep = null;
     try {
       const q = new URLSearchParams(location.search);
-      if (q.get('noise') === '1' || q.get('log') === '1') {
-        this._noiseSub = q.get('log') === '1' ? 'log' : 'noise';
-        this.switchTab('noise');
-      }
+      deep = q.get('noise') === '1' ? 'noise' : q.get('log') === '1' ? 'log' : (q.get('tab') || null);
     } catch (_) {}
+    // 🏠 V79.8.0 開頁一律先到「🏠 今天」(時效性的東西在那);從散戶救星按返回回來才回到上次那一頁(30 分鐘內,sessionStorage)
+    if (deep) this.switchTab(deep);
+    else if (!restored) this.switchTab('home', true);
   },
   usePreset(i) {
     const p = this.PRESETS[i];

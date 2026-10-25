@@ -666,7 +666,7 @@ const SIG = await page.evaluate(async () => {
     PRO.switchTab('col', true);
     await PRO._renderColCal();
     out.how = document.getElementById('colPremkt').textContent;   // ⚠️ 在摺疊裡 → innerText 讀不到(關著的 details)
-    out.inCol = !!document.querySelector('#tabCol #colCal #colPremkt') && !!document.querySelector('#tabCol #colCal #sigDiv');
+    out.inCol = !!document.querySelector('#tabHome #colPremkt') && !!document.querySelector('#tabHome #sigDiv') && !!document.querySelector('#tabCol #colCalGo');   // 🏠 V79.8.0 搬到「🏠 今天」,專欄留一行指路
     out.div = document.getElementById('sigDiv').textContent;
     out.premktScore = PRO._premktScore(PRO._cache['data/macro_risk.json']);
     out.premktThin = PRO._premktHtml({ nasdaq_chg_pct: 1, sp500_chg_pct: 1 });
@@ -675,7 +675,7 @@ const SIG = await page.evaluate(async () => {
     return out;
 });
 ok('㉜ 🗑️ 今日訊號分頁已刪(⛔ 不可復活)', SIG.noTab && !/'sig', 'Sig'/.test(src));
-ok('㉜b 盤前分數 + 除權息搬到 📰 專欄頁頂端(⛔ 只有它有的那兩塊不可跟著消失)', SIG.inCol);
+ok('㉜b 盤前分數 + 除權息搬到 🏠 今天(V79.8.0;專欄留一行指路)—— ⛔ 只有它有的那兩塊不可跟著消失', SIG.inCol);
 ok('㉜c 除權息那格有內容(有資料列出、沒資料要說出來,⛔ 不可靜默空白)', SIG.div.trim().length > 10, SIG.div.slice(0, 80));
 // 🌅 V79.5.4 起 = 散戶救星盤前體檢同一條(跨檔逐一比對在 test_premkt_formula ⑧);歷史數字 = premkt_app_probe 2010~2026、0050 真開盤
 ok('㉝ 分數 = App 盤前體檢同一條(那指 1 + 標普 1 + 費半 1.5 + 台積 2 + 台幣升 0.5 = 6;日經 / 韓股只列出來、VIX 沒水位不算)',
@@ -707,9 +707,10 @@ const DEDUP = await page.evaluate(async () => {
     out.searchLinkTxt = (document.querySelector('#labList [data-labcol]') || {}).innerText || '';
     PRO.labSearch('');
     // ⭐ 可信度排行:實測總表與專欄同一份順序
+    // ⭐ V79.8.0 可信度排行只在專欄(實測總表那顆搬走了;selLab('star') 會帶你過去)—— 兩邊照樣是同一支 _starRank
     PRO.selLab('star');
-    out.labStar = [...document.querySelectorAll('#labList [data-labstar]')].map(e => e.dataset.labstar);
-    out.labStarTxt = (document.getElementById('labList').innerText || '').slice(0, 400);
+    out.starGo = PRO._tab === 'col' && PRO._colS === PRO.STAR_SER;
+    out.labStar = PRO._starRank((PRO.LAB.ok || []).map(x => ({ ...x, _col: 'ok' }))).map(x => x.k);
     PRO._colS = PRO.STAR_SER; PRO._colQ = ''; PRO.switchTab('col', true);
     out.colStar = [...document.querySelectorAll('#colList [data-colstar]')].map(e => e.dataset.colstar);
     out.colPill = [...document.querySelectorAll('#colBar .colpill.on')].some(b => b.dataset.colser === PRO.STAR_SER);
@@ -732,7 +733,7 @@ ok('㊿a ✅ 有用那頁:有專欄的⛔ 不再重印(條目 0 條)+ 一行指�
 ok('㊿b ⛔ 沒用那頁只列沒寫成專欄的', DEDUP.trapItems === DEDUP.trapNoCol && DEDUP.trapNoCol > 0, `${DEDUP.trapItems} vs ${DEDUP.trapNoCol}`);
 ok('㊿c 決定性對照:關掉去重 → 有專欄的回來(證明是去重擋掉的)', DEDUP.trapAll > DEDUP.trapItems, `${DEDUP.trapAll} > ${DEDUP.trapItems}`);
 ok('㊿d 搜尋到有專欄的 → 只留一行「📰 看專欄」(⛔ 不重印內容)', DEDUP.searchColRows >= 1 && /看專欄/.test(DEDUP.searchLinkTxt), DEDUP.searchLinkTxt);
-ok('㊿e ⭐ 總表的可信度排行 == 專欄的可信度排行(同一支 _starRank)', DEDUP.labStar.length > 10 && JSON.stringify(DEDUP.labStar) === JSON.stringify(DEDUP.colStar), JSON.stringify([DEDUP.labStar.slice(0, 5), DEDUP.colStar.slice(0, 5)]));
+ok('㊿e ⭐ 可信度排行 == _starRank(專欄那一頁);總表的舊按鈕 selLab(\'star\') 會帶到專欄的 ⭐ 系列', DEDUP.starGo && DEDUP.labStar.length > 10 && JSON.stringify(DEDUP.labStar) === JSON.stringify(DEDUP.colStar), JSON.stringify([DEDUP.starGo, DEDUP.labStar.slice(0, 5), DEDUP.colStar.slice(0, 5)]));
 ok('㊿f ⭐ 照星數由多到少', DEDUP.mono);
 ok('㊿g 決定性對照:排最後那條改成 ★★★ → 名次往前', DEDUP.moved >= 0 && DEDUP.moved < DEDUP.colStar.length - 1, DEDUP.moved);
 ok('㊿h 專欄有「⭐ 可信度排行」那顆,點了會亮', DEDUP.colPill);
@@ -752,7 +753,8 @@ const CALC = await page.evaluate(async () => {
     out.noCalcTab = !document.getElementById('tabCalc') && !document.getElementById('tabBtnCalc');
     // 📅 V77.6.1 第一眼是「逐年成績單」;舊情境庫收進 #calcOld 摺疊(⛔ 沒刪)→ 「不可收在摺疊裡」那兩條改看逐年那一塊
     // 💰 V77.9.4 第一眼改成「100 萬放進去變多少」(#profitBody);逐年表 + 情境庫一起收進 #btResearch「研究用」摺疊(⛔ 沒刪)
-    out.introVisible = document.getElementById('profitBody').innerText;
+    // 💰 V79.8.0 看板只留「🏆 選哪一套」那一份 → 「本金 100 萬 / 複利 / 成本已扣」要在那一頁攤開的地方講(⛔ 收進完整表的摺疊)
+    PRO.switchTab('pick'); out.introVisible = document.getElementById('pickBody').innerText; PRO.switchTab('calc');
     const _rs = document.getElementById('btResearch'); if (_rs) _rs.open = true;
     const _old = document.getElementById('calcOld'); if (_old) _old.open = true;
     document.querySelectorAll('#calcIntro details').forEach(e => { e.open = true; });
@@ -1638,9 +1640,10 @@ ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T
 // ⭐ V74.9.1 改釘「用意」(每一個必要頁籤都在、順序對)⛔ 不釘死頁籤總數 —— 加一頁就假失敗
 // 🧭 V78.0.9 頁籤分兩排:結論(有用 / 沒用 / 回測的坑 / 還沒測 = 還測不了 + 推薦下一步)+ 數字表(回測數字 / 情境 / 機率 / 指標)
 // ⭐ V79.0.8 結論那一排最前面多一顆「⭐ 可信度」(使用者:「新增可信度星星排行」)
-ok('㉔ 頁籤:結論 [可信度 / 有用 / 沒用 / 回測的坑 / 還沒測] + 數字表 [回測數字 / 情境 / 機率 / 指標]',
-   L.tabs.length === 9 && /可信度/.test(L.tabs[0]) && /有用/.test(L.tabs[1]) && /沒用/.test(L.tabs[2]) && /回測的坑/.test(L.tabs[3])
-   && /還沒測/.test(L.tabs[4]) && /回測數字/.test(L.tabs[5]) && /情境/.test(L.tabs[6]) && /機率/.test(L.tabs[7]) && /指標/.test(L.tabs[8]), L.tabs);
+// 🧭 V79.8.0 ⭐ 可信度搬到專欄的 ⭐ 系列(同一支 _starRank)→ 結論那排剩 有用 / 沒用 / 坑 / 還沒測(有用只在還有沒寫成專欄的條目時出現 —— 這裡關掉去重所以一定有)
+ok('㉔ 頁籤:結論 [有用 / 沒用 / 回測的坑 / 還沒測] + 數字表 [回測數字 / 情境 / 機率 / 指標];⛔ 再有可信度那顆',
+   L.tabs.length === 8 && /有用/.test(L.tabs[0]) && /沒用/.test(L.tabs[1]) && /回測的坑/.test(L.tabs[2])
+   && /還沒測/.test(L.tabs[3]) && /回測數字/.test(L.tabs[4]) && /情境/.test(L.tabs[5]) && /機率/.test(L.tabs[6]) && /指標/.test(L.tabs[7]) && !L.tabs.some(t => /可信度/.test(t)), L.tabs);
 ok('㉔a2 🚧 空過守門:展開後內文真的抓得到(⛔ <details> 收合時 innerText 不含內文 = 假通過)',
    L.all.length > 6000 && /六道關卡|來回成本/.test(L.all), L.all.length);
 ok('㉔b 每一欄都有內容,切換真的換掉列表',
@@ -1650,7 +1653,7 @@ ok('㉔b 每一欄都有內容,切換真的換掉列表',
    && L.ok.txt !== L.trap.txt && L.trap.txt !== L.method.txt,
    [L.ok.n, L.trap.n, L.method.n, L.blocked.n, L.next.n]);
 ok('㉔c 頁籤數字要跟實際筆數一致(⛔ 不可寫死)',
-   ['star', 'ok', 'trap', 'method', 'blocked', 'bt', 'rm', 'prob', 'zoo'].every((k, i) => L.tabs[i].includes('(' + (k === 'bt' ? L.btDims : k === 'blocked' ? L.counts.blocked + L.counts.next : L.counts[k]) + ')')), L.tabs);
+   ['ok', 'trap', 'method', 'blocked', 'bt', 'rm', 'prob', 'zoo'].every((k, i) => L.tabs[i].includes('(' + (k === 'bt' ? L.btDims : k === 'blocked' ? L.counts.blocked + L.counts.next : L.counts[k]) + ')')), L.tabs);
 ok('㉔d 🚨 **每一欄**每一條都要附實測來源(⛔ 沒有數字的意見不准進來)', L.srcMissing === 0, L.srcMissing);
 // 📌 V74.5.0 使用者:「把 portfolio_backtest.mjs 等等這種資訊隱藏,不需要呈現」
 //   ⛔ 但資料裡的 `s:` 一個字都不刪(那是決策紀錄)→ 只是**顯示層**不給看檔名。

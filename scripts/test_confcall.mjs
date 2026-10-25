@@ -23,9 +23,10 @@ const SRC = readFileSync('pro.html', 'utf8');
 const SRC_NC = SRC.replace(/<!--[\s\S]*?-->/g, '').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
 
 // ── 原始碼守門 ①
-const tabs = (SRC.match(/<div class="tabs">[\s\S]*?<\/div>/) || [''])[0].replace(/<!--[\s\S]*?-->/g, '');
+// 🧭 V79.8.0 分頁鈕搬到「子頁那一排」(#navSub);法說會是自己一個大類(📞 法說會),子頁鈕 id 照舊 tabBtnConf
+const tabs = (SRC.match(/<div class="subtabs[^"]*" id="navSub">[\s\S]*?\n  <\/div>/) || [''])[0].replace(/<!--[\s\S]*?-->/g, '');
 ok(/\['conf', 'Conf'\]/.test(SRC_NC), '①a PRO.TABS 有 [conf, Conf]');
-ok(/if \(t === 'conf'\) this\.renderConf\(\);/.test(SRC_NC), '①b switchTab 有 lazy render 那一行');
+ok(/if \(t === 'conf'\) (this\._confP = )?this\.renderConf\(\);/.test(SRC_NC), '①b switchTab 有 lazy render 那一行(V79.8.0 起存 promise,🏠 點一場要等它畫好)');
 const btn = (tabs.match(/<button[^>]*id="tabBtnConf"[^>]*>([^<]*)<\/button>/) || [])[1] || '';
 ok(btn === '法說會', '①c 分頁鈕文字 = 「法說會」(⛔ 無 emoji)', JSON.stringify(btn));
 // ⚠️ 誠實紀錄:①d 第一版用「原始碼位置在 .wrap 開頭之後、stkSheet 之前」判 —— 注入「把容器搬到 .wrap 收尾之後」
@@ -66,6 +67,7 @@ await pg.goto(pathToFileURL(resolve('pro.html')).href);
 await pg.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO.renderConf, null, { timeout: 30000 });
 await pg.evaluate(() => { try { localStorage.setItem('proTerminalInv', JSON.stringify([{ symbol: '2330', cost: 900, shares: 1 }])); localStorage.setItem('proTerminalFavGroups', JSON.stringify({ '自選清單': ['2382'] })); localStorage.removeItem('proWar_confEng'); localStorage.removeItem('proWar_confQ'); } catch (_) {} });
 await pg.evaluate((F) => {
+  PRO._confReset();   // 🏠 V79.8.0 開頁先到「今天」→ 法說會資料已經先讀過一次(真的那份);要用假資料就先丟掉
   PRO._cache['data/confcall.json'] = F;
   PRO._cache['data/playbook_edge.json'] = { picks: [{ s: '3231', hq: 1, bear: 0 }] };
   PRO._names = Object.assign(PRO._names || {}, { '2330': '台積電', '2382': '廣達', '3231': '緯創', '1101': '台泥', '6488': '環球晶' });
