@@ -169,15 +169,18 @@ jobs:
           git checkout -f -q "${{ github.sha }}" 2>/dev/null || git checkout -f -q main
           git branch -D cc_deep_tmp >/dev/null 2>&1 || true
 
+      # 🛰️ V79.7.7 主題雷達 data/cc_radar.json 一起推(build_radar;全部簡報一起算,⛔ 沒有就不推、⛔ 擋住其他兩個)
       - name: 🚀 部署 data/cc + confcall_digest.json 到 gh-pages + data
         run: |
           set -e
           [ -s data/confcall_digest.json ] || { echo "ℹ️ 沒有 confcall_digest.json → 不部署"; exit 0; }
           rm -rf /tmp/out && mkdir -p /tmp/out && cp -r data/cc /tmp/out/cc 2>/dev/null || true
           cp data/confcall_digest.json /tmp/out/
+          RAD=""
+          if [ -s data/cc_radar.json ] && python3 -c "import json,sys; json.load(open(sys.argv[1]))" data/cc_radar.json; then cp data/cc_radar.json /tmp/out/; RAD=data/cc_radar.json; else echo "ℹ️ 沒有(或壞掉的)cc_radar.json → 這一輪不推雷達"; fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          restore_files () { mkdir -p data/cc; cp -r /tmp/out/cc/. data/cc/ 2>/dev/null || true; cp /tmp/out/confcall_digest.json data/; }
+          restore_files () { mkdir -p data/cc; cp -r /tmp/out/cc/. data/cc/ 2>/dev/null || true; cp /tmp/out/confcall_digest.json data/; [ -n "$RAD" ] && cp /tmp/out/cc_radar.json data/ || true; }
           deploy_branch () {
             local BR="$1"
             git reset --hard -q 2>/dev/null || true
@@ -185,7 +188,7 @@ jobs:
             git fetch origin "$BR" 2>/dev/null || true
             git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
             restore_files
-            git add -f data/cc data/confcall_digest.json
+            git add -f data/cc data/confcall_digest.json $RAD
             if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
             git commit -q -m "📞 法說會簡報重點 $(date -u '+%Y-%m-%d %H:%M UTC')"
             for i in 1 2 3 4 5; do
@@ -193,7 +196,7 @@ jobs:
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
               sleep $((i*5)); git fetch origin "$BR" 2>/dev/null || true
               git reset --hard -q "origin/$BR" 2>/dev/null || true
-              restore_files; git add -f data/cc data/confcall_digest.json
+              restore_files; git add -f data/cc data/confcall_digest.json $RAD
               git commit -q -m "📞 法說會簡報重點 $(date -u '+%Y-%m-%d %H:%M UTC')" || true
             done
           }

@@ -87,6 +87,7 @@ const R = await pg.evaluate(() => {
     engs: [...tab.querySelectorAll('[data-confeng]')].map(e => e.dataset.confeng),
     sels: [...tab.querySelectorAll('[data-confsel]')].map(e => e.dataset.confsel),
     details: [...tab.querySelectorAll('[data-conf-row] details')].map(d => d.open),
+    listTxt: (document.getElementById('confBody').innerText || '').replace(/\s+/g, ' '),
   };
 });
 ok(R.inWrap, '①d 容器在 .wrap 裡面(DOM 查得到 `.wrap #tabConf`;⛔ 留在外面會吃到 80px 底部 padding = 一大塊空白,V74.4.3)');
@@ -97,9 +98,20 @@ ok(allRows.length === 5 && allRows.includes('2330') && allRows.includes('6488'),
 ok(/資料日/.test(R.meta) && R.meta.includes(today), '⑥a 資料日有標出來', R.meta.slice(0, 80));
 ok(R.srcerr && /上櫃這輪抓不到/.test(R.meta), '⑥b 採礦端 src_error 要顯示(⛔ 不可靜默 —— 那一邊的場次是舊的或缺的)');
 ok(R.engs.join(',') === 'perplexity,chatgpt,google,gemini,meta', '⑤c 引擎 chips = Perplexity / ChatGPT / Google / Gemini / Meta AI', R.engs.join(','));
-ok(R.sels.join(',') === 'new,mine,future,all', '③a 篩選 chips:🆕 剛開完 / 👜 我的 / 📅 接下來 14 天 / 全部', R.sels.join(','));
-ok(R.details.length === 2 && R.details.every(o => !o), '②b 擇要訊息預設折疊(第一眼乾淨)', String(R.details));
-ok(/公司尚未提供/.test(R.txt), '②c 沒擇要的場次要說「公司尚未提供」,⛔ 不留空');
+// 📞 V79.7.7 改版:範圍 = 六格總覽(格子本身就是切換鈕;第六格「台積電問答」直接開公司檔案,⛔ 算範圍)
+ok(R.sels.join(',') === 'new,mine,future,radar,all', '③a 範圍:🆕 剛開完 / 👜 我的 / 📅 接下來 14 天 / 🛰️ 主題雷達 / 🗂️ 全部', R.sels.join(','));
+// 📞 V79.7.7 擇要搬進公司檔案「公司說明」分頁 —— ⛔ 擠在清單第一眼(一列一場只放「誰 + 一句話 + 第一次提到」)
+ok(R.details.length === 0 && !/本公司說明 AI 伺服器出貨/.test(R.listTxt), '②b 擇要 ⛔ 擠在清單第一眼(搬進公司檔案)', String(R.details));
+const info = await pg.evaluate(() => {
+  PRO.confSel('new');
+  const key = s => (([...document.querySelectorAll('#tabConf [data-conf-row]')].find(e => e.dataset.confRow === s) || {}).dataset || {}).confKey;
+  PRO.confOpenD(key('2382'), 'info'); const a = ((document.querySelector('#confDossier [data-ccd-sum]') || {}).innerText || '');
+  PRO.confOpenD(key('3231'), 'info'); const b = (document.getElementById('confDossier').innerText || '').replace(/\s+/g, ' ');
+  PRO.confCloseD();
+  return { a, b };
+});
+ok(/本公司說明 AI 伺服器出貨/.test(info.a), '②b2 點那一場 → 公司檔案「公司說明」分頁有擇要原文', info.a);
+ok(/公司尚未提供/.test(info.b), '②c 沒擇要的場次:公司檔案寫「公司尚未提供」,⛔ 不留空', info.b.slice(0, 160));
 const DIR = /建議買進|建議賣出|利多|利空|看漲|看跌|偏多|偏空|加碼|減碼|出清|會漲|會跌/;
 ok(!DIR.test(R.txt), '④ 全頁⛔ 不可出現方向/部位詞', (R.txt.match(DIR) || [])[0]);
 
@@ -203,16 +215,17 @@ ok(fullw.join(',') === '6488', '🔎⑭d 全形數字也搜得到(⛔ 手機注�
 const noName = await pg.evaluate(() => {
   const bak = PRO._names; PRO._names = {};
   PRO.confSearch('1101');
-  const t = (document.querySelector('#tabConf [data-conf-row] .bkhd').innerText || '').replace(/\s+/g, ' ');
+  const t = (document.querySelector('#tabConf [data-conf-row] .cc-rh').innerText || '').replace(/\s+/g, ' ');
   PRO._names = bak; PRO.confSearch('');
   return t;
 });
 ok(/台泥/.test(noName) && !/1101 1101/.test(noName), '🏷️⑭e 名字表載不到時,列表仍有中文名(⛔ 不可變成「1101 1101」)', noName);
 
-// ── 📄 一鍵開簡報(⛔ 網址一律從採礦樣板組,前端不可寫死)
+// ── 📄 一鍵開簡報(⛔ 網址一律從採礦樣板組,前端不可寫死)—— 📞 V79.7.7 起連結在公司檔案(點那一場才開)
 const pdf = await pg.evaluate(() => {
   PRO.confSearch('廣達');
-  const a = [...document.querySelectorAll('#tabConf a.conf-pdf')];
+  PRO.confOpenD(document.querySelector('#tabConf [data-conf-row="2382"]').dataset.confKey);
+  const a = [...document.querySelectorAll('#confDossier a.conf-pdf')];
   return { n: a.length, href: a.map(x => x.getAttribute('href')), txt: a.map(x => x.innerText.trim()), tgt: a.map(x => x.target) };
 });
 ok(pdf.n === 2 && pdf.tgt.every(t => t === '_blank'), '📄⑮ 中文/英文簡報各一顆,開新分頁', JSON.stringify(pdf.txt));
@@ -223,17 +236,17 @@ ok(pdf.txt.join(',') === '📄 中文簡報,📄 英文簡報', '📄⑮c M/E �
 // ⭐ 決定性對照:改採礦樣板 → href 必須跟著變(⛔ 前端寫死的話不會變)
 const pdfMoved = await pg.evaluate(() => {
   PRO._confData.src.file.host = 'https://example.invalid'; PRO._confData.src.file.q.filePath = '/ZZZ/';
-  PRO._confPaint();
-  const h = document.querySelector('#tabConf a.conf-pdf').getAttribute('href');
-  PRO._confData.src.file.host = 'https://mopsov.twse.com.tw'; PRO._confData.src.file.q.filePath = '/home/html/nas/STR/'; PRO._confPaint();
+  PRO._confPaint(); PRO._confDossierPaint();
+  const h = document.querySelector('#confDossier a.conf-pdf').getAttribute('href');
+  PRO._confData.src.file.host = 'https://mopsov.twse.com.tw'; PRO._confData.src.file.q.filePath = '/home/html/nas/STR/'; PRO._confPaint(); PRO._confDossierPaint();
   return h;
 });
 ok(pdfMoved.startsWith('https://example.invalid/') && pdfMoved.includes('%2FZZZ%2F'), '📄⑮d ⭐ 決定性對照:改採礦端樣板,前端網址要跟著變(⛔ 不可寫死)', pdfMoved);
 // 樣板缺了 → 退回只印檔名,⛔ 不硬湊網址
 const noTpl = await pg.evaluate(() => {
-  const bak = PRO._confData.src.file; delete PRO._confData.src.file; PRO._confPaint();
-  const r = { a: document.querySelectorAll('#tabConf a.conf-pdf').length, t: (document.getElementById('confBody').innerText || '') };
-  PRO._confData.src.file = bak; PRO._confPaint(); return r;
+  const bak = PRO._confData.src.file; delete PRO._confData.src.file; PRO._confPaint(); PRO._confDossierPaint();
+  const r = { a: document.querySelectorAll('#tabConf a.conf-pdf').length, t: (document.getElementById('confDossier').innerText || '') };
+  PRO._confData.src.file = bak; PRO._confPaint(); PRO._confDossierPaint(); PRO.confCloseD(); return r;
 });
 ok(noTpl.a === 0 && /238220260916M001\.pdf/.test(noTpl.t), '📄⑮e 採礦沒給樣板 → 只印檔名,⛔ 不可自己湊一個網址出來');
 
@@ -260,6 +273,7 @@ ok(/未分類/.test(indNone), '🏭⑯c 沒有產業碼的要歸「未分類」�
 // ── 🔔 我的倒數提醒(2330 今天有一場)
 const alert = await pg.evaluate(() => {
   const el = document.querySelector('#confAlert [data-conf-alert]');
+  if (el && el.tagName === 'DETAILS') el.open = true;      // 📞 V79.7.7 收成一行(點開才看到全部名字與那句說明)
   return { n: el ? el.dataset.confAlert : null, t: el ? (el.innerText || '').replace(/\s+/g, ' ') : '' };
 });
 ok(alert.n === '1' && /台積電/.test(alert.t), '🔔⑰ 「你的清單裡未來 N 天有 M 場」只算庫存/自選/決策台', JSON.stringify(alert));
@@ -267,13 +281,15 @@ ok(/波動/.test(alert.t) && !DIR.test(alert.t) && !/成部位|留倉|全出清/
   '🔔⑰b 只講「波動會變大」,⛔ 不給方向、不給部位(行事曆日方向實測 0 個成立)', (alert.t.match(DIR) || [])[0]);
 
 // ── 📜 歷年法說會
+// 📞 V79.7.7 歷年場次搬進公司檔案「跟上次比」分頁(⛔ 另開一顆鈕)
 const hist = await pg.evaluate(() => {
   PRO.confSearch('廣達');
-  const btn = document.querySelector('#tabConf [data-conf-hist="2382"]');
-  const label = btn ? btn.innerText.trim() : '';
-  PRO.confHist('2382');
-  const box = document.querySelector('#tabConf [data-conf-histbox="2382"]');
-  return { label, t: box ? (box.innerText || '').replace(/\s+/g, ' ') : '' };
+  PRO.confOpenD(document.querySelector('#tabConf [data-conf-row="2382"]').dataset.confKey, 'cmp');
+  const box = document.querySelector('#confDossier [data-conf-histbox="2382"]');
+  const label = box ? ((box.querySelector('h4') || {}).innerText || '') : '';
+  const t = box ? (box.innerText || '').replace(/\s+/g, ' ') : '';
+  PRO.confCloseD();
+  return { label, t };
 });
 ok(/2 場/.test(hist.label), '📜⑱ 「歷年」只算**這一場以外**的(⛔ 不可把今天這場也算進去)', hist.label);
 ok(/2026-03-14/.test(hist.t) && /2025-11-08/.test(hist.t) && /2025-11-08 起才有紀錄/.test(hist.t) && /不是公司的完整歷史/.test(hist.t),

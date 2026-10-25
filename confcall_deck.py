@@ -151,8 +151,23 @@ MACRO_RE = re.compile(r'OECD|IMF|世界銀行|全球經濟|經濟成長|經濟�
 COMPANY_RE = re.compile(r'本公司|公司|我們|集團|本集團|營收|訂單|產能|出貨|客戶|新產品|量產')
 POS_RE = re.compile(r'成長|增加|提升|強勁|優於|創新高|新高|擴產|樂觀|回溫|復甦|看好|倍增|growth|increase|strong|record|recover', re.I)
 NEG_RE = re.compile(r'下滑|減少|衰退|疲弱|保守|審慎|謹慎|調整|庫存去化|逆風|不確定|放緩|下修|decline|decrease|weak|cautious|headwind|soft', re.I)
-_THEME_RES = [(t, re.compile((r'(?<![A-Za-z])' + re.escape(t) + r'(?![A-Za-z])') if re.match(r'^[\x00-\x7f ]+$', t) else re.escape(t), re.I))
-              for t in THEMES]
+TERMS_VER = 2                # 🛰️ V79.7.7 詞庫比對規則的版本(舊特徵 tv 不是這個 → 有全文的用全文重抽一次,reterm_all)
+RETERM_SEC = float(os.getenv('CC_RETERM_SEC') or 300)   # 舊特徵重抽「講到的詞」一輪最多花幾秒(做不完下一輪接著做)
+
+
+def _theme_rx(t):
+    """詞庫裡一個詞 → 比對樣式。
+    🛰️ V79.7.7 實測(2026-08 有全文的 417 份):「AI 伺服器」只認一個空白 → 14 份;寫成「AI伺服器」的有 26 份全部漏掉
+       → 詞裡的空白改成「可有可無」、Wi-Fi 的連字號可有可無;英文字母開頭 / 結尾的那一側不可以接著別的英文字母
+       (「AI 伺服器」⛔ 對到「GAI 伺服器」、「Micro LED」照舊)。"""
+    body = re.escape(t).replace(r'\ ', r'\s*').replace(r'Wi\-Fi', r'Wi-?Fi')
+    ascii_ = bool(re.match(r'^[\x00-\x7f ]+$', t))            # 全英數的詞:兩側照舊都不可以接英文字母(V79.6.3 的規則)
+    pre = r'(?<![A-Za-z])' if ascii_ or re.match(r'[A-Za-z]', t) else ''
+    post = r'(?![A-Za-z])' if ascii_ or re.search(r'[A-Za-z]$', t) else ''
+    return re.compile(pre + body + post, re.I)
+
+
+_THEME_RES = [(t, _theme_rx(t)) for t in THEMES]
 # ⚠️ V79.6.3 第一輪實跑:舊樣式抓到人名(CHIEN-HUNG)、英文單字(COMMERCIAL / MARKET / OUTLOOK)、廠區料號(Y19 / CB02 / H007)、
 #    StockCode 這種混大小寫 → 只收「3~5 個大寫字母」的縮寫;2 個字母 / 混大小寫 / 英文加數字一律只認詞庫裡的(GaN / CoWoS / GB200…)
 _EN_TOKEN = re.compile(r'(?<![A-Za-z0-9\-])[A-Z]{3,5}(?![A-Za-z0-9\-])')
@@ -596,6 +611,7 @@ def feat_of(pages, meta):
         'outlook': ol,
         'nums': nums_of(lines),
         'terms': terms_of(pages),
+        'tv': TERMS_VER,
         'tone': tone_of(ol),
     }
 
@@ -956,8 +972,148 @@ def novelty_all(recs):
         if new is None:
             out[r['f']] = {'first': True}
         else:
+            # 🛰️ V79.7.7 詞庫裡的題材排前面(同一組裡照頁碼):清單只秀前 5 個,以前常常整排是 WEF / TMP 這種英文縮寫、真的題材被擠掉
+            new = sorted(new, key=lambda t: (t not in _THEME_SET, r['terms'][t] or 999))
             out[r['f']] = {'new': [[t, r['terms'][t]] for t in new][:12], 'n_new': len(new), 'dropped': dropped, 'prev_d': prev[-1][0]}
         hist.setdefault(r['s'], []).append((d, r['terms']))
+    return out
+
+
+def reterm_one(rec, pages):
+    """一份已讀過的簡報 → 用全文照現在的詞庫規則重抽「講到的詞」(⛔ 其他欄位一個字都不動)。"""
+    rec['terms'] = {k: v for k, v in terms_of(pages).items() if _term_ok(k)}
+    rec['tv'] = TERMS_VER
+
+
+def reterm_all(allr, files, log=print, clock=time.time, budget=None):
+    """🛰️ V79.7.7 以前讀的簡報,「講到的詞」是舊規則抽的(「AI伺服器」沒空白就對不到)→ 有全文的照現在的規則重抽一次。
+    ⭐ 冪等:做過的標 tv = TERMS_VER;沒有全文的留著舊的(之後補存了全文再做,補存那條路自己會重抽);
+    一個月的全文只解壓一次、新 → 舊、超過 budget 秒就停(剩的下一輪接著做)。回 (重抽幾份, 動到的特徵月份)。"""
+    budget = RETERM_SEC if budget is None else budget
+    t0 = clock()
+    want = {}
+    for m, lst in allr.items():
+        for r in lst:
+            if r.get('st') != 'ok' or r.get('tv') == TERMS_VER:
+                continue
+            tx = (files.get(r.get('f')) or {}).get('tx')
+            if tx and tx != '-':
+                want.setdefault(tx, []).append((m, r))
+    done, gone, touched = 0, 0, set()
+    for tx in sorted(want, reverse=True):
+        if clock() - t0 > budget:
+            break
+        texts = _load_json(text_file(tx), {}) or {}
+        for m, r in want[tx]:
+            p = (texts.get(r.get('f')) or {}).get('p')
+            if p:
+                reterm_one(r, p)
+                done += 1
+            else:                       # 索引說有全文、全文檔裡卻沒有 → 留舊的詞、標做過(⛔ 每一輪重新解壓那個月)
+                r['tv'] = TERMS_VER
+                gone += 1
+            touched.add(m)
+        del texts
+    left = sum(len(v) for v in want.values()) - done - gone
+    if done or gone or left:
+        log(f'🛰️ 舊簡報「講到的詞」用全文照新規則重抽 {done} 份' + (f' ・全文檔裡找不到 {gone} 份(留舊的)' if gone else '')
+            + (f' ・還有 {left} 份下一輪接著做' if left else ''))
+    return done, touched
+
+
+# ───────────────────────── 🛰️ 主題雷達(V79.7.7)─────────────────────────
+#   本站讀過的全部簡報 → 每一季「有幾家公司的簡報提到這個題材」+「有幾家是第一次提到」(這家公司以前的簡報都沒有)
+#   ⭐ 使用者 10/25:「更厲害可以看到裡面重點或別人看不到的重點」→ 一千多家公司的簡報一起看,哪些題材越來越多公司在講
+#   ⛔ 只描述:本站實測「簡報講了什麼」看不出之後股價(實測總表 confcall-content)→ 檔案 / 畫面都不給方向
+#   ⛔ 只用詞庫(THEMES);英文縮寫雜訊太多不列;同一件事的不同寫法併成一個(RADAR_ALIAS);太泛的商業用語不列(RADAR_SKIP)
+RADAR_ALIAS = {'人工智慧': 'AI', '共封裝光學': 'CPO', '小晶片': 'Chiplet', '碳化矽': 'SiC', '氮化鎵': 'GaN',
+               'MicroLED': 'Micro LED', 'WiFi 7': 'Wi-Fi 7', '高壓直流': 'HVDC', '軍工': '國防', '物聯網': 'IoT',
+               'GB300': 'GB200', 'B200': 'GB200', 'B300': 'GB200', 'Blackwell': 'GB200', 'HBM3E': 'HBM',
+               'H200': 'H100', 'H20': 'H100', 'MI350': 'MI300'}
+RADAR_SKIP = {'量產', '新產品', '新客戶', '併購', '轉投資'}
+RADAR_MIN_CO = 300           # 一季讀到簡報的公司少於這個數 → 那一季不列(2023 以前本站讀得少,比例會亂跳)
+RADAR_LIST = 40              # 每個題材、每一季最多列幾家「第一次提到」的公司
+# 比對規則在 TERMS_VER 2 改過的詞(有空白 / Wi-Fi)→ 還沒有全文可以重抽的舊簡報對不到「AI伺服器」這種寫法:
+#   那幾季的比例可能偏低(畫面要講)、「第一次提到」⛔ 算以前有舊簡報的公司(可能只是當時沒對到)
+RADAR_RV = sorted({RADAR_ALIAS.get(t, t) for t in THEMES if (' ' in t or 'Wi-Fi' in t) and t not in RADAR_SKIP})
+
+
+def q_of(d):
+    """場次日期 → 那一季(照開會的月份:7~9 月開的 = 2026Q3,多半在講第 2 季的成績)。"""
+    s = str(d or '')
+    return f'{s[:4]}Q{(int(s[5:7]) - 1) // 3 + 1}' if re.match(r'^\d{4}-\d{2}', s) else ''
+
+
+def build_radar(recs, today, log=print):
+    """回 cc_radar.json 的內容(⛔ 不寫檔;run() 寫)。
+    「第一次提到」= 這家公司在本站有更早的簡報(⛔ 第一次收錄的公司不算)、而且更早的每一份都沒提過;同一天的兩份互相不算「更早」。"""
+    grp = {t: RADAR_ALIAS.get(t, t) for t in THEMES if t not in RADAR_SKIP}
+    ok = sorted([r for r in recs if r.get('st') == 'ok' and isinstance(r.get('terms'), dict) and r.get('d') and r.get('s') and q_of(r['d'])],
+                key=lambda r: (r['d'], r.get('f') or ''))
+    rv = set(RADAR_RV)
+    nco, ment, first, seen, old_co, nd, nold = {}, {}, {}, {}, set(), {}, {}
+    i = 0
+    while i < len(ok):
+        d, j = ok[i]['d'], i
+        while j < len(ok) and ok[j]['d'] == d:
+            j += 1
+        q, upd = q_of(d), []
+        for r in ok[i:j]:
+            s = str(r['s'])
+            nco.setdefault(q, set()).add(s)
+            nd[q] = nd.get(q, 0) + 1
+            is_old = r.get('tv') != TERMS_VER
+            if is_old:
+                nold[q] = nold.get(q, 0) + 1
+            ks = {}
+            for t, p in r['terms'].items():
+                k = grp.get(t)
+                if k and (k not in ks or (p or 999) < (ks[k] or 999)):
+                    ks[k] = p
+            prev = seen.get(s)
+            for k, p in ks.items():
+                ment.setdefault(k, {}).setdefault(q, set()).add(s)
+                if prev is not None and k not in prev and not (k in rv and s in old_co):
+                    fq = first.setdefault(k, {}).setdefault(q, {})
+                    if s not in fq:
+                        fq[s] = [s, r.get('name') or s, d, p]
+            upd.append((s, set(ks), is_old))
+        for s, ks, is_old in upd:
+            seen.setdefault(s, set()).update(ks)
+            if is_old:
+                old_co.add(s)
+        i = j
+    allq = sorted(nco)
+    start = next((k for k, q in enumerate(allq) if len(nco[q]) >= RADAR_MIN_CO), None)
+    if start is None:
+        log(f'🛰️ 主題雷達:沒有一季讀到 {RADAR_MIN_CO} 家以上公司的簡報 → 不產出')
+        return None
+    qs = allq[start:]
+    cur = q_of(today.isoformat())
+    part = 1 if qs and qs[-1] == cur else 0
+    last = qs[-2] if part and len(qs) >= 2 else qs[-1]
+    rows = []
+    for k in sorted(ment):
+        m = [len(ment[k].get(q, ())) for q in qs]
+        if not any(m):
+            continue
+        f = [len((first.get(k) or {}).get(q, {})) for q in qs]
+        fl = {}
+        for q in {last, qs[-1]}:
+            lst = sorted(((first.get(k) or {}).get(q) or {}).values(), key=lambda x: (x[2], x[0]), reverse=True)
+            if lst:
+                fl[q] = lst[:RADAR_LIST]
+        rows.append({'t': k, 'al': sorted(t for t, g in grp.items() if g == k and t != k), 'm': m, 'f': f, 'fl': fl})
+    qset = set(qs)
+    inq = [r for r in ok if q_of(r['d']) in qset]
+    n_deck = len(inq)
+    out = {'updated': datetime.now(TW).isoformat(timespec='minutes'), 'v': 1, 'qs': qs, 'nco': [len(nco[q]) for q in qs],
+           'part': part, 'last': last, 'min_co': RADAR_MIN_CO, 'n_deck': n_deck,
+           'nd': [nd.get(q, 0) for q in qs], 'nold': [nold.get(q, 0) for q in qs], 'rv': RADAR_RV,
+           'n_co': len({str(r['s']) for r in inq}),
+           'from': inq[0]['d'] if inq else '', 'to': inq[-1]['d'] if inq else '',
+           'skip': sorted(RADAR_SKIP), 'rows': rows}
+    log(f'🛰️ 主題雷達:{len(qs)} 季({qs[0]} ~ {qs[-1]}{",最後一季進行中" if part else ""})・{n_deck} 份簡報 / {out["n_co"]} 家 ・{len(rows)} 個題材')
     return out
 
 
@@ -1580,6 +1736,7 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
     moved, touched_m = fix_dates(allr, earliest)
     if moved:
         log(f'🗓️ {moved} 份簡報找到更早引用它的場次 → 日期改成那一場(⛔ 不重新下載)')
+    by_f = {r.get('f'): (m, r) for m, lst in allr.items() for r in lst if r.get('f')}   # 補存全文時順便重抽「講到的詞」
     fetcher = fetcher or (Fetcher() if todo else None)
     new_recs, ai_used, ai_fail, n_ok, n_fail, streak, n_try = [], 0, 0, 0, 0, 0, 0
     texts, n_tx_old = {}, 0      # 📝 這一輪要存的全文 {月份: {檔名: …}}・補存了幾份(已讀過的)
@@ -1668,6 +1825,10 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
                 texts.setdefault(m_tx, {})[f] = text_pack(pages)
                 files[f] = {**{k: v for k, v in prev.items() if k not in ('txerr', 'txlast', 'txtries')}, 'tx': m_tx}
                 n_tx_old += 1
+                fm_r = by_f.get(f)
+                if fm_r and fm_r[1].get('st') == 'ok' and fm_r[1].get('tv') != TERMS_VER:   # 🛰️ 字都在手上了 → 詞照新規則重抽
+                    reterm_one(fm_r[1], pages)
+                    touched_m.add(fm_r[0])
             continue
         if pages is None:                                    # 抽不出來 / 抽太久 → 記原因、⛔ 不重試(同一份檔下次一樣卡)
             files[f] = {'st': 'parse_fail', 'err': perr, 's': s, 'd': d, 'tries': 1}
@@ -1716,19 +1877,31 @@ def run(fetcher=None, groq_keys=None, today=None, log=print, list_fetch=None):
         n_fill, n_call, tm, _ = ai_fill(allr, today, groq_keys, AI_MAX - ai_used, log=log)
         ai_used += n_call
         touched_m |= tm
-    for m in touched_m:
-        _save_json(month_file(m + '-01'), sorted(allr.get(m, []), key=lambda x: (x.get('d') or '', x.get('f') or '')))
     # 📝 全文月檔:舊的留著、這一輪的加進去(⛔ 整份重寫成只剩這一輪的);先存全文、再存索引(索引的 tx 才對得上)
     for m, add in texts.items():
         cur = _load_json(text_file(m), {}) or {}
         cur.update(add)
         _save_json(text_file(m), cur)
+    # 🛰️ V79.7.7 舊簡報的詞照新規則重抽(有全文的;一輪最多 RETERM_SEC 秒)—— 排在存全文之後:這一輪才存的全文也讀得到(⛔ 被當成「全文檔裡找不到」)
+    _, tm_rt = reterm_all(allr, files, log=log)
+    touched_m |= tm_rt
+    for m in touched_m:
+        _save_json(month_file(m + '-01'), sorted(allr.get(m, []), key=lambda x: (x.get('d') or '', x.get('f') or '')))
     idx['updated'] = datetime.now(TW).isoformat(timespec='minutes')
     _save_json(CC / 'cc' / 'index.json', idx)
     _gh_out(ran=1)                # 💾 紀錄已存 → 就算等一下紅燈,workflow 也要把 cc_deep 推上去(⛔ 不然「試過幾次」永遠存不住)
     recs = [x for lst in allr.values() for x in lst]
     nov = novelty_all(recs)
     wrote, nd = build_outputs(recs, nov, earliest, today, files=files, cite=recent_fs, log=log)
+    # 🛰️ V79.7.7 主題雷達(全市場簡報:哪些題材越來越多公司在講)—— 它是附帶的產物:算不出來只記一行、這一輪不更新雷達,
+    #    ⛔ 不可拖累上面已經算好的簡報重點(部署那一步只在這一步成功時才跑,陷阱 #44)
+    try:
+        rad = build_radar(recs, today, log=log)
+    except Exception as e:  # noqa: BLE001
+        rad = None
+        log(f'⚠️ 主題雷達算不出來({type(e).__name__}: {str(e)[:160]})→ 這一輪不更新雷達,簡報重點照常')
+    if rad:
+        _save_json(DATA / 'cc_radar.json', rad)
     left = max(0, len(todo) - n_try) + sum(1 for r, f, w in todo[:n_try] if (files.get(f) or {}).get('st') == 'dl_fail'
                                            and (files.get(f) or {}).get('tries', 0) < TRANSIENT_TRIES)
     if reason == 'done' and left:

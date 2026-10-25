@@ -25,8 +25,8 @@ const ok = (c, n, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 // ── 原始碼守門
 const PRO_SRC = readFileSync('pro.html', 'utf8');
 const IDX_SRC = readFileSync('index.html', 'utf8');
-ok(/_confSel: 'new'/.test(PRO_SRC) && /_CONF_SEL: \[\['new', '🆕 剛開完'\], \['mine', '👜 我的'\], \['future', '📅 接下來 14 天'\], \['all', '全部'\]\]/.test(PRO_SRC),
-  'ⓐ 法說會分頁預設 = 🆕 剛開完,篩選四顆(剛開完 / 我的 / 接下來 14 天 / 全部)');
+ok(/_confSel: 'new'/.test(PRO_SRC) && /_CONF_SEL: \[\['new', '🆕 剛開完'\], \['mine', '👜 我的'\], \['future', '📅 接下來 14 天'\], \['radar', '🛰️ 主題雷達'\], \['all', '🗂️ 全部'\]\]/.test(PRO_SRC),
+  'ⓐ 法說會分頁預設 = 🆕 剛開完,範圍五個(剛開完 / 我的 / 接下來 14 天 / 主題雷達 / 全部;V79.7.7 加雷達)');
 ok(/'corpConfCall',/.test(IDX_SRC.slice(IDX_SRC.indexOf("'ovOpenBox', 'ovColBox'"), IDX_SRC.indexOf("'ovOpenBox', 'ovColBox'") + 400)),
   'ⓑ 散戶 App 那一格在切股清空清單裡(陷阱 #19)');
 {
@@ -121,6 +121,7 @@ const b = await chromium.launch({
       xssImg: !!(card('2454') && card('2454').querySelector('img')), xss: !!window.__xss,
       txt: (tab.innerText || '').replace(/\s+/g, ' '),
       meta: document.getElementById('confMeta')?.innerText || '',
+      past: tab.querySelector('[data-conf-sec="past"]')?.textContent || '',
     };
   });
   ok(R1.sel === 'new', '① 一進來就是 🆕 剛開完', R1.sel);
@@ -133,24 +134,33 @@ const b = await chromium.launch({
   ok(R1.first3231 && R1.zero2330 === '0' && R1.reuse2454 && R1.none6488,
      '② 第一次收錄 / 沒有新的詞 / 沿用舊簡報 / 還沒有簡報 四種標籤各自對上', JSON.stringify({ f: R1.first3231, z: R1.zero2330, r: R1.reuse2454, n: R1.none6488 }));
   ok(/券商邀請/.test(R1.host3231) && /自辦/.test(R1.host2382), '② 券商邀請(擇要寫「受邀參加…論壇」)vs 公司自辦', `${R1.host3231} | ${R1.host2382}`);
-  ok(/毛利率維持 12\.5%/.test(R1.one2382) && /數字都對過原文/.test(R1.one2382), '② 一句話讀 digest 的 one,並寫明 AI 只讀簡報句子', R1.one2382);
+  // 📞 V79.7.7 一列一場:「AI 只讀簡報句子、數字都對過原文」寫在那一段的標頭(⛔ 每一列重複一次)
+  ok(/毛利率維持 12\.5%/.test(R1.one2382) && /🤖/.test(R1.one2382) && /AI 只讀簡報抽出來的句子/.test(R1.past) && /數字都對過原文/.test(R1.past),
+     '② 一句話讀 digest 的 one,並寫明 AI 只讀簡報句子(段落標頭)', `${R1.one2382} | ${R1.past}`);
   ok(/預期明年產能擴充至 2 倍/.test(R1.ol3231), '② 沒有 AI 一句話 → 退回簡報原文那句「講到之後」', R1.ol3231);
   ok(!R1.xssImg && !R1.xss, '⑥ AI 文字一律跳脫(塞 <img onerror> ⛔ 變成元素)');
   ok(/簡報重點:最近 60 天讀到 5 份/.test(R1.meta), '④ 頁頭寫出簡報讀到幾份 + 更新時間', R1.meta.slice(0, 200));
   const DIR = /偏多|偏空|利多|利空|看多|看空|加碼|減碼|會漲|會跌|勝率/;
   ok(!DIR.test(R1.txt), '⑥ 整頁⛔ 方向詞 / 勝率', (R1.txt.match(DIR) || [])[0]);
 
-  // ③ 展開 → 讀 data/cc/2382.json → 數字 / 頁碼 / 跟上一份比 / 開完到現在
+  // ③ 點那一場 → 公司檔案(📞 V79.7.7 取代舊的「展開 ▾」)讀 data/cc/2382.json → 數字 / 頁碼 / 跟上一份比 / 開完到現在
+  //    分頁:重點(AI 整理 / 講到之後 / 開完到現在)・數字(做到了沒 / 公司給的數字)・跟上次比(第一次提到 / 上一份有這次沒講)
   const R2 = await pg.evaluate(async () => {
-    const card = document.querySelector('[data-conf-card][data-conf-row="2382"]');
-    const det = card.querySelector('details[data-dk^="ccd-"]');
-    det.open = true;
-    await PRO.confOpen(det, '2382', det.getAttribute('data-dk').replace(/^ccd-2382-/, ''), '');
+    const row = document.querySelector('[data-conf-card][data-conf-row="2382"]');
+    row.click();
+    const wait = async (sel) => { for (let i = 0; i < 40; i++) { if (document.querySelector('#confDossier ' + sel)) return; await new Promise(r => setTimeout(r, 50)); } };
+    await wait('[data-ccd-ai]');
     await new Promise(r => setTimeout(r, 300));
-    const box = det.querySelector('[data-ccd-body]');
-    const g = s => box.querySelector(s)?.textContent || '';
-    return { nums: g('[data-ccd-nums]'), ol: g('[data-ccd-ol]'), nw: g('[data-ccd-new]'), dropped: g('[data-ccd-dropped]'), ai: g('[data-ccd-ai]'), px: g('[data-ccd-px]') };
+    const g = s => document.querySelector('#confDossier ' + s)?.textContent || '';
+    const o = { sel: row.classList.contains('sel'), key: document.querySelector('#confDossier [data-ccd-body]')?.getAttribute('data-ccd-tab'),
+                ol: g('[data-ccd-ol]'), ai: g('[data-ccd-ai]'), px: g('[data-ccd-px]'), head: g('[data-ccd-head]') };
+    PRO.confDTab('num'); o.nums = g('[data-ccd-nums]');
+    PRO.confDTab('cmp'); o.nw = g('[data-ccd-new]'); o.dropped = g('[data-ccd-dropped]');
+    o.tabs = [...document.querySelectorAll('#confDossier [data-ccdtab]')].map(b => b.getAttribute('data-ccdtab'));
+    return o;
   });
+  ok(R2.sel && R2.key === 'key' && /廣達/.test(R2.head) && R2.tabs.join(',') === 'key,num,cmp,info',
+     '③ 點一場 → 那一列亮起來、公司檔案先停在「重點」、分頁 = 重點 / 數字 / 跟上次比 / 公司說明(不是台積電 ⛔ 問答)', JSON.stringify({ sel: R2.sel, key: R2.key, tabs: R2.tabs }));
   ok(/毛利率 12\.5%/.test(R2.nums) && /第 3 頁/.test(R2.nums) && /資本支出 120 億元/.test(R2.nums) && /第 4 頁/.test(R2.nums),
      '③ 公司給的數字照抄原文 + 頁碼', R2.nums);
   ok(/預期第四季營收季增 5%~8%/.test(R2.ol) && /第 5 頁/.test(R2.ol), '③ 講到「之後」的句子 + 頁碼', R2.ol);
@@ -173,11 +183,11 @@ const b = await chromium.launch({
 
   // ④ cc 檔讀不到 → 說「檔案沒產出或網路失敗」,⛔ 說成簡報沒內容
   const R4 = await pg.evaluate(async () => {
-    const card = document.querySelector('[data-conf-card][data-conf-row="3231"]');
-    const det = card.querySelector('details[data-dk^="ccd-"]');
-    det.open = true;
-    await PRO.confOpen(det, '3231', 'x', '');
-    return det.querySelector('[data-ccd-body]')?.textContent || '';
+    PRO._cache['data/cc/3231.json'] = undefined; PRO._confCC['3231'] = undefined;
+    PRO.fetchJson = (orig => async (p, t) => (p === 'data/cc/3231.json' ? null : orig.call(PRO, p, t)))(PRO.fetchJson);
+    document.querySelector('[data-conf-card][data-conf-row="3231"]').click();
+    for (let i = 0; i < 40 && !document.querySelector('#confDossier [data-ccd-nofile]'); i++) await new Promise(r => setTimeout(r, 50));
+    return document.querySelector('#confDossier [data-ccd-body]')?.textContent || '';
   });
   ok(/讀不到這一檔的簡報重點檔/.test(R4) && /不代表簡報沒內容/.test(R4), '④ cc 檔讀不到 ≠ 簡報沒內容', R4);
 
@@ -298,12 +308,11 @@ const b = await chromium.launch({
     const c2 = card('2412');
     o.r2412 = { reuse: c2?.querySelector('[data-cc-reuse]')?.textContent || '', newTag: !!c2?.querySelector('[data-cc-new]'),
                 newlist: !!c2?.querySelector('[data-cc-newlist]'), note: c2?.querySelector('[data-cc-reusenote]')?.textContent || '' };
-    const det = c2?.querySelector('details[data-dk^="ccd-"]');
-    if (det) {
-      det.open = true;
-      await PRO.confOpen(det, '2412', det.getAttribute('data-dk').replace(/^ccd-2412-/, ''), DR);
-      await new Promise(r => setTimeout(r, 300));
-      o.det = (det.querySelector('[data-ccd-body]')?.textContent || '').replace(/\s+/g, ' ');
+    // 📞 V79.7.7 點那一場 → 公司檔案(重點分頁):說明用的是哪一場的簡報 + 開完到現在從「這一場」算
+    if (c2) {
+      c2.click();
+      for (let i = 0; i < 40 && !/[+-]\d+\.\d%/.test(document.querySelector('#confDossier [data-ccd-px]')?.textContent || ''); i++) await new Promise(r => setTimeout(r, 50));
+      o.det = (document.querySelector('#confDossier [data-ccd-body]')?.textContent || '').replace(/\s+/g, ' ');
     }
     return o;
   }, { DR });

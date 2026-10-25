@@ -875,8 +875,9 @@ ok('㊸g 分段回 206 但起點對不上 → 那份失敗(⛔ 拼出錯的檔)'
 # ㊷ job 時限要裝得下「讀到 40 分才停止開新的 + 最後那份大簡報下載滿 + 抽字 + AI + 補摘要 + 推檔」(被砍掉 = 整輪白讀,紀錄在最後才存)
 _tm = int(re.search(r'timeout-minutes:\s*(\d+)', _wf).group(1))
 # 安裝平常 3 分、apt 慢的時候 5 分;推檔兩個分支各 5 次重試(5~25 秒)+ 接力 → 抓 5 分
-_need = 5 * 60 + cdm.BUDGET_MIN * 60 + cdm.DL_BIG_MAX_SEC + cdm.EXTRACT_MAX_SEC + cdm.AI_DEADLINE + cdm.AI_FILL_SEC + cdm.AI_DEADLINE + 5 * 60
-ok('㊷ job 時限 ≥ 安裝 5 分 + 讀簡報上限 + 最後一份下載上限 + 抽字 + AI + 補摘要(+ 最後一次 AI)+ 推檔 5 分(改其中任何一個時限要一起看)',
+# 🛰️ V79.7.7 + 舊簡報重抽「講到的詞」(RETERM_SEC;最後一個月份可能超過一點)+ 主題雷達 → 再多抓 60 秒
+_need = 5 * 60 + cdm.BUDGET_MIN * 60 + cdm.DL_BIG_MAX_SEC + cdm.EXTRACT_MAX_SEC + cdm.AI_DEADLINE + cdm.AI_FILL_SEC + cdm.AI_DEADLINE + cdm.RETERM_SEC + 60 + 5 * 60
+ok('㊷ job 時限 ≥ 安裝 5 分 + 讀簡報上限 + 最後一份下載上限 + 抽字 + AI + 補摘要(+ 最後一次 AI)+ 重抽詞 + 雷達 + 推檔 5 分(改其中任何一個時限要一起看)',
    _tm * 60 >= _need, (_tm, round(_need / 60, 1)))
 
 
@@ -1208,6 +1209,144 @@ with tempfile.TemporaryDirectory() as tmp:
     n6 = json.loads((datax / 'cc' / '1305.json').read_text(encoding='utf-8'))['decks'][0].get('nums') or []
     ok('㊿h ⭐ 決定性對照:沒有全文 → 照舊用存著的那兩半句(⛔ 編、⛔ 弄丟)', n6 == half, n6)
     ok('㊿h 存著的那份(研究用的特徵)⛔ 被改:重抽只寫進給 App 的 data/cc', rec5['nums'] == half, rec5['nums'])
+
+
+# 🛰️ V79.7.7 主題雷達 + 詞庫比對規則(使用者 10/25:「更厲害可以看到裡面重點或別人看不到的重點」)
+#   ① 「AI伺服器」沒空白也要對得到(舊規則只認一個空白:2026-08 有全文的 417 份,14 份對得到、26 份漏掉)
+#   ② 舊簡報有全文的 → 照新規則重抽「講到的詞」(冪等、⛔ 動其他欄位、時間用完下一輪接著做)
+#   ③ 補存全文那條路順便重抽
+#   ④ build_radar:每一季幾家在講 / 幾家第一次提到(第一次收錄 ⛔ 算、以前講過 ⛔ 算、別名併在一起、同一天 ⛔ 互相算更早、
+#      以前是舊規則抽的 ⛔ 算第一次 —— 決定性對照:同一家以前是新規則 → 算)
+#   ⑤ run() 寫出 data/cc_radar.json(⛔ 沒有一季夠多家就不寫)・⑥ 第一次提到的詞:詞庫題材排前面 ・⑦ workflow 一起推
+with tempfile.TemporaryDirectory() as tmp:
+    cd, data, cc = setup(tmp, [])
+    rx = dict(cd._THEME_RES)
+    ok('🛰️① 「AI伺服器」沒空白 / 一個 / 兩個空白都對得到', all(rx['AI 伺服器'].search(t) for t in ['AI伺服器出貨', 'AI 伺服器', 'AI  伺服器', 'ai伺服器']))
+    ok('🛰️①b ⭐ 決定性對照:舊寫法(只 re.escape)對不到「AI伺服器」', not re.compile(re.escape('AI 伺服器'), re.I).search('AI伺服器出貨'))
+    ok('🛰️①c 英文那一側 ⛔ 接著別的英文字母(「GAI伺服器」⛔ 算)', not rx['AI 伺服器'].search('GAI伺服器'))
+    ok('🛰️①d Wi-Fi 的連字號 / 空白可有可無;Micro LED 也一樣', bool(rx['Wi-Fi 7'].search('WiFi7 晶片') and rx['Wi-Fi 7'].search('Wi-Fi 7')
+       and rx['Micro LED'].search('MicroLED') and rx['Micro LED'].search('Micro LED')))
+    ok('🛰️①e 全英數的詞兩側照舊不接英文字母(5G ⛔ 對到 B5G、AI ⛔ 對到 RAID)', bool(rx['5G'].search('5G 手機')) and not rx['5G'].search('B5G')
+       and bool(rx['AI'].search('AI 需求')) and not rx['AI'].search('RAID'))
+    ok('🛰️①f 新讀的簡報特徵標 tv = TERMS_VER', cd.feat_of(['AI伺服器'], {}).get('tv') == cd.TERMS_VER and 'AI 伺服器' in cd.feat_of(['AI伺服器'], {})['terms'])
+
+    # ② reterm_all
+    r_old = {'s': '1111', 'd': '2026-08-10', 'f': '111120260810M001.pdf', 'st': 'ok', 'terms': {'伺服器': 2}, 'chars': 999, 'ai': {'one': 'x'}}
+    r_notx = {'s': '2222', 'd': '2026-08-11', 'f': '222220260811M001.pdf', 'st': 'ok', 'terms': {'伺服器': 1}}
+    r_new = {'s': '3333', 'd': '2026-08-12', 'f': '333320260812M001.pdf', 'st': 'ok', 'terms': {'CPO': 1}, 'tv': cd.TERMS_VER}
+    r_gone = {'s': '4444', 'd': '2026-08-13', 'f': '444420260813M001.pdf', 'st': 'ok', 'terms': {'HBM': 3}}
+    allr = {'2026-08': [r_old, r_notx, r_new, r_gone]}
+    files = {r_old['f']: {'st': 'ok', 'tx': '2026-08'}, r_notx['f']: {'st': 'ok'}, r_new['f']: {'st': 'ok', 'tx': '2026-08'}, r_gone['f']: {'st': 'ok', 'tx': '2026-08'}}
+    cd._save_json(cd.text_file('2026-08'), {r_old['f']: {'p': ['封面', 'AI伺服器出貨成長', '謝謝'], 'n': 20}, r_new['f']: {'p': ['x'], 'n': 1}})
+    lg2 = []
+    n_rt, tm_rt = cd.reterm_all(allr, files, log=lg2.append)
+    ok('🛰️② 有全文的舊簡報:詞照新規則重抽(對到「AI伺服器」)、標 tv、其他欄位一個字都不動',
+       n_rt == 1 and r_old['terms'].get('AI 伺服器') == 2 and r_old.get('tv') == cd.TERMS_VER and r_old['chars'] == 999 and r_old['ai'] == {'one': 'x'} and tm_rt == {'2026-08'},
+       (n_rt, r_old, tm_rt))
+    ok('🛰️②b 沒有全文的:留著舊的詞、⛔ 標做過(之後補存了全文再做)', r_notx['terms'] == {'伺服器': 1} and 'tv' not in r_notx, r_notx)
+    ok('🛰️②c 已經是新規則的 ⛔ 再做;索引說有全文、全文檔裡卻沒有 → 留舊的詞、標做過(⛔ 每輪重新解壓)',
+       r_new['terms'] == {'CPO': 1} and r_gone['terms'] == {'HBM': 3} and r_gone.get('tv') == cd.TERMS_VER and any('全文檔裡找不到 1 份' in x for x in lg2), (r_new, r_gone, lg2))
+    n_rt2, tm_rt2 = cd.reterm_all(allr, files, log=lg2.append)
+    ok('🛰️②d 冪等:第二次跑一份都 ⛔ 再做', n_rt2 == 0 and not tm_rt2, (n_rt2, tm_rt2))
+    r_b = {'s': '5555', 'd': '2026-08-14', 'f': '555520260814M001.pdf', 'st': 'ok', 'terms': {}}
+    lg3 = []
+    n_rt3, _ = cd.reterm_all({'2026-08': [r_b]}, {r_b['f']: {'st': 'ok', 'tx': '2026-08'}}, log=lg3.append, budget=-1)
+    ok('🛰️②e 時間用完 → 這一輪不做、寫「還有 N 份下一輪接著做」', n_rt3 == 0 and 'tv' not in r_b and any('還有 1 份下一輪接著做' in x for x in lg3), lg3)
+
+    # ④ build_radar
+    cd.RADAR_MIN_CO = 2
+    TV = cd.TERMS_VER
+    def R_(s_, d_, terms, tv=TV, k=1):
+        x = {'s': s_, 'd': d_, 'f': f'{s_}{d_.replace("-", "")}M00{k}.pdf', 'st': 'ok', 'terms': terms, 'name': '名' + s_}
+        if tv is not None:
+            x['tv'] = tv
+        return x
+    base = [R_('X', '2024-11-01', {'CPO': 1}),                                              # 2024Q4 只有 1 家 → 那一季 ⛔ 列
+            R_('A', '2025-08-01', {'AI': 1}), R_('C', '2025-08-02', {'CPO': 3}), R_('F', '2025-08-04', {'AI': 1}),
+            R_('G', '2026-04-01', {'AI': 1}), R_('H', '2026-05-01', {'AI': 1}),
+            R_('A', '2026-08-01', {'CPO': 5, '量產': 2}),          # 第一次提到 CPO
+            R_('B', '2026-08-02', {'CPO': 4}),                    # 第一次收錄 → ⛔ 算第一次
+            R_('C', '2026-08-03', {'CPO': 2}),                    # 以前就講過 → ⛔ 算
+            R_('D', '2026-01-05', {'AI': 1}), R_('D', '2026-09-01', {'共封裝光學': 7}),   # 別名 → 併進 CPO、算第一次
+            R_('F', '2026-08-06', {'AI 伺服器': 2}),               # 以前是新規則、沒講 → 算第一次
+            R_('G', '2026-07-01', {'CPO': 1}), R_('G', '2026-07-01', {'CPO': 2}, k=2),   # 同一天兩份 → 只算一次
+            R_('H', '2026-10-08', {'CPO': 10})]                  # 2026Q4 進行中
+    e_old = [R_('E', '2025-08-03', {'伺服器': 2}, tv=None), R_('E', '2026-08-05', {'AI 伺服器': 3})]
+    rad = cd.build_radar(base + e_old, date(2026, 10, 25), log=[].append)
+    rows_ = {r['t']: r for r in rad['rows']}
+    qs = rad['qs']
+    iQ3, iQ4 = qs.index('2026Q3'), qs.index('2026Q4')
+    cpo, ais = rows_.get('CPO'), rows_.get('AI 伺服器')
+    ok('🛰️④ 季從第一個夠多家的那一季開始(2024Q4 只有 1 家 ⛔ 列)、最後一季進行中、比較用 2026Q3',
+       qs[0] == '2025Q3' and qs[-1] == '2026Q4' and rad['part'] == 1 and rad['last'] == '2026Q3', (qs, rad['part'], rad['last']))
+    ok('🛰️④b CPO 2026Q3:A B C D G 五家在講;第一次提到只有 A D G(B 第一次收錄、C 以前講過 ⛔ 算;G 同一天兩份只算一次)',
+       cpo and cpo['m'][iQ3] == 5 and cpo['f'][iQ3] == 3 and sorted(x[0] for x in cpo['fl']['2026Q3']) == ['A', 'D', 'G'], cpo)
+    ok('🛰️④c 別名「共封裝光學」併進 CPO(al 列出來)、量產這種太泛的詞 ⛔ 列', cpo and cpo['al'] == ['共封裝光學'] and '量產' not in rows_ and '共封裝光學' not in rows_, list(rows_))
+    ok('🛰️④d 第一次提到的公司照日期新 → 舊、帶 [代號, 名稱, 日期, 頁]', cpo and cpo['fl']['2026Q3'][0] == ['D', '名D', '2026-09-01', 7]
+       and [x[2] for x in cpo['fl']['2026Q3']] == sorted([x[2] for x in cpo['fl']['2026Q3']], reverse=True), cpo and cpo['fl'])
+    ok('🛰️④e 進行中那一季也列第一次提到的(H 10/08)、分母 nco 照季算', cpo and cpo['fl'].get('2026Q4') == [['H', '名H', '2026-10-08', 10]]
+       and rad['nco'][iQ3] == 7 and rad['nco'][qs.index('2025Q3')] == 4, (cpo and cpo['fl'], rad['nco']))
+    ok('🛰️④f ⭐ 以前那份是舊規則抽的(E)→ 「AI 伺服器」⛔ 算第一次;F 以前是新規則 → 算', ais and ais['m'][iQ3] == 2 and ais['f'][iQ3] == 1
+       and [x[0] for x in ais['fl']['2026Q3']] == ['F'] and 'AI 伺服器' in rad['rv'], ais)
+    e_new = [R_('E', '2025-08-03', {'伺服器': 2}), R_('E', '2026-08-05', {'AI 伺服器': 3})]
+    rad2 = cd.build_radar(base + e_new, date(2026, 10, 25), log=[].append)
+    ais2 = {r['t']: r for r in rad2['rows']}['AI 伺服器']
+    ok('🛰️④g ⭐ 決定性對照:同一家以前那份也是新規則 → E 算第一次(2 家)', ais2['f'][iQ3] == 2, ais2)
+    ok('🛰️④h 每季讀到幾份 / 幾份是舊規則(畫面講「那幾季可能偏低」用)', rad['nd'][qs.index('2025Q3')] == 4 and rad['nold'][qs.index('2025Q3')] == 1, (rad['nd'], rad['nold']))
+    ok('🛰️④i 沒有一季夠多家 → 回 None(⛔ 寫半套)', cd.build_radar(base[:2], date(2026, 10, 25), log=[].append) is None)
+
+    # ⑥ 第一次提到:詞庫題材排前面(同一組裡照頁碼)
+    nv = cd.novelty_all([R_('Q', '2026-07-01', {'AI': 1}), R_('Q', '2026-08-01', {'WEF': 1, 'TMP': 2, 'CPO': 5, '機器人': 6})])
+    q_new = [t for t, _ in nv['Q20260801M001.pdf']['new']]
+    ok('🛰️⑥ 第一次提到的詞:題材(CPO / 機器人)排在英文縮寫(WEF / TMP)前面,同一組照頁碼', q_new == ['CPO', '機器人', 'WEF', 'TMP']
+       and nv['Q20260801M001.pdf']['n_new'] == 4, q_new)
+
+# ③ 補存全文那條路順便重抽 + ⑤ run() 寫出 cc_radar.json
+with tempfile.TemporaryDirectory() as tmp:
+    rows = [{'s': '5555', 'name': '測試庚', 'd': '2026-10-21', 't': '14:00', 'pdf': ['555520261021M001.pdf']},
+            {'s': '6666', 'name': '測試辛', 'd': '2026-10-22', 't': '14:00', 'pdf': ['666620261022M001.pdf']}]
+    cd, data, cc = setup(tmp, rows)
+    old55 = {'s': '5555', 'd': '2026-10-21', 'f': '555520261021M001.pdf', 'name': '測試庚', 'kind': 'pdf', 'st': 'ok', 'pages': 2,
+             'chars': 300, 'titles': [], 'outlook': [], 'nums': [], 'terms': {}, 'tone': [0, 0], 'ai': {'one': '舊摘要', 'outlook': [], 'new': [], 'risk': []}}
+    (cc / 'cc' / 'feat').mkdir(parents=True, exist_ok=True)
+    cd._save_json(cc / 'cc' / 'feat' / '2026-10.json.gz', [old55])
+    cd._save_json(cc / 'cc' / 'index.json', {'v': 2, 'files': {'555520261021M001.pdf': {'st': 'ok', 's': '5555', 'd': '2026-10-21', 'tries': 1, 'pages': 2}}})
+    D55 = deck([['Results', 'Revenue 200 million'], ['Outlook', 'CPO and HBM demand stays strong']])
+    D66 = deck([['Results', 'Revenue 300 million'], ['Outlook', 'CPO shipments start next year']])
+    cd.RADAR_MIN_CO = 1
+    lg5 = []
+    rc5 = cd.run(fetcher=FakeFetcher({'555520261021M001.pdf': D55, '666620261022M001.pdf': D66}), groq_keys=[], today=date(2026, 10, 23), log=lg5.append)
+    r55 = [r for r in cd._load_json(cc / 'cc' / 'feat' / '2026-10.json.gz', []) if r['f'] == '555520261021M001.pdf']
+    ok('🛰️③ 補存全文時順便照新規則重抽詞(CPO / HBM)、標 tv;AI 摘要 / 字數照舊(⛔ 重算特徵)',
+       rc5 == 0 and r55 and r55[0].get('tv') == cd.TERMS_VER and 'CPO' in r55[0]['terms'] and 'HBM' in r55[0]['terms']
+       and r55[0]['chars'] == 300 and r55[0]['ai']['one'] == '舊摘要', (rc5, r55))
+    radf = data / 'cc_radar.json'
+    rj = json.loads(radf.read_text(encoding='utf-8')) if radf.exists() else {}
+    ok('🛰️⑤ run() 寫出 data/cc_radar.json(兩家都在講 CPO;log 寫季數 / 份數 / 題材數)',
+       rj.get('qs') == ['2026Q4'] and {r['t']: r for r in rj.get('rows', [])}.get('CPO', {}).get('m') == [2] and any('🛰️ 主題雷達' in x for x in lg5),
+       (rj.get('qs'), [x for x in lg5 if '雷達' in x]))
+with tempfile.TemporaryDirectory() as tmp:
+    rows = [{'s': '6666', 'name': '測試辛', 'd': '2026-10-22', 't': '14:00', 'pdf': ['666620261022M001.pdf']}]
+    cd, data, cc = setup(tmp, rows)
+    lg6 = []
+    cd.run(fetcher=FakeFetcher({'666620261022M001.pdf': deck([['Outlook', 'CPO shipments start next year']])}), groq_keys=[], today=date(2026, 10, 23), log=lg6.append)
+    ok('🛰️⑤b ⭐ 決定性對照:預設門檻(一季 300 家)→ 不寫雷達、log 說為什麼', not (data / 'cc_radar.json').exists() and any('不產出' in x for x in lg6), [x for x in lg6 if '雷達' in x])
+with tempfile.TemporaryDirectory() as tmp:
+    rows = [{'s': '6666', 'name': '測試辛', 'd': '2026-10-22', 't': '14:00', 'pdf': ['666620261022M001.pdf']}]
+    cd, data, cc = setup(tmp, rows)
+    cd.RADAR_MIN_CO = 1
+    def _boom(*a, **k):
+        raise ValueError('測試用:雷達壞掉')
+    cd.build_radar = _boom
+    lg7 = []
+    rc7 = cd.run(fetcher=FakeFetcher({'666620261022M001.pdf': deck([['Outlook', 'CPO shipments start next year']])}), groq_keys=[], today=date(2026, 10, 23), log=lg7.append)
+    ok('🛰️⑤c 雷達算不出來 → 只記一行、run() 照常結束、簡報重點照樣寫出來(⛔ 拖累部署)',
+       rc7 == 0 and (data / 'confcall_digest.json').exists() and not (data / 'cc_radar.json').exists() and any('主題雷達算不出來' in x for x in lg7),
+       (rc7, [x for x in lg7 if '雷達' in x]))
+
+# ⑦ workflow:雷達跟 data/cc 一起推(兩個分支、重試那一圈也要帶)
+ok('🛰️⑦ confcall_deck.yml 部署那步帶 cc_radar.json(先驗是完整 JSON、重試也帶)',
+   'cc_radar.json' in _dep and _dep.count('$RAD') >= 3 and 'json.load(open(sys.argv[1]))' in _dep, _dep[:400])
 
 print('\n' + (f'❌ test_confcall_deck 失敗 {len(fails)} 條' if fails else '✅ test_confcall_deck 全過'))
 sys.exit(1 if fails else 0)
