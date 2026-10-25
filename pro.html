@@ -9241,7 +9241,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.7.7',
+  VER: 'V79.7.8',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -11296,6 +11296,14 @@ ${M.news || '(無)'}
   /** ⏸️ V79.6.5 這一場「實際」哪天開 —— 公司備註寫了延期、新日期比原訂晚就用新日期
    *  (`mv` 是 confcall_miner.parse_move 解析好的,⛔ 前端不再解析文字;2026-10-23 颱風:南亞 / 欣銓 延到 10/27) */
   _confEff(r) { const d = String((r && r.d) || ''), mv = String((r && r.mv) || ''); return mv && mv > d ? mv : d; },
+  /** 開完了沒 —— 全頁「開完 / 還沒開」只有這一條(狀態列・🆕 那一格・清單分區共用;延期的照新日期,今天的讀到簡報才算開完) */
+  _confDone(r) { const x = this._confEff(r), today = this._confToday(); return x < today || (x === today && !!this._confDeckOf(r)); },
+  /** 🆕 剛開完 7 天 = 7 天內真的開完的(延期的照新日期)+ 原訂這 7 天、延期還沒開的(清單裡另列「延期」一區,⛔ 算進「開完」) */
+  _confInNew(r) {
+    const today = this._confToday(), lo = this._confDay(-7), x = this._confEff(r);
+    if (this._confDone(r)) return x >= lo;
+    return x > r.d && r.d >= lo && r.d <= today;
+  },
   /** ⏸️ 延期標籤(沒有延期 → 空字串);mvc = 有條件(如 / 若停班)、mvq = 寫了延期但沒寫日期 */
   _confMoveTag(r) {
     if (!r) return '';
@@ -11366,7 +11374,7 @@ ${M.news || '(無)'}
     } else {
       const sel = this._confSel;
       if (sel === 'mine') { const m = this._confMine(); rows = rows.filter(r => m.has(String(r.s))); }
-      else if (sel === 'new') { const lo = this._confDay(-7); rows = rows.filter(r => (r.d < today && r.d >= lo) || (r.d === today && this._confDeckOf(r))); }
+      else if (sel === 'new') rows = rows.filter(r => this._confInNew(r));
       else if (sel === 'future') { const hi = this._confDay(14); rows = rows.filter(r => { const e = this._confEff(r); return e >= today && e <= hi; }); }
     }
     if (this._confInd) rows = rows.filter(r => (r.ind || '__none__') === this._confInd);
@@ -11396,8 +11404,9 @@ ${M.news || '(無)'}
   /** 六格總覽:每一格 = 一個按得下去的範圍(⛔ 下面不再另放一排一樣的按鈕);數字全部從同一份資料現算(⛔ 寫死) */
   _confKpiHtml() {
     const all = this._confAll(), today = this._confToday(), e = t => this._esc(t), md = d => String(d || '').slice(5).replace('-', '/');
-    const lo = this._confDay(-7), hi = this._confDay(14);
-    const newR = all.filter(r => (r.d < today && r.d >= lo) || (r.d === today && this._confDeckOf(r)));
+    const hi = this._confDay(14);
+    // 🆕 只數真的開完的(= 清單「已經開完 N 場」那一行);延期還沒開的在清單另列,⛔ 算進這一格
+    const newR = all.filter(r => this._confInNew(r) && this._confDone(r));
     const nDeck = newR.filter(r => this._confOk(this._confDeckOf(r))).length;
     const fut = all.filter(r => { const x = this._confEff(r); return x >= today && x <= hi; });
     const mine = this._confMine();
@@ -11528,7 +11537,7 @@ ${M.news || '(無)'}
     if (!cardMode) return html + this._confListHtml(rows);
     const mine = this._confMine();
     // ⏸️ V79.6.5 延期的照新日期判(延到 10/27 的 ⛔ 算「已經開完」—— 那是 GPT 找不到 Q&A 的原因)
-    const done = r => { const x = this._confEff(r); return x < today || (x === today && !!this._confDeckOf(r)); };
+    const done = r => this._confDone(r);
     const past = rows.filter(done), fut = rows.filter(r => !done(r));
     const nn = r => { const dg = this._confDeckOf(r); return this._confOk(dg) && !this._confReused(r, dg) ? (dg.new_n || 0) : 0; };
     past.sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (nn(b) - nn(a)) || (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
@@ -11538,7 +11547,11 @@ ${M.news || '(無)'}
       html += past.map(r => this._confRowHtml(r, mine, false)).join('');
     }
     if (fut.length) {
-      html += `<div class="cc-sec" data-conf-sec="future">📅 <b>接下來 ${fut.length} 場</b> <span>(還沒開;簡報多半會後才上傳)</span></div>`;
+      // ⏸️ 「🆕 剛開完」裡還沒開的只會是延期的(原訂這 7 天)→ 標題直接講,⛔ 讓人以為那一格的數字算錯
+      const mvOnly = !q && !this._confDayF && this._confSel === 'new';
+      html += mvOnly
+        ? `<div class="cc-sec" data-conf-sec="future" data-conf-mvsec="1">⏸️ <b>原訂這 7 天、延期還沒開 ${fut.length} 場</b> <span>(照公司公告的新日期排;⛔ 不算在上面的「已經開完」)</span></div>`
+        : `<div class="cc-sec" data-conf-sec="future">📅 <b>接下來 ${fut.length} 場</b> <span>(還沒開;簡報多半會後才上傳)</span></div>`;
       html += this._confListHtml(fut);
     }
     return html;
@@ -12530,7 +12543,8 @@ ${M.news || '(無)'}
     if (D.src_error && D.src_error.sii) errs.push(`上市這輪抓不到:${this._esc(D.src_error.sii)}`);
     if (D.src_error && D.src_error.otc) errs.push(`上櫃這輪抓不到:${this._esc(D.src_error.otc)}`);
     if (D.src_error && D.src_error.names) errs.push(`產業分類這輪沒補上:${this._esc(D.src_error.names)}(🏭 那一排會少掉,⛔ 不猜)`);
-    const n = D.n || {};
+    // 未來 / 已開 = 同一條 _confDone(延期的照新日期;⛔ 用採礦端照原訂日期分的 n.upcoming / n.recent —— 颱風延期那幾場會被算成「已開」)
+    const allR = this._confAll(), nAll = allR.length, nDone = allR.filter(r => this._confDone(r)).length;
     const G = this._confDig;
     // 📄 簡報重點那份檔讀不到 ≠ 簡報沒內容(陷阱 #22)→ 一定要分開講
     // 📋 V79.6.4 清單也列讀不成的(只有 st)→「讀到幾份」只算讀成功的,讀不成的另外講
@@ -12543,7 +12557,7 @@ ${M.news || '(無)'}
     // 🛰️ 雷達讀過幾份(⛔ 讀不到就不寫 —— 雷達那一格自己會講「還沒產出」)
     const R = this._confRad;
     const radLine = R ? `${sep}🛰️ 雷達 <b>${(R.n_deck || 0).toLocaleString()}</b> 份 / ${(R.n_co || 0).toLocaleString()} 家` : '';
-    meta.innerHTML = `📅 資料日 <b>${this._esc(D.data_date || '—')}</b>${stale >= 4 ? ` <span class="sigtag warn">⚠️ 已 ${stale} 天沒更新</span>` : ''}${sep}未來 <b>${n.upcoming ?? (D.upcoming || []).length}</b> 場${sep}已開 <b>${n.recent ?? (D.recent || []).length}</b> 場${deckLine}${radLine}
+    meta.innerHTML = `📅 資料日 <b>${this._esc(D.data_date || '—')}</b>${stale >= 4 ? ` <span class="sigtag warn">⚠️ 已 ${stale} 天沒更新</span>` : ''}${sep}未來 <b>${nAll - nDone}</b> 場${sep}已開 <b>${nDone}</b> 場${deckLine}${radLine}
       ${errs.length ? `<div class="warnbox" style="margin-top:6px" data-conf-srcerr="1">⚠️ ${errs.join('<br>')}<br>⛔ 那一邊的場次這輪是<b>舊的或缺的</b>,不是真的沒有。</div>` : ''}`;
     this._confPaint();
     // 🎤 台積電問答那一格的句數:背景讀(⛔ 擋住畫面;讀不到那一格照樣按得下去,點了會說讀不到)

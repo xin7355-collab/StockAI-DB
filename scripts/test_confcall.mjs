@@ -439,6 +439,30 @@ ok(/🧾 會一起帶給 AI 的本站數字/.test(V.factsN) && /最近一個交�
 ok(!V.card && /⏸️ 可能延到/.test(V.lrowTxt) && /原訂/.test(V.lrowTxt), '⏸️㉒a 延期還沒開 → 排在「接下來」、⛔ 不在「已經開完」那一區;要有 ⏸️ 標籤', V.lrowTxt.slice(0, 160));
 ok(V.card2, '⏸️㉒b 決定性對照:同一列拿掉 mv → 回到「已經開完」的卡片(證明 ㉒a 靠的是延期日期)');
 ok(/廣達 還有 3 天 ⏸️/.test(V.alert), '⏸️㉒c 你的清單提醒照新日期算天數,並標 ⏸️', V.alert.slice(0, 160));
+// ⏸️㉒d V79.7.7:「🆕 剛開完」那一格 = 清單「已經開完 N 場」= 狀態列「已開」—— 三處同一條 _confDone(延期還沒開的 ⛔ 算開完)
+//   🐛 改版第一版那一格照「原訂日期」數 → 颱風延期的南亞 / 欣銓被算成「剛開完」,畫面上 32 場 vs 清單 30 場
+const C = await pg.evaluate(async () => {
+  const R = PRO._cache['data/confcall.json'].recent[0];   // 上面那一場(廣達,延期到 3 天後)
+  const num = (t, re) => { const m = String(t || '').replace(/\s+/g, ' ').match(re); return m ? +m[1] : null; };
+  const grab = () => {
+    const tile = (document.querySelector('#confKpi [data-confsel="new"]') || {}).innerText || '';
+    const past = (document.querySelector('#confBody [data-conf-sec="past"]') || {}).innerText || '';
+    const mvs = (document.querySelector('#confBody [data-conf-mvsec]') || {}).innerText || '';
+    const meta = (document.getElementById('confMeta') || {}).innerText || '';
+    return { tileN: num(tile, /(\d+)\s*場/), pastN: num(past, /已經開完 (\d+) 場/), mvN: num(mvs, /延期還沒開 (\d+) 場/),
+             metaDone: num(meta, /已開 (\d+) 場/), metaFut: num(meta, /未來 (\d+) 場/), tile: tile.replace(/\s+/g, ' ') };
+  };
+  PRO.confSearch(''); PRO.confDay(''); PRO.confInd(''); PRO.confSel('new'); await PRO.renderConf();
+  const a = grab();
+  const keep = { mv: R.mv, mvc: R.mvc }; delete R.mv; delete R.mvc; await PRO.renderConf();
+  const b = grab();
+  R.mv = keep.mv; R.mvc = keep.mvc; await PRO.renderConf();
+  return { a, b, total: PRO._confAll().length };
+});
+ok(C.a.tileN != null && C.a.tileN === C.a.pastN && C.a.mvN === 1 && C.a.metaDone + C.a.metaFut === C.total,
+  '⏸️㉒d 🆕 那一格 = 清單「已經開完 N 場」;延期還沒開的另列「延期還沒開 1 場」;狀態列未來 + 已開 = 全部', JSON.stringify(C.a));
+ok(C.b.tileN === C.a.tileN + 1 && C.b.pastN === C.a.pastN + 1 && C.b.metaDone === C.a.metaDone + 1 && C.b.mvN === null,
+  '⏸️㉒e 決定性對照:同一列拿掉延期 → 三個數字一起 +1、延期那一區消失(證明三處讀的是同一條)', JSON.stringify(C.b));
 
 // ② 檔案沒產出 → 專屬文案(⛔ 不可跟「沒有法說會」一樣)
 const nofile = await pg.evaluate(() => { PRO._cache['data/confcall.json'] = null; PRO._confData = undefined; return PRO.renderConf().then(() => { const el = document.getElementById('tabConf'); return { nf: !!el.querySelector('[data-conf-nofile]'), t: (el.innerText || '').replace(/\s+/g, ' ') }; }); });
