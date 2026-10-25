@@ -176,6 +176,20 @@ const T = await page.evaluate(() => {
     R.gainNo = ids(run({ held: new Map([['2330', { cost: 90 }]]), bars: new Map([['2330', kFlat]]) }));
     R.div = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]), div: { d: { 2330: { up: [['2026-10-23', 1]] } } } }));
     R.divNo = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]), div: { d: { 2330: { up: [['2026-11-03', 1]] } } } }));
+    // 📞 V79.8.3 cc_soon:接下來 5 個交易日內有法說會(走 _findEarningsEvent,延期照新日期)—— 一覽表 / 今天都從 ctx 來(⛔ 讀全域 / 真的時鐘),行事曆清空(⛔ 被真資料救活)
+    { const ccS = app._confcallCache, mr = app._macroRiskCache, ue = app._upcomingMacroEvents, tdu = app._tradingDaysUntil;
+      app._macroRiskCache = { upcoming_macro_events: [] }; app._upcomingMacroEvents = [];
+      const H = { held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]) };
+      R.cc = ids(run({ ...H, cc: { upcoming: [{ s: '2330', d: '2026-10-22', t: '14:00' }], recent: [] } }));
+      R.ccFar = ids(run({ ...H, cc: { upcoming: [{ s: '2330', d: '2026-11-20' }], recent: [] } }));
+      R.ccOther = ids(run({ ...H, cc: { upcoming: [{ s: '2317', d: '2026-10-22' }], recent: [] } }));
+      R.ccMv = run({ ...H, cc: { upcoming: [{ s: '2330', d: '2026-10-14', mv: '2026-10-23', mvc: 1 }], recent: [] } }).filter(h => h.id === 'cc_soon').map(h => h.why);
+      R.ccFav = run({ bars: new Map([['2454', kFlat]]), fav: ['2454'], cc: { upcoming: [{ s: '2454', d: '2026-10-22' }], recent: [] } }).filter(h => h.id === 'cc_soon').map(h => h.sc);
+      // 決定性對照:ctx 沒給 cc → 不判(⛔ 讀全域那份 —— 把全域那份塞一筆 2330 三天後也不可以亮)
+      app._confcallCache = { upcoming: [{ s: '2330', d: '2026-10-22' }], recent: [] }; R.ccNoCtx = ids(run(H));
+      // 「今天」從 ctx 來:同一份清單、今天改成 10/12 → 10/22 是 8 個交易日後 → 不亮
+      R.ccToday = ids(run({ ...H, today: { tdy: '2026-10-12', wk: 1, weekday: true }, cc: { upcoming: [{ s: '2330', d: '2026-10-22' }], recent: [] } }));
+      app._confcallCache = ccS; app._macroRiskCache = mr; app._upcomingMacroEvents = ue; app._tradingDaysUntil = tdu; }
     // 大盤:先漲後急跌 → 剛轉空頭;一路跌 → 早就是空頭(⛔ 不算剛轉)
     const up = mkK(120, '2026-10-16'); up.forEach((r, i) => { const c = i < 110 ? 100 + i : 210 - (i - 109) * 12; Object.assign(r, { open: c, high: c, low: c, close: c }); });
     const dn = mkK(120, '2026-10-16'); dn.forEach((r, i) => { const c = 300 - i; Object.assign(r, { open: c, high: c, low: c, close: c }); });
@@ -265,6 +279,9 @@ ok('③c ETF ⛔ 不判 K 線型態', !has(T.etf, 'lu_held'), JSON.stringify(T.e
 ok('③d K 線日期追不上大盤 ⛔ 不判(舊資料不冒充今天)', !has(T.stale, 'lu_held'), JSON.stringify(T.stale));
 ok('③e 帳面 +25% → gain20;+11% → 沒有', has(T.gain, 'gain20') && !has(T.gainNo, 'gain20'), JSON.stringify([T.gain, T.gainNo]));
 ok('③f 除息 4 天後 → exdiv;15 天後 → 沒有', has(T.div, 'exdiv') && !has(T.divNo, 'exdiv'), JSON.stringify([T.div, T.divNo]));
+ok('③f2 📞 法說會 3 個交易日後 → cc_soon;一個月後 / 別檔的 → 沒有;延期的照新日期(寫「延期後」);自選的也提醒(scope fav);ctx 沒給一覽表 → 不判(⛔ 讀全域);「今天」照 ctx',
+    has(T.cc, 'cc_soon') && !has(T.ccFar, 'cc_soon') && !has(T.ccOther, 'cc_soon') && T.ccMv.length === 1 && /延期/.test(T.ccMv[0]) && JSON.stringify(T.ccFav) === '["fav"]' && !has(T.ccNoCtx, 'cc_soon') && !has(T.ccToday, 'cc_soon'),
+    JSON.stringify([T.cc, T.ccFar, T.ccOther, T.ccMv, T.ccFav, T.ccNoCtx, T.ccToday]));
 ok('③g 大盤剛轉空頭 → bear_on;一直是空頭 → 沒有', has(T.bearFlip, 'bear_on') && !has(T.bearLong, 'bear_on'), JSON.stringify([T.bearFlip, T.bearLong]));
 ok('③h 第三個星期三 → settle;第二個 → 沒有', has(T.settle, 'settle') && !has(T.settleNo, 'settle'), JSON.stringify([T.settle, T.settleNo]));
 ok('③i 休市前最後一個交易日 → holiday_pre;前兩天 → 沒有', has(T.pre, 'holiday_pre') && !has(T.preNo, 'holiday_pre'), JSON.stringify([T.pre, T.preNo]));

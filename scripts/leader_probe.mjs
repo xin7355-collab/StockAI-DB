@@ -27,7 +27,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { trSeries, loadPx } from './lib_totalreturn.mjs';
-import { finSeries, finOnAt } from './lib_finaccel.mjs';
+import { finSeries, finOnAt, finKnownAt } from './lib_finaccel.mjs';
 import { valuePrep } from './lib_value.mjs';
 import { accrualSeries, accrualMonthCut, accrualHiAt } from './lib_accrual.mjs';
 import { gates } from './maxim_kbar5_probe.mjs';
@@ -117,7 +117,7 @@ export const FILLS = ['open', 'nextclose', 'sameclose', 'open2'];   // 🚧 V79.
 // ⭐ 預設 = 兩個窗口網格(216 + 81 + 9 組)驗出來的中心點;⛔ 最初設計的「60 日動能 + 吊燈 2 倍 + 每週換」實測是輸的(見 DECISIONS V77.8.5)
 export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: true, trend: true, hyst: 2, pick: 'mom', core: 0, maExit: 0, tp: 0, skip: 0, riskadj: false, fill: 'open', noAtt: 0, noDisp: 0, sellDisp: false,
     dispNow: false, dispOracle: 0, attSell: 0, attWin: 5, rebuy: 'none', rebuyDrop: 0.15, blockDays: 10, shamSell: 0,
-    indCap: 0, wRank: null, posMin: 85, posRaw: true, volUp: 0, finAcc: false, fsync: 0, rankUp: false, shamKeep: 0,
+    indCap: 0, wRank: null, posMin: 85, posRaw: true, volUp: 0, finAcc: false, finAccMin: 0, finYoyMin: 0, finUnk: 'drop', fsync: 0, rankUp: false, shamKeep: 0,
     capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '', phase: 0, join: '', limitRepl: false, limitRetry: '', pickFrom: 0,
     dip: 0, hold: 5, dipSort: 'drop', dipMin: 0, bearCore: null, bearN: 0, bearTop: 0, pool: '', themeK: 3, themeL: 20, themeSham: false,
     dRank: 0, stop: 0, trail: 0, shamOut: 0, refill: false, accAvoid: false, accSham: 0,
@@ -200,7 +200,7 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
 // V78.0.5 使用者:「領頭羊還能更容易漲嗎?」—— 候選只擋**買進**(續抱名單照舊 = 前 2N 名),濾網一律配 shamKeep 安慰劑:
 //   🧪 V79.2.4:momMin / fipMin / volMin(買進濾網)・rankRaw(原始價動能)・bearIdx(空頭看哪個指數)・pick 'blend' / 'rel'(見 DEF 註解)
 //   indCap = 同產業最多幾檔 ・wRank = 名次加權(陣列,第 k 名的錢 × w[k])・posMin = 一年位置 ≥ ・volUp = 5 日均額 ÷ 20 日均額 ≥
-//   finAcc = 營收年增加速(lib_finaccel,公布日才算知道;沒資料剔除並計數)・fsync = N:外資與投信近 N 天都買超 ・rankUp = 動能名次比 R 天前進步
+//   finAcc = 營收年增加速(lib_finaccel,公布日才算知道;沒資料剔除並計數)・🧪 V79.8.3 finAccMin / finYoyMin = 加速 / 年增要大於幾個百分點(0 = 照 lib_finaccel 原樣;門檻高原用)・finUnk = 'keep' 沒資料的照買(排除「剔除本身在幫忙」)/ 'drop'(預設)・fsync = N:外資與投信近 N 天都買超 ・rankUp = 動能名次比 R 天前進步
 //   shamKeep = p:每個候選以機率 p 留下(p 對齊真濾網實測的通過率)
 //   accAvoid = 💵 V79.0.7 盈餘品質避雷:進場那個月應計比率在全市場最高 40% → 不買(lib_accrual;⭐ 不知道 = 保留,避雷型)
 // V77.8.6 穩定度變體:core = 永遠留幾成在 0050 ・maExit = 收盤跌破 N 日線隔天開盤賣 ・tp = 收盤賺 x 就隔天開盤停利 ・skip = 動能不算最近幾天 ・riskadj = 動能 ÷ ATR 排名
@@ -433,7 +433,13 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         if (P.fipMin > 0) { const u = upShare(S, i, P.L); if (!(u >= P.fipMin)) return false; }                               // 🧪 V79.2.4 上漲天數比例
         if (P.volMin > 0) { const v = volRank ? volRank.get(S.sym) : undefined; if (!(v >= P.volMin)) return false; }           // 🧪 V79.2.4 池內 20 日振幅位階(%)
         if (P.volUp > 0) { const v5 = val5(S, i); if (!(v5 / S.val20[i] >= P.volUp)) return false; }
-        if (P.finAcc) { const ser = ctx.fin ? ctx.fin(S.sym) : null; const on = ser ? finOnAt(ser, cal[i]) : null; if (on === null) { st.finMiss++; return false; } if (!on) return false; }
+        if (P.finAcc) {
+            const ser = ctx.fin ? ctx.fin(S.sym) : null;
+            let on;
+            if (P.finAccMin || P.finYoyMin) { const q = ser ? finKnownAt(ser, cal[i]) : null; on = q && q.ok ? (q.yoy > (P.finYoyMin || 0) && q.acc > (P.finAccMin || 0)) : null; }
+            else on = ser ? finOnAt(ser, cal[i]) : null;   // ⛔ 不設門檻時一字不動走 lib_finaccel(逐位相同)
+            if (on === null) { st.finMiss++; if (P.finUnk !== 'keep') return false; } else if (!on) return false;
+        }
         if (P.fsync > 0) { if (!S.FN) return false; let c = 0, j = i; while (j >= 0 && c < P.fsync) { if (S.C[j] > 0) { if (!(S.FN[j] > 0 && S.TN[j] > 0)) return false; c++; } j--; } if (c < P.fsync) return false; }
         if (P.rankUp) { const pr = prevRank.get(S.sym); if (pr !== undefined && !(rankNow < pr)) return false; }
         if (P.accAvoid) {   // accAvoid='sham' = 安慰劑:有資料的候選以機率 accSham 隨機剔除(⛔ 跟應計無關;位置等其他濾網照樣先過)
@@ -1330,6 +1336,18 @@ function selftest() {
     t([xAll, xS0, xW0].every(r => r.eq.every((v, k) => v === xOff.eq[k])) && xNone.trades === 0 && !trV.some(x => x.s === victim)
         && (xSh.st.xsCut || 0) > 0 && xSh.eq.at(-1) !== xOff.eq.at(-1) && /xsFile/.test(thX) && /沒有任何值/.test(thE),
         `㊿e 外部變因表:全 100 分 / sham 0 / w 0 都逐位相同、全 0 分 → 0 筆、擋掉 ${victim} 就永遠不買、sham 0.5 擋了 ${xSh.st.xsCut || 0} 次、沒配檔 / 空檔 throw`);
+    // ㊿f 🧪 V79.8.3 營收加速門檻 / 沒資料怎麼辦:每檔都「年增 10、加速 5」→ finAcc 開 == 關(全部通過);finAccMin 4 == 開、6 → 0 筆;
+    //      finYoyMin 11 → 0 筆;沒有任何財報:預設剔除 → 0 筆、finUnk keep == 關(而且有記 finMiss)
+    const finOk = () => [{ p: '2000-03-31', pub: '2000-05-15', yoy: 10, acc: 5, gmq: 0, epsy: 0, ok: true }];
+    const fOff = simulate(ctxK, 100, cfgK, 7);
+    const fOn = simulate({ ...ctxK, fin: finOk }, 100, { ...cfgK, finAcc: true }, 7);
+    const fM4 = simulate({ ...ctxK, fin: finOk }, 100, { ...cfgK, finAcc: true, finAccMin: 4 }, 7);
+    const fM6 = simulate({ ...ctxK, fin: finOk }, 100, { ...cfgK, finAcc: true, finAccMin: 6 }, 7);
+    const fY11 = simulate({ ...ctxK, fin: finOk }, 100, { ...cfgK, finAcc: true, finYoyMin: 11 }, 7);
+    const fDrop = simulate({ ...ctxK, fin: () => null }, 100, { ...cfgK, finAcc: true }, 7);
+    const fKeep = simulate({ ...ctxK, fin: () => null }, 100, { ...cfgK, finAcc: true, finUnk: 'keep' }, 7);
+    t(fOff.trades > 0 && [fOn, fM4, fKeep].every(r => r.eq.every((v, k) => v === fOff.eq[k])) && fM6.trades === 0 && fY11.trades === 0 && fDrop.trades === 0 && (fKeep.st.finMiss || 0) > 0,
+        `㊿f 營收加速門檻:全部通過 == 不濾、門檻 4 == 原樣、門檻 6 / 年增 11 → 0 筆、沒資料剔除 → 0 筆、finUnk keep == 不濾(沒資料 ${fKeep.st.finMiss || 0} 次)`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
