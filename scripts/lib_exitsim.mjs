@@ -22,6 +22,8 @@
  *                 ⭐ 比 `don{N}`(下軌)鬆、出場更早;來自「增強版唐奇安通道策略」逐字稿(評估紀錄㉝),
  *                 本站首次測 —— ⛔ 高低點同樣**不含 j 自己**(陷阱 #43)
  *   ・`atr{K}`    進場後最高收盤 − K×ATR14           例:atr2 / atr3(K 可小數 atr2.5)
+ *                 ⚠️ 這個 ATR 是**每天重算**的(= 回測引擎的 chandd);App 預設用的是下面的 chand{K}
+ *   ・`chand{K}`  進場後最高收盤 − K×**進場那天**的 ATR14(V79.9.0;= App `_exitLevelAt('atr2')` / 回測 chand2 / auto_trade.py)
  *   ・`trail{N}`  進場後最高收盤回落 N%              例:trail8 / trail15
  *   ・`hold`      ⛔ 不設出場,只有停損 + MAXD 封頂 —— **對照組**,
  *                 ⭐ 少了它就不知道「有出場」到底比「不出場」好多少。
@@ -32,6 +34,7 @@ export const EXIT_NAME = {
     don10: '唐奇安 10 日', don20: '唐奇安 20 日', don55: '唐奇安 55 日',
     donmid20: '唐奇安 20 日中軌',
     atr2: 'ATR 追蹤 K=2', atr3: 'ATR 追蹤 K=3',
+    chand2: '吊燈 ATR 2 倍(進場那天的 ATR,App 預設)', chand3: '吊燈 ATR 3 倍',
     trail8: '移動停利 8%', trail15: '移動停利 15%',
     hold: '⛔ 不出場(只有停損+封頂)',
 };
@@ -45,6 +48,7 @@ export function parseRule(rule) {
     if ((m = /^donmid(\d+)$/.exec(rule))) return { kind: 'donmid', n: +m[1] };
     if ((m = /^don(\d+)$/.exec(rule))) return { kind: 'don', n: +m[1] };
     if ((m = /^atr(\d+(?:\.\d+)?)$/.exec(rule))) return { kind: 'atr', k: +m[1] };
+    if ((m = /^chand(\d+(?:\.\d+)?)$/.exec(rule))) return { kind: 'chand', k: +m[1] };
     if ((m = /^trail(\d+(?:\.\d+)?)$/.exec(rule))) return { kind: 'trail', p: +m[1] };
     throw new Error(`lib_exitsim: 認不得的出場規則 '${rule}'`);
 }
@@ -84,6 +88,7 @@ export function simExits(R, eIdx, opt = {}) {
         return m ? s / m : 0;
     };
 
+    const atE = atrAt(eIdx);   // 🪝 chand{K}:進場那天的 ATR(只算一次,零前視)
     const out = {};
     for (const rule of rules) {
         const P = parseRule(rule);
@@ -111,6 +116,8 @@ export function simExits(R, eIdx, opt = {}) {
                 hit = isFinite(hi) && isFinite(lo) && c < (hi + lo) / 2;
             } else if (P.kind === 'atr') {
                 const at = atrAt(j); hit = at > 0 && c <= peak - P.k * at;
+            } else if (P.kind === 'chand') {
+                hit = atE > 0 && c <= peak - P.k * atE;
             } else if (P.kind === 'trail') {
                 hit = c <= peak * (1 - P.p / 100);
             }   // 'hold' → 永遠不 hit,只靠停損與封頂
