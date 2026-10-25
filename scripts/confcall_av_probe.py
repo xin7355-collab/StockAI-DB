@@ -193,7 +193,6 @@ def term_match(trans_text, terms):
 
 
 QA_RE = re.compile(r'(?<![A-Za-z])Q\s*&?\s*A(?![A-Za-z])|問答|提問|開放.{0,6}(發問|問題|提問)|有沒有.{0,8}問題|第一個問題|第一位')
-ASK_RE = re.compile(r'請問|想請教|想問一下|問題是')
 
 
 def qa_split(cues, min_frac=0.0):
@@ -228,105 +227,9 @@ def thin_pages(pages, thin=THIN):
     return [i + 1 for i, p in enumerate(pages or []) if i > 0 and len(re.sub(r'\s', '', p or '')) < thin]
 
 
-# ───────────────────────── 🏢 qa 模式的純函式 ─────────────────────────
-_CN_Q = {'一': 1, '二': 2, '三': 3, '四': 4, '1': 1, '2': 2, '3': 3, '4': 4}
-
-
-def yq_of(s):
-    """從連結文字 / 檔名抓「哪一年哪一季」:2Q25 / 2Q2025 / Q2 2025 / 2025Q2 / 2025/q2 / 2025年第二季 / 114年第2季 → (2025, 2);抓不到 None。"""
-    t = (s or '').replace('%20', ' ').replace('+', ' ')
-    pats = [(r'(?<![\dA-Za-z])([1-4])\s*Q\s*[\'’]?(\d{4}|\d{2})(?!\d)', lambda m: (m.group(2), m.group(1))),
-            (r'(?<![A-Za-z])Q([1-4])[\s_\-/,]*[\'’]?(\d{4}|\d{2})(?!\d)', lambda m: (m.group(2), m.group(1))),
-            (r'(?<!\d)(\d{4})\s*[-_ /]?\s*Q([1-4])(?!\d)', lambda m: (m.group(1), m.group(2))),
-            (r'(?<!\d)(\d{4})\s*年\s*第\s*([1-4一二三四])\s*季', lambda m: (m.group(1), m.group(2))),
-            (r'(?<!\d)(1[01]\d)\s*年\s*(?:度\s*)?第\s*([1-4一二三四])\s*季', lambda m: (str(int(m.group(1)) + 1911), m.group(2)))]
-    for rx, get in pats:
-        m = re.search(rx, t, re.I)
-        if m:
-            y, q = get(m)
-            y = int(y) + (2000 if len(y) == 2 else 0)
-            if 2005 <= y <= 2035:
-                return (y, _CN_Q[q])
-    return None
-
-
-def reported_q(d):
-    """法說會日期 → 多半在報告的那一季(1~3 月開的報上一年第 4 季)。"""
-    y, m = int(d[:4]), int(d[5:7])
-    return (y - 1, 4) if m <= 3 else (y, (m - 1) // 3)
-
-
-def prev_q(yq):
-    y, q = yq
-    return (y, q - 1) if q > 1 else (y - 1, 4)
-
-
-TRANS_RE = re.compile(r'transcript|逐字稿|會議實錄|会议实录|會議紀錄|會議記錄|问答纪录|問答紀錄|問答記錄', re.I)
-NOT_TRANS_RE = re.compile(r'presentation|slides?\b|簡報|简报|financial\s+statements?|財報|webcast\s+replay', re.I)
-DOC_RE = re.compile(r'\.pdf|\.docx?|download|file|attach', re.I)
-NAV_RE = re.compile(r'法說|法人說明|投資人說明|investor\s*conference|quarterly\s*results|earnings|financial\s*results|季報|業績發表|營運報告', re.I)
-
-
-def links_of(html, base):
-    """頁面上的連結 [(絕對網址, 文字)];也收 JS 裡直接寫的 .pdf 網址(文字用檔名)。"""
-    import html as H
-    from urllib.parse import urljoin
-    out, seen = [], set()
-    for m in re.finditer(r'<a\b[^>]*?href\s*=\s*["\']([^"\'#]+)["\'][^>]*>(.*?)</a>', html or '', re.S | re.I):
-        u = urljoin(base, H.unescape(m.group(1)).strip())
-        t = re.sub(r'\s+', ' ', H.unescape(re.sub(r'<[^>]+>', ' ', m.group(2)))).strip()
-        if u not in seen and u.startswith('http'):
-            seen.add(u)
-            out.append((u, t))
-    for m in re.finditer(r'["\']([^"\'\s<>]+?\.pdf)["\']', html or '', re.I):
-        u = urljoin(base, H.unescape(m.group(1)))
-        if u not in seen and u.startswith('http'):
-            seen.add(u)
-            out.append((u, u.rsplit('/', 1)[-1]))
-    return out
-
-
-def is_transcript(u, t):
-    from urllib.parse import unquote
-    blob = unquote(u) + ' ' + (t or '')
-    return bool(TRANS_RE.search(blob)) and bool(DOC_RE.search(u)) and not (NOT_TRANS_RE.search(t or '') and not TRANS_RE.search(t or ''))
-
-
-def is_nav(u, t, host):
-    from urllib.parse import urlparse
-    return urlparse(u).netloc == host and bool(NAV_RE.search((t or '') + ' ' + u))
-
-
-QA_HDR_RE = re.compile(r'QUESTIONS?\s*(?:AND|&)\s*ANSWERS?|QUESTION[- ]AND[- ]ANSWER|Q\s*&\s*A\s*(?:SESSION|SECTION)|問答(?:時間|環節|階段|時段)|開放.{0,6}(?:提問|發問)|接下來.{0,6}(?:Q\s*&?\s*A|問答|提問)', re.I)
-
-
-def split_qa_text(text, min_frac=0.15):
-    """逐字稿全文 → (簡報那段, 問答那段, 問答從幾成開始);切不到回 None(⛔ 硬猜)。
-    ⚠️ 目錄 / 主持人開場常先講一次「之後有 Q&A」→ 優先挑 min_frac 之後的第一個;都在前面才退回第一個。"""
-    t = text or ''
-    ms = list(QA_HDR_RE.finditer(t))
-    if not ms or not t:
-        return None
-    m = next((x for x in ms if x.start() >= len(t) * min_frac), ms[0])
-    return t[:m.start()], t[m.start():], round(m.start() / len(t), 3)
-
-
-def count_questions(qa):
-    """問答段大約幾個提問:官方逐字稿看「Q」那一行 / 「- 分析師」/ 主持人說「下一個問題」;中文看「請問」那類。取最大的那個。"""
-    t = qa or ''
-    a = len(re.findall(r'^\s*Q\s*[:：.]?\s*$|^\s*Q\s*[:：]', t, re.M))
-    b = len(re.findall(r'\s[-–—]\s*(?:Analyst|分析師)\b', t))
-    c = len(re.findall(r'(?i)\b(?:next|first|following|last)\s+question\b', t))
-    d = len(ASK_RE.findall(t))
-    return max(a, b, c, d)
-
-
-def sentences_of(text):
-    """切句:中文句號 / 問號 / 分號、英文「. 」後面接大寫、空行;⛔ 切小數點。"""
-    t = re.sub(r'-\n(?=[a-z])', '', text or '')
-    parts = re.split(r'(?<=[。？！；;?!])\s*|(?<=[a-z0-9%)])\.\s+(?=[A-Z“"(])|\n\s*\n', t)
-    return [re.sub(r'\s+', ' ', x).strip() for x in parts if x and len(re.sub(r'\s', '', x)) >= 6]
-
+# 🏢 qa 模式的純函式(yq_of / links_of / split_qa_text / count_questions …)V79.7.6 搬到根目錄 lib_transcript.py(⛔ 第二份)
+from lib_transcript import (ASK_RE, yq_of, reported_q, prev_q, links_of, is_transcript, is_nav,  # noqa: E402,F401
+                            split_qa_text, count_questions, sentences_of)
 
 def only_in_qa(qa_text, ref_text, cd=None, min_val=1):
     """問答段的「數字句」(講營運 KPI + 有數字,照 confcall_deck.nums_of 的判法)與「展望句」(outlook_of)裡,

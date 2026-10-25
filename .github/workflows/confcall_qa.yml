@@ -1,0 +1,127 @@
+name: 🎤 法說會問答重點 (confcall_qa)
+
+# 🎤 V79.7.6 台積電法說會「問答重點」—— 官方英文逐字稿 → 每一題 AI 整理成中文(分類 / 分析師問什麼 / 公司怎麼答)
+#    使用者 2026-10-25:「我要台積電的」→ 最近 4 季 + 放進產業作戰室法說會頁;之後每季自動補上。
+#
+# 🚨 誰來觸發:**跟在 playbook_scan 後面**(`workflow_run`,⛔ 不新開 cron —— 排程配額已經不夠用,見 CLAUDE.md V73.9.0 / V75.2.0)。
+#    一天一輪就夠:已經整理過的季 ⛔ 重抓,只有新的一季(或 AI 沒回的題目)才會真的下載 / 叫 AI。
+#
+# ⛔ 三個刻意的設計:
+#   ① 逐字稿版權屬原作者 → 只發佈本站 AI 寫的中文摘要 + 原文連結;log 也只印機構 / 職稱 / 統計(⛔ 印英文原句)
+#   ② 產物 data/cc_qa/ 推 gh-pages **也推 data 分支** → daily_miner 的 orphan force-push 之後 🛟 撿回會帶回來(陷阱 #41)
+#   ③ dry=1 = 只印解析統計(認到幾題 / 幾位分析師 / 公司回答幾段),⛔ 叫 AI、⛔ 推 —— 版面沒驗過之前先用這個看
+#
+# ⚠️ GROQ 金鑰沒設:照跑但整理不出任何一句(那幾季記成 AI 沒回,下一輪再補)
+
+on:
+  workflow_run:
+    workflows: ["🎯 明日作戰清單 (playbook_scan)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: '1 = 只印解析統計(⛔ 叫 AI、⛔ 推);空白 = 正常跑'
+        required: false
+        default: ''
+      ai_max:
+        description: '這一輪最多叫 AI 幾次(預設 160)'
+        required: false
+        default: ''
+
+# ⛔ 不跟 gh-pages-push 共用鎖(V79.5.0 weekly_backtest 的教訓)→ 自己一個 group;部署那步 fetch + 重試
+concurrency:
+  group: confcall-qa
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  qa:
+    name: 🎤 整理法說會問答
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    # ⏱️ 安裝 2~4 分 + 讀 4 季(每季下載 + 抽字 1~2 分、AI 約 30 題 × 3~5 秒)≈ 20 分;程式自己 20 分就停止開新的一題
+    timeout-minutes: 35
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝(requests + pypdf + pdftotext;⛔ 不加進全域 requirements)
+        run: |
+          pip install -q requests "pypdf==5.1.0"
+          if ! command -v pdftotext >/dev/null; then
+            (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils) >/dev/null 2>&1 || echo "⚠️ pdftotext 裝不起來 → 退回 pypdf(比較慢)"
+          fi
+
+      # ⚠️ git show 失敗會留下 0 bytes 的檔(陷阱 #18/#20)→ 一律驗非空
+      - name: 📂 還原已整理過的季 + 場次表 (origin/data)
+        run: |
+          mkdir -p data/cc_qa
+          git fetch origin data --depth=1 2>/dev/null || true
+          for f in $(git ls-tree --name-only -r origin/data -- data/cc_qa/ 2>/dev/null); do
+            if git show "origin/data:$f" > "$f" 2>/dev/null && [ -s "$f" ]; then echo "✅ $f $(wc -c < "$f") bytes"; else
+              rm -f "$f"; echo "⚠️ $f 還原失敗(當成沒有)"
+            fi
+          done
+          if git show origin/data:data/confcall.json > data/confcall.json 2>/dev/null && [ -s data/confcall.json ]; then
+            echo "✅ confcall.json(只拿來對法說會日期)"
+          else
+            rm -f data/confcall.json; echo "⚠️ 讀不到場次表 → 日期只看逐字稿第一頁"
+          fi
+
+      # ⚠️ selftest 跟正式跑寫在同一個 step(check_workflow_paths 比「同一支腳本同一個機密」)
+      - name: 🎤 selftest → 整理問答
+        id: run
+        env:
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PYTHONUNBUFFERED: '1'
+          QA_DRY: ${{ github.event.inputs.dry }}
+          QA_AI_MAX: ${{ github.event.inputs.ai_max }}
+        run: |
+          set -o pipefail
+          python3 lib_transcript.py --selftest
+          python3 confcall_qa.py --selftest
+          python3 -u confcall_qa.py 2>&1 | tee /tmp/qa.log
+
+      - name: 🚀 部署 data/cc_qa 到 gh-pages + data
+        if: ${{ github.event.inputs.dry != '1' }}
+        run: |
+          set -e
+          ls data/cc_qa/*.json >/dev/null 2>&1 || { echo "ℹ️ 沒有 data/cc_qa → 不部署"; exit 0; }
+          for f in data/cc_qa/*.json; do python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" || { echo "❌ $f 不是完整 JSON → 不部署"; exit 1; }; done
+          rm -rf /tmp/out && mkdir -p /tmp/out && cp -r data/cc_qa /tmp/out/cc_qa
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          restore_files () { mkdir -p data/cc_qa; cp -r /tmp/out/cc_qa/. data/cc_qa/; }
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdxq 2>/dev/null || true
+            git fetch origin "$BR" 2>/dev/null || true
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
+            restore_files
+            git add -f data/cc_qa
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "🎤 法說會問答重點 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              sleep $((i*5)); git fetch origin "$BR" 2>/dev/null || true
+              git reset --hard -q "origin/$BR" 2>/dev/null || true
+              restore_files; git add -f data/cc_qa
+              git commit -q -m "🎤 法說會問答重點 $(date -u '+%Y-%m-%d %H:%M UTC')" || true
+            done
+          }
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "⏭️ 驗證⛔ 不可只看綠燈:git show origin/gh-pages:data/cc_qa/2330.json | head -c 400"
