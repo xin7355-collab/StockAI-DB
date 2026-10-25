@@ -121,7 +121,13 @@ ok('⑫b 利潤池台股入口有中文名(不是只有代號)', R.poolNamed);
 ok('⑬ 展開層級 → 成員 chips 數 = 該層檔數', R.memN === R.rowsL5, [R.memN, R.rowsL5]);
 ok('⑬b 毛利最高的排第一(3105 stub 成 99%)且顯中文名+毛利', R.memFirst === '3105' && R.memHasName, [R.memFirst, R.memHasName]);
 ok('⑬c 成員排序旁必附「公司會賺錢 ≠ 股價會漲」警語', R.memWarn);
-ok('⑦ 成員 chip 有內容且含段名', R.chipIn.length > 50 && /上游/.test(R.chipIn), R.chipIn.slice(0, 80));
+ok('⑦ 成員 chip 有內容且含段名', R.chipIn.length > 50 && /算力硬體|平台整合|應用軟體/.test(R.chipIn), R.chipIn.slice(0, 80));
+// 🧭 V79.7.9 AI 產業鏈的分段名 ⛔ 再用「上游 / 中游 / 下游」(那三個字是製造鏈的;2317 在這裡是算力硬體、在製造鏈是下游組裝 = 同名不同義)
+{
+  const segOf = f => { const m = fs.readFileSync(path.join(ROOT, f), 'utf8').match(/seg: \{ up: '([^']*)', mid: '([^']*)', down: '([^']*)' \}/); return m ? m.slice(1) : null; };
+  const a = segOf('index.html'), b = segOf('pro.html');
+  ok('⑦c 🧭 分段名 ⛔ 上游 / 中游 / 下游,而且 index 與 pro 兩份一字不差', a && b && a.join() === b.join() && !a.some(x => /上游|中游|下游/.test(x)), JSON.stringify([a, b]));
+}
 ok('⑦b 非成員回空字串(⛔ 不可對每檔都顯)', R.chipOut === '', R.chipOut.slice(0, 60));
 ok('⑧ 燈號鐵則:dashboard 不可用 🔴🟢 表品質', !R.lamp);
 ok('⑩ K線頁已接 chip(兩條渲染路徑都接)', (src.match(/_aiChainChipHtml\(this\.currentSymbolId\)/g) || []).length === 2,

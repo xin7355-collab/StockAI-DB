@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.7.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.7.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.7.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.7.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8607,10 +8607,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.7.8',
+    _APP_VERSION: 'V79.7.9',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.7.9', d: ['🏷️ 選股頁「只看上市 / 只看上櫃」篩選修好了:以前上櫃股(例如中美晶、環球晶)也被算成上市,下一輪採礦跑完就分對', '🏭 個股頁「這波是誰在漲」:只有沒有官方產業分類的(興櫃、ETF、剛上市)才會寫「判斷不了」,說明文字也改對了', '🤖 AI 產業鏈的三段改叫「算力硬體 / 平台整合 / 應用軟體」(以前叫上中下游,容易跟製造的上中下游搞混)', '🔧 產業作戰室小修正:個股視窗的「💧 它的板塊」打得開了、板塊輪動頁換成最新的長期資料、左右滑不會滑進釣魚頁、下拉重整每一頁都會重抓'] },
         { v: 'V79.7.8', d: ['📞 法說會頁「🆕 剛開完」那一格改成只數真的開完的:颱風延期還沒開的(例如延到 10/27 的南亞、欣銓)另列在清單下面「⏸️ 原訂這 7 天、延期還沒開」;上面那一格、清單、最上面那行的場數現在一致'], dt: '2026-10-25' },
         { v: 'V79.7.7', d: [
             '📞 產業作戰室的法說會頁改版成「法說會情報中心」:最上面六格(剛開完 / 你的清單 / 接下來 14 天 / 主題雷達 / 全部場次 / 台積電問答)點了就切換;日期軸一眼看出哪天場次多,點一天只看那一天;一場一列,點了打開「公司檔案」(電腦在右邊、手機整頁),分頁看重點、數字、跟上次比、公司說明',
@@ -8827,7 +8828,6 @@ ${list}
         { v: 'V79.0.1', d: ['⚖️ <b>「上面套牢 vs 下面賺錢」那條回來了</b>:上一版拿掉券商分點時被一起刪掉,現在改用 K 線成交量算(近 120 日有幾 % 的量成交在比現在貴的價位、漲到多少附近會有回本賣壓)。放在籌碼頁最上面,總覽價格位置圖底下也有一行同一個數字。⚠️ 這是成交量不是人數,只拿來把期待值放低,不是賣出訊號。'] },
         { v: 'V79.0.0', d: ['🗑️ <b>券商分點拿掉了</b>(FinMind 付費金鑰 10/01 到期,你決定一起刪):選股的「🏅 券商」、底部「券商」分頁、籌碼頁「券商分點」子頁籤、主力雷達、地緣/關鍵分點、隔日沖分點、分點連買、明日劇本(籌碼面)、借券 / 八大行庫 / 當沖比 / 外資水位 / 可轉債 / 鉅額 / 產業鏈細項 —— 全部移除,⛔ 不再顯示 09/30 的舊資料', '✅ 照留:三大法人、融資券、集保大戶分佈、處置/注意股(官方名單)、當沖雷達、K 棒、題材、AI 鏈、選股策略 —— 這些都是免費資料,每天照常更新', '📄 報告頁:只少了「分點」那一列、「細項分類」標籤、來源列的「分點日」;基本面(本益比/季 EPS/三率)照舊', '🧹 第一次打開會自動清掉手機上舊的分點快取(一檔約 108 KB)'] },
         { v: 'V78.7.0', d: ['💳 <b>籌碼頁「分點日 09/30 ⚠️ 9天前」現在會講原因了</b>:你那把 FinMind 付費金鑰約 10/01 起失效,而券商分點只有付費層抓得到 → 全市場分點停在 09/30。卡片最上面多一行說明;「明日劇本」那句「這檔這輪還沒輪到、下次就補上」也改掉(那句已經不對)', '✅ <b>選股・決策台・三條出場・領頭羊・自動下單一個都不受影響</b>(都不用 FinMind);停在 09/30 的是分點與八大行庫、借券、當沖比、外資持股、鉅額交易、產業鏈、可轉債、權證、集保分級這幾類,舊資料照顯示', '💡 續費後不用改任何東西,下一輪採礦會自動接回去'] },
-        { v: 'V78.6.9', d: ['📑 <b>產業作戰室新增「財報」分頁</b>(你貼的財報分析代理,改成網頁版):輸入代號或名稱,看 12 季的營收・季營收年增・毛利率・營益率・淨利率・營業現金流・自由現金流・負債比・流動比;<b>每一格都標哪一季、最晚公布日、來源</b>,查不到就寫「—」並說原因', '⛔ 不評分、不判好壞、不給買賣;「📋 複製給 AI」會連來源與期間一起帶走,並要求 AI 只解讀不推估', '⏳ 負債比 / 流動比要等你手動跑一次「📦 財報三表深歷史回算」才有數字(資產負債表這四欄這一版才開始存,不多花額度)'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -20784,7 +20784,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //    回測用 `industry_map`(證交所公司基本資料 = **只有上市 1,075 檔**),
     //    而 `screener.json` 的 `ind` 剛好也只有那 1,075 檔(實測完全對齊)→ 這裡一律只用有 `ind` 的股票
     //    算全市場分位,⛔ 不可拿 2,356 檔全部去算(那會變成跟回測不同的母體)。
-    //    ⚠️ 上櫃股沒有官方產業分類 → **誠實說判斷不了**,⛔ 不可靜默不顯示(不然使用者會以為壞了)。
+    //    ⚠️ 沒有官方產業分類的(興櫃 / ETF / 剛上市;V76.4.0 起上櫃也有了)→ **誠實說判斷不了**,⛔ 不可靜默不顯示(不然使用者會以為壞了)。
     _REGIME_EDGE: {
         // [事件數, 20日平均超額pp, 拿掉最好年份的保守值pp, 20日勝率%, 是否全關通過]
         // 🚨 V74.2.8 **含 2022 空頭重跑**(2021-10 ~ 2026-08、98,392 個事件):
@@ -23765,7 +23765,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const row = D.rows[s];
         if (!row) return null;
         const ind = (D.ind || {})[s];
-        if (!ind) return { na: 'noind' };                      // 上櫃:沒有官方產業分類
+        if (!ind) return { na: 'noind' };                      // 興櫃 / ETF / 剛上市:沒有官方產業分類(⚠️ V76.4.0 起上櫃也有了)
         const S = this._regimeStats();
         if (!S) return null;
         const me = this._scrV(row, 'chg20');
@@ -23910,7 +23910,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[9px] text-gray-600 mt-1 leading-snug">🏭 「這波是誰在漲」= 拿這檔近 20 日漲跌 跟<b>同產業其他股票</b>比。⛔ 這一行<b>只能當「現在是什麼盤」的描述,不是進出場訊號</b>。</div>
         </div>`;
         // ⚠️ 「沒有資料」與「條件沒過」是兩件事,⛔ 不可都靜默不顯示
-        if (r.na === 'noind') return wrap('🏭 這波是誰在漲:<b>這檔判斷不了</b>', '證交所的官方產業分類<b>只涵蓋上市股</b>,上櫃股沒有 → 沒辦法跟「同產業其他股票」比。⛔ 不是程式壞掉,是資料源就沒有。');
+        if (r.na === 'noind') return wrap('🏭 這波是誰在漲:<b>這檔判斷不了</b>', '這檔沒有官方產業分類(興櫃、ETF、剛上市的常常沒有)→ 沒辦法跟「同產業其他股票」比。⛔ 不是程式壞掉,是資料源就沒有。');
         if (r.na === 'thin') return wrap('🏭 這波是誰在漲:<b>算不出來</b>', `「${r.ind}」這一類當天的樣本太少(不到 5 檔),中位數不可靠 → ⛔ 不硬給結論。`);
         const pn = (x, d = 1) => (x >= 0 ? '+' : '') + (+x).toFixed(d);
         const cl = x => x >= 0 ? 'text-red-300' : 'text-green-300';
@@ -26284,7 +26284,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const thin = M < 8 ? `<div class="text-[10px] text-amber-300/80 mt-1">⚠️ 這一族只有 ${M} 檔,名次的參考價值有限(樣本太少)。</div>` : '';
         const src = g.kind === 'theme'
             ? `題材名單每天由採礦端用「扣掉大盤之後的殘差相關」重算${(D.ind || {})[sym] ? `;這檔的官方產業分類是「${this._escHtml((D.ind || {})[sym])}」(範圍較廣,這裡用比較精準的題材名單比)` : ''}`
-            : '證交所官方產業分類(⚠️ 只涵蓋上市股)';
+            : '證交所 / 櫃買中心官方產業分類(上市櫃都有;興櫃與 ETF 沒有)';
         return `<div class="text-[10px] text-gray-300 leading-snug mb-1">📍 你在「<b class="text-gray-100">${this._escHtml(g.name)}</b>」這 <b>${M}</b> 檔裡:${mine}</div>${thin}
             <div class="text-[10px] text-gray-500 mb-1">本益比是<b>由低到高</b>排(淨值比也是;第 1 = 最便宜),其餘由高到低。ROE 本站沒有。缺的欄位寫「本站沒有」,⛔ 不補 0。</div>
             <div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🏢 這一族成交值前 10 名${top.indexOf(sym) >= 10 ? ' + 你這檔' : ''}</div>${rows}
@@ -34736,7 +34736,7 @@ ${this._reportFacts(sym)}
 
     // 💧 V76.0.3 「板塊輪動」分頁:一句話 + 32 個產業的 20 日相對強弱排名(⛔ 只描述,不下指令)
     //   🚨 名次唯一真相 = _regimeStats()(K 棒戰法卡 / 報告頁 / 這裡 三處同一份;⛔ 不可自己從 sector_rot 排)
-    //   ⭐ 實測背書:sector_rotation_probe —— 🔁 V79.4.3 拉長到 2010~2026(上市 1,980 檔・4,028 天):前 3 強 − 後 3 弱 +1.95pp(未來 20 日),
+    //   ⭐ 實測背書:sector_rotation_probe —— 🔁 V79.4.3 拉長到 2010~2026(上市櫃 1,980 檔・4,028 天;V76.4.0 起 industry_map 也收上櫃):前 3 強 − 後 3 弱 +1.95pp(未來 20 日),
     //     前 3 相對全產業 +1.06pp、後 3 是 −0.88pp → 兩頭差不多(⛔ 舊的「避開最弱比追最強更有價值」16 年不成立)。
     //     ⚠️ 20 日窗口 2022 −0.0 / 2023 −0.2 → 逐年沒全過;10 日(+1.65)/ 60 日(+2.79)每一年都正。舊值 1.44 / 0.63 / −0.80(1,214 天)。
     //   ⛔ 不畫資金流(外資/投信/自營/融資四條實測排不出有效順序,只是描述用)。
@@ -51604,7 +51604,7 @@ App 會在那個時段幫你盯,到價自動提醒。
             4: { n: '創新者', en: 'Innovators', mat: 10, st: '研發實驗室階段', d: '自己提出科學假設、設計實驗、發現新藥新材料', tw: '超級電腦與更高頻寬互連:高階矽光子/CPO 是台廠對應。' },
             5: { n: '組織者', en: 'Organizations', mat: 0, st: '遠期理論構想', d: '像一整家公司一樣自主協調資源營運', tw: '算力=水電:電網重電、綠能、低軌衛星這類「底層基建」對應這一層。' },
         },
-        seg: { up: '上游・算力硬體', mid: '中游・平台整合', down: '下游・應用軟體' },
+        seg: { up: '算力硬體', mid: '平台整合', down: '應用軟體' },   // 🧭 V79.7.9 拿掉「上游・中游・下游」—— 那三個字留給製造鏈(供應鏈星脈圖 _chainPos),⛔ 同名不同義(2317 在這裡是算力硬體、在製造鏈是下游組裝)
         stocks: [
             ['2330', '台積電', 'up', '先進製程 / CoWoS', '1234', '高', '地緣政治、資本支出高峰'],
             ['2454', '聯發科', 'up', '邊緣 AI SoC', '23', '高', '手機景氣連動'],

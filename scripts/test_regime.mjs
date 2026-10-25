@@ -81,9 +81,12 @@ const R = await page.evaluate(async (D) => {
 // ── ② 沒有資料 vs 條件沒過 要分開 ────────────────────────────────────
 {
     const otc = R.cases.find(c => c.k === 'na:noind');
-    ok('② 上櫃股(沒有官方產業別)→ 回 na:noind', !!otc, JSON.stringify(Object.keys(R.counts)));
-    ok('②b ⭐ 上櫃股要**誠實說判斷不了**,⛔ 不可靜默不顯示',
-       !!otc && otc.html.length > 50 && /判斷不了/.test(otc.html) && /只涵蓋上市/.test(otc.html), (otc && otc.html || '').slice(0, 160));
+    ok('② 沒有官方產業別的股票 → 回 na:noind', !!otc, JSON.stringify(Object.keys(R.counts)));
+    // 🏷️ V79.7.9 那句原因改成「這檔沒有官方產業分類(興櫃、ETF、剛上市)」——
+    //   V76.4.0 起 industry_map 也收上櫃,舊句「只涵蓋上市股,上櫃股沒有」是錯的(⛔ 不可再出現)
+    ok('②b ⭐ 沒有產業別的要**誠實說判斷不了**並講原因,⛔ 不可靜默不顯示、⛔ 不可再說「上櫃股沒有」',
+       !!otc && otc.html.length > 50 && /判斷不了/.test(otc.html) && /沒有官方產業分類/.test(otc.html)
+       && !/只涵蓋上市|上櫃股沒有/.test(otc.html), (otc && otc.html || '').slice(0, 160));
     ok('②c ⭐ 而且要說「不是程式壞掉,是資料源就沒有」',
        !!otc && /不是程式壞掉/.test(otc.html), '');
     ok('②d screener 還沒載入 → 回 null 且 HTML 空(⛔ 不可硬給結論、不可 throw)',

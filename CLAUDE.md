@@ -773,6 +773,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`node scripts/test_ludefer.mjs`**(🟥 V78.1.4 回測 `LUDEFER=1`:抱滿 MAXD 那天鎖漲停 → 隔天開盤賣;定義 = `dt_daily_probe.lockUp`、進 CACHE_KEY、不設時一字不變、被延的每一筆用獨立 oracle 驗;真跑引擎約 4 分)
    + **`python3 scripts/test_peband_carry.py`**(📐 V78.1.2 `pe_band_miner` 這一輪抓不到 / 沒輪到的⛔ 不可從檔案消失 —— 沿用上一輪那一筆、歷史太短才拿掉;決定性對照「不讀上一輪」= 舊版會紅;V78.1.3 ⑦~⑪ 輪動補齊(沒舊值先抓、舊 d 由舊到新)/ 連續 40 檔 402/403 收工 / 部分成功且不縮就寫檔)
    + **`python3 scripts/test_screener_mcap.py`**(🎣 V78.0.0 screener 新欄 `mcap` 市值(億)= 收盤 × 集保總股數 ÷ 1e8,沒有總股數 → None、欄位排最後)
+   + **`python3 scripts/test_screener_tse.py`**(🏷️ V79.7.9 screener `tse`(上市一般股)只看 `stock_names.json` 第三欄市場別 —— V76.4.0 起 industry_map 也收上櫃,舊判斷「有產業代碼 = 上市」把上櫃 1,000 多檔算成上市;走正式入口 + 決定性對照(拿掉 stock_names → 上櫃又變 1))
    + **`node scripts/test_fishhome.mjs`**(🏠 V77.9.9 散戶救星「🎣 魚池」:`fishHome_v1` / 匯入碼 → 自選群組 + 每列釣起價 / 賺賠(`_netPL`)、刪掉不回來、⛔ 不碰庫存、⛔ 不連股海釣手)
    + **`node scripts/test_stratswitch.mjs`**(🎯 V77.9.6 全站策略開關:預設 🧬、沒解鎖一律 🧬、連點版本號 5 次解鎖;🧬 時 App / 產業作戰室 / 更新紀錄 / 實測總表看不到 👑;👑 時總覽 / 決策台 / 提醒 / 背景提醒 / Telegram 只講領頭羊;⭐ 決定性對照:同一檔切回 🧬 回到三條出場;worker 名單 / 錨點 == App)
    + **`python3 scripts/test_lead_ghost.py`**(👑 V77.9.5 領頭羊快照:K 線跑到加權日曆前面(假日幽靈 K)時,當天 screener ⛔ 不當實跑存、改 K 線回補 bf:1;⭐ 決定性對照:拿掉守門就會被當實跑存)

@@ -176,6 +176,11 @@ ok(/sort\(\(a, b\) => b\.s\.avg - a\.s\.avg\)/.test(cmpBody),
 { const m = SRC.match(/_CMP_EXITS: \[([^\]]*)\]/); const ks = m ? m[1].match(/'(\w+)'/g).map(v => v.slice(1, -1)) : [];
   ok(ks.includes('don40') && ks.includes('atr2') && !ks.includes('ma5') && !ks.includes('trail8') && ks.length <= 3,
     '⑤b 只比現行預設 / 舊預設 / ATR(⛔ 不把 ma5/trail8 也塞進來 = 多重比較)', ks.join(',')); }
+// 🧾 V79.7.9 出場比較卡:條數照 `_CMP_EXITS` 算(以前寫死「兩種」—— 實際是三種)・⛔ 舊 600 檔 49 個月那組 +590 / +531 萬
+//   (舊算法偏高、而且被看板換掉了)・⛔ 指去已經不存在的「回測計算機」分頁
+ok(/\$\{N\} 種出場/.test(cmpBody) && /const N = rows\.length/.test(cmpBody)
+   && !/兩種出場|\+590|\+531|回測計算機/.test(cmpBody),
+  '⑤c 🧾 出場比較卡條數讀 `_CMP_EXITS`、⛔ 舊 +590 / +531 萬、⛔ 「回測計算機」', cmpBody.match(/[^\n]*(兩種|590|531|回測計算機)[^\n]*/g));
 // ①b `renderFish` 只做成績單 —— ⚠️ 切片要精確到**它自己的結尾**(`\n  },`),
 //   ⛔ 不靠「下一支函式叫什麼」(V77.3.9 在它前面插了 `renderRod`,靠名字切會變成僥倖過關)。
 const rfI = SRC.indexOf('  async renderFish() {');

@@ -70,7 +70,7 @@ for (const sym of Object.keys(indOf)) {
   if (o.d.length < 300) continue;
   S.set(sym, o); nSym++;
 }
-console.log(`\n📊 母體:${nSym} 檔上市股(⚠️ industry_map 只涵蓋上市)・${Object.keys(indOf).length} 檔有產業別`);
+console.log(`\n📊 母體:${nSym} 檔股票(industry_map V76.4.0 起上市櫃都有)・${Object.keys(indOf).length} 檔有產業別`);
 
 // ── 逐日:算板塊動能 → 取前 3 強 → 在裡面挑股 ──
 const buckets = new Map();

@@ -21,8 +21,8 @@
  *    ・主判準是 **前 3 減後 3**(多空價差)—— 單看前 3 會被大盤方向帶著跑
  *    ・關卡:前後半同向 + 逐年同向 + 去最好年仍在 + 幅度 > 來回成本 0.44pp
  *
- * ⛔ 資料限制(誠實寫在輸出裡):`industry_map.json` 只涵蓋**上市**(1,095 檔),
- *    上櫃股沒有官方產業別 → 這是「上市板塊輪動」,⛔ 不是全市場。
+ * ⛔ 資料限制(誠實寫在輸出裡):`industry_map.json` V76.4.0 起上市櫃都有(約 1,990 檔),
+ *    ⛔ 興櫃與 ETF 沒有;只算現在還有產業別的股票(下市的沒算)。
  *
  * 🔁 V79.4.3(16 年全市場 d16 重跑前修好,陷阱 #50 / #52):
  *    ・對照組本來就是**同一天**(當天全部產業的平均、前 3 減後 3)→ 這部分不用改;每天仍要 ≥20 個產業、每個產業 ≥5 檔。
@@ -215,8 +215,8 @@ function metricsOf(D) {
 
 function main() {
   const { nSym, nInd, dates, D, fwd, skip } = prepare();
-  console.log(`📈 ${nSym} 檔上市股 ・${nInd} 個產業 ・指數日期 ${dates[0]} ~ ${dates[dates.length - 1]}`);
-  console.log(`⛔ 只涵蓋**上市**(industry_map 沒有上櫃)→ 這是「上市板塊輪動」,不是全市場。`);
+  console.log(`📈 ${nSym} 檔股票 ・${nInd} 個產業 ・指數日期 ${dates[0]} ~ ${dates[dates.length - 1]}`);
+  console.log(`⚠️ 上市櫃(industry_map V76.4.0 起也收上櫃)・⛔ 興櫃與 ETF 沒有・只算現在還有產業別的股票(下市的沒算)。`);
   console.log(`🔁 V79.4.3 股·日:日報酬碰到斷崖不算 ${skip.cliff.toLocaleString()} ・收漲停買不到(之後的路徑剔掉,2015-06 前 ±7%)${skip.lu.toLocaleString()}`
     + ` ・外資欄缺(⛔ 不當 0)${skip.unk.toLocaleString()}\n`);
 

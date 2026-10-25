@@ -34,6 +34,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 260)}`}`); if (!c) fails.push(n); };
 const src = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
+// 💧 V79.7.9 舊的「避開最弱比追最強更有價值」16 年不成立 → 只准以「…不成立」的形式出現(說明書會提一次舊版)
+const _oldClaimOk = t => !/更有價值/.test(t) || /更有價值」?[^。]{0,24}不成立/.test(t);
 // 🫧 個股泡泡圖的原始碼區段(`_stockBubHtml` 建結構 + `_stockBubSeek` 算座標)——
 //    ⛔ 兩支要一起掃,只掃其中一支會漏(V74.1.3 把座標計算搬去 Seek 那支)
 // 🔢 ㊳ 版本號要跟散戶救星一致 —— 使用者:「這樣才知道有沒有更新」
@@ -46,6 +48,15 @@ const src = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
        !!a && a === b, `index=${a} pro=${b}`);
     ok('㊳b 🔢 而且要真的顯示在畫面上(⛔ 只有常數沒有顯示等於沒做)',
        /id="proVer"/.test(src) && /_renderVer\(\)/.test(src));
+    // 💧 V79.7.9 板塊輪動的實測數字也是兩份(index `_ROT_EDGE` / pro `_ROT`)——
+    //   V79.4.3 只換了 index 那份,作戰室板塊頁停在 775 天舊數字還講「避開最弱比追最強更有價值」(16 年不成立)一整週。
+    const num = (blk, k) => { const m = new RegExp(`\\b${k}: ?(-?[0-9.]+)`).exec(blk || ''); return m ? +m[1] : NaN; };
+    const ie = (idx.match(/_ROT_EDGE: \{[^}]*\}/) || [''])[0];
+    const pe = (src.match(/\n  _ROT: \{[\s\S]*?\n  \},/) || [''])[0];
+    const keys = ['spread', 'top', 'bot', 'win', 'days'];
+    ok('㊳c 💧 pro `_ROT` 的 spread / top / bot / win / days 要等於 index `_ROT_EDGE`(⛔ 只改一邊 = 兩個 App 講不同數字)',
+       !!ie && !!pe && keys.every(k => Number.isFinite(num(ie, k)) && num(ie, k) === num(pe, k)),
+       keys.map(k => `${k}:${num(ie, k)}/${num(pe, k)}`).join(' '));
 }
 const SBSRC = (() => {
     const a = src.indexOf('_stockBubHtml'), b = src.indexOf('_rotQuad(list) {', a);
@@ -332,6 +343,7 @@ const T = await page.evaluate(async () => {
         flowChks: [...document.querySelectorAll('#rotFlowBar .fchk')].map(e => e.textContent.trim()),
         flowOnN: document.querySelectorAll('#rotFlowBar .fchk.on').length,
         headTxt: document.getElementById('rotFiHead').innerText,
+        rot: JSON.parse(JSON.stringify(PRO._ROT)),   // 🔁 V79.7.9 文案的數字一律讀 _ROT → 斷言也讀它(⛔ 寫死)
     };
     // 🚧 版面穩定:拉時間軸時,結論條高度與圖的位置**不可以變**(使用者回報「上上下下」)
     PRO.rotSeek(0);
@@ -394,6 +406,8 @@ const T = await page.evaluate(async () => {
     out.sheetHtml = _sh.innerHTML;
     out.sheetGoto = /PRO\.gotoStock\('2382'\)/.test(_sh.innerHTML);
     out.sheetStar = /PRO\.starGo\('2382'\)/.test(_sh.innerHTML);
+    // 💧 V79.7.9 「它的板塊」:screener 存中文名('半導體')→ 按鈕要帶**代號**('24')
+    out.sheetIndBtn = /PRO\.rotOpenInd\('24'\)/.test(_sh.innerHTML);
     PRO.switchTab('rot');                         // 切頁要自動收起來
     out.sheetClosedOnTab = !_sh.classList.contains('on');
     PRO.rotSeek(1);
@@ -411,6 +425,16 @@ const T = await page.evaluate(async () => {
     PRO.rotOpen('10');
     await new Promise(r => setTimeout(r, 60));
     out.missTxt = openOne().innerText;
+    PRO.rotOne(null);
+    // 💧 V79.7.9 「它的板塊」真的開到那一頁、有成分股(⛔ 舊寫法:中文名直接丟給 rotOpen → 空白頁)
+    PRO._rotMode = 'th';                          // 題材模式下也要切回官方產業才對得上代號
+    out.indOk = await PRO.rotOpenInd('半導體');
+    await new Promise(r => setTimeout(r, 60));
+    out.indRows = document.querySelectorAll('#rotOne tbody tr').length;
+    out.indSel = PRO._rotOneSel; out.indMode = PRO._rotMode;
+    PRO.rotOne(null);
+    PRO.rotOpen('半導體'); await new Promise(r => setTimeout(r, 60));   // 決定性對照:舊寫法
+    out.indOldRows = document.querySelectorAll('#rotOne tbody tr').length;
     PRO.rotOne(null);
     // ㉖ 🎯 題材模式(V74.3.5)
     PRO._names = Object.assign({}, PRO._names, { '2408': '南亞科', '8299': '群聯' });
@@ -1085,8 +1109,13 @@ ok('㉟i ⛔ 單一板塊只描述不下指令(資金流那條要標明排不出
 ok('㊱a2 🚨 說明書頁不可出現浮點尾巴(0.63−(−0.8) 在 JS 是 1.4300000000000002)',
    !/\d\.\d{5,}/.test(ROT2.doc), (ROT2.doc.match(/\d\.\d{5,}/g) || []).join(' '));
 ok('㊱ 📖 策略與回測頁要有實測數字與限制(⛔ 不可只是把字搬過去卻少了數字)',
-   /\+0\.90%/.test(ROT2.doc) && /0\.64x/.test(ROT2.doc) && /只涵蓋上市/.test(ROT2.doc)
+   ROT2.doc.includes(`+${T.rot.pick.best}%`) && /0\.64x/.test(ROT2.doc) && /上市櫃都有/.test(ROT2.doc)
    && /人工挑的/.test(ROT2.doc), ROT2.doc.slice(0, 120));
+// 🔁 V79.7.9 說明書換 16 年版:天數 / 價差讀 _ROT;⛔ 不可再用 top − bot 自己減(1.06 − (−0.88) = 1.94 ≠ 1.95 → 同頁兩個價差)
+ok('㊱a3 🔁 說明書 = 16 年版(4,028 天、+1.95pp),⛔ 不可出現自己減出來的價差、⛔ 不可再說「1~5 天吃不掉成本」「整段偏多頭」',
+   ROT2.doc.includes(T.rot.days.toLocaleString()) && ROT2.doc.includes(`+${T.rot.spread.toFixed(2)}pp`)
+   && !ROT2.doc.includes(`+${(T.rot.top - T.rot.bot).toFixed(2)}pp`) && !/吃不掉來回成本/.test(ROT2.doc)
+   && !/整段偏多頭/.test(ROT2.doc) && _oldClaimOk(ROT2.doc), ROT2.doc.slice(0, 300));
 ok('㊱b 🚨 說明書那頁沒有時間軸可言 → 控制列要收起來(⛔ 留著會讓人以為那頁也會動)',
    ROT2.docCtlHidden === true && ROT2.detCtlHidden === false,
    `doc=${ROT2.docCtlHidden} det=${ROT2.detCtlHidden}`);
@@ -1353,7 +1382,7 @@ ok('⑤e prompt 代入真實數字(2382 廣達 100.0 / EPS 10.00 / 帶 8-12-20 /
 // ⑯ 單股 prompt
 ok('⑯ 單股 prompt 有代號名稱與收盤價', /2382 廣達/.test(R.stockPrompt) && /收盤價:100\.0 元/.test(R.stockPrompt), R.stockPrompt.slice(0, 200));
 ok('⑯b 單股 prompt 帶入 AI 產業鏈定位(段/題材/層級/供應鏈層)',
-   /AI 產業鏈定位:.*上游/.test(R.stockPrompt) && /供應鏈層/.test(R.stockPrompt),
+   /AI 產業鏈定位:.*算力硬體/.test(R.stockPrompt) && /供應鏈層/.test(R.stockPrompt),
    (R.stockPrompt.match(/AI 產業鏈定位:.*/) || [''])[0]);
 ok('⑯c 單股 prompt 有完整 5 檔 PE 對照價位', /P5 8\.0x → 80\.0 元/.test(R.stockPrompt) && /P95 20\.0x → 200\.0 元/.test(R.stockPrompt));
 ok('⑯d 單股 prompt 同樣有防幻覺約束(共用同一份 header)', /禁止.{0,30}目標價/.test(R.stockPrompt));
@@ -1443,20 +1472,28 @@ ok('㉒e 結論要點名最強 / 最弱(🎯⛔ 圖示,⛔ 不靠顏色)',
    /🎯/.test(T.verdict) && /⛔/.test(T.verdict) && /航運/.test(T.verdict) && /半導體/.test(T.verdict), T.verdict.slice(0, 120));
 ok('㉒e2 圖下方的名次條要一次列完所有產業(⛔ 不用捲)',
    /航運/.test(T.chips) && /半導體/.test(T.chips) && (T.chips.match(/[+-]\d/g) || []).length >= 4, T.chips.slice(0, 120));
-ok('㉒f 🚨「幾天才有價值」必須寫出實測數字,⛔ 不可只說「20 日」',
-   /1 日窗口/.test(T.note) && /60 日窗口/.test(T.note) && /\+1\.44pp/.test(T.note), T.note.slice(0, 200));
+ok('㉒f 🚨「幾天才有價值」必須寫出實測數字,⛔ 不可只說「20 日」(🔁 V79.7.9 數字讀 _ROT 的 16 年版)',
+   /1 日窗口/.test(T.note) && /60 日窗口/.test(T.note) && T.note.includes(`+${T.rot.spread.toFixed(2)}pp`)
+   && T.note.includes(T.rot.yrBad), T.note.slice(0, 200));
+// 🔁 V79.7.9 16 年:20 日那格逐年沒過(2022 / 2023)→ 那一格要標 ⚠️,其他四關全過的標 ✅(⛔ 一律 ✅ = 把沒過的講成過)
+ok('㉒f3 🔁 V79.7.9 每個窗口標出有沒有四關全過(20 日那格 ⚠️、其他 ✅)',
+   T.rot.win20.every(([n, v, ok]) => new RegExp(`${n} 日窗口 ${(v >= 0 ? '\\+' : '') + v.toFixed(2)}pp ${ok ? '✅' : '⚠️'}`).test(T.note)),
+   T.note.match(/\d+ 日窗口[^・]*/g));
 ok('㉒f2 🚨 必須寫「X 軸過關、Y 軸沒過關」——⛔ 不可讓人以為兩個軸一樣有份量',
    /份量完全不同/.test(T.note) && /X 軸.{0,20}實測唯一過關/.test(T.note)
    && /Y 軸.{0,12}實測沒過關/.test(T.note) && /只是描述/.test(T.note), T.note.slice(0, 400));
 ok('㉒g 🚨 必須寫「刻意沒把加速/放緩做成一個軸」+ 實測數字',
-   /刻意沒有把「加速\/放緩」做成一個軸/.test(T.note) && /-0\.88/.test(T.note.replace(/−/g, '-')), T.note.slice(0, 600));
-ok('㉒h ⭐「避開最弱比追最強更有價值」要寫出來',
-   /避開最弱/.test(T.note) && /-0\.8pp/.test(T.note.replace(/−/g, '-')), T.note.slice(0, 900));
+   /刻意沒有把「加速\/放緩」做成一個軸/.test(T.note) && T.note.includes(T.rot.accLo.toFixed(2)), T.note.slice(0, 600));
+// 🔁 V79.7.9 16 年:前 3 +1.06 / 後 3 −0.88 → 兩頭差不多(⛔ 舊的「避開最弱比追最強更有價值」不可再當結論講;
+//   說明書可以提「舊版量到那句、16 年不成立」,所以只要出現就一定要配「不成立」)
+ok('㉒h ⭐ 兩頭都要寫出來(挑最強、避開最弱都有用),數字讀 _ROT;⛔ 舊的「更有價值」只准以「不成立」出現',
+   /挑最強、避開最弱都有用/.test(T.note) && T.note.includes(`${T.rot.bot}pp`) && T.note.includes(`+${T.rot.top}pp`)
+   && /兩頭差不多/.test(T.note) && _oldClaimOk(T.note), T.note.slice(0, 900));
 // 🚨 ㉒h2:那句是整張圖最有實戰價值的一句 —— 只寫在 <details>(預設收起)裡等於使用者看不到。
 //    ⛔ 這條刻意驗 **verdict**(第一眼常顯區)而不是 note,兩條缺一不可。
 ok('㉒h2 🚨 而且要出現在**第一眼**,⛔ 不可只藏在收起來的說明區(功能有 ≠ 找得到)',
-   /避開最弱/.test(T.verdict) && /追最強/.test(T.verdict)
-   && /-0\.8pp/.test(T.verdict.replace(/−/g, '-')), T.verdict);
+   /避開最弱/.test(T.verdict) && /挑最強/.test(T.verdict)
+   && T.verdict.includes(`${T.rot.bot}pp`) && !/更有價值/.test(T.verdict), T.verdict);
 ok('㉒i 誰在買:預設勾選那幾條加總排序 → 半導體第一', T.fiFirst === '半導體', T.fiFirst);
 // ⚠️ V74.1.4 這句從摺疊區搬到**第一眼**那句結論裡(文案改了,用意沒變:要主動點出反例)
 ok('㉒j 🚨 外資「買最多卻最弱」的現成例子要主動點出來,而且要在**第一眼**(⛔ 不可藏進摺疊區)',
@@ -1495,6 +1532,10 @@ ok('㉕e 個股要能點(V74.4.0:開快捷面板)', T.detHasGoto);
 ok('🔗 點股名會開快捷面板,而且面板裡一定有「→ 散戶救星」那顆(⛔ 不可把出口拿掉)',
    T.sheetOn && T.sheetGoto, `on=${T.sheetOn} goto=${T.sheetGoto}`);
 ok('🔗b 面板要能直接查它的星圖(⛔ 不可只切分頁不查,那等於還要自己打一次代號)', T.sheetStar);
+ok('🔗b2 💧 「它的板塊」帶的是產業代號(screener 存的是中文名,⛔ 直接傳名字 = 空白頁)', T.sheetIndBtn);
+ok('🔗b3 💧 點了真的開到那一個板塊、有成分股、題材模式也切回官方產業;⭐ 決定性對照:舊寫法(名字直接丟)0 列',
+   T.indOk === true && T.indSel === '24' && T.indMode === 'ind' && T.indRows >= 1 && T.indOldRows === 0,
+   JSON.stringify({ ok: T.indOk, sel: T.indSel, mode: T.indMode, rows: T.indRows, old: T.indOldRows }));
 ok('🔗c 面板只導覽:⛔ 不出現買賣價位/多空字眼', !/買進訊號|該買|停損|目標價|偏多|偏空/.test(T.sheetHtml.replace(/⛔ 不下多空[^<]*/g, '')));
 ok('🔗d 切分頁要自動收起面板(⛔ 不可蓋在別頁上面)', T.sheetClosedOnTab);
 ok('㉕f 🚨 必須誠實說「個股表只有最新一天」(⛔ 不可假裝拉回過去看得到)',

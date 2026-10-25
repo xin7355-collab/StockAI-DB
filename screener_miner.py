@@ -19,7 +19,7 @@
 ⚠️ 已知限制(誠實寫進輸出的 `caveat`,前端要顯示):
    ・籌碼欄位(`foreign_net`/`trust_net`)本專案**只回溯到 2026/05**
      → 連買天數這類「要連續好幾天」的條件,樣本本來就淺(CLAUDE.md V72.9.7)。
-   ・上市/上櫃只靠 `fundamentals_cache` 是否有值粗分會誤判 → ⛔ 不做,改用官方產業代碼有無。
+   ・上市/上櫃只靠 `fundamentals_cache` 是否有值粗分會誤判 → ⛔ 不做;🏷️ V79.7.9 起看 `stock_names.json` 第三欄(市場別)。
    ・⛔ **不提供回測按鈕** —— 任意條件組合的歷史回測需要「每天一份全市場快照」,
      本專案沒有那份歷史;做一個沒有對照組的假回測比不做更糟(CLAUDE.md 一貫立場)。
      替代:選出來的每一檔直接標 App 已有的**實測成績**(`playbook_edge` / `today_signals`)。
@@ -122,7 +122,7 @@ COLS = [
     # ── 分類(數值旗標)──
     'etf',      # 1=ETF
     'att',      # 0 無 / 1 注意股 / 2 處置中
-    'tse',      # 1=上市(有官方產業別);0=其他(上櫃/興櫃/ETF)
+    'tse',      # 1=上市一般股(市場別 twse 且有官方產業別);0=其他(上櫃/興櫃/ETF)—— 判定只在 _tse_of
     'dr',       # 1=存託憑證(DR,代號 6 碼且 91 開頭)
     'mcap',     # 市值(億元)= 收盤 × 集保總股數 ÷ 1e8(🎣 V78.0.0 股海釣手魚的大小;沒有總股數 → None,⛔ 不硬湊)
 ]
@@ -477,6 +477,21 @@ def _mcap_of(close, tot):
     return rd(c * t / 1e8, 1)
 
 
+def _tse_of(sym, code, mkt):
+    """🏷️ V79.7.9 「上市一般股」判定(選股頁「只看上市 / 只看上櫃」兩個篩選讀這一欄)。
+
+    🚨 以前寫 `1 if code else 0`(有官方產業代碼 = 上市)—— V76.4.0 起 `industry_map.json` 也收**上櫃**
+       (mopsfin_t187ap03_O),那條判斷把上櫃 1,000 多檔全部算成上市(實測 gh-pages 2,496 檔裡 tse=1 有 1,983 檔,
+       中美晶 / 穩懋 / 環球晶都是 1)。
+    ⭐ 先看 `stock_names.json` 第三欄的市場別;沒有市場別的(極少數)才退回舊判斷。
+    ⚠️ ETF 沒有產業代碼 → 照舊 0(這一欄的定義是「上市一般股」)。
+    """
+    m = (mkt or {}).get(sym)
+    if m:
+        return 1 if (m == 'twse' and code) else 0
+    return 1 if code else 0
+
+
 def main():
     if not DATA.exists():
         print(f'❌ 找不到 {DATA}')
@@ -486,6 +501,9 @@ def main():
     td = load('tdcc_holders.json') or {}
     att = (load('attention_status.json') or {}).get('stocks') or {}
     imap = load('industry_map.json') or {}
+    # 🏷️ V79.7.9 市場別(twse / tpex / emerging)—— miner.py 建股名表時本來就分兩個來源,零額外 API
+    _nm = (load('stock_names.json') or {}).get('names') or {}
+    mkt = {s_: (v_[2] if isinstance(v_, list) and len(v_) > 2 else None) for s_, v_ in _nm.items()}
 
     # 大盤今日漲跌%(算「優於大盤」用)。⛔ 拿不到就整欄留 None,不硬給。
     tw = load('^TWII.json') or []
@@ -577,11 +595,9 @@ def main():
         st = (att.get(sym) or {}).get('status') or ''
         v[CI['att']] = 2 if '處置' in st else (1 if '注意' in st else 0)
 
-        # ⭐ 上市判定:`industry_map.json` 來自 TWSE 公司基本資料(t187ap03)= **只有上市**。
-        #    實測 2026-08:表內 1,093 檔;知名上市 6/6 都在,知名上櫃幾乎都不在。
-        #    ⚠️ 這是**推導**不是官方掛牌欄位 → 剛轉上市的可能還沒進表,文案要說清楚。
+        # ⭐ 上市判定一律走 _tse_of(⛔ 不可再用「有沒有官方產業代碼」:V76.4.0 起 industry_map 也收上櫃)
         code = imap.get(sym)
-        v[CI['tse']] = 1 if code else 0
+        v[CI['tse']] = _tse_of(sym, code, mkt)
         v[CI['dr']] = 1 if (len(sym) == 6 and sym.startswith('91')) else 0
         if code:
             names_ind[sym] = IND.get(str(code), str(code))

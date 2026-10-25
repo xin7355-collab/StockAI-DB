@@ -66,7 +66,7 @@ for (const sym of Object.keys(indOf)) {
   }
   if (o.d.length >= 400) S.set(sym, o);
 }
-console.log(`\n📊 母體:${S.size} 檔上市股(⚠️ industry_map 只涵蓋上市)`);
+console.log(`\n📊 母體:${S.size} 檔股票(industry_map V76.4.0 起上市櫃都有)`);
 
 // ── ① 每個產業的等權指數(成分股當日報酬中位數累乘)──
 const firsts = []; for (const [, o] of S) firsts.push(o.d[0]);
