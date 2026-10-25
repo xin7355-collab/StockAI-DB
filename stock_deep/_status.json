@@ -179,11 +179,11 @@
    "IncomeAfterTaxes",
    "OperatingIncome"
   ],
-  "have": 1666,
+  "have": 2268,
   "of": 2548,
   "chk": [
-   553,
-   553
+   173,
+   173
   ],
   "at": "2026-10-25",
   "done": false
