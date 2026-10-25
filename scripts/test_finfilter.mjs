@@ -5,6 +5,7 @@
  *      還沒有任何一季 → null  ③ FIN ⛔ 不進 CACHE_KEY(同 TURN/FILTER 慣例)  ④ 回測與探針都 import lib(⛔ 不可各寫一份 yoy 公式)
  *   ⑤ finOk 對 null 回 false(剔除並計數,⛔ 不可當成通過)  ⑥ sham 跟財報無關、通過率對齊 FIN=acc(⛔ 不寫死三分之一)
  * 注入:① lib 的 `q.pub <= day` 改成 `q.p <= day` → ②b 紅 ② 把 FIN 塞進 CACHE_KEY → ③ 紅 ③ finOk 對 v==null 回 true → ⑤ 紅
+ *       ④ 🐛 V79.8.2 lib / index 副本改回「陣列往前 4 格」→ ⑧ 紅(中間缺季要照季別找)
  */
 import fs from 'fs';
 import path from 'path';
@@ -102,6 +103,53 @@ for (const d of DAYS) {
 ok(`⑦ index.html 的 _finAccelOn 與 lib 的 finOnAt 逐日完全相同(${DAYS.length} 天)`, !diff, diff || '');
 ok(`⑦b 空過守門:三種結果都出現過(true ${sawT} / false ${sawF} / null ${sawN})—— ⛔ 全 null 的話比對沒有鑑別力`, sawT > 0 && sawF > 0 && sawN > 0, '');
 ok('⑦c 沒有切片 → null(⛔ 不是 false —— 呼叫端要當「不知道」)', (await mkFront('2030-01-01')('1234')) === null, '');
+
+// ⑧ 🐛 V79.8.2 中間缺季(興櫃只交半年報 / 少一季)→「去年同一季 / 上一季」照季別找(⛔ 用陣列位置:以前缺一季就拿錯季比)
+{
+    const rv = p => S2[p][F.indexOf('rev')];
+    // (a) 少一季:拿掉 2023-09-30(季節性那組 → 拿錯季一定算出不同的數字)
+    const QG = Q.filter(p => p !== '2023-09-30');
+    const serG = finSeries({ q: QG, f: F, s: { 7777: Object.fromEntries(QG.map(p => [p, S2[p]])) } }, '7777');
+    const g6 = serG.find(x => x.p === '2024-06-30');
+    ok('⑧a 少一季:2024-06-30 的年增 = 跟 2023-06-30 比、上一季的年增 = 2024-03-31 vs 2023-03-31(⛔ 陣列往前 4 格)',
+       g6 && Math.abs(g6.yoy - (rv('2024-06-30') / rv('2023-06-30') - 1) * 100) < 1e-9 && Math.abs(g6.acc - (g6.yoy - (rv('2024-03-31') / rv('2023-03-31') - 1) * 100)) < 1e-9 && g6.ok, JSON.stringify(g6));
+    const g12 = serG.find(x => x.p === '2023-12-31');
+    ok('⑧b 缺的那一季的下一季:上一季不在 → 加速算不出、ok=false(⛔ 拿再前一季湊)', g12 && Number.isFinite(g12.yoy) && !g12.ok, JSON.stringify(g12));
+    // (b) 半年報:只有 06-30 / 12-31 → 年增照季別算得出、加速一律算不出 → 每一天都是「不知道」
+    const QH = Q.filter(p => /-(06-30|12-31)$/.test(p));
+    const serH = finSeries({ q: QH, f: F, s: { 6666: Object.fromEntries(QH.map(p => [p, S2[p]])) } }, '6666');
+    const h = serH.find(x => x.p === '2024-06-30');
+    ok('⑧c 半年報:2024-06-30 年增 = 跟 2023-06-30 比(⛔ 兩年前那一季)、加速算不出', h && Math.abs(h.yoy - (rv('2024-06-30') / rv('2023-06-30') - 1) * 100) < 1e-9 && !h.ok, JSON.stringify(h));
+    ok('⑧d 半年報那檔每一天都是 null(⛔ 回 true / false)', ['2023-09-01', '2024-09-01', '2025-04-01'].every(d => finOnAt(serH, d) === null), '');
+    // (c) index.html 副本 == lib(同一份缺季切片,逐日)
+    const SLG = { sym: '9999', q: QG.map(p => ({ p, pub: serG.find(x => x.p === p)?.pub || null, rev: rv(p) })) };
+    const mkG = day => { class FakeDate { toLocaleDateString() { return day; } toISOString() { return day + 'T00:00:00.000Z'; } static now() { return 0; } }
+        return new Function('Date', `return async function (sym) {${FA_BODY}};`)(FakeDate).bind({ _finSlimCache: {}, _finAccelWhy: {}, _loadFinSlim: async () => SLG }); };
+    let dG = null, nK = 0;
+    for (const d of [...new Set(serG.flatMap(q => [q.pub, shift(q.pub, 1)]))]) { const a = finOnAt(serG, d), b = await mkG(d)('9999'); if (a !== b) { dG = `${d}: lib=${a} / index=${b}`; break; } if (a !== null) nK++; }
+    ok(`⑧e 缺季切片:index.html 的 _finAccelOn == lib 逐日相同(有答案的 ${nK} 天)`, !dG && nK >= 2, dG || nK);
+}
+
+// ⑨ 🐛 V79.8.2「季別往前 n 季」全 repo 一條公式:lib_fundamentals qBack == index `_qBack` == pro `_qBack`(逐一比 2009~2027 每一季 × n = 1/4/5/8)
+//    + ⛔ 舊寫法(陣列往前 4 格當去年同季)不可再出現在 App 兩個檔
+{
+    const { qBack } = await import('./lib_fundamentals.mjs');
+    const IDXs = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), PROs = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
+    const grab = (src, head) => { const i = src.indexOf(head); if (i < 0) return null; const j = src.indexOf('},', i); return src.slice(src.indexOf('{', i) + 1, j); };
+    const bI = grab(IDXs, '    _qBack(p, n) {'), bP = grab(PROs, '  _qBack(p, n) {');
+    ok('⑨0 切得到 index / pro 的 _qBack', !!bI && !!bP && bI.length > 80, `${bI && bI.length} ${bP && bP.length}`);
+    const fI = new Function('p', 'n', bI), fP = new Function('p', 'n', bP);
+    let bad9 = null, nn = 0;
+    for (let y = 2009; y <= 2027; y++) for (const m of ['03-31', '06-30', '09-30', '12-31']) for (const n of [1, 4, 5, 8]) {
+        const p = `${y}-${m}`, w = qBack(p, n); nn++;
+        if (fI(p, n) !== w || fP(p, n) !== w || fI(p.slice(0, 7) + '-01', n) !== w) { bad9 = `${p} n=${n}: lib ${w} / index ${fI(p, n)} / pro ${fP(p, n)}`; break; }
+    }
+    ok(`⑨ 三份 qBack 逐一相同(${nn} 組;YYYY-MM-01 也吃)`, !bad9, bad9 || '');
+    ok('⑨b 例:2024-06-30 往前 4 季 = 2023-06-30、往前 1 季 = 2024-03-31、2024-03-31 往前 1 季 = 2023-12-31', qBack('2024-06-30', 4) === '2023-06-30' && qBack('2024-06-30', 1) === '2024-03-31' && qBack('2024-03-31', 1) === '2023-12-31', '');
+    const OLD = [/eps\[eps\.length - 5\]/, /allQs\[allQs\.length - 5\]/, /rows\[i - 4\]\.rev/, /Q\.length >= 5 \? Q\[Q\.length - 5\]/, /q\[q\.length - 5\]\.rev/, /\.sort\(\)\.slice\(-4\)\.map\(q => byQ\[q\]\.net\)/];
+    const hit = OLD.filter(re => re.test(IDXs) || re.test(PROs)).map(String);
+    ok('⑨c ⛔ 舊寫法(陣列往前 4 格 = 去年同季 / 最後 4 筆 = 近 4 季)不可再出現在 index.html / pro.html', !hit.length, hit.join(' '));
+}
 
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ FINFILTER_PASS');
 process.exit(fails.length ? 1 : 0);

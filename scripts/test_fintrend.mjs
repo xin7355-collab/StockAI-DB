@@ -31,8 +31,9 @@ if (!fs.existsSync(path.join(ROOT, 'data', 'fin', '2330.json'))) { console.log('
 {
     const fn = CODE.slice(CODE.indexOf('_finTrend(C) {'), CODE.indexOf('_sparkSvg(vals, o = {}) {'));
     ok('⓪a 切得到 _finTrend(空過守門)', fn.length > 600, String(fn.length));
-    ok('ⓐs ⭐ 年增跟**去年同季**比(⛔ 不可跟上一季比 —— 季營收有季節性)',
-       /i >= 4 && r\.rev != null && rows\[i - 4\]\.rev > 0/.test(fn), '');
+    // 🐛 V79.8.2 去年同季改成照季別找(qbk(r.p, 4) = 往前 4 季;⛔ 陣列往前 4 格 —— 興櫃只交半年報,那是兩年前)
+    ok('ⓐs ⭐ 年增跟**去年同季**比(⛔ 不可跟上一季比 —— 季營收有季節性;⛔ 用陣列位置找去年同季)',
+       /const yoy = rows\.map\(r => \{ const o = byP\.get\(qbk\(r\.p, 4\)\)/.test(fn) && !/rows\[i - 4\]/.test(fn), '');
     ok('ⓒs 判讀⛔ 不可出現買賣指令(這是事實描述,本站沒有回測過它能不能預測股價)',
        !/該買|該賣|進場|加碼|停損|可以買|建議/.test(fn), '');
     const tr = CODE.slice(CODE.indexOf('_rpTrendHtml(C) {'), CODE.indexOf('_rpHiBold(t) {'));

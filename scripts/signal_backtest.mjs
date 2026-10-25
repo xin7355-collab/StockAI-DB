@@ -46,7 +46,18 @@ const SELFTEST = process.argv.includes('--selftest');
 //   ⛔「500 檔」聽起來樣本很大,實際上只涵蓋 1xxx~2xxx 的傳產金融 —— 那是**選樣偏誤**。
 //   ⭐ 通用:任何「取前 N 檔」的抽樣,都要先問「排序之後前 N 是不是有系統性偏向」。
 const MAX_SYMS = +(process.argv.slice(2).find(a => /^\d+$/.test(a)) || 99999);
-const STEP = 2;              // 每 2 根 K 掃一次(降計算量;訊號本來就不是天天有)
+// 每 2 根 K 掃一次(降計算量;訊號本來就不是天天有)。🧪 V79.8.2 SIG_STEP=1 = 每天都掃(組合回測要每一天的候選)
+const STEP = (() => { const v = process.env.SIG_STEP == null || process.env.SIG_STEP === '' ? 2 : +process.env.SIG_STEP; return v; })();
+if (!(Number.isInteger(STEP) && STEP >= 1 && STEP <= 5)) { console.error(`🚨 SIG_STEP=${process.env.SIG_STEP} 不認得(1~5 的整數)`); process.exit(1); }
+// 🧪 V79.8.2 「📈 符合進場」整套資金回測要的兩份輸出(研究用;不設時一個字都不變、正式那份照寫):
+//   WF_OUT   = 逐年往前的成績表:Y 年用「Y 年以前(再往前 21 天,⛔ 讓 10 日報酬跨進 Y 年)」的事件重算每個訊號的
+//              n / xr / 分級(同一支 sigStats + App 的 _winRateP + lib_fdr regrade)→ 那一年過 App `_sigProven` 那把尺的有哪幾個
+//              ⛔ 拿 16 年事後的表選訊號 = 前視(用到未來才知道哪個訊號好)
+//   CAND_OUT = 每一天看多訊號亮起來、而且 🧬 過門檻的「股·日」(⛔ 不去重 —— App 每天都會列):
+//              g1 = App 決策台「📈 符合進場」那把 🧬(選股快照一年位階 pos252 ≥ 75、20 日平均振幅 amp20 ≥ 3.2)
+//              g2 = 🔥 那把 🧬(近 250 根位階 ≥ 85、20 日年化波動 ≥ 60,= portfolio_backtest selfFeat)
+const WF_OUT = process.env.WF_OUT || '', CAND_OUT = process.env.CAND_OUT || '';
+const WF_FROM = +(process.env.WF_FROM || 2012);
 const DEDUP = 5;             // 同檔同訊號 5 日內只算一次
 const HORIZONS = [5, 10, 20];
 const MIN_N = 30;
@@ -143,6 +154,29 @@ export function geneStats(ev, dbAll, dbGene, mid) {
     return { n, xrg: mean(a), xrg0: m0, t0: sd > 0 ? m0 / sd * Math.sqrt(n) : 0, h1: mean(h1), h2: mean(h2), yp: yl.filter(x => mean(x) > 0).length, yn: yl.length };
 }
 
+/** 🧪 V79.8.2 選股快照(screener_miner.build_one)在第 i 根那天的 pos252 / amp20 / amt20(⛔ 用到 i 以後的資料)。
+ *  pos252 = (收盤 − 近 252 根最低收盤) ÷ (最高 − 最低) × 100;amp20 = 近 20 根 (最高 − 最低) ÷ 收盤 平均 × 100;
+ *  amt20 = 近 20 根 收盤 × 成交量(股)平均 ÷ 1e8(億)—— 跟 screener_miner.py 一字不差(selftest ⑦ 用手算的數字釘住) */
+export function screenGene(rows, i) {
+    if (i < 19) return null;
+    const lo = Math.max(0, i - 251);
+    let mn = Infinity, mx = -Infinity;
+    for (let k = lo; k <= i; k++) { const c = rows[k].close; if (c < mn) mn = c; if (c > mx) mx = c; }
+    const c = rows[i].close;
+    const pos = mx > mn ? Math.round((c - mn) / (mx - mn) * 1000) / 10 : null;
+    let a = 0, am = 0;
+    for (let k = i - 19; k <= i; k++) { const r = rows[k]; if (r.close > 0) a += (r.high - r.low) / r.close; am += r.close * (r.volume || 0); }
+    return { pos252: pos, amp20: Math.round(a / 20 * 100 * 100) / 100, amt20: am / 20 / 1e8 };
+}
+/** 🧪 V79.8.2 Y 年的成績表只看哪一天以前的事件:Y-01-01 往前 21 天(10 日報酬最多走 14 個交易日 ≈ 20 天,⛔ 跨進 Y 年) */
+export function wfCut(y) { const d = new Date(Date.UTC(+y, 0, 1)); d.setUTCDate(d.getUTCDate() - 21); return d.toISOString().slice(0, 10); }
+/** 🧪 V79.8.2 事件只留 cut 以前的(ev 形狀同 acc 裡的一筆) */
+export function evBefore(ev, cut) {
+    const o = { tone: ev.tone, d: [], x: { 5: [], 10: [], 20: [] } };
+    for (let k = 0; k < ev.d.length; k++) if (ev.d[k] < cut) { o.d.push(ev.d[k]); for (const h of HORIZONS) o.x[h].push(ev.x[h][k]); }
+    return o;
+}
+
 export function sliceInd(ind, off, end, arrKeys) {
     const v = {};
     for (const k in ind) v[k] = arrKeys.has(k) ? ind[k].slice(off, end) : ind[k];
@@ -212,7 +246,9 @@ if (SELFTEST) {
         ok('⑤ 一路漲:位階 100、波動 = 1% × √252(≈15.9);第 59 根還沒滿 60 → null', f && Math.abs(f.rank - 100) < 1e-9 && Math.abs(f.vol - Math.sqrt(252)) < 1e-6 && f0 === null, f);
         const pb = fs.readFileSync(path.join(ROOT, 'scripts', 'portfolio_backtest.mjs'), 'utf-8');
         ok('⑤ portfolio_backtest selfFeat 的兩條算式還是這兩條(改了要一起改)',
-           pb.includes('for (let k = _lo; k <= i; k++) if (dd[k].c <= _ci) _rk++;') && pb.includes('Math.pow((dd[k].c - dd[k - 1].c) / dd[k - 1].c, 2)') && pb.includes('vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100'));
+           // ⚡ V79.4.7 引擎的位階改用樹狀陣列數「近 250 根裡 ≤ 今天收盤的有幾根」(同一個定義,只是快)→ 釘新的那幾行
+           pb.includes('const _rk = _cnt(_ix[i]), _lo = Math.max(0, i - 249);') && pb.includes('const rank = _rk / (i - _lo + 1) * 100;')
+           && pb.includes('Math.pow((dd[k].c - dd[k - 1].c) / dd[k - 1].c, 2)') && pb.includes('vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100'));
     }
     // ⑥ 🧬 子集:⭐ 決定性對照 —— 只有 🧬 那幾筆注入 +2(訊號在 🧬 上有增量)→ xrg0 ≈ 2;不注入 → ≈ 0;非 🧬 的筆一律不算
     {
@@ -242,6 +278,29 @@ if (SELFTEST) {
         const dbG2 = dateBase(new Map([...geneBy].map(([d, v], k) => [d, k % 2 ? v.slice(0, 5) : v])), MIN_CTRL_G);
         const sS = geneStats(mk(2), dbA, dbG2, mid);
         ok('⑥ 那天 🧬 對照不到 10 筆 → 那天不算(⛔ 不拿別天湊)', sS.n === 150, sS.n);
+    }
+    // ⑦ 🧪 V79.8.2 選股快照那兩欄:手算的數字(30 根,收盤 10..39,最高 = 收盤 +1、最低 = 收盤 −1,量 1,000 股)
+    {
+        const rows = Array.from({ length: 30 }, (_, k) => ({ date: `2020-01-${String(k + 1).padStart(2, '0')}`, close: 10 + k, high: 11 + k, low: 9 + k, volume: 1000 }));
+        const g = screenGene(rows, 29);
+        // pos252:收盤 39 = 30 根裡最高 → 100;amp20:近 20 根 2/close 平均 = 2 × mean(1/20..1/39)
+        let a = 0; for (let c = 20; c <= 39; c++) a += 2 / c;
+        ok('⑦ screenGene:pos252 = 100(收盤是近 252 根最高)', g.pos252 === 100, g);
+        ok('⑦ screenGene:amp20 = 近 20 根(最高 − 最低)÷ 收盤 平均 ×100(兩位小數)', g.amp20 === Math.round(a / 20 * 100 * 100) / 100, [g.amp20, a / 20 * 100]);
+        const am = (() => { let t = 0; for (let c = 20; c <= 39; c++) t += c * 1000; return t / 20 / 1e8; })();
+        ok('⑦ screenGene:amt20 = 近 20 根 收盤 × 量 平均 ÷ 1e8', Math.abs(g.amt20 - am) < 1e-12, [g.amt20, am]);
+        const r2 = rows.map((r, k) => k === 10 ? { ...r, close: 5 } : r);
+        ok('⑦ screenGene 只看到第 i 根(把第 25 根以後改掉,第 24 根的結果不變)', JSON.stringify(screenGene(rows, 24)) === JSON.stringify(screenGene(rows.map((r, k) => k > 24 ? { ...r, close: 999, high: 999, low: 1 } : r), 24)));
+        ok('⑦ screenGene:最低收盤在窗口裡 → pos252 照 (c − 最低) ÷ (最高 − 最低)', screenGene(r2, 29).pos252 === 100 && screenGene(r2, 20).pos252 === 100);
+        ok('⑦ screenGene:前 19 根算不出 → null(⛔ 硬給)', screenGene(rows, 18) === null);
+    }
+    // ⑧ 🧪 V79.8.2 逐年往前:Y 年只看 Y-01-01 往前 21 天以前的事件(⛔ 前視)
+    {
+        ok('⑧ wfCut(2015) = 2014-12-11', wfCut(2015) === '2014-12-11', wfCut(2015));
+        const ev = { tone: 'bull', d: ['2014-12-01', '2014-12-10', '2014-12-11', '2015-01-05'], x: { 5: [1, 2, 3, 4], 10: [1, 2, 3, 4], 20: [1, 2, 3, 4] } };
+        const o = evBefore(ev, wfCut(2015));
+        ok('⑧ evBefore:只留 cut 以前(12/11 那天也不算)', o.d.join() === '2014-12-01,2014-12-10' && o.x[10].join() === '1,2', o);
+        ok('⑧ evBefore 不改原本那份', ev.d.length === 4);
     }
     console.log(bad ? `\n❌ ${bad} 條失敗` : '\n✅ SIGNAL_BACKTEST_SELFTEST_PASS');
     process.exit(bad ? 1 : 0);
@@ -354,6 +413,22 @@ async function runStock(page, rows) {
     }, { rows, dets: alive, step: STEP, win: WIN });
 }
 
+// 🧪 V79.8.2 CAND_OUT:一次寫一檔(⛔ 全部存在記憶體)
+if (CAND_OUT) fs.writeFileSync(CAND_OUT, '');
+let candN = 0;
+function emitCand(sym, rows, fired) {
+    const closes = rows.map(r => r.close), lines = [];
+    for (const [i, names] of fired) {
+        const ks = [...new Set(names.filter(([, tone]) => tone === 'bull').map(([k]) => k))];
+        if (!ks.length) continue;
+        const sg = screenGene(rows, i), gf = geneFeat(closes, i);
+        const g1 = !!(sg && sg.pos252 != null && sg.pos252 >= 75 && sg.amp20 >= 3.2), g2 = !!(gf && gf.rank >= 85 && gf.vol >= 60);
+        if (!g1 && !g2) continue;
+        lines.push(JSON.stringify({ s: sym, d: rows[i].date, k: ks, g1: g1 ? 1 : 0, g2: g2 ? 1 : 0, a: sg ? +sg.amt20.toFixed(4) : 0 }));
+    }
+    if (lines.length) { fs.appendFileSync(CAND_OUT, lines.join('\n') + '\n'); candN += lines.length; }
+}
+
 function absorb(rows, fired) {
     const pre = cliffPrefix(rows.map(r => r.close), rows.map(r => r.open));
     const closes = GENE ? rows.map(r => r.close) : null;
@@ -408,6 +483,7 @@ await Promise.all(pages.map(async page => {
         used++;
         usedPrefix[f[0]] = (usedPrefix[f[0]] || 0) + 1;
         absorb(rows, fired);
+        if (CAND_OUT) emitCand(f.replace(/\.json$/, ''), rows, fired);
         if (used % 50 === 0) log(`   …${used} 檔 / ${Math.round((Date.now() - t0) / 1000)}s / 訊號種類 ${acc.size}`);
     }
 }));
@@ -562,8 +638,39 @@ const out = {
     signals: withP,
     ...(geneOut ? { gene: geneOut } : {}),
 };
-const OUT_NAME = GENE ? 'signal_edge_gene.json' : 'signal_edge.json';   // 🧬 研究版⛔ 不蓋掉正式那份
+// 🧬 研究版⛔ 不蓋掉正式那份;🧪 V79.8.2 SIG_OUT_NAME 可另外指定(SIG_STEP=1 那一輪⛔ 蓋掉 16 年那張表)
+const OUT_NAME = process.env.SIG_OUT_NAME || (GENE ? 'signal_edge_gene.json' : 'signal_edge.json');
+if (!/^[\w.-]+\.json$/.test(OUT_NAME)) { console.error(`🚨 SIG_OUT_NAME=${OUT_NAME} 只能是檔名(.json)`); process.exit(1); }
 fs.writeFileSync(path.join(DATA, OUT_NAME), JSON.stringify(out), 'utf-8');
 log(`\n💾 已寫 ${path.join(DATA, OUT_NAME)}(${withP.length} 個訊號通過樣本門檻)`);
+
+// 🧪 V79.8.2 WF_OUT:逐年往前的成績表 + App 現在那張表(內嵌 _SIGNAL_EDGE)過 `_sigProven` 的有哪幾個
+if (WF_OUT) {
+    const COST_W = (() => { const m = fs.readFileSync(path.join(ROOT, 'scripts', 'playbook_scan.mjs'), 'utf-8').match(/^const COST = ([\d.]+)/m); return m ? +m[1] : null; })();
+    if (!(COST_W > 0)) { console.log('❌ 讀不到 playbook_scan.mjs 的 COST'); process.exit(1); }
+    const appProven = await pages[0].evaluate(() => Object.keys(app._sigTable()).filter(k => {
+        const i = k.indexOf('｜'); return app._sigProven(app._sigEdge(k.slice(0, i), k.slice(i + 1)));
+    }));
+    const yMax = +dMax.slice(0, 4), years = {};
+    for (let y = WF_FROM; y <= yMax; y++) {
+        const cut = wfCut(y), rs = [];
+        for (const [key, a] of acc) {
+            if (a.tone !== 'bull') continue;
+            const st = sigStats(evBefore(a, cut), DB);
+            const n = st.raw10.length;
+            if (n < MIN_N) continue;
+            rs.push({ key, n, w10: +winPct(st.raw10).toFixed(1), p0: +(st.p0 * 100).toFixed(1),
+                      xr: +(st.rel10.reduce((s2, x) => s2 + x, 0) / Math.max(1, st.rel10.length)).toFixed(3) });
+        }
+        const wp = await pages[0].evaluate(r2 => r2.map(r => ({ ...r, p: +(app._winRateP(Math.round(r.w10 / 100 * r.n), r.n, r.p0 / 100) || 1).toFixed(4) })), rs);
+        regrade(wp);
+        const proven = wp.filter(r => (r.grade === 'A' || r.grade === 'B') && r.xr > COST_W && r.n >= 10).sort((a, b) => b.xr - a.xr);
+        years[y] = { cut, tested: wp.length, proven: proven.map(r => ({ k: r.key, n: r.n, xr: r.xr, g: r.grade })) };
+        log(`🧪 逐年往前 ${y}(事件到 ${cut} 以前):${wp.length} 個看多訊號有 ≥${MIN_N} 筆 → 過 App 那把尺 ${proven.length} 個 ${proven.slice(0, 4).map(r => `${r.key.split('｜')[1]}(${r.xr >= 0 ? '+' : ''}${r.xr})`).join('、')}`);
+    }
+    fs.writeFileSync(WF_OUT, JSON.stringify({ updated: out.updated, step: STEP, cost: COST_W, min_n: MIN_N, window: out.window, appProven, years }));
+    log(`💾 逐年往前的成績表:${WF_OUT}(App 現在那張表過關 ${appProven.length} 個:${appProven.join('、')})`);
+}
+if (CAND_OUT) log(`💾 候選(看多訊號 + 🧬):${CAND_OUT}(${candN.toLocaleString()} 股·日)`);
 
 await browser.close();

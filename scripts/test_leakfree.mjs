@@ -8,7 +8,7 @@
  *      可見文字與 title ⛔ 不可有 LEAK 字樣
  *   ② ⭐ 決定性對照:同一頁解鎖 + 👑 → 同一支掃描**必須掃得到**(⛔ 掃不到 = 沒有鑑別力)
  *   ③ 🗑️ 頂部跑馬燈已移除(#marketAlertBanner / .marquee-track 不存在),大盤風險推播仍會叫 _fireAlert
- *   ④ 📈 預設決策台:fit 開、pb 收(頂端寫出來);👑 時 pb 預設開;搬家旗標只清 pb / fit
+ *   ④ 預設決策台:🔥 V79.8.2 起 pb 開、fit 收(以前 V79.1.2 是 fit 開、pb 收);👑 時 pb 不列;搬家旗標(7912 / 7983)只清 pb / fit
  *   ⑤ 🔁 讀不到全市場快照⛔ 不可以「記住失敗」:60 秒內不重抓、之後自動再抓
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
@@ -107,7 +107,8 @@ const dk = await page.evaluate(() => {
     app.settings.stratUnlock = false; app.settings.strategy = 'gene'; app.settings.deckShow = null;
     return o;
 });
-ok('④ 預設:📈 符合進場開、🔥 觸發價收起', dk.gene.fit === true && dk.gene.pb === false, JSON.stringify(dk.gene));
+// 🔥 V79.8.2 使用者 10/25 選「📈 賺得比 🔥 少 → 直接換,一鍵可換回」→ 預設改回 🔥 開、📈 收(回測:📈 那份名單兩段都輸 🔥)
+ok('④ 預設:🔥 今天可以買的開、📈 符合進場收起(V79.8.2)', dk.gene.pb === true && dk.gene.fit === false, JSON.stringify(dk.gene));
 ok('④b 👑 時 🔥 不列(👑 V79.1.6 使用者:「不是選擇這個策略就隱藏」+ 名單外的也一起改 → 選 👑 只講 👑)', dk.lead.pb === false && dk.lead.leader === true, JSON.stringify(dk.lead));
 // ④c 搬家:把 index.html 那一段原樣抽出來,拿假的 settings 跑(⛔ 測試裡不另寫一份邏輯)
 {
@@ -117,9 +118,12 @@ ok('④b 👑 時 🔥 不列(👑 V79.1.6 使用者:「不是選擇這個策略
     const run = (st) => { const ctx = { settings: st }; globalThis.localStorage = { setItem() {} }; new Function('saved', SRC.slice(i, j)).call(ctx, { ...st }); return ctx.settings; };
     const g = run({ strategy: 'gene', deckShow: { pb: true, fit: false, sell: false, col: true } });
     const l = run({ strategy: 'leadpark', deckShow: { pb: true, fit: false } });
-    const again = run({ strategy: 'gene', deckMigr7912: 1, deckShow: { pb: true } });
-    ok('④c 搬家:只清 pb / fit、其他勾選不動;👑 的人不清;只搬一次', i > 0 && j > i && !('pb' in g.deckShow) && !('fit' in g.deckShow) && g.deckShow.sell === false && g.deckShow.col === true && g.deckMigr7912 === 1
-        && l.deckShow.pb === true && again.deckShow.pb === true, JSON.stringify([g, l, again]));
+    const again = run({ strategy: 'gene', deckMigr7912: 1, deckMigr7982: 1, deckShow: { pb: true, fit: true } });
+    // 🔥 V79.8.2 第二次搬家:只搬過 7912 的人(存著 V79.1.2 的「📈 開、🔥 收」)再清一次 pb / fit,⛔ 其他勾選不動
+    const only12 = run({ strategy: 'park', deckMigr7912: 1, deckShow: { pb: false, fit: true, col: true } });
+    ok('④c 搬家:只清 pb / fit、其他勾選不動;👑 的人不清;每一個旗標只搬一次', i > 0 && j > i && !('pb' in g.deckShow) && !('fit' in g.deckShow) && g.deckShow.sell === false && g.deckShow.col === true && g.deckMigr7912 === 1 && g.deckMigr7982 === 1
+        && l.deckShow.pb === true && again.deckShow.pb === true && again.deckShow.fit === true, JSON.stringify([g, l, again]));
+    ok('④d V79.8.2 只搬過 7912 的人再清一次 pb / fit(之後吃新預設 🔥 開、📈 收),⛔ 其他勾選不動', !('pb' in only12.deckShow) && !('fit' in only12.deckShow) && only12.deckShow.col === true && only12.deckMigr7982 === 1, JSON.stringify(only12));
 }
 
 // ⑤ 讀不到快照⛔ 不可記住失敗

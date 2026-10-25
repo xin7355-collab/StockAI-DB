@@ -29,7 +29,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { pubDate, doi, detectCumulative, quarterValue } from './lib_fundamentals.mjs';
+import { pubDate, doi, detectCumulative, quarterValue, qBack } from './lib_fundamentals.mjs';
 
 export const N_Q = 12;
 export const MIN_OK = 500;
@@ -85,7 +85,9 @@ export function sliceOne(F, CUM, sym, nq = N_Q) {
     }
     if (parQ) for (const r of rows) if (r.p >= parQ) { r.ni = null; r.nm = null; r.nm_error = `疑似面額變更(${parQ.slice(0, 7)} 起 EPS 縮小、股本金額不變 → 股數變多),本站沒有股數欄位算不出淨利`; }
     const last4 = rows.slice(-4);
-    const all4 = k => last4.length === 4 && last4.every(x => x[k] != null);
+    // 🐛 V79.8.2「近 4 季」要真的是連續 4 季(興櫃只交半年報 → 位置上的最後 4 筆跨兩年)→ 不連續就不給(⛔ 拿兩年湊;= index _finTtmAt)
+    const consec4 = last4.length === 4 && last4.every((x, i) => !i || qBack(x.p, 1) === last4[i - 1].p);
+    const all4 = k => consec4 && last4.every(x => x[k] != null);
     const eqL = rows.length ? rows[rows.length - 1].eq : null;
     const ni4 = all4('ni') ? last4.reduce((s, x) => s + x.ni, 0) : null;
     const flags = [];

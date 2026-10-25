@@ -292,7 +292,7 @@ const DS = await page.evaluate(() => {
     app.settings.deckShow = { pb: true }; out.leadPbOn = snap();   // ⭐ 決定性對照:👑 時就算以前存過 🔥 開著 → 照樣不顯、不列
     app.settings.strategy = 'gene'; app.settings.deckShow = null;
     out.gene = snap();
-    app.settings.deckShow = { pb: true }; out.geneFit = snap();   // 📈 V79.1.2 預設收起的是 🔥 → 勾回來就沒有收起的
+    app.settings.deckShow = { fit: true }; out.geneFit = snap();   // 🔥 V79.8.2 預設收起的是 📈(V79.1.2 那時收的是 🔥)→ 勾回來就沒有收起的
     app.settings.strategy = 'lead'; app.settings.deckShow = null;
     return out;
 });
@@ -300,8 +300,9 @@ const DS = await page.evaluate(() => {
 //   → 👑 時只有 領頭羊 + 要賣的;🔥 / 📈 都不列、不顯,也⛔ 不算「收起來的」
 ok('⑧ 👑:只有 領頭羊 + 要賣的(🔥 觸發價 / 📈 候選都不列、不顯,⛔ 不算收起)', JSON.stringify(Object.entries((({ col, books, ...r }) => r)(DS.lead.def)).sort()) === JSON.stringify(Object.entries({ leader: true, sell: true, pb: false, fit: false, park: false }).sort())   /* 🅿️ V79.4.9 停 0050 那一區只給 🧬(st:'gene')→ 👑 時不開 */   /* 🔓 V78.4.2 `col` / V79.2.6 `books` 是解鎖後的進階功能(另一區開關),⛔ 不算決策台一般區塊 */ && DS.lead.leader && !DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.lead));
 ok('⑧b ⭐ 決定性對照:👑 時就算以前存過 🔥 開著 → 照樣不顯、設定清單也不列', DS.leadPbOn.pb === false && JSON.stringify(DS.leadPbOn.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.leadPbOn));
-// 📈 V79.1.2 使用者:「預設策略符合進場」「只留 📈、🔥 預設收起」
-ok('⑧c 🧬(預設):📈 符合進場 + 要賣的 + 🅿️ 停 0050(V79.4.9)開、🔥 觸發價收起、領頭羊⛔ 不列也不顯;「今天不用做」照 📈 講', DS.gene.def.fit === true && DS.gene.def.pb === false && DS.gene.def.park === true && DS.gene.def.leader === false && !DS.gene.leader && !DS.gene.pb && DS.gene.idle && !DS.gene.keys.includes('leader') && JSON.stringify(DS.gene.keys) === JSON.stringify(['sell', 'fit', 'pb', 'park']) && DS.gene.checked === 3, JSON.stringify(DS.gene));
+// 📈 V79.1.2 使用者:「預設策略符合進場」「只留 📈、🔥 預設收起」→ 🔥 V79.8.2 使用者 10/25 選「📈 賺得比 🔥 少 → 直接換,一鍵可換回」:
+//   📈 那份名單第一次用整套資金回測兩段都輸 🔥(= 🅿️ 現行、自動下單照買的那份)→ 預設改回 🔥 開、📈 收(🔥 排在 📈 前面)
+ok('⑧c 🧬(預設):🔥 今天可以買的 + 要賣的 + 🅿️ 停 0050 開、📈 符合進場收起(V79.8.2)、領頭羊⛔ 不列也不顯;「今天不用做」照 🔥 講', DS.gene.def.pb === true && DS.gene.def.fit === false && DS.gene.def.park === true && DS.gene.def.leader === false && !DS.gene.leader && DS.gene.pb && DS.gene.idle && !DS.gene.keys.includes('leader') && JSON.stringify(DS.gene.keys) === JSON.stringify(['sell', 'pb', 'fit', 'park']) && DS.gene.checked === 3, JSON.stringify(DS.gene));
 ok('⑧d 🧬 收起的要寫出來(⛔ 不靜默);🧹 V78.3.4 說明⛔ 不印回測數字、⛔ 不拿領頭羊來比', DS.gene.hidN === '1' && !DS.geneFit.hidN && !/萬|實測|回測/.test(DS.gene.pbDesc) && !/領頭羊/.test(DS.gene.pbDesc) && /觸發價/.test(DS.gene.pbDesc), JSON.stringify([DS.gene.hidN, DS.geneFit.hidN, DS.gene.pbDesc]));
 
 // 👑 V77.9.1 個股總覽一行

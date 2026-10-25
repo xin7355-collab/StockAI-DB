@@ -5,7 +5,7 @@
  *   ② doi = inv ÷ 單季 cogs × 90 手算一致
  *   ③ 旗標①:EPS 掉 ≥50% 而營收/毛利沒掉 → 要亮;營收也跌 → 不亮
  *   ④ 旗標②:股本 +30% → 要亮
- *   ⑤ 不足 4 季 → roe4 / fcf4 回 null(⛔ 不硬算)
+ *   ⑤ 不足 4 季 → roe4 / fcf4 回 null(⛔ 不硬算)・⑤c 🐛 V79.8.2 最後 4 筆不是連續 4 季(興櫃半年報)→ 也是 null
  *   ⑥ 沒資料一律 null,⛔ 不補 0
  *   ⑦(有真檔時)2330 切得出 12 季、doi 落在合理範圍
  * 跑法:node scripts/test_fin_slice.mjs [--selftest 同義]
@@ -37,6 +37,7 @@ const F = { q: Q, f: FIELDS, meta: { updated: '2026-09-07', n: 4, quarters: Q.le
          T4: mk({ '2025-06-30': { cap: 1.4e9 }, '2025-09-30': { cap: 1.4e9 }, '2025-12-31': { cap: 1.4e9 } }) } };
 F.s.T5 = Object.fromEntries(Object.entries(mk()).slice(-3));          // 只有 3 季
 F.s.T6 = mk(); Object.values(F.s.T6).forEach(r => { r[FIELDS.indexOf('inv')] = null; r[FIELDS.indexOf('ocf')] = null; });
+F.s.T7 = Object.fromEntries(Object.entries(mk()).filter(([q]) => /-(06-30|12-31)$/.test(q)));   // 🐛 V79.8.2 半年報(興櫃):只有 06-30 / 12-31
 
 const CUM = detectAll(F);
 ok('①a 自動偵測:ocf/capex/dep 判成累計、cogs/rev 判成單季', CUM.ocf && CUM.capex && CUM.dep && !CUM.cogs && !CUM.rev, JSON.stringify(CUM));
@@ -76,11 +77,15 @@ ok('④ 旗標②:股本 10 → 14 億(+40%)→ cap_chg 要亮、之後季別不
 const t5 = sliceOne(F, CUM, 'T5');
 ok('⑤ 只有 3 季 → roe4 / fcf4 / ni4 一律 null(⛔ 不硬算)', t5.nq === 3 && t5.roe4 === null && t5.fcf4 === null && t5.ni4 === null, JSON.stringify([t5.nq, t5.roe4, t5.fcf4]));
 ok('⑤b 12 季齊全 → roe4 = 4×(1.0×1e8) ÷ 1000 … 超過 100% 也照算(ROE 沒有上限守門,由前端標示)', t1.roe4 != null, String(t1.roe4));
+{   // 🐛 V79.8.2 半年報(興櫃):最後 4 筆跨兩年 → 近 4 季合計⛔ 不給(以前把兩年加成「一年」)
+    const t7 = sliceOne(F, CUM, 'T7');
+    ok('⑤c 半年報那檔(只有 06-30 / 12-31)→ 最後 4 筆不是連續 4 季 → roe4 / fcf4 / capex4 / ni4 一律 null', t7.nq >= 4 && t7.roe4 === null && t7.fcf4 === null && t7.capex4 === null && t7.ni4 === null, JSON.stringify([t7.nq, t7.roe4, t7.fcf4, t7.capex4]));
+}
 const t6 = sliceOne(F, CUM, 'T6');
 ok('⑥ inv/ocf 沒資料 → doi / fcf / ocf 一律 null,⛔ 不補 0', t6.q.every(x => x.doi === null && x.fcf === null && x.ocf === null), JSON.stringify(t6.q[0]));
 ok('⑥b 每一季都帶法定公布日 pub(Q3 → 11/14)', t1.q.find(x => x.p === '2025-09-30').pub === '2025-11-14', '');
 const all = sliceAll(F);
-ok('⑥c sliceAll 每檔都切得出來', Object.keys(all.files).length === 6, String(Object.keys(all.files).length));
+ok('⑥c sliceAll 每檔都切得出來', Object.keys(all.files).length === Object.keys(F.s).length && Object.keys(F.s).length === 7, String(Object.keys(all.files).length));
 
 // ── ⑧ V77.3.0 營業利益 opi → 營益率 oim ──────────────────────────────────
 //   注入:① 把 `opi` 從 FLOW 拿掉(累計版不會被還原 → ⑧b 紅)② 缺 opi 補 0(⑧c 紅)③ oim 分母寫成 cogs(⑧a 紅)
@@ -143,5 +148,18 @@ if (fs.existsSync(FIN)) {
     ok('⑦f 🚨 真檔:國巨 2025Q3 起淨利率 null + nm_error(⛔ 不可再顯 4.9% / 5.3%);2025Q2 仍有 15.4%', g && g3.nm === null && /面額/.test(g3.nm_error || '') && g2.nm === 15.4 && g.roe4 === null, g && JSON.stringify([g2.nm, g3.nm, g3.nm_error, g.roe4]));
     ok('⑦e 真檔:國巨 2024Q3 股本 +20%(現增)要亮 cap_chg、而且單位是「億元」', g && g.flags.some(f => f.k === 'cap_chg' && f.q === '2024-09-30' && /億元/.test(f.t)), g && JSON.stringify(g.flags));
 } else console.log(`⏭️ 沒有 ${FIN} → 跳過真檔驗證(git show origin/fin_deep:fin_deep/fin_deep.json > fin_deep/fin_deep.json)`);
+// ⑨ 🐛 V79.8.2 跨檔:index.html 的 `_finTtmAt(F, 0)` == 採礦端 sliceOne 的 roe4 / fcf4 / capex4(連續 / 半年報兩種都比;⛔ 一邊要連續一邊不用)
+{
+    const IDX = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'index.html'), 'utf8');
+    const i0 = IDX.indexOf('    _finTtmAt(F, back = 0) {'), i1 = i0 >= 0 ? IDX.indexOf('\n    },\n', i0) : -1;
+    const body = i0 >= 0 && i1 > i0 ? IDX.slice(IDX.indexOf('{', i0) + 1, i1) : '';
+    ok('⑨0 切得到 index.html 的 _finTtmAt', body.length > 300 && /consec/.test(body), String(body.length));
+    const ttm = new Function('F', 'back', body);
+    for (const sym of ['T1', 'T7']) {
+        const o = sliceOne(F, CUM, sym), a2 = ttm(o, 0);
+        ok(`⑨ ${sym}:_finTtmAt(F,0) == sliceOne 的 roe4 / fcf4 / capex4(${JSON.stringify([o.roe4, o.fcf4, o.capex4])})`, a2 && a2.roe4 === o.roe4 && a2.fcf4 === o.fcf4 && a2.capex4 === o.capex4, JSON.stringify(a2));
+    }
+}
+
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗:${fails.join(' / ')}` : '\n✅ test_fin_slice 全過');
 process.exit(fails.length ? 1 : 0);

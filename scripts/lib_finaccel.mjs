@@ -1,14 +1,14 @@
 /**
  * 📦 「營收 YoY 加速」的唯一一份定義 —— V77.4.2(accel_probe.mjs 與 portfolio_backtest.mjs 的 FIN= 濾網共用)
  *
- *   季 k:yoy_k = rev_k / rev_{k−4} − 1 ・acc_k = yoy_k − yoy_{k−1} ・gmq_k = 毛利率_k − 毛利率_{k−1} ・epsy_k = eps_k − eps_{k−4}(差值,負 EPS 不用比值)
+ *   季 k:yoy_k = rev_k / rev_{去年同一季} − 1 ・acc_k = yoy_k − yoy_{上一季}(⛔ 用陣列位置,見 qBack) ・gmq_k = 毛利率_k − 毛利率_{k−1} ・epsy_k = eps_k − eps_{k−4}(差值,負 EPS 不用比值)
  *   亮 = yoy_k > 0 ∧ acc_k > 0;變體 +gm(gmq ≥ 0)/ +eps(epsy > 0)
  *   「知道」的那一季 = 最後一個 pubDate(p) ≤ 今天(法定截止日 5/15・8/14・11/14・3/31,保守;`lib_fundamentals.pubDate`)
  *
  * ⛔ 陷阱 #37:回測腳本⛔ 不可自己再寫一份(V77.3.3 週轉率是 lib_turnover、這裡同理);改公式兩邊一起變。
  * 資料 = fin_deep 分支的 `fin_deep.json`({q, f, s});⚠️ 不是 data/fin 的切片(那份只有 12 季)。
  */
-import { pubDate } from './lib_fundamentals.mjs';
+import { pubDate, qBack } from './lib_fundamentals.mjs';   // 🐛 V79.8.2 qBack:去年同一季 / 上一季照季別找(⛔ 陣列位置)
 
 /** fin_deep 一檔 → 依公布日排序的季序列;每季 {p, pub, yoy, acc, gmq, epsy, ok};沒這檔回 null */
 export function finSeries(FD, sym) {
@@ -20,12 +20,13 @@ export function finSeries(FD, sym) {
     const out = [];
     for (let k = 0; k < qs.length; k++) {
         const pub = pubDate(qs[k]); if (!pub) continue;
-        const rev = g(qs[k], 'rev'), rev4 = k >= 4 ? g(qs[k - 4], 'rev') : NaN, rev1 = k >= 1 ? g(qs[k - 1], 'rev') : NaN, rev5 = k >= 5 ? g(qs[k - 5], 'rev') : NaN;
+        const q = qs[k];
+        const rev = g(q, 'rev'), rev4 = g(qBack(q, 4), 'rev'), rev1 = g(qBack(q, 1), 'rev'), rev5 = g(qBack(q, 5), 'rev');
         const yoy = rev > 0 && rev4 > 0 ? (rev / rev4 - 1) * 100 : NaN;
         const yoyP = rev1 > 0 && rev5 > 0 ? (rev1 / rev5 - 1) * 100 : NaN;
         const acc = yoy - yoyP;
-        const gmq = k >= 1 ? gm(qs[k]) - gm(qs[k - 1]) : NaN;
-        const eps = g(qs[k], 'eps'), eps4 = k >= 4 ? g(qs[k - 4], 'eps') : NaN;
+        const gmq = gm(q) - gm(qBack(q, 1));
+        const eps = g(q, 'eps'), eps4 = g(qBack(q, 4), 'eps');
         out.push({ p: qs[k], pub, yoy, acc, gmq, epsy: eps - eps4, ok: Number.isFinite(yoy) && Number.isFinite(acc) });
     }
     return out.sort((a, b) => a.pub < b.pub ? -1 : 1);

@@ -171,6 +171,20 @@ const R2 = await page.evaluate(() => {
         o.after = { hotRule: A.settings.hotRule, bearGate: A.settings.bearGate, strategy: A.settings.strategy, stamp: localStorage.getItem(K) };
         Object.assign(A.settings, JSON.parse(s0));
     }
+    // 🔥 V79.8.2 決策台預設換 🔥 那一筆:按「換回舊的」= 📈 開、🔥 收(backDeck)
+    const dk = A._STRAT_CHANGES.find(c => c.backDeck);
+    o.deck = dk ? { v: dk.v, gene: !!dk.gene } : null;
+    if (dk) {
+        const s1 = JSON.stringify(A.settings);
+        A.settings.strategy = 'park'; A.settings.deckShow = null;
+        o.deckBefore = A._deckShow();
+        A._showStratChange(dk);
+        const b2 = [...document.querySelectorAll('#richHelpModal button')].find(b => /換回舊的/.test(b.textContent));
+        try { b2 && b2.click(); } catch (_) {}
+        o.deckAfter = A._deckShow();
+        o.deckTxt = (document.getElementById('richHelpModal') || {}).innerText || '';
+        Object.assign(A.settings, JSON.parse(s1));
+    }
     A._isLead = _isL;
     return o;
 });
@@ -178,6 +192,7 @@ await browser.close();
 ok('⑭ 🔁 沒看過兩筆以上 → 同一個視窗疊出來(最新在上、下一筆在下),⛔ 不可只跳最新那筆', R2.shown && R2.blocks[0] === R2.newest && R2.blocks[1] === R2.second && /data-stratchgmore/.test(R2.html), JSON.stringify(R2.blocks));
 ok('⑭b V79.4.9 那一筆:只跳給沒選 👑 的人、⛔ 視窗沒有 👑 / 領頭羊字樣', R2.hot && R2.hot.gene === true && !/👑|領頭羊/.test(R2.html), JSON.stringify(R2.hot));
 ok('⑭c 「換回舊的」= 三件一起回去(保守排法 lb・空頭不買・📈 錢放現金)、而且蓋章', R2.after && R2.after.hotRule === 'lb' && R2.after.bearGate === true && R2.after.strategy === 'gene' && R2.after.stamp === R2.hot.v, JSON.stringify([R2.after, R2.btnJs]));
+ok('⑭d 🔥 V79.8.2 決策台預設:沒存過設定 → 🔥 開、📈 收;按「換回舊的」→ 📈 開、🔥 收(而且只跳給沒選 👑 的人)', R2.deck && R2.deck.gene === true && R2.deckBefore && R2.deckBefore.pb === true && R2.deckBefore.fit === false && R2.deckAfter && R2.deckAfter.fit === true && R2.deckAfter.pb === false, JSON.stringify([R2.deck, R2.deckBefore, R2.deckAfter]));
 
 ok('⑤ 全新安裝:⛔ 不跳窗,只蓋章', R.firstShown === false && R.firstStamp);
 ok('⑤b 🚨 老用戶(還沒看過任何策略變更)→ **要跳**,而且⛔ 還沒蓋章',

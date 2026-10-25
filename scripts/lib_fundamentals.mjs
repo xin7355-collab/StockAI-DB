@@ -17,6 +17,10 @@
  *  ⚠️ 這不是法說會(法說會沒有免費結構化來源),文案不可混稱。 */
 export const DEADLINES = ['-03-31', '-05-15', '-08-14', '-11-14'];
 
+/** 🐛 V79.8.2 季別往前 n 季(YYYY-03-31 / 06-30 / 09-30 / 12-31)。「去年同一季 / 上一季 / 連續 4 季」一律照季別找,⛔ 用陣列位置:
+ *  興櫃只交半年報,中間缺季時 k−4 不是去年同季、最後 4 筆跨兩年(fin_deep 2,353 檔有 688 檔中間缺季,data/fin 切片 454 檔) */
+export const qBack = (q, n) => { const t = +String(q).slice(0, 4) * 4 + Math.floor(+String(q).slice(5, 7) / 3) - 1 - n; return `${Math.floor(t / 4)}-${['03-31', '06-30', '09-30', '12-31'][t % 4]}`; };
+
 export const pubDate = period => {
     const p = String(period || '');
     const y = +p.slice(0, 4), m = p.slice(5, 7);
