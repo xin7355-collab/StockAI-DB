@@ -387,6 +387,7 @@ LAB 條目是手寫的、混著 `**x**`,而 **template literal 不會幫你轉**
 - ⭐ **判斷邏輯一行不改** —— `_SIGNAL_EDGE` / `_LEADER_EDGE` / `_EDGE_RULES`… 照樣在背後排序、守門;只是不印出來。
 - 🔬 實驗室模式 `index.html?lab=1`(`app._labMode()`,`<html class="lab">`):`[data-labonly]` 只有這個模式看得到
   (自訂回測 / 盲測 / 個股回測分頁)。⛔ 一般模式不放任何連到 lab 或 pro 的入口。
+  🏭 **V79.8.4 唯一例外(使用者明示)**:左上角 🤖 左邊的「產」`#hdrProBtn` → pro.html,預設藏;只有「🔓 進階功能 › 🏭 產業 pro」(`_DECK_SECTIONS` `k:'pro'`)打開才出現(`_hdrProSync`)。⛔ 再加第二個 pro 入口(`test_labmode ④` 釘住只准一個)。
 - 🧪 守門 `scripts/test_retail_clean.mjs`(🧬 / 👑 × 全部頁面 + 設定 + 說明彈窗 + title;`SCOPE=` 分區、`REPORT=1` 只列、`INJECT=1` 注入必紅)。
 - ⛔ 新增任何卡片 / 說明 / 提示詞以外的畫面文字,先問「這是怎麼做,還是研究成績」—— 研究成績寫進 pro.html LAB。
 

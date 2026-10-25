@@ -20985,3 +20985,10 @@ BBU(AI 機櫃備援電池)的當事人是**電池模組廠**,跟 UPS/電源供�
 ⛔ **兩顆播放鈕共用同一個 timer → 標籤必須一起更新**(`_rotPlayLbl`),
 否則會出現「一顆寫播放、一顆寫暫停」。測試 ㊲d 釘住(注入「只更新一顆」會叫)。
 測試 `scripts/test_prohtml.mjs` ㊲~㊲g(8 條,4 種注入缺陷驗過)。
+
+
+## 🏭 V79.8.4 散戶 App 左上角「產」= 產業作戰室入口(2026-10-25)
+- 使用者:「設定裡面新增產業作戰室連結,放在左上角的 AI 機器人左邊新增[產],我要一樣在設定裡面點 5 下,出現隱藏的功能,然後在裡面開啟產業 pro」。
+- 做法:沿用 V78.4.2 進階功能登記表 —— `_DECK_SECTIONS` 加 `{k:'pro', unlock:true, def:false}`;`_hdrProSync()` 照 `_deckShow().pro` 顯示 `#hdrProBtn`(init / toggleDeckShow / _deckShowApply / 版本號連點 5 次都會同步);`openProTerm()` 同一個分頁開 `new URL('pro.html', ghBase)`(iOS PWA 不跳 Safari;⛔ 不連 `?app=fish`)。
+- 推翻 V74.0.1 / V78.3.4「index ⛔ 無 pro 入口」→ 改成「只有解鎖 + 自己打開才有,而且只准這一個」。
+- 測試 `test_labmode ④`:預設藏 / 解鎖沒開仍藏 / 解鎖 + 開 → 在 🤖 左邊 / 開著再上鎖又藏(決定性對照);注入「同步永遠藏」「預設開」兩種都紅。換回 = 取消勾。

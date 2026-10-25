@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.8.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.8.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.8.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.8.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1634,6 +1634,8 @@
                 <button onclick="app.openGlobalSearchModal(); app.vibrate(30);" class="text-gray-300 hover:text-white flex-shrink-0 p-1" title="搜尋股票">
                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </button>
+                <!-- 🏭 V79.8.4 產業作戰室入口:只有「🔓 進階功能 › 🏭 產業 pro」打開才顯示(_hdrProSync),預設藏起來 -->
+                <button id="hdrProBtn" onclick="app.openProTerm(); app.vibrate(30);" style="display:none;align-items:center;justify-content:center;width:28px;height:28px" class="flex-shrink-0 rounded-md border border-cyan-700 text-cyan-300 text-[13px] font-black leading-none" title="產業作戰室">產</button>
                 <!-- 🤖 AI 股神(V69.7.9 情境感知:自選頁開=自選股機器人,其它=庫存全解析) -->
                 <button onclick="app.openAiGodSmart(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神(自選頁=自選股機器人)">🤖</button>
                 <!-- 🔖 V50.9 版本號已移至 ⚙️ 設定頁標題列(使用者要求:想看到又不佔置頂版面) -->
@@ -4834,6 +4836,7 @@ const app = {
         setTimeout(() => { try { this._loadConceptData(); } catch(_) {} }, 4000);
         // 🆕 V68.0.0 — 版本更新提醒:載入遮罩收掉後檢查,有新版跳一次窗(首次/舊用戶靜默設起點不跳)
         setTimeout(() => { try { this._checkVersionUpdate(); } catch(_) {} }, 2000);
+        try { this._hdrProSync(); } catch (_) {}   // 🏭 V79.8.4 左上角「產」(只有進階功能打開才有)
         // 🔁 V75.0.9:策略預設值變更**要跳窗**(⛔ 跟上面那個一般更新提醒是兩件事)
         setTimeout(() => { try { this._checkStratChange(); } catch(_) {} }, 2600);
         // 📨 V69.1.12 — 每次開 App 自動把「自選/庫存/監控/股名」同步上雲(給 Telegram worker),
@@ -8616,10 +8619,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.8.3',
+    _APP_VERSION: 'V79.8.4',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.8.4', d: [
+            '🏭 設定連點版本號 5 次 →「🔓 進階功能」多一個「🏭 產業 pro」:打開後左上角 🤖 左邊多一顆「產」,點了直接開產業作戰室;不想要就取消勾,那顆就不見',
+        ], dt: '2026-10-25' },
         { v: 'V79.8.3', d: [
             '📰 解鎖後的專欄多一篇「快開法說會了,要先賣掉、或等開完再買嗎?」:庫存、自選或正在看的股票接下來 5 個交易日內有法說會時會跳出來(怎麼做:不用特別避開,照原本的規則走)',
         ], dt: '2026-10-25' },
@@ -8848,7 +8854,6 @@ ${list}
         { v: 'V79.0.6', d: ['📰 個股新聞:同一件事被好幾家報導,現在合成一則,後面寫「另 N 家也報」,清單比較短;新聞的來源和時間以前是空白的,也補上了。'] },
         { v: 'V79.0.5', d: ['🔬 研究用的實驗室模式多兩樣:K 線可以畫出「這檔最會賺的那一招」過去每一趟從買到賣的區間,自訂回測跑完會自動存起來、可以勾兩筆並排比。散戶 App 一般畫面沒有變動。'] },
         { v: 'V79.0.4', d: ['🔬 產業作戰室的實測總表多兩條紀錄(參考兩個外部交易軟體的做法):帳戶賠了就先停手、回測買賣有沒有吃掉一整天的量。散戶 App 畫面沒有變動。'] },
-        { v: 'V79.0.3', d: ['⚡ <b>即時頁、當沖頁、當沖雷達整理過了</b>:你問「這些有回測過嗎?」—— 量過了,<b>這檔過去開盤買收盤賣的勝率、當沖雷達、盤中六脈、總結燈</b>換到之後的日子都不準,扣完成本沒有一個站得住(大戶散戶流向沒有歷史可以量)', '🧭 照你選的「事實在上、結論精簡」:即時頁最上面是<b>現價・內外盤 → 分時圖 → 五檔</b>;當沖頁第一行直接講「沒有可以天天照做的當沖方向,只有手上股票收盤鎖漲停可以留到隔天」,接著是成本關卡', '🔬 那幾張判讀卡沒有刪,收進研究用的實驗室模式;它們的盤中推播(六脈共振、09:15 當沖候選、逐筆動能)一般模式不再跳', '📅 順手修:大戶散戶流向的日期以前用手機時鐘,週末打開會標成週六 → 改用成交那天'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -21396,6 +21401,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 try { this.saveSettings?.(); } catch (_) {}
                 this._leadCtx = null; this._invExitAt = 0;
                 try { this._renderStratBox(); this._renderDeckShowList(); this.renderDeck?.(); } catch (_) {}
+                try { this._hdrProSync(); } catch (_) {}
                 try { this._renderOvCol(this.currentSymbolId).catch(() => {}); } catch (_) {}   // 📰 V78.4.3 總覽那一格跟著開關
                 try { this._syncPushSub?.(); this.telegramCloud?.sync?.(); } catch (_) {}
                 try { this.showToast?.(this.settings.stratUnlock ? '🔓 已顯示進階選項' : '🔒 已收起進階選項'); } catch (_) {}
@@ -21685,6 +21691,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         { k: 'sell', n: '🚪 手上的要不要賣', d: '三條出場線(硬停損 / 你設定的線 / 抱滿天數)今天碰到或快碰到的{LEAD:;選 👑 時,上次換倉名單上的個股由上面那塊講,其他持股照這裡}。錢在你手上,建議開著。', def: true },
         // 📚 V79.2.6 兩本帳(甲帳・乙帳)= 進階選項,⛔ 預設關(使用者明示);勾 = settings.leadBooks 2(⛔ 不另存一份)
         { k: 'books', unlock: true, st: 'lead', n: '📚 👑 錢分兩半:甲帳・乙帳輪流換', d: '同一套領頭羊規則,錢分成甲帳、乙帳兩半,乙帳晚 4 個交易日換倉 → 大約每 5 天換其中一本,不會全部押在同一天。每檔金額變一半、下單次數變兩倍。手上現有的全部算甲帳,⛔ 不用先賣一半。', def: false },
+        { k: 'pro', unlock: true, n: '🏭 產業 pro', d: '左上角 🤖 左邊多一顆「產」,點了直接開產業作戰室(板塊輪動・法說會・成績單…)。', def: false },
         { k: 'col', unlock: true, n: '📰 今天碰到的專欄', d: '你的庫存、自選、大盤或日子碰到某種情況時(鎖漲停、跌停後收紅、進注意股、除息、連假前後、結算日…),把那一篇「怎麼做」拿出來;決策台與個股總覽都會出現,沒碰到就整區不出現。', def: true },
         // 👑 V79.1.6 使用者:「今天可以買的(最多 2 檔)依照我選擇的策略出現,不是選擇這個策略就隱藏」+ 選「名單外的個股也一起改」
         //   → pb 綁 📈 / 🅿️ 那一套(st:'gene');選 👑 時這塊不畫、設定清單不列(V78.5.5 的「名單外買點照 🔥」那半收回,持股那半照舊)
@@ -21714,6 +21721,16 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { this._renderDeckShowList(); this._renderStratBox(); } catch (_) {}
         try { this.renderDeck?.(); } catch (_) {}
         if (k === 'col') { try { this._renderOvCol(this.currentSymbolId).catch(() => {}); } catch (_) {} }   // 📰 V78.4.3 個股總覽同一個開關
+        try { this._hdrProSync(); } catch (_) {}
+    },
+    /** 🏭 V79.8.4 左上角「產」只在「🔓 進階功能 › 🏭 產業 pro」打開時出現(使用者明示;⛔ 沒解鎖一律藏) */
+    _hdrProSync() {
+        const el = document.getElementById('hdrProBtn'); if (!el) return;
+        el.style.display = this._deckShow().pro ? 'flex' : 'none';
+    },
+    openProTerm() {
+        const ghBase = window.location.href.split('?')[0].split('#')[0];
+        location.href = new URL('pro.html', ghBase).href;
     },
     _renderDeckShowList() {
         const box = document.getElementById('deckShowList'); if (!box) return;
@@ -21744,6 +21761,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         }
         vis($('deckNote'), sh.note);
         vis($('deckPark'), sh.park);
+        try { this._hdrProSync(); } catch (_) {}
         // 「今天不用做」只講舊預設那一套 → 領頭羊開著時⛔ 不可同時說沒事(同一頁不可一邊列股票一邊說沒事)
         //   📈 V79.1.2 📈 或 🔥 任一塊開著才講(內容判斷在 renderDeck,只算有顯示的那幾塊)
         vis($('deckIdle'), (sh.pb || sh.fit) && !sh.leader);

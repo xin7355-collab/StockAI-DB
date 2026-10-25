@@ -298,7 +298,7 @@ const DS = await page.evaluate(() => {
 });
 // 👑 V79.1.6 使用者:「今天可以買的(最多 2 檔)依照我選擇的策略出現,不是選擇這個策略就隱藏」+ 選「名單外的也一起改」
 //   → 👑 時只有 領頭羊 + 要賣的;🔥 / 📈 都不列、不顯,也⛔ 不算「收起來的」
-ok('⑧ 👑:只有 領頭羊 + 要賣的(🔥 觸發價 / 📈 候選都不列、不顯,⛔ 不算收起)', JSON.stringify(Object.entries((({ col, books, ...r }) => r)(DS.lead.def)).sort()) === JSON.stringify(Object.entries({ leader: true, sell: true, pb: false, fit: false, park: false }).sort())   /* 🅿️ V79.4.9 停 0050 那一區只給 🧬(st:'gene')→ 👑 時不開 */   /* 🔓 V78.4.2 `col` / V79.2.6 `books` 是解鎖後的進階功能(另一區開關),⛔ 不算決策台一般區塊 */ && DS.lead.leader && !DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.lead));
+ok('⑧ 👑:只有 領頭羊 + 要賣的(🔥 觸發價 / 📈 候選都不列、不顯,⛔ 不算收起)', JSON.stringify(Object.entries((({ col, books, pro, ...r }) => r)(DS.lead.def)).sort()) === JSON.stringify(Object.entries({ leader: true, sell: true, pb: false, fit: false, park: false }).sort())   /* 🅿️ V79.4.9 停 0050 那一區只給 🧬(st:'gene')→ 👑 時不開 */   /* 🔓 V78.4.2 `col` / V79.2.6 `books` / V79.8.4 `pro` 是解鎖後的進階功能(另一區開關),⛔ 不算決策台一般區塊 */ && DS.lead.leader && !DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.lead));
 ok('⑧b ⭐ 決定性對照:👑 時就算以前存過 🔥 開著 → 照樣不顯、設定清單也不列', DS.leadPbOn.pb === false && JSON.stringify(DS.leadPbOn.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.leadPbOn));
 // 📈 V79.1.2 使用者:「預設策略符合進場」「只留 📈、🔥 預設收起」→ 🔥 V79.8.2 使用者 10/25 選「📈 賺得比 🔥 少 → 直接換,一鍵可換回」:
 //   📈 那份名單第一次用整套資金回測兩段都輸 🔥(= 🅿️ 現行、自動下單照買的那份)→ 預設改回 🔥 開、📈 收(🔥 排在 📈 前面)
