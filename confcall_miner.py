@@ -258,6 +258,13 @@ def merge_hist(old_hist, rows, today):
 # ───────────────────────── 📊 會後股價反應(事實統計,⛔ 不是訊號) ─────────────────────────
 REACT_H = (1, 5, 20)            # 幾個「交易日」之後
 REACT_MIN_BARS = 120            # K 線太短的不算
+# 🎲 V79.8.6 法說會「股性」(使用者:「有常常把法說會說成法會的,用發生率告訴使用者」):
+#   法說會前一個交易日收盤 → 後一個交易日收盤(2 天),減同期加權;≤ −3% =「法會」、≥ +3% =「大漲」
+#   ⭐ 同一檔「平常隨便 2 天」也照同一把尺算一次(= 股性)—— 兩個一定一起給(scripts/confcall_habit_probe.mjs:
+#      過去常法會的下一場,猜得沒有比「這檔平常就很會動」準 → 慣性其實就是股性)
+HABIT_TH = 3.0
+HABIT_DEDUP = 5                 # 同一檔 5 個交易日內的第二場(開兩天 / 中英文各一場)只算一次
+HABIT_CLIFF = (0.67, 1.5)       # 相鄰兩根超過這個比例 = 價格斷崖(lib_cliff 同一組)→ 那個窗口不算
 
 
 def _names_table():
@@ -299,6 +306,75 @@ def _closes(sym):
     return (idx, cl) if len(cl) >= REACT_MIN_BARS else (None, None)
 
 
+def _div_adj():
+    """{sym: {除權息日: 前收 / 參考價}} —— 除權息落在 2 天窗口裡要把價格接回去(⛔ 不然除息那天會被算成「法會」)。
+    讀不到回 ({}, 原因)。"""
+    try:
+        j = json.loads((DATA / 'dividends_hist.json').read_text(encoding='utf-8'))
+    except Exception as e:
+        return {}, f'讀不到 dividends_hist.json({type(e).__name__})→ 除權息落在窗口裡的會被多算成「法會」'
+    out = {}
+    for sym, v in (j.items() if isinstance(j, dict) else []):
+        if not isinstance(v, dict):
+            continue
+        for h in v.get('h') or []:
+            try:
+                p, r = float(h[3]), float(h[4])
+            except Exception:
+                continue
+            if p > 0 and r > 0 and p / r < 1.6:
+                out.setdefault(str(sym), {})[str(h[0])[:10].replace('/', '-')] = p / r
+    return out, None
+
+
+def _habit_x(sc, sd, i, mi, mc, adj):
+    """第 i 根是法說會那天:前一天收盤 → 後一天收盤的超額(%);算不出來回 None。"""
+    a, b = i - 1, i + 1
+    if a < 0 or b >= len(sc):
+        return None
+    f = 1.0
+    for k in (a + 1, b):
+        g = adj.get(sd[k], 1.0)
+        r = sc[k] * g / sc[k - 1]
+        if not (HABIT_CLIFF[0] <= r <= HABIT_CLIFF[1]):
+            return None
+        f *= g
+    ja, jb = mi.get(sd[a]), mi.get(sd[b])
+    if ja is None or jb is None:
+        return None
+    return (sc[b] * f / sc[a] - 1) * 100 - (mc[jb] / mc[ja] - 1) * 100
+
+
+def _habit_one(sc, sd, si, dates, mi, mc, adj):
+    """一檔:回 (事件超額清單, 平常日子 [法會數, 大漲數, 總數])。事件日不是交易日 → 用之後第一個交易日。"""
+    import bisect
+    ev, last, near = [], -10 ** 9, set()
+    for d in sorted({str(x)[:10] for x in dates}):
+        i = si.get(d)
+        if i is None:
+            k = bisect.bisect_left(sd, d)
+            i = k if 0 < k < len(sd) else None
+        if i is None or i - last < HABIT_DEDUP:
+            continue
+        x = _habit_x(sc, sd, i, mi, mc, adj)
+        if x is None:
+            continue
+        last = i
+        ev.append(x)
+        near.update(range(i - 2, i + 3))
+    od = ou = on = 0
+    for i in range(1, len(sc) - 1):
+        if i in near:
+            continue
+        x = _habit_x(sc, sd, i, mi, mc, adj)
+        if x is None:
+            continue
+        on += 1
+        od += x <= -HABIT_TH
+        ou += x >= HABIT_TH
+    return ev, [od, ou, on]
+
+
 def _med(a):
     if not a:
         return None
@@ -323,6 +399,8 @@ def build_react(hist, today, mkt_sym='^TWII'):
     ev = {h: [] for h in REACT_H}
     base = {h: array('f') for h in REACT_H}
     by, n_ev, n_sym = {}, 0, 0
+    adj_all, div_err = _div_adj()
+    hb, h_ev, h_ord = {}, [0, 0, 0], [0, 0, 0]   # 🎲 [法會, 大漲, 總數]
     for sym, dates in sorted((hist or {}).items()):
         if not isinstance(dates, list) or not dates:
             continue
@@ -352,6 +430,16 @@ def build_react(hist, today, mkt_sym='^TWII'):
                     hit[h].append(x)
         if len(hit[5]) >= 2:
             by[sym] = {'n': len(hit[5]), 'med5': _med(hit[5])}
+        # 🎲 股性:這一檔每一場法說會(前一天 → 後一天)與「平常隨便 2 天」同一把尺
+        sd = sorted(si, key=si.get)
+        hev, hord = _habit_one(sc, sd, si, dates, mi, mc, adj_all.get(sym, {}))
+        if hev:
+            dn, up = sum(1 for x in hev if x <= -HABIT_TH), sum(1 for x in hev if x >= HABIT_TH)
+            h_ev[0] += dn; h_ev[1] += up; h_ev[2] += len(hev)
+            for k in range(3):
+                h_ord[k] += hord[k]
+            if hord[2] >= 120:
+                hb[sym] = [len(hev), dn, up, round(100 * hord[0] / hord[2], 1), round(100 * hord[1] / hord[2], 1)]
     if not ev[5]:
         return {'error': '一場都對不到 K 線(data/ 還沒還原?)→ ⛔ 不給統計'}
     def pack(src, cnt):
@@ -365,6 +453,15 @@ def build_react(hist, today, mkt_sym='^TWII'):
         'syms': n_sym, 'events': n_ev,
         'base': pack(base, len(base[5])),
         'byStock': by,
+        # 🎲 V79.8.6 股性:hb[sym] = [場數, 法會場數, 大漲場數, 這檔平常 2 天法會 %, 大漲 %](平常日子 ≥120 個才給)
+        'habit': {
+            'th': HABIT_TH,
+            'ev': {'n': h_ev[2], 'dn': round(100 * h_ev[0] / h_ev[2], 1) if h_ev[2] else None, 'up': round(100 * h_ev[1] / h_ev[2], 1) if h_ev[2] else None},
+            'ord': {'n': h_ord[2], 'dn': round(100 * h_ord[0] / h_ord[2], 1) if h_ord[2] else None, 'up': round(100 * h_ord[1] / h_ord[2], 1) if h_ord[2] else None},
+            'how': '法說會前一個交易日收盤 → 後一個交易日收盤,減加權;比大盤差 ≥3% = 法會、好 ≥3% = 大漲;同一檔 5 天內只算一次;平常 = 同一檔其他每一個 2 天',
+            'div_error': div_err,
+        },
+        'hb': hb,
         'how': '法說會當天收盤 → +N 個交易日收盤,減同期加權;對照組 = 同一批股票的每一個交易日',
         'caveat': '⛔ 不是回測:沒扣交易成本、沒過六道關卡。本站實測 37 種財經行事曆日方向 0 個成立 → ⛔ 不是買賣訊號。',
     }

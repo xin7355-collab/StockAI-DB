@@ -337,6 +337,71 @@ ok('📊⑬f 對照組⛔ 不可只挑「跟事件同一天」—— 要掃那�
    'for d, i in si.items()' in RS, RS[:120])
 
 
+
+# ── 🎲 V79.8.6 法說會「股性」(react.habit / react.hb):前一天收盤 → 隔天收盤,減加權;≤ −3% = 法會 ──
+import tempfile as _tf, shutil as _sh, datetime as _dt2
+_th = _tf.mkdtemp(); _old_data2 = C.DATA
+try:
+    C.DATA = Path(_th)
+    _n = 400
+    _b = _dt2.date(2024, 1, 1)
+    _ds = []
+    _t = _b
+    while len(_ds) < _n:                       # 只放平日(週末不是交易日 → 測「週六的法說會接到週一」)
+        if _t.weekday() < 5:
+            _ds.append(_t.isoformat())
+        _t += _dt2.timedelta(days=1)
+    (Path(_th) / '^TWII.json').write_text(json.dumps([{'date': _ds[i], 'close': 100.0} for i in range(_n)]), encoding='utf-8')
+    _ev = [150, 200, 250, 300, 350]
+    _px, _c = [], 100.0
+    for i in range(_n):
+        _c *= (1.002 if i % 2 else 0.998)      # 平常小動
+        if i - 1 in _ev:
+            _c *= 0.94                          # 每一場法說會隔天跌 6%
+        _px.append(_c)
+    (Path(_th) / '7777.json').write_text(json.dumps([{'date': _ds[i], 'close': _px[i]} for i in range(_n)]), encoding='utf-8')
+    # 6666:平常一樣小動,法說會那兩天不動;另外在第 200 根除息 10%(參考價 90)→ 接回去後⛔ 算成法會
+    _q = [100.0 * (1.002 if i % 2 else 0.998) ** 0 for i in range(_n)]
+    _p6 = [100.0 if i < 200 else 90.0 for i in range(_n)]
+    (Path(_th) / '6666.json').write_text(json.dumps([{'date': _ds[i], 'close': _p6[i]} for i in range(_n)]), encoding='utf-8')
+    (Path(_th) / 'dividends_hist.json').write_text(json.dumps({'updated': 'x', '6666': {'h': [[_ds[200], 10, '息', 100, 90]]}}), encoding='utf-8')
+    # 7777 的第一場另外寫一個「隔天又開一場」(同一次法說會兩天)→ 只算一次
+    _sat = _dt2.date.fromisoformat(_ds[250])
+    while _sat.weekday() != 5:
+        _sat -= _dt2.timedelta(days=1)
+    _h = {'7777': [_ds[150], _ds[151]] + [_ds[i] for i in _ev[1:]], '6666': [_ds[200]], '5555': [_ds[100]]}
+    RH = C.build_react(_h, _dt2.date(2025, 12, 31))
+    _hb = RH.get('hb') or {}
+    ok('🎲a 這一檔每一場都跌 6% → hb = [5 場, 5 場法會, 0 場大漲, …](同一次法說會開兩天只算一次)',
+       _hb.get('7777', [None])[:3] == [5, 5, 0], _hb.get('7777'))
+    ok('🎲b 平常日子(⛔ 含法說會前後 2 天)那兩個比例是 0(平常只小動)',
+       _hb.get('7777', [0] * 5)[3:] == [0.0, 0.0], _hb.get('7777'))
+    ok('🎲c 除息落在窗口裡 → 用參考價接回去,⛔ 算成法會', _hb.get('6666', [None] * 3)[:3] == [1, 0, 0] and RH['habit']['div_error'] is None,
+       (_hb.get('6666'), RH['habit']['div_error']))
+    ok('🎲d 全體:事件組 / 平常組各自的比例,而且寫了怎麼算',
+       RH['habit']['ev']['n'] == 6 and RH['habit']['ev']['dn'] == round(100 * 5 / 6, 1) and RH['habit']['ord']['n'] > 500 and '前一個交易日' in RH['habit']['how'],
+       RH['habit'])
+    ok('🎲e K 線讀不到的那檔(5555)⛔ 出現', '5555' not in _hb, list(_hb))
+    # ⭐ 決定性對照:拿掉股利檔 → 6666 那場變成法會,而且 div_error 要說原因
+    (Path(_th) / 'dividends_hist.json').unlink()
+    RH2 = C.build_react(_h, _dt2.date(2025, 12, 31))
+    ok('🎲f 決定性對照:沒有股利檔 → 除息那場被算成法會 + 寫原因', (RH2.get('hb') or {}).get('6666', [None] * 2)[:2] == [1, 1] and bool(RH2['habit']['div_error']),
+       ((RH2.get('hb') or {}).get('6666'), RH2['habit']['div_error']))
+    # 週六的法說會 → 接到下一個交易日(⛔ 整場丟掉)
+    #   (另放一場平日的:舊的會後統計一場都對不到 K 線就整份回 error,那是另一條守門 ⑬e)
+    RH3 = C.build_react({'7777': [_sat.isoformat(), _ds[100]]}, _dt2.date(2025, 12, 31))
+    ok('🎲g 週末的日期接到下一個交易日(兩場都算到)', (RH3.get('hb') or {}).get('7777', [0])[0] == 2, RH3.get('hb') or RH3.get('error'))
+    # 價格斷崖窗口不算
+    _pc = list(_px); _pc[300] = _pc[299] * 0.4
+    for i in range(301, _n):
+        _pc[i] = _pc[i] * 0.4
+    (Path(_th) / '7777.json').write_text(json.dumps([{'date': _ds[i], 'close': _pc[i]} for i in range(_n)]), encoding='utf-8')
+    RH4 = C.build_react({'7777': [_ds[i] for i in _ev]}, _dt2.date(2025, 12, 31))
+    ok('🎲h 價格斷崖(×0.4)碰到的那一場不算', (RH4.get('hb') or {}).get('7777', [0])[0] == 4, (RH4.get('hb') or {}).get('7777'))
+finally:
+    C.DATA = _old_data2
+    _sh.rmtree(_th, ignore_errors=True)
+
 # ── 📚 V78.2.5 補挖模式:只合併 hist,⛔ 不動 upcoming / recent ──
 _old = {'upcoming': [{'s': '2330', 'd': '2026-10-20'}], 'recent': [{'s': '2330', 'd': '2026-09-01'}],
         'hist': {'2330': ['2026-07-17']}, 'react': {'n': 1}}
