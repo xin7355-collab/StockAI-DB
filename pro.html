@@ -701,7 +701,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
   padding:12px;background:rgba(10,16,26,.99);border-bottom:1px solid var(--line);font-weight:900;font-size:13.5px}
 #proModal .mx{margin-left:auto;cursor:pointer;color:var(--dim2);font-size:20px;line-height:1;padding:2px 8px;min-height:36px}
 @media(min-width:700px){#proModal{align-items:center}#proModal .mbox{border-radius:14px}}
-#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(14,20,31,.96);border:1px solid var(--line2);border-radius:10px;padding:9px 16px;font-size:12px;color:var(--txt);z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(14,20,31,.96);border:1px solid var(--line2);border-radius:10px;padding:9px 16px;font-size:12px;color:var(--txt);z-index:9500;opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.on{opacity:1}
 /* 🎣 V77.9.7 股海釣手(App 模式):只留舞台 + 上鉤卡 + 漁獲籃;⛔ 作戰室的分頁列 / 池子 / 規則說明一律不顯示 */
 #fpvPane{display:none}
@@ -9479,7 +9479,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.8.0',
+  VER: 'V79.8.1',
   _ROT: {
     win: 20, spread: 1.95, top: 1.06, bot: -0.88,
     q1: 2.48, q2: 1.42, exBest: 1.83,
@@ -11922,6 +11922,7 @@ ${M.news || '(無)'}
     this._confDShow(true);
     this._confDossierPaint();
     const el = document.getElementById('confDossier'); if (el) el.scrollTop = 0;
+    this._confPrep(this._confDSym).catch(() => {});   // 🎨 V79.8.1 打開就先讀(做圖提示詞要同步複製 → 數字要先在手上)
   },
   /** 從雷達 / 清單提醒 / 台積電問答那一格開某一檔:那一天有場次就開那一場,否則開最近一場(已開的優先);都沒有就只用簡報檔 */
   confOpenSym(sym, tab, d) {
@@ -12036,7 +12037,7 @@ ${M.news || '(無)'}
     else if (t === 'cmp') body = (dk ? prevNote + this._ccdCmpHtml(dk, sym) : noDeck()) + this._ccdDecksHtml(J, dk) + this._ccdHistHtml(sym, r);
     else if (t === 'qa') body = this._ccdQaHtml(r, sym, k);
     else body = this._ccdInfoHtml(r, sym);
-    const act = `<div class="ccd-act"><button class="lbtn" data-s="${this._ea(sym)}" onclick="PRO.openStock(this.dataset.s)">📈 看個股</button><button class="lbtn" data-s="${this._ea(sym)}" onclick="PRO.confPick(this.dataset.s)">🔎 帶去深度查詢</button>${this._ccdFilesHtml(r)}</div>`;
+    const act = `<div class="ccd-act"><button class="lbtn" data-s="${this._ea(sym)}" onclick="PRO.openStock(this.dataset.s)">📈 看個股</button><button class="lbtn" data-s="${this._ea(sym)}" onclick="PRO.confPick(this.dataset.s)">🔎 帶去深度查詢</button><button class="lbtn" data-s="${this._ea(sym)}" data-ccimg="prompt" onclick="PRO.confImgCopy(this.dataset.s)">🎨 做圖提示詞</button><button class="lbtn" data-s="${this._ea(sym)}" data-ccimg="own" onclick="PRO.confImgOpen(this.dataset.s)">🖼️ 本站畫的圖</button>${this._ccdFilesHtml(r)}</div>`;
     const foot = `<div class="ccd-foot" data-ccd-foot>⛔ 這些是公司自己說的話,不是買賣建議。本站實測:「剛開完法說會」與簡報內容(新東西多不多、講得樂不樂觀)都看不出之後股價;「說到做到」跟之後股價有沒有關係還在測。</div>`;
     el.innerHTML = this._ccdHead(r, sym, P) + tabs + `<div class="ccd-body" data-ccd-body="${this._ea(k)}" data-ccd-tab="${t}">${body}</div>` + act + foot;
     if (t === 'key' && dk) {
@@ -12090,16 +12091,21 @@ ${M.news || '(無)'}
     return `<div class="ccd-sec" data-ccd-decks><h4>🗂️ 本站讀過的這家公司簡報 <span>最近 ${decks.length} 份</span></h4>${decks.map(li).join('')}</div>`;
   },
   /** 📊 這家公司最近幾份簡報講的展望,到期之後做到了幾句(同一句只算一次;⛔ 不是之後股價的預測) */
-  _ccdTrackHtml(J, sym) {
+  /** 📊 這家公司最近幾份簡報講的展望:可以對答案幾句、做到 / 沒做到 / 還沒到期(同一件事只算一次)—— 公司檔案與 🎨 做圖共用 */
+  _ccTrack(J) {
     const decks = J && Array.isArray(J.decks) ? J.decks.filter(Boolean) : [];
-    const seen = new Set(); let hit = 0, miss = 0, pend = 0, n = 0;
+    const seen = new Set(), list = []; let hit = 0, miss = 0, pend = 0, n = 0;
     for (const d of decks) for (const c of (d.g || [])) {
       if (!c || !c.ok) continue;
       const k = `${c.m}|${c.dir}|${(c.r || {}).cur || c.h}|${(c.r || {}).base || ''}`;
-      if (seen.has(k)) continue; seen.add(k); n++;
+      if (seen.has(k)) continue; seen.add(k); n++; list.push(c);
       const res = (c.r || {}).res;
       if (res === 'hit') hit++; else if (res === 'miss') miss++; else if (res === 'pending') pend++;
     }
+    return { n, hit, miss, pend, decks: decks.length, list };
+  },
+  _ccdTrackHtml(J, sym) {
+    const T = this._ccTrack(J), decks = { length: T.decks }, { n, hit, miss, pend } = T;
     if (!n) return '';
     return `<div class="ccd-sec" data-ccd-track><h4>📊 這家公司最近 ${decks.length} 份簡報:講過的展望做到了沒 <span>同一件事只算一次</span></h4>
       <div class="ccd-track"><span><b>${n}</b>可以對答案</span><span><b>${hit}</b>✅ 做到了</span><span><b>${miss}</b>❌ 沒做到</span><span><b>${pend}</b>⏳ 還沒到期</span></div>
@@ -12446,8 +12452,15 @@ ${M.news || '(無)'}
   },
   /** 📈 法說會那天收盤 → 最新收盤(事實,紅漲綠跌);同期 0050 一起列 */
   async _confPxSince(sym, d) {
+    await Promise.all([this.fetchJson(`data/${sym}.json`, 9000), this.fetchJson('data/0050.json', 9000)]);
+    return this._confPxCore(sym, d) || null;
+  },
+  /** 🎨 V79.8.1 同步版(只讀已經讀進快取的 K 線)—— 做圖提示詞要同步複製(⛔ await,iOS 會擋剪貼簿);
+   *  回 undefined = 這檔 K 線還沒讀過(⛔ 跟 null「讀不到」混為一談) */
+  _confPxCore(sym, d) {
+    const KA = this._cache[`data/${sym}.json`]; if (KA === undefined) return undefined;
     const ser = rows => (Array.isArray(rows) ? rows : []).filter(r => r && +r.close > 0).map(r => [String(r.date).replace(/\//g, '-').slice(0, 10), +r.close]);
-    const a = ser(await this.fetchJson(`data/${sym}.json`, 9000)), z = ser(await this.fetchJson('data/0050.json', 9000));
+    const a = ser(KA), z = ser(this._cache['data/0050.json']);
     const pick = s => { const i = s.findIndex(x => x[0] >= d); return i < 0 || i >= s.length ? null : [s[i], s[s.length - 1]]; };
     const pa = pick(a);
     // 📅 法說會那天比最新一根 K 線還新(今天才開、晚上才更新)→ ⛔ 說成「讀不到 K 線」
@@ -12883,7 +12896,9 @@ ${M.news || '(無)'}
     this._confPrepAt = this._confPrepAt || {};
     if (this._confPrepAt[sym] === 'ok') return;
     this._confPrepAt[sym] = 'loading';
-    const jobs = [this.fetchJson(`data/chips/${sym}.json`, 9000), this.fetchJson(`data/fin/${sym}.json`, 9000), this.fetchJson(`data/${sym}.json`, 9000)];
+    const jobs = [this.fetchJson(`data/chips/${sym}.json`, 9000), this.fetchJson(`data/fin/${sym}.json`, 9000), this.fetchJson(`data/${sym}.json`, 9000),
+                  this.fetchJson('data/0050.json', 9000)];   // 🎨 V79.8.1 做圖的「開完到現在」要跟 0050 比
+    if (this._CONF_QA_SYMS.includes(sym) && !this._confQaJ[sym]) jobs.push(this._confQaLoad(sym));
     if (this._confCC[sym] === undefined) jobs.push(this.fetchJson(`data/cc/${sym}.json`, 9000).then(J => { this._confCC[sym] = J || null; }));
     await Promise.allSettled(jobs);
     this._confPrepAt[sym] = 'ok';
@@ -12989,6 +13004,408 @@ ${M.news || '(無)'}
       out.note = `${r.other}` + (moved || r.mvq ? ` → ⚠️ 這場${r.mvc ? '可能' : ''}${moved ? `延到 ${md(r.mv)}(${wk(r.mv)})` : '延期了'},可能還沒開:⛔ 還沒開就不要寫 Q&A,只整理簡報` : '');
     }
     return out;
+  },
+  // ═══ 🎨 V79.8.1 法說會「一頁戰報」做圖(使用者 10/25:「給我法說會做成圖的提示詞,要厲害點的」→ 選「提示詞 + 本站自己畫一張」)═══
+  //   ⛔ 提示詞與本站畫的圖讀同一份資料(_confImgFacts)、同一組顏色(_CC_IMG_STYLE)、同一句頁尾(_CC_IMG_FOOT)——
+  //      各寫一份就會「兩張圖配色 / 數字不一樣」(V76.3.8 報告頁海報的教訓)
+  //   ⛔ 本站 AI 摘要(dk.ai)⛔ 進來:本站 AI 讀反過,錯的不要再被一張漂亮的圖放大(同 _confFacts)
+  //   ⛔ 方向 / 分數 / 買賣:本站實測法說會只能描述(簡報內容 11 格 0 過、隔天反應兩天消化完)→ 圖上固定寫那一句
+  //   🚦 紅漲綠跌只准出現在「開完到現在」那兩個漲跌數字(燈號鐵則);做到 / 沒做到用文字 + 灰,⛔ 紅綠
+  _CC_IMG_STYLE: { W: 780, bg: '#070b12', txt: '#e6edf3', dim: '#8b949e', line: '#1c2533', cyan: '#22d3ee', amber: '#f5b942', up: '#ff5d5d', dn: '#3ddc84',
+                   font: "'Noto Sans TC','PingFang TC','Microsoft JhengHei','Heiti TC',sans-serif", mono: "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" },
+  _CC_IMG_FOOT: '資料來源:公開資訊觀測站法說會簡報・本站整理 ・ 公司原話以官方簡報 PDF 為準 ・ 這不是投資建議',
+  _CC_IMG_PXNOTE: '本站實測:法說會講的內容看不出之後股價',
+  /** 一場法說會做圖要用的全部資料(結構化;⛔ 自己算新東西 —— 每一塊都是公司檔案那幾支的轉述) */
+  _confImgFacts(sym, r) {
+    sym = String(sym || ''); if (!sym) return null;
+    if (r === undefined) r = this._confPickRow(sym);
+    const md = d => String(d || '').slice(5).replace('-', '/');
+    const FX = this._confFacts(sym, r);
+    const J = this._confCC[sym];
+    const P = J ? this._ccdPickDeck(r, J) : { dk: null, own: false, dg: null };
+    const dk = P.dk;
+    const eff = r ? this._confEff(r) : (dk ? dk.d : '');
+    const D = this._confData || {};
+    const moved = !!(r && ((r.mv && r.mv > r.d) || r.mvq));
+    const done = r ? this._confDone(r) : true;
+    const kind = !r ? '近期沒有場次' : (moved && !done) ? '延期・還沒開' : this._confInv(r) ? '券商邀請' : this._confQaEarn(r) ? '財報法說會' : '公司自辦';
+    const o = { sym, name: this._nmTxt(sym), d: eff, wk: eff ? this._confWk(eff) : '', t: (r && r.t) || '', kind, moved, done, hasRow: !!r,
+                asof: String(D.data_date || ''), deckD: dk ? dk.d : '', deckOwn: !!P.own, pages: dk ? (dk.pages || null) : null, deckOk: !!dk,
+                guide: [], track: null, trackNote: '', claims: [], newT: [], dropped: [], first: !!(dk && dk.first), prevD: dk ? (dk.prev_d || '') : '',
+                radar: [], qa: [], qaYq: '', facts: FX.lines.slice(), note: FX.note || '', noteRaw: (r && r.other) ? String(r.other) : '',
+                miss: FX.miss.slice(), px: null, tl: [], three: [] };
+    if (J === undefined) o.miss.push('簡報重點(還在讀)');
+    else if (J === null) o.miss.push('簡報重點');
+    // 02 公司給的數字(簡報原文 + 頁碼,最多 6 句)—— 順序:
+    //   ① 可以拿財報對答案的(_ccWhat 讀成什麼)② 展望那幾頁上帶數字的句子(頁名有「展望 / 預期 / 指引…」,
+    //   或那一頁有「…預期:」這種帶冒號的開頭 —— 台積電的財測數字就在冒號後面那幾行)③ 其他講到之後、帶數字的句子
+    //   ④ 都沒有才放不帶數字的。⚠️ ⛔ 拿一般頁面的數字(那多半是過去的成績,不是公司給的展望)
+    if (dk) {
+      const ttl = {}; for (const [pp, t] of (dk.titles || [])) if (pp != null && !ttl[pp]) ttl[pp] = String(t || '');
+      const seen = new Set();
+      const add = (t, pp, what) => { t = String(t || '').trim(); if (!t || seen.has(t) || o.guide.length >= 6) return; seen.add(t); o.guide.push({ t, p: pp || null, what: what || '', ttl: (pp && ttl[pp]) || '' }); };
+      for (const c of (dk.g || []).filter(c => c && c.ok)) add(c.t, c.p, this._ccWhat(c));
+      const colonP = new Set((dk.outlook || []).filter(([, t]) => /[:：]\s*$/.test(String(t || ''))).map(([pp]) => pp));
+      const gp = pp => colonP.has(pp) || /展望|預期|預估|指引|目標|guidance|outlook/i.test(ttl[pp] || '');
+      for (const [pp, t] of (dk.nums || [])) if (gp(pp)) add(t, pp, '');
+      for (const [pp, t] of (dk.outlook || [])) if (/\d/.test(String(t || ''))) add(t, pp, '');
+      if (!o.guide.length) for (const [pp, t] of (dk.outlook || [])) add(t, pp, '');
+      if (!dk.first) { o.newT = (dk.new || []).slice(0, 8).map(([t, p]) => ({ t: String(t), p: p || null })); }
+      o.dropped = (dk.dropped || []).slice(0, 8).map(String);
+    }
+    // 03 說到做到(最近幾份簡報;同一件事只算一次)
+    if (J) {
+      const T = this._ccTrack(J);
+      if (!T.n && T.decks) o.trackNote = `最近 ${T.decks} 份簡報沒有可以拿財報對答案的句子(講的不是財報量得到的東西,或沒講清楚哪一段時間)`;
+      if (T.n) {
+        o.track = { n: T.n, hit: T.hit, miss: T.miss, pend: T.pend, decks: T.decks };
+        o.claims = T.list.filter(c => ['hit', 'miss'].includes((c.r || {}).res)).slice(0, 3)
+          .map(c => { const x = this._ccClaim(c); return { t: String(c.t || ''), p: c.p || null, res: x.res, word: x.res === 'hit' ? '做到' : '沒做到', txt: x.txt }; });
+      }
+    }
+    // 05 全市場也在講嗎(主題雷達;雷達上沒有的詞不列)
+    const R = this._radarCalc();
+    if (R) for (const x of o.newT) {
+      const key = (this._radAlias || {})[x.t] || x.t, row = R.byT[key];
+      if (row && row.s != null) o.radar.push({ t: x.t, s: row.s, sy: row.sy, q: R.qs[R.li] });
+    }
+    // 06 法人問答(只有有官方逐字稿的公司;最近一季)
+    //    ⚠️ 跟公司檔案「🎤 問答」同一個挑法(那一場的那一季);⛔ 拿最近一季硬放進「這一場」的圖(不是財報那一場 / 還沒開 → 不放)
+    if (this._CONF_QA_SYMS.includes(sym)) {
+      const Jq = this._confQaJ[sym];
+      if (!Jq) o.miss.push('法人問答(還在讀或讀不到)');
+      else if (r && done && this._confQaEarn(r)) {
+        const exact = (Jq.quarters || []).find(x => x.d && x.d === eff), yq = exact ? exact.yq : this._confQaRepQ(eff);
+        const q = (Jq.quarters || []).find(x => x.yq === yq);
+        if (q) { o.qaYq = q.yq || ''; o.qa = (q.items || []).filter(x => x && !x.skip && x.q && x.a).slice(0, 5).map(x => ({ org: String(x.org || '分析師'), q: String(x.q), by: String(x.by || '公司'), a: String(x.a) })); }
+        if (!o.qa.length) o.miss.push(`法人問答(${this._confQaYq(yq)}還沒整理好)`);
+      }
+    }
+    // 08 開完到現在(同步讀快取;⛔ 等)
+    if (eff && done) {
+      const px = this._confPxCore(sym, eff), prepped = (this._confPrepAt || {})[sym] === 'ok';
+      o.px = px === undefined ? (prepped ? null : { wait: true }) : px;   // 讀過了還是 undefined = 讀不到(fetchJson 失敗不快取)
+      if (o.px && o.px.wait) o.miss.push('開完到現在的股價(K 線還在讀)');
+      else if (o.px === null) o.miss.push('開完到現在的股價(讀不到 K 線)');
+    }
+    // 08 時間軸:上一場 → 這一場 → 下次月營收 → 下次財報期限 → 下一場(有才放)
+    const today = this._confToday();
+    // ⚠️ 延期的那一場:原訂日期也在歷年裡 → ⛔ 把「同一場的原訂日」當成「上一場」
+    const hist = (((D.hist || {})[sym]) || []).filter(x => x && x < eff && !(r && moved && x === r.d)).sort();
+    if (hist.length) o.tl.push({ k: 'prev', d: hist[hist.length - 1], lab: '上一場' });
+    if (eff) o.tl.push({ k: 'cur', d: eff, lab: done ? '這一場' : '這一場(還沒開)' });
+    { const y = +today.slice(0, 4), m = +today.slice(5, 7), dd = +today.slice(8, 10);
+      const nx = dd <= 10 ? `${y}-${String(m).padStart(2, '0')}-10` : (m === 12 ? `${y + 1}-01-10` : `${y}-${String(m + 1).padStart(2, '0')}-10`);
+      o.tl.push({ k: 'rev', d: nx, lab: '月營收公布期限' }); }
+    { const y = +today.slice(0, 4), dl = [`${y}-03-31`, `${y}-05-15`, `${y}-08-14`, `${y}-11-14`, `${y + 1}-03-31`].find(x => x >= today);
+      o.tl.push({ k: 'fin', d: dl, lab: '財報公布期限' }); }
+    const nextR = this._confAll().filter(x => String(x.s) === sym && this._confEff(x) > (eff || today)).sort((a, b) => (this._confEff(a) < this._confEff(b) ? -1 : 1))[0];
+    if (nextR) o.tl.push({ k: 'next', d: this._confEff(nextR), lab: '下一場' });
+    o.tl.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+    // 01 三句話看懂 —— 規則組出來的事實句(⛔ 本站 AI 摘要)
+    { const when = `${md(eff)}(${o.wk})${o.t ? ' ' + o.t : ''}`, mvNew = !!(r && r.mv && r.mv > r.d), maybe = r && r.mvc ? '可能' : '';
+      o.three.push(!eff ? '這一檔最近 60 天 / 接下來 45 天沒有法說會場次'
+        : mvNew && !done ? `原訂 ${md(r.d)},公司公告${maybe}延到 ${when},還沒開`
+        : mvNew ? `${when} ${kind}(原訂 ${md(r.d)},延期後已開)`
+        : moved && !done ? `${when} 公司說${maybe || '會'}延期(新日期看公司備註),還沒開`
+        : `${when} ${kind}${done ? ',已經開完' : ',還沒開'}`); }
+    if (o.track) o.three.push(`公司以前講的展望:做到 ${o.track.hit} 句・沒做到 ${o.track.miss} 句・還沒到期 ${o.track.pend} 句(最近 ${o.track.decks} 份簡報)`);
+    else if (o.guide.length) { const pgs = [...new Set(o.guide.map(g => g.p).filter(Boolean))]; o.three.push(`公司給了 ${o.guide.length} 句講到之後的數字或說法${pgs.length ? `(第 ${pgs.join('、')} 頁)` : ''}`); }
+    else o.three.push(dk ? '這份簡報沒有抽到講「之後」的句子(多半是圖表做成圖片)' : '本站還沒讀到這一場的簡報(多半會後才上傳)');
+    if (o.newT.length) o.three.push(`第一次提到:${o.newT.slice(0, 3).map(x => x.t).join('、')}${o.newT.length > 3 ? ` 等 ${o.newT.length} 個` : ''}`);
+    else if (dk && o.first) o.three.push('本站第一次收錄這家公司的簡報 → 還沒有上一份可以比');
+    else if (dk && o.prevD) o.three.push(`跟 ${md(o.prevD)} 那份比,沒有第一次出現的產品 / 技術詞`);
+    return o;
+  },
+  /** 🎨 做圖提示詞(給會畫圖的外部 AI)= 固定的規則與版面 + 這一場的【資料】(全部來自 _confImgFacts) */
+  _confImgPrompt(sym) {
+    const F = this._confImgFacts(sym); if (!F) return '';
+    const S = this._CC_IMG_STYLE, md = d => String(d || '').slice(5).replace('-', '/'), ymd = d => String(d || '').replace(/-/g, '/');
+    const pg = p => p ? ` p${p}` : '';
+    const L = [];
+    L.push(`【抬頭】${F.name} ${F.sym} ・${F.d ? `${ymd(F.d)}(${F.wk})${F.t ? ' ' + F.t : ''}` : '近期沒有場次'} ・${F.kind} ・資料截至 ${ymd(F.asof) || '本站沒有'}${F.deckD && !F.deckOwn ? ` ・簡報用的是 ${ymd(F.deckD)} 那份(這一場的還沒讀到)` : ''}`);
+    L.push('【三句話】', ...F.three.map((t, i) => `${i + 1}. ${t}`));
+    L.push('【財測與展望】(公司原話 + 頁碼;〔〕裡是那一頁的標題)', ...(F.guide.length ? F.guide.map(g => `- ${g.ttl ? `〔${g.ttl}〕` : ''}「${g.t}」${pg(g.p)}${g.what ? ` → 本站讀成:${g.what}` : ''}`) : ['本站沒有這一段']));
+    L.push('【說到做到】' + (F.track ? `做到 ${F.track.hit}・沒做到 ${F.track.miss}・還沒到期 ${F.track.pend}(最近 ${F.track.decks} 份簡報,同一件事只算一次)` : (F.trackNote || '本站沒有這一段')),
+      ...F.claims.map(c => `- ${c.res === 'hit' ? '✅' : '❌'} 「${c.t}」${pg(c.p)} → ${c.txt}`));
+    L.push('【第一次提到】' + (F.newT.length ? F.newT.map(x => `${x.t}${x.p ? `(p${x.p})` : ''}`).join('、') : (F.first ? '本站第一次收錄這家公司的簡報,沒有上一份可以比' : '本站沒有這一段')));
+    L.push('【上一份有、這次沒講】' + (F.dropped.length ? F.dropped.join('、') : '本站沒有這一段'));
+    L.push('【全市場佔比】' + (F.radar.length ? '' : '本站沒有這一段'), ...F.radar.map(x => `- ${x.t}:${this._radQ(x.q)}有 ${x.s.toFixed(1)}% 的公司簡報提到${x.sy != null ? `(一年前 ${x.sy.toFixed(1)}%)` : ''}`));
+    if (F.qa.length) L.push(`【法人問答】${this._confQaYq(F.qaYq)}(官方英文逐字稿,AI 整理成中文、數字核對過)`, ...F.qa.map(x => `- ${x.org} 問:${x.q} → ${x.by}答:${x.a}`));
+    L.push('【本站算好的數字】', ...(F.facts.length ? F.facts.map(t => '- ' + t) : ['本站沒有這一段']));
+    L.push('【時間軸】' + (F.tl.length ? F.tl.map(x => `${x.lab} ${ymd(x.d)}`).join(' → ') : '本站沒有這一段'));
+    const px = F.px, sg = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+    L.push('【開完到現在】' + (!F.done ? '還沒開 → 不畫這一行' : !px || px.wait ? '本站沒有這一段' : px.pending ? '還沒有開完之後的股價' : px.same ? '法說會那天就是最新一根,還沒有之後的走勢'
+      : `這檔 ${sg(px.p)}${px.b != null ? ` ・0050 ${sg(px.b)}` : ''}(${md(px.from)} 收盤 → ${md(px.to)})`));
+    if (F.note) L.push('【公司備註】' + F.note);
+    if (F.miss.length) L.push('【本站讀不到的項目】' + F.miss.join('、'));
+    const head = `# 任務
+把下面這場台股法說會做成一張直式「法說會一頁戰報」資訊圖(繁體中文,1080 × 1920,手機直立看)。
+讀的人是一般散戶,10 秒內要看懂三件事:
+① 公司這次給了哪些數字(財測 / 展望,照公司原話)
+② 跟上一次比,多講了什麼、少講了什麼
+③ 公司以前講的話,後來做到了沒
+
+# 🎨 風格:情報戰情板(冷靜、專業、有科技感)
+- 全圖只有一個底色 ${S.bg}。⛔ 卡片外框、圓角方塊、有底色的區塊、漸層、光暈、霓虹、3D、地球、電路板、機器人、K 線背景、人物、動物。
+- 每一段:青色 ${S.cyan} 等寬小字節號(01、02…)+ 白色段名,下面一條 1px 細線 ${S.line},再接內容;段與段靠留白分開。
+- 數字一律等寬字、白色 ${S.txt}、比內文大一級;單位與口徑(季別、日期、指標名)緊接在後,灰色 ${S.dim} 小字。
+- 這一場、這次新出現的詞用琥珀 ${S.amber};節號、細線、時間軸用青 ${S.cyan}。
+- 內文不小於 24px、註解不小於 18px;⛔ 亂碼、假字、自己拼的中文。放不下照第 11 條刪,⛔ 縮到看不清楚。
+
+# 🚨 顏色鐵則(台股)
+1. 紅 ${S.up} = 上漲、綠 ${S.dn} = 下跌(跟美股相反),只准用在 08「開完到現在」那兩個漲跌數字。
+2. ⛔ 紅綠不可以表示好壞:做到了 / 沒做到 / 還沒到期 一律用 ✅ / ❌ / ⏳ + 灰字。
+3. 「第一次提到」用 ▲ + 琥珀字;「上一份有、這次沒講」用 ▼ + 灰字。
+4. 全市場佔比用單一青色細長條(越長 = 越多公司在講),⛔ 綠→黃→紅漸層。
+
+# 🚨 數字鐵則
+5. 每個數字逐字照抄【資料】(連單位、季別、口徑),⛔ 自己算、換算單位、四捨五入、補數字、上網查。
+6. 公司原話一律加「」並標頁碼(p9);⛔ 改寫得更樂觀或更悲觀。
+7. 【資料】沒給的格子不要畫;一整段寫「本站沒有這一段」→ 那段只寫一行「本站沒有這一段」。
+8. 【資料】寫「延期 / 還沒開」→ 標題改成「法說會・會前準備」,⛔ 畫問答、⛔ 寫「會後」。
+
+# 🚨 方向鐵則
+9. 法說會只能講「前後波動會變大」;⛔ 利多、利空、會漲、會跌、買進、賣出、目標價、評等、星等、分數、「值得布局」。
+10. 「開完到現在」旁邊固定一行小字:「${this._CC_IMG_PXNOTE}」。
+
+# 版面(由上往下 9 段,⛔ 換順序、⛔ 加段落)
+00 抬頭(沒有節號):公司名 代號(大字)・「法說會一頁戰報」・日期(星期)時間・標籤(財報法說會 / 券商邀請 / 延期)・右上「資料截至 YYYY/MM/DD」
+01 三句話看懂:照抄【三句話】三行,每行前面 📌
+02 公司給的數字:照抄【財測與展望】,一列一句 —— 左:指標 + 期間(灰字);右:「原話」+ 頁碼;最多 6 列。有區間的(例 65%~67%)畫一條細橫線標兩端,⛔ 自己加刻度。
+03 說到做到:左邊三個大數字(✅ 做到・❌ 沒做到・⏳ 還沒到期,照抄);右邊最多 3 句已有答案的:「原話」→ 實際數字 → ✅ / ❌
+04 這次多了什麼・少了什麼:兩欄 —— ▲ 第一次提到(詞 + 頁碼,最多 8)/ ▼ 上一份有、這次沒講(最多 8);下面小字「沒講 ≠ 不做了」
+05 全市場也在講嗎:04 的每個詞一行「這一季 X% 的公司簡報提到(一年前 Y%)」+ 青色細長條;【資料】沒有的詞不列
+06 法人問答(【資料】有【法人問答】才畫):最多 5 題「XX 問:…」→「公司答:…」,照抄
+07 本站對帳:照抄【本站算好的數字】,兩欄小字(價格與日期・本益比用到哪四季・殖利率用哪一次配息・月營收與三個月合計・毛利率走勢・營業利益 vs 稅後淨利・現金流)
+08 時間軸 + 開完到現在:一條青色細線 —— 上一場 ● → 這一場 ●(琥珀)→ 下次月營收 ○ → 下次財報期限 ○ → 下一場法說會 ○(有才畫);線下一行「開完到現在:這檔 +x% ・0050 +y%」
+頁尾(逐字照抄):「${this._CC_IMG_FOOT}」
+
+# 放不下時
+11. 先刪 07 後半 → 再刪 05 → 再刪 02 第 5~6 列;⛔ 刪 00、03、08、頁尾。
+12. 如果你畫中文字容易變形:改成輸出一份 1080 × 1920 的 SVG(文字用 <text>),版面照上面。
+
+---
+【資料】
+`;
+    return head + L.join('\n');
+  },
+  /** 🎨 按「做圖提示詞」:同步複製(⛔ await —— iOS 會擋剪貼簿,V76.2.1);資料還沒讀好 → 先讀、請再按一次;複製不了 → 文字框自己選 */
+  confImgCopy(sym) {
+    sym = String(sym || this._confDSym || ''); if (!sym) return;
+    this.buzz(10);
+    if ((this._confPrepAt || {})[sym] !== 'ok' || this._confCC[sym] === undefined) {
+      this._confPrep(sym).catch(() => {});
+      this.toast('⏳ 這一檔的數字還在讀,讀好再按一次(⛔ 缺數字的提示詞會讓 AI 自己編)', 2600);
+      return;
+    }
+    const txt = this._confImgPrompt(sym);
+    if (txt && this._copySync(txt)) { this.toast('✅ 已複製做圖提示詞 → 貼到 ChatGPT / Gemini 這類會畫圖的 AI', 2600); return; }
+    this.openModal('🎨 做圖提示詞(複製不了 → 長按全選複製)', `<textarea readonly data-ccimg-ta style="width:100%;height:60vh;background:var(--panel2);color:var(--txt);border:1px solid var(--line2);border-radius:8px;padding:8px;font-size:12px">${this._esc(txt)}</textarea>`);
+  },
+  confImgOpen(sym) {
+    sym = String(sym || this._confDSym || ''); if (!sym) return;
+    this._ccImgSym = sym;
+    this.openModal('🖼️ 本站畫的法說會戰報', `<div class="note" style="margin:0 0 6px">本站自己畫的(⛔ 不是 AI 畫的):數字全部讀本站資料,沒有的就寫「本站沒有」。</div>
+      <canvas id="ccImgCv" data-ccimg-cv style="width:100%;height:auto;display:block;background:${this._CC_IMG_STYLE.bg};border-radius:6px"></canvas>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="lbtn" onclick="PRO.confImgSave()">💾 存圖</button><button class="lbtn" data-s="${this._ea(sym)}" onclick="PRO.confImgCopy(this.dataset.s)">🎨 做圖提示詞</button></div>`);
+    this._confDrawOwn(sym);
+    if ((this._confPrepAt || {})[sym] !== 'ok' || this._confCC[sym] === undefined)
+      this._confPrep(sym).then(() => { if (this._ccImgSym === sym && document.getElementById('ccImgCv')) this._confDrawOwn(sym); }).catch(() => {});
+  },
+  confImgSave() {
+    const cv = document.getElementById('ccImgCv'), sym = this._ccImgSym || '';
+    if (!cv) { this.toast('⚠️ 圖還沒畫好'); return; }
+    this._savePng(cv, `${this._nmTxt(sym)}_${sym}_法說會戰報.png`);
+  },
+  /** 🖼️ 本站自己畫一張(canvas,寬 780;版面照提示詞那 9 段;無框:節號 + 段名 + 一條細線)。
+   *  🔠 字級照「手機上看」訂:780 寬的圖在手機上縮到約 360 → 內文 23px ≈ 手機 10.6px(⛔ 用 14px,縮完只剩 6px)
+   *  ⛔ emoji 不上畫布(沙箱 / 各家字型寬度不一;CLAUDE.md:canvas 一律改印字)→ _confFacts 句子裡的 ⚠️ 換成「注意:」
+   *  🚦 紅綠只在 pxCol 那一支(開完到現在);_ccImgDbg 給測試讀(畫了哪些字、用什麼顏色、幾段) */
+  _confDrawOwn(sym) {
+    const cv = document.getElementById('ccImgCv'); if (!cv) return null;
+    const F = this._confImgFacts(sym); if (!F) return null;
+    const S = this._CC_IMG_STYLE, W = S.W, PAD = 32, CW = W - PAD * 2, g = cv.getContext('2d');
+    const md = d => String(d || '').slice(5).replace('-', '/'), ymd = d => String(d || '').replace(/-/g, '/');
+    const noEmo = t => String(t).replace(/⚠️\s*/g, '注意:').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]️?/gu, '').replace(/️/g, '');
+    const cut = (t, n) => (t.length > n ? t.slice(0, n) + '…' : t);
+    const dbg = { texts: [], fills: [], secs: [], px: [] };
+    let y = 0, paint = false;
+    const font = (sz, w, mono) => `${w || 400} ${sz}px ${mono ? S.mono : S.font}`;
+    // 斷行:逐字量;收尾標點(,。、」…)⛔ 跑到下一行開頭(寧可這一行超出一點)
+    //       開頭括號(「(『)⛔ 留在上一行的最後
+    const TAIL = /[,，。、;；:：?？!！」』)）%…]/, HEAD = /[(（「『]$/;
+    const wrap = (t, maxW, f) => {
+      g.font = f; const out = []; let cur = '';
+      for (const ch of String(t)) {
+        if (cur && g.measureText(cur + ch).width > maxW && !TAIL.test(ch)) {
+          if (HEAD.test(cur) && cur.length > 1) { out.push(cur.slice(0, -1)); cur = cur.slice(-1) + ch; } else { out.push(cur); cur = ch; }
+        } else cur += ch;
+      }
+      if (cur) out.push(cur); return out.length ? out : [''];
+    };
+    const text = (t, x, yy, f, col, align) => {
+      t = noEmo(t);
+      if (paint) { g.font = f; g.fillStyle = col; g.textAlign = align || 'left'; g.textBaseline = 'alphabetic'; g.fillText(t, x, yy); g.textAlign = 'left'; dbg.texts.push(t); dbg.fills.push({ t, col }); }
+      g.font = f; return g.measureText(t).width;
+    };
+    const para = (t, f, col, lh, indent) => { for (const ln of wrap(noEmo(t), CW - (indent || 0), f)) { y += lh; text(ln, PAD + (indent || 0), y, f, col); } };
+    const pxCol = v => (v >= 0 ? S.up : S.dn);      // 🚦 全畫布唯一用紅綠的地方
+    const sec = (no, title) => {
+      y += 46;
+      text(no, PAD, y, font(20, 700, true), S.cyan);
+      text(title, PAD + 40, y, font(27, 700), S.txt);
+      y += 14; if (paint) { g.fillStyle = S.line; g.fillRect(PAD, y, CW, 1); }
+      y += 6; dbg.secs.push(no);
+    };
+    const B = font(23), Bb = font(23, 700), SM = font(19), XS = font(18);
+    const none = (t) => para(t || '本站沒有這一段', SM, S.dim, 32);
+    const run = () => {
+      y = 0;
+      if (paint) { g.fillStyle = S.bg; g.fillRect(0, 0, W, cv.height); }
+      // 00 抬頭
+      y += 58; const nw = text(F.name, PAD, y, font(44, 900), S.txt); text(F.sym, PAD + nw + 14, y, font(28, 700, true), S.dim);
+      text(`資料截至 ${ymd(F.asof) || '本站沒有'}`, W - PAD, 30, font(18, 400, true), S.dim, 'right');
+      y += 38; text(F.done ? '法說會一頁戰報' : '法說會・會前準備', PAD, y, font(22, 700), S.cyan);
+      y += 34; text(F.d ? `${ymd(F.d)}(${F.wk})${F.t ? ' ' + F.t : ''} ・${F.kind}` : F.kind, PAD, y, font(22, 400), S.amber);
+      if (F.deckD && !F.deckOwn) { y += 30; text(`簡報用的是 ${md(F.deckD)} 那份(這一場的還沒讀到)`, PAD, y, SM, S.dim); }
+      // 01 三句話
+      sec('01', '三句話看懂');
+      F.three.forEach((t, i) => { wrap(noEmo(t), CW - 36, B).forEach((ln, j) => { y += 36; if (j === 0) text(String(i + 1), PAD, y, font(22, 700, true), S.cyan); text(ln, PAD + 36, y, B, S.txt); }); });
+      // 02 公司給的數字
+      sec('02', '公司給的數字');
+      if (!F.guide.length) none();
+      for (const x of F.guide) {
+        const lab = x.what || x.ttl;
+        if (lab) { y += 30; text(cut(noEmo(lab), 40), PAD, y, SM, S.dim); }
+        for (const ln of wrap(`「${noEmo(x.t)}」${x.p ? `(p${x.p})` : ''}`, CW, B)) { y += 34; text(ln, PAD, y, B, S.txt); }
+        y += 6;
+      }
+      // 03 說到做到
+      sec('03', '說到做到');
+      if (!F.track) none(F.trackNote);
+      else {
+        const cells = [['做到', F.track.hit], ['沒做到', F.track.miss], ['還沒到期', F.track.pend]], cw = CW / 3;
+        y += 52;
+        cells.forEach(([lab, v], i) => { text(String(v), PAD + cw * i, y, font(46, 900, true), S.txt); text(lab, PAD + cw * i, y + 30, SM, S.dim); });
+        y += 30;
+        y += 30; text(`最近 ${F.track.decks} 份簡報、同一件事只算一次`, PAD, y, SM, S.dim);
+        for (const c of F.claims) {
+          y += 36; text(c.word, PAD, y, Bb, S.txt);
+          for (const [j, ln] of wrap(`「${noEmo(c.t)}」${c.p ? `(p${c.p})` : ''}`, CW - 96, B).entries()) { if (j) y += 32; text(ln, PAD + 96, y, B, S.txt); }
+          for (const ln of wrap(String(c.txt).replace(/^(做到了|沒做到):/, ''), CW - 96, SM)) { y += 28; text(ln, PAD + 96, y, SM, S.dim); }
+        }
+      }
+      // 04 多了什麼・少了什麼
+      sec('04', '這次多了什麼・少了什麼');
+      if (!F.newT.length && !F.dropped.length) none(F.first ? '本站第一次收錄這家公司的簡報,還沒有上一份可以比' : '');
+      else {
+        if (F.newT.length) para('▲ 第一次提到:' + F.newT.map(x => `${x.t}${x.p ? `(p${x.p})` : ''}`).join('、'), B, S.amber, 34);
+        if (F.dropped.length) para('▼ 上一份有、這次沒講:' + F.dropped.join('、'), B, S.dim, 34);
+        para('沒講 ≠ 不做了', SM, S.dim, 30);
+      }
+      // 05 全市場也在講嗎
+      sec('05', '全市場也在講嗎');
+      if (!F.radar.length) none();
+      else {
+        const mx = Math.max(10, ...F.radar.map(x => x.s));
+        for (const x of F.radar) {
+          y += 34; text(cut(x.t, 10), PAD, y, Bb, S.txt);
+          text(`這一季 ${x.s.toFixed(1)}% 的公司提到${x.sy != null ? `(一年前 ${x.sy.toFixed(1)}%)` : ''}`, PAD + 200, y, font(19, 400, true), S.dim);
+          y += 12; if (paint) { g.fillStyle = S.cyan; g.fillRect(PAD + 200, y, Math.max(3, (CW - 200) * x.s / mx), 4); }
+          y += 4;
+        }
+      }
+      // 06 法人問答(只有有問答的公司;圖上最多 3 題,答案太長截短 + …,完整的在提示詞)
+      if (F.qa.length) {
+        sec('06', `法人問答 ・${this._confQaYq(F.qaYq)}`);
+        for (const x of F.qa.slice(0, 3)) { para(`${x.org} 問:${cut(x.q, 60)}`, Bb, S.txt, 32); para(`${x.by}答:${cut(x.a, 70)}`, SM, S.dim, 30, 22); y += 6; }
+      }
+      // 07 本站對帳
+      sec('07', '本站對帳');
+      if (!F.facts.length) none();
+      for (const t of F.facts) para('・' + t, SM, S.dim, 29);
+      // 08 時間軸 + 開完到現在
+      sec('08', '時間軸 ・開完到現在');
+      if (F.tl.length) {
+        y += 40; const x0 = PAD + 8, x1 = W - PAD - 8, n = F.tl.length;
+        if (paint) { g.fillStyle = S.cyan; g.fillRect(x0, y - 6, x1 - x0, 2); }
+        F.tl.forEach((p, i) => {
+          const x = n === 1 ? x0 : x0 + (x1 - x0) * i / (n - 1), cur = p.k === 'cur';
+          if (paint) { g.beginPath(); g.arc(x, y - 5, cur ? 9 : 6, 0, Math.PI * 2); g.fillStyle = cur ? S.amber : (['prev', 'cur'].includes(p.k) ? S.cyan : S.bg); g.fill(); g.strokeStyle = cur ? S.amber : S.cyan; g.lineWidth = 2; g.stroke(); }
+          const al = i === 0 ? 'left' : i === n - 1 ? 'right' : 'center', ax = i === 0 ? x - 8 : i === n - 1 ? x + 8 : x;
+          text(md(p.d), ax, y + 30, font(20, 700, true), cur ? S.amber : S.txt, al);
+          text(p.lab, ax, y + 56, XS, S.dim, al);
+        });
+        y += 62;
+      } else none();
+      const px = F.px, sg = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+      y += 40;
+      if (!F.done) text('開完到現在:還沒開', PAD, y, B, S.dim);
+      else if (!px || px.wait) text('開完到現在:本站沒有這一段', PAD, y, B, S.dim);
+      else if (px.pending) text(`開完到現在:最新 K 線到 ${md(px.last)},還沒有開完之後的股價`, PAD, y, SM, S.dim);
+      else if (px.same) text(`開完到現在:法說會那天就是最新一根(${md(px.from)}),還沒有之後的走勢`, PAD, y, SM, S.dim);
+      else {
+        let x = PAD; x += text('開完到現在:這檔 ', x, y, B, S.txt);
+        x += text(sg(px.p), x, y, font(27, 900, true), pxCol(px.p)); if (paint) dbg.px.push({ t: sg(px.p), v: px.p, col: pxCol(px.p) });
+        if (px.b != null) { x += text(' ・0050 ', x, y, B, S.txt); text(sg(px.b), x, y, font(27, 900, true), pxCol(px.b)); if (paint) dbg.px.push({ t: sg(px.b), v: px.b, col: pxCol(px.b) }); }
+        y += 30; text(`(${md(px.from)} 收盤 → ${md(px.to)})`, PAD, y, font(18, 400, true), S.dim);
+      }
+      y += 30; text(this._CC_IMG_PXNOTE, PAD, y, SM, S.dim);
+      if (F.noteRaw) { y += 8; para('公司備註:' + F.noteRaw, SM, S.dim, 29); }
+      if (F.miss.length) { y += 6; para('本站讀不到:' + F.miss.join('、'), SM, S.dim, 29); }
+      // 頁尾(逐字照 _CC_IMG_FOOT)
+      y += 46; if (paint) { g.fillStyle = S.line; g.fillRect(PAD, y - 26, CW, 1); }
+      // 頁尾照「 ・ 」分段換行(⛔ 把「這不是投資建議」拆成兩行)
+      const fl = []; for (const seg of this._CC_IMG_FOOT.split(' ・ ')) { const tryL = fl.length ? fl[fl.length - 1] + ' ・ ' + seg : seg; g.font = XS; if (fl.length && g.measureText(tryL).width <= CW) fl[fl.length - 1] = tryL; else fl.push(seg); }
+      for (const ln of fl) for (const l2 of wrap(ln, CW, XS)) { text(l2, PAD, y, XS, S.dim); y += 26; }
+      y += 18;
+    };
+    run();                                      // 第一趟:量高度
+    const H = Math.ceil(y);
+    // iOS 單張畫布上限約 1,677 萬像素 → 太長就降解析度(⛔ 讓整張變空白)
+    const dpr = Math.max(1, Math.min(2, Math.sqrt(16e6 / (W * H))));
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    paint = true; dbg.texts = []; dbg.fills = []; dbg.secs = []; dbg.px = []; run();   // 第二趟:畫
+    dbg.H = H; dbg.dpr = dpr; dbg.sym = sym;
+    this._ccImgDbg = dbg;
+    return dbg;
+  },
+  // 💾 存圖:照散戶救星 index.html `_saveBlob` / `_savePng` 抄一份(LINE 內建瀏覽器 / 先分享 / 200ms 清理三層;test_confimg 跨檔比對)
+  async _saveBlob(blob, fileName, opts = {}) {
+    if (!blob) return 'failed';
+    if (!opts.forceDownload && /Line\/|FBAV|FB_IAB|Instagram|MicroMessenger/i.test(navigator.userAgent || '')) return 'inapp';
+    if (opts.shareFirst !== false) {
+      try {
+        const f = (typeof File !== 'undefined')
+          ? new File([blob], fileName, { type: blob.type || 'application/octet-stream' }) : null;
+        if (f && navigator.canShare && navigator.canShare({ files: [f] }) && navigator.share) {
+          try { await navigator.share({ files: [f], title: opts.title || fileName, text: opts.text || '' }); return 'shared'; }
+          catch (err) { if (err && err.name === 'AbortError') return 'shared'; }
+        }
+      } catch (_) { /* 不支援分享 → 往下走下載 */ }
+    }
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName;
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { try { a.remove(); URL.revokeObjectURL(url); } catch (_) {} }, 200);
+      return 'downloaded';
+    } catch (e) { console.warn('[save] 下載失敗', e); return 'failed'; }
+  },
+  _savePng(cv, fileName) {
+    const done = (r) => {
+      if (r === 'shared') this.toast('✅ 已開啟分享 → 選「儲存影像」就進相簿', 2600);
+      else if (r === 'downloaded') this.toast('✅ 圖片已下載', 2200);
+      else if (r === 'inapp') this.toast('📵 這個內建瀏覽器不能下載檔案 → 請長按圖片選「儲存影像」,或用外部瀏覽器開啟', 6500);
+      else this.toast('⚠️ 存不起來 → 請長按圖片選「儲存影像」', 6500);
+    };
+    try {
+      if (cv && cv.toBlob) { cv.toBlob(b => { this._saveBlob(b, fileName, { title: fileName }).then(done).catch(() => done('failed')); }, 'image/png'); return; }
+      done('failed');
+    } catch (_) { done('failed'); }
   },
   /** 🔎 法人視角的深度查詢提示詞(V77.2.8 使用者:「把重要東西挖出來、摘要重點、法人會看的、**未來展望**」)。
    *  ⭐ 本站算好的數字直接塞進去(禁 AI 算數學鐵律);⛔ 不要求它評分/給部位/給買賣建議。
