@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.8.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.8.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.8.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.8.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8619,10 +8619,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.8.6',
+    _APP_VERSION: 'V79.8.7',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.8.7', d: [
+            '🎲 解鎖後的專欄:庫存、自選或正在看的股票碰到某種情況(鎖漲停、跌破月線、外資連買、融資追繳線…)時,那一則底下多一行「這檔過去碰到幾次 → 之後怎樣幾次 ・這檔平常隨便一天 ・一般股票 16 年」三個比例一起看',
+            '🎲 大盤那幾則(剛轉空頭、跌 20%、單日跌 3%)也多一行:2010 年起加權發生幾次 → 20 天後上漲幾次,旁邊放平常隨便一天的比例',
+            '📌 大部分情況「這檔自己以前的次數」猜不準下一次,畫面會直接寫出來;那一行講的是過去發生過的比例,⛔ 不是會漲或會跌',
+        ], dt: '2026-10-25' },
         { v: 'V79.8.6', d: [
             '🎲 法說會:每一檔多一行「這檔過去幾場法說會,開完兩天比大盤差 3% 以上(俗稱法會)幾場、好 3% 以上幾場」,旁邊一起放「這檔平常隨便兩天」和「一般股票開法說會」的比例 —— 現價下方的法說會提醒、基本頁法說會那格、決策台「快開法說會」那篇都看得到',
             '📌 那一行只講那兩天通常動多大,⛔ 不是會漲或會跌:常常「法會」的公司,下一場也沒有比「這檔平常就很會動」更好猜',
@@ -8859,7 +8864,6 @@ ${list}
         ], dt: '2026-10-10' },
         { v: 'V79.0.8', d: ['🎯 決策台「今天可以買的」改成跟 👑 領頭羊一樣的表格:一列一檔(股名・現價・觸發價・停損・買幾張),點表頭可以排序,再點一次反過來。', '📑 個股報告頁的財報趨勢多了「負債比」「流動比」兩條(下一次財報資料更新後才會出現)。'] },
         { v: 'V79.0.7', d: ['🏷️ 個股新聞不再把「三星(Samsung)」「東南亞」「聯合國」「億光年」這類字誤歸到同名的台股,總覽的「近期有事件」也一樣;國際新聞翻譯偶爾回一段指令文字當標題的情況也擋掉了。'] },
-        { v: 'V79.0.6', d: ['📰 個股新聞:同一件事被好幾家報導,現在合成一則,後面寫「另 N 家也報」,清單比較短;新聞的來源和時間以前是空白的,也補上了。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
