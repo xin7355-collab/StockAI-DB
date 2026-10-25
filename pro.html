@@ -1175,6 +1175,7 @@ details.colart[open] .colsum{display:none}
     <div class="labbar" id="confInd"></div>
     <div id="confBody"></div>
     <div id="confReact"></div>
+    <div id="confQa"></div>
     <details class="sbnote" style="margin-top:8px"><summary>📖 這頁在算什麼 <span style="color:var(--dim2)">展開 ▾</span></summary>
       <div class="note">
         ⭐ 場次來源是公開資訊觀測站的「法人說明會一覽表」(上市 + 上櫃),每個交易日收盤後更新,涵蓋前 60 天到後 45 天。<br>
@@ -8414,7 +8415,7 @@ const PRO = {
       { t: '📛 憑空門檻:別人隨口訂的那條線', n: '', d: '實測過的都不成立:摩卡「跳空 2~4%」(相鄰桶沒分別)、Gemini「投量比 >10%」(所有買超桶裡最弱)、權證小哥「地板股 100 檔」(實測有效的是 300)、「乖離年線 200%」(短線完全沒邊際,60 日才顯現)。⭐ 門檻一律用<b>相對自己的歷史位階</b>,⛔ 不寫死數字。', s: '多處' },
     ],
     blocked: [
-      { k: 'confcall-av', u: '2026-10-25', t: '🎙️ <b>法說會影音逐字稿 / 簡報圖片頁辨識 / 大型公司問答 —— 量過了:技術做得到,但先不轉(多半照簡報唸、問答很少;大型公司有完整問答文字的太少,撐不起回測)</b>', n: '三輪量測(<code>confcall_av_probe.py</code>,樣本都是已開完、簡報已讀過的歷史場次):① 證交所法說會影音網站的影片 2021~2026 每年抽樣 <b>全部拿得到</b>(清單 5,001 場直接是影片檔;YouTube 要驗證、vimeo 要登入、zucast / 證交所影音平台網頁 0/12、Google 雲端 6/12)・一場 22~295 MB、下載 14~69 秒 ② Groq 語音辨識一場 10~54 分鐘 2~49 秒轉完,一天免費約 8 小時錄音 ≈ 20 場;GitHub 機器自己轉(同一個模型)10 分鐘錄音 55~226 秒,跟 Groq 那份相似度 0.89(小模型 0.77、人名數字錯更多)③ 準度:逐字稿講到的數字 54~89% 在同一份簡報找得到;⚠️ 出來的是<b>簡體字</b>、靜音段會冒出「請不吝點讚訂閱…」「字幕志願者 李宗盛」這種幻覺字、公司名常聽錯(冠好 → 萬老 / 冠農 / 官邏、正道 → 鄭道)④ 問答:6 場裡 4 場「請問各位是否需要提問」之後沒人問或只問 1 題(多半是券商辦的線上法說)⑤ 簡報「不到 40 字」的頁讀出來大多是<b>章節分隔頁</b>(01 公司簡介 / 報告大綱),Gemini 讀 7 頁就用完當天額度;Groq 清單上已經沒有看圖的模型', d: '🏢 <b>2026-10-25 追加:你選的「先挑問答多的大型公司」也量了</b>(<code>confcall_av_probe.py AV_MODE=qa</code>,過關門檻先寫死:估計 ≥150 場「至少 3 個提問」且問答裡的數字句 ≥30% 是簡報沒講的):① 市值前 100 名從清單裡那家自己的投資人網址找官方逐字稿 → <b>只有 4 家找得到</b>:台積電(每季英文逐字稿、一場 15~36 個提問、問答佔全文七成)、力旺(28 季,但多半只有簡報講稿、問答很短或沒有)、研華(問答整理成條列)、台達電(1 季);聯發科 / 聯電 / 日月光 / 富邦金 / 中華電…一份都沒有(或網頁抓不到)② 讀到的台積電問答,數字句有 14~44% 是簡報和前半段沒講的(例:三年資本支出、AI 營收成長的假設)→ 問答確實有東西③ 市值前 150 名在證交所影片、簡報讀過的 259 場抽 8 場辨識:3 場有 ≥3 個提問(永豐金 11、可成 9、第一金 3),問的是下半年漲價幅度、資本支出金額這類;但辨識稿裡能抽出的數字句很少(0~4 句)④ <b>門檻判定 ⛔ 沒過</b>:估計「≥3 個提問」只有約 106 場(< 150),中位比例 0.40(這一條有過)。⇒ 有料的問答集中在極少數大公司(台積電一家一季一場),拿來做「同一天全部股票當對照」的事件研究,樣本只有幾十場、統計上看不出東西 → ⛔ 不做存特徵 / 回測。⚠️ 量測的限制:只找清單裡登記的投資人網址(公司若把逐字稿放在別頁會漏);提問數用固定字樣數,格式特殊的會少算。<br>⇒ 為什麼先不做:要研究就得把 5,001 場全部轉完(Groq 一個帳號約 250 天,或 GitHub 機器並行幾十小時)+ 簡轉繁 + 幻覺過濾 + 公司名校正;而簡報內容已經 11 格 0 過(⛔ 沒用那條「法說會簡報內容」),逐字稿多半是照著簡報唸,問答又很少 → 預期找到東西的機會低。⏭️ 什麼情況值得重做:① 大型公司子樣本 ✅ 已試(上面 🏢 那段,沒過門檻)—— 台積電這種有完整問答逐字稿的只能當個案閱讀,⛔ 拿來做統計 ② 或你想要「某一場的逐字稿拿來讀」—— 那是單場現轉(Groq 一場幾秒),不需要先做研究。📄 PDF 轉文字:簡報文字層本站 98.8% 讀得到,⛔ 不用再轉;圖片頁那 22% 大多是分隔頁,真正有數字的圖表要另外挑(看圖片面積,不是看字數)才值得讀。', s: 'scripts/confcall_av_probe.py + confcall_av_probe.yml(2026-10-24 三輪:run 40124373264 / 40127520039 / 40128971475;2026-10-25 大型公司問答 AV_MODE=qa:run 40140395772)' },
+      { k: 'confcall-av', u: '2026-10-25', t: '🎙️ <b>法說會影音逐字稿 / 簡報圖片頁辨識 / 大型公司問答 —— 量過了:技術做得到,但先不轉(多半照簡報唸、問答很少;大型公司有完整問答文字的太少,撐不起回測)</b>', n: '三輪量測(<code>confcall_av_probe.py</code>,樣本都是已開完、簡報已讀過的歷史場次):① 證交所法說會影音網站的影片 2021~2026 每年抽樣 <b>全部拿得到</b>(清單 5,001 場直接是影片檔;YouTube 要驗證、vimeo 要登入、zucast / 證交所影音平台網頁 0/12、Google 雲端 6/12)・一場 22~295 MB、下載 14~69 秒 ② Groq 語音辨識一場 10~54 分鐘 2~49 秒轉完,一天免費約 8 小時錄音 ≈ 20 場;GitHub 機器自己轉(同一個模型)10 分鐘錄音 55~226 秒,跟 Groq 那份相似度 0.89(小模型 0.77、人名數字錯更多)③ 準度:逐字稿講到的數字 54~89% 在同一份簡報找得到;⚠️ 出來的是<b>簡體字</b>、靜音段會冒出「請不吝點讚訂閱…」「字幕志願者 李宗盛」這種幻覺字、公司名常聽錯(冠好 → 萬老 / 冠農 / 官邏、正道 → 鄭道)④ 問答:6 場裡 4 場「請問各位是否需要提問」之後沒人問或只問 1 題(多半是券商辦的線上法說)⑤ 簡報「不到 40 字」的頁讀出來大多是<b>章節分隔頁</b>(01 公司簡介 / 報告大綱),Gemini 讀 7 頁就用完當天額度;Groq 清單上已經沒有看圖的模型', d: '🏢 <b>2026-10-25 追加:你選的「先挑問答多的大型公司」也量了</b>(<code>confcall_av_probe.py AV_MODE=qa</code>,過關門檻先寫死:估計 ≥150 場「至少 3 個提問」且問答裡的數字句 ≥30% 是簡報沒講的):① 市值前 100 名從清單裡那家自己的投資人網址找官方逐字稿 → <b>只有 4 家找得到</b>:台積電(每季英文逐字稿、一場 15~36 個提問、問答佔全文七成)、力旺(28 季,但多半只有簡報講稿、問答很短或沒有)、研華(問答整理成條列)、台達電(1 季);聯發科 / 聯電 / 日月光 / 富邦金 / 中華電…一份都沒有(或網頁抓不到)② 讀到的台積電問答,數字句有 14~44% 是簡報和前半段沒講的(例:三年資本支出、AI 營收成長的假設)→ 問答確實有東西③ 市值前 150 名在證交所影片、簡報讀過的 259 場抽 8 場辨識:3 場有 ≥3 個提問(永豐金 11、可成 9、第一金 3),問的是下半年漲價幅度、資本支出金額這類;但辨識稿裡能抽出的數字句很少(0~4 句)④ <b>門檻判定 ⛔ 沒過</b>:估計「≥3 個提問」只有約 106 場(< 150),中位比例 0.40(這一條有過)。⇒ 有料的問答集中在極少數大公司(台積電一家一季一場),拿來做「同一天全部股票當對照」的事件研究,樣本只有幾十場、統計上看不出東西 → ⛔ 不做存特徵 / 回測。⚠️ 量測的限制:只找清單裡登記的投資人網址(公司若把逐字稿放在別頁會漏);提問數用固定字樣數,格式特殊的會少算。<br>🎤 <b>2026-10-25 台積電問答做成閱讀區</b>(<code>confcall_qa.py</code>,你說「我要台積電的」):法說會頁挑台積電、或展開它的財報法說會卡片 →「🎤 問答重點」:最近 4 季官方英文逐字稿,每一題 AI 整理成中文(分類 / 分析師問什麼 / 公司怎麼答),AI 寫的數字在原文找不到那句整句拿掉;每季自動補上。第一次實跑解析:4 季都找到、各 8 / 11 / 8 / 7 位分析師(每人多半問兩件事)。⛔ 只是閱讀,⛔ 不進任何判斷 / 計分 / 推播;逐字稿版權屬原作者,本站只放整理後的重點 + 原文連結。<br>⇒ 為什麼先不做:要研究就得把 5,001 場全部轉完(Groq 一個帳號約 250 天,或 GitHub 機器並行幾十小時)+ 簡轉繁 + 幻覺過濾 + 公司名校正;而簡報內容已經 11 格 0 過(⛔ 沒用那條「法說會簡報內容」),逐字稿多半是照著簡報唸,問答又很少 → 預期找到東西的機會低。⏭️ 什麼情況值得重做:① 大型公司子樣本 ✅ 已試(上面 🏢 那段,沒過門檻)—— 台積電這種有完整問答逐字稿的只能當個案閱讀,⛔ 拿來做統計 ② 或你想要「某一場的逐字稿拿來讀」—— 那是單場現轉(Groq 一場幾秒),不需要先做研究。📄 PDF 轉文字:簡報文字層本站 98.8% 讀得到,⛔ 不用再轉;圖片頁那 22% 大多是分隔頁,真正有數字的圖表要另外挑(看圖片面積,不是看字數)才值得讀。', s: 'scripts/confcall_av_probe.py + confcall_av_probe.yml(2026-10-24 三輪:run 40124373264 / 40127520039 / 40128971475;2026-10-25 大型公司問答 AV_MODE=qa:run 40140395772;台積電問答閱讀區 confcall_qa.py + confcall_qa.yml,dry run 40146203277)' },
       { k: 'bigflow', u: '2026-10-14', t: '🧾 <b>盤中逐筆大單(≥50 張)淨買多的股票,之後會不會比較強 —— 還測不了:只存了 36 天</b>', n: 'tick_hist.json 從 2026-08-04 才開始存(每天約 80 檔的外盤 / 內盤 / 大單買 / 大單賣),能算的 33 天:淨買五分位(1 = 淨賣最多 … 5 = 淨買最多)隔天開盤→收盤 +0.28 / +0.04 / +0.09 / +0.00 / −0.44%,抱 5 天 −0.51 / +0.01 / +0.43 / +0.61 / −0.54% —— 不單調、兩端都略負', d: '使用者(2026-10-14):「分時大單攻擊是否可以知道什麼消息」。⭐ 大單只看得出有人大量在買,看不出是什麼消息;能不能預測要靠歷史,而逐筆資料以前一筆都沒存(5 分 K 只有量、分不出大單)。⏳ 等 tick_hist 滿一年(約 2027-08)用 lu_touch_probe --bigflow 重跑;⚠️ 名單是每天成交量前 80,天生只收夠熱的。', s: 'lu_touch_probe.mjs --bigflow' },
       { u: '2026-10-20', t: '💎 《不盯盤》價值規格裡量不到的那一半:Net Cash / 有形淨值 / EV/EBITDA / 負債比 / 利息保障 ・ 5~20 年回測 ・ 實際公告日', n: 'fin_deep 十五欄(2018 起;V78.6.9 加總資產 / 負債 / 流動資產負債 → 負債比、流動比做得出來);日 K 2010 起(2021 前只有上市倖存者,全市場補挖中)', d: '🔁 <b>2026-10-20 更新</b>:① <b>負債比、流動比 V78.6.9 已經有了</b>(fin_deep 加 ta / li / ca / cl);Net Cash / 有形淨值 / EV / 利息保障仍缺(沒有現金、有息負債、無形資產、利息費用欄)② 下面「最長 4.8 年」<b>已過期</b>:日 K 2010 起 16 年(含 2011 / 2015 / 2018 / 2022 空頭;⚠️ 2021 以前只有上市、只有活到現在的),變因研究正在補挖 2010~2021 全市場價格(含上櫃、下市)與 2010~2018 季報三表(<code>stock_deep</code>)③ MOPS 探針 2026-10-20 第一次在 runner 跑:連得到、不用金鑰,但參數不對 → 改版重跑中。以下是 V77.4.4 當時的紀錄。<br>規格 §3/§37 要現金、有息負債、無形資產、總資產、應收、庫藏股、股數 —— fin_deep <b>一欄都沒有</b> → Net Cash、TBV、EV、負債比、利息保障做不了;股數只能股本÷10(面額 10 假設)。§29 要 5/10/15/20 年、2010 起訓練段 —— 本站最長 4.8 年(2021-12 起),只含 2022 一次空頭。§30/§53 要 publication_date —— 本站只有法定截止日,做不了「公告後 N 天內」。§5 五感(消費者/產業/管理層)是質化,走 🔎 免費查。⏳ 這幾條要等:財報回算加欄位(要先確認 FinMind 資料集有那些欄)、K 線再累積、MOPS 探針(V77.4.3)在 runner 上跑出結果。', s: 'scripts/value_probe.mjs limits・V77.4.4' },
       { t: '🌐 <b>DRAM/NAND 現貨報價 ・ 四大雲端巨頭資本支出指引數字</b> —— 台股沒有免費結構化來源', n: '使用者上傳的「海外訊號篇」清單點名要看這兩個', d: '⭐ <b>先量,那份清單 6 項裡本站已經有 4 項</b>:台積電 ADR / 費城半導體 / 那斯達克 / <b>美國 10 年期公債殖利率(含 2 年 10 年利差倒掛判讀)</b> 都在 <code>macro_miner.py</code> 裡,而且已經做成盤前體檢分數(<code>premkt_app_probe</code> 實測:講開高偏多那天 0050 開低只有 5.3%;🔁 V79.5.4 更正:舊寫的「+0.574pp」是加權開盤價湊出來的);Fed / FOMC 會議排到 2027、輝達與美光財報日 V73.9.1 就收了。→ V77.0.2 只補了「每天 3-5 分鐘」那一層的<b>指路</b>(⛔ 沒做新卡)。<br>⛔ <b>剩下兩項做不到</b>:① <b>DRAM/NAND 現貨報價</b>(TrendForce/集邦)是<b>付費研究</b>,免費頁面只有零星新聞稿,沒有可回測的逐日序列;② <b>四大 CSP 的 CapEx 指引</b>只出現在法說會口頭與簡報 PDF,<b>沒有結構化 API</b>,而且每家口徑不同(有的含租賃、有的分季給年度區間)。<br>⭐ 硬做就是編數字 —— 那正是本站否決外部資料時最常見的理由。⚠️ 本站現有的替代是「記憶體漲價循環」那條<b>題材標籤</b>(2408/2344/2337/3006/3260/8299),⛔ 它是<b>人工整理的產業定位不是報價</b>,別拿它當價格訊號。<br>⏭️ 要真的做,唯一的路是使用者自己訂 TrendForce → ⛔ 不在本站範圍。', s: 'V77.0.2 查證(⛔ 無資料源)' },
@@ -9055,7 +9056,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.7.5',
+  VER: 'V79.7.6',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -11044,7 +11045,7 @@ ${M.news || '(無)'}
   // ⛔ 三條不可違反:① 只描述、⛔ 不給方向/部位 ② 「檔案沒產出」與「這幾天真的沒有」要分開講(陷阱 #22)
   //   ③ 深度查詢是外部網頁(使用者選的),⛔ 不叫 App 內模型(那三條鏈都不會上網)。
   _confSel: 'new', _confQ: '', _confSym: null, _confData: undefined, _confInd: '', _confHist: null,
-  _confDig: undefined, _confCC: {},
+  _confDig: undefined, _confCC: {}, _confQaJ: {},
   // 📞 V79.6.3 使用者:「法說會的最新不是很重要嗎?…目前的介面我覺得很沒有用,請重新設計」
   //   → 預設 = 🆕 剛開完(7 天):每場一張卡,公司在簡報裡說了什麼(附頁碼)、這次第一次提到什麼;👜 我的排最前
   _CONF_SEL: [['new', '🆕 剛開完'], ['mine', '👜 我的'], ['future', '📅 接下來 14 天'], ['all', '全部']],
@@ -11066,6 +11067,7 @@ ${M.news || '(無)'}
     if (this._confSym) this._confPrep(this._confSym).catch(() => {});   // 📎 V79.6.5 先讀好要一起帶的本站數字
     // 📊 挑了一檔之後,統計那一格要多出「這一檔自己過去 N 場」→ ⛔ 不可只重畫 confDeepSym(第一版就漏了)
     const rc = document.getElementById('confReact'); if (rc) rc.innerHTML = this._confReactHtml(this._confSym);
+    this._confQaPaint(this._confSym).catch(() => {});   // 🎤 V79.7.6 有官方逐字稿的公司(台積電)多一塊問答重點
     window.scrollTo(0, document.getElementById('confDeepQ') ? document.getElementById('confDeepQ').offsetTop - 80 : 0);
   },
   confHist(sym) { this.buzz(10); this._confHist = (this._confHist === sym) ? null : String(sym); this._confPaint(); },
@@ -11291,6 +11293,7 @@ ${M.news || '(無)'}
     else if (!dg) body += `<div class="note" style="margin-top:3px" data-cc-none>📄 簡報重點:${(r.pdf || []).length ? '還沒讀到(每天收盤後讀一輪;簡報多半會後才上傳)' : '公司沒有上傳簡報'}</div>`;
     const key = `${r.s}-${dg ? dg.f : r.d}`;
     if (dg) body += `<details data-dk="ccd-${this._esc(key)}" ontoggle="PRO.confOpen(this, '${this._esc(r.s)}', '${this._esc(dg.f)}', '${this._esc(this._confEff(r))}')"><summary style="cursor:pointer;list-style:none;font-size:11px;color:var(--cyan);margin-top:4px">📄 看重點:公司給的數字・講到「之後」的句子・跟上一份比・開完到現在的股價 <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" data-ccd-body="${this._esc(key)}">⏳ 讀取中…</div></details>`;
+    if (this._CONF_QA_SYMS.includes(String(r.s)) && this._confQaEarn(r)) body += `<details data-dk="ccqa-${this._esc(key)}" ontoggle="PRO.confQaOpen(this, '${this._esc(r.s)}', '${this._esc(this._confEff(r))}')"><summary style="cursor:pointer;list-style:none;font-size:11px;color:var(--cyan);margin-top:4px">🎤 問答重點:分析師問什麼、公司怎麼答(AI 把官方英文逐字稿整理成中文) <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" data-ccqa-body>⏳ 讀取中…</div></details>`;
     if (r.sum) body += `<details data-dk="conf-${r.s}-${r.d}"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim)">📝 擇要訊息(公司在場次表上寫的) <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" style="margin-top:4px;white-space:pre-wrap">${hi(r.sum)}</div></details>`;
     else if (!dg) body += `<div class="note" style="margin-top:2px">📝 擇要訊息:公司尚未提供</div>`;
     // 📢 V79.6.5 公司備註(延期 / 報名 / 會後上傳…)卡片也要印 —— 以前只有清單印,🆕 剛開完看不到「延到 10/27」
@@ -11336,6 +11339,116 @@ ${M.news || '(無)'}
     const px = await this._confPxSince(sym, d || dk.d).catch(() => null);
     const pb = box.querySelector('[data-ccd-px]');
     if (pb) pb.innerHTML = this._confPxHtml(px);
+  },
+  // ═══ 🎤 V79.7.6 法說會「問答重點」(data/cc_qa/{sym}.json,confcall_qa.py 寫的)═══
+  //   ⛔ 只有官方逐字稿的公司(先只有台積電;清單跟 confcall_qa.COMPANIES 一字不差,test_confcall_qa_ui 跨檔比對)
+  //   ⛔ 只是閱讀區:不進任何判斷 / 計分 / 推播;AI 寫的句子照原樣顯示(數字採礦端已對過原文)
+  _CONF_QA_SYMS: ['2330'],
+  _CONF_QA_NOTE: '🤖 AI 把公司官方的英文逐字稿整理成中文;AI 寫的數字在原文找不到的那一句已整句拿掉、⛔ 換算單位。以官方原文為準。逐字稿版權屬原作者,本站只放整理後的重點與原文連結。⛔ 不是買賣建議。',
+  _confQaRepQ(d) {
+    const s = String(d || ''); if (!/^\d{4}-\d{2}/.test(s)) return '';
+    const y = +s.slice(0, 4), m = +s.slice(5, 7);
+    return m <= 3 ? `${y - 1}Q4` : `${y}Q${Math.floor((m - 1) / 3)}`;
+  },
+  /** 這一場是不是每季財報那一場:擇要寫「財務報告 / 業績」;沒寫擇要的才看月份(1 / 4 / 7 / 10 月)。
+   *  ⛔ 同一個月的券商邀請場(「受邀參加…」)⛔ 掛財報那一場的問答 */
+  _confQaEarn(r) {
+    const sum = String(r.sum || '');
+    if (sum) return /財務報告|財報|業績|營運成果|Earnings/i.test(sum) && !/受邀|邀請/.test(sum);
+    const m = +String(this._confEff(r) || r.d || '').slice(5, 7);
+    return [1, 4, 7, 10].includes(m);
+  },
+  _confQaYq(k) { const m = String(k || '').match(/^(\d{4})Q([1-4])$/); return m ? `${m[1]} 第 ${m[2]} 季` : String(k || ''); },
+  async _confQaLoad(sym) {
+    if (this._confQaJ[sym]) return this._confQaJ[sym];
+    const J = await this.fetchJson(`data/cc_qa/${sym}.json`, 9000);
+    if (J) this._confQaJ[sym] = J;          // ⚠️ 只快取成功(失敗下次點會重試)
+    return J || null;
+  },
+  /** 一季的問答:照題目(固定分類清單的順序)分組;每一句「XX 問:… → 董事長答:…」 */
+  _confQaQuarterHtml(q, J) {
+    const e = t => this._esc(t), md = d => String(d || '').slice(5).replace('-', '/');
+    const items = (q.items || []).filter(x => x && !x.skip && x.q && x.a);
+    const tags = (J && J.tags) || [];
+    const ord = t => { const i = tags.indexOf(t); return i < 0 ? 99 : i; };
+    const groups = {};
+    for (const it of items) (groups[it.tag] = groups[it.tag] || []).push(it);
+    const keys = Object.keys(groups).sort((a, b) => ord(a) - ord(b));
+    const url = /^https:\/\//.test(q.url || '') ? q.url : '';
+    let h = `<div data-qa-q="${e(q.yq)}"><b>🎤 ${e(this._confQaYq(q.yq))}法說會</b>${q.d ? `(${e(md(q.d))})` : ''} ・${q.q_n || 0} 位分析師提問 ・整理 ${items.length} 句`
+      + (url ? ` ・<a href="${e(url)}" target="_blank" rel="noopener">🔗 官方英文逐字稿</a>` : '') + '</div>';
+    if (!items.length) h += `<div data-qa-empty>⏳ 這一季還沒有整理好的句子${q.miss ? `(${q.miss} 題 AI 還沒整理,之後每天補)` : ''}。</div>`;
+    for (const k of keys) {
+      h += `<div style="margin-top:6px" data-qa-tag="${e(k)}"><b>🏷️ ${e(k)}</b>`;
+      for (const it of groups[k]) h += `<div style="margin-top:2px" data-qa-item>・<b>${e(it.org || '分析師')}</b> 問:${e(it.q)}<br><span style="color:var(--dim)">　→ ${e(it.by || '公司')}答:</span>${e(it.a)}</div>`;
+      h += '</div>';
+    }
+    const foot = [];
+    if (q.miss) foot.push(`⏳ 還有 ${q.miss} 題 AI 還沒整理(之後每天補)`);
+    if (q.drop) foot.push(`🧾 數字對不上原文、整句拿掉 ${q.drop} 句`);
+    if (q.lang) foot.push(`🧹 不是中文(照抄英文)或有買賣字眼、拿掉 ${q.lang} 句`);
+    if (foot.length) h += `<div style="margin-top:4px;color:var(--dim2)" data-qa-foot>${foot.map(e).join(' ・')}</div>`;
+    return h;
+  },
+  /** 最近 N 季:同一個題目,公司每一季怎麼答(手機用區塊 ⛔ table) */
+  _confQaCompareHtml(J) {
+    const e = t => this._esc(t);
+    const qs = (J.quarters || []).slice(0, J.show || 4);
+    if (qs.length < 2) return '';
+    const tags = J.tags || [];
+    const seen = new Set();
+    for (const q of qs) for (const it of (q.items || [])) if (it && !it.skip && it.tag) seen.add(it.tag);
+    const keys = [...seen].sort((a, b) => (tags.indexOf(a) < 0 ? 99 : tags.indexOf(a)) - (tags.indexOf(b) < 0 ? 99 : tags.indexOf(b)));
+    let h = '';
+    for (const k of keys) {
+      h += `<div style="margin-top:6px" data-qa-cmp="${e(k)}"><b>🏷️ ${e(k)}</b>`;
+      for (const q of qs) {
+        const its = (q.items || []).filter(x => x && !x.skip && x.tag === k);
+        h += `<div style="margin-top:2px" data-qa-cmpq="${e(q.yq)}">📅 <b>${e(this._confQaYq(q.yq))}</b>:${its.length ? its.map(x => e(x.a)).join(';') : '<span style="color:var(--dim2)">這一季沒有人問</span>'}</div>`;
+      }
+      h += '</div>';
+    }
+    return `<details class="sbnote" data-qa-compare><summary style="cursor:pointer;list-style:none;font-size:11px;color:var(--cyan)">📈 最近 ${qs.length} 季,同一個題目公司怎麼講 <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note">${h}</div></details>`;
+  },
+  /** 整塊:J = 讀到的檔(null = 讀不到);yq = 指定哪一季(沒給 = 最新一季) */
+  _confQaHtml(sym, J, yq) {
+    const e = t => this._esc(t);
+    if (!J) return `<div data-qa-nofile>⚠️ 讀不到問答重點檔(data/cc_qa/${e(sym)}.json)—— 檔案沒產出或網路失敗,⛔ 不代表法說會沒有問答。</div>`;
+    const qs = J.quarters || [];
+    const todo = (J.todo || []).filter(t => t && t.yq);
+    const tl = todo.length ? `<div style="margin-top:4px;color:var(--dim2)" data-qa-todo>${todo.map(t => `⏳ ${e(this._confQaYq(t.yq))}:${e(t.why)}`).join('<br>')}</div>` : '';
+    let h = '';
+    const q = yq ? qs.find(x => x.yq === yq) : qs[0];
+    if (q) h += this._confQaQuarterHtml(q, J);
+    else if (yq) {
+      const t = todo.find(x => x.yq === yq);
+      h += `<div data-qa-none>${t ? `⏳ ${e(this._confQaYq(yq))}:${e(t.why)}` : `這一場沒有整理問答(本站只整理每季財報那一場的官方逐字稿,最近 ${J.show || 4} 季)。`}</div>`;
+    } else h += `<div data-qa-none>還沒有整理好的季。</div>`;
+    h += this._confQaCompareHtml(J);
+    if (!yq) h += tl;
+    return h + `<div style="margin-top:6px;color:var(--dim2)" data-qa-note>${e(this._CONF_QA_NOTE)}${J.updated ? ` ・更新 ${e(J.updated)}` : ''}</div>`;
+  },
+  async _confQaPaint(sym) {
+    const el = document.getElementById('confQa'); if (!el) return;
+    if (!sym || !this._CONF_QA_SYMS.includes(String(sym))) { el.innerHTML = ''; return; }
+    el.innerHTML = `<div class="note" data-qa-loading>🎤 問答重點讀取中…</div>`;
+    const J = await this._confQaLoad(sym);
+    if (this._confSym !== sym) return;      // ⛔ 讀回來已經換了一檔 → 不畫(陷阱 #19)
+    // ⚠️ 挑了這一檔就是要看 → 直接攤開(⛔ 用 <details open>:那是「長說明一律預設收起」的守門在擋的寫法,test_prohtml ㊲h2)
+    el.innerHTML = `<div class="sbnote" style="margin-top:8px" data-qa-block="${this._esc(sym)}"><div style="font-size:12px"><b>🎤 ${this._esc(this._nmTxt(sym))} 法說會問答重點</b> <span style="color:var(--dim2)">(最近 4 季・分析師問什麼、公司怎麼答;只描述)</span></div><div class="note">${this._confQaHtml(sym, J)}</div></div>`;
+  },
+  /** 展開台積電某一場的卡 → 那一季的問答(同一份資料,⛔ 另算) */
+  async confQaOpen(el, sym, d) {
+    if (!el || !el.open) return;
+    const box = el.querySelector('[data-ccqa-body]'); if (!box || box.dataset.done) return;
+    const J = await this._confQaLoad(sym);
+    if (J) box.dataset.done = '1';
+    const exact = J && (J.quarters || []).find(x => x.d && x.d === d);
+    const yq = exact ? exact.yq : this._confQaRepQ(d);
+    const q = J && (J.quarters || []).find(x => x.yq === yq);
+    // 📅 同一季、日期對不上(逐字稿第一頁的日期 ≠ 場次表)→ 明講是哪一天那場的問答(⛔ 默默掛上去)
+    const warn = q && q.d && q.d !== d ? `<div data-qa-datediff>📅 這是 ${this._esc(String(q.d).slice(5).replace('-', '/'))} 那場財報法說會的問答。</div>` : '';
+    box.innerHTML = warn + this._confQaHtml(sym, J, yq);
   },
   // 📋 V79.6.7 法說會 3.0:「公司講的展望 → 做到了沒」(data/cc 每份簡報的 g,confcall_guidance 算的)—— ⛔ 只放事實
   //   ⚠️ 散戶 App(index.html)與產業作戰室(pro.html)各有一份同樣的 _ccPeriod / _ccWhen / _ccWhat / _ccClaim,

@@ -43,9 +43,9 @@ AI_MAX = int(os.getenv('QA_AI_MAX') or 160)          # 一輪最多叫幾次 AI(
 BUDGET_MIN = float(os.getenv('QA_BUDGET_MIN') or 20)
 DRY = (os.getenv('QA_DRY') or '').strip().lower() in ('1', 'true', 'yes')
 RETRY_MAX = 3                                         # 有幾題 AI 沒回的那一季,之後最多再補幾輪
-UNIT_MAX = 6000                                       # 一題餵給 AI 的原文最多幾個字(太長的追問截掉)
+UNIT_MAX = 9000                                       # 一題餵給 AI 的原文最多幾個字(10/25 實測台積電一位分析師問兩件事、2.5~7.6 千字;太長的截掉)
 AI_DEADLINE = 45                                      # 一題最多花幾秒在 AI 上(換金鑰 / 換模型都算)
-MAX_TOKENS = 900
+MAX_TOKENS = 1000
 PAGE_PACE = 3.0
 
 COMPANIES = {
@@ -117,7 +117,7 @@ def short_org(org):
     if m and 0 < m.start() <= 25:
         org = org[m.start():]
     t = re.sub(r',?\s*Research Division\b.*$', '', org or '', flags=re.I).strip(' ,-–—')
-    t = re.sub(r'(?:,?\s*(?:&\s*Co\.?|Inc\.?|Ltd\.?|LLC|L\.L\.C\.|Limited|Co\.,?|Corporation|Corp\.?|plc|AG|S\.A\.|N\.A\.|Group|Holdings))+\s*$', '', t, flags=re.I)
+    t = re.sub(r'(?:,?\s*(?:&\s*Company|&\s*Co\.?|Inc\.?|Ltd\.?|LLLP|LLP|LLC|L\.L\.C\.|Limited|Co\.,?|Corporation|Corp\.?|plc|AG|S\.A\.|N\.A\.|Group|Holdings))+\s*$', '', t, flags=re.I)
     t = t.strip(' ,-–—')
     return (t or '外部')[:40]
 
@@ -145,6 +145,7 @@ def by_of(unit):
 _CJK = re.compile(r'[一-鿿]')
 _LAT = re.compile(r'[A-Za-z]')
 _EN_RUN = re.compile(r"(?:[A-Za-z][A-Za-z'’\-]*[\s,]+){5,}[A-Za-z]")
+_DIR_RE = re.compile(r'利多|利空|建議(?:買|賣)|買進|賣出|加碼|減碼|逢低|追高')     # 買賣字眼(⛔ 給方向)→ 那一句丟掉
 
 
 def zh_ok(s):
@@ -193,7 +194,7 @@ def gate_items(ai, src, names=()):
         if cd.num_gate(q + ' ' + a, src):
             d_num += 1
             continue
-        if not (zh_ok(q) and zh_ok(a)):
+        if not (zh_ok(q) and zh_ok(a)) or _DIR_RE.search(q + a):
             d_lang += 1
             continue
         keep.append({'tag': norm_tag(it.get('tag')), 'q': _cap(q, 60), 'a': _cap(a, 150)})
@@ -528,7 +529,8 @@ def selftest():
     ok('④ short_org:拿掉 Research Division / Inc / & Co',
        short_org('JPMorgan Chase & Co, Research Division') == 'JPMorgan Chase' and short_org('Morgan Stanley') == 'Morgan Stanley'
        and short_org('Goldman Sachs Group, Inc., Research Division') == 'Goldman Sachs' and short_org('') == '外部'
-       and short_org('Ho Morgan Stanley, Research Division') == 'Morgan Stanley' and short_org('Arete Research Services LLP') == 'Arete Research Services LLP')
+       and short_org('Ho Morgan Stanley, Research Division') == 'Morgan Stanley' and short_org('Stifel Nicolaus & Company') == 'Stifel Nicolaus'
+       and short_org('Susquehanna Financial Group LLLP') == 'Susquehanna Financial' and short_org('Arete Research Services LLP') == 'Arete Research Services')
     ok('⑤ role_zh:董事長 / 財務長 / 發言人', role_zh('Chairman & CEO') == '董事長' and role_zh('CFO') == '財務長'
        and role_zh('Director of IR') == '發言人' and role_zh('VP of Something') == '公司')
     ok('⑥ zh_ok:中文為主收、英文原句 ⛔、短字 ⛔',
@@ -547,6 +549,8 @@ def selftest():
     ok('⑧ 英文原句 ⛔(整句丟);tag 不在清單 → 其他', not keep3 and dl3 == 1)
     keep4, _, _ = gate_items({'items': [{'tag': 'AI需求', 'q': 'Charlie Chan 問 AI 需求', 'a': '公司說 AI 需求很強'}]}, src, {'Charlie Chan', 'Charlie'})
     ok('⑨ 人名換成「分析師」;tag 別名對到清單', keep4 and '分析師' in keep4[0]['q'] and 'Charlie' not in keep4[0]['q'] and keep4[0]['tag'] == 'AI 需求', keep4)
+    k5, _, dl5 = gate_items({'items': [{'tag': '其他', 'q': '分析師問明年展望', 'a': '公司說需求很強,屬於利多'}]}, src)
+    ok('⑨b 買賣字眼(利多 / 買進 …)那一句丟掉', not k5 and dl5 == 1)
     ok('⑩ norm_tag:清單外 → 其他', norm_tag('天氣') == '其他' and norm_tag('先進封裝') == '先進封裝')
     ok('⑪ _need:沒有 → 做;有缺題且補不到 3 次 → 做;沒缺 / 補滿 → ⛔',
        _need(None) and _need({'miss': 2, 'tries': 1}) and not _need({'miss': 0, 'tries': 1}) and not _need({'miss': 2, 'tries': 3}))
