@@ -21807,12 +21807,132 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _colAddDays(iso, n) { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); },
     /** 每個月第三個星期三(台指期結算日) */
     _colSettleDay(iso) { const d = new Date(iso.slice(0, 8) + '01T00:00:00Z'); const off = (3 - d.getUTCDay() + 7) % 7; return this._colAddDays(iso.slice(0, 8) + '01', off + 14); },
+    // 🎲 V79.8.7 觸發專欄的發生率(使用者 10/25:「很多都沒有講到機率,也沒有依照個股股性去說明,都要用發生率去說,
+    //   不能用無法查等等方式回覆」)。⭐ 條件只有一份 `_colEvAt`:今天 = i = 最後一根(`_colTrigEval`)、發生率 = 掃每一根(`_colOcc`),
+    //   一般股票的比例 = scripts/col_rate_base.mjs 從這裡抽同一段函式掃 16 年全市場 → `_COL_BASE`(⛔ 第二份條件)。
+    //   畫面一律三個比例一起:這檔過去 N 次 → 幾次怎樣 ・這檔平常隨便一天 ・一般股票;⛔ 勝率 / 期望值 / 方向 / 買賣。
+    _COL_OCC: {
+        lu:           { ev: '收盤鎖漲停', out: '隔天開盤就在漲停', o: 'lunext', gap: 1 },
+        lu_touch:     { ev: '盤中碰到漲停、收盤沒鎖住', out: '隔天收盤比這天高', o: 'up1', gap: 1 },
+        ma20_break:   { ev: '收盤跌破月線', out: '20 個交易日後比大盤好', o: 'xr20', gap: 20 },
+        near_ma20:    { ev: '收在月線下方 3% 以內', out: '20 個交易日後比大盤好', o: 'xr20', gap: 20 },
+        ma5_break:    { ev: '收盤跌破 5 日線', out: '20 個交易日後比大盤好', o: 'xr20', gap: 20 },
+        nh60_held:    { ev: '收盤創 60 日新高', out: '20 個交易日後比大盤好', o: 'xr20', gap: 20 },
+        fi_streak5:   { ev: '外資連 5 天以上買超', out: '20 個交易日後比大盤好', o: 'xr20', gap: 20 },
+        fi_burst:     { ev: '外資單日買超是一年來最大的那 1%', out: '20 個交易日後比大盤好', o: 'xr20', gap: 20 },
+        short_hi:     { ev: '券資比在自己歷史最高 10%', out: '20 個交易日後比大盤好', o: 'xr20', gap: 20 },
+        retail_catch: { ev: '融資 10 天增 ≥10%、三大法人賣超', out: '20 個交易日後比大盤好', o: 'xr20', gap: 20 },
+        margin_call:  { ev: '跌破推估的融資追繳線、融資 5 天減 ≥10%', out: '20 個交易日後比大盤好', o: 'xr20', gap: 20 },
+    },
+    /** 漲跌幅限制:2015-06-01 起 10%、之前 7%(陷阱 #52;今天永遠是 10%,只有掃歷史時會用到 7%) */
+    _colLim(dt) { return String(dt || '').replace(/\//g, '-').slice(0, 10) < '2015-06-01' ? 0.07 : 0.1; },
+    /** 第 i 根收盤時條件成立嗎(⛔ 只用 ≤ i 的資料);成立回一個物件(trigger 用來寫原因),不成立回 null。
+     *  ⚠️ 「法人 / 融資最後一根還沒公布 → 從前一根算」只在 i 是最後一根時做(歷史上的 0 是真的 0)。 */
+    _colEvAt(id, b, i, sym) {
+        if (!Array.isArray(b) || i < 1 || i >= b.length) return null;
+        const C = j => +b[j].close, last = i === b.length - 1;
+        if (!(C(i) > 0) || !(C(i - 1) > 0)) return null;
+        const ma = e => { if (e < 19) return NaN; let t = 0; for (let j = e - 19; j <= e; j++) t += C(j); return t / 20; };
+        const ma5 = e => e < 4 ? NaN : (C(e) + C(e - 1) + C(e - 2) + C(e - 3) + C(e - 4)) / 5;
+        switch (id) {
+            case 'lu': return i >= 25 && C(i) >= C(i - 1) * (0.99 + this._colLim(b[i].date)) && C(i) >= +b[i].high - 1e-9 ? {} : null;
+            case 'lu_touch': { const lim = this._floorTick(C(i - 1) * (1 + this._colLim(b[i].date))); return +b[i].high >= lim - 1e-9 && C(i) < lim - 1e-9 ? { lim } : null; }
+            case 'ma20_break': return i >= 20 && C(i) < ma(i) && C(i - 1) >= ma(i - 1) ? {} : null;
+            case 'near_ma20': { const m = ma(i); return C(i) < m && C(i) >= m * 0.97 ? {} : null; }
+            case 'ma5_break': return i >= 5 && C(i) < ma5(i) && C(i - 1) >= ma5(i - 1) ? {} : null;
+            case 'nh60_held': { if (i < 60) return null; let hi = 0; for (let j = i - 60; j <= i - 1; j++) hi = Math.max(hi, C(j)); return hi > 0 && C(i) > hi ? {} : null; }
+            case 'fi_streak5': case 'fi_burst': {
+                let e = i; if (last && !(+b[e].foreign_net)) e--;
+                if (e < 0) return null;
+                if (id === 'fi_streak5') { let k = 0; while (e - k >= 0 && +b[e - k].foreign_net > 0) k++; return k >= 5 ? { k, e } : null; }
+                const v = +b[e].foreign_net;
+                if (!(e >= 1 && v > 0)) return null;
+                const past = []; for (let j = Math.max(0, e - 250); j < e; j++) { const x = b[j].foreign_net; if (x != null && Number.isFinite(+x)) past.push(+x); }
+                if (past.length < 120) return null;
+                past.sort((p, q) => p - q);
+                const h = (past.length - 1) * 0.99, lo = Math.floor(h), th = past[lo] + (past[Math.min(lo + 1, past.length - 1)] - past[lo]) * (h - lo);
+                return th > 0 && v >= th ? { v, e } : null;
+            }
+            case 'short_hi': {
+                const sr = j => { const m = +b[j].margin_balance, x = +b[j].short_balance; return m > 0 && x >= 0 ? x / m * 100 : null; };
+                const v = sr(i); if (v == null || !(v > 0)) return null;
+                let pn = 0, lt = 0; for (let j = last ? 0 : Math.max(0, i - 1200); j < i; j++) { const x = sr(j); if (x != null) { pn++; if (x < v) lt++; } }
+                return pn >= 120 && lt / pn >= 0.9 ? { v } : null;
+            }
+            case 'retail_catch': {
+                let e = i;
+                if (last) { const r = b[e], miss = x => x == null || !Number.isFinite(+x);
+                    if ([r.foreign_net, r.trust_net, r.dealer_net].some(miss) || (+r.foreign_net === 0 && +r.trust_net === 0 && +r.dealer_net === 0)) e--; }
+                if (e < 10) return null;
+                const m1 = +b[e].margin_balance, m0 = +b[e - 10].margin_balance;
+                let f = 0, v = 0;
+                for (let j = e - 9; j <= e; j++) {
+                    const r = b[j];
+                    if (r.foreign_net == null || r.trust_net == null || r.dealer_net == null || !(+r.volume >= 0)) return null;
+                    f += (+r.foreign_net) + (+r.trust_net) + (+r.dealer_net); v += +r.volume;
+                }
+                return m0 >= 200 && m1 > 0 && v > 0 && (m1 - m0) / m0 * 100 >= 10 && f / v * 100 <= -3 ? { m0, m1, f, e } : null;
+            }
+            case 'margin_call': {
+                const m5 = i >= 5 ? +b[i - 5].margin_balance : 0;
+                if (!(m5 >= 200)) return null;
+                let ms = null; try { ms = this._marginCallState(last ? b : b.slice(Math.max(0, i - 199), i + 1), sym); } catch (_) {}
+                return ms && ms.level === 'broken' && ms.mgChg != null && ms.mgChg <= -10 ? { ms } : null;
+            }
+        }
+        return null;
+    },
+    /** 結果:1 = 那件事發生了、0 = 沒有、null = 還不知道 / 算不出來(碰到價格斷崖、加權那天沒資料) */
+    _colOutAt(o, b, i, M) {
+        const C = j => +b[j].close, iso = x => String(x || '').replace(/\//g, '-').slice(0, 10);
+        const h = o === 'xr20' ? 20 : 1;
+        if (i + h >= b.length || !(C(i) > 0)) return null;
+        for (let j = i + 1; j <= i + h; j++) { const r = C(j) / C(j - 1); if (!(r >= 0.67 && r <= 1.5)) return null; }
+        if (o === 'lunext') { const op = +b[i + 1].open; if (!(op > 0)) return null; return op >= this._floorTick(C(i) * (1 + this._colLim(b[i + 1].date))) - 1e-9 ? 1 : 0; }
+        if (o === 'up1') return C(i + 1) > C(i) ? 1 : 0;
+        const m0 = M && M.get(iso(b[i].date)), m1 = M && M.get(iso(b[i + h].date));
+        if (!(m0 > 0 && m1 > 0)) return null;
+        return C(i + h) / C(i) - m1 / m0 > 0 ? 1 : 0;
+    },
+    /** 這一檔:條件成立 n 次 → 結果 k 次(同一件事 gap 天內只算一次);平常隨便一天 bk / bn。ys = 每一次的結果(依時間)、f = 第一次的日期 */
+    _colOcc(id, b, sym, M) {
+        const D = this._COL_OCC[id]; if (!D || !Array.isArray(b)) return null;
+        let n = 0, k = 0, bn = 0, bk = 0, last = -1e9, f = null; const ys = [];
+        for (let i = 1; i < b.length; i++) {
+            const y = this._colOutAt(D.o, b, i, M); if (y == null) continue;
+            bn++; bk += y;
+            if (i - last < D.gap || !this._colEvAt(id, b, i, sym)) continue;
+            last = i; n++; k += y; ys.push(y); if (f == null) f = String(b[i].date || '').replace(/\//g, '-').slice(0, 10);
+        }
+        return { n, k, bn, bk, ys, f };
+    },
+    /** 比例的寫法:10% 以下留一位小數(「0.3%」⛔ 寫成 0%) */
+    _occPct(x) { return x == null || !Number.isFinite(+x) ? '—' : (+x < 10 ? (+x).toFixed(1).replace(/\.0$/, '') : Math.round(+x)) + '%'; },
+    /** 🎲 那一行(散戶 App 准印的「發生率」,`data-occ`):這檔 / 這檔平常 / 一般股票三個一起;一般股票沒有 / ETF / K 線太短 → 不印 */
+    _colOccTxt(id, b, sym, M) {
+        const D = this._COL_OCC[id], G = (this._COL_BASE || {}).stk && this._COL_BASE.stk[id];
+        if (!D || !G || !(G.n > 0) || /^00/.test(String(sym || ''))) return '';
+        const r = this._colOcc(id, b, sym, M); if (!r || !(r.bn >= 120)) return '';
+        const own = r.n ? `這檔過去${D.ev} ${r.n} 次 → ${r.k} 次` : `這檔過去沒有${D.ev}過`;
+        const few = r.n < 5 ? '(這檔次數少,先看一般股票那個比例)' : (G.own === false ? '(這檔自己的次數猜不準下一次,先看一般股票那個比例)' : '');
+        return `🎲 「${D.out}」的比例:${own} ・這檔平常隨便一天 ${this._occPct(100 * r.bk / r.bn)} ・一般股票${D.ev}(${G.from} 起 ${Number(G.n).toLocaleString()} 次)→ ${this._occPct(G.p)}${few} —— 過去發生過的比例,⛔ 不是會漲或會跌`;
+    },
+    /** 🎲 大盤 / 日子那幾條:2010 年起加權發生幾次 → 之後怎樣(⛔ 沒有「這檔」可比) */
+    _colMktOccTxt(id) {
+        const G = (this._COL_BASE || {}).mkt && this._COL_BASE.mkt[id];
+        if (!G || !(G.n > 0)) return '';
+        return `🎲 「${G.out}」的比例:${G.from} 起加權${G.ev} ${G.n} 次 → ${G.k} 次(${this._occPct(100 * G.k / G.n)})・平常隨便一天 ${this._occPct(G.base)} —— 過去發生過的比例,⛔ 不是會漲或會跌`;
+    },
+    _COL_BASE: {"built":"2026-10-25","src":"scripts/col_rate_base.mjs(d16,含已下市)","syms":2425,"win":["2010-01-04","2026-10-22"],"stk":{"lu":{"n":120973,"k":14659,"p":12.1,"base":0.4,"own":true,"from":"2010"},"lu_touch":{"n":54908,"k":20531,"p":37.4,"base":43.3,"own":false,"from":"2010"},"ma20_break":{"n":205245,"k":83579,"p":40.7,"base":41.6,"own":false,"from":"2010"},"near_ma20":{"n":262182,"k":106345,"p":40.6,"base":41.6,"own":false,"from":"2010"},"ma5_break":{"n":297787,"k":124061,"p":41.7,"base":41.6,"own":false,"from":"2010"},"nh60_held":{"n":83394,"k":36766,"p":44.1,"base":41.6,"own":false,"from":"2010"},"fi_streak5":{"n":76691,"k":32832,"p":42.8,"base":41.6,"own":false,"from":"2012"},"fi_burst":{"n":57101,"k":23969,"p":42,"base":41.6,"own":false,"from":"2012"},"short_hi":{"n":33770,"k":13708,"p":40.6,"base":41.6,"own":false,"from":"2010"},"retail_catch":{"n":23975,"k":9885,"p":41.2,"base":41.6,"own":false,"from":"2012"},"margin_call":{"n":3158,"k":1872,"p":59.3,"base":41.6,"own":false,"from":"2010"}},"mkt":{"bear_on":{"ev":"剛轉成空頭","out":"20 個交易日後加權上漲","n":46,"k":26,"base":61.4,"from":"2010"},"bull_on":{"ev":"剛脫離空頭","out":"20 個交易日後加權上漲","n":37,"k":27,"base":61.4,"from":"2010"},"crash20":{"ev":"離一年最高點跌 20% 以上","out":"20 個交易日後加權上漲","n":19,"k":12,"base":61.4,"from":"2010"},"idx_drop3":{"ev":"單日跌 3% 以上","out":"20 個交易日後加權上漲","n":27,"k":19,"base":61.4,"from":"2010"}}},
     /** 只回「碰到了哪些條件」(純判斷,方便測試直接餵資料);ctx = { tw, today, held:Map(sym→{cost}), bars:Map(sym→K), fav:[sym], div, events, floor, premkt:{sPct}, sold:Map(sym→{date,px}) } */
     _colTrigEval(ctx) {
         const hits = [], add = (id, why, sym, sc) => hits.push({ id, why, sym: sym || null, sc: sc || null });
         const iso = x => String(x || '').replace(/\//g, '-').slice(0, 10);
         const tw = Array.isArray(ctx.tw) ? ctx.tw : [];
         const lastD = tw.length ? iso(tw[tw.length - 1].date) : '';
+        const M = new Map(tw.map(r => [iso(r.date), +r.close]));
+        const mocc = id => { const h = hits[hits.length - 1]; let t = ''; try { t = this._colMktOccTxt(id); } catch (_) {} if (h && t) h.occ = t; };
+        const occ = (id, b, sym) => { const h = hits[hits.length - 1]; if (!h || h.id === undefined) return; let t = ''; try { t = this._colOccTxt(id, b, sym, M); } catch (_) {} if (t) h.occ = t; };
         const T = ctx.today || this._colToday();
         // 👜⭐ 個股類(⛔ ETF 不判 K 線型態;⛔ K 線日期追不上大盤最新收盤的不判)
         // 🔎 V78.4.3 `ctx.view`(Set):個股總覽「正在看的這一檔」—— 沒在庫存也判持股類條件(要成本的 gain20 除外),scope = view
@@ -21833,87 +21953,52 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (sd && !isV && !(Array.isArray(ctx.fav) && ctx.fav.includes(sym))) continue;
             // 📞 V79.8.3 接下來 5 個交易日內有法說會(庫存 / 正在看 / 自選;⛔ 另寫一份判斷 —— 跟現價下方提醒、報告頁同一支 `_findEarningsEvent`,延期照新日期)
             //   ⛔ 一覽表 / 行事曆 / 今天都從 ctx 來(ctx.cc 沒給就不判 —— 跟其他條件一樣只看 ctx,測試才釘得住)
-            if (!etf && ctx.cc !== undefined) { let ev = null; try { ev = this._findEarningsEvent(sym, 5, { D: ctx.cc, events: ctx.events || [], today: T.tdy }); } catch (_) {} if (ev && ev.date) { add('cc_soon', `${this._dW(ev.date)} 法說會${ev.moved ? '(延期後的日期)' : ''}`, sym, sc); const o = this._ccHabitTxt(sym, ctx.cc, true); if (o) hits[hits.length - 1].occ = o; } }
+            if (!etf && ctx.cc !== undefined) { let ev = null; try { ev = this._findEarningsEvent(sym, 5, { D: ctx.cc, events: ctx.events || [], today: T.tdy }); } catch (_) {} if (ev && ev.date) { add('cc_soon', `${this._dW(ev.date)} 法說會${ev.moved ? '(延期後的日期)' : ''}`, sym, sc); const o = this._ccHabitTxt(sym, ctx.cc, true); if (o) { hits[hits.length - 1].occ = o; hits[hits.length - 1].occk = 'cc'; } } }
             if (P && (this._heldAttention(sym) || {}).notice) add('attn', String(((this.attentionStatus || {})[sym] || {}).status || '被列為注意股').replace(/[⚠️🚨]/gu, '').trim() || '被列為注意股', sym, sc);
             if (etf || !Array.isArray(b) || b.length < 30 || !lastD || iso(b[b.length - 1].date) < lastD) continue;
             const n = b.length, C = i => +b[i].close, dW = this._dW(b[n - 1].date);
-            if (this._luLock(b, { anyTime: 1 })) add(isH ? 'lu_held' : 'lu_fav', `${dW} 收盤鎖漲停`, sym, sc);
+            if (this._colEvAt('lu', b, n - 1, sym)) { add(isH ? 'lu_held' : 'lu_fav', `${dW} 收盤鎖漲停`, sym, sc); occ('lu', b, sym); }
             // 🟥🔓 V79.2.2 盤中碰到漲停、收盤沒鎖住(lu_touch_probe;⛔ 盤中不判 —— 還沒收盤講不出「收盤沒鎖」)
             //   V79.2.3 手上的也判(使用者:南亞 👜 沒跳)—— 那篇本來就有一句寫給持有人的(照原本出場規則走)
-            if (!this.isMarketOpen()) { const lim = this._floorTick(C(n - 2) * 1.1); if (+b[n - 1].high >= lim - 1e-9 && C(n - 1) < lim - 1e-9) add('lu_touch', `${dW} 盤中碰到漲停、收盤沒鎖住`, sym, sc); }
+            if (!this.isMarketOpen() && this._colEvAt('lu_touch', b, n - 1, sym)) { add('lu_touch', `${dW} 盤中碰到漲停、收盤沒鎖住`, sym, sc); occ('lu_touch', b, sym); }
             let ks = []; try { ks = (this._ovNewEdges(b, sym) || []).map(x => x.k).filter(Boolean); } catch (_) {}
             if (ks.includes('ld_redk')) add('ld_redk', `${dW} 前一天跌停、這天收紅`, sym, sc);
             if (P && ks.includes('desc_tri')) add('desc_tri', '最近走成下降三角(高點越來越低、低點守在同一帶)', sym, sc);
             if (P && ks.includes('nh60_retest')) add('nh60_retest', '創 60 日新高後回檔沒破、收紅站回', sym, sc);
-            const ma = e => { let t = 0; for (let j = e - 19; j <= e; j++) t += C(j); return t / 20; };
-            const m0 = ma(n - 1), m1 = ma(n - 2);
-            if (P && C(n - 1) < m0 && C(n - 2) >= m1) add('ma20_break', `${dW} 收盤跌破月線(20 日線)`, sym, sc);
-            if (!isH && C(n - 1) < m0 && C(n - 1) >= m0 * 0.97) add('near_ma20', '收在月線(20 日線)下方 3% 以內', sym, sc);
+            if (P && this._colEvAt('ma20_break', b, n - 1, sym)) { add('ma20_break', `${dW} 收盤跌破月線(20 日線)`, sym, sc); occ('ma20_break', b, sym); }
+            if (!isH && this._colEvAt('near_ma20', b, n - 1, sym)) { add('near_ma20', '收在月線(20 日線)下方 3% 以內', sym, sc); occ('near_ma20', b, sym); }
             const cost = isH ? +((ctx.held.get(sym) || {}).cost) : 0;
             if (cost > 0 && C(n - 1) / cost - 1 >= 0.2) add('gain20', `帳面賺 ${((C(n - 1) / cost - 1) * 100).toFixed(0)}%`, sym, sc);
             // 📰 V79.3.3 再接 6 篇專欄(定義照各自的探針;⛔ 基準一律不含被判斷的那根,陷阱 #43)
-            const ma5 = e => (C(e) + C(e - 1) + C(e - 2) + C(e - 3) + C(e - 4)) / 5;
-            if (isH && C(n - 1) < ma5(n - 1) && C(n - 2) >= ma5(n - 2)) add('ma5_break', `${dW} 收盤跌破 5 日線`, sym, sc);
-            if (isH && n >= 61) { let hi = 0; for (let j = n - 61; j <= n - 2; j++) hi = Math.max(hi, C(j)); if (hi > 0 && C(n - 1) > hi) add('nh60_held', `${dW} 收盤創 60 日新高`, sym, sc); }
-            {   // 外資「真的每天都買」連 5 天(fstreak_probe:最後一根 0 = 還沒公布 → 那天不算,從前一根算)
-                //   🐛 V79.6.4 巡邏:盤中補上的那一根常常**根本沒有**法人欄位(undefined → +undefined 是 NaN ⛔ 等於 0)→ 一樣從前一根算
-                let e = n - 1; if (!(+b[e].foreign_net)) e--;
-                let k = 0; while (e - k >= 0 && +b[e - k].foreign_net > 0) k++;
-                if (k >= 5) add('fi_streak5', `外資連續 ${k} 天買超(到 ${this._dW(b[e].date)})`, sym, sc);
-                // 🏦 V79.3.7 外資「突然一大筆」(fstreak_probe ④:單日淨買 ≥ 自己過去 250 天第 99 百分位;⛔ 門檻不含當天、至少 120 個過去值)
-                const v = +b[e].foreign_net;
-                if (e >= 1 && v > 0) {
-                    const past = []; for (let j = Math.max(0, e - 250); j < e; j++) { const x = b[j].foreign_net; if (x != null && Number.isFinite(+x)) past.push(+x); }
-                    if (past.length >= 120) {
-                        past.sort((p, q) => p - q);
-                        const h = (past.length - 1) * 0.99, lo = Math.floor(h), th = past[lo] + (past[Math.min(lo + 1, past.length - 1)] - past[lo]) * (h - lo);
-                        if (th > 0 && v >= th) add('fi_burst', `外資單日買超 ${Math.round(v / 1000).toLocaleString()} 張,這檔一年來最大的那 1%(${this._dW(b[e].date)})`, sym, sc);
-                    }
-                }
+            if (isH && this._colEvAt('ma5_break', b, n - 1, sym)) { add('ma5_break', `${dW} 收盤跌破 5 日線`, sym, sc); occ('ma5_break', b, sym); }
+            if (isH && this._colEvAt('nh60_held', b, n - 1, sym)) { add('nh60_held', `${dW} 收盤創 60 日新高`, sym, sc); occ('nh60_held', b, sym); }
+            {   // 外資「真的每天都買」連 5 天(fstreak_probe:最後一根 0 = 還沒公布 → 那天不算,從前一根算)/ 🏦 V79.3.7 外資「突然一大筆」(fstreak_probe ④)
+                //   🎲 V79.8.7 判斷搬進 `_colEvAt`(同一段給發生率用;⛔ 第二份)
+                const s5 = this._colEvAt('fi_streak5', b, n - 1, sym);
+                if (s5) { add('fi_streak5', `外資連續 ${s5.k} 天買超(到 ${this._dW(b[s5.e].date)})`, sym, sc); occ('fi_streak5', b, sym); }
+                const fb = this._colEvAt('fi_burst', b, n - 1, sym);
+                if (fb) { add('fi_burst', `外資單日買超 ${Math.round(fb.v / 1000).toLocaleString()} 張,這檔一年來最大的那 1%(${this._dW(b[fb.e].date)})`, sym, sc); occ('fi_burst', b, sym); }
             }
-            {   // 券資比在這檔自己的歷史最高 10%(short_probe:expanding 百分位、只用當天以前、至少 120 個過去值)
-                const sr = i => { const m = +b[i].margin_balance, x = +b[i].short_balance; return m > 0 && x >= 0 ? x / m * 100 : null; };
-                const v = sr(n - 1);
-                if (v != null && v > 0) {
-                    const past = []; for (let j = 0; j < n - 1; j++) { const x = sr(j); if (x != null) past.push(x); }
-                    if (past.length >= 120) { const lt = past.filter(x => x < v).length; if (lt / past.length >= 0.9) add('short_hi', `券資比 ${v.toFixed(1)}%,在這檔自己的歷史裡排最高 10%`, sym, sc); }
-                }
-            }
-            {   // 🎭 V79.6.3 散戶在接、法人在賣(retail_inst_probe A1 主設定:融資 10 天增 ≥10%、三大法人 10 天賣超 ≥ 這 10 天成交量的 3%)
-                //   ⛔ 最後一根三大法人都是 0 = 還沒公布 → 從前一根算(同 fi_streak5);融資基準 < 200 張不判(探針 MIN_M)
-                //   🐛 V79.6.4 巡邏:盤中補上的那一根常常**根本沒有**三大法人欄位(⛔ 是 0)→ 舊版沒退回前一根、整條判斷直接跳過
-                let e = n - 1;
-                { const r = b[e], miss = x => x == null || !Number.isFinite(+x);
-                  if ([r.foreign_net, r.trust_net, r.dealer_net].some(miss) || (+r.foreign_net === 0 && +r.trust_net === 0 && +r.dealer_net === 0)) e--; }
-                if (e >= 10) {
-                    const m1 = +b[e].margin_balance, m0 = +b[e - 10].margin_balance;
-                    let f = 0, v = 0, okI = true;
-                    for (let j = e - 9; j <= e; j++) {
-                        const r = b[j];
-                        if (r.foreign_net == null || r.trust_net == null || r.dealer_net == null || !(+r.volume >= 0)) { okI = false; break; }
-                        f += (+r.foreign_net) + (+r.trust_net) + (+r.dealer_net); v += +r.volume;
-                    }
-                    if (okI && m0 >= 200 && m1 > 0 && v > 0 && (m1 - m0) / m0 * 100 >= 10 && f / v * 100 <= -3)
-                        add('retail_catch', `融資 10 天增 ${((m1 / m0 - 1) * 100).toFixed(0)}%、三大法人 10 天賣超 ${Math.round(-f / 1000).toLocaleString()} 張(到 ${this._dW(b[e].date)})`, sym, sc);
-                }
-            }
-            {   // 💥 V79.6.3 融資斷頭(retail_inst_probe A2:收盤 ≤ 推估追繳線 且融資 5 天減 ≥10%)—— 追繳線一律讀 _marginCallState(⛔ 不另算一份)
-                const ms = (() => { try { return this._marginCallState(b, sym); } catch (_) { return null; } })();
-                const m5 = n >= 6 ? +b[n - 6].margin_balance : 0;
-                if (ms && ms.level === 'broken' && ms.mgChg != null && ms.mgChg <= -10 && m5 >= 200)
-                    add('margin_call', `收盤跌破推估的融資追繳線(約 ${(+ms.callLine).toFixed(1)}),融資 5 天減 ${Math.abs(ms.mgChg).toFixed(0)}%`, sym, sc);
+            {   // 券資比在這檔自己的歷史最高 10%(short_probe)・🎭 散戶在接、法人在賣(retail_inst_probe A1)・💥 融資斷頭(A2,追繳線讀 _marginCallState)
+                //   🎲 V79.8.7 判斷搬進 `_colEvAt`(同一段給發生率用;⛔ 第二份)
+                const sh = this._colEvAt('short_hi', b, n - 1, sym);
+                if (sh) { add('short_hi', `券資比 ${sh.v.toFixed(1)}%,在這檔自己的歷史裡排最高 10%`, sym, sc); occ('short_hi', b, sym); }
+                const rc = this._colEvAt('retail_catch', b, n - 1, sym);
+                if (rc) { add('retail_catch', `融資 10 天增 ${((rc.m1 / rc.m0 - 1) * 100).toFixed(0)}%、三大法人 10 天賣超 ${Math.round(-rc.f / 1000).toLocaleString()} 張(到 ${this._dW(b[rc.e].date)})`, sym, sc); occ('retail_catch', b, sym); }
+                const mc = this._colEvAt('margin_call', b, n - 1, sym);
+                if (mc) { add('margin_call', `收盤跌破推估的融資追繳線(約 ${(+mc.ms.callLine).toFixed(1)}),融資 5 天減 ${Math.abs(mc.ms.mgChg).toFixed(0)}%`, sym, sc); occ('margin_call', b, sym); }
             }
         }
         // 🌡️ 大盤
         if (tw.length >= 70) {
             const b0 = this._bear60Of(tw);
-            if (b0 && b0.on) { for (let j = 1; j <= 5; j++) { const bj = this._bear60Of(tw.slice(0, -j)); if (bj && !bj.on) { add('bear_on', '大盤這幾天剛轉成空頭(收盤在季線下、月線也在季線下)'); break; } } }
-            if (b0 && !b0.on) { for (let j = 1; j <= 5; j++) { const bj = this._bear60Of(tw.slice(0, -j)); if (bj && bj.on) { add('bull_on', '大盤這幾天剛脫離空頭(收盤站回季線、或月線回到季線上)'); break; } } }
+            if (b0 && b0.on) { for (let j = 1; j <= 5; j++) { const bj = this._bear60Of(tw.slice(0, -j)); if (bj && !bj.on) { add('bear_on', '大盤這幾天剛轉成空頭(收盤在季線下、月線也在季線下)'); mocc('bear_on'); break; } } }
+            if (b0 && !b0.on) { for (let j = 1; j <= 5; j++) { const bj = this._bear60Of(tw.slice(0, -j)); if (bj && bj.on) { add('bull_on', '大盤這幾天剛脫離空頭(收盤站回季線、或月線回到季線上)'); mocc('bull_on'); break; } } }
             const c = tw.map(r => +r.close).filter(v => v > 0), last = c[c.length - 1], hi = Math.max(...c.slice(-252));
-            if (hi > 0 && last <= hi * 0.8) add('crash20', `加權指數離一年最高點跌了 ${((1 - last / hi) * 100).toFixed(0)}%`);
+            if (hi > 0 && last <= hi * 0.8) { add('crash20', `加權指數離一年最高點跌了 ${((1 - last / hi) * 100).toFixed(0)}%`); mocc('crash20'); }
         }
         // 📉 V79.3.2 加權最新一個收盤跌 ≥3%(盤中 tw 已砍掉今天那根 → 隔天白天也看得到;dipleader_probe)
-        if (tw.length >= 2) { const c1 = +tw[tw.length - 1].close, c0 = +tw[tw.length - 2].close; if (c0 > 0 && c1 > 0 && (c1 / c0 - 1) * 100 <= -3) add('idx_drop3', `${this._dW(tw[tw.length - 1].date)} 加權指數跌 ${((1 - c1 / c0) * 100).toFixed(1)}%`); }
+        if (tw.length >= 2) { const c1 = +tw[tw.length - 1].close, c0 = +tw[tw.length - 2].close; if (c0 > 0 && c1 > 0 && (c1 / c0 - 1) * 100 <= -3) { add('idx_drop3', `${this._dW(tw[tw.length - 1].date)} 加權指數跌 ${((1 - c1 / c0) * 100).toFixed(1)}%`); mocc('idx_drop3'); } }
         // 🛑 V79.3.6 外資台指期「🚨 急遽加空」(= `_fiFutState` 的 danger,5 日加空 ≥8,000 口;hightop_sell_probe:照著停手 👑 兩窗口都少賺)
         const ff = ctx.fifut;
         if (ff && ff.level === 'danger' && ff.chg5 != null) add('fifut_cut', `外資台指期 5 日加空 ${Math.abs(ff.chg5).toLocaleString()} 口(淨 ${ff.net != null ? ff.net.toLocaleString() : '—'} 口)`);
@@ -22060,8 +22145,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const item = g => {
             const sc = this._COL_SC[g.sc] || ['📅', '', 9], c = g.col;
             const who = g.why.slice(0, 5).map(h => h.sym
-                ? `<span onclick="app.analyze('${h.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="cursor-pointer text-gray-200 underline decoration-dotted">${this._nmPair(h.sym)}</span> ${esc(h.why)}${h.occ ? `<div data-occ="cc" class="text-[10px] text-amber-200/80 leading-snug mt-0.5">${esc(h.occ)}</div>` : ''}`
-                : esc(h.why)).join('<br>') + (g.why.length > 5 ? `<br><span class="text-gray-500">…還有 ${g.why.length - 5} 個</span>` : '');
+                ? `<span onclick="app.analyze('${h.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="cursor-pointer text-gray-200 underline decoration-dotted">${this._nmPair(h.sym)}</span> ${esc(h.why)}${h.occ ? `<div data-occ="${h.occk || 'stk'}" class="text-[10px] text-amber-200/80 leading-snug mt-0.5">${esc(h.occ)}</div>` : ''}`
+                : esc(h.why) + (h.occ ? `<div data-occ="mkt" class="text-[10px] text-amber-200/80 leading-snug mt-0.5">${esc(h.occ)}</div>` : '')).join('<br>') + (g.why.length > 5 ? `<br><span class="text-gray-500">…還有 ${g.why.length - 5} 個</span>` : '');
             return `<div class="py-2 border-b border-[#21262d]" data-colhit="${esc(c.k)}" data-colsc="${g.sc}">
                 <div class="text-[10px] text-gray-400 leading-snug"><span class="text-gray-500">${sc[0]} ${sc[1]}</span>・${who}</div>
                 <div class="text-[12px] font-bold text-gray-100 mt-1 leading-snug">📰 ${esc(c.q)}</div>
