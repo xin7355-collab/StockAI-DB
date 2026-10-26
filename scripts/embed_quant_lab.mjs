@@ -3,6 +3,7 @@
  * 📐 V79.9.2 把量化實驗室的結果 + 核心放進產業作戰室(⛔ 手改)
  *   ① PRO.QLAB  = quant_lab_build.mjs 的輸出(瘦身成一行;⛔ 超過 80 KB → exit 1)
  *   ② QCORE 區塊 = scripts/lib_quant.mjs「QCORE BEGIN ~ END」原封不動抄進 pro.html 與 index.html(test_quant_core ④ 逐字比對)
+ *      🧪 V79.9.0 EXSIM 區塊 = scripts/lib_exitsim.mjs「EXSIM BEGIN ~ END」抄進 pro.html(沙盒的出場;同一份公式)
  *   ③ 📐 V79.8.9 index.html `_QLAB_SIGS` = PRO.QLAB 裡判定「⛔ 比亂買還差」的那幾支:只放 id / 名字 / 白話條件 / 中心參數的策略
  *      (⛔ 研究數字 —— 散戶 App 只拿來判「你的持股 / 自選今天碰到了」;≤ 3 KB)
  *   跑法:node scripts/embed_quant_lab.mjs qlab_all.json   ・只更新核心 + _QLAB_SIGS:node scripts/embed_quant_lab.mjs --core
@@ -19,18 +20,21 @@ let src = fs.readFileSync(PRO, 'utf8'), idx = fs.readFileSync(IDX, 'utf8');
 const S = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/qlab_strategies.json'), 'utf8'));
 
 // ② QCORE 區塊(兩個檔)
-const lib = fs.readFileSync(path.join(ROOT, 'scripts/lib_quant.mjs'), 'utf8');
-const B = '// ==QCORE BEGIN==', E = '// ==QCORE END==';
-const li = lib.indexOf(B), lj = lib.indexOf(E); if (li < 0 || lj < li) die('lib_quant.mjs 找不到 QCORE 區塊');
-const block = lib.slice(li, lj + E.length);
-const putCore = (s, anchor, nm) => {
-    const pi = s.indexOf(B), pj = s.indexOf(E);
-    if (pi >= 0 && pj > pi) return s.slice(0, pi) + block + s.slice(pj + E.length);
-    const at = s.indexOf(anchor); if (at < 0) die(`${nm} 找不到 ${anchor.trim()}`);
-    return s.slice(0, at + 1) + block + '\n' + s.slice(at + 1);
+const blockOf = (file, tag) => {
+    const t = fs.readFileSync(path.join(ROOT, file), 'utf8'), B = `// ==${tag} BEGIN==`, E = `// ==${tag} END==`;
+    const i = t.indexOf(B), j = t.indexOf(E); if (i < 0 || j < i) die(`${file} 找不到 ${tag} 區塊`);
+    return { B, E, block: t.slice(i, j + E.length) };
 };
-src = putCore(src, '\nconst PRO = {', 'pro.html');
-idx = putCore(idx, '\nconst app = {', 'index.html');
+const putBlock = (s, K, anchor, nm) => {
+    const pi = s.indexOf(K.B), pj = s.indexOf(K.E);
+    if (pi >= 0 && pj > pi) return s.slice(0, pi) + K.block + s.slice(pj + K.E.length);
+    const at = s.indexOf(anchor); if (at < 0) die(`${nm} 找不到 ${anchor.trim()}`);
+    return s.slice(0, at + 1) + K.block + '\n' + s.slice(at + 1);
+};
+const QC = blockOf('scripts/lib_quant.mjs', 'QCORE'), EX = blockOf('scripts/lib_exitsim.mjs', 'EXSIM');
+src = putBlock(src, QC, '\nconst PRO = {', 'pro.html');
+src = putBlock(src, EX, '\nconst PRO = {', 'pro.html');
+idx = putBlock(idx, QC, '\nconst app = {', 'index.html');
 
 // ① QLAB
 const f = process.argv[2];
@@ -41,8 +45,8 @@ if (f && f !== '--core') {
     const slim = j => j && j.n ? { n: j.n, x: r2(j.x), win: j.win, p: j.p, h1: r2(j.h1), h2: r2(j.h2), yPos: j.yPos, yN: j.yN, dropY: r2(j.dropY), dropM: r2(j.dropM), bestY: j.bestY, yrs: j.yrs } : { n: 0 };
     const fam = J.fam.map(x => {
         if (!['ok', 'bad', 'none'].includes(x.verdict) || !(x.n > 0) || !x.c || !Array.isArray(x.c.yrs)) die(`${x.id} 不完整`);
-        const def = S.families.find(s => s.id === x.id);
-        return { id: x.id, name: x.name, pl: x.pl || (def && def.pl) || x.key, why: x.why, desc: x.desc, key: x.key, center: x.center, verdict: x.verdict, st: def ? JSON.parse(JSON.stringify(def.st)) : null,
+        const def = S.families.find(s => s.id === x.id), cen = def && expand(def).find(v => v.center);
+        return { id: x.id, name: x.name, pl: x.pl || (def && def.pl) || x.key, why: x.why, desc: x.desc, key: x.key, center: x.center, verdict: x.verdict, st: def ? JSON.parse(JSON.stringify(def.st)) : null, stc: cen ? cen.st : null,
                  n: x.n, sig: x.sig, blk: x.blk, c: slim(x.c), h10: slim(x.h10), adj: slim(x.adj), shamGross: x.shamGross, q: x.q, qNeg: x.qNeg,
                  gates: x.gates, gatesNeg: x.gatesNeg, plateau: x.plateau, plateauNeg: x.plateauNeg, sham: x.sham, shamBeat: x.shamBeat, shamWorse: x.shamWorse,
                  grid: x.grid.map(g => ({ p: g.p, center: !!g.center, n: g.n, x: r2(g.x), x10: r2(g.x10), adj: r2(g.adj), q: g.q })) };
@@ -85,4 +89,4 @@ function qlabSigs(Q, defs) {
     }
 }
 fs.writeFileSync(PRO, src); fs.writeFileSync(IDX, idx);
-console.log('✅ QCORE 區塊已同步到 pro.html + index.html');
+console.log('✅ QCORE 區塊已同步到 pro.html + index.html、EXSIM 區塊已同步到 pro.html');

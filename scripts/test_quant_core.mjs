@@ -75,6 +75,11 @@ try {
     const pb = blk(pro), ib = blk(idx);
     ok('④ pro.html 的 QCORE 區塊 == lib_quant(逐字)', pb != null && pb === blk(libSrc0), pb == null ? 'pro.html 沒有 QCORE' : 'pro 跟 lib 不一樣 → 跑 embed_quant_lab.mjs');
     ok('④ index.html 的 QCORE 區塊 == lib_quant(逐字;散戶 App 追高買點用)', ib != null && ib === blk(libSrc0), ib == null ? 'index.html 沒有 QCORE' : 'index 跟 lib 不一樣 → 跑 embed_quant_lab.mjs --core');
+    // 🧪 V79.9.0 沙盒的出場 = lib_exitsim 的 EXSIM 區塊(⛔ 第二份出場公式)
+    const xb = s => { const i = s.indexOf('// ==EXSIM BEGIN=='), j = s.indexOf('// ==EXSIM END=='); return i >= 0 && j > i ? s.slice(i, j) : null; };
+    ok('④ pro.html 的 EXSIM 區塊 == lib_exitsim(逐字;沙盒的出場)', xb(pro) != null && xb(pro) === xb(exSrc0), xb(pro) == null ? 'pro.html 沒有 EXSIM' : 'pro 跟 lib 不一樣 → 跑 embed_quant_lab.mjs');
+    { const EX = (0, eval)(xb(exSrc0) + '\nEXSIM'), r1 = EX.simExits(R, 90, { rules: ['chand2', 'ma5'], maxD: 20, holdStop: 5 }), r2 = simExits(R, 90, { rules: ['chand2', 'ma5'], maxD: 20, holdStop: 5 });
+      ok('④ EXSIM 區塊單獨拿出來跑(瀏覽器那樣)== 模組匯出的 simExits', JSON.stringify(r1) === JSON.stringify(r2), JSON.stringify([r1, r2]).slice(0, 200)); }
 } finally { try { fs.unlinkSync(tmpLib); fs.unlinkSync(tmpEx); } catch (_) {} }
 if (fails.length) { console.log(`❌ QCORE_FAIL(${fails.length})`); process.exit(1); }
 console.log('✅ QCORE_TEST_PASS');

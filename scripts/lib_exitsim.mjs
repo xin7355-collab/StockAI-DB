@@ -40,8 +40,12 @@ export const EXIT_NAME = {
 };
 export const exitName = k => EXIT_NAME[k] || k;
 
+// ==EXSIM BEGIN==
+// 🧪 V79.9.0 這一段(parseRule + simExits)由 scripts/embed_quant_lab.mjs 原封不動抄進 pro.html(量化實驗室沙盒的出場;⛔ 第二份出場公式)。
+//    ⛔ 這一段裡不可以用 import / export / Node 才有的東西;test_quant_core ④ 逐字比對。
+const EXSIM = (() => {
 /** 把規則字串解析成一個判斷函式的參數;⛔ 認不得就 throw(打錯字不可以安靜地變成「永不出場」)。 */
-export function parseRule(rule) {
+function parseRule(rule) {
     let m;
     if (rule === 'hold') return { kind: 'hold' };
     if ((m = /^ma(\d+)$/.exec(rule))) return { kind: 'ma', n: +m[1] };
@@ -64,7 +68,7 @@ export function parseRule(rule) {
  *     'touch' 盤中最低碰到 → min(開盤, 停損價)(= App 複製的觸價智慧單)
  * @returns {object|null} { [rule]: { ret, outIdx, why } }
  */
-export function simExits(R, eIdx, opt = {}) {
+function simExits(R, eIdx, opt = {}) {
     const rules = opt.rules || ['ma5', 'don20', 'atr2', 'trail8'];
     const MAXD = opt.maxD ?? 20;
     const HOLD_STOP = opt.holdStop ?? 5;
@@ -129,3 +133,8 @@ export function simExits(R, eIdx, opt = {}) {
     }
     return out;
 }
+return { parseRule, simExits };
+})();
+// ==EXSIM END==
+export const parseRule = EXSIM.parseRule;
+export const simExits = EXSIM.simExits;
