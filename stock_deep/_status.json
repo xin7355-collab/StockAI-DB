@@ -231,24 +231,24 @@
   ],
   "at": "2026-10-26",
   "chk_miss": {
-   "CashFlowsFromOperatingActivities": 55,
-   "PropertyAndPlantAndEquipment": 13,
-   "Depreciation": 6
+   "CashFlowsFromOperatingActivities": 50,
+   "Depreciation": 8,
+   "PropertyAndPlantAndEquipment": 11
   },
   "chk_dup": [
    0,
    0
   ],
   "chk_cell": {
-   "PropertyAndPlantAndEquipment": 0.9874,
-   "Depreciation": 0.9946,
-   "CashFlowsFromOperatingActivities": 0.9501
+   "PropertyAndPlantAndEquipment": 0.9889,
+   "Depreciation": 0.992,
+   "CashFlowsFromOperatingActivities": 0.95
   },
-  "have": 603,
+  "have": 1205,
   "of": 2548,
   "chk": [
-   499,
-   555
+   455,
+   507
   ],
   "done": false
  }
