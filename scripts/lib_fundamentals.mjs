@@ -81,12 +81,7 @@ export const quarterValue = (F, sym, q, field, CUM) => {
     if (j < 0 || !row || row[j] == null) return null;
     const v = row[j];
     if (!CUM[field] || q.slice(5, 7) === '03') return v;
-    const i = F.q.indexOf(q);
-    for (let k = i - 1; k >= 0; k--) {                       // 找同一年的前一季
-        const p = F.q[k];
-        if (p.slice(0, 4) !== q.slice(0, 4)) break;
-        const pr = F.s[sym][p];
-        if (pr && pr[j] != null) return v - pr[j];
-    }
-    return null;
+    // 🐛 V79.9.1 只認「正好前一季」(qBack):以前往前找「同一年最近一個有值的」→ Q2 缺時 Q3 累計 − Q1 累計 = Q2+Q3 兩季加總
+    const pr = F.s[sym][qBack(q, 1)];
+    return pr && pr[j] != null ? v - pr[j] : null;
 };

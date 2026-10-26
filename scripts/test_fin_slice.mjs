@@ -13,7 +13,7 @@
 import fs from 'fs';
 import path from 'path';
 import { sliceOne, sliceAll, detectAll } from './fin_slice.mjs';
-import { doi } from './lib_fundamentals.mjs';
+import { doi, quarterValue } from './lib_fundamentals.mjs';
 
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 240)}`}`); if (!c) fails.push(n); };
@@ -80,6 +80,13 @@ ok('⑤b 12 季齊全 → roe4 = 4×(1.0×1e8) ÷ 1000 … 超過 100% 也照算
 {   // 🐛 V79.8.2 半年報(興櫃):最後 4 筆跨兩年 → 近 4 季合計⛔ 不給(以前把兩年加成「一年」)
     const t7 = sliceOne(F, CUM, 'T7');
     ok('⑤c 半年報那檔(只有 06-30 / 12-31)→ 最後 4 筆不是連續 4 季 → roe4 / fcf4 / capex4 / ni4 一律 null', t7.nq >= 4 && t7.roe4 === null && t7.fcf4 === null && t7.capex4 === null && t7.ni4 === null, JSON.stringify([t7.nq, t7.roe4, t7.fcf4, t7.capex4]));
+    {   // ⑤d 🐛 V79.9.1 累計欄缺 Q2 → Q3 單季 ⛔ 拿 Q1 去減(那會變成 Q2+Q3 兩季加總)
+        const Fq = { q: ['2015-03-31', '2015-06-30', '2015-09-30', '2016-03-31', '2016-06-30'], f: ['ocf'],
+            s: { A: { '2015-03-31': [10], '2015-09-30': [35], '2016-03-31': [12], '2016-06-30': [30] } } };
+        const C = { ocf: true };
+        ok('⑤d 累計欄缺 Q2 → Q3 單季 = null(⛔ 35−10);有 Q1 → Q2 = 30−12 = 18', quarterValue(Fq, 'A', '2015-09-30', 'ocf', C) === null && quarterValue(Fq, 'A', '2016-06-30', 'ocf', C) === 18 && quarterValue(Fq, 'A', '2016-03-31', 'ocf', C) === 12,
+            [quarterValue(Fq, 'A', '2015-09-30', 'ocf', C), quarterValue(Fq, 'A', '2016-06-30', 'ocf', C)]);
+    }
 }
 const t6 = sliceOne(F, CUM, 'T6');
 ok('⑥ inv/ocf 沒資料 → doi / fcf / ocf 一律 null,⛔ 不補 0', t6.q.every(x => x.doi === null && x.fcf === null && x.ocf === null), JSON.stringify(t6.q[0]));
