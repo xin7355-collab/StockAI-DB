@@ -229,7 +229,16 @@
    "Depreciation",
    "CashFlowsFromOperatingActivities"
   ],
-  "fail": "對表 89.5% < 90%(單位 / 欄位 / 接縫不對)",
-  "at": "2026-10-26"
+  "fail": "對表 89.1% < 90%(單位 / 欄位 / 接縫不對)",
+  "at": "2026-10-26",
+  "chk_miss": {
+   "CashFlowsFromOperatingActivities": 18,
+   "PropertyAndPlantAndEquipment": 7,
+   "Depreciation": 1
+  },
+  "chk_dup": [
+   0,
+   0
+  ]
  }
 }
