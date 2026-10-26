@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.9.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.9.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.9.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.9.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8425,6 +8425,7 @@ ${list}
         if (tabId !== 'diag') { try { this._stopFugleStream?.(); } catch (_) {} }   // 🔌 V64.2 離開個股頁關 WebSocket 串流
         if (tabId !== 'desk') { try { this._stopDeckStream?.(); } catch (_) {} }   // 📡 V79.1.6 離開決策台關 👑 現價跳動(每把金鑰同時只會有一條連線)
         if (tabId !== 'hunt') { try { this._stopHuntAutoScan?.(); } catch (_) {} }   // ⚡ V69.8.5 P1-8 離開觀察頁停自動重掃(原本永久存活)
+        if (tabId !== 'radar') this._radarTrigRun = (this._radarTrigRun || 0) + 1;   // 📶 V79.9.2 離開選股頁停背景抓「今日觸發」徽章(以前切到決策台照樣抓、抓不到就跳紅框在決策台上)
         // 💎 V46.7 — 離開潛力頁前記住捲動位置(切走再回來還原,不跳回頂端)
         const _potElNow = document.getElementById('tabContentPotential');
         if (_potElNow && _potElNow.style.display !== 'none' && tabId !== 'potential') this._potentialScrollY = window.scrollY || 0;
@@ -8771,10 +8772,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.9.1',
+    _APP_VERSION: 'V79.9.2',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.9.2', d: [
+            '📶 手機網路不穩時,選股頁、自選、觀察清單、AI 股神這些「一次抓很多檔」的背景掃描不再連跳好幾個「⚠️ 無法載入 XXXX 資料」紅框:抓不到的那幾檔會自己再試一次,還是不行就在那張卡底下寫一行灰字「有 N 檔這次沒抓到,下次打開會再抓」',
+            '📶 離開選股頁時,背景那個逐檔算「今日觸發」小標籤的迴圈會立刻停,不會再把紅框跳到決策台上',
+            '🔍 你自己點開的那一檔抓不到時,照舊會跳紅框告訴你',
+        ], dt: '2026-10-26' },
         { v: 'V79.9.1', d: [
             '🔀 左上角「產」搬到 🤖 右邊(🔍 → 🤖 → 產)',
             '🧪 產業作戰室「量化實驗室」沙盒:每跑一次都會記下來(📚 跑過的紀錄:表頭可排序、點一列載回那組設定、勾兩筆看差多少、單筆刪除),換範本或改條件不會再把上一次的結果丟掉',
@@ -9023,9 +9029,6 @@ ${list}
             '📈 預設改成「📈 符合進場」:決策台一打開就是標 🧬 又出現看多訊號的那幾檔;🔥 觸發價買點預設收起,設定裡勾回來就有',
             '🔁 決策台「讀不到全市場快照」不用再關掉 App:約 1 分鐘後會自動再抓,也可以按「再試一次」',
             '👑 進階策略搬進設定的「🔓 進階功能」那一區;產業作戰室成績單固定顯示 👑 那一套',
-        ], dt: '2026-10-11' },
-        { v: 'V79.1.1', d: [
-            '👥 大盤頁的「散戶多空比」不再拿來加減「主力出貨指數」的分數,Telegram 盤前摘要也一樣:把 2018 年到現在 2,033 天的資料抓回來測,散戶很偏多或很偏空,隔天大盤都看不出要漲還是要跌。畫面上照樣顯示數字,只寫「散戶偏多 / 散戶偏空」,拿掉 🚨⚠️💡 警示和閃爍。',
         ], dt: '2026-10-11' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -11113,7 +11116,7 @@ ${list}
         const prog = document.getElementById('potentialProgress');
         const worker = async (sym) => {
             try {
-                const kl = await this.fetchHistoricalData(sym, false);
+                const kl = await this.fetchHistoricalData(sym, false, { quiet: true });
                 if (Array.isArray(kl) && kl.length >= 60) {
                     let medianPe = null;
                     // 🐛 V76.0.0 修:`_getIndustryPeers` 回的是**中文產業名**,而 `industries` 的鍵是
@@ -12226,7 +12229,40 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         return { industry: sec?.name || ind || '同產業', peers };
     },
 
-    async fetchHistoricalData(symbol, forceRefresh = false) {
+    // 📶 V79.9.2 背景一次抓很多檔的(選股頁今日觸發徽章 / 自選 RS / 觀察掃描 / 庫存刷價…)帶 { quiet:true }:
+    //   ⛔ 不跳紅框(使用者 10/26 通話中手機網路一抖,選股頁背景連跳 5 個「無法載入 X 資料」,而那 5 檔的 K 線檔都是好的)
+    //   ・網路類失敗(丟例外 / sw.js 18 秒逾時回 504)隔 1.5 秒重試一次;還是不行就記進 opt.miss(呼叫端在卡上寫一行灰字,⛔ 不靜默)
+    //   ・同時最多 4 檔在抓(_klBgRun 排隊,⛔ 一次 60 檔同時打);使用者自己點的那一檔不排隊、失敗照舊跳紅框
+    async fetchHistoricalData(symbol, forceRefresh = false, opt = {}) {
+        if (!(opt && opt.quiet)) return (await this._klFetchOnce(symbol, forceRefresh, false)).data;
+        return this._klBgRun(async () => {
+            let r = await this._klFetchOnce(symbol, forceRefresh, true);
+            if (r.err === 'net') {
+                await new Promise(res => setTimeout(res, 1500));
+                r = await this._klFetchOnce(symbol, forceRefresh, true);
+            }
+            if (r.err === 'net' && Array.isArray(opt.miss)) opt.miss.push(symbol);
+            return r.data;
+        });
+    },
+    _klBgMax: 4,
+    _klBgActive: 0,
+    _klBgWait: [],
+    async _klBgRun(fn) {
+        // 排隊:滿了就等;放出位子時直接交給排在最前面的那一個(⛔ 先減再搶 → 會超過上限)
+        if (this._klBgActive >= this._klBgMax) await new Promise(res => this._klBgWait.push(res));
+        else this._klBgActive++;
+        try { return await fn(); }
+        finally { const nx = this._klBgWait.shift(); if (nx) nx(); else this._klBgActive--; }
+    },
+    /** 背景掃描有幾檔這次沒抓到 → 卡上一行灰字(⛔ 紅框、⛔ 靜默) */
+    _klMissNote(miss) {
+        const n = Array.isArray(miss) ? miss.length : (+miss || 0);
+        if (!(n > 0)) return '';
+        return `<div class="text-[10px] text-gray-500 mt-1 leading-snug" data-klmiss="${n}">📶 有 ${n} 檔這次沒抓到(網路不穩),下次打開會再抓</div>`;
+    },
+    /** 抓一次 K 線。回 { data, err }:err = null(成功或快取)/ '404'(沒有這檔資料)/ 'net'(網路或伺服器沒回)。quiet = ⛔ 跳紅框 */
+    async _klFetchOnce(symbol, forceRefresh = false, quiet = false) {
         const today    = this.getTodayStr().replace(/\//g, '-');
         const cacheKey = `proTerm_kline_${symbol}`;
         // 30 分鐘 TTL。早期版本將純陣列存進 IDB → 沒 ts/latestDate，這裡視為過期一定 refetch。
@@ -12241,7 +12277,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 const _stale = _ld && (Date.now() - new Date(String(_ld).replace(/\//g, '-')).getTime() > 10 * 86400000);
                 if (!_stale) {
                     this.apiDataCache[cacheKey] = cached.data;
-                    return cached.data;
+                    return { data: cached.data, err: null };
                 }
             }
         }
@@ -12260,11 +12296,11 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     if (data && data.length > 0) {
                         this.apiDataCache[cacheKey] = data;
                         this.idb.put(cacheKey, wrap(data)).catch(() => {});
-                        return data;
+                        return { data, err: null };
                     }
                 }
             } catch(e) {
-                this.showToast(`⚠️ 本地 API 連線失敗（${symbol}），切換雲端模式`);
+                if (!quiet) this.showToast(`⚠️ 本地 API 連線失敗（${symbol}），切換雲端模式`);
             }
         }
 
@@ -12279,30 +12315,30 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const localRes = await fetch(fileUrl);
             const _isIndex = symbol.startsWith('^');
             if (localRes.status === 404) {
-                if (!apiBase) {
+                if (!apiBase && !quiet) {
                     const msg = _isIndex
                         ? `⚠️ ${symbol} 指數 K 線採礦中(yfinance 需 2 年 ^TWII 歷史,偶遇美國假日/限流可能空白);請等下次採礦或 30 分後重試`
                         : `⚠️ ${symbol} 尚無採礦資料,請點 🔄 或等待每日 16:30 自動更新`;
                     this.showToast(msg);
                 }
-                return null;
+                return { data: null, err: '404' };
             }
             if (localRes.ok) {
                 const data = await localRes.json();
                 this.apiDataCache[cacheKey] = data;
                 this.idb.put(cacheKey, wrap(data)).catch(() => {});
-                return data;
+                return { data, err: null };
             }
             throw new Error(`HTTP ${localRes.status}`);
         } catch(e) {
-            if (!apiBase) {
+            if (!apiBase && !quiet) {
                 const _isIndex = symbol.startsWith('^');
                 const msg = _isIndex
                     ? `⚠️ 載入 ${symbol} 指數 K 線失敗 — 採礦資料可能未產出或網路不通`
                     : `⚠️ 無法載入 ${symbol} 資料,請確認網路連線`;
                 this.showToast(msg);
             }
-            return null;
+            return { data: null, err: 'net' };
         }
     },
 
@@ -30805,7 +30841,7 @@ ${this._reportFacts(sym)}
         const bubbles = [];
         for (const item of inv) {
             let rows = null;
-            try { rows = await this.fetchHistoricalData(item.symbol, false); } catch (_) {}
+            try { rows = await this.fetchHistoricalData(item.symbol, false, { quiet: true }); } catch (_) {}
             const _nd = this._nmDual(item.symbol), name = _nd.n;  // 🏷️ V75.1.5 走 _nmDual:名字拿不到時副標留空,⛔ 不可讓名字列與代號列都印代號(使用者截圖的「009816 / 009816」)
             const verdict = this._aiGodStockVerdict(rows);
             bubbles.push(`<div class="flex gap-2">
@@ -30842,7 +30878,7 @@ ${this._reportFacts(sym)}
         const bubbles = [];
         for (const sym of list) {
             let rows = null;
-            try { rows = await this.fetchHistoricalData(sym, false); } catch (_) {}
+            try { rows = await this.fetchHistoricalData(sym, false, { quiet: true }); } catch (_) {}
             if (!document.getElementById('aiGodFavList')) return;   // modal 已關,停
             const name = this.getStockName(sym) || sym;
             const verdict = this._aiGodStockVerdict(rows);
@@ -46576,7 +46612,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const lq = this._liveQuote(sym);
             if (lq && Number(lq.p) > 0) { price = lq.p; pct = (lq.c != null ? +lq.c : null); }   // 快照基準
             try {
-                data = await this.fetchHistoricalData(sym, false);
+                data = await this.fetchHistoricalData(sym, false, { quiet: true });
                 const fugle = await this.fetchFugleData(sym).catch(() => null);
                 if (fugle && Number(fugle.price) > 0) {
                     price = fugle.price;
@@ -46614,10 +46650,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const txc = +tx[tx.length - 1].close, txc20 = +(tx[tx.length - 21]?.close);
             if (!(txc > 0 && txc20 > 0)) { box.classList.add('hidden'); return; }
             const txRet = (txc - txc20) / txc20 * 100;
-            const rows = [];
+            const rows = [], miss = [];
             for (const sym of list) {
                 try {
-                    const d = await this.fetchHistoricalData(sym, false);
+                    const d = await this.fetchHistoricalData(sym, false, { quiet: true, miss });
                     if (!Array.isArray(d) || d.length < 21) continue;
                     const C = b => +((b?.close ?? b?.c) || 0);
                     const c = C(d[d.length - 1]), c20 = C(d[d.length - 21]);
@@ -46625,7 +46661,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     rows.push({ sym, rs: (c - c20) / c20 * 100 - txRet });
                 } catch (_) {}
             }
-            if (rows.length < 3) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            if (rows.length < 3) {
+                // 📶 V79.9.2 抓不到太多檔才湊不滿 3 檔 → 寫出來(⛔ 整張安靜消失)
+                if (miss.length) { box.className = 'mx-2 mb-1 px-3 py-1'; box.innerHTML = this._klMissNote(miss); box.classList.remove('hidden'); }
+                else { box.classList.add('hidden'); box.innerHTML = ''; }
+                return;
+            }
             rows.sort((a, b) => b.rs - a.rs);
             const top = rows.slice(0, 3), bot = rows.slice(-2).reverse();
             const chip = (o, strong) => `<span onclick="app.analyze('${o.sym}'); app.switchAppTab('diag');" class="cursor-pointer text-[11px] font-bold ${strong ? 'text-red-300' : 'text-green-300'}">${this.getStockName(o.sym) || o.sym} <span class="font-mono text-[9px]">${o.rs >= 0 ? '+' : ''}${o.rs.toFixed(0)}%</span></span>`;
@@ -46637,7 +46678,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 </div>
                 <div class="text-[11px] leading-relaxed"><span class="text-gray-500">最強 🔥 </span>${top.map(o => chip(o, true)).join(' ・ ')}</div>
                 <div class="text-[11px] leading-relaxed"><span class="text-gray-500">最弱 🐌 </span>${bot.map(o => chip(o, false)).join(' ・ ')}</div>
-                <div class="text-[9px] text-gray-600 mt-0.5">💡 買股先買最強的(強者恆強);別買落後補漲的弱勢股。</div>`;
+                <div class="text-[9px] text-gray-600 mt-0.5">💡 買股先買最強的(強者恆強);別買落後補漲的弱勢股。</div>${this._klMissNote(miss)}`;
             box.classList.remove('hidden');
         } catch (_) { box.classList.add('hidden'); }
     },
@@ -46830,10 +46871,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             this._renderBreakoutScan(this._breakoutScanCache.rows); return;
         }
         box.innerHTML = `<div class="text-[10px] text-cyan-400/80 text-center py-3">掃描中… (${list.length} 檔)</div>`;
-        const rows = [];
+        const rows = [], miss = [];
         await Promise.all(list.map(async (sym) => {
             try {
-                const data = await this.fetchHistoricalData(sym, false);
+                const data = await this.fetchHistoricalData(sym, false, { quiet: true, miss });
                 if (!Array.isArray(data) || data.length < 60) return;
                 const last = data.length - 1, pC = data[last].close;
                 const zones = this._chuResistanceZones(data, last);
@@ -46852,8 +46893,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             } catch (_) {}
         }));
         rows.sort((a, b) => a.dist - b.dist);
-        this._breakoutScanCache = { ts: Date.now(), group, rows };
-        this._renderBreakoutScan(rows);
+        // 📶 V79.9.2 有抓不到的 → ⛔ 不快取(下次打開重掃),卡底寫一行
+        this._breakoutScanCache = miss.length ? null : { ts: Date.now(), group, rows };
+        this._renderBreakoutScan(rows, miss);
     },
 
     // 📢 V76.3.3 這張卡的誠實話 —— ⛔ 數字一律讀 `_BREAKOUT_EDGE`,不可寫死
@@ -46865,10 +46907,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         </div>`;
     },
 
-    _renderBreakoutScan(rows) {
+    _renderBreakoutScan(rows, miss) {
         const box = document.getElementById('breakoutScanList');
         if (!box) return;
-        if (!rows || !rows.length) { box.innerHTML = this._breakoutEdgeHtml() + '<div class="text-[10px] text-gray-500 text-center py-3">自選股目前無「接近突破」的打底候選(已突破 / 資料不足 / 振幅過大 / 空頭排列已排除)</div>'; return; }
+        if (!rows || !rows.length) { box.innerHTML = this._breakoutEdgeHtml() + '<div class="text-[10px] text-gray-500 text-center py-3">自選股目前無「接近突破」的打底候選(已突破 / 資料不足 / 振幅過大 / 空頭排列已排除)</div>' + this._klMissNote(miss); return; }
         box.innerHTML = this._breakoutEdgeHtml() + rows.slice(0, 20).map((r, i) => {
             const distCls = r.dist <= 2 ? 'text-red-300' : r.dist <= 5 ? 'text-amber-300' : 'text-gray-400';
             const hot = r.dist <= 2 ? ' 🔥' : '';
@@ -46894,23 +46936,23 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             this._renderWatchlistCheckup(this._wlCheckupCache.rows); return;
         }
         box.innerHTML = `<div class="text-[10px] text-cyan-400/80 text-center py-3">體檢中… (${list.length} 檔)</div>`;
-        const rows = [];
+        const rows = [], miss = [];
         await Promise.all(list.map(async (sym) => {
             try {
-                const data = await this.fetchHistoricalData(sym, false);
+                const data = await this.fetchHistoricalData(sym, false, { quiet: true, miss });
                 const r = this._entryCheckup(data);
                 if (!r) return;
                 rows.push({ sym, score: r.score, light: r.light, verdict: r.verdict, vColor: r.vColor, held: invSet.has(sym) });
             } catch (_) {}
         }));
         rows.sort((a, b) => b.score - a.score);   // 分數高(偏多)排最上
-        this._wlCheckupCache = { ts: Date.now(), group, rows };
-        this._renderWatchlistCheckup(rows);
+        this._wlCheckupCache = miss.length ? null : { ts: Date.now(), group, rows };   // 📶 V79.9.2 有抓不到的 ⛔ 快取
+        this._renderWatchlistCheckup(rows, miss);
     },
-    _renderWatchlistCheckup(rows) {
+    _renderWatchlistCheckup(rows, miss) {
         const box = document.getElementById('watchCheckupList');
         if (!box) return;
-        if (!rows || !rows.length) { box.innerHTML = '<div class="text-[10px] text-gray-500 text-center py-3">無足夠 K 線可體檢(資料不足或尚未載入,點任一股看詳情後再回來重掃)</div>'; return; }
+        if (!rows || !rows.length) { box.innerHTML = '<div class="text-[10px] text-gray-500 text-center py-3">無足夠 K 線可體檢(資料不足或尚未載入,點任一股看詳情後再回來重掃)</div>' + this._klMissNote(miss); return; }
         box.innerHTML = rows.slice(0, 30).map((r, i) => {
             const sc = r.vColor === 'red' ? 'text-red-300' : r.vColor === 'green' ? 'text-green-300' : 'text-yellow-300';
             // 🐛 V40.5 ETF(00 開頭)個股型態偵測(晨星/做多買點)語意不精準 → 改標「趨勢」+ ETF chip,分數同義為趨勢強弱
@@ -46924,7 +46966,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-[10px] ${sc}">${vWord}</span>
                 <span class="font-mono text-[13px] font-black ${sc} text-right w-[40px]">${r.score}</span>
             </div>`;
-        }).join('') + `<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">分數=進場友善度 0-100・🔴偏多➖觀望🟢偏空・<b class="text-amber-400/80">ETF 改看「趨勢」(型態偵測對 ETF 較不精準)</b>・純公式僅供參考,進場務必設停損</div>`;
+        }).join('') + `<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">分數=進場友善度 0-100・🔴偏多➖觀望🟢偏空・<b class="text-amber-400/80">ETF 改看「趨勢」(型態偵測對 ETF 較不精準)</b>・純公式僅供參考,進場務必設停損</div>${this._klMissNote(miss)}`;
     },
 
 
@@ -47471,7 +47513,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             try {
                 // 🐛 V58.3 提速:歷史 K 只在本 session 第一輪抓(朱家泓淘汰法用),之後輪詢只打即時報價
                 if (!this._invKlineCache[item.symbol]) {
-                    const data = await this.fetchHistoricalData(item.symbol, false);
+                    const data = await this.fetchHistoricalData(item.symbol, false, { quiet: true });
                     if (data && data.length > 0 && !(Number(item.currentPrice) > 0)) item.currentPrice = data[data.length - 1].close;
                     if (Array.isArray(data) && data.length >= 25) {
                         this._invKlineCache[item.symbol] = data.slice(-30);
@@ -51683,7 +51725,7 @@ App 會在那個時段幫你盯,到價自動提醒。
         for (const p of picks) {
             if (this.monitorList.some(m => m.sym === p.sym)) { skipped++; continue; }
             try {
-                const data = await this.fetchHistoricalData(p.sym, false);
+                const data = await this.fetchHistoricalData(p.sym, false, { quiet: true });
                 if (data && data.length >= 20 && this._addToMonitor(p.sym, data, key, { silent: true })) {
                     added++;
                 } else {
@@ -51709,7 +51751,7 @@ App 會在那個時段幫你盯,到價自動提醒。
         for (const p of green) {
             if (this.monitorList.some(m => m.sym === p.sym)) { skipped++; continue; }
             try {
-                const data = await this.fetchHistoricalData(p.sym, false);
+                const data = await this.fetchHistoricalData(p.sym, false, { quiet: true });
                 if (data && data.length >= 20 && this._addToMonitor(p.sym, data, key, { silent: true })) {
                     added++;
                 } else {
@@ -51926,7 +51968,7 @@ App 會在那個時段幫你盯,到價自動提醒。
         for (const sym of syms) {
             if (this.radarStrategy !== key || run !== this._radarTrigRun) return;   // 使用者切走→停,別亂寫別人畫面
             let data = null;
-            try { data = await this.fetchHistoricalData(sym, false); } catch (_) {}
+            try { data = await this.fetchHistoricalData(sym, false, { quiet: true }); } catch (_) {}
             if (this.radarStrategy !== key || run !== this._radarTrigRun) return;
             if (!data) continue;
             let badge = '';
@@ -55557,7 +55599,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         try {
             let kl = (sym === this.currentSymbolId && Array.isArray(this.activeData) && this.activeData.length) ? this.activeData : null;
             if (!kl) { try { kl = await this.idb.get(`proTerm_kline_${sym}`).then(r => r && r.data); } catch (_) {} }
-            if (!Array.isArray(kl) || kl.length < 30) { try { kl = await this.fetchHistoricalData(sym, false); } catch (_) {} }
+            if (!Array.isArray(kl) || kl.length < 30) { try { kl = await this.fetchHistoricalData(sym, false, { quiet: true }); } catch (_) {} }
             const x = this._exitLines(kl, sym);
             // ⚠️ await 回來要確認使用者沒有換股(陷阱 #19)
             if (String(this._paCurrentSym) !== String(sym)) return;
@@ -56400,11 +56442,12 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         // 📈 V72.6.1 大盤基準(算「加入至今贏不贏大盤」)—— 走既有的 `_getTwiiRows`,⛔ 別另外寫一份 fetch
         try { if (!this._twiiRows) this._twiiRows = await this._getTwiiRows(); } catch (_) { this._twiiRows = null; }
 
+        const miss = [];   // 📶 V79.9.2 這一輪抓不到的(網路不穩),掃完寫在狀態列
         for (let idx = 0; idx < this.monitorList.length; idx++) {
             const entry = this.monitorList[idx];
             if (statusText) statusText.textContent = `掃描 ${idx + 1}/${total}：${entry.name}(${entry.sym})`;
             try {
-                let data = await this.fetchHistoricalData(entry.sym, false);
+                let data = await this.fetchHistoricalData(entry.sym, false, { quiet: true, miss });
                 if (!data || data.length < 25) continue;
                 // ⚡ V69.7.5 盤中即時化(修「觀察頁全是昨日盤後數據」):把即時報價併進今日 bar,
                 //   現價/5日線/月線/10日均價/所有訊號檢查全部變即時,和總覽同一套算法不再兩個數字
@@ -56511,9 +56554,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
         // Show summary
         if (total > 0) {
-            const statusMsg = newAlerts.length > 0
+            const statusMsg = (newAlerts.length > 0
                 ? `✅ 掃描完成！發現 ${newAlerts.length} 個觀察訊號`
-                : `✅ 掃描完成，${total} 檔均無訊號`;
+                : `✅ 掃描完成，${total} 檔均無訊號`) + (miss.length ? ` ・📶 ${miss.length} 檔這次沒抓到(網路不穩)` : '');
             if (statusText) { statusText.textContent = statusMsg; statusDiv.classList.remove('hidden'); }
             setTimeout(() => { if (statusDiv) statusDiv.classList.add('hidden'); }, 4000);
         }

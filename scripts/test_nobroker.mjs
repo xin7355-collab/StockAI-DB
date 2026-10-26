@@ -65,6 +65,7 @@ const errs = [];
 page.on('pageerror', e => { const t = String(e && e.message || e); if (!/echarts|vibrate|Failed to load|net::ERR_|CORS/i.test(t)) errs.push(t); });
 await page.goto(pathToFileURL(process.env.NB_FILE || path.join(ROOT, 'index.html')).href, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app._loadChipFund, null, { timeout: 30000 });
+await page.waitForTimeout(2500);   // ⏳ 等 init 跑完再畫報告頁(機器忙時 init 會晚一步切走頁面 → 報告頁空白 = 假紅燈;V79.9.2 四驗證並行時踩到)
 const R = await page.evaluate(async () => {
     const out = {};
     out.chipFlow = !!document.getElementById('chipPaneFlow') && !document.getElementById('chipPaneFlow').classList.contains('hidden');
