@@ -208,13 +208,13 @@
    "CurrentAssets",
    "CurrentLiabilities"
   ],
-  "have": 324,
+  "have": 923,
   "of": 2548,
   "chk": [
-   306,
-   306
+   564,
+   564
   ],
-  "at": "2026-10-25",
+  "at": "2026-10-26",
   "done": false
  }
 }
