@@ -16,6 +16,9 @@
  *     ✅ 有用 = 全過;⛔ 賠錢 = 「扣成本前」就比同一天的股票差,而且鏡像六關全過;其他 = ➖ 沒用
  *   跑法:DATA_DIR=$S/d16m_fi REV_DIR=$S/v991/stock_deep/rev DISPO=$S/dispo_D_twse.txt node scripts/quant_lab_build.mjs out.json
  *         ONLY=kd_gold(只跑一支)・node scripts/quant_lab_build.mjs --selftest
+ *   🔁 V79.9.1 PAIRS=1(使用者 10/26:「全部不同的都交叉跑一次」):8 支兩兩「兩個條件同一天都成立」= 28 組,
+ *         第一支的參數照樣左右挪(高原照判)、第二支用中心值;跟單獨的 8 支**一起**做多重比較校正(試越多、門檻越嚴)
+ *         → 輸出多一個 pairs(瘦身版,⛔ 進 fam,畫面另一張表)
  */
 import fs from 'fs';
 import path from 'path';
@@ -34,6 +37,12 @@ export function expand(fam) {
     const key = Object.keys(fam.grid)[0], vals = fam.grid[key];
     const sub = (o, v) => JSON.parse(JSON.stringify(o), (k, x) => x === '$' + key ? v : x === '$N' + key ? -v : x);
     return vals.map(v => ({ fam: fam.id, p: v, center: v === fam.center[key], st: sub(fam.st, v) }));
+}
+/** 🔁 兩兩一起成立:A 的每一組參數 × B 的中心值;條件接在一起(all 合併、any 只准一邊有)、間隔取大的 */
+export function pairVars(A, B) {
+    const bc = expand(B).find(x => x.center), id = `${A.id}+${B.id}`;
+    return expand(A).map(v => ({ fam: id, p: v.p, center: v.center, pair: [A.id, B.id],
+        st: { all: [...(v.st.all || []), ...(bc.st.all || [])], ...((v.st.any || bc.st.any) ? { any: [...(v.st.any || []), ...(bc.st.any || [])] } : {}), gap: Math.max(v.st.gap || 10, bc.st.gap || 10) } }));
 }
 /** 一檔的每日報酬係數(含股利;斷崖 → null)*/
 export function dailyFactors(bars, divs) {
@@ -140,7 +149,10 @@ async function main() {
     if (!DIR) { console.error('❌ 要 DATA_DIR'); process.exit(1); }
     const S = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/qlab_strategies.json'), 'utf8'));
     const fams = S.families.filter(f => !ONLY.length || ONLY.includes(f.id));
-    const vars = fams.flatMap(expand);
+    const PAIRS = process.env.PAIRS === '1';
+    const pairFams = PAIRS ? fams.flatMap((A, i) => fams.slice(i + 1).filter(B => !((A.st.any || []).length && (B.st.any || []).length)).map(B => ({ id: `${A.id}+${B.id}`, name: `${A.name} + ${B.name}`, A, B }))) : [];
+    const vars = [...fams.flatMap(expand), ...pairFams.flatMap(P => pairVars(P.A, P.B))];
+    if (PAIRS) console.log(`  🔁 兩兩一起成立 ${pairFams.length} 組 → 一共 ${vars.length} 種設定一起做多重比較校正`);
     for (const v of vars) QCORE.check(v.st);   // ⛔ 打錯字當場停
     const load = s => { try { const j = JSON.parse(fs.readFileSync(path.join(DIR, s + '.json'), 'utf8')); return Array.isArray(j) ? j.filter(r => r && r.date && +r.close > 0) : null; } catch (_) { return null; } };
     const DIV = (() => { try { const j = JSON.parse(fs.readFileSync(path.join(DIR, '_div16.json'), 'utf8')); return j.d || j; } catch (_) { return {}; } })();
@@ -180,7 +192,7 @@ async function main() {
     const shamYearOf = fam => { const C = vars.findIndex(v => v.fam === fam && v.center); const all = acc.get(C).sham.flat(), m = new Map();
         for (const e of all) { const a = m.get(e.y) || m.set(e.y, [0, 0]).get(e.y); a[0] += e.gx; a[1]++; }
         const out = new Map(); for (const [y, [s2, k2]] of m) if (k2 >= 20) out.set(y, s2 / k2); return { out, all: all.length ? all.reduce((q2, e) => q2 + e.gx, 0) / all.length : null }; };
-    const SY = new Map(fams.map(f => [f.id, shamYearOf(f.id)]));
+    const SY = new Map([...fams, ...pairFams].map(f => [f.id, shamYearOf(f.id)]));
     const rows = vars.map((v, k) => { const A = acc.get(k), sy = SY.get(v.fam).out;
         const adj = A.chand2.filter(e => sy.has(e.y)).map(e => ({ ...e, x: e.gx - sy.get(e.y) }));
         return { v, A, Jc: judge(A.chand2, 1), Jh: judge(A.h10, 1), Ja: judge(adj, -1) }; });
@@ -200,6 +212,23 @@ async function main() {
                        n: C.Jc.n, sig: C.A.sig, blk: C.A.blk, c: C.Jc, h10: C.Jh, adj: C.Ja, shamGross: SY.get(f.id).all == null ? null : +SY.get(f.id).all.toFixed(3), q: +C.q.toPrecision(3), qNeg: +C.qNeg.toPrecision(3), gates: g6, gatesNeg: g6n, plateau: plat, plateauNeg: platN,
                        sham: sh.map(j => ({ n: j.n, x: j.x })), shamBeat, shamWorse, grid });
         console.log(`${verdict === 'ok' ? '✅' : verdict === 'bad' ? '⛔' : '➖'} ${f.name}:${C.Jc.n} 筆 ・吊燈 ${C.Jc.x}% ・固定 10 天 ${C.Jh.x}% ・比隨便一天 ${C.Ja.x}% ・q ${C.q.toPrecision(2)} ・六關 ${g6.filter(Boolean).length}/6 ・反向六關 ${g6n.filter(Boolean).length}/6 ・高原 ${plat}/${platN} ・安慰劑 ${sh.map(j => j.x).join(' / ')}`);
+    }
+    if (PAIRS) {
+        out.pairs = [];
+        for (const P of pairFams) {
+            const R = rows.filter(r => r.v.fam === P.id), C = R.find(r => r.v.center);
+            const grid = R.map(r => ({ p: r.v.p, center: r.v.center, n: r.Jc.n, x: r.Jc.x, x10: r.Jh.x, adj: r.Ja.x, q: +r.q.toPrecision(3) }));
+            const g6 = gates(C.Jc, C.q, 1), g6n = gates(C.Ja, C.qNeg, -1);
+            const sh = C.A.sham.map(a => judge(a, 1)), shamBeat = sh.every(j => j.n && C.Jc.x > j.x), shamWorse = sh.every(j => j.n && C.Jc.x < j.x);
+            const plat = plateau(grid, 'x'), platN = plateau(grid, 'adj');
+            const verdict = C.Jc.n >= 200 && g6.every(Boolean) && plat && shamBeat ? 'ok' : (C.Jc.n >= 200 && C.Ja.x < 0 && g6n.every(Boolean) && platN && shamWorse ? 'bad' : 'none');
+            const singles = P.pair = [P.A.id, P.B.id];
+            // ⭐ 比單獨那兩支好嗎?(同一把尺:吊燈出場、扣成本後比同一天股票)
+            const sx = id => { const f = out.fam.find(x => x.id === id); return f ? f.c.x : null; };
+            out.pairs.push({ id: P.id, name: P.name, pair: singles, verdict, n: C.Jc.n, x: C.Jc.x, x10: C.Jh.x, adj: C.Ja.x, win: C.Jc.win, yPos: C.Jc.yPos, yN: C.Jc.yN, h1: C.Jc.h1, h2: C.Jc.h2,
+                             q: +C.q.toPrecision(3), plateau: plat, shamBeat, shamWorse, g6: g6.filter(Boolean).length, better: [sx(P.A.id), sx(P.B.id)].every(v => v != null && C.Jc.x > v) });
+            console.log(`${verdict === 'ok' ? '✅' : verdict === 'bad' ? '⛔' : '➖'} 🔁 ${P.name}:${C.Jc.n} 筆 ・吊燈 ${C.Jc.x}% ・比隨便一天 ${C.Ja.x}% ・q ${C.q.toPrecision(2)} ・六關 ${g6.filter(Boolean).length}/6 ・高原 ${plat ? '✅' : '⛔'} ・安慰劑 ${shamBeat ? '贏' : shamWorse ? '輸' : '混'}`);
+        }
     }
     const fo = process.argv[2]; if (fo) fs.writeFileSync(fo, JSON.stringify(out, null, 1));
 }
@@ -239,6 +268,14 @@ function selftest() {
     ok('⑥ 高原:鄰居同號且 ≥ 一半 → 過;鄰居翻負 → 不過', plateau([{ x: 0.8 }, { x: 1, center: true }, { x: 0.6 }]) && !plateau([{ x: -0.2 }, { x: 1, center: true }, { x: 0.9 }]));
     const si = shamIdx([50, 120, 250], b, 7), si2 = shamIdx([50, 120, 250], b, 7);
     ok('⑥ 安慰劑:固定種子同一份、同一年、次數一樣', JSON.stringify(si) === JSON.stringify(si2) && si.length === 3 && si.every((i, k) => b[i].date.slice(0, 4) === b[[50, 120, 250][k]].date.slice(0, 4)));
+    // ⑦ 🔁 兩兩一起成立:條件 = 兩支接在一起、A 的每組參數都有、B 固定中心值;決定性對照:兩個都成立的訊號 ⊆ 單獨任一支
+    const fa = S.families.find(f => f.id === 'gap_up'), fb = S.families.find(f => f.id === 'kd_gold');
+    const pv = pairVars(fa, fb), cA = expand(fa).find(x => x.center), cB = expand(fb).find(x => x.center), pc = pv.find(x => x.center);
+    ok('⑦ 兩兩:A 的參數全部都有、B 用中心值、條件接在一起', pv.length === expand(fa).length && JSON.stringify(pc.st.all) === JSON.stringify([...cA.st.all, ...cB.st.all]) && pc.fam === 'gap_up+kd_gold', JSON.stringify(pc.st));
+    const bb = mk(i => 1 + Math.sin(i / 3) * 0.03), serB = QCORE.series(bb, { idx: new Map(), rev: [] });
+    const sP = QCORE.signals(pc.st, bb, null, serB), sA = QCORE.signals(cA.st, bb, null, serB), sB = QCORE.signals(cB.st, bb, null, serB);
+    const allA = new Set(QCORE.signals({ ...cA.st, gap: 1 }, bb, null, serB)), allB = new Set(QCORE.signals({ ...cB.st, gap: 1 }, bb, null, serB));
+    ok('⑦ 決定性對照:兩個都成立的那幾天 ⊆ 單獨每一支成立的日子', sP.every(i => allA.has(i) && allB.has(i)) && sP.length <= Math.min(sA.length, sB.length) + 1, JSON.stringify([sP.length, sA.length, sB.length]));
     console.log(fails.length ? `❌ ${fails.length} 條失敗` : '✅ SELFTEST_PASS');
     process.exit(fails.length ? 1 : 0);
 }

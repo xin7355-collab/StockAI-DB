@@ -118,7 +118,7 @@ export const FILLS = ['open', 'nextclose', 'sameclose', 'open2'];   // 🚧 V79.
 export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: true, trend: true, hyst: 2, pick: 'mom', core: 0, maExit: 0, tp: 0, skip: 0, riskadj: false, fill: 'open', noAtt: 0, noDisp: 0, sellDisp: false,
     dispNow: false, dispOracle: 0, attSell: 0, attWin: 5, rebuy: 'none', rebuyDrop: 0.15, blockDays: 10, shamSell: 0,
     indCap: 0, wRank: null, posMin: 85, posRaw: true, volUp: 0, finAcc: false, finAccMin: 0, finYoyMin: 0, finUnk: 'drop', fsync: 0, rankUp: false, shamKeep: 0,
-    capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '', phase: 0, join: '', limitRepl: false, limitRetry: '', pickFrom: 0,
+    capital: 0, minFee: 20, add: 0, glide: 0, glideCore: 0.5, parkMin: 5000, luExit: '', phase: 0, join: '', limitRepl: false, limitRetry: '', pickFrom: 0,
     dip: 0, hold: 5, dipSort: 'drop', dipMin: 0, bearCore: null, bearN: 0, bearTop: 0, pool: '', themeK: 3, themeL: 20, themeSham: false,
     dRank: 0, stop: 0, trail: 0, shamOut: 0, refill: false, accAvoid: false, accSham: 0,
     rkLu: '', rkLd: '', rkTh: 0, rkSham: 0, parkGate: '', parkGateP: 0,
@@ -186,6 +186,7 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
 //   capital = 真實本金(元):股票一律整數股(零股),每筆手續費 max(minFee, 金額 × 0.1425%)(⛔ 以前是分數股、沒有最低手續費 = 對小錢太樂觀)
 //   add     = 每個月第一個交易日再投入幾元(先放現金,下一次換倉日一起處理)
 //   glide   = 帳戶市值到「投入總額 × glide」之後,之後新買的部位只用一半錢(另一半停 0050)= 「先衝再穩」
+//   glideCore = V79.9.1 換成幾成放 0050(預設 0.5 = 原樣;0.3 = 三成),手上的也照這個比例先賣
 //   parkMin = 小資金時閒錢超過多少元才停 0050(⛔ 幾百元也去買 0050 會被最低手續費吃掉)
 // V77.8.9 自動下單接線前的兩個問題:fill = 'open'(隔天開盤成交,回測原設定)| 'nextclose'(隔天收盤成交 = 自動下單尾盤跑、名單是前一晚算的)
 //   noAtt = N:決策日之前 N 個交易日內有「注意股」公告就不買 ・noDisp = N:之前 N 個交易日內有「處置」公告就不買 ・sellDisp:持股被公告處置 → 下一個成交點賣
@@ -478,7 +479,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             for (const sym of pending.sell) { const p = pos.get(sym); if (!p) continue; const o = ipx(p.S, i, 'S', PX(p.S, i)); if (o > 0) sell(p, o, i, 'pend'); }
             if (pending.trim) for (const p of pos.values()) {                              // 🌱 先衝再穩:翻倍那天之後的第一個成交點,每一檔賣掉一半
                 const o = PX(p.S, i); if (!(o > 0)) continue;
-                const shS = CAP ? Math.floor(p.sh / 2) : p.sh / 2; if (!(shS > 0)) continue;
+                const gf = P.glideCore ?? 0.5, shS = CAP ? Math.floor(p.sh * gf) : p.sh * gf; if (!(shS > 0)) continue;   // 🌱 V79.9.1 glideCore:換成幾成放 0050(預設 0.5 = 原樣)
                 const amt = shS * o; cash += CAP ? amt - feeOf(amt) - amt * TAX : amt * (1 - FEE - TAX); turnover += amt; p.paid *= (p.sh - shS) / p.sh; p.sh -= shS;
             }
             const eqNow = value(ti);
@@ -613,7 +614,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         }
         if (!DIP && ((i - s0 + P.phase) % P.R === 0 || (P.join === 'now' && i === s0)) && i + 1 < n) {
             let trimNow = false;
-            if (P.glide > 0 && glideAt === null && value(i) >= P.glide * contributed) { glideAt = i; P.core = 0.5; trimNow = pos.size > 0; }   // 🌱 先衝再穩:之後只用一半錢,手上的也砍一半
+            if (P.glide > 0 && glideAt === null && value(i) >= P.glide * contributed) { glideAt = i; P.core = P.glideCore ?? 0.5; trimNow = pos.size > 0; }   // 🌱 先衝再穩:之後只用一半錢,手上的也砍一半
             const { ranked, ok } = rankAt(i);
             const keepSet = new Set(ranked.slice(0, P.pick === 'all' ? ranked.length : P.N * P.hyst).map(S => S.sym));
             const sellL = [...pos.keys()].filter(s => !keepSet.has(s));
@@ -1011,6 +1012,10 @@ function selftest() {
     const g1 = simulate({ cal, stocks: [U2], etf: { tr: new Float64Array(n).fill(1) }, bear: new Uint8Array(n) }, 100, { U: 1, N: 1, R: 5, L: 20, chand: 0, park: true, trend: false, pick: 'all', glide: 1.5, hyst: 0 });
     const g0 = simulate({ cal, stocks: [U2], etf: { tr: new Float64Array(n).fill(1) }, bear: new Uint8Array(n) }, 100, { U: 1, N: 1, R: 5, L: 20, chand: 0, park: true, trend: false, pick: 'all', hyst: 0 });
     t(g1.glideAt !== null && g0.glideAt === null && g1.eq.at(-1) < g0.eq.at(-1), '⑲ glide 1.5:市值到 1.5 倍之後手上的砍一半、之後只用一半錢(持續上漲的股票 → 最後比全攻少賺)');
+    // ⑲b V79.9.1 glideCore:預設 0.5 == 不設(逐位相同)、換成三成放 0050 → 留在股票的比較多 → 介於全攻與五成之間
+    const g5 = simulate({ cal, stocks: [U2], etf: { tr: new Float64Array(n).fill(1) }, bear: new Uint8Array(n) }, 100, { U: 1, N: 1, R: 5, L: 20, chand: 0, park: true, trend: false, pick: 'all', glide: 1.5, glideCore: 0.5, hyst: 0 });
+    const g3 = simulate({ cal, stocks: [U2], etf: { tr: new Float64Array(n).fill(1) }, bear: new Uint8Array(n) }, 100, { U: 1, N: 1, R: 5, L: 20, chand: 0, park: true, trend: false, pick: 'all', glide: 1.5, glideCore: 0.3, hyst: 0 });
+    t(g5.eq.every((v, k) => v === g1.eq[k]) && g3.eq.at(-1) > g1.eq.at(-1) && g3.eq.at(-1) < g0.eq.at(-1), `⑲b glideCore 0.5 == 不設(逐位相同)、0.3 介於全攻與五成之間(${g3.eq.at(-1).toFixed(3)})`);
     // ⑳~㉖ V78.0.5 處置 / 候選濾網
     const base0 = { U: 1, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: false, pick: 'all' };
     const Dn = mk('9996', () => 100); Dn.O[151] = 80; for (let k = 151; k < n; k++) { Dn.C[k] = 80; Dn.O[k] = 80; }

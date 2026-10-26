@@ -5,6 +5,7 @@
  *   ③ 決定性對照:改 QLAB 的數字 / 判定 → 畫面跟著變 ・④ 表頭排序(同一個再按一次反向)
  *   ⑤ 判定用 ✅⛔➖、⛔ 紅綠 ・⑥ 點一列看細節:八道關卡、參數格 == grid、逐年長條 == 年數
  *   ⑦ 390px 不橫捲、細節不被切 ・⑧ 嵌入的 QLAB:策略數 == qlab_strategies.json、16 年、含已下市、≤ 80 KB
+ *   ⑨ 🔁 V79.9.1 兩兩一起成立表(列數 / 排序反向 / 樣本少)・⑩ 跟整套策略比(讀看板、過關那一組的整套資金結果)
  *   注入:INJECT=nosort(排序沒作用)/ INJECT=redv(判定上紅綠)
  */
 import fs from 'fs';
@@ -63,6 +64,30 @@ try {
         o.detRight = d ? d.querySelector('.qlin').getBoundingClientRect().right : 9999;
         window.scrollTo(80, 0); o.sx = window.scrollX;
         PRO.qlOpen(fx.id); o.closed = !document.querySelector('[data-qldet]');
+        // ⑨ 🔁 V79.9.1 兩兩一起成立:列數 == QLAB.pairs、同一顆表頭再按一次反向、少於 200 筆標「樣本少」
+        const P = PRO.QLAB.pairs || [], prow = () => [...document.querySelectorAll('[data-qlprow]')].map(r => r.dataset.qlprow);
+        PRO._qlpSort = null; PRO.renderQlab(); o.pn = prow().length; o.pnq = P.length;
+        // 沒有數字的(0 筆)不管哪個方向都在最後 → 只比有數字的那幾列
+        const hasX = new Set(P.filter(x => x.x != null).map(x => x.id)), nx = P.length - hasX.size;
+        const pa = prow(); PRO.qlpSort('x'); const pb = prow(), fa = pa.filter(i => hasX.has(i)), fb = pb.filter(i => hasX.has(i));
+        o.pRev = fa.length > 2 && JSON.stringify(fa) === JSON.stringify(fb.slice().reverse()) && JSON.stringify(fa) !== JSON.stringify(fb)
+          && pa.slice(pa.length - nx).every(i => !hasX.has(i)) && pb.slice(pb.length - nx).every(i => !hasX.has(i));
+        const small = P.find(x => x.n < 200), big = P.find(x => x.n >= 200);
+        const cell = id => { const r = document.querySelector(`[data-qlprow="${id}"] [data-qlpn]`); return r ? r.innerText : ''; };
+        o.pSmall = small ? /樣本少/.test(cell(small.id)) : true; o.pBig = big ? !/樣本少/.test(cell(big.id)) : false;
+        // ⑩ 🧭 跟整套策略比:讀看板(⛔ 重算)+ 過關的那一組有整套資金結果就多一列
+        const B = PRO._PROFIT_BOARD, keepB = JSON.stringify(B), ref = k => { const r = document.querySelector(`[data-qlref="${k}"]`); return r ? r.innerText : ''; };
+        PRO.renderQlab(); o.refLead = ref('lead'); o.leadFin = Math.round(B.wins.ai.rows.find(r => r.k === 'lead').fin / 1e4).toLocaleString();
+        B.wins.ai.rows.find(r => r.k === 'lead').fin = 12345e4; PRO.renderQlab(); o.refLead2 = ref('lead');
+        PRO._PROFIT_BOARD = JSON.parse(keepB);
+        const keepQ = JSON.stringify(PRO.QLAB), okx = [...(PRO.QLAB.fam || []), ...(PRO.QLAB.pairs || [])].find(x => x.verdict === 'ok');
+        o.hasOk = !!okx;
+        if (okx) {
+            okx.port = { to: '2026-09-24', paths: 17, ai: { fin: 3333e4, mdd: -11.1, worst: 1 }, long: { fin: 4444e4, mdd: -22.2, worst: 1 } }; PRO.renderQlab();
+            o.portRow = ref('port:' + okx.id); o.portSay = (document.querySelector('[data-qlref-box]') || {}).innerText || '';
+            delete okx.port; PRO.renderQlab(); o.noPort = !document.querySelector('[data-qlref^="port:"]');
+        }
+        PRO.QLAB = JSON.parse(keepQ); PRO.renderQlab();
         return o;
     });
     ok('① 研究那一類進得去、按鈕亮、舊名 quant 也進得去', R.shown && R.btnOn && R.grp === 'res' && R.alias, JSON.stringify([R.shown, R.btnOn, R.grp, R.alias]));
@@ -75,6 +100,11 @@ try {
     ok('⑥ 細節:八道關卡、參數格 == grid、逐年長條 == 年數', R.det && R.gates === 8 && R.heat === R.grid && R.bars === R.yrs && R.yrs >= 10, JSON.stringify([R.gates, R.heat, R.grid, R.bars, R.yrs]));
     ok('⑥ 同一列再點一次收起來', R.closed);
     ok('⑦ 390px:整頁不橫捲、細節右邊界在畫面內', R.sx <= 2 && R.detRight <= 392, JSON.stringify([R.sx, R.detRight]));
+    ok('⑨ 兩兩一起成立:列數 == QLAB.pairs(28 組)', R.pn === R.pnq && R.pnq >= 28, JSON.stringify([R.pn, R.pnq]));
+    ok('⑨ 兩兩表頭排序:同一顆再按一次反向、沒有數字的兩個方向都在最後', R.pRev);
+    ok('⑨ 少於 200 筆標「樣本少」、夠的⛔ 標', R.pSmall && R.pBig, JSON.stringify([R.pSmall, R.pBig]));
+    ok('⑩ 跟整套策略比:👑 那一列 == 看板(決定性對照:改看板 → 跟著變)', R.refLead.includes(R.leadFin + ' 萬') && R.refLead2.includes('12,345 萬'), JSON.stringify([R.refLead, R.refLead2]));
+    ok('⑩ 過關那一組有整套資金結果 → 多一列 + 一句話(拿掉 → 那一列不見)', !R.hasOk || (/3,333 萬/.test(R.portRow) && /4,444 萬/.test(R.portRow) && /-11\.1%/.test(R.portRow) && /整套資金跑下來/.test(R.portSay) && R.noPort), JSON.stringify([R.hasOk, R.portRow, R.noPort]));
 } finally { await browser.close(); try { fs.unlinkSync(TMP); } catch (_) {} }
 // ⑧ 嵌入的 QLAB
 const m = ORIG.match(/\n  QLAB: (\{.*\}),\n/), S = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/qlab_strategies.json'), 'utf8'));

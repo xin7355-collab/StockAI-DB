@@ -51,7 +51,24 @@ if (f && f !== '--core') {
                  gates: x.gates, gatesNeg: x.gatesNeg, plateau: x.plateau, plateauNeg: x.plateauNeg, sham: x.sham, shamBeat: x.shamBeat, shamWorse: x.shamWorse,
                  grid: x.grid.map(g => ({ p: g.p, center: !!g.center, n: g.n, x: r2(g.x), x10: r2(g.x10), adj: r2(g.adj), q: g.q })) };
     });
-    const out = { built: J.built, src: J.src, syms: J.syms, win: J.win, revSyms: J.revSyms, dispo: J.dispo, cost: J.cost, exits: J.exits, tests: J.tests, fam };
+    // 🔁 V79.9.1 PAIRS=1 跑出來的兩兩一起成立(瘦身:只留表格要的欄位;⛔ 不放進 fam —— 散戶 App 的 _QLAB_SIGS 只讀 fam)
+    const pairs = Array.isArray(J.pairs) ? J.pairs.map(x => {
+        if (!['ok', 'bad', 'none'].includes(x.verdict) || !Array.isArray(x.pair) || x.pair.length !== 2 || x.pair.some(id => !fam.some(f => f.id === id))) die(`兩兩 ${x.id} 不完整`);
+        return { id: x.id, name: x.name, pair: x.pair, verdict: x.verdict, n: x.n, x: r2(x.x), x10: r2(x.x10), adj: r2(x.adj), win: x.win, yPos: x.yPos, yN: x.yN, h1: r2(x.h1), h2: r2(x.h2), q: x.q, plateau: x.plateau, shamBeat: x.shamBeat, shamWorse: x.shamWorse, g6: x.g6, better: x.better };
+    }) : null;
+    // 💰 V79.9.1 PORT=<json>:過關那幾支 / 組用整套資金跑過(qlab_ext → portfolio_backtest,17 起點 × 兩段)→ 貼到那一筆的 port
+    //   格式 {id: {to, paths, ai:{fin,mdd,worst}, long:{fin,mdd,worst}}};⛔ 只收判 ✅ 的那幾筆(沒過關的⛔ 有資格跟整套策略比)
+    if (process.env.PORT) {
+        const P = JSON.parse(fs.readFileSync(process.env.PORT, 'utf8'));
+        for (const [id, v] of Object.entries(P)) {
+            const t = [...fam, ...(pairs || [])].find(x => x.id === id);
+            if (!t) die(`PORT 的 ${id} 不在結果裡`);
+            if (t.verdict !== 'ok') die(`PORT 的 ${id} 沒有過關(${t.verdict}),⛔ 拿去跟整套策略比`);
+            if (!v.ai || !v.long || ![v.ai.fin, v.ai.mdd, v.long.fin, v.long.mdd].every(Number.isFinite) || !(v.paths >= 17) || !v.to) die(`PORT 的 ${id} 欄位不完整`);
+            t.port = { to: v.to, paths: v.paths, ai: { fin: v.ai.fin, mdd: v.ai.mdd, worst: v.ai.worst }, long: { fin: v.long.fin, mdd: v.long.mdd, worst: v.long.worst } };
+        }
+    }
+    const out = { built: J.built, src: J.src, syms: J.syms, win: J.win, revSyms: J.revSyms, dispo: J.dispo, cost: J.cost, exits: J.exits, tests: J.tests, fam, ...(pairs ? { pairs } : {}) };
     const line = `  QLAB: ${JSON.stringify(out)},`;
     if (line.length > 80000) die(`QLAB 太大:${line.length} 字(上限 80,000)`);
     const re = /\n  QLAB: \{.*\},\n/;

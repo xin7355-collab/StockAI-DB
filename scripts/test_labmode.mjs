@@ -62,14 +62,14 @@ try {
         app.settings.stratUnlock = true; app.settings.deckShow = null; app._hdrProSync(); r.unlNoOn = d();
         const box = document.createElement('div'); box.innerHTML = app._advBoxHtml(''); r.listed = !!box.querySelector('[data-advk="pro"]');
         app.toggleDeckShow('pro', true); r.on = d();
-        const rr = el.getBoundingClientRect(), rb = el.nextElementSibling.getBoundingClientRect(); r.geo = [Math.round(rr.left), Math.round(rr.right), Math.round(rb.left), Math.round(rr.top), Math.round(rb.top)]; r.leftOfBot = rr.right <= rb.left + 1 && Math.abs(rr.top + rr.height / 2 - (rb.top + rb.height / 2)) < 8 && /🤖/.test(el.nextElementSibling.textContent);
+        const bot = el.previousElementSibling, rr = el.getBoundingClientRect(), rb = bot.getBoundingClientRect(); r.geo = [Math.round(rb.left), Math.round(rb.right), Math.round(rr.left), Math.round(rr.top), Math.round(rb.top)]; r.rightOfBot = rb.right <= rr.left + 1 && Math.abs(rr.top + rr.height / 2 - (rb.top + rb.height / 2)) < 8 && /🤖/.test(bot.textContent);   // 🔁 V79.9.1 使用者:產搬到 🤖 右邊
         app.settings.stratUnlock = false; app._hdrProSync(); r.relock = d();
         const box2 = document.createElement('div'); box2.innerHTML = app._advBoxHtml(''); r.listedLocked = !!box2.querySelector('[data-advk="pro"]');
         return r;
     });
     ok('④ 🏭 預設看不到「產」', pv.def === 'none' && pv.defOn === false, JSON.stringify(pv));
     ok('④ 🏭 解鎖但沒打開 → 還是看不到', pv.unlNoOn === 'none' && pv.listed, JSON.stringify(pv));
-    ok('④ 🏭 解鎖 + 打開「🏭 產業 pro」→ 左上角 🤖 左邊出現「產」', pv.on === 'flex' && pv.leftOfBot, JSON.stringify(pv));
+    ok('④ 🏭 解鎖 + 打開「🏭 產業 pro」→ 左上角 🤖 右邊出現「產」(V79.9.1)', pv.on === 'flex' && pv.rightOfBot, JSON.stringify(pv));
     ok('④ 🏭 開著再上鎖 → 又看不到(決定性對照)', pv.relock === 'none', JSON.stringify(pv));
 } finally { await browser.close(); }
 ok('pageerror 0', errs.length === 0, errs.slice(0, 3).join(' | '));
