@@ -5,7 +5,7 @@
  *   ② 指標 == index.html masterWorker(真的把那段 worker 程式拿來跑):ma20 / ma60 / k / d / rsi5 / rsi10 / ema20 逐根相同
  *   ③ 出場 `chand{K}`(lib_exitsim)== index.html `_exitLevelAt(…, 'atr2')`(進場那天的 ATR):每一天的出場線逐日相同、
  *      而且跟「每天重算 ATR」的 `atr2`(動態版)不一樣(決定性對照)
- *   ④ pro.html 有 QCORE 區塊時,跟 lib 那段逐字相同(⛔ 抄一半)
+ *   ④ pro.html / index.html 的 QCORE 區塊跟 lib 那段逐字相同(⛔ 抄一半)
  *   注入:INJECT=kd(lib 的 KD 起始值改 0)/ INJECT=look(hhc 含今天)/ INJECT=chand(chand 改用當天 ATR)
  */
 import fs from 'fs';
@@ -72,8 +72,9 @@ try {
     // ④ pro.html 的 QCORE 區塊(有的話)逐字相同
     const pro = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
     const blk = s => { const i = s.indexOf('// ==QCORE BEGIN=='), j = s.indexOf('// ==QCORE END=='); return i >= 0 && j > i ? s.slice(i, j) : null; };
-    const pb = blk(pro);
-    ok('④ pro.html 的 QCORE 區塊 == lib_quant(還沒放進 pro 時印出來)', pb == null ? (console.log('   ↳ pro.html 還沒有 QCORE(V79.9.3 沙盒才放)'), true) : pb === blk(libSrc0), pb == null ? '' : 'pro 跟 lib 不一樣 → 跑 embed_quant_lab.mjs');
+    const pb = blk(pro), ib = blk(idx);
+    ok('④ pro.html 的 QCORE 區塊 == lib_quant(逐字)', pb != null && pb === blk(libSrc0), pb == null ? 'pro.html 沒有 QCORE' : 'pro 跟 lib 不一樣 → 跑 embed_quant_lab.mjs');
+    ok('④ index.html 的 QCORE 區塊 == lib_quant(逐字;散戶 App 追高買點用)', ib != null && ib === blk(libSrc0), ib == null ? 'index.html 沒有 QCORE' : 'index 跟 lib 不一樣 → 跑 embed_quant_lab.mjs --core');
 } finally { try { fs.unlinkSync(tmpLib); fs.unlinkSync(tmpEx); } catch (_) {} }
 if (fails.length) { console.log(`❌ QCORE_FAIL(${fails.length})`); process.exit(1); }
 console.log('✅ QCORE_TEST_PASS');

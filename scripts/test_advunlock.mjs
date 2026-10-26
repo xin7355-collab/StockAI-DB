@@ -246,6 +246,9 @@ const T = await page.evaluate(() => {
         for (let j = 0; j < 6; j++) { const c = j === 5 ? lastPx : px[j], r = k[n - 6 + j]; Object.assign(r, { open: c, high: c * 1.01, low: c * 0.99, close: c }); } });
       R.mc = ids(run({ bars: new Map([['2454', mc(70)]]), fav: ['2454'] }));
       R.mcNo = ids(run({ bars: new Map([['2454', mc(85)]]), fav: ['2454'] }));
+      // 📐 V79.8.9 常見的追高買點(量化實驗室 ⛔ 比亂買還差):最後一根跳空 3.5% 收紅 → qlab_trap;同一份改跳空 2.5% → 沒有(門檻 3%)
+      const qg = g => mkK(150, '2026-10-16', k => { const r = k[k.length - 1], p = k[k.length - 2].close, op = +(p * (1 + g)).toFixed(2), c = +(op * 1.01).toFixed(2); Object.assign(r, { open: op, high: c, low: op, close: c }); });
+      R.ql = ids(run({ bars: new Map([['2454', qg(0.035)]]), fav: ['2454'] })); R.qlNo = ids(run({ bars: new Map([['2454', qg(0.025)]]), fav: ['2454'] }));
       R.mcState = (() => { const st = app._marginCallState(mc(70), '2454'); return st ? `${st.level}:${Math.round(st.callLine)}:${Math.round(st.mgChg)}` : 'null'; })();
       const rb = mkK(80, '2026-10-16', k => { k[k.length - 1].close = 103; });
       R.rb = ids(run({ bars: new Map([['3008', rb]]), sold: new Map([['3008', { date: '2026-10-14', px: 101 }]]) }));
@@ -297,6 +300,7 @@ ok('③q 券資比衝到自己歷史最高 10% → short_hi;一樣 → 沒有', 
 ok('③q2 🎭 融資 10 天增 12% + 三大法人 10 天賣超 4% 佔量(最後一根沒公布 → 從前一根算)→ retail_catch;融資只增 5% / 法人只賣 2% → 沒有', has(T.rc, 'retail_catch') && !has(T.rcNoM, 'retail_catch') && !has(T.rcNoI, 'retail_catch'), JSON.stringify([T.rc, T.rcNoM, T.rcNoI]));
 ok('③q4 🐛 最後一根沒有法人欄位(盤中補上的那根)→ 從前一根算:retail_catch / fi_streak5 照樣成立;外資只連買 4 天 → 沒有(決定性對照)',
    has(T.rcMiss, 'retail_catch') && has(T.fiMiss, 'fi_streak5') && !has(T.fiMissNo, 'fi_streak5'), JSON.stringify([T.rcMiss, T.fiMiss, T.fiMissNo]));
+ok('③q5 📐 跳空 3.5% 收紅(量化實驗室比亂買還差的常見買點)→ qlab_trap;同一份改跳空 2.5% → 沒有', has(T.ql, 'qlab_trap') && !has(T.qlNo, 'qlab_trap'), JSON.stringify([T.ql, T.qlNo]));
 ok('③q3 💥 收盤跌破推估追繳線 + 融資 5 天減 13% → margin_call(追繳線讀 _marginCallState);跌到 85 還沒破線 → 沒有', has(T.mc, 'margin_call') && !has(T.mcNo, 'margin_call') && /^broken:/.test(T.mcState), JSON.stringify([T.mc, T.mcNo, T.mcState]));
 ok('③r 賣掉 2 天後收盤站回賣價 → rebuy;沒站回 / 賣掉太久 → 沒有;只賣掉的那檔⛔ 判別的條件', has(T.rb, 'rebuy') && !has(T.rbNo, 'rebuy') && !has(T.rbOld, 'rebuy') && !T.rbOnly.length, JSON.stringify([T.rb, T.rbNo, T.rbOld, T.rbOnly]));
 ok('③s 大盤剛脫離空頭 → bull_on;一路跌 → 沒有', has(T.bull, 'bull_on') && !has(T.bullNo, 'bull_on'), JSON.stringify([T.bull, T.bullNo]));

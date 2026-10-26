@@ -3,7 +3,7 @@
  * 🎲 V79.8.7 把 col_rate_base.mjs 的結果寫進 index.html 的 `_COL_BASE`(一行;⛔ 手改)
  *   跑法:node scripts/embed_col_base.mjs colbase.json
  *   交叉驗證(對不上 exit 1,⛔ 寫半套進去):
- *     ① `_COL_OCC` 每一個條件在 stk 都有、n > 0、p / base 是數字
+ *     ① `_COL_OCC` + 量化實驗室 `ql_` 每一個條件(`_colOccIds`)在 stk 都有、n > 0、p / base 是數字
  *     ② mkt 四條(bear_on / bull_on / crash20 / idx_drop3)都有
  *     ③ 寫完重新抽出來 == 寫進去的那份(筆數 / n 逐一比)
  */
@@ -19,12 +19,13 @@ const f = process.argv[2]; if (!f) die('要給 col_rate_base 的輸出檔');
 const J = JSON.parse(fs.readFileSync(f, 'utf8'));
 let src = fs.readFileSync(IDX, 'utf8');
 const A = buildApp(src);
-const ids = Object.keys(A._COL_OCC);
+const ids = typeof A._colOccIds === 'function' ? A._colOccIds() : Object.keys(A._COL_OCC);   // 📐 V79.8.9 含量化實驗室的 ql_ 條件
 const stk = {}, mkt = {};
 for (const id of ids) {
-    const x = (J.stk || {})[id];
+    const x = (J.stk || {})[id], pool = !!(A._colOccDef(id) || {}).pool;
     if (!x || !(x.n > 0) || !Number.isFinite(x.p) || !Number.isFinite(x.base)) die(`① stk.${id} 沒有或不完整:${JSON.stringify(x)}`);
-    stk[id] = { n: x.n, k: x.k, p: x.p, base: x.base, own: x.own, from: x.from };
+    if (pool && !(x.pool && Number.isFinite(x.sy))) die(`① stk.${id} 是「比同一天所有股票」那種,要有 sy(同一檔同一年隨便一天):${JSON.stringify(x)}`);
+    stk[id] = pool ? { n: x.n, k: x.k, p: x.p, sy: x.sy, base: x.base, from: x.from, pool: 1 } : { n: x.n, k: x.k, p: x.p, base: x.base, own: x.own, from: x.from };
 }
 for (const id of ['bear_on', 'bull_on', 'crash20', 'idx_drop3']) {
     const x = (J.mkt || {})[id];

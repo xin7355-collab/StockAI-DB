@@ -63,7 +63,7 @@ const real = mk((i, p) => { const r = (rnd() - 0.49) * 0.12; const c = +(p * (1 
     .map((r, i) => ({ ...r, margin_balance: 2000 + Math.round(800 * Math.sin(i / 17)), short_balance: 100 + Math.round(90 * Math.sin(i / 11)), trust_net: Math.round((rnd() - 0.5) * 900), dealer_net: Math.round((rnd() - 0.5) * 400) }));
 const junk = (b, i) => b.slice(0, i + 1).concat(Array.from({ length: 30 }, (_, j) => ({ ...b[i], date: D[Math.min(D.length - 1, i + 1 + j)], open: 999, high: 999, low: 1, close: 1 + j, foreign_net: 99999, margin_balance: 1, short_balance: 99999 })));
 let bad = [], fired = 0;
-for (const id of Object.keys(A._COL_OCC)) for (let i = 30; i < real.length - 40; i += 3) {
+for (const id of A._colOccIds()) for (let i = 30; i < real.length - 40; i += 3) {
     const a = A._colEvAt(id, real, i, '9999'), z = A._colEvAt(id, junk(real, i), i, '9999');
     if (!!a !== !!z) bad.push(`${id}@${i}`); if (a) fired++;
 }
@@ -139,13 +139,14 @@ ok('⑥ 實跑:持有的這檔今天鎖漲停 → 決策台那一格 data-occ="s
 ok('⑥ 同一篇 3 檔:每檔一行「這檔」+「一般股票」那段只印一次', W.nS === 3 && W.nG === 1, JSON.stringify([W.nS, W.nG]));
 ok('⑥ 實跑:大盤條件有成立 → 那一行掛 data-occ="mkt"', (W.mktIds || []).length === 0 || W.mkt, JSON.stringify(W.mktIds));
 ok('⑥ 11 個個股條件 + 4 個大盤條件都接上 🎲', nOcc === Object.keys(A._COL_OCC).length && nMocc === 4, JSON.stringify([nOcc, nMocc]));
+ok('⑥ 📐 量化實驗室的追高買點(ql_)也接上 🎲(occ(id, b, sym))', /add\('qlab_trap'[^\n]*occ\(id, b, sym\)/.test(SRC));
 
 // ⑦ 嵌入的 _COL_BASE
 const B = A._COL_BASE;
-ok('⑦ `_COL_BASE` 每個條件都有、n > 0', B.stk && Object.keys(A._COL_OCC).every(id => B.stk[id] && B.stk[id].n > 0), Object.keys(B.stk || {}).join(','));
+ok('⑦ `_COL_BASE` 每個條件都有、n > 0(含量化實驗室的 ql_)', B.stk && A._colOccIds().every(id => B.stk[id] && B.stk[id].n > 0) && A._colOccIds().some(id => /^ql_/.test(id)), Object.keys(B.stk || {}).join(','));
 ok('⑦ 16 年(2010 起)・含已下市', B.win && B.win[0] <= '2011-01-31' && /含已下市/.test(B.src || '') && B.syms >= 2000, JSON.stringify([B.win, B.syms]));
 ok('⑦ 大盤四條都有', ['bear_on', 'bull_on', 'crash20', 'idx_drop3'].every(id => B.mkt && B.mkt[id] && B.mkt[id].n > 0));
-const all = [t1, t3, tm, ...['bull_on', 'crash20', 'idx_drop3'].map(id => A._colMktOccTxt(id)), ...Object.keys(A._COL_OCC).map(id => A._colOccTxt(id, real, '9999', M))].join('\n');
+const all = [t1, t3, tm, ...['bull_on', 'crash20', 'idx_drop3'].map(id => A._colMktOccTxt(id)), ...A._colOccIds().map(id => A._colOccTxt(id, real, '9999', M))].join('\n');
 ok('⑦ ⛔ 研究字樣(lib_retailbad)', !badOf(all).length, badOf(all).join(','));
 ok('⑦ ⛔ 方向 / 買賣字(勝率 / 期望值 / 偏多 / 偏空 / 買進 / 賣出)', !/勝率|期望值|偏多|偏空|看多|看空|買進|賣出|加碼|減碼/.test(all), (all.match(/勝率|期望值|偏多|偏空|看多|看空|買進|賣出|加碼|減碼/) || [])[0]);
 if (fails.length) { console.log(`❌ COLOCC_FAIL(${fails.length})`); process.exit(1); }
