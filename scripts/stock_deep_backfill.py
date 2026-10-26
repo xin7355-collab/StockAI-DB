@@ -59,6 +59,7 @@ MAX_MIN = float(os.getenv('MAX_MIN') or 330)          # 一棒總時間(含等�
 LIMIT = int(os.getenv('LIMIT') or 99999)               # 這一棒每個資料集最多抓幾檔(試跑用)
 CHECK_MIN_N = 50                                       # 對表至少要這麼多檔「兩邊都有」才判
 CHECK_MIN_RATE = 0.90
+CELL_MIN_N = 30                                        # 季報逐科目對表:這個科目至少要這麼多格才判
 TODAY = date.today().isoformat()
 
 DATASETS = {
@@ -415,7 +416,7 @@ def check_margin(pk, rows):
     return n, hit
 
 
-def check_fin(obj, rec, fidx, tmap, miss=None):
+def check_fin(obj, rec, fidx, tmap, miss=None, tally=None):
     """季報跟 fin_deep.json 重疊那幾季逐欄比:同一個上游 → 值要一樣(0.1% 或 0.01 以內)。
     rec = FD.s[代號](季 → 陣列)、fidx = {欄位: FD.f 的位置}、tmap = {科目: 欄位}。回 (可比格數, 一致格數)。
     🔍 `miss` 給 list → 對不上的格子收進去 (季, 科目, 這邊, fin_deep)(2026-10-26 fcf10 對表 89.5% 停下來,log 看不出是哪幾格)"""
@@ -431,9 +432,23 @@ def check_fin(obj, rec, fidx, tmap, miss=None):
             n += 1
             same = abs(v - q[i]) <= max(0.01, abs(q[i]) * 0.001)
             hit += same
+            if tally is not None:
+                c = tally.setdefault(t, [0, 0])
+                c[0] += 1
+                c[1] += same
             if not same and miss is not None:
                 miss.append((d, t, v, q[i]))
     return n, hit
+
+
+def fin_cells_ok(tally):
+    """季報對表改成「逐科目、逐格」判(2026-10-26 fcf10):舊的「逐檔 ≥90% 格對得上」會被上游**重編過的那幾季**擋掉 ——
+    實測 fcf10 一棒 200 檔:同一季同科目重複列 0 組;對不上的 26 格都是 2018 前兩季、差 0.3%~50%、方向一致
+    (營業現金流 18 / 資本支出 7 / 折舊 1)= 那一年改會計準則後重編的數字,⛔ 不是單位或欄位錯。
+    單位錯(×1000)/ 欄位對錯(拿到別的科目)→ 那個科目幾乎每格都錯 → 這裡一定擋得下來。
+    回 (過不過, {科目: 一致比例});每個有 ≥ CELL_MIN_N 格的科目都要 ≥ CHECK_MIN_RATE,而且至少要有一個科目夠格判。"""
+    rates = {t: (h / n) for t, (n, h) in (tally or {}).items() if n >= CELL_MIN_N}
+    return (bool(rates) and all(r >= CHECK_MIN_RATE for r in rates.values())), rates
 
 
 def dup_rows(rows, want):
@@ -579,7 +594,7 @@ def main():
         st.update({'probe_first': first, 'cols': cols})
         wrote_now, empty_now, waits, n_try = [], 0, 0, 0
         chk_n = chk_hit = 0
-        miss_t, miss_ex, dup_n, dup_diff, dup_ex = {}, [], 0, 0, []    # 🔍 對表對不上時印哪幾個科目、有沒有重複列
+        miss_t, miss_ex, dup_n, dup_diff, dup_ex, cells = {}, [], 0, 0, [], {}    # 🔍 對表對不上時印哪幾個科目、有沒有重複列
         fd, fidx = None, {}
         if spec['check'] == 'fin':
             try:
@@ -625,7 +640,7 @@ def main():
                         pass
             elif spec['check'] == 'fin' and fd and not is_empty(obj):
                 mm = []
-                a, b = check_fin(obj, (fd.get('s') or {}).get(s), fidx, want, mm)
+                a, b = check_fin(obj, (fd.get('s') or {}).get(s), fidx, want, mm, cells)
                 for d_, t_, v_, q_ in mm:
                     miss_t[t_] = miss_t.get(t_, 0) + 1
                     if len(miss_ex) < 12:
@@ -662,6 +677,13 @@ def main():
             for x in dup_ex:
                 print(f'      ⧉ {x}', flush=True)
             st.update({'chk_miss': miss_t, 'chk_dup': [dup_n, dup_diff]})
+        cell_ok, cell_rate = fin_cells_ok(cells) if spec['check'] == 'fin' else (None, {})
+        if cell_rate:
+            print('   🧮 逐科目一致比例:' + ' ・'.join(f'{t} {r:.1%}' for t, r in cell_rate.items())
+                  + f' ・判 {"✅ 過(對不上的是少數格 = 上游重編,⛔ 不是單位 / 欄位錯)" if cell_ok else "❌ 有科目整批對不上"}', flush=True)
+            st.update({'chk_cell': {t: round(r, 4) for t, r in cell_rate.items()}})
+        if spec['check'] == 'fin' and chk_n >= CHECK_MIN_N:
+            rate = 1.0 if cell_ok else min(cell_rate.values(), default=0.0)   # 季報改用逐科目判;逐檔那個比例照印
         bad = None
         if n_try > 0 and not wrote_now:
             bad = '處理了但一檔都沒寫(金鑰 / 額度 / 資料集名)'
@@ -755,6 +777,14 @@ def selftest():
     dr2 = lr + [{'date': '2018-03-31', 'type': 'Revenue', 'value': 999, 'origin_name': '營收(重編)'}, {'date': '2018-06-30', 'type': 'EPS', 'value': 1.6}]
     ok('④c 🔍 同一季同科目兩列以上:組數 / 值不同的組數 / 樣本', dup_rows(dr2, want)[:2] == (2, 1) and '2018-03-31 Revenue' in dup_rows(dr2, want)[2][0], dup_rows(dr2, want))
     ok('④c 決定性對照:沒有重複列 → (0, 0)', dup_rows(lr, want)[:2] == (0, 0), dup_rows(lr, want))
+    # ④d 逐科目判:上游重編(少數格差一點)→ 過;單位錯 / 某一個科目整批拿錯 → 擋
+    tl = {}
+    check_fin(lp, rec, fidx, want, None, tl)
+    ok('④d tally 逐科目累計格數 / 一致數', tl == {'Revenue': [2, 2], 'EPS': [2, 2]}, tl)
+    ok('④d 少數格對不上(9 成 3)→ 過', fin_cells_ok({'ocf': [280, 262], 'capex': [280, 273], 'dep': [280, 279]})[0])
+    ok('④d 單位錯:每個科目都 0 → 擋', not fin_cells_ok({'ocf': [280, 0], 'capex': [280, 0]})[0])
+    ok('④d 決定性對照:只有一個科目整批拿錯(其他全對)→ 擋', not fin_cells_ok({'ocf': [280, 280], 'capex': [280, 3]})[0])
+    ok('④d 每個科目都不到 30 格 → 沒得判 = 不過(⛔ 沒對表 ≠ 對過了)', not fin_cells_ok({'ocf': [10, 10]})[0])
     # ⑤ 保護時段
     utc = timezone.utc
     ins, w, nx = protect_state(datetime(2026, 10, 20, 9, 0, tzinfo=utc))       # 週二 09:00 = daily_miner
