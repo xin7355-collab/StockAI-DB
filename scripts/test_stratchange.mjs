@@ -114,7 +114,7 @@ const R = await page.evaluate(() => {
     out.body = (document.getElementById('richHelpModal') || {}).innerText || '';
 
     // ⑨ 按「知道了」才蓋章
-    A._ackStratChange(A._STRAT_CHANGES.find(c => !c.lead || A._isLead()).v);
+    A._ackStratChange(A._STRAT_CHANGES.find(c => !c.moved && (!c.lead || A._isLead())).v);   // 🗑️ V79.9.3 moved 那筆只給被搬家的人
     out.stampAfterAck = localStorage.getItem(K);
     out.hiddenAfterAck = !shown();
 
@@ -125,7 +125,7 @@ const R = await page.evaluate(() => {
     // ⑬ 🔒 V78.0.5 👑 那一筆(lead:true)只給選了 👑 的人:🧬 看過最新出場變更 → ⛔ 不跳;👑 同一個蓋章 → 要跳 👑 那一筆
     const cLead = A._STRAT_CHANGES.find(c => c.lead);
     if (cLead) {
-        const seenV = A._STRAT_CHANGES.find(c => !c.lead && !c.gene).v, _isL = A._isLead;   // 🧬 V78.0.7 gene:true 那筆只給 🧬 的人 → 拿「兩邊都會看到」的最新一筆當蓋章
+        const seenV = A._STRAT_CHANGES.find(c => !c.lead && !c.gene && !c.moved).v, _isL = A._isLead;   // 🧬 V78.0.7 gene:true 那筆只給 🧬 的人 → 拿「兩邊都會看到」的最新一筆當蓋章
         A._isLead = () => false; localStorage.setItem(K, seenV); hide(); A._checkStratChange();
         out.geneLead = { shown: shown(), txt: (document.getElementById('richHelpModal') || {}).innerText || '' };
         A._isLead = () => true; localStorage.setItem(K, seenV); hide(); A._checkStratChange();
@@ -143,15 +143,47 @@ const R = await page.evaluate(() => {
     // ⭐ 把那一筆本身帶回去 —— 斷言跟**資料**比對,⛔ 不在測試裡寫死內容
     //   (寫死的話,下次再換一筆進來就整排假紅 = 斷言釘住實作不是用意)
     const cB = A._STRAT_CHANGES.find(c => !c.lead && c.back);   // ⑪b:出場規則那一類的「換回舊的」
-    const c0 = A._STRAT_CHANGES.find(c => !c.lead);                // ⑫:🧬 使用者實際會看到的那一筆(視窗內容跟它比)
+    const c0 = A._STRAT_CHANGES.find(c => !c.lead && !c.moved);    // ⑫:🧬 使用者實際會看到的那一筆(視窗內容跟它比;moved 那筆只給被搬家的人)
     out.chg = { back: cB.back, from: c0.from, to: c0.to, why: c0.why, cost: c0.cost, you: c0.you };
     return out;
 });
+// 🗑️ V79.9.3 「📈 錢放現金」拿掉:moved 那筆只跳給被搬家的人(geneMoved7993),按「換回舊的」= 回到 'gene'
+const R3 = await page.evaluate(() => {
+    const A = window.app || app, K = 'proTerm_lastSeenStrat', o = {};
+    const _isL = A._isLead; A._isLead = () => false;
+    const s0 = JSON.stringify(A.settings);
+    const mv = A._STRAT_CHANGES.find(c => c.moved);
+    o.mv = mv ? { v: mv.v, back: !!mv.backCash } : null;
+    const gene = A._STRAT_CHANGES.filter(c => !c.lead && !c.moved);
+    const run = flag => {
+        A.settings.geneMoved7993 = flag; localStorage.setItem(K, gene[0].v);
+        document.getElementById('richHelpModal')?.classList.add('hidden');
+        A._checkStratChange();
+        const m = document.getElementById('richHelpModal');
+        return { shown: !!m && !m.classList.contains('hidden'), blocks: [...(m ? m.querySelectorAll('[data-stratchg]') : [])].map(e => e.dataset.stratchg), html: m ? m.innerText : '' };
+    };
+    o.notMoved = run(0);
+    o.moved = run(1);
+    A.settings.strategy = 'park';
+    const btn = [...document.querySelectorAll('#richHelpModal button')].find(b => /換回舊的/.test(b.textContent));
+    try { btn && btn.click(); } catch (_) {}
+    o.afterBack = A.settings.strategy;
+    o.boxGene = (() => { A._renderStratBox(); return [...document.querySelectorAll('#stratBox [data-stratopt]')].map(e => e.dataset.stratopt); })();
+    A.settings.strategy = 'park';
+    o.boxPark = (() => { A._renderStratBox(); return [...document.querySelectorAll('#stratBox [data-stratopt]')].map(e => e.dataset.stratopt); })();
+    delete A.settings.geneMoved7993; Object.assign(A.settings, JSON.parse(s0)); A._isLead = _isL;
+    localStorage.removeItem(K); document.getElementById('richHelpModal')?.classList.add('hidden');
+    return o;
+});
+ok('⑮ 🗑️ V79.9.3 「錢放現金」拿掉那一筆:有 backCash', R3.mv && R3.mv.back, JSON.stringify(R3.mv));
+ok('⑮b 沒被搬家的人 ⛔ 不跳那一筆(決定性對照:被搬家的人會跳)', !R3.notMoved.shown && R3.moved.shown && R3.moved.blocks[0] === R3.mv.v, JSON.stringify([R3.notMoved.shown, R3.moved.blocks]));
+ok('⑮c 視窗只講怎麼做(⛔ 研究數字 / 萬)、有「換回舊的」', /換回舊的/.test(R3.moved.html) && !/萬|回測|0050 買了放著/.test(R3.moved.html), R3.moved.html.slice(0, 200));
+ok('⑮d 按「換回舊的」→ strategy = gene;設定列出 🅿️ + 📈(舊的);沒選它的人設定只列 🅿️', R3.afterBack === 'gene' && JSON.stringify(R3.boxGene) === '["park","gene"]' && JSON.stringify(R3.boxPark) === '["park"]', JSON.stringify([R3.afterBack, R3.boxGene, R3.boxPark]));
 // 🔁 V79.4.9 沒看過的不只一筆 → 同一個視窗由新到舊疊出來(⛔ 不可只跳最新那筆就把舊的蓋掉)+ backHot 三件一起換回
 const R2 = await page.evaluate(() => {
     const A = window.app || app, K = 'proTerm_lastSeenStrat', o = {};
     const _isL = A._isLead; A._isLead = () => false;
-    const gene = A._STRAT_CHANGES.filter(c => !c.lead);
+    const gene = A._STRAT_CHANGES.filter(c => !c.lead && !c.moved);
     o.newest = gene[0].v; o.second = gene[1] && gene[1].v;
     localStorage.setItem(K, gene[2].v); A._firstRun = false;
     document.getElementById('richHelpModal')?.classList.add('hidden');

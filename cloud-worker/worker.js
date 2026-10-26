@@ -2260,29 +2260,7 @@ async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix, mkt
         }
     }
 
-    // 📚 朱家泓今日選股(4 大模組,各取前 3 檔)
-    const chuBlocks = [
-        { label: '🍀 六六大順', key: 'chu_perfect6' },
-        { label: '🔥 特別報價', key: 'chu_top_gainer' },
-        { label: '🥣 底部轉折', key: 'chu_bottom' },
-        { label: '🚀 5MA飆股',  key: 'chu_riding5ma' },
-    ];
-    const chuMatrixData = (radarMatrix?.data) || {};
-    const chuLines = [];
-    for (const blk of chuBlocks) {
-        const picks = (chuMatrixData[blk.key] || []).slice(0, 3);
-        if (picks.length) {
-            // 🐛 V22 用 stockLabel 帶股名(舊版只顯代號)
-            const parts2 = [];
-            for (const p of picks) {
-                const g = Number(p.gain) || 0;
-                const sign = g > 0 ? '+' : '';
-                const lab = await stockLabel(env, p.sym);
-                parts2.push(`${lab}(${sign}${g.toFixed(1)}%)`);
-            }
-            chuLines.push(`${blk.label}: ${parts2.join('、')}`);
-        }
-    }
+    // 🗑️ V79.9.3 「📚 朱家泓今日選股」那段拿掉 —— 那 4 個榜 16 年回測都沒過(App 選股頁同一版刪掉,⛔ 畫面刪了 Telegram 還在推)
 
     // 組原始彙整(V21.3:用 label 含中文名)
     const parts = [];
@@ -2295,7 +2273,6 @@ async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix, mkt
     if (invLines.length) parts.push(`*💼 庫存今日*\n${invLines.map(l => '  ▸ ' + l).join('\n')}` + (portReturn !== null ? `\n\n總部位對成本: *${formatPct(portReturn)}*` : ''));
     if (hot.length) parts.push(`*🦅 獵鷹 ≥${falconTh}*\n${hot.map(r => `  ▸ ${r.label} 分${r.falcon}${r.tags.length ? ` (${r.tags.join('/')})` : ''}`).join('\n')}`);
     if (topGlobal.length) parts.push(`*🎯 全市場戰略選股*\n${topGlobal.map(s => '  ▸ ' + s).join('\n')}`);
-    if (chuLines.length) parts.push(`*📚 朱家泓今日選股*\n${chuLines.join('\n')}\n_盤後篩選, 隔日參考進場, 跌破 5MA 立停_`);
     parts.push(`📱 [看完整作戰指揮部](${GH_PAGES_BASE}/)`);
 
     const rawSummary = parts.join('\n\n');

@@ -18,6 +18,7 @@ from common import is_finite_num, SECTOR_MEMBERS   # 🧩 共用工具 + 板塊�
 from strategy_sim import (chu_long_entry, chu_eliminate,   # 🎯 回後買上漲(旗艦)+ 淘汰13條
                           granville, box_breakout, divergence, volume_signals,   # 建議2:葛蘭碧/橫盤突破/背離/量能 全市場 port
                           reversal_candle, half_price_signal)   # 第2-6/2-7章單根變盤線 + 2-9章½價多空分界
+from strategy_sim import _c as _ss_c, _o as _ss_o   # ⚡ scan_one 快篩用(同一個取值規則)
 from datetime import date, datetime
 
 DATA_DIR = Path("data")
@@ -953,6 +954,262 @@ def _amp5(raw_data):
     return round(sum(vals) / len(vals), 1) if vals else 0
 
 
+_CHU_KEYS = ('chu_perfect6', 'chu_top_gainer', 'chu_bottom', 'chu_riding5ma', 'chu_backtest',
+             'chu_entry', 'chu_granville', 'chu_box', 'chu_diverge')
+
+
+def _reclaim_maybe(bars):
+    """回後買上漲的必要條件:chu_long_entry 只有「昨天還在 5 日線下、今天收盤站回,而且收紅或收漲」才可能回 high / weak。
+    ⚡ 只給回測用的快篩(fast=True);結果跟直接呼叫相同(scripts/radar_list_probe.py --selftest ④ 逐值比對)。"""
+    if not bars or len(bars) < 30:
+        return False
+    cl = [_ss_c(b) for b in bars[-6:]]
+    ma5, ma5p = sum(cl[-5:]) / 5, sum(cl[-6:-1]) / 5
+    pC, yC = cl[-1], cl[-2]
+    return yC < ma5p and pC >= ma5 and (pC > _ss_o(bars[-1]) or pC > yC)
+
+
+def _swing_near(bars):
+    """背離的必要條件:divergence 先在最近 60 根找 ±4 收盤波峰 / 波谷,最近一個要落在最後 8 根內、
+    而且比前一個高(頂背離)或低(底背離),才去算 KD / MACD → 這一步都不成立就不可能有背離。
+    ⚡ 同上,只給回測用的快篩(算 KD 那段是整支回測最慢的地方)。"""
+    n = len(bars or [])
+    if n < 40:
+        return False
+    m = min(n, 70)
+    off = n - m
+    cl = [_ss_c(b) for b in bars[-m:]]
+    last = n - 1
+    peaks, troughs = [], []
+    for i in range(max(4, n - 60), last - 4 + 1):
+        j = i - off
+        w = cl[j - 4:j + 5]
+        if cl[j] == max(w):
+            peaks.append(j)
+        if cl[j] == min(w):
+            troughs.append(j)
+    lj = last - off
+    top = len(peaks) >= 2 and lj - peaks[-1] <= 8 and cl[peaks[-1]] > cl[peaks[-2]]
+    bot = len(troughs) >= 2 and lj - troughs[-1] <= 8 and cl[troughs[-1]] < cl[troughs[-2]]
+    return top or bot
+
+
+def scan_one(sym, raw_data, twii_ret20=None, chu_attention_set=frozenset(), want=None, fast=False, out=None):
+    """一檔「今天」(raw_data 最後一根)會進哪幾個榜 —— main 每一檔做的事,⛔ 第二份。
+    回 {榜名: 那一列};今天收盤 / 昨收 / 成交量不是正數回 None(main 會跳過這一檔)。
+    ・raw_data 只能到今天為止(scripts/radar_list_probe.py 拿它逐日跑 16 年,⛔ 前視)
+    ・want = 只算這幾個榜(None = 全部);fast = 先用必要條件擋掉一定不會中的(只給回測用,結果相同)
+    ・out = 邊算邊填的 dict(main 傳進來:中途丟例外時,已經算好的那幾個榜照舊收,跟抽出來之前一樣)"""
+    out = {} if out is None else out
+
+    def W(k):
+        return want is None or k in want
+
+    # 取最近 25 天資料來運算
+    data = raw_data[-25:]
+    latest = data[-1]
+    prev = data[-2]
+
+    c = latest.get('close', 0)
+    pc = prev.get('close', 0)
+    v = latest.get('volume', 0)  # 單位是股數
+
+    if c <= 0 or pc <= 0 or v <= 0:
+        return None
+
+    # 基礎指標計算
+    ma5 = calculate_ma(data, 5)
+    ma20 = calculate_ma(data, 20)
+    p_ma20 = calculate_ma(data[:-1], 20)  # 昨天的 20MA
+
+    # 當日成交金額 (新台幣)
+    turnover = c * v
+    turnover_e = round(turnover / YI, 2)  # 換算成「億」
+    # 漲跌幅
+    day_gain = round((c - pc) / pc * 100, 2)
+
+    # --- 🏎️ 戰區一：渣男賽車 (極速動能) ---
+    # 條件：成交額 > 5億、近5天有單日漲幅 >= 7%、收盤站上5日線且5MA>20MA
+    max_gain_5d = max(
+        (
+            (data[i]['close'] - data[i - 1]['close']) / data[i - 1]['close'] * 100
+            for i in range(-5, 0) if data[i - 1]['close'] > 0
+        ),
+        default=0,
+    )
+
+    if W('momentum') and turnover >= 500_000_000 and max_gain_5d >= 7.0 and c > ma5 and ma5 > ma20:
+        out['momentum'] = ({
+            'sym': sym,
+            'close': round(c, 2),
+            'turnover_e': turnover_e,
+            'gain': day_gain,
+            'status': f"最高動能 {round(max_gain_5d, 1)}%"
+        })
+
+    # --- 🐢 戰區二：烏龜過河 (波段起漲) ---
+    # 放寬條件:法人「近5日內 ≥3 天買超」+「近3日內首次站月線」+ 量增
+    # 原 AND 三嚴條件導致候選極稀(常 0 檔),改為彈性 AND 仍嚴格但有實用性
+    inst_buy_days_5 = sum(
+        1 for r in data[-5:]
+        if (r.get('foreign_net', 0) + r.get('trust_net', 0)) > 0
+    )
+    inst_support = inst_buy_days_5 >= 3
+    # 近 3 日內任一日從月線下穿月線上(首次站月線)
+    cross_20ma_recent = False
+    for k in range(-3, 0):
+        if k - 1 < -len(data):
+            continue
+        kc = data[k].get('close', 0)
+        kpc = data[k - 1].get('close', 0) if abs(k - 1) <= len(data) else 0
+        # 用該天的 ma20 近似(資料只到 last,近3日內用 ma20 近似可接受)
+        if kpc > 0 and kpc <= ma20 and kc > ma20:
+            cross_20ma_recent = True
+            break
+    v_avg_5 = sum(d.get('volume', 0) for d in data[-5:]) / 5
+    vol_expanding = v > v_avg_5
+
+    if W('swing') and inst_support and cross_20ma_recent and vol_expanding:
+        out['swing'] = ({
+            'sym': sym,
+            'close': round(c, 2),
+            'turnover_e': turnover_e,
+            'gain': day_gain,
+            'status': f"近3日站月線+法人買{inst_buy_days_5}/5天"
+        })
+
+    # --- 🎯 戰區三：狙擊手 (籌碼集中) ---
+    # 條件：乖離率極低(股價貼著月線)，但特定大戶籌碼高度集中
+    # ⚠️ 僅 CHIP_WATCHLIST(~50檔) 有分點資料，故此區候選天然受限
+    bias_20 = (c - ma20) / ma20 * 100
+    sniper_added = False
+    if W('sniper') and -2 <= bias_20 <= 3:  # 股價在月線附近盤整
+        # 🗑️ V79.0.0 分點籌碼集中那條主路徑已移除(券商分點停了)→ 只走全市場可判的法人路徑
+        # 🎯 替代路徑(全市場可判,不需分點):法人連買 + 貼月線 + 量增
+        # 解決原本 sniper 常 0 檔(分點只覆蓋 50 檔)→ 讓 1900+ 檔也有機會入選
+        if not sniper_added and turnover >= 100_000_000:
+            inst_buy_5d = sum(
+                1 for r in data[-5:]
+                if (r.get('foreign_net', 0) + r.get('trust_net', 0)) > 0
+            )
+            v_avg_5s = sum(d.get('volume', 0) for d in data[-5:]) / 5
+            if inst_buy_5d >= 4 and v > v_avg_5s:  # 近5日法人買≥4天 + 量增
+                out['sniper'] = ({
+                    'sym': sym, 'close': round(c, 2),
+                    'turnover_e': turnover_e, 'gain': day_gain,
+                    'status': f"法人連買{inst_buy_5d}/5天+貼月線"
+                })
+
+    # ─────────────────────────────────────────────────
+    # 📚 朱家泓五大選股法(A/B/D/E,C 淘汰在前端跑)
+    # 共用排除:處置/注意股、ETF、殭屍量、資料筆數不足
+    # ─────────────────────────────────────────────────
+    if any(W(k) for k in _CHU_KEYS) and not _chu_skip(sym, raw_data, chu_attention_set, min_rows=22):
+        # 🍀 模組 A 六六大順(需 60 筆)
+        rec_a = _chu_perfect6(sym, raw_data) if W('chu_perfect6') else None
+        if rec_a:
+            out['chu_perfect6'] = (rec_a)
+        # 🔥 模組 B 特別報價
+        rec_b = _chu_top_gainer(sym, raw_data) if W('chu_top_gainer') else None
+        if rec_b:
+            out['chu_top_gainer'] = (rec_b)
+        # 🥣 模組 D 底部轉折(需 120 筆)
+        rec_d = _chu_bottom(sym, raw_data) if W('chu_bottom') else None
+        if rec_d:
+            out['chu_bottom'] = (rec_d)
+        # 🚀 模組 E 5MA 飆股
+        rec_e = _chu_riding5ma(sym, raw_data) if W('chu_riding5ma') else None
+        if rec_e:
+            out['chu_riding5ma'] = (rec_e)
+        # 🎯 模組 F 朱式波段回測期望值(需 ≥ 90 筆)
+        rec_f = _chu_backtest(sym, raw_data) if W('chu_backtest') else None
+        if rec_f:
+            out['chu_backtest'] = (rec_f)
+        # 🎯 建議2:回後買上漲(旗艦訊號全市場 port)。只收 high/weak 進場級,
+        #    附「上方空間%、波段階段、淘汰紅旗」。追高/等待級不進榜(避免雜訊)。
+        rec_g = chu_long_entry(raw_data) if W('chu_entry') and (not fast or _reclaim_maybe(raw_data)) else None
+        if rec_g and rec_g.get('grade') in ('high', 'weak'):
+            flags = chu_eliminate(raw_data)
+            out['chu_entry'] = ({
+                'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                'grade': rec_g['grade'], 'entry': rec_g['entry'], 'stop': rec_g['stop'],
+                'upside_room': rec_g['upside_room'], 'stage': rec_g['stage'],
+                'reason': rec_g['reason'],
+                'red_flags': flags[:3],   # 淘汰紅旗(有則提醒風險)
+                'status': ('🎯高勝率' if rec_g['grade'] == 'high' else '⚡力道弱')
+                          + (f" · ⚠️{flags[0]}" if flags else ''),
+            })
+
+        # 📐 建議2:葛蘭碧買點(只收買 1/2/3,買4乖離另有雷達)
+        _gv = [g for g in granville(raw_data[-30:] if fast else raw_data) if g['side'] == 'buy' and g['point'] <= 3] if W('chu_granville') else []
+        if _gv:
+            _vs = volume_signals(raw_data)
+            out['chu_granville'] = ({
+                'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e, 'gain': day_gain,
+                'status': '＋'.join(f"買{g['point']}·{g['name']}" for g in _gv[:2])
+                          + (f" · {_vs[0]['name']}" if _vs else ''),
+            })
+        # 📦 建議2:K線橫盤突破(只收多方突破)
+        _bx = box_breakout(raw_data) if W('chu_box') else None
+        if _bx and _bx['side'] == 'bull':
+            out['chu_box'] = ({
+                'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e, 'gain': day_gain,
+                'neck': _bx['neck'],
+                'status': f"橫盤{_bx['box_n']}根後突破上頸線{_bx['neck']}"
+                          + ('(剛)' if _bx['when_ago'] == 0 else f"({_bx['when_ago']}天前)"),
+            })
+        # 🔀 建議2:KD/MACD 背離(頂背離=賣訊、底背離=買訊)
+        _dv = divergence(raw_data) if W('chu_diverge') and (not fast or _swing_near(raw_data)) else []
+        if _dv:
+            out['chu_diverge'] = ({
+                'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e, 'gain': day_gain,
+                'side': _dv[0]['side'],
+                'status': '／'.join(d['name'] for d in _dv[:2]),
+            })
+
+    # 📐 K棒轉折雷達(V41.7):純公式,全市場皆掃。過濾流動性不足(<3千萬)+處置/注意股
+    if any(W(k) for k in ('kbar_bull', 'kbar_bear', 'pocket_pivot', 'rs_strong')) and turnover >= 30_000_000 and sym not in chu_attention_set:
+        kb_bull, kb_bear = detect_kbar_signals(raw_data[-70:]) if (W('kbar_bull') or W('kbar_bear')) else ([], [])
+        if kb_bull and W('kbar_bull'):
+            out['kbar_bull'] = ({
+                'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                'gain': day_gain, 'status': ' + '.join(kb_bull[:2])
+            })
+        if kb_bear and W('kbar_bear'):
+            out['kbar_bear'] = ({
+                'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                'gain': day_gain, 'status': ' + '.join(kb_bear[:2])
+            })
+
+        # 🎯 口袋支點(Minervini 主力偷買)
+        _pp = _pocket_pivot(raw_data) if W('pocket_pivot') else None
+        if _pp:
+            out['pocket_pivot'] = ({
+                'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                'gain': day_gain, 'status': _pp
+            })
+        # 🚀 相對強度(強於大盤)
+        _rs = _rs_vs_market(raw_data, twii_ret20) if W('rs_strong') else None
+        if _rs:
+            out['rs_strong'] = ({
+                'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                'gain': day_gain, 'rs': round(_rs[0], 1), 'status': _rs[1]
+            })
+
+    # 🚦 全市場當沖歷史勝率(有肉+跑得掉才收:近5日均振幅≥2% + 成交額≥5千萬 + 昨量≥1000張)
+    _yv = prev.get('volume', 0) or 0
+    _amp = _amp5(raw_data)
+    if W('daytrade_wr') and turnover >= 50_000_000 and _amp >= 2.0 and _yv >= 1_000_000:
+        _wr = _dt_winrate(raw_data)
+        if _wr:
+            out['daytrade_wr'] = ({
+                'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                'amp5': _amp, 'yvol': round(_yv / 1000), 'wr': _wr
+            })
+
+    return out
+
+
 def main():
     print("🚀 啟動【首席雷達矩陣】全市場掃描引擎...")
 
@@ -998,218 +1255,22 @@ def main():
         if not (len(sym) == 4 and sym.isdigit()) and not sym.startswith('00'):
             continue
 
+        hits = {}   # 🧩 V79.9.3 每一檔做的事搬進 scan_one(scripts/radar_list_probe.py 拿同一支逐日回測)
         try:
             raw_data = json.loads(f.read_text(encoding='utf-8'))
             if not isinstance(raw_data, list) or len(raw_data) < 22:
                 continue
 
-            # 取最近 25 天資料來運算
-            data = raw_data[-25:]
-            latest = data[-1]
-            prev = data[-2]
-
-            c = latest.get('close', 0)
-            pc = prev.get('close', 0)
-            v = latest.get('volume', 0)  # 單位是股數
-
-            if c <= 0 or pc <= 0 or v <= 0:
+            if scan_one(sym, raw_data, twii_ret20, chu_attention_set, out=hits) is None:
                 continue
-
-            # 基礎指標計算
-            ma5 = calculate_ma(data, 5)
-            ma20 = calculate_ma(data, 20)
-            p_ma20 = calculate_ma(data[:-1], 20)  # 昨天的 20MA
-
-            # 當日成交金額 (新台幣)
-            turnover = c * v
-            turnover_e = round(turnover / YI, 2)  # 換算成「億」
-            # 漲跌幅
-            day_gain = round((c - pc) / pc * 100, 2)
-
-            # --- 🏎️ 戰區一：渣男賽車 (極速動能) ---
-            # 條件：成交額 > 5億、近5天有單日漲幅 >= 7%、收盤站上5日線且5MA>20MA
-            max_gain_5d = max(
-                (
-                    (data[i]['close'] - data[i - 1]['close']) / data[i - 1]['close'] * 100
-                    for i in range(-5, 0) if data[i - 1]['close'] > 0
-                ),
-                default=0,
-            )
-
-            if turnover >= 500_000_000 and max_gain_5d >= 7.0 and c > ma5 and ma5 > ma20:
-                matrix['momentum'].append({
-                    'sym': sym,
-                    'close': round(c, 2),
-                    'turnover_e': turnover_e,
-                    'gain': day_gain,
-                    'status': f"最高動能 {round(max_gain_5d, 1)}%"
-                })
-
-            # --- 🐢 戰區二：烏龜過河 (波段起漲) ---
-            # 放寬條件:法人「近5日內 ≥3 天買超」+「近3日內首次站月線」+ 量增
-            # 原 AND 三嚴條件導致候選極稀(常 0 檔),改為彈性 AND 仍嚴格但有實用性
-            inst_buy_days_5 = sum(
-                1 for r in data[-5:]
-                if (r.get('foreign_net', 0) + r.get('trust_net', 0)) > 0
-            )
-            inst_support = inst_buy_days_5 >= 3
-            # 近 3 日內任一日從月線下穿月線上(首次站月線)
-            cross_20ma_recent = False
-            for k in range(-3, 0):
-                if k - 1 < -len(data):
-                    continue
-                kc = data[k].get('close', 0)
-                kpc = data[k - 1].get('close', 0) if abs(k - 1) <= len(data) else 0
-                # 用該天的 ma20 近似(資料只到 last,近3日內用 ma20 近似可接受)
-                if kpc > 0 and kpc <= ma20 and kc > ma20:
-                    cross_20ma_recent = True
-                    break
-            v_avg_5 = sum(d.get('volume', 0) for d in data[-5:]) / 5
-            vol_expanding = v > v_avg_5
-
-            if inst_support and cross_20ma_recent and vol_expanding:
-                matrix['swing'].append({
-                    'sym': sym,
-                    'close': round(c, 2),
-                    'turnover_e': turnover_e,
-                    'gain': day_gain,
-                    'status': f"近3日站月線+法人買{inst_buy_days_5}/5天"
-                })
-
-            # --- 🎯 戰區三：狙擊手 (籌碼集中) ---
-            # 條件：乖離率極低(股價貼著月線)，但特定大戶籌碼高度集中
-            # ⚠️ 僅 CHIP_WATCHLIST(~50檔) 有分點資料，故此區候選天然受限
-            bias_20 = (c - ma20) / ma20 * 100
-            sniper_added = False
-            if -2 <= bias_20 <= 3:  # 股價在月線附近盤整
-                # 🗑️ V79.0.0 分點籌碼集中那條主路徑已移除(券商分點停了)→ 只走全市場可判的法人路徑
-                # 🎯 替代路徑(全市場可判,不需分點):法人連買 + 貼月線 + 量增
-                # 解決原本 sniper 常 0 檔(分點只覆蓋 50 檔)→ 讓 1900+ 檔也有機會入選
-                if not sniper_added and turnover >= 100_000_000:
-                    inst_buy_5d = sum(
-                        1 for r in data[-5:]
-                        if (r.get('foreign_net', 0) + r.get('trust_net', 0)) > 0
-                    )
-                    v_avg_5s = sum(d.get('volume', 0) for d in data[-5:]) / 5
-                    if inst_buy_5d >= 4 and v > v_avg_5s:  # 近5日法人買≥4天 + 量增
-                        matrix['sniper'].append({
-                            'sym': sym, 'close': round(c, 2),
-                            'turnover_e': turnover_e, 'gain': day_gain,
-                            'status': f"法人連買{inst_buy_5d}/5天+貼月線"
-                        })
-
-            # ─────────────────────────────────────────────────
-            # 📚 朱家泓五大選股法(A/B/D/E,C 淘汰在前端跑)
-            # 共用排除:處置/注意股、ETF、殭屍量、資料筆數不足
-            # ─────────────────────────────────────────────────
-            if not _chu_skip(sym, raw_data, chu_attention_set, min_rows=22):
-                # 🍀 模組 A 六六大順(需 60 筆)
-                rec_a = _chu_perfect6(sym, raw_data)
-                if rec_a:
-                    matrix['chu_perfect6'].append(rec_a)
-                # 🔥 模組 B 特別報價
-                rec_b = _chu_top_gainer(sym, raw_data)
-                if rec_b:
-                    matrix['chu_top_gainer'].append(rec_b)
-                # 🥣 模組 D 底部轉折(需 120 筆)
-                rec_d = _chu_bottom(sym, raw_data)
-                if rec_d:
-                    matrix['chu_bottom'].append(rec_d)
-                # 🚀 模組 E 5MA 飆股
-                rec_e = _chu_riding5ma(sym, raw_data)
-                if rec_e:
-                    matrix['chu_riding5ma'].append(rec_e)
-                # 🎯 模組 F 朱式波段回測期望值(需 ≥ 90 筆)
-                rec_f = _chu_backtest(sym, raw_data)
-                if rec_f:
-                    matrix['chu_backtest'].append(rec_f)
-                # 🎯 建議2:回後買上漲(旗艦訊號全市場 port)。只收 high/weak 進場級,
-                #    附「上方空間%、波段階段、淘汰紅旗」。追高/等待級不進榜(避免雜訊)。
-                rec_g = chu_long_entry(raw_data)
-                if rec_g and rec_g.get('grade') in ('high', 'weak'):
-                    flags = chu_eliminate(raw_data)
-                    matrix['chu_entry'].append({
-                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
-                        'grade': rec_g['grade'], 'entry': rec_g['entry'], 'stop': rec_g['stop'],
-                        'upside_room': rec_g['upside_room'], 'stage': rec_g['stage'],
-                        'reason': rec_g['reason'],
-                        'red_flags': flags[:3],   # 淘汰紅旗(有則提醒風險)
-                        'status': ('🎯高勝率' if rec_g['grade'] == 'high' else '⚡力道弱')
-                                  + (f" · ⚠️{flags[0]}" if flags else ''),
-                    })
-
-                # 📐 建議2:葛蘭碧買點(只收買 1/2/3,買4乖離另有雷達)
-                _gv = [g for g in granville(raw_data) if g['side'] == 'buy' and g['point'] <= 3]
-                if _gv:
-                    _vs = volume_signals(raw_data)
-                    matrix['chu_granville'].append({
-                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e, 'gain': day_gain,
-                        'status': '＋'.join(f"買{g['point']}·{g['name']}" for g in _gv[:2])
-                                  + (f" · {_vs[0]['name']}" if _vs else ''),
-                    })
-                # 📦 建議2:K線橫盤突破(只收多方突破)
-                _bx = box_breakout(raw_data)
-                if _bx and _bx['side'] == 'bull':
-                    matrix['chu_box'].append({
-                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e, 'gain': day_gain,
-                        'neck': _bx['neck'],
-                        'status': f"橫盤{_bx['box_n']}根後突破上頸線{_bx['neck']}"
-                                  + ('(剛)' if _bx['when_ago'] == 0 else f"({_bx['when_ago']}天前)"),
-                    })
-                # 🔀 建議2:KD/MACD 背離(頂背離=賣訊、底背離=買訊)
-                _dv = divergence(raw_data)
-                if _dv:
-                    matrix['chu_diverge'].append({
-                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e, 'gain': day_gain,
-                        'side': _dv[0]['side'],
-                        'status': '／'.join(d['name'] for d in _dv[:2]),
-                    })
-
-            # 📐 K棒轉折雷達(V41.7):純公式,全市場皆掃。過濾流動性不足(<3千萬)+處置/注意股
-            if turnover >= 30_000_000 and sym not in chu_attention_set:
-                kb_bull, kb_bear = detect_kbar_signals(raw_data[-70:])
-                if kb_bull:
-                    matrix['kbar_bull'].append({
-                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
-                        'gain': day_gain, 'status': ' + '.join(kb_bull[:2])
-                    })
-                if kb_bear:
-                    matrix['kbar_bear'].append({
-                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
-                        'gain': day_gain, 'status': ' + '.join(kb_bear[:2])
-                    })
-
-                # 🎯 口袋支點(Minervini 主力偷買)
-                _pp = _pocket_pivot(raw_data)
-                if _pp:
-                    matrix['pocket_pivot'].append({
-                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
-                        'gain': day_gain, 'status': _pp
-                    })
-                # 🚀 相對強度(強於大盤)
-                _rs = _rs_vs_market(raw_data, twii_ret20)
-                if _rs:
-                    matrix['rs_strong'].append({
-                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
-                        'gain': day_gain, 'rs': round(_rs[0], 1), 'status': _rs[1]
-                    })
-
-            # 🚦 全市場當沖歷史勝率(有肉+跑得掉才收:近5日均振幅≥2% + 成交額≥5千萬 + 昨量≥1000張)
-            _yv = prev.get('volume', 0) or 0
-            _amp = _amp5(raw_data)
-            if turnover >= 50_000_000 and _amp >= 2.0 and _yv >= 1_000_000:
-                _wr = _dt_winrate(raw_data)
-                if _wr:
-                    matrix['daytrade_wr'].append({
-                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
-                        'amp5': _amp, 'yvol': round(_yv / 1000), 'wr': _wr
-                    })
-
             processed_count += 1
 
         except Exception:
             # 遇到髒資料直接跳過，絕不當機
             continue
+        finally:
+            for _k, _rec in hits.items():   # 中途丟例外也照收已經算好的(跟抽出來之前一樣)
+                matrix[_k].append(_rec)
 
     # 三區皆以當日成交額由大到小排序（流動性優先，散戶較好進出）
     matrix['momentum'].sort(key=lambda x: x['turnover_e'], reverse=True)

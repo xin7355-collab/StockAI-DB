@@ -78,7 +78,14 @@ const R = await page.evaluate(async () => {
     P._tidyRadarTabs(); P._tidyRadarTabs();
     o.movedAgain = wrap ? wrap.children.length : -1;
     // 🗑️ V76.1.5 被刪的榜:按鈕**不可以還在 DOM**;程式硬叫它要**安全導回** todaysig
-    o.deadBtns = Object.keys(P._RADAR_DELETED || {}).filter(k => document.querySelector(`[onclick*="switchRadarStrategy('${k}')"]`));
+    o.deadBtns = Object.keys(P._RADAR_DELETED || {}).filter(k => document.querySelector(`[onclick*="switchRadarStrategy('${k}')"]`) || document.querySelector(`[onclick*="switchChuTab('${k}')"]`));
+    // 🗑️ V79.9.3 朱家泓:一般模式開不起來(只剩實驗室的期望值榜)、入口鈕只在實驗室
+    o.chuKeys = Object.keys(P._CHU_TABS || {});
+    o.chuBtnLab = document.getElementById('radarTabChu')?.getAttribute('data-labonly');
+    try { await P.openChuMasterModal(); } catch (_) {}
+    o.chuOpenNormal = !document.getElementById('chuMasterModal')?.classList.contains('hidden');
+    for (const k of ['momentum', 'monster', 'chu_perfect6']) { P.switchRadarStrategy(k); await new Promise(r => setTimeout(r, 60)); (o.dead2 = o.dead2 || []).push(P.radarStrategy); }
+    o.defaultStrat = P.radarStrategy;
     P.switchRadarStrategy('foreign3');
     await new Promise(r => setTimeout(r, 300));
     o.afterDeadKey = P.radarStrategy;
@@ -126,9 +133,16 @@ ok('⑨b 🚨 `todaysig` ⛔ 不可再出現「未納入歷史回測」,而且�
 ok('⑨c 🧹 V78.3.6 一般模式每個留下的榜⛔ 不印實測成績 / 基準 / 勝率(⛔ 只講怎麼用)',
    _ALL.filter(k => !R.weakKeys.includes(k)).every(k => !_RESEARCH.test(R.perTab[k] || '')),
    JSON.stringify(_ALL.filter(k => _RESEARCH.test(R.perTab[k] || '')).map(k => [k, (R.perTab[k].match(_RESEARCH) || [''])[0]])));
-ok('⑨d ⚠️ 只有間接證據的榜要標「⚠️ 只當觀察」,⛔ 不可借別的成績當背書(🧹 V78.3.6 白話)',
-   ['rs_strong', 'momentum', 'monster'].every(k => /⚠️ 只當觀察/.test(R.perTab[k] || '') && !_RESEARCH.test(R.perTab[k] || '')),
-   JSON.stringify(['rs_strong', 'momentum', 'monster'].map(k => (R.perTab[k] || '').slice(-80))));
+// 🗑️🗑️🗑️ V79.9.3 第 3 輪(使用者:「都沒有用就刪除策略」):選股頁 5 排 + 朱家泓 8 個分頁 16 年回測全部沒過 → 刪
+const _GONE = ['momentum', 'rs_strong', 'kbar_bull', 'monster', 'kbar_bear', 'chu_perfect6', 'chu_top_gainer', 'chu_bottom', 'chu_riding5ma', 'chu_entry', 'chu_granville', 'chu_box', 'chu_diverge'];
+ok('⑨d 🗑️ V79.9.3 那 13 個都進墓碑、⛔ 不在 _RADAR_TABS / _CHU_TABS(墓碑來源都是 radar_list_probe)',
+   _GONE.every(k => R.weakKeys.includes(k) && !R.tabKeys.includes(k) && !R.chuKeys.includes(k)),
+   JSON.stringify(_GONE.filter(k => !R.weakKeys.includes(k) || R.tabKeys.includes(k) || R.chuKeys.includes(k))));
+ok('⑨d2 硬叫那幾個 → 導回 todaysig(⛔ 停在不存在的榜);預設也不是渣男賽車',
+   (R.dead2 || []).every(k => k === 'todaysig'), JSON.stringify(R.dead2));
+ok('⑨d3 朱家泓:只剩實驗室的期望值榜,入口鈕 data-labonly、一般模式打不開',
+   JSON.stringify(R.chuKeys) === '["chu_backtest"]' && R.chuBtnLab != null && R.chuOpenNormal === false,
+   JSON.stringify({ k: R.chuKeys, lab: R.chuBtnLab, open: R.chuOpenNormal }));
 const _BADGE = /✅ 可以參考|⚠️ 只當觀察|📚 查資料用,不下多空/;
 ok('⑨e ⛔ 降級榜不可同時掛兩段(📉 沒優勢 + 另一個徽章)—— 同一件事講兩遍',
    R.weakKeys.every(k => !_BADGE.test(R.perTab[k] || '')),
@@ -148,6 +162,18 @@ ok('⑩c ⛔ 主清單一個榜都不可沉默(承 ⑨,刪完之後重驗一次)
    R.tabKeys.every(k => (R.statusKeys || []).includes(k)),
    JSON.stringify(R.tabKeys.filter(k => !(R.statusKeys || []).includes(k))));
 ok('⑧ 無 pageerror', perr.length === 0, perr.join(' | '));
+// 🗑️ V79.9.3 連動:跟著刪的那幾條(⛔ 畫面刪了別處還在講)
+{
+    const W = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8');
+    ok('⑪ Telegram 盤後總結 ⛔ 不再推「朱家泓今日選股」', !/朱家泓今日選股\*|chu_perfect6|chuLines/.test(W.replace(/\/\/.*$/gm, '')));
+    const JS = SRC.replace(/<!--[\s\S]*?-->/g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+    ok('⑪b 「大盤跌破 5 日線 → 追突破訊號自動過濾」那條濾網跟著渣男賽車 / 妖股一起拿掉', !/因大盤震盪|_radarBreakoutBannerRow\(|_breakoutFilterState\(/.test(JS));
+    ok('⑪c K 棒轉多 / 轉空每列成績標籤跟著拿掉', !/_kbarRadarEdgeHtml\(|_kbarRadarEdge\(/.test(JS));
+    const W3 = { momentum: 1, rs_strong: 1, kbar_bull: 1, monster: 1, kbar_bear: 1 };
+    const rows = [...SRC.slice(SRC.indexOf('    _RADAR_DELETED: {'), SRC.indexOf('\n    },', SRC.indexOf('    _RADAR_DELETED: {'))).matchAll(/^\s{8}(\w+):\s*\{ why: '([^']*)', s: '([^']*)' \}/gm)];
+    ok('⑪d 新墓碑每條都寫來源 radar_list_probe + 20 天的 pp 數字', _GONE.every(k => { const r = rows.find(x => x[1] === k); return r && r[3] === 'radar_list_probe' && /[+−-]?\d+\.\d+pp/.test(r[2]); }),
+       JSON.stringify(_GONE.filter(k => { const r = rows.find(x => x[1] === k); return !(r && r[3] === 'radar_list_probe'); })));
+}
 
 console.log(fails ? `\n❌ ${fails} 條未通過` : '\n✅ 全部通過');
 process.exit(fails ? 1 : 0);

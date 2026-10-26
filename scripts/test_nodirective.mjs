@@ -84,7 +84,6 @@ if (m) {
         updateChiefAIBoard: '死碼:首席腳本那一格 sccChiefScript V31.6 拿掉了',
         showGranvilleFull: '理論原文(葛蘭碧),頁尾講清楚本站規則 → ③b 另驗',
         showKbarSignalHelp: '理論原文(K 棒型態),頁尾講清楚本站規則 → ③b 另驗',
-        _CHU_DESC: '朱老師原本的說法,說明下面補一行本站規則 → ③b 另驗',
     };
     const L = src.split('\n');
     const owner = i => { for (let k = i; k >= 0; k--) { const m = L[k].match(/^    (?:async )?([_A-Za-z0-9]+)(?:\(|: )/); if (m) return m[1]; } return '(html)'; };

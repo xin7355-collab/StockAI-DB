@@ -5044,6 +5044,42 @@ def _quick_ind(data):
             'vma5': vma5, 'upper_bb': upper_bb, 'recent_vols': vols[-8:]}
 
 
+def monster_pick(sym, raw, ind):
+    """🐲 妖股雷達(唯一一份:build_radar_cache 與 scripts/radar_list_probe.py 共用,⛔ 第二份)。
+    raw = 到今天為止的 K 線、ind = _quick_ind(最近 25 根的收盤 / 量)。回那一列 record 或 None。
+    判定:5 日漲幅 ≥ 20% 或 10 日漲幅 ≥ 30%;近 3 日中至少 2 日量 > 那 3 根之前 5 日均量的 3 倍;
+          最新收盤 ≥ (最新 high + low) / 2(收高不收低);流動性 vma5 ≥ 500K(妖股要追得進去)"""
+    c, pc = ind['close'], ind['prev_close']
+    ma5, ma20 = ind['ma5'], ind['ma20']
+    vma5, rv = ind['vma5'], ind['recent_vols']
+    last_raw = raw[-1]
+    last_h = last_raw.get('high', c) or c
+    last_l = last_raw.get('low',  c) or c
+    gain5d = (c - raw[-6]['close']) / raw[-6]['close'] * 100 if len(raw) >= 6 and raw[-6]['close'] > 0 else 0
+    gain10d = (c - raw[-11]['close']) / raw[-11]['close'] * 100 if len(raw) >= 11 and raw[-11]['close'] > 0 else 0
+    # 🚨🚨 V76.1.5 這一行以前拿 `vma5`(近 5 日均量,**含爆量棒自己**)當爆量基準 →
+    #   第一根爆 3 倍會把均量自己墊高,第二根幾乎不可能再超過新門檻。
+    #   📊 全市場實測(2,719 檔):`vol_burst>=2` 通過 **0 檔** → 妖股榜**從上線到現在一直是空的**,
+    #      而「漲幅」那一關本身有 43 檔 → 卡住的百分之百是這裡。
+    #   ⭐ 修法:基準改成「**那 3 根之前**的 5 日均量」(rv[-8:-3]),這才是「爆量」的標準定義。
+    #      修正後同樣的 3 倍 × 2 根 → **8 檔**(合理),⛔ 門檻本身一個數字都沒放寬。
+    _vbase = (sum(rv[-8:-3]) / 5) if len(rv) >= 8 else 0
+    vol_burst = sum(1 for v in (rv[-3:] if rv else []) if _vbase > 0 and v > _vbase * 3)
+    recent_strong = c >= (last_h + last_l) / 2
+    day_chg = (c - pc) / pc * 100 if pc > 0 else 0
+    near_limit_up = day_chg >= 9.0   # 台股 ±10%，> 9% 視為近漲停
+    vol_ratio_last = (rv[-1] / vma5) if (rv and vma5 > 0) else 0
+    if (gain5d >= 20 or gain10d >= 30) and vol_burst >= 2 and recent_strong and vma5 >= 500_000:
+        return {
+            'sym': sym, 'close': round(c, 2),
+            'ma20': round(ma20, 2), 'ma5': round(ma5, 2),
+            'gain5d': round(gain5d, 1), 'gain10d': round(gain10d, 1),
+            'vol_ratio': round(vol_ratio_last, 1),
+            'near_limit_up': near_limit_up,
+        }
+    return None
+
+
 def build_radar_cache():
     results   = {'bottom': [], 'surge': [], 'score': [], 'monster': [], 'wrongkill': [],
                  'foreign3': [], 'trust3': []}   # 🏦 V57.6 外資/投信連 3 買榜(對標專業 App 多方分類)
@@ -5115,31 +5151,9 @@ def build_radar_cache():
             #       最新收盤 ≥ (最新 high + low) / 2（強勢吸籌、收高不收低）；
             #       流動性 vma5 ≥ 500K（妖股要追得進去）
             try:
-                last_raw = raw[-1]
-                last_h = last_raw.get('high', c) or c
-                last_l = last_raw.get('low',  c) or c
-                gain5d = (c - raw[-6]['close']) / raw[-6]['close'] * 100 if len(raw) >= 6 and raw[-6]['close'] > 0 else 0
-                gain10d = (c - raw[-11]['close']) / raw[-11]['close'] * 100 if len(raw) >= 11 and raw[-11]['close'] > 0 else 0
-                # 🚨🚨 V76.1.5 這一行以前拿 `vma5`(近 5 日均量,**含爆量棒自己**)當爆量基準 →
-                #   第一根爆 3 倍會把均量自己墊高,第二根幾乎不可能再超過新門檻。
-                #   📊 全市場實測(2,719 檔):`vol_burst>=2` 通過 **0 檔** → 妖股榜**從上線到現在一直是空的**,
-                #      而「漲幅」那一關本身有 43 檔 → 卡住的百分之百是這裡。
-                #   ⭐ 修法:基準改成「**那 3 根之前**的 5 日均量」(rv[-8:-3]),這才是「爆量」的標準定義。
-                #      修正後同樣的 3 倍 × 2 根 → **8 檔**(合理),⛔ 門檻本身一個數字都沒放寬。
-                _vbase = (sum(rv[-8:-3]) / 5) if len(rv) >= 8 else 0
-                vol_burst = sum(1 for v in (rv[-3:] if rv else []) if _vbase > 0 and v > _vbase * 3)
-                recent_strong = c >= (last_h + last_l) / 2
-                day_chg = (c - pc) / pc * 100 if pc > 0 else 0
-                near_limit_up = day_chg >= 9.0   # 台股 ±10%，> 9% 視為近漲停
-                vol_ratio_last = (rv[-1] / vma5) if (rv and vma5 > 0) else 0
-                if (gain5d >= 20 or gain10d >= 30) and vol_burst >= 2 and recent_strong and vma5 >= 500_000:
-                    results['monster'].append({
-                        'sym': sym, 'close': round(c, 2),
-                        'ma20': round(ma20, 2), 'ma5': round(ma5, 2),
-                        'gain5d': round(gain5d, 1), 'gain10d': round(gain10d, 1),
-                        'vol_ratio': round(vol_ratio_last, 1),
-                        'near_limit_up': near_limit_up,
-                    })
+                _mrec = monster_pick(sym, raw, ind)   # 🧩 V79.9.3 抽成函式(scripts/radar_list_probe.py 拿同一支逐日回測)
+                if _mrec:
+                    results['monster'].append(_mrec)
             except Exception:
                 pass
 

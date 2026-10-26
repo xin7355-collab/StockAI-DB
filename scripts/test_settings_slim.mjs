@@ -122,7 +122,7 @@ ok(`③g 第一眼字數有上限(實測 ${R.firstGlance},上限 1600;改版前 
 ok('④a 沒解鎖:🅿️ / 📈 兩個選項(⛔ 沒有 👑)', JSON.stringify(R.optsLocked) === '["park","gene"]', R.optsLocked);
 ok('④b 沒解鎖、存著 park → 就是 🅿️(_park 真、選股照 🔥)', R.parkLocked[0] === true && R.parkLocked[1] === 'gene', R.parkLocked);
 // 🏆 V78.1.9 解鎖後四個、照實測由強到弱(16 年中位);🔒 V79.1.2 👑 兩個搬進「🔓 進階功能」那一區(使用者:「要點進階才能是領頭羊」)
-ok('④c 解鎖後:上面 🅿️ → 📈、👑 兩個在進階區(各自照實測由強到弱)', JSON.stringify(R.optsUnlocked) === '["park","gene","leadpark","lead"]' && JSON.stringify(R.optsAdv) === '["leadpark","lead"]', [R.optsUnlocked, R.optsAdv]);
+ok('④c 解鎖後:上面 🅿️(🗑️ V79.9.3 📈 錢放現金只有正在用的人才列)、👑 兩個在進階區(各自照實測由強到弱)', JSON.stringify(R.optsUnlocked) === '["park","leadpark","lead"]' && JSON.stringify(R.optsAdv) === '["leadpark","lead"]', [R.optsUnlocked, R.optsAdv]);
 ok('④d 選 🅿️:_strat() 仍是 gene(選股/出場/提醒/Telegram 同 🔥)', R.parkOn[0] === true && R.parkOn[1] === 'gene' && R.parkOn[2] === false && R.parkOn[3] === 'park' && R.parkChecked, R.parkOn);
 const wanOf = h => (h.match(/該停在 0050 約 <b[^>]*>([\d.,]+) 萬/) || [])[1];
 ok('④e 停車金額 = 帳戶 − 個股市值(100 萬 − 30 萬 = 70 萬)', wanOf(R.parkH1) === '70', wanOf(R.parkH1));
