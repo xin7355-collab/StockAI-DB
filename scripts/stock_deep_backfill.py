@@ -415,9 +415,10 @@ def check_margin(pk, rows):
     return n, hit
 
 
-def check_fin(obj, rec, fidx, tmap):
+def check_fin(obj, rec, fidx, tmap, miss=None):
     """季報跟 fin_deep.json 重疊那幾季逐欄比:同一個上游 → 值要一樣(0.1% 或 0.01 以內)。
-    rec = FD.s[代號](季 → 陣列)、fidx = {欄位: FD.f 的位置}、tmap = {科目: 欄位}。回 (可比格數, 一致格數)。"""
+    rec = FD.s[代號](季 → 陣列)、fidx = {欄位: FD.f 的位置}、tmap = {科目: 欄位}。回 (可比格數, 一致格數)。
+    🔍 `miss` 給 list → 對不上的格子收進去 (季, 科目, 這邊, fin_deep)(2026-10-26 fcf10 對表 89.5% 停下來,log 看不出是哪幾格)"""
     n = hit = 0
     for d, row in zip(obj.get('d') or [], obj.get('v') or []):
         q = (rec or {}).get(d)
@@ -428,8 +429,23 @@ def check_fin(obj, rec, fidx, tmap):
             if i is None or i >= len(q) or q[i] is None or v is None:
                 continue
             n += 1
-            hit += abs(v - q[i]) <= max(0.01, abs(q[i]) * 0.001)
+            same = abs(v - q[i]) <= max(0.01, abs(q[i]) * 0.001)
+            hit += same
+            if not same and miss is not None:
+                miss.append((d, t, v, q[i]))
     return n, hit
+
+
+def dup_rows(rows, want):
+    """長表裡同一季同一個科目出現兩列以上的組數、其中值不一樣的組數、前 3 組樣本(兩邊各取最後一列 → 列的順序決定拿到哪一個)。"""
+    seen = {}
+    for r in rows or []:
+        d, t = _d(r.get('date')), str(r.get('type') or '')
+        if d and t in want:
+            seen.setdefault((d, t), []).append((_num(r.get('value')), str(r.get('origin_name') or '')[:16]))
+    dup = [(k, v) for k, v in seen.items() if len(v) > 1]
+    diff = [(k, v) for k, v in dup if len({x[0] for x in v}) > 1]
+    return len(dup), len(diff), [f'{k[0]} {k[1]} {v}' for k, v in diff[:3]]
 
 
 # ── 母體 ─────────────────────────────────────────────────────────
@@ -563,6 +579,7 @@ def main():
         st.update({'probe_first': first, 'cols': cols})
         wrote_now, empty_now, waits, n_try = [], 0, 0, 0
         chk_n = chk_hit = 0
+        miss_t, miss_ex, dup_n, dup_diff, dup_ex = {}, [], 0, 0, []    # 🔍 對表對不上時印哪幾個科目、有沒有重複列
         fd, fidx = None, {}
         if spec['check'] == 'fin':
             try:
@@ -607,7 +624,17 @@ def main():
                     except Exception:
                         pass
             elif spec['check'] == 'fin' and fd and not is_empty(obj):
-                a, b = check_fin(obj, (fd.get('s') or {}).get(s), fidx, want)
+                mm = []
+                a, b = check_fin(obj, (fd.get('s') or {}).get(s), fidx, want, mm)
+                for d_, t_, v_, q_ in mm:
+                    miss_t[t_] = miss_t.get(t_, 0) + 1
+                    if len(miss_ex) < 12:
+                        miss_ex.append(f'{s} {d_} {t_} 這邊 {v_:g} / fin_deep {q_:g}')
+                k1, k2, ex = dup_rows(data, want)
+                dup_n += k1
+                dup_diff += k2
+                if ex and len(dup_ex) < 6:
+                    dup_ex += [f'{s} {x}' for x in ex][:6 - len(dup_ex)]
                 if a >= 3:
                     chk_n += 1
                     chk_hit += (b / a >= 0.9)
@@ -628,6 +655,13 @@ def main():
         rate = (chk_hit / chk_n) if chk_n else None
         print(f'📊 {key}:這一棒寫 {len(wrote_now)}(空 {empty_now})・等額度 {waits} ・累計 {have}/{len(syms)}'
               + (f' ・對表 {chk_hit}/{chk_n}({rate:.1%})' if chk_n else ''), flush=True)
+        if spec['check'] == 'fin' and (miss_t or dup_n):
+            print(f'   🔍 對不上的格(依科目):{miss_t} ・同一季同科目兩列以上 {dup_n} 組(值不同 {dup_diff} 組)', flush=True)
+            for x in miss_ex:
+                print(f'      ✗ {x}', flush=True)
+            for x in dup_ex:
+                print(f'      ⧉ {x}', flush=True)
+            st.update({'chk_miss': miss_t, 'chk_dup': [dup_n, dup_diff]})
         bad = None
         if n_try > 0 and not wrote_now:
             bad = '處理了但一檔都沒寫(金鑰 / 額度 / 資料集名)'
@@ -715,6 +749,12 @@ def selftest():
     lp2 = dict(lp, v=[[x * 1000 if isinstance(x, (int, float)) else x for x in row] for row in lp['v']])
     ok('④b 單位差 1,000 倍 → 對不上', check_fin(lp2, rec, fidx, want)[1] == 0, check_fin(lp2, rec, fidx, want))
     ok('④b 沒有 fin_deep 那一檔 → 沒得比(0, 0)', check_fin(lp, None, fidx, want) == (0, 0))
+    mm = []
+    check_fin(lp2, rec, fidx, want, mm)
+    ok('④c 🔍 對不上的格會收進 miss(季 / 科目 / 兩邊的值),不給 miss 時行為不變', len(mm) == 4 and mm[0][0] == '2018-03-31' and mm[0][2] == 1000 * 1000 and mm[0][3] == 1000, mm)
+    dr2 = lr + [{'date': '2018-03-31', 'type': 'Revenue', 'value': 999, 'origin_name': '營收(重編)'}, {'date': '2018-06-30', 'type': 'EPS', 'value': 1.6}]
+    ok('④c 🔍 同一季同科目兩列以上:組數 / 值不同的組數 / 樣本', dup_rows(dr2, want)[:2] == (2, 1) and '2018-03-31 Revenue' in dup_rows(dr2, want)[2][0], dup_rows(dr2, want))
+    ok('④c 決定性對照:沒有重複列 → (0, 0)', dup_rows(lr, want)[:2] == (0, 0), dup_rows(lr, want))
     # ⑤ 保護時段
     utc = timezone.utc
     ins, w, nx = protect_state(datetime(2026, 10, 20, 9, 0, tzinfo=utc))       # 週二 09:00 = daily_miner
