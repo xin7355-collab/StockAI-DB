@@ -51,13 +51,13 @@ const R = await page.evaluate(async () => {
     const box = () => document.getElementById('cbtLogBox');
     out.list1 = [...box().querySelectorAll('[data-cbtlog]')].map(e => +e.dataset.cbtlog);
     // ③ 照「每趟」排(由大到小)、再點一次反向
-    A._cbtLogSortBy('per'); await new Promise(r => setTimeout(r, 100));
+    A._cbtLogSortBy('per'); await A._cbtLogRender();
     const perOf = () => [...box().querySelectorAll('[data-cbtlog]')].map(e => rows.find(r => r.id === +e.dataset.cbtlog).per);
     out.sortDesc = perOf(); out.sortMark = (box().querySelector('[data-cbtsort="per"]') || {}).textContent;
-    A._cbtLogSortBy('per'); await new Promise(r => setTimeout(r, 100));
+    A._cbtLogSortBy('per'); await A._cbtLogRender();
     out.sortAsc = perOf(); out.sortMark2 = (box().querySelector('[data-cbtsort="per"]') || {}).textContent;
     // ④ 勾兩筆
-    A._cbtLogPick(rows[0].id, true); A._cbtLogPick(rows[1].id, true); await new Promise(r => setTimeout(r, 100));
+    A._cbtLogPick(rows[0].id, true); A._cbtLogPick(rows[1].id, true); await A._cbtLogRender();   // ⛔ 固定等 100ms:勾選觸發的重畫是非同步(IndexedDB),機器忙時會來不及 → 假紅燈;直接等它畫完
     const cmp = box().querySelector('[data-cbtcmp]');
     out.cmpTxt = cmp ? cmp.innerText : '';
     out.expDelta = +(r2.overall.per - r1.overall.per).toFixed(2);
