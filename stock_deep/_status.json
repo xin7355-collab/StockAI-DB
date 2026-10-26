@@ -208,13 +208,28 @@
    "CurrentAssets",
    "CurrentLiabilities"
   ],
-  "have": 2124,
+  "have": 2548,
   "of": 2548,
   "chk": [
-   217,
-   217
+   215,
+   215
   ],
   "at": "2026-10-26",
-  "done": false
+  "done": true
+ },
+ "fcf10": {
+  "first_by_type": {
+   "PropertyAndPlantAndEquipment": "2012-03-31",
+   "Depreciation": "2012-03-31",
+   "CashFlowsFromOperatingActivities": "2012-03-31"
+  },
+  "probe_first": "2012-03-31",
+  "cols": [
+   "PropertyAndPlantAndEquipment",
+   "Depreciation",
+   "CashFlowsFromOperatingActivities"
+  ],
+  "fail": "對表 89.5% < 90%(單位 / 欄位 / 接縫不對)",
+  "at": "2026-10-26"
  }
 }
