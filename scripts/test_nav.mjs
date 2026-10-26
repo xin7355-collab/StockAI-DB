@@ -102,7 +102,7 @@ const open = async (w, h, q = '', init) => {
   ok('③d 從選哪一套按「🔬 實測總表」→ 換到結論那一層(⛔ 停在選哪一套)', R.labFromPick !== 'pick', R.labFromPick);
   ok('③e 雜訊清單只在「沒用」那一頁出現', R.noiseOnlyTrap);
   ok('③f 不認得的分頁代號 → 🏠 今天(⛔ 整頁空白)', R.bogus === 'home', R.bogus);
-  ok('④ 左右滑只在同一大類裡(產業那類四頁;只有一頁的大類不滑)', JSON.stringify(R.swRot) === '["rot","chain","star","val"]' && JSON.stringify(R.swHome) === '["home"]' && JSON.stringify(R.swPick) === '["pick","col","lab","log"]', JSON.stringify([R.swRot, R.swHome, R.swPick]));
+  ok('④ 左右滑只在同一大類裡(產業那類四頁;只有一頁的大類不滑)', JSON.stringify(R.swRot) === '["rot","chain","star","val"]' && JSON.stringify(R.swHome) === '["home"]' && JSON.stringify(R.swPick) === '["pick","qlab","col","lab","log"]', JSON.stringify([R.swRot, R.swHome, R.swPick]));
   ok('④b 釣魚頁(rod)不在任何大類 → 滑不進去;股海釣手模式不滑', !R.rodInNav && JSON.stringify(R.swFish) === '[]', JSON.stringify([R.rodInNav, R.swFish]));
   ok('⑥ 每個大類記得上次看的子頁(產業 → 關聯星圖 → 研究 → 回到產業還是關聯星圖)', R.indBack === 'star' && R.navLast && R.navLast.ind === 'star', JSON.stringify([R.resBack, R.indBack, R.navLast]));
   ok('⑥b 下拉重整:🏠 會重算(成績單 / 法說會先丟掉再重畫)', R.prHome.renderHome === 1 && R.prHome._recoReset >= 1 && R.prHome._confReset >= 1, JSON.stringify(R.prHome));
