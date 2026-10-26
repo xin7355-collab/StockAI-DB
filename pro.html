@@ -785,6 +785,18 @@ html.app-fish #fishBasketPane h2 .sub{display:none}
 .colpill.on{background:#3a2c10;color:#ffe3a1;border-color:#b8913d;font-weight:800}
 .colpill .c{margin-left:5px;opacity:.75;font-family:var(--mono)}
 .colsort{display:flex;align-items:center;gap:6px;overflow-x:auto;margin:6px 0 4px;padding-bottom:2px;scrollbar-width:none}
+/* 📐 V79.9.2 量化實驗室 */
+.qlsum{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.qlsum span{font-size:12px;padding:3px 9px;border:1px solid var(--line);border-radius:999px;color:var(--sub)}
+.qlv{font-size:11.5px;white-space:nowrap;font-weight:700}.qlv.ok{color:var(--txt)}.qlv.bad{color:var(--amber)}.qlv.none{color:var(--dim2)}
+.qlup{color:var(--up)}.qldn{color:var(--dn)}.qlrow{cursor:pointer}.qlrow:hover td{background:rgba(255,255,255,.03)}
+.qldet td{white-space:normal!important;background:rgba(255,255,255,.02);font-size:12px;line-height:1.7}
+.qlgates{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 10px;margin:6px 0}
+.qlheat{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}.qlheat div{min-width:62px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;text-align:center;font-family:var(--mono);font-size:11px}
+.qlheat div.c{outline:1px solid var(--cyan)}
+.qlyrs{display:flex;align-items:flex-end;gap:2px;height:64px;margin:8px 0 2px;border-bottom:1px solid var(--line)}.qlyrs i{flex:1;min-width:6px;display:block}
+.qlyl{display:flex;gap:2px;font-size:9px;color:var(--dim2);font-family:var(--mono)}.qlyl span{flex:1;min-width:6px;text-align:center;overflow:hidden}
+.qldet .qlin{position:sticky;left:0;max-width:calc(100vw - 48px)}
+@media (max-width:600px){#qlTbl .qlhide{display:none}#qlTbl .qldesc{display:none}#qlTbl th,#qlTbl td{padding:8px 6px}#qlTbl .qlv{white-space:normal}}
 .colsort .lbl{flex:0 0 auto;font-size:11px;color:var(--dim2)}
 .colsortb{flex:0 0 auto;border:1px solid #30363d;background:#161b22;color:#c9d1d9;font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;min-height:32px}
 .colsortb.on{border-color:#58a6ff;color:#cfe8ff;font-weight:800;background:#0f2238}
@@ -1016,6 +1028,7 @@ details.colart:not([open]){margin-bottom:6px}
     <button class="sub-btn hidden" id="tabBtnFish" data-g="reco" data-sub="fish" onclick="PRO.navGo('fish')">📒 成績單</button>
     <button class="sub-btn hidden" id="tabBtnPoli" data-g="reco" data-sub="poli" onclick="PRO.navGo('poli')" title="政治人物申報的持股,照著抱的話報酬多少(跟 0050 比)">🏛️ 政治人物持股</button>
     <button class="sub-btn hidden" id="tabBtnPick" data-g="res" data-sub="pick" onclick="PRO.navGo('pick')">🏆 選哪一套</button>
+    <button class="sub-btn hidden" id="tabBtnQlab" data-g="res" data-sub="qlab" onclick="PRO.navGo('qlab')" title="台股常見買點用同一套規則 16 年全市場實測:哪些有用、哪些比亂買還差">📐 量化實驗室</button>
     <button class="sub-btn hidden" id="tabBtnCol" data-g="res" data-sub="col" onclick="PRO.navGo('col')" title="把實測總表裡有價值的結論寫成白話文章">📰 專欄</button>
     <button class="sub-btn hidden" id="tabBtnLab" data-g="res" data-sub="lab" onclick="PRO.navGo('lab')">🔬 實測總表</button>
     <!-- 🧹 雜訊清單 V79.8.0 併進實測總表「⛔ 沒用」那一頁最下面(摺疊,打開才讀 index.html);資料照舊 fetch index.html 現場解析,⛔ 不抄一份 -->
@@ -1378,6 +1391,13 @@ details.colart:not([open]){margin-bottom:6px}
     </details>
   </div>
 </div>
+<div id="tabQlab" class="hidden">
+  <div class="panel">
+    <!-- 📐 V79.9.2 量化實驗室:結果 = PRO.QLAB(scripts/quant_lab_build.mjs → embed_quant_lab.mjs,⛔ 手改)-->
+    <h2>📐 量化實驗室 <span class="sub">台股常見買點・16 年全市場・同一套規則</span></h2>
+    <div id="qlabBody"></div>
+  </div>
+</div>
 <div id="tabCol" class="hidden">
   <div class="panel">
     <!-- 📰 V78.4.0 專欄:實測總表條目的白話文章版(⛔ 不另存一份資料,見 PRO.renderCol)・V78.4.1 改封面卡版面 -->
@@ -1466,6 +1486,158 @@ details.colart:not([open]){margin-bottom:6px}
 
 <script>
 'use strict';
+// ==QCORE BEGIN==
+const QCORE = (() => {
+    const VER = 1;
+    /** 積木清單(畫面上的下拉選單也讀這份):id → [中文名, 參數說明, 需要的資料] */
+    const BLOCKS = {
+        c: ['收盤價', '', 'k'], o: ['開盤價', '', 'k'], h: ['最高價', '', 'k'], l: ['最低價', '', 'k'], v: ['成交量(張)', '', 'k'],
+        num: ['數字', 'v = 數值', ''],
+        ma: ['N 日均線', 'n', 'k'], ema: ['N 日指數均線', 'n', 'k'],
+        rsi: ['RSI', 'n', 'k'], k: ['KD 的 K', '', 'k'], d: ['KD 的 D', '', 'k'],
+        bias: ['乖離率 %(收盤比 N 日均線)', 'n', 'k'],
+        chg: ['N 日漲跌 %', 'n', 'k'], gap: ['今天開盤跳空 %(比昨收)', '', 'k'],
+        hhv: ['前 N 日最高價(⛔ 不含今天)', 'n', 'k'], llv: ['前 N 日最低價(⛔ 不含今天)', 'n', 'k'],
+        hhc: ['前 N 日最高收盤(⛔ 不含今天)', 'n', 'k'],
+        volr: ['成交量 ÷ 前 N 日均量(⛔ 不含今天)', 'n', 'k'],
+        fstreak: ['外資連續買超天數', '', 'inst'], tstreak: ['投信連續買超天數', '', 'inst'],
+        finst: ['三大法人 N 日買超 ÷ 成交量 %', 'n', 'inst'],
+        mgchg: ['融資 N 日增減 %', 'n', 'mg'],
+        revhi: ['月營收創 N 個月新高(已公布的;1 = 是)', 'n', 'rev'],
+        idxc: ['加權指數收盤', '', 'idx'], idxma: ['加權指數 N 日均線', 'n', 'idx'],
+    };
+    const OPS = ['>', '<', '>=', '<=', 'xup', 'xdn'];
+    const num = x => (x == null || x === '' ? NaN : +x);
+
+    /** 一檔的 K 線 → 指標快取(lazy;同一個 key 只算一次)。bars:[{date,open,high,low,close,volume,foreign_net,...}]
+     *  ctx:{ idx:Map(日期→加權收盤), rev:[{ym:'2020-03', v}] } */
+    function series(bars, ctx) {
+        ctx = ctx || {};
+        const n = bars.length, C = bars.map(r => num(r.close)), O = bars.map(r => num(r.open)), H = bars.map(r => num(r.high)), L = bars.map(r => num(r.low));
+        const V = bars.map(r => num(r.volume) / 1000);
+        const D = bars.map(r => String(r.date || '').replace(/\//g, '-').slice(0, 10));
+        const cache = new Map();
+        const memo = (key, fn) => { if (!cache.has(key)) cache.set(key, fn()); return cache.get(key); };
+        const sma = (arr, p) => { const out = new Array(n).fill(null); let s = 0, m = 0; for (let i = 0; i < n; i++) { const x = arr[i]; s += Number.isFinite(x) ? x : 0; m += Number.isFinite(x) ? 1 : 0; if (i >= p) { const y = arr[i - p]; s -= Number.isFinite(y) ? y : 0; m -= Number.isFinite(y) ? 1 : 0; } if (i >= p - 1 && m === p) out[i] = s / p; } return out; };
+        const kd = () => memo('kd', () => {
+            const k = new Array(n).fill(null), d = new Array(n).fill(null); let pk = 50, pd = 50;
+            for (let i = 8; i < n; i++) {
+                let hh = -Infinity, ll = Infinity; for (let j = i - 8; j <= i; j++) { hh = Math.max(hh, H[j]); ll = Math.min(ll, L[j]); }
+                const rsv = hh === ll ? 50 : (C[i] - ll) / (hh - ll) * 100;
+                pk = (2 / 3) * pk + (1 / 3) * rsv; pd = (2 / 3) * pd + (1 / 3) * pk; k[i] = pk; d[i] = pd;
+            }
+            return { k, d };
+        });
+        const streak = f => memo('st_' + f, () => { const out = new Array(n).fill(null); let s = 0; for (let i = 0; i < n; i++) { const x = bars[i][f]; if (x == null || !Number.isFinite(+x)) { s = 0; out[i] = null; continue; } s = +x > 0 ? s + 1 : 0; out[i] = s; } return out; });
+        const revAt = p => memo('rev_' + p, () => {
+            const out = new Array(n).fill(null), R = (ctx.rev || []).filter(x => x && /^\d{4}-\d{2}$/.test(x.ym) && +x.v > 0).sort((a, b) => a.ym < b.ym ? -1 : 1);
+            if (!R.length) return out;
+            // 那個月的營收「可以用」= 下個月 10 號之後(⛔ 含 10 號當天)第一個交易日
+            const avail = R.map(x => { const [y, m] = x.ym.split('-').map(Number); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1; return `${ny}-${String(nm).padStart(2, '0')}-10`; });
+            let j = -1;
+            for (let i = 0; i < n; i++) {
+                while (j + 1 < R.length && avail[j + 1] < D[i]) j++;
+                if (j < p - 1) continue;
+                let hi = -Infinity; for (let q = j - p + 1; q < j; q++) hi = Math.max(hi, +R[q].v);
+                out[i] = +R[j].v > hi ? 1 : 0;
+            }
+            return out;
+        });
+        /** 取一個積木的整條序列 */
+        function get(op) {
+            if (typeof op === 'number') return memo('#' + op, () => new Array(n).fill(op));
+            const f = op && op.f, p = op && op.n != null ? +op.n : null;
+            if (!(f in BLOCKS)) throw new Error(`QCORE:認不得的積木 '${f}'`);
+            const needN = () => { if (!(p >= 1 && p <= 2000 && Number.isInteger(p))) throw new Error(`QCORE:積木 '${f}' 要給整數 n(1~2000),拿到 ${op.n}`); return p; };
+            switch (f) {
+                case 'num': { const v = +op.v; if (!Number.isFinite(v)) throw new Error('QCORE:num 要給 v'); return new Array(n).fill(v); }
+                case 'c': return C; case 'o': return O; case 'h': return H; case 'l': return L; case 'v': return V;
+                case 'ma': return memo('ma' + needN(), () => sma(C, p));
+                case 'ema': return memo('ema' + needN(), () => { const out = new Array(n).fill(null), kf = 2 / (p + 1); if (n < p) return out; let s = 0; for (let i = 0; i < p; i++) s += C[i]; s /= p; out[p - 1] = s; for (let i = p; i < n; i++) { s = C[i] * kf + s * (1 - kf); out[i] = s; } return out; });
+                case 'rsi': return memo('rsi' + needN(), () => {
+                    const out = new Array(n).fill(null); let ag = 0, al = 0;
+                    for (let i = 1; i < n; i++) {
+                        const ch = C[i] - C[i - 1], g = ch > 0 ? ch : 0, lo = ch < 0 ? -ch : 0;
+                        if (i <= p) { ag += g; al += lo; if (i === p) { ag /= p; al /= p; out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al); } }
+                        else { ag = (ag * (p - 1) + g) / p; al = (al * (p - 1) + lo) / p; out[i] = al === 0 ? (ag === 0 ? 50 : 100) : 100 - 100 / (1 + ag / al); }
+                    }
+                    return out;
+                });
+                case 'k': return kd().k; case 'd': return kd().d;
+                case 'bias': { const m = get({ f: 'ma', n: needN() }); return memo('bias' + p, () => C.map((c, i) => m[i] > 0 ? (c - m[i]) / m[i] * 100 : null)); }
+                case 'chg': return memo('chg' + needN(), () => C.map((c, i) => i >= p && C[i - p] > 0 ? (c / C[i - p] - 1) * 100 : null));
+                case 'gap': return memo('gap', () => O.map((o, i) => i >= 1 && C[i - 1] > 0 && o > 0 ? (o / C[i - 1] - 1) * 100 : null));
+                case 'hhv': case 'llv': case 'hhc': return memo(f + needN(), () => {
+                    const src = f === 'llv' ? L : f === 'hhc' ? C : H, out = new Array(n).fill(null);
+                    for (let i = p; i < n; i++) { let x = f === 'llv' ? Infinity : -Infinity; for (let j = i - p; j < i; j++) x = f === 'llv' ? Math.min(x, src[j]) : Math.max(x, src[j]); out[i] = Number.isFinite(x) ? x : null; }
+                    return out;
+                });
+                case 'volr': return memo('volr' + needN(), () => { const out = new Array(n).fill(null); for (let i = p; i < n; i++) { let s = 0; for (let j = i - p; j < i; j++) s += V[j]; out[i] = s > 0 ? V[i] / (s / p) : null; } return out; });
+                case 'fstreak': return streak('foreign_net');
+                case 'tstreak': return streak('trust_net');
+                case 'finst': return memo('finst' + needN(), () => {
+                    const out = new Array(n).fill(null);
+                    for (let i = p - 1; i < n; i++) { let f2 = 0, v2 = 0, ok = true; for (let j = i - p + 1; j <= i; j++) { const r = bars[j]; if (r.foreign_net == null || r.trust_net == null || r.dealer_net == null) { ok = false; break; } f2 += +r.foreign_net + +r.trust_net + +r.dealer_net; v2 += +r.volume || 0; } out[i] = ok && v2 > 0 ? f2 / v2 * 100 : null; }
+                    return out;
+                });
+                case 'mgchg': return memo('mg' + needN(), () => bars.map((r, i) => { if (i < p) return null; const a = +bars[i - p].margin_balance, b = +r.margin_balance; return a > 0 && b > 0 ? (b / a - 1) * 100 : null; }));
+                case 'revhi': return revAt(needN());
+                case 'idxc': return memo('idxc', () => D.map(d => { const x = ctx.idx && ctx.idx.get(d); return x > 0 ? +x : null; }));
+                case 'idxma': return memo('idxma' + needN(), () => { const s = get({ f: 'idxc' }); return sma(s.map(x => x == null ? NaN : x), p); });
+            }
+            throw new Error(`QCORE:積木 '${f}' 沒有實作`);
+        }
+        return { get, n, D };
+    }
+    /** 一條條件在第 i 根成不成立(任何一邊沒有值 → false) */
+    function condAt(S, c, i) {
+        if (!OPS.includes(c.op)) throw new Error(`QCORE:認不得的比較 '${c.op}'`);
+        return condAB(S.get(c.a), S.get(c.b), c.op, i);
+    }
+    function condAB(A, B, op, i) {
+        const a = A[i], b = B[i];
+        if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+        switch (op) {
+            case '>': return a > b; case '<': return a < b; case '>=': return a >= b; case '<=': return a <= b;
+            case 'xup': case 'xdn': { if (i < 1) return false; const a0 = A[i - 1], b0 = B[i - 1]; if (!Number.isFinite(a0) || !Number.isFinite(b0)) return false; return op === 'xup' ? a > b && a0 <= b0 : a < b && a0 >= b0; }
+        }
+        return false;
+    }
+    /** 策略檢查(⛔ 不合格的一律 throw,回傳正規化過的策略) */
+    function check(st) {
+        if (!st || typeof st !== 'object') throw new Error('QCORE:策略要是物件');
+        const all = Array.isArray(st.all) ? st.all : [], any = Array.isArray(st.any) ? st.any : [];
+        if (!all.length && !any.length) throw new Error('QCORE:策略至少要一條條件');
+        for (const c of [...all, ...any]) { if (!c || !OPS.includes(c.op)) throw new Error(`QCORE:認不得的比較 '${c && c.op}'`); for (const x of [c.a, c.b]) if (typeof x !== 'number' && !(x && x.f in BLOCKS)) throw new Error(`QCORE:認不得的積木 '${x && x.f}'`); }
+        const gap = st.gap == null ? 10 : +st.gap;
+        if (!(gap >= 1 && gap <= 250)) throw new Error('QCORE:gap 要在 1~250');
+        return { ...st, all, any, gap };
+    }
+    /** 一檔 → 訊號日(第 i 根收盤後判斷成立;同一檔 gap 根內只算第一次)。回傳 index 陣列;S0 = 已經建好的 series(同一檔跑很多策略時共用) */
+    function signals(st, bars, ctx, S0) {
+        const P = check(st), S = S0 || series(bars, ctx), out = []; let last = -1e9;
+        const rs = L => L.map(c => [S.get(c.a), S.get(c.b), c.op]), AL = rs(P.all), AN = rs(P.any);   // 每條條件的兩條序列先取好(⛔ 每一根重取)
+        for (let i = 1; i < S.n; i++) {
+            if (i - last < P.gap) continue;
+            if (!AL.every(([A, B, op]) => condAB(A, B, op, i))) continue;
+            if (AN.length && !AN.some(([A, B, op]) => condAB(A, B, op, i))) continue;
+            out.push(i); last = i;
+        }
+        return out;
+    }
+    /** 需要哪幾種資料(畫面用來講「近 3 年沒有月營收 → 這條沙盒跑不了」) */
+    function needs(st) { const P = check(st), s = new Set(); for (const c of [...P.all, ...P.any]) for (const x of [c.a, c.b]) if (typeof x !== 'number' && BLOCKS[x.f][2]) s.add(BLOCKS[x.f][2]); return [...s]; }
+    /** 白話:「KD 的 K 由下往上穿過 KD 的 D,且 KD 的 K < 30」 */
+    function describe(st) {
+        const P = check(st), nm = x => typeof x === 'number' ? String(x) : x.f === 'num' ? String(x.v) : BLOCKS[x.f][0].replace('N 日', `${x.n} 日`).replace('N 個月', `${x.n} 個月`).replace('前 N 日', `前 ${x.n} 日`).replace('÷ 前 N 日', `÷ 前 ${x.n} 日`);
+        const opw = { '>': '>', '<': '<', '>=': '≥', '<=': '≤', xup: '由下往上穿過', xdn: '由上往下穿過' };
+        const one = c => `${nm(c.a)} ${opw[c.op]} ${nm(c.b)}`;
+        const a = P.all.map(one).join(',且 '), b = P.any.map(one).join(',或 ');
+        return [a, b ? `(${b})` : ''].filter(Boolean).join(',且 ');
+    }
+    return { VER, BLOCKS, OPS, series, condAt, check, signals, needs, describe };
+})();
+// ==QCORE END==
 const PRO = {
   _cache: {},
   _tab: 'val',
@@ -2441,12 +2613,13 @@ const PRO = {
     if (this._tab === 'lab') { this.renderLab(); const nw = document.getElementById('labNoiseWrap'); if (nw && nw.open) await this.renderNoise(); }
     if (this._tab === 'log') await this.renderLog();
     if (this._tab === 'col') this.renderCol();
+    if (this._tab === 'qlab') this.renderQlab();
     if (this._tab === 'home') { this._recoReset(); this._confReset(); await this.renderHome(true); }
     if (this._valRows && this._valRows.length) await this.runValuation(true);
     this.toast('✅ 已更新');
   },
 
-  TABS: [['home', 'Home'], ['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['conf', 'Conf'], ['poli', 'Poli'], ['lab', 'Lab'], ['col', 'Col'], ['log', 'Log']],
+  TABS: [['home', 'Home'], ['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['conf', 'Conf'], ['poli', 'Poli'], ['lab', 'Lab'], ['qlab', 'Qlab'], ['col', 'Col'], ['log', 'Log']],
   // 🧭 V79.8.0 五大類(使用者 10/25 選的)—— ⛔ 作戰室新增頁面一律登記在這裡,⛔ 再平鋪按鈕
   //   (以前 10 顆排 3 行 = 手機直立 192px、橫拿 39% 螢幕)。第三欄 = 子頁(分頁代號);
   //   pick = 實測總表的「🏆 選哪一套」(跟 lab 共用 #tabLab,靠 _labSel 分)。
@@ -2455,10 +2628,10 @@ const PRO = {
     ['ind', '🏭 產業', ['rot', 'chain', 'star', 'val']],
     ['conf', '📞 法說會', ['conf']],
     ['reco', '📒 成績單', ['fish', 'poli']],
-    ['res', '🔬 研究', ['pick', 'col', 'lab', 'log']],
+    ['res', '🔬 研究', ['pick', 'qlab', 'col', 'lab', 'log']],
   ],
   // 舊書籤 / 深連結 / 別頁的按鈕 → 住在實測總表裡的那幾個(⛔ 不可整個失效)
-  NAV_ALIAS: { pick: ['lab', 'pick'], calc: ['lab', 'bt'], noise: ['lab', 'trap'] },
+  NAV_ALIAS: { pick: ['lab', 'pick'], calc: ['lab', 'bt'], noise: ['lab', 'trap'], quant: ['qlab', null] },
   _navCur() { return this._tab === 'lab' && this._labSel === 'pick' ? 'pick' : this._tab; },
   _navGroupOf(sub) { const g = this.NAV.find(x => x[2].includes(sub)); return g ? g[0] : null; },
   _navLast() { try { return JSON.parse(localStorage.getItem('proWar_navLast') || '{}') || {}; } catch (_) { return {}; } },
@@ -2490,7 +2663,7 @@ const PRO = {
   switchTab(t, silent) {
     // 🧭 V79.8.0 別名:pick / calc / noise 都住在實測總表裡(舊書籤、深連結、別頁的按鈕照樣進得來)
     const al = this.NAV_ALIAS[t];
-    if (al) { this._labSel = al[1]; if (t === 'noise') this._labNoiseOpen = true; t = al[0]; }
+    if (al) { if (al[1]) this._labSel = al[1]; if (t === 'noise') this._labNoiseOpen = true; t = al[0]; }
     if (!this.TABS.some(([k]) => k === t)) t = 'home';
     this.closeStock();                    // 🔗 切頁一律收起快捷面板(⛔ 不可蓋在別頁上面)
     this.closeModal();                    // 📖 懸浮視窗同理
@@ -2513,6 +2686,7 @@ const PRO = {
     if (t === 'conf') this._confP = this.renderConf();   // 📞 存 promise:🏠 今天點一場 → 等法說會頁畫好再打開那家的公司檔案
     if (t === 'poli') this.renderPoli();
     if (t === 'col') this.renderCol();
+    if (t === 'qlab') this.renderQlab();
     if (t === 'log') this.renderLog();
     // 🧮 V79.8.0 產業估值第一次打開就用輸入框裡的預設組合跑一次(以前是空白頁,要先按鈕)
     if (t === 'val' && !this._valAuto) { this._valAuto = 1; if (!(this._valRows && this._valRows.length)) this.runValuation(true); }
@@ -7852,6 +8026,7 @@ const PRO = {
   //   ⛔ 畫面上不再用版本號當名字(「決策台現行 V78.0.7」「上一任 V77.6.5」看不懂),版本只放點開後的灰字;
   //   ⛔ 同一個 emoji 不重複(以前 🧬 一次出現 1 個、一次 3 個);內部 key(gene / now807 / lead…)⛔ 不改。
   //   `ids` = 逐年成績單(_YEARLY_BT)裡對應的列;`how` 三行 = 選股 / 什麼時候賣 / 錢怎麼放。
+  QLAB: {"built":"2026-10-26","src":"scripts/quant_lab_build.mjs(d16m_fi,含已下市)","syms":2493,"win":["2010-01-04","2026-10-22"],"revSyms":2440,"dispo":true,"cost":0.44,"exits":{"h10":"固定 10 天","chand2":"吊燈 ATR 2 倍・最長 20 天・−5% 硬停損"},"tests":31,"fam":[{"id":"kd_gold","name":"KD 低檔黃金交叉","pl":"K 低於","why":"K 由下往上穿過 D,而且 K 在低檔(很多看盤軟體的經典買點)","desc":"KD 的 K 由下往上穿過 KD 的 D,且 KD 的 K < 30","key":"T","center":30,"verdict":"none","st":{"all":[{"a":{"f":"k"},"op":"xup","b":{"f":"d"}},{"a":{"f":"k"},"op":"<","b":"$T"}],"gap":10},"n":160284,"sig":164021,"blk":{"lock":2898,"zero":477,"dispo":147,"cliff":93,"tail":576},"c":{"n":160284,"x":-0.703,"win":32.8,"p":0,"h1":-0.711,"h2":-0.694,"yPos":0,"yN":17,"dropY":-0.708,"dropM":-0.711,"bestY":"2012","yrs":[["2010",-0.82,6862],["2011",-0.58,9367],["2012",-0.6,7431],["2013",-0.78,7735],["2014",-0.77,8429],["2015",-0.64,9421],["2016",-0.79,9048],["2017",-0.81,9743],["2018",-0.73,10383],["2019",-0.61,8659],["2020",-0.73,8661],["2021",-0.65,9475],["2022",-0.63,10877],["2023",-0.61,9708],["2024",-0.7,12131],["2025",-0.74,12553],["2026",-0.8,9801]]},"h10":{"n":159830,"x":-0.795,"win":37.3,"p":0,"h1":-0.845,"h2":-0.746,"yPos":0,"yN":17,"dropY":-0.801,"dropM":-0.799,"bestY":"2014","yrs":[["2010",-0.97,6861],["2011",-0.87,9364],["2012",-0.8,7426],["2013",-0.97,7733],["2014",-0.69,8425],["2015",-0.77,9419],["2016",-0.83,9047],["2017",-0.87,9744],["2018",-0.89,10381],["2019",-0.79,8655],["2020",-0.82,8656],["2021",-0.66,9471],["2022",-0.62,10869],["2023",-0.67,9705],["2024",-0.76,12130],["2025",-0.77,12553],["2026",-0.88,9391]]},"adj":{"n":160284,"x":-0.066,"win":37.2,"p":0.00525,"h1":-0.1,"h2":-0.032,"yPos":15,"yN":17,"dropY":-0.058,"dropM":-0.056,"bestY":"2018","yrs":[["2010",-0.16,6862],["2011",-0.07,9367],["2012",-0.12,7431],["2013",-0.03,7735],["2014",-0.15,8429],["2015",-0.02,9421],["2016",-0.14,9048],["2017",-0.12,9743],["2018",-0.18,10383],["2019",-0.01,8659],["2020",-0.15,8661],["2021",-0.11,9475],["2022",0.02,10877],["2023",0.15,9708],["2024",-0.07,12131],["2025",-0.02,12553],["2026",-0.02,9801]]},"shamGross":-0.197,"q":0,"qNeg":0.00957,"gates":[false,false,false,false,false,true],"gatesNeg":[true,true,true,true,true,true],"plateau":true,"plateauNeg":false,"sham":[{"n":160078,"x":-0.616},{"n":160146,"x":-0.646},{"n":160048,"x":-0.648}],"shamBeat":false,"shamWorse":true,"grid":[{"p":20,"center":false,"n":70058,"x":-0.76,"x10":-0.805,"adj":-0.124,"q":0},{"p":30,"center":true,"n":160284,"x":-0.703,"x10":-0.795,"adj":-0.066,"q":0},{"p":40,"center":false,"n":242700,"x":-0.621,"x10":-0.756,"adj":0.015,"q":0}]},{"id":"bias_low","name":"負乖離過大搶反彈","pl":"乖離低於 −","why":"收盤比月線低很多(跌太深)→ 搶反彈","desc":"乖離率 %(收盤比 20 日均線) < -10","key":"T","center":10,"verdict":"none","st":{"all":[{"a":{"f":"bias","n":20},"op":"<","b":"$NT"}],"gap":10},"n":60787,"sig":63589,"blk":{"lock":2349,"zero":109,"dispo":199,"cliff":98,"tail":286},"c":{"n":60787,"x":-0.548,"win":33.4,"p":3.06e-7,"h1":-0.506,"h2":-0.59,"yPos":1,"yN":17,"dropY":-0.575,"dropM":-0.591,"bestY":"2014","yrs":[["2010",-0.82,3415],["2011",-0.5,6156],["2012",-0.5,3084],["2013",-0.3,1611],["2014",0.05,2626],["2015",-0.47,4860],["2016",-0.36,2469],["2017",-0.79,1720],["2018",-0.68,4478],["2019",-0.63,1623],["2020",-0.76,4457],["2021",-0.83,3853],["2022",-0.55,5180],["2023",-0.28,1910],["2024",-0.56,3737],["2025",-0.42,5062],["2026",-0.59,4546]]},"h10":{"n":60548,"x":-0.244,"win":44.3,"p":0.0173,"h1":-0.203,"h2":-0.285,"yPos":2,"yN":17,"dropY":-0.263,"dropM":-0.273,"bestY":"2014","yrs":[["2010",-0.23,3415],["2011",-0.31,6150],["2012",-0.26,3074],["2013",0.15,1609],["2014",0.18,2624],["2015",-0.28,4854],["2016",-0.12,2465],["2017",-0.3,1717],["2018",-0.29,4478],["2019",-0.91,1621],["2020",-0.41,4454],["2021",-0.13,3854],["2022",-0.38,5179],["2023",-0.2,1904],["2024",-0.28,3737],["2025",-0.22,5061],["2026",-0.06,4352]]},"adj":{"n":60787,"x":-0.162,"win":35.2,"p":0.0716,"h1":0.051,"h2":-0.375,"yPos":11,"yN":17,"dropY":-0.111,"dropM":-0.137,"bestY":"2021","yrs":[["2010",-0.18,3415],["2011",0.15,6156],["2012",-0.24,3084],["2013",-0.17,1611],["2014",0.44,2626],["2015",0.15,4860],["2016",0.36,2469],["2017",-0.25,1720],["2018",-0.03,4478],["2019",0.02,1623],["2020",-0.71,4457],["2021",-0.92,3853],["2022",0.25,5180],["2023",-0.41,1910],["2024",-0.57,3737],["2025",-0.08,5062],["2026",-0.58,4546]]},"shamGross":0.053,"q":4.12e-7,"qNeg":0.103,"gates":[false,false,false,false,false,true],"gatesNeg":[true,false,false,true,true,false],"plateau":true,"plateauNeg":false,"sham":[{"n":61042,"x":-0.429},{"n":61034,"x":-0.388},{"n":61118,"x":-0.345}],"shamBeat":false,"shamWorse":true,"grid":[{"p":6,"center":false,"n":142056,"x":-0.758,"x10":-0.654,"adj":-0.385,"q":0},{"p":8,"center":false,"n":92485,"x":-0.677,"x10":-0.478,"adj":-0.297,"q":2.06e-15},{"p":10,"center":true,"n":60787,"x":-0.548,"x10":-0.244,"adj":-0.162,"q":4.12e-7},{"p":12,"center":false,"n":40595,"x":-0.341,"x10":0.066,"adj":0.046,"q":0.0562},{"p":15,"center":false,"n":22292,"x":0.056,"x10":0.59,"adj":0.435,"q":0.541}]},{"id":"gap_up","name":"跳空開高走高","pl":"跳空 ≥ %","why":"今天開盤比昨收高 T% 以上,而且收盤比開盤高","desc":"今天開盤跳空 %(比昨收) ≥ 3,且 收盤價 > 開盤價","key":"T","center":3,"verdict":"bad","st":{"all":[{"a":{"f":"gap"},"op":">=","b":"$T"},{"a":{"f":"c"},"op":">","b":{"f":"o"}}],"gap":10},"n":36499,"sig":42019,"blk":{"lock":4999,"zero":97,"dispo":317,"cliff":52,"tail":179},"c":{"n":36499,"x":-0.362,"win":31.5,"p":5.47e-13,"h1":-0.598,"h2":-0.126,"yPos":4,"yN":17,"dropY":-0.457,"dropM":-0.458,"bestY":"2026","yrs":[["2010",-0.79,1536],["2011",-0.48,2414],["2012",-1.09,1501],["2013",-0.51,1256],["2014",-0.73,1338],["2015",-0.63,1633],["2016",-0.85,1606],["2017",-1.24,1469],["2018",-0.9,1879],["2019",-0.45,1335],["2020",0.25,3086],["2021",0.05,2937],["2022",-1.12,2404],["2023",-0.61,1796],["2024",-0.13,2435],["2025",0.16,3677],["2026",0.37,4197]]},"h10":{"n":36375,"x":-0.326,"win":39.5,"p":9.46e-10,"h1":-0.532,"h2":-0.121,"yPos":4,"yN":17,"dropY":-0.443,"dropM":-0.408,"bestY":"2026","yrs":[["2010",-1,1537],["2011",-0.63,2413],["2012",-1.11,1501],["2013",-0.91,1254],["2014",-0.42,1337],["2015",-0.37,1631],["2016",-0.91,1602],["2017",-0.77,1468],["2018",-0.52,1878],["2019",-0.44,1336],["2020",0.56,3081],["2021",-0.55,2936],["2022",-1.1,2404],["2023",-0.49,1794],["2024",0.01,2435],["2025",0.06,3675],["2026",0.6,4093]]},"adj":{"n":36499,"x":-0.82,"win":30.1,"p":0,"h1":-0.861,"h2":-0.779,"yPos":17,"yN":17,"dropY":-0.822,"dropM":-0.774,"bestY":"2026","yrs":[["2010",-1.17,1536],["2011",-0.3,2414],["2012",-0.88,1501],["2013",-0.94,1256],["2014",-1.19,1338],["2015",-0.65,1633],["2016",-0.86,1606],["2017",-2.16,1469],["2018",-0.96,1879],["2019",-1,1335],["2020",-0.43,3086],["2021",-0.81,2937],["2022",-1.15,2404],["2023",-1.4,1796],["2024",-0.75,2435],["2025",-0.1,3677],["2026",-0.8,4197]]},"shamGross":0.902,"q":1.3e-12,"qNeg":0,"gates":[false,false,false,false,false,true],"gatesNeg":[true,true,true,true,true,true],"plateau":true,"plateauNeg":true,"sham":[{"n":39838,"x":0.47},{"n":39880,"x":0.369},{"n":39915,"x":0.545}],"shamBeat":false,"shamWorse":true,"grid":[{"p":2,"center":false,"n":77547,"x":-0.483,"x10":-0.459,"adj":-0.916,"q":0},{"p":3,"center":true,"n":36499,"x":-0.362,"x10":-0.326,"adj":-0.82,"q":1.3e-12},{"p":4,"center":false,"n":19828,"x":-0.368,"x10":-0.321,"adj":-0.845,"q":1.1e-10},{"p":5,"center":false,"n":11877,"x":-0.36,"x10":-0.329,"adj":-0.851,"q":1.41e-7}]},{"id":"fi_streak","name":"外資連續買超","pl":"連買 ≥ 天","why":"外資連續 N 天以上買超","desc":"外資連續買超天數 ≥ 5","key":"T","center":5,"verdict":"none","st":{"all":[{"a":{"f":"fstreak"},"op":">=","b":"$T"}],"gap":10},"n":97660,"sig":99868,"blk":{"lock":1665,"zero":17,"dispo":458,"cliff":25,"tail":412},"c":{"n":97660,"x":-0.355,"win":34.8,"p":2.53e-12,"h1":-0.372,"h2":-0.339,"yPos":0,"yN":15,"dropY":-0.378,"dropM":-0.366,"bestY":"2017","yrs":[["2012",-0.61,4626],["2013",-0.47,6470],["2014",-0.58,7271],["2015",-0.12,6413],["2016",-0.45,5856],["2017",-0.07,7190],["2018",-0.39,6518],["2019",-0.32,6125],["2020",-0.21,5754],["2021",-0.41,6142],["2022",-0.66,6730],["2023",-0.47,7470],["2024",-0.22,6593],["2025",-0.25,7687],["2026",-0.17,6815]]},"h10":{"n":97291,"x":-0.386,"win":38.9,"p":0,"h1":-0.377,"h2":-0.395,"yPos":0,"yN":15,"dropY":-0.406,"dropM":-0.392,"bestY":"2017","yrs":[["2012",-0.51,4625],["2013",-0.45,6469],["2014",-0.48,7271],["2015",-0.22,6413],["2016",-0.47,5854],["2017",-0.13,7191],["2018",-0.48,6517],["2019",-0.37,6123],["2020",-0.31,5754],["2021",-0.45,6142],["2022",-0.57,6729],["2023",-0.47,7470],["2024",-0.31,6593],["2025",-0.28,7686],["2026",-0.34,6454]]},"adj":{"n":97660,"x":-0.104,"win":36.6,"p":0.119,"h1":-0.078,"h2":-0.13,"yPos":11,"yN":15,"dropY":-0.09,"dropM":-0.095,"bestY":"2023","yrs":[["2012",-0.13,4626],["2013",0.05,6470],["2014",-0.16,7271],["2015",0.14,6413],["2016",-0.33,5856],["2017",0.03,7190],["2018",-0.06,6518],["2019",-0.24,6125],["2020",0.18,5754],["2021",-0.02,6142],["2022",-0.26,6730],["2023",-0.28,7470],["2024",-0.08,6593],["2025",-0.11,7687],["2026",-0.27,6815]]},"shamGross":0.189,"q":5.6e-12,"qNeg":0.16,"gates":[false,false,false,false,false,true],"gatesNeg":[true,true,true,true,true,false],"plateau":true,"plateauNeg":true,"sham":[{"n":98207,"x":-0.242},{"n":98243,"x":-0.283},{"n":98251,"x":-0.228}],"shamBeat":false,"shamWorse":true,"grid":[{"p":3,"center":false,"n":216919,"x":-0.332,"x10":-0.369,"adj":-0.087,"q":0},{"p":4,"center":false,"n":145001,"x":-0.334,"x10":-0.357,"adj":-0.086,"q":0},{"p":5,"center":true,"n":97660,"x":-0.355,"x10":-0.386,"adj":-0.104,"q":5.6e-12},{"p":6,"center":false,"n":67414,"x":-0.38,"x10":-0.393,"adj":-0.125,"q":1.37e-13},{"p":8,"center":false,"n":33716,"x":-0.397,"x10":-0.369,"adj":-0.139,"q":3.76e-7}]},{"id":"vol_break","name":"帶量突破 20 日新高","pl":"量 ≥ 倍","why":"收盤創前 20 日新高,而且成交量是前 20 日均量的 T 倍以上","desc":"收盤價 > 前 20 日最高收盤(⛔ 不含今天),且 成交量 ÷ 前 20 日均量(⛔ 不含今天) ≥ 2","key":"T","center":2,"verdict":"bad","st":{"all":[{"a":{"f":"c"},"op":">","b":{"f":"hhc","n":20}},{"a":{"f":"volr","n":20},"op":">=","b":"$T"}],"gap":10},"n":140654,"sig":151065,"blk":{"lock":10073,"zero":122,"dispo":95,"cliff":89,"tail":456},"c":{"n":140654,"x":-0.352,"win":32.8,"p":2.53e-13,"h1":-0.445,"h2":-0.259,"yPos":1,"yN":17,"dropY":-0.384,"dropM":-0.366,"bestY":"2024","yrs":[["2010",-0.68,6966],["2011",-0.09,5000],["2012",-0.9,7360],["2013",-0.25,8294],["2014",-0.61,7674],["2015",-0.22,6643],["2016",-0.41,8039],["2017",-0.37,9129],["2018",-0.45,7472],["2019",-0.33,9365],["2020",-0.33,9242],["2021",-0.35,9683],["2022",-0.64,8077],["2023",-0.36,10976],["2024",0.08,9816],["2025",-0.16,9097],["2026",-0.02,7821]]},"h10":{"n":140230,"x":-0.45,"win":37.1,"p":0,"h1":-0.525,"h2":-0.375,"yPos":0,"yN":17,"dropY":-0.475,"dropM":-0.461,"bestY":"2024","yrs":[["2010",-0.79,6966],["2011",-0.33,4998],["2012",-0.72,7358],["2013",-0.46,8291],["2014",-0.59,7675],["2015",-0.32,6643],["2016",-0.62,8034],["2017",-0.41,9128],["2018",-0.43,7470],["2019",-0.41,9363],["2020",-0.5,9236],["2021",-0.48,9680],["2022",-0.5,8076],["2023",-0.39,10972],["2024",-0.12,9814],["2025",-0.31,9094],["2026",-0.36,7432]]},"adj":{"n":140654,"x":-0.382,"win":32.7,"p":4.44e-16,"h1":-0.45,"h2":-0.315,"yPos":17,"yN":17,"dropY":-0.36,"dropM":-0.373,"bestY":"2012","yrs":[["2010",-0.66,6966],["2011",-0.24,5000],["2012",-0.79,7360],["2013",-0.31,8294],["2014",-0.58,7674],["2015",-0.27,6643],["2016",-0.31,8039],["2017",-0.46,9129],["2018",-0.38,7472],["2019",-0.42,9365],["2020",-0.38,9242],["2021",-0.22,9683],["2022",-0.57,8077],["2023",-0.41,10976],["2024",-0.1,9816],["2025",-0.17,9097],["2026",-0.32,7821]]},"shamGross":0.47,"q":6.54e-13,"qNeg":2.29e-15,"gates":[false,false,false,false,false,true],"gatesNeg":[true,true,true,true,true,true],"plateau":true,"plateauNeg":true,"sham":[{"n":147272,"x":0.052},{"n":147261,"x":0.017},{"n":147221,"x":0.022}],"shamBeat":false,"shamWorse":true,"grid":[{"p":1.5,"center":false,"n":164941,"x":-0.296,"x10":-0.387,"adj":-0.326,"q":4.3e-9},{"p":2,"center":true,"n":140654,"x":-0.352,"x10":-0.45,"adj":-0.382,"q":6.54e-13},{"p":2.5,"center":false,"n":119447,"x":-0.4,"x10":-0.506,"adj":-0.431,"q":1.53e-15},{"p":3,"center":false,"n":101641,"x":-0.453,"x10":-0.555,"adj":-0.484,"q":0}]},{"id":"margin_down","name":"融資減少、站上月線(籌碼沉澱)","pl":"融資減 ≥ %","why":"融資 5 天減少 T% 以上,而且收盤在月線上","desc":"融資 5 日增減 % ≤ -10,且 收盤價 > 20 日均線","key":"T","center":10,"verdict":"bad","st":{"all":[{"a":{"f":"mgchg","n":5},"op":"<=","b":"$NT"},{"a":{"f":"c"},"op":">","b":{"f":"ma","n":20}}],"gap":10},"n":44148,"sig":45661,"blk":{"lock":1039,"zero":53,"dispo":378,"cliff":12,"tail":255},"c":{"n":44148,"x":-0.288,"win":34.7,"p":1.25e-7,"h1":-0.414,"h2":-0.162,"yPos":1,"yN":17,"dropY":-0.357,"dropM":-0.319,"bestY":"2026","yrs":[["2010",-0.08,1510],["2011",-0.04,1160],["2012",-0.84,1486],["2013",-0.36,1989],["2014",-0.51,1626],["2015",-0.63,1487],["2016",-0.77,1781],["2017",-0.28,2054],["2018",-0.22,1719],["2019",-0.4,2354],["2020",-0.76,3392],["2021",-0.02,3242],["2022",-0.76,2283],["2023",-0.32,4384],["2024",-0.14,4938],["2025",-0.12,4229],["2026",0.32,4514]]},"h10":{"n":43924,"x":-0.308,"win":39.5,"p":8.69e-9,"h1":-0.396,"h2":-0.22,"yPos":2,"yN":17,"dropY":-0.376,"dropM":-0.332,"bestY":"2026","yrs":[["2010",-0.26,1510],["2011",0.14,1160],["2012",-0.73,1486],["2013",-0.3,1989],["2014",-0.42,1626],["2015",-0.41,1487],["2016",-0.4,1781],["2017",-0.22,2053],["2018",-0.47,1719],["2019",-0.34,2355],["2020",-0.73,3391],["2021",-0.42,3241],["2022",-0.45,2282],["2023",-0.43,4383],["2024",-0.26,4939],["2025",-0.21,4229],["2026",0.32,4293]]},"adj":{"n":44148,"x":-0.418,"win":34.1,"p":2.51e-10,"h1":-0.373,"h2":-0.463,"yPos":17,"yN":17,"dropY":-0.41,"dropM":-0.4,"bestY":"2025","yrs":[["2010",-0.28,1510],["2011",-0.76,1160],["2012",-0.55,1486],["2013",-0.33,1989],["2014",-0.18,1626],["2015",-0.5,1487],["2016",-0.91,1781],["2017",-0.38,2054],["2018",-0.11,1719],["2019",-0.39,2354],["2020",-0.43,3392],["2021",-0.06,3242],["2022",-0.8,2283],["2023",-0.41,4384],["2024",-0.4,4938],["2025",-0.49,4229],["2026",-0.41,4514]]},"shamGross":0.571,"q":1.85e-7,"qNeg":6.48e-10,"gates":[false,false,false,false,false,true],"gatesNeg":[true,true,true,true,true,true],"plateau":true,"plateauNeg":true,"sham":[{"n":44695,"x":0.128},{"n":44726,"x":0.152},{"n":44659,"x":0.113}],"shamBeat":false,"shamWorse":true,"grid":[{"p":5,"center":false,"n":87039,"x":-0.291,"x10":-0.304,"adj":-0.412,"q":3.83e-8},{"p":8,"center":false,"n":57131,"x":-0.287,"x10":-0.296,"adj":-0.413,"q":1.34e-7},{"p":10,"center":true,"n":44148,"x":-0.288,"x10":-0.308,"adj":-0.418,"q":1.85e-7},{"p":15,"center":false,"n":24498,"x":-0.337,"x10":-0.359,"adj":-0.475,"q":7.87e-8}]},{"id":"ma_bull","name":"均線剛排成多頭","pl":"穿過 N 日線:","why":"5 日 > 10 日 > 20 日線,而且 20 日線剛往上穿過 T 日線","desc":"5 日均線 > 10 日均線,且 10 日均線 > 20 日均線,且 20 日均線 由下往上穿過 60 日均線","key":"T","center":60,"verdict":"none","st":{"all":[{"a":{"f":"ma","n":5},"op":">","b":{"f":"ma","n":10}},{"a":{"f":"ma","n":10},"op":">","b":{"f":"ma","n":20}},{"a":{"f":"ma","n":20},"op":"xup","b":{"f":"ma","n":"$T"}}],"gap":10},"n":45475,"sig":47274,"blk":{"lock":1524,"zero":150,"dispo":90,"cliff":28,"tail":182},"c":{"n":45475,"x":-0.286,"win":33.8,"p":0.025,"h1":-0.339,"h2":-0.232,"yPos":3,"yN":17,"dropY":-0.314,"dropM":-0.302,"bestY":"2021","yrs":[["2010",-0.33,1796],["2011",0.14,1589],["2012",-0.57,2844],["2013",-0.1,2357],["2014",-0.48,2496],["2015",-0.55,2028],["2016",-0.5,2976],["2017",-0.1,2535],["2018",-0.2,2767],["2019",-0.5,2831],["2020",-0.55,2909],["2021",0.08,3222],["2022",-0.46,3279],["2023",-0.31,2964],["2024",-0.07,2882],["2025",0.03,3343],["2026",-0.32,2657]]},"h10":{"n":45300,"x":-0.335,"win":37.9,"p":0.00541,"h1":-0.357,"h2":-0.312,"yPos":1,"yN":17,"dropY":-0.35,"dropM":-0.352,"bestY":"2011","yrs":[["2010",-0.74,1796],["2011",0.1,1588],["2012",-0.59,2843],["2013",-0.09,2356],["2014",-0.5,2496],["2015",-0.38,2028],["2016",-0.49,2975],["2017",-0.12,2535],["2018",-0.2,2765],["2019",-0.44,2829],["2020",-0.41,2909],["2021",-0.11,3221],["2022",-0.41,3279],["2023",-0.5,2963],["2024",-0.23,2882],["2025",-0.05,3343],["2026",-0.5,2492]]},"adj":{"n":45475,"x":-0.07,"win":35.1,"p":0.589,"h1":-0.138,"h2":-0.002,"yPos":10,"yN":17,"dropY":-0.037,"dropM":-0.052,"bestY":"2022","yrs":[["2010",-0.09,1796],["2011",-0.08,1589],["2012",-0.16,2844],["2013",0.36,2357],["2014",-0.23,2496],["2015",-0.46,2028],["2016",-0.39,2976],["2017",0.15,2535],["2018",-0.1,2767],["2019",-0.34,2831],["2020",0.07,2909],["2021",0.56,3222],["2022",-0.5,3279],["2023",0.01,2964],["2024",0.05,2882],["2025",0.18,3343],["2026",-0.33,2657]]},"shamGross":0.224,"q":0.0298,"qNeg":0.63,"gates":[false,false,false,false,false,true],"gatesNeg":[true,true,false,true,true,false],"plateau":true,"plateauNeg":false,"sham":[{"n":46147,"x":-0.171},{"n":46168,"x":-0.241},{"n":46174,"x":-0.236}],"shamBeat":false,"shamWorse":true,"grid":[{"p":40,"center":false,"n":61617,"x":-0.246,"x10":-0.312,"adj":-0.033,"q":0.0311},{"p":60,"center":true,"n":45475,"x":-0.286,"x10":-0.335,"adj":-0.07,"q":0.0298},{"p":120,"center":false,"n":28541,"x":-0.388,"x10":-0.36,"adj":-0.164,"q":0.00336}]},{"id":"rev_hi","name":"月營收創新高","pl":"幾個月新高:","why":"最新公布的月營收創 T 個月新高(下個月 10 號之後才算公布)","desc":"月營收創 12 個月新高(已公布的;1 = 是) ≥ 1","key":"T","center":12,"verdict":"none","st":{"all":[{"a":{"f":"revhi","n":"$T"},"op":">=","b":1}],"gap":20},"n":62742,"sig":64796,"blk":{"lock":1707,"zero":131,"dispo":167,"cliff":37,"tail":489},"c":{"n":62742,"x":-0.07,"win":35.1,"p":0.808,"h1":-0.229,"h2":0.089,"yPos":5,"yN":17,"dropY":-0.096,"dropM":-0.088,"bestY":"2020","yrs":[["2010",-0.4,4511],["2011",-0.44,2569],["2012",-0.23,2791],["2013",-0.25,4276],["2014",-0.09,3429],["2015",-0.19,2652],["2016",-0.16,2872],["2017",-0.07,3671],["2018",-0.17,4225],["2019",-0.01,2857],["2020",0.35,3738],["2021",0.09,5081],["2022",-0.05,4078],["2023",0.15,2898],["2024",0,4173],["2025",0.25,3656],["2026",-0.08,5265]]},"h10":{"n":62265,"x":-0.217,"win":39.2,"p":0.00452,"h1":-0.368,"h2":-0.066,"yPos":1,"yN":17,"dropY":-0.24,"dropM":-0.243,"bestY":"2021","yrs":[["2010",-0.43,4512],["2011",-0.68,2567],["2012",-0.58,2790],["2013",-0.52,4275],["2014",-0.22,3428],["2015",-0.22,2649],["2016",-0.11,2873],["2017",-0.18,3670],["2018",-0.39,4222],["2019",-0.16,2856],["2020",-0.02,3736],["2021",0.05,5084],["2022",-0.17,4078],["2023",-0.12,2897],["2024",-0.07,4172],["2025",-0.08,3658],["2026",-0.03,4798]]},"adj":{"n":62742,"x":-0.193,"win":34.5,"p":0.0551,"h1":-0.287,"h2":-0.098,"yPos":16,"yN":17,"dropY":-0.166,"dropM":-0.178,"bestY":"2026","yrs":[["2010",-0.35,4511],["2011",-0.47,2569],["2012",-0.27,2791],["2013",-0.36,4276],["2014",-0.15,3429],["2015",-0.49,2652],["2016",-0.08,2872],["2017",-0.25,3671],["2018",-0.13,4225],["2019",-0.14,2857],["2020",0.23,3738],["2021",-0.21,5081],["2022",0,4078],["2023",-0.09,2898],["2024",-0.01,4173],["2025",0,3656],["2026",-0.48,5265]]},"shamGross":0.563,"q":0.808,"qNeg":0.0854,"gates":[false,false,false,false,false,false],"gatesNeg":[true,true,true,true,true,false],"plateau":false,"plateauNeg":true,"sham":[{"n":62939,"x":0.144},{"n":63089,"x":0.101},{"n":63100,"x":0.124}],"shamBeat":false,"shamWorse":true,"grid":[{"p":6,"center":false,"n":104960,"x":-0.236,"x10":-0.348,"adj":-0.36,"q":0.0000147},{"p":12,"center":true,"n":62742,"x":-0.07,"x10":-0.217,"adj":-0.193,"q":0.808},{"p":24,"center":false,"n":39019,"x":0.004,"x10":-0.144,"adj":-0.133,"q":0.808}]}]},
   STRAT_NAMES: {
     // 🔥 V79.4.9 三件一起換(照平均排・空頭也照買・閒錢停 0050)→ 預設是 🅿️(逐年那一列 now949);🔥 = 同一套但錢放現金;
     //   舊的(保守排法・空頭不買・錢放現金,V78.0.7~V79.4.8)另給一個名字 🧊 對到逐年的 now807(⛔ 不可再借 🔥 的名字)
@@ -8500,6 +8675,60 @@ const PRO = {
     await this._renderPremktTrack();
     await this._renderDivCal();
   },
+  // ═══════════════════════════════════════════════════════════════════════
+  // 📐 V79.9.2 量化實驗室(使用者 10/25:「找出能賺錢的訊號及避開市場上賠錢訊號」)
+  //   ⭐ 只讀 PRO.QLAB(quant_lab_build.mjs 16 年全市場的結果,⛔ 畫面上重算任何一個數字)
+  //   判定三種(⛔ 紅綠當判定):✅ 有用 ・⛔ 比亂買還差(扣成本前就輸「同一年隨便挑一天」)・➖ 跟亂買差不多
+  //   數字的紅綠只講「多賺 / 少賺」(台股紅 = 多);表頭可排序、同一個再按一次反向
+  // ═══════════════════════════════════════════════════════════════════════
+  _QL_V: { ok: ['✅ 有用', 'ok'], bad: ['⛔ 比亂買還差', 'bad'], none: ['➖ 跟亂買差不多', 'none'] },
+  qlSort(k) { const S = this._qlSort; this._qlSort = S && S.k === k ? { k, dir: -S.dir } : { k, dir: k === 'name' ? 1 : -1 }; this.renderQlab(); },
+  qlOpen(id) { this._qlOpen = this._qlOpen === id ? null : id; this.renderQlab(); },
+  _qlPct(x, d = 2) { if (x == null || !Number.isFinite(+x)) return '—'; const v = +x; return `<span class="${v > 0 ? 'qlup' : v < 0 ? 'qldn' : ''}">${v > 0 ? '+' : ''}${v.toFixed(d)}%</span>`; },
+  renderQlab() {
+    const box = document.getElementById('qlabBody'); if (!box) return;
+    const Q = this.QLAB, esc = t => this._esc(String(t == null ? '' : t));
+    if (!Q || !Array.isArray(Q.fam) || !Q.fam.length) { box.innerHTML = '<div class="note">⏳ 還沒有實測結果。</div>'; return; }
+    const F = Q.fam, cnt = k => F.filter(x => x.verdict === k).length;
+    const Sx = this._qlSort || { k: 'x', dir: -1 };
+    const val = (x, k) => k === 'name' ? x.name : k === 'v' ? ({ ok: 2, none: 1, bad: 0 })[x.verdict] : k === 'x' ? x.c.x : k === 'adj' ? (x.adj && x.adj.n ? x.adj.x : null) : k === 'x10' ? x.h10.x : k === 'yr' ? (x.c.yN ? x.c.yPos / x.c.yN : null) : k === 'n' ? x.n : null;
+    const rows = F.slice().sort((a, b) => { const p = val(a, Sx.k), q = val(b, Sx.k); if (p == null && q == null) return 0; if (p == null) return 1; if (q == null) return -1; return (typeof p === 'string' ? p.localeCompare(q, 'zh-Hant') : p - q) * Sx.dir; });
+    const ar = k => Sx.k === k ? (Sx.dir < 0 ? ' ▼' : ' ▲') : '';
+    const th = (k, h, c = '') => `<th class="ybsort${Sx.k === k ? ' on' : ''} ${c}" data-qlsort="${k}" onclick="PRO.qlSort('${k}')">${h}${ar(k)}</th>`;
+    const GN = ['全期扣成本後 > 0', '前半段、後半段都 > 0', '逐年同向 ≥ 2/3 年', '拿掉最好的一年還 > 0', '拿掉最好的一個月還 > 0', '試這麼多種之後仍站得住'];
+    const GNb = ['全期比亂買差', '前半段、後半段都比亂買差', '逐年都差 ≥ 2/3 年', '拿掉最差的一年還是差', '拿掉最差的一個月還是差', '試這麼多種之後仍站得住'];
+    const det = x => {
+        const isBad = x.verdict === 'bad', g = isBad ? x.gatesNeg : x.gates, nm = isBad ? GNb : GN;
+        const gHtml = `<div class="qlgates">${nm.map((t, i) => `<div>${g[i] ? '✅' : '⛔'} ${t}</div>`).join('')}<div>${(isBad ? x.plateauNeg : x.plateau) ? '✅' : '⛔'} 參數左右挪一格還成立(高原)</div><div>${(isBad ? x.shamWorse : x.shamBeat) ? '✅' : '⛔'} ${isBad ? '輸' : '贏'}給 3 組「同一年隨便挑一天」</div></div>`;
+        const heat = `<div class="qlheat">${x.grid.map(r => { const a = Math.min(0.55, Math.abs(r.x) / 1.5); const bg = r.x > 0 ? `rgba(255,93,93,${a})` : `rgba(61,220,132,${a})`; return `<div class="${r.center ? 'c' : ''}" style="background:${bg}" title="${esc(x.pl || x.key)} ${r.p}:${r.n.toLocaleString()} 筆">${esc(x.pl || x.key)} ${r.p}${r.center ? ' ★' : ''}<br>${r.x > 0 ? '+' : ''}${r.x.toFixed(2)}%</div>`; }).join('')}</div>`;
+        const ys = x.c.yrs || [], mx = Math.max(0.5, ...ys.map(y => Math.abs(y[1])));
+        const bars = `<div class="qlyrs">${ys.map(([y, v, k]) => `<i title="${y}:${v > 0 ? '+' : ''}${v}%(${k.toLocaleString()} 筆)" style="height:${Math.max(2, Math.abs(v) / mx * 60)}px;background:${v > 0 ? 'var(--up)' : 'var(--dn)'};opacity:.75"></i>`).join('')}</div><div class="qlyl">${ys.map(([y]) => `<span>${String(y).slice(2)}</span>`).join('')}</div>`;
+        const b = x.blk || {};
+        return `<tr class="qldet" data-qldet="${esc(x.id)}"><td colspan="7"><div class="qlin">
+          <b>條件</b>:${esc(x.desc)}<br><span style="color:var(--dim2)">${esc(x.why)}</span>
+          <br><b>判定</b>(主出場 = 吊燈 ATR 2 倍):${gHtml}
+          <b>參數左右挪</b>(★ = 用來判定的那一組;紅 = 扣成本後多賺、綠 = 少賺):${heat}
+          <b>逐年</b>(每一年平均一筆比同一天股票多少,扣成本後;同向 ${x.c.yPos}/${x.c.yN} 年):${bars}
+          <div style="color:var(--dim2);margin-top:6px">📊 ${x.n.toLocaleString()} 筆 ・會賺的比例 ${x.c.win}% ・前半 ${this._qlPct(x.c.h1)} / 後半 ${this._qlPct(x.c.h2)} ・拿掉最好的一年(${esc(x.c.bestY)})${this._qlPct(x.c.dropY)}
+          <br>🎲 同一年隨便挑一天(3 組,扣成本後):${(x.sham || []).map(s => this._qlPct(s.x)).join(' / ')} ・這一支比它們 ${this._qlPct(x.adj && x.adj.x)}(扣成本前)
+          <br>🚧 進場那天買不到、沒算:收在漲停 ${(b.lock || 0).toLocaleString()} 次 ・沒成交 ${(b.zero || 0).toLocaleString()} 次 ・處置中 ${(b.dispo || 0).toLocaleString()} 次</div>
+        </div></td></tr>`;
+    };
+    const tr = x => {
+        const v = this._QL_V[x.verdict] || this._QL_V.none, open = this._qlOpen === x.id;
+        return `<tr class="qlrow" data-qlrow="${esc(x.id)}" onclick="PRO.qlOpen('${esc(x.id)}')"><td class="txtcell" style="white-space:normal"><b>${esc(x.name)}</b><div class="sigfrom qldesc">${esc(x.desc)}</div></td>
+          <td><span class="qlv ${v[1]}" data-qlv="${x.verdict}">${v[0]}</span></td>
+          <td class="mono">${this._qlPct(x.c.x)}</td><td class="mono">${this._qlPct(x.adj && x.adj.n ? x.adj.x : null)}</td><td class="mono qlhide">${this._qlPct(x.h10.x)}</td>
+          <td class="mono qlhide">${x.c.yPos}/${x.c.yN}</td><td class="mono qlhide">${x.n.toLocaleString()}</td></tr>${open ? det(x) : ''}`;
+    };
+    const w = Q.win || [];
+    box.innerHTML = `<div class="note" style="margin-top:0">每一個常見買點都用<b>同一套規則</b>重算:${esc((w[0] || '').slice(0, 7))} ~ ${esc((w[1] || '').slice(0, 7))} 全市場 ${(+Q.syms || 0).toLocaleString()} 檔(含已下市)・訊號出現隔天收盤買・${esc((Q.exits || {}).chand2 || '')}・含股利・扣來回成本 ${Q.cost}%・跟<b>同一天所有股票</b>比,也跟<b>同一年隨便挑一天買</b>比。</div>
+      <div class="qlsum" data-qlsum><span>✅ 有用 ${cnt('ok')} 支</span><span>⛔ 比亂買還差 ${cnt('bad')} 支</span><span>➖ 跟亂買差不多 ${cnt('none')} 支</span></div>
+      <div class="tblwrap" style="max-height:none"><table class="grid sigtbl" id="qlTbl"><thead><tr>${th('name', '策略<br><span style="font-weight:400;opacity:.7">點一下看細節</span>')}${th('v', '判定')}${th('x', '每一筆比同一天<br>股票(扣成本)')}${th('adj', '比隨便一天<br>(扣成本前)')}${th('x10', '固定抱<br>10 天', 'qlhide')}${th('yr', '同向<br>年數', 'qlhide')}${th('n', '筆數', 'qlhide')}</tr></thead><tbody>${rows.map(tr).join('')}</tbody></table></div>
+      <div class="note">📖 <b>怎麼讀</b>:「每一筆比同一天股票」= 照這個訊號買,扣掉手續費和稅之後,平均比同一天隨便一檔股票多賺(紅)或少賺(綠)幾 %。<b>✅ 有用</b>要六關全過、參數左右挪一格還成立、而且贏過 3 組「同一年隨便挑一天」;<b>⛔ 比亂買還差</b> = 連手續費都還沒扣,就輸給同一年隨便挑一天買;其他都是 <b>➖ 跟亂買差不多</b>(扣完成本通常就是虧)。
+      <br>⚠️ 這裡是「一筆一筆」的平均,⛔ 不是整套資金跑出來的總報酬;整套資金跟 0050 比請看 <a class="golnk" onclick="PRO.navGo('pick')">🏆 選哪一套 ›</a>。處置只有上市(2004 起)、法人 2012 起、月營收 2009 起;同一檔 10 個交易日內(月營收 20 天)只算第一次。這 ${F.length} 支加參數一共試了 ${Q.tests} 種,判定已經扣掉「試越多次越容易碰到運氣」。</div>`;
+  },
+
   renderCol() {
     const list = document.getElementById('colList'), bar = document.getElementById('colBar'); if (!list) return;
     const all = this._colItems();

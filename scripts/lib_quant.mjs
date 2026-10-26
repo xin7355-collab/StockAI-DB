@@ -70,7 +70,7 @@ const QCORE = (() => {
         });
         /** 取一個積木的整條序列 */
         function get(op) {
-            if (typeof op === 'number') return new Array(n).fill(op);
+            if (typeof op === 'number') return memo('#' + op, () => new Array(n).fill(op));
             const f = op && op.f, p = op && op.n != null ? +op.n : null;
             if (!(f in BLOCKS)) throw new Error(`QCORE:認不得的積木 '${f}'`);
             const needN = () => { if (!(p >= 1 && p <= 2000 && Number.isInteger(p))) throw new Error(`QCORE:積木 '${f}' 要給整數 n(1~2000),拿到 ${op.n}`); return p; };
@@ -117,12 +117,14 @@ const QCORE = (() => {
     /** 一條條件在第 i 根成不成立(任何一邊沒有值 → false) */
     function condAt(S, c, i) {
         if (!OPS.includes(c.op)) throw new Error(`QCORE:認不得的比較 '${c.op}'`);
-        const A = S.get(c.a), B = S.get(c.b);
+        return condAB(S.get(c.a), S.get(c.b), c.op, i);
+    }
+    function condAB(A, B, op, i) {
         const a = A[i], b = B[i];
         if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
-        switch (c.op) {
+        switch (op) {
             case '>': return a > b; case '<': return a < b; case '>=': return a >= b; case '<=': return a <= b;
-            case 'xup': case 'xdn': { if (i < 1) return false; const a0 = A[i - 1], b0 = B[i - 1]; if (!Number.isFinite(a0) || !Number.isFinite(b0)) return false; return c.op === 'xup' ? a > b && a0 <= b0 : a < b && a0 >= b0; }
+            case 'xup': case 'xdn': { if (i < 1) return false; const a0 = A[i - 1], b0 = B[i - 1]; if (!Number.isFinite(a0) || !Number.isFinite(b0)) return false; return op === 'xup' ? a > b && a0 <= b0 : a < b && a0 >= b0; }
         }
         return false;
     }
@@ -136,13 +138,14 @@ const QCORE = (() => {
         if (!(gap >= 1 && gap <= 250)) throw new Error('QCORE:gap 要在 1~250');
         return { ...st, all, any, gap };
     }
-    /** 一檔 → 訊號日(第 i 根收盤後判斷成立;同一檔 gap 根內只算第一次)。回傳 index 陣列 */
-    function signals(st, bars, ctx) {
-        const P = check(st), S = series(bars, ctx), out = []; let last = -1e9;
+    /** 一檔 → 訊號日(第 i 根收盤後判斷成立;同一檔 gap 根內只算第一次)。回傳 index 陣列;S0 = 已經建好的 series(同一檔跑很多策略時共用) */
+    function signals(st, bars, ctx, S0) {
+        const P = check(st), S = S0 || series(bars, ctx), out = []; let last = -1e9;
+        const rs = L => L.map(c => [S.get(c.a), S.get(c.b), c.op]), AL = rs(P.all), AN = rs(P.any);   // 每條條件的兩條序列先取好(⛔ 每一根重取)
         for (let i = 1; i < S.n; i++) {
             if (i - last < P.gap) continue;
-            if (!P.all.every(c => condAt(S, c, i))) continue;
-            if (P.any.length && !P.any.some(c => condAt(S, c, i))) continue;
+            if (!AL.every(([A, B, op]) => condAB(A, B, op, i))) continue;
+            if (AN.length && !AN.some(([A, B, op]) => condAB(A, B, op, i))) continue;
             out.push(i); last = i;
         }
         return out;
@@ -210,4 +213,4 @@ function selftest() {
     console.log(fails.length ? `❌ ${fails.length} 條失敗` : '✅ SELFTEST_PASS');
     process.exit(fails.length ? 1 : 0);
 }
-if (typeof process !== 'undefined' && process.argv && process.argv.includes('--selftest')) selftest();
+if (typeof process !== 'undefined' && process.argv && /lib_quant\.mjs$/.test(process.argv[1] || '') && process.argv.includes('--selftest')) selftest();   // ⛔ 被 import 時不跑
