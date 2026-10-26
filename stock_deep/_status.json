@@ -229,16 +229,27 @@
    "Depreciation",
    "CashFlowsFromOperatingActivities"
   ],
-  "fail": "對表 89.1% < 90%(單位 / 欄位 / 接縫不對)",
   "at": "2026-10-26",
   "chk_miss": {
-   "CashFlowsFromOperatingActivities": 18,
-   "PropertyAndPlantAndEquipment": 7,
-   "Depreciation": 1
+   "CashFlowsFromOperatingActivities": 55,
+   "PropertyAndPlantAndEquipment": 13,
+   "Depreciation": 6
   },
   "chk_dup": [
    0,
    0
-  ]
+  ],
+  "chk_cell": {
+   "PropertyAndPlantAndEquipment": 0.9874,
+   "Depreciation": 0.9946,
+   "CashFlowsFromOperatingActivities": 0.9501
+  },
+  "have": 603,
+  "of": 2548,
+  "chk": [
+   499,
+   555
+  ],
+  "done": false
  }
 }
