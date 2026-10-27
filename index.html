@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.9.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.9.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.9.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.9.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8749,10 +8749,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.9.6',
+    _APP_VERSION: 'V79.9.7',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.9.7', d: ['📅 👑 決策台「下次換倉還有 N 個交易日」後面直接寫日期:<b>哪一天收盤換倉、哪一天照名單買賣</b>(週末不算;遇到颱風、放假再往後順延)。換倉規則一個字都沒改'] },
         { v: 'V79.9.6', d: [
             '💧 大盤頁「🎯 概念股」分頁改名回「板塊輪動」(裡面照舊是概念股排名,點一列看成分股)',
             '⚡ 板塊輪動頁下面那張「市場板塊輪動」換成「概念股盤中即時」:每個概念今天漲跌的中位數、漲幾家跌幾家,照強到弱排,盤中約每 5 分鐘自己更新;點一列看成分股現價 / 今天漲跌。快照不是今天的會寫出來、改用收盤',
@@ -9000,15 +9001,6 @@ ${list}
             '📌 換倉日那天講清楚:排名照上一個交易日收盤排、盤中不會變,今天收盤後晚上資料更新才定案',
             '⏭️ 明天(或下週一)才是買賣日:要賣的 09:00 開盤賣、要買的 13:25 買(不是一早就買;開盤跌 3% 以上 / 開盤漲停各怎麼做也寫出來)',
         ] },
-        { v: 'V79.1.6', d: [
-            '👑 決策台名單的現價改成盤中真的會跳(要先在設定填富果金鑰);09/24價移到現價左邊,現價底下小字 = 從那天到現在漲跌多少',
-            '👑 漲停 / 處置 / 👜(你手上有)移到股票代號右邊;拿掉「億/日」那一欄;名次那欄靠左',
-            '👑 表頭寫清楚日期:沒有今天的價就寫「10/08收盤 / 10/08漲跌 / 10/08名次」,不再把舊收盤寫成「現價 / 今天」',
-            '👑 今天要做的事:還沒到換倉日、明天換倉、今天換倉、名單定案、買賣當天,說法都不一樣;手上已經有的不會再叫你買,換倉那幾天直接寫每檔約買多少',
-            '👑 選領頭羊時只講領頭羊:名單外的股票寫「這一套不買它」,觸發價那一塊和 13:00 尾盤買點提醒不再出現(手上名單外的照舊用原本的出場)',
-            '🅿️ 帳戶總資金比你手上的股票 + 0050 還少時,不再算「該停多少 0050」,會先請你到設定改成真正的總資金;換倉日之間 0050 不用調整',
-            '🧹 13:00 尾盤買點提醒只講怎麼做',
-        ], dt: '2026-10-12' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -22430,6 +22422,23 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return { ...base, ph: 'wait', leftNow };
         } catch (_) { return { ph: clk && clk.isRebal ? 'eve' : 'wait', when: '明天', leftNow: clk && clk.left }; }
     },
+    /** 📅 V79.9.7 「還有 N 個交易日」換成日期(使用者 10/28 半夜問「是不是該換倉了」—— 看不出 N 是哪一天)。
+     *  換倉日 = 今天之後第 leftNow 個平日(今天開盤的話已經算進 lag,所以一律從今天之後數);買賣日 = 再下一個平日。
+     *  ⚠️ 國定假日不知道(本站沒有行事曆)→ 文案一定附「遇到放假再順延」。只給 wait 用。 */
+    _leadDueDates(P) {
+        try {
+            if (!P || P.ph !== 'wait' || !(P.leftNow > 0)) return null;
+            const d = new Date(this._tpeMinutes().ymd + 'T12:00:00Z');
+            const step = () => { do d.setUTCDate(d.getUTCDate() + 1); while (d.getUTCDay() === 0 || d.getUTCDay() === 6); return d.toISOString().slice(0, 10); };
+            let reb = null; for (let i = 0; i < P.leftNow; i++) reb = step();
+            return { reb, act: step() };
+        } catch (_) { return null; }
+    },
+    _leadDueTxt(P, html) {
+        const D = this._leadDueDates(P); if (!D) return '';
+        const b = s => html ? `<b>${s}</b>` : s;
+        return `→ ${b(this._dW(D.reb))} 收盤換倉、${b(this._dW(D.act))} 照名單買賣(遇到颱風、放假再往後順延)`;
+    },
     /** 👑 V79.1.5 一句話講「今天在換倉節拍的哪裡」(總覽 / 連續技 / 出場說明共用,⛔ 不各寫一份) */
     _leadPhaseTxt(P) {
         P = P || {};
@@ -22440,7 +22449,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             : `今天就是換倉日(今天收盤後、晚上資料更新才定名單;${P.buyWhen}才買賣:${this._leadNextDayTxt(true)})`;
         if (P.ph === 'actStale') return `今天就是照新名單買賣的日子,但新名單還沒出來(資料停在 ${String(P.dataDate || '').slice(5).replace('-', '/')})→ 先別動,⛔ 不要照舊名單買`;
         if (P.ph === 'stale') return `資料停在 ${String(P.dataDate || '').slice(5).replace('-', '/')}(落後 ${P.lag} 個交易日)→ 換倉節拍先不講,等資料更新`;
-        return P.leftNow != null && P.leftNow !== '?' ? `下一次換倉日還有 ${P.leftNow} 個交易日` : '等下一次換倉日';
+        return P.leftNow != null && P.leftNow !== '?' ? `下一次換倉日還有 ${P.leftNow} 個交易日${(t => t ? ` ${t}` : '')(this._leadDueTxt(P))}` : '等下一次換倉日';
     },
     /** 👑 V77.9.1「這檔是照領頭羊買的」標記(使用者:「程式不知道哪幾檔是照這套買的」→ 自己標)。
      *  ⛔ 只存這台手機;標了的:決策台照領頭羊規則講要不要賣、⛔ 不再套上面三條出場(同一檔不可兩套規則打架)。 */
@@ -22655,7 +22664,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 : `<b>今天就是換倉日</b>:名次照 ${esc(L.date)} 收盤排,<b>今天收盤後、晚上資料更新</b>才定案 → <b>${esc(PH.buyWhen || '明天')}</b>${this._leadNextDayTxt(true)}`)
               : PH.ph === 'actStale' ? `⚠️ <b>今天就是照新名單買賣的日子,但新名單還沒出來</b>(資料停在 ${esc(md)})→ <b>先別動,⛔ 不要照舊名單買</b>;自動下單也會等新名單`
               : PH.ph === 'stale' ? `⚠️ 資料停在 ${esc(md)}(落後 <b class="font-mono">${PH.lag}</b> 個交易日)→ 換倉節拍先不講,等資料更新`
-              : `${lastRebTxt ? `${lastRebTxt} ・` : ''}下次換倉還有 <b class="font-mono">${leftNow ?? '?'}</b> 個交易日,<b>這幾天不動</b>`}<span class="text-gray-500" data-leaderdaycnt="${clk.day || ''}">(${esc(L.date)} 是第 ${clk.day || '?'} 個交易日,${esc(E.anchor)} 起算,自動下單同一個起點)</span></div>`;
+              : `${lastRebTxt ? `${lastRebTxt} ・` : ''}下次換倉還有 <b class="font-mono">${leftNow ?? '?'}</b> 個交易日,<b>這幾天不動</b><span data-leaddue="${esc((this._leadDueDates(PH) || {}).reb || '')}"> ${this._leadDueTxt(PH, true)}</span>`}<span class="text-gray-500" data-leaderdaycnt="${clk.day || ''}">(${esc(L.date)} 是第 ${clk.day || '?'} 個交易日,${esc(E.anchor)} 起算,自動下單同一個起點)</span></div>`;
         const reb5 = clk.reb ? `${String(clk.reb).slice(5, 7)}/${String(clk.reb).slice(8, 10)}` : '';
         const batchTxt = bRows ? `<div class="text-[10px] text-gray-300 mb-1" data-leaderbatch="ok">📦 下面這 ${bRows.length} 檔 = <b>${clk.books === 2 ? this._leadBookChip(clk.book, true) + ' ' : ''}${esc(reb5)} 換的這一批</b>(10 天不變,${PH.ph === 'rebalToday' ? '<b>今天就是換倉日</b>' : /actStale|stale/.test(PH.ph) ? '新的一批等資料更新' : `下一次換倉還有 <b class="font-mono">${leftNow ?? '?'}</b> 天`});最右邊是 ${esc(md)} 收盤排第幾名</div>`
             : batchErr ? `<div class="text-[10px] text-amber-300 mb-1" data-leaderbatch="err">⚠️ ${esc(reb5)} 那一批讀不到(${esc(batchErr)})→ 下面先列 ${esc(md)} 收盤的排名</div>`

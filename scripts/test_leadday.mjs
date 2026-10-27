@@ -60,6 +60,13 @@ const R = await page.evaluate(async () => {
     T('2026-10-08', 'Thu', 19 * 60); o.rebClosed = app._leadPhase(w1, '2026-10-07');
     T('2026-10-08', 'Thu', 11 * 60); o.rebOpen = app._leadPhase(w1, '2026-10-07');
     T('2026-10-12', 'Mon', 10 * 60); o.wkLag = app._leadPhase({ started: true, day: 9, isRebal: false, left: 2 }, '2026-10-08');
+    // 📅 V79.9.7 換倉日期(使用者 10/28 01:50 截圖:資料日 10/27 = 第 19 天)
+    const c19 = { started: true, day: 19, isRebal: false, left: 2 };
+    T('2026-10-28', 'Wed', 110); o.due1 = app._leadPhase(c19, '2026-10-27'); o.dueD1 = app._leadDueDates(o.due1); o.dueT1 = app._leadPhaseTxt(o.due1);
+    T('2026-10-27', 'Tue', 15 * 60); o.due0 = app._leadPhase(c19, '2026-10-27'); o.dueD0 = app._leadDueDates(o.due0);
+    T('2026-10-30', 'Fri', 10 * 60); o.dueF = app._leadPhase({ started: true, day: 20, isRebal: false, left: 3 }, '2026-10-29'); o.dueDF = app._leadDueDates(o.dueF);
+    T('2026-10-31', 'Sat', 10 * 60); o.dueS = app._leadPhase(c19, '2026-10-30'); o.dueDS = app._leadDueDates(o.dueS);
+    o.dueNone = app._leadDueDates(o.eve);
     const _mc = app._mktClosedToday; app._mktClosedToday = () => true;
     T('2026-10-09', 'Fri', 10 * 60); o.closedMkt = app._leadPhase(reb, '2026-10-08');
     app._mktClosedToday = _mc;
@@ -125,6 +132,13 @@ const R = await page.evaluate(async () => {
     return o;
 });
 
+// 📅
+ok('📅a ⭐ 10/28 01:50、資料 10/27(第 19 天)→ 還有 1 天、10/29 收盤換倉、10/30 買賣', R.due1.leftNow === 1 && R.dueD1 && R.dueD1.reb === '2026-10-29' && R.dueD1.act === '2026-10-30', JSON.stringify([R.due1, R.dueD1]));
+ok('📅b 文字寫出日期與「放假再順延」', /10\/29\(四\) 收盤換倉/.test(R.dueT1) && /10\/30\(五\) 照名單買賣/.test(R.dueT1) && /順延/.test(R.dueT1), R.dueT1);
+ok('📅c ⭐ 決定性對照:10/27 15:00(同一份資料)→ 還有 2 天、日期一樣', R.due0.leftNow === 2 && R.dueD0 && R.dueD0.reb === '2026-10-29' && R.dueD0.act === '2026-10-30', JSON.stringify([R.due0, R.dueD0]));
+ok('📅d 週五 / 週六 → 週末不算(換倉下週二、買賣下週三)', R.dueDF && R.dueDF.reb === '2026-11-03' && R.dueDF.act === '2026-11-04' && R.dueDS && R.dueDS.reb === '2026-11-03' && R.dueDS.act === '2026-11-04', JSON.stringify([R.dueF, R.dueDF, R.dueS, R.dueDS]));
+ok('📅e 不是 wait(換倉日當晚)→ 不給日期', R.dueNone === null, JSON.stringify(R.dueNone));
+ok('📅f 決策台那一行接上 _leadDueTxt(⛔ 另算一份)', /data-leaddue=/.test(ORIG) && /這幾天不動<\/b><span data-leaddue=[^\n]*_leadDueTxt\(PH, true\)/.test(ORIG), '');
 // ①
 ok('① 換倉日收盤後 → eve / 明天', R.eve.ph === 'eve' && R.eve.when === '明天', JSON.stringify(R.eve));
 ok('①b ⭐ 買賣那天白天(採礦還沒更新)→ act / 今天(⛔ 不再寫明天)', R.act.ph === 'act' && R.act.when === '今天' && !R.act.past, JSON.stringify(R.act));
