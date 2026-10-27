@@ -244,12 +244,12 @@
    "Depreciation": 0.9951,
    "CashFlowsFromOperatingActivities": 0.9561
   },
-  "have": 2404,
+  "have": 2548,
   "of": 2548,
   "chk": [
-   191,
-   207
+   0,
+   0
   ],
-  "done": false
+  "done": true
  }
 }
