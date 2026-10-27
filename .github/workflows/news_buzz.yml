@@ -10,7 +10,7 @@ name: 📰 逐檔新聞熱度 (news_buzz)
 # ⛔ 三個刻意的設計:
 #   ① 不叫 AI、不吃 FinMind 額度(只問新聞網站的公開 RSS / API,每次請求間隔 1.2 秒 + 指數退避)
 #   ② 產物推 data 分支(daily_miner 的 orphan force-push 之後 🛟 撿回會帶回來,陷阱 #41),⛔ 不另推 gh-pages(畫面還沒讀)
-#   ③ backfill=1 = 回補模式(每檔翻鉅亨搜尋 4 頁 + Google 近 12 個月;一輪 50 分做不完會記住停在哪,再按一次接著做)
+#   ③ backfill=1 = 回補模式(每檔翻鉅亨搜尋 4 頁 + Google 近 12 個月;一輪 50 分做不完會記住停在哪,自己接力下一棒,最多 10 棒)
 
 on:
   workflow_run:
@@ -26,6 +26,10 @@ on:
         description: '成交額前幾檔(預設 300;另外一定加上所有概念股成員)'
         required: false
         default: ''
+      chain:
+        description: '(內部用)回補第幾棒接力'
+        required: false
+        default: ''
 
 # ⛔ 不跟 gh-pages-push 共用鎖(V79.5.0 weekly_backtest 的教訓)→ 自己一個 group;推的那步 fetch + 重試
 concurrency:
@@ -34,6 +38,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write                # 回補接力用(gh workflow run)
 
 jobs:
   buzz:
@@ -102,3 +107,18 @@ jobs:
             sleep $((i*5)); git fetch origin data 2>/dev/null || true
             git reset --hard -q origin/data
           done
+
+      # 🔁 回補沒做完(bf_done 不是 true)→ 自己接下一棒(最多 10 棒,防無限迴圈);每天模式 ⛔ 不接力
+      - name: 🔁 回補接力
+        if: ${{ github.event.inputs.backfill == '1' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHAIN: ${{ github.event.inputs.chain }}
+          TOPN: ${{ github.event.inputs.topn }}
+        run: |
+          DONE=$(python3 -c "import json; d=json.load(open('/tmp/news_buzz.json')); print('1' if d.get('bf_done') else '0')" 2>/dev/null || echo "?")
+          if [ "$DONE" != "0" ]; then echo "✅ 回補做完(或讀不到產物 = $DONE)→ 不接力"; exit 0; fi
+          C=$(( ${CHAIN:-0} + 1 ))
+          if [ "$C" -gt 10 ]; then echo "⛔ 已經接力 10 棒 → 停"; exit 0; fi
+          gh workflow run news_buzz.yml --ref main -f backfill=1 -f chain="$C" -f topn="${TOPN}"
+          echo "🔁 已觸發第 $C 棒"
