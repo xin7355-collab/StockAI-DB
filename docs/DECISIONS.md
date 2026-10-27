@@ -21136,6 +21136,17 @@ BBU(AI 機櫃備援電池)的當事人是**電池模組廠**,跟 UPS/電源供�
 **重驗時機**:走完下一次空頭後,用同一支探針重跑相對強度與六六大順(兩個都輸在空頭年)。
 
 
+## V79.9.6(2026-10-27)💧 分頁改名回「板塊輪動」・⚡ 下面那張換成概念股盤中即時・‹ 作戰室回散戶鍵・即時 / 當沖互換
+使用者 10/27:「🎯 概念股名稱改成板塊輪動 / 📊市場板塊輪動內容改成概念股盤中即時更新 / 產業作戰室 PRO 左上角新增 < 符號可以返回到散戶 app / 即時與當沖頁面互換位置」。
+- 💧 大盤頁分頁鈕 `subTab_rot` 文字「🎯 概念股」→「💧 板塊輪動」(id 不動,裡面照舊預設概念股)。
+- ⚡ 「📊 市場板塊輪動」(美股昨夜 ETF vs 台股板塊)整張拿掉 → `#conceptLiveCard`「概念股盤中即時」:成員 = `_regimeStats(20).tmem`(⛔ 第二份名單)、今天漲跌 = `_liveQuote(sym).c`(只回今天的快照);快照不是今天 → 改用選股快照的收盤漲跌並寫「不是今天盤中」。每個概念 = 成員今天漲跌中位數 + 漲 / 跌家數,成員 <3 檔不列、<5 檔標樣本少。盤中由 `_startLiveQuotePoll`(快照有變 + 板塊輪動那頁看得到)重畫;🔄 只重讀 live_quotes.json,⛔ 打 Fugle / FinMind。
+  - 🚨 為什麼整張拿掉:它的 `refreshSectorIntraday` 寫進 `[data-sector] .sector-heat`,那些元素整份 HTML 早就不存在 → 按了只剩官方產業指數條與缺口表;盤中還有 `_refreshOfficialSectorIdx` 計時器一直打 FinMind 去填。一起刪:`refreshSectorIntraday` / `_restoreSectorIntradayMemory` / `_refreshOfficialSectorIdx`(+ 計時器)/ `renderSectorGapTable` / `_secSort` / `scripts/test_secsort.mjs`。`_sectorStocks` 留著(`us_tw_lead_probe.mjs` 從原地解析它)。
+  - ⚠️ 連帶:板塊表上的 🕵️ 偷布局 / 深蹲徽章跟著那張表消失(16 年 +0.41pp・3/6 關,本來就只描述);實測總表那條照留。
+- ‹ pro.html `.brandbar` 最左邊 `#proBackBtn` → `PRO.goRetail()`:上一頁是同站的 index / 根目錄 → `history.back()`(回到原本那一頁),否則開 `index.html`。股海釣手模式整條 brandbar 本來就藏(⛔ 連到別的程式)。
+- 🔁 個股頁分頁鈕順序:總覽 / 報告 / ⚡當沖 / 即時 / K線…(純 DOM 順序)。
+- 測試:`test_rottab` ②a~②d / ⑩a / ⑪a~⑪f(手算中位數與家數、⭐ 決定性對照:第一名那群全改 −9% 掉到最後、快照改成 3 天前 → 用收盤 + 寫出來)・`test_nav` ⑧a~⑧d。
+- 換回:`git revert`。
+
 ## V79.9.5(2026-10-27)🎯 板塊輪動 → 概念股(兩邊)
 使用者 10/27:「重新設計板塊輪動,把它調整成概念股」(選「兩邊都改」)。
 - 🎯 `PRO.THEMES` 21 → 38 組、每組 ≥5 檔(以前 7 組不到 5 檔 = 永遠排不進前 3 / 後 3);新增 CCL 銅箔基板(台光電 / 聯茂 / 台燿從 PCB 拆出)、高速連接器、IC 設計大廠、廠務、風電太陽能、化合物半導體、蘋果鏈、光學、PC 電競、面板、電動車、資安、生技、航運、航空航太、鋼鐵、餐飲觀光。每一檔驗過 stock_names / screener 有。⚠️ 沒有免費概念股名單可抓(news_src_probe)→ 照舊人工維護;採礦每天另外算「一起動的」補進成員。新組下一輪 daily_miner 才出現在 stock_tags / sector_rot。

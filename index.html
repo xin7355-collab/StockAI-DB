@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.9.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.9.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.9.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.9.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1769,8 +1769,9 @@
                     <span class="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 self-center mr-1.5 ml-0.5"></span>
                     <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">總覽</button>
                     <button onclick="app.switchSubTab('report')" id="subTabBtnReport" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📄報告</button>
-                    <button onclick="app.switchSubTab('live')" id="subTabBtnLive" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">即時</button>
+                    <!-- 🔁 V79.9.6 使用者:「即時與當沖頁面互換位置」-->
                     <button onclick="app.switchSubTab('daytrade')" id="subTabBtnDayTrade" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">⚡當沖</button>
+                    <button onclick="app.switchSubTab('live')" id="subTabBtnLive" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">即時</button>
                     <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">K線</button>
                     <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">籌碼</button>
                     <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">基本</button>
@@ -2581,7 +2582,7 @@
                         class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-purple-300 border border-transparent" title="盤前檢視">🌅 盤前</button>
                 <!-- 💧 V76.0.3 第 4 格「板塊輪動」(使用者:放在盤前檢視右手邊)—— 市場板塊輪動卡從「行情」搬來 + 20 日相對強弱排名 -->
                 <button onclick="app.switchMarketSubTab('rot')" id="subTab_rot"
-                        class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-emerald-300 border border-transparent" title="概念股輪動(錢最近往哪個概念跑)">🎯 概念股</button>
+                        class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-emerald-300 border border-transparent" title="概念股輪動(錢最近往哪個概念跑)">💧 板塊輪動</button>
                 <button onclick="app.switchMarketSubTab('global')" id="subTab_global2"
                         class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-cyan-300 border border-transparent">🗞️ 消息面</button>
                 <!-- 📰 V78.4.0 盤後晚報 / 週報(參考 signova「AI 解盤晚報」;只轉述既有資料) -->
@@ -2629,33 +2630,16 @@
             <div id="subContent_rot" class="hidden flex-col gap-3">
                 <div id="rotLead"></div>
                 <div id="rotRankCard" class="hidden"></div>
-            <!-- 📊 V26.14/V31.4 — 9 板塊跨市場板塊輪動整合卡;V43.8 order:2(中) -->
-            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
-                <div class="flex items-center gap-1.5 mb-1">
-                    <span class="text-base">📊</span>
-                    <span class="text-[12px] font-black text-purple-300 tracking-wide">市場板塊輪動</span>
-                    <button onclick="app.showJargon('板塊輪動訊號'); event.stopPropagation();" class="text-[11px] text-gray-500 hover:text-blue-300 transition-colors leading-none" title="訊號說明">ⓘ</button>
-                    <span id="sectorSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span>
+            <!-- ⚡ V79.9.6 使用者:「📊市場板塊輪動內容改成概念股盤中即時更新」—— 舊的「美股昨夜 vs 台股板塊」卡已拿掉
+                 (它要填的板塊格子早就不在畫面上,按了只剩官方產業指數條)。這張只讀 data/live_quotes.json(全市場一個檔)
+                 + 概念成員 _regimeStats().tmem(跟上面排名同一份),⛔ 不打 Fugle / FinMind。 -->
+            <div id="conceptLiveCard" class="pt-1">
+                <div class="flex items-center gap-1.5 mb-1 px-1">
+                    <span class="text-[12px] font-black text-emerald-300">⚡ 概念股盤中即時</span>
+                    <span id="conceptLiveWhen" class="text-[10px] text-gray-500 truncate"></span>
+                    <button id="conceptLiveBtn" onclick="app._conceptLiveRefresh(); app.vibrate(20);" class="ml-auto flex-shrink-0 text-[10px] font-bold text-emerald-200 border border-emerald-700/50 rounded px-2 py-1">🔄 重新整理</button>
                 </div>
-                <div class="text-[10px] text-gray-400 mb-2">美股昨夜 vs 台股今日 · <span class="text-red-300">🔴 跟漲</span> <span class="text-amber-300">🟡 委屈</span> <span class="text-green-300">🟢 補跌</span> <span class="text-orange-300">🟠 獨弱</span>(跟漲須美股真漲)</div>
-
-                <!-- V69.8.0 🤖 AI 白話判讀按鈕已刪(使用者要求);盤中更新改滿版 -->
-                <div class="mb-2">
-                    <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="w-full text-[10px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors">🔄 盤中即時更新</button>
-                </div>
-                <!-- 🔎 V41.26 免費查:為何某類股/題材今天大漲(外部 AI,不耗額度) -->
-                <button onclick="app._openFreeAiMacro('sector'); app.vibrate(30);" title="開外部免費 AI 查最近類股/題材輪動原因,不耗自家額度" class="w-full mb-2 text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded py-1.5 transition-colors">🔎 免費查:為何類股/題材輪動 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
-
-                <!-- 進度條 + AI 結果 -->
-                <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-cyan-500 h-full transition-all" style="width:0%"></div></div>
-                <!-- 🏭 V69.7.8 官方產業指數盤中快照(有填 FinMind 付費 key 才顯;證交所指數非個股 proxy) -->
-                <div id="sectorIdxStrip" class="hidden mb-2"></div>
-                <div id="sectorAiResult" class="hidden mb-2 bg-[#0d1117] rounded-lg border border-purple-700/40 p-3"></div>
-
-                <!-- V27.6 — 標題已在 renderSectorGapTable 卡片內,此處不再重複(刪冗餘小標題) -->
-                <div id="predictGapTableResult" class="text-[11px] text-gray-200 mb-2"></div>
-
-                <!-- V69.8.0 「📖 美股對標 ETF 速查表」摺疊卡已刪(使用者要求) -->
+                <div id="conceptLiveBox" class="text-[11px] text-gray-300"><div class="text-[10px] text-gray-500 px-1">⏳ 讀取中…</div></div>
             </div>
                 <!-- ⛔ V76.0.4 這裡原本是一顆「→ 產業作戰室」的連結鈕 —— 使用者明示 PRO 不掛在 App 內(test_prohtml ② 釘住),改成純文字指路 -->
                 <div class="text-[10px] text-gray-500 leading-snug px-1">🛰️ 完整版(泡泡圖・熱力圖・播放輪動)在<b class="text-gray-400">產業作戰室</b>的「板塊輪動」分頁 —— 那是另一個獨立介面,不掛在這裡。</div>
@@ -8469,8 +8453,6 @@ ${list}
             if (this._shouldFetch('news'))         { this.fetchGlobalNews(); this._markFetched('news'); }
             if (this._shouldFetch('market_macro')) { try { this.updateGlobalRiskGrid(); } catch(_) {} this._markFetched('market_macro'); }
             if (this._shouldFetch('bubble'))       { try { this.loadBubbleWarning(); } catch(_) {} this._markFetched('bubble'); }
-            // 🔄 還原「盤中即時更新」記憶(切 tab 回來不應跳回「實時/範例」)
-            setTimeout(() => { try { this._restoreSectorIntradayMemory(); } catch(_) {} }, 1500);
         }
         if (tabId !== 'fav') { try { this._resetFavEditMode(); } catch(_) {} }   // 🐛 V57.2 切走自動退出自選編輯模式
         if (tabId === 'fav') { try { this.renderFavTabs(); this._scanBreakoutCandidates(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }   // 🗑️ V57.2 進場體檢榜已刪(_scanWatchlistCheckup 不再呼叫)
@@ -8767,10 +8749,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.9.5',
+    _APP_VERSION: 'V79.9.6',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.9.6', d: [
+            '💧 大盤頁「🎯 概念股」分頁改名回「板塊輪動」(裡面照舊是概念股排名,點一列看成分股)',
+            '⚡ 板塊輪動頁下面那張「市場板塊輪動」換成「概念股盤中即時」:每個概念今天漲跌的中位數、漲幾家跌幾家,照強到弱排,盤中約每 5 分鐘自己更新;點一列看成分股現價 / 今天漲跌。快照不是今天的會寫出來、改用收盤',
+            '🗑️ 舊的「美股昨夜 vs 台股板塊」卡拿掉(它要填的格子早就不在畫面上,盤中還一直在背景抓資料)',
+            '🔁 個股頁「即時」和「⚡當沖」兩個分頁互換位置',
+        ] },
         { v: 'V79.9.5', d: [
             '🎯 大盤頁「💧 輪動」改叫「🎯 概念股」:預設看概念股(玻纖布、CPO、散熱、記憶體、重電、軍工、航運…),點一列就展開裡面有哪幾檔(現價 / 今天 / 近 20 日),點股名進個股頁;官方產業照留一顆鈕切過去',
             '🎯 概念股從 21 組擴到 38 組、每組至少 5 檔(新的那幾組下一輪採礦跑完才會出現)',
@@ -9020,12 +9008,6 @@ ${list}
             '👑 選領頭羊時只講領頭羊:名單外的股票寫「這一套不買它」,觸發價那一塊和 13:00 尾盤買點提醒不再出現(手上名單外的照舊用原本的出場)',
             '🅿️ 帳戶總資金比你手上的股票 + 0050 還少時,不再算「該停多少 0050」,會先請你到設定改成真正的總資金;換倉日之間 0050 不用調整',
             '🧹 13:00 尾盤買點提醒只講怎麼做',
-        ], dt: '2026-10-12' },
-        { v: 'V79.1.5', d: [
-            '🛑 庫存跌破停損的提醒:停損價改成跟出場規則同一條(買進當天最低 vs 成本 −5% 取低的);盤中只先提醒,收盤前還在線下才尾盤賣',
-            '🥊 提醒視窗裡「接下來怎麼做」的現價,跟標題用同一個即時價(以前會出現兩個不同的現價)',
-            '👑 決策台「今天要做的事」:換倉後那天白天寫「今天」(以前寫成明天)、每天列出現在會買哪 5 檔 + 現價、今天要動的那行加顏色',
-            '👑 換倉後那天開盤 / 13:20 會提醒一次(App 開著跳視窗;Telegram 也會推)',
         ], dt: '2026-10-12' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -17604,9 +17586,6 @@ const marginByDate = {};
             } catch (e) { console.error('[_renderSectorEtfs slot]', key || '?', e); }
         });
         } catch (e) { console.error('[_renderSectorEtfs]', e); }
-        // V26.5 — sectorSyncList 摘要已砍(與預判中心 renderSectorGapTable 重複),不再呼叫 _renderSectorSyncSummary
-        // V27.0 — 9 板塊缺口表「常顯」:sector ETF 渲染後自動同步缺口表(初始載入 + 盤中即時更新 L14174 都會經這裡)
-        try { this.renderSectorGapTable(); } catch (e) { console.error('[gapTableSync]', e); }
     },
 
     // V22.5 — 🤖 板塊輪動 AI 白話判讀 + 自選股對應建議(Gemini 深度,24h 快取,雙擊強制重抽)
@@ -17663,199 +17642,6 @@ const marginByDate = {};
         const nowHidden = el.classList.toggle('hidden');
         if (ch) ch.style.transform = nowHidden ? '' : 'rotate(90deg)';
         this.vibrate?.(12);
-    },
-
-    // 🔽 V73.9.6 板塊表排序(使用者要求)。點同一欄第二次 → 反向;第三次 → 回復原本的板塊順序。
-    //   ⚠️ 狀態要存在 `this` 上 —— `renderSectorGapTable` 在 `sector_chip_flow.json` 載完後
-    //      會**再重繪一次**,存在區域變數的話使用者排好的順序會自己跳回去。
-    //   ⭐ 順便寫進 localStorage,下次打開還記得(⛔ 用 _lsJson 那套,壞值不會炸掉 App)。
-    _secSort(key) {
-        if (this._secSortKey === key) {
-            // 第二次 → 反向;第三次 → 取消排序(回原本的板塊順序)
-            if (this._secSortDir === 1) { this._secSortKey = null; this._secSortDir = -1; }
-            else { this._secSortDir = 1; }
-        } else {
-            this._secSortKey = key;
-            this._secSortDir = key === 'name' ? 1 : -1;   // 數字欄預設由大到小,名稱欄由 A→Z
-        }
-        try { localStorage.setItem('proTerm_secSort', JSON.stringify({ k: this._secSortKey, d: this._secSortDir })); } catch (_) {}
-        this.vibrate?.(10);
-        this.renderSectorGapTable?.();
-    },
-
-    renderSectorGapTable() {
-        const result = document.getElementById('predictGapTableResult');
-        if (!result) return;
-        // V26.12 — 資料就緒檢查(原邏輯沙漏全表也照渲染,使用者反映「全沙漏」沒意義)
-        const _dr = this._checkMacroReady();
-        if (!_dr.ready) {
-            result.innerHTML = this._dataNotReadyHtml(_dr.missing);
-            return;
-        }
-        const macro = this._macroRiskCache || {};
-        const etfMap = macro.sector_etfs || {};
-        const sectorLabels = { server:'🖥️ 伺服器代工', power:'⚡ 重電基建', packaging:'📦 先進封裝', cpo:'🔗 CPO 光通訊', cooling:'❄️ 散熱', robot:'🤖 機器人', finance:'🏦 金融', leo:'🛰️ 低軌衛星', dram:'💾 DRAM', defense:'🎖️ 軍工國防', wafer:'🧊 矽晶圓', pcb:'🔲 PCB/載板', asic:'🧠 ASIC矽智財', security:'🛡️ 資安' };
-        // V27.2 — 台股 sector 漲跌改讀「盤中即時 liveChg(localStorage,6h 內)→ 挖礦 sector_heat」,
-        //         不再讀不存在的 [data-sector].sector-heat DOM(那是台欄全 -- 的根因)
-        let _intraTw = null;
-        try { const _c = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null');
-              if (_c && _c.chg && (Date.now() - _c.at) < 21600000) _intraTw = _c.chg; } catch (_) {}
-        const _shTw = this._sectorHeatCache?.sectors || {};
-        // 🧭 V71.0.0 板塊籌碼流(採礦端 sector_chip_flow.json;使用者要求:除了看錢在哪,也要看籌碼在哪)
-        const _cf = (this._sectorChipFlow && this._sectorChipFlow.sectors) || {};
-        if (this._sectorChipFlow === undefined) {
-            this._sectorChipFlow = null;
-            (async () => {
-                try {
-                    const gb = window.location.href.split('?')[0].split('#')[0];
-                    const r = await fetch(new URL('data/sector_chip_flow.json', gb).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
-                    if (r.ok) { this._sectorChipFlow = await r.json(); this.renderSectorGapTable?.(); }
-                } catch (_) {}
-            })();
-        }
-        // 🐛 V70.0.1:挖礦 sector_heat 若不是「今天」的資料,不可假裝「台股今日」→ 標「昨」+ 不給訊號
-        //   (使用者實測抓包:矽晶圓顯 +1.8%「逆勢抗跌」,其實是昨天的值,當天該板塊 -7%)
-        const _shFresh = (() => { try { return (this._sectorHeatCache?.updated || '') === new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).toISOString().slice(0, 10); } catch (_) { return false; } })();
-        let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2">';
-        // V30.1 — 四欄表頭(只出現一次,取代每列重複的「美」「台」前綴 → 數字垂直對齊)
-        // 🔽 V73.9.6 使用者要求:表頭可點排序。
-        //   ⛔ 三條刻意的設計:
-        //    ① 預設 `null` = **維持原本的板塊順序**(⛔ 不預設幫他排,不然每次打開順序都不一樣)
-        //    ② 🚨 **沒有值的板塊一律排最後** —— JS 的 `null < 15` 是 **true**,
-        //       照 `a-b` 排會把「沒資料」的排到最前面看起來像最弱/最強(V73.5.1 踩過同一個坑)
-        //    ③ 排序用的數字**就是畫面上顯示的那個**(同一個來源),⛔ 不另外算一份
-        if (this._secSortKey === undefined) {   // 第一次進來 → 還原上次的選擇
-            const _sv = this._lsJson ? this._lsJson('proTerm_secSort', null) : null;
-            this._secSortKey = (_sv && _sv.k) || null;
-            this._secSortDir = (_sv && _sv.d === 1) ? 1 : -1;
-        }
-        const _sKey = this._secSortKey || null, _sDir = this._secSortDir === 1 ? 1 : -1;
-        const _th = (key, label, extra = '') => {
-            const on = _sKey === key;
-            const arrow = on ? (_sDir === -1 ? ' ▼' : ' ▲') : '';
-            return `<span onclick="app._secSort('${key}'); event.stopPropagation();" class="${key === 'name' ? '' : 'text-right '}cursor-pointer select-none ${on ? 'text-cyan-300' : 'hover:text-gray-300'}" title="點一下排序,再點一下反向">${label}${extra}${arrow}</span>`;
-        };
-        html += '<div class="grid grid-cols-[1fr_46px_46px_58px_76px] gap-1.5 items-center text-[9px] text-gray-500 font-bold pb-1 mb-1 border-b border-[#30363d]">'
-             + _th('name', '板塊') + _th('us', '美股昨收') + _th('tw', '台股今日')
-             + _th('fi5', '外資5日', '<span class="text-gray-600">(張)</span>')
-             + '<span class="text-right">訊號</span></div>';
-        // ⭐ 先算出排序要用的三個數字(跟下面顯示用的是**同一個來源**,⛔ 不另外算一份),
-        //   再依使用者選的欄位排。沒選就維持原順序。
-        let _entries = Object.entries(sectorLabels);
-        if (_sKey && _sKey !== 'name') {
-            const _val = (sk) => {
-                if (_sKey === 'us') { const e = etfMap[sk]; return e?.chg_pct != null ? parseFloat(e.chg_pct) : null; }
-                if (_sKey === 'tw') {
-                    if (_intraTw && _intraTw[sk] != null) return _intraTw[sk];
-                    return (_shTw[sk] && _shTw[sk].chg != null) ? _shTw[sk].chg : null;
-                }
-                if (_sKey === 'fi5') { const f = _cf[sk]; return f ? (+f.fi5 || 0) : null; }
-                return null;
-            };
-            _entries = _entries.slice().sort((a, b) => {
-                const va = _val(a[0]), vb = _val(b[0]);
-                const na = !Number.isFinite(va), nb = !Number.isFinite(vb);
-                // ② 🚨 沒有值的一律排最後(⛔ 不可讓 null 參與大小比較)
-                if (na && nb) return 0;
-                if (na) return 1;
-                if (nb) return -1;
-                return (va - vb) * _sDir;
-            });
-        } else if (_sKey === 'name') {
-            _entries = _entries.slice().sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'zh-Hant') * _sDir);
-        }
-        for (const [sk, sl] of _entries) {
-            const etf = etfMap[sk];
-            // V27.2 — TW 漲跌:盤中即時 liveChg 優先,否則挖礦 sector_heat 日值(不再讀不存在的 .sector-heat DOM)
-            const _fromLive = !!(_intraTw && _intraTw[sk] != null);
-            const twChg = _fromLive ? _intraTw[sk]
-                        : (_shTw[sk] && _shTw[sk].chg != null ? _shTw[sk].chg : null);
-            const _twStale = !_fromLive && twChg != null && !_shFresh;   // 非即時 + 挖礦值不是今天 = 過期
-            const usChg = etf?.chg_pct != null ? parseFloat(etf.chg_pct) : null;
-            const gap = (usChg != null && twChg != null) ? (usChg - twChg) : null;
-            // V31.2 — Pill 膠囊訊號徽章(無 emoji,文字自帶語意)
-            const _pill = (t, c, pulse) => `<span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap ${c}${pulse ? ' animate-pulse' : ''}">${t}</span>`;
-            // V31.2 — 訊號改「方向感知」:跟漲只在美股實際上漲才成立;美股漲台股卻收黑=委屈;美股跌台股跌更多=補跌;台股自殺=獨弱
-            const _C = {
-                strong: 'bg-red-500/15 text-red-300 border border-red-500/50',
-                red:    'bg-red-500/10 text-red-300 border border-red-700/50',
-                amber:  'bg-amber-500/10 text-amber-300 border border-amber-600/50',
-                orange: 'bg-orange-500/10 text-orange-300 border border-orange-600/50',
-                green:  'bg-green-500/10 text-green-300 border border-green-700/50',
-                gray:   'bg-white/5 text-gray-400 border border-[#30363d]',
-            };
-            let gapBadge;
-            if (usChg == null || twChg == null) {
-                gapBadge = _pill('—', _C.gray);
-            } else if (_twStale) {
-                gapBadge = _pill('⏱ 按盤中更新', _C.gray);   // 過期值不給訊號,避免假「逆勢抗跌」
-            } else {
-                const usUp = usChg > 0.3, usDn = usChg < -0.3;
-                if (twChg <= -3 && gap > 0.5)              gapBadge = _pill('台股獨弱', _C.orange);        // 台股自身大跌,別跟美股做多
-                else if (usUp && twChg > 0.3 && gap > 1.5) gapBadge = _pill('強烈跟漲', _C.strong, true);  // 美漲+台漲落後很多 → 補漲最強
-                else if (usUp && twChg > 0.3 && gap > 0.6) gapBadge = _pill('跟漲機會', _C.red);           // 美漲+台漲落後
-                else if (usUp && twChg <= 0.3)             gapBadge = _pill('委屈待補', _C.amber);         // 美漲台股卻收黑 → 相對弱勢觀望
-                else if (usDn && gap > 0.8)                gapBadge = _pill('補跌風險', _C.green);          // 美跌+台跌更多
-                // 🐛 V71.7.5 修誤標:原本 gap<-0.8 一律叫「逆勢抗跌」,但「逆勢」的語意是
-                //   **美股跌、台股撐住**。美股 +5.4% 台股 +8.0% 那是「跟著漲而且更強」= 領漲。
-                //   使用者截圖裡 9 個板塊有 6 個都顯「逆勢抗跌」→ 全是紅徽章、毫無鑑別度,
-                //   而且講反了(那天美股是大漲的)。拆成兩種語意。
-                else if (gap < -0.8 && usUp)               gapBadge = _pill('領漲', _C.strong);            // 美漲、台股漲更多 = 最強
-                else if (gap < -0.8)                       gapBadge = _pill('逆勢抗跌', _C.red);            // 美股沒漲,台股仍比美股強
-                else if (gap > 0.8)                        gapBadge = _pill('台股偏弱', _C.green);          // 美平+台跌
-                else                                       gapBadge = _pill('同步', _C.gray);
-            }
-            const usCls = usChg != null ? (usChg > 0.3 ? 'text-red-300' : usChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
-            const twCls = _twStale ? 'text-gray-600' : (twChg != null ? (twChg > 0.3 ? 'text-red-300' : twChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500');
-            const _usTxt = usChg != null ? `${usChg >= 0 ? '+' : ''}${usChg.toFixed(1)}%` : '--';
-            const _twTxt = twChg != null ? `${_twStale ? '昨' : ''}${twChg >= 0 ? '+' : ''}${twChg.toFixed(1)}%` : '--';
-            // 🏭 V69.5.0 成分股(點板塊展開,點成分股直接開個股頁)
-            const stocks = this._sectorStocks[sk] || [];
-            // 🧹 V71.7.5 版面改「主列一行 + 點開才看細節」——
-            //   使用者回報「很亂」。真因:每個板塊常駐**兩行**(數字一行 + 同買券商一行),
-            //   而券商行長度不固定,實測「重電基建」「低軌衛星」都折成 2 行 →
-            //   每列高度都不一樣,整張表看起來破碎。
-            //   改成:主列永遠一行(對得齊),券商跟成分股一起收進展開層,要看再點。
-            const stkHtml = stocks.length ? `<div id="secStk_${sk}" class="hidden pb-2 pt-0.5 px-1">
-                <div class="flex flex-wrap gap-1.5">
-                ${stocks.map(([sym, nm]) => `<button onclick="event.stopPropagation(); app._pickGlobalSearch('${sym}'); app.vibrate(15);" class="flex items-center gap-1 bg-[#161b22] border border-[#30363d] hover:border-cyan-500 active:bg-[#21262d] rounded-lg px-2 py-1 text-[11px] transition-colors"><span class="font-mono font-bold text-cyan-300">${sym}</span><span class="text-gray-200">${nm}</span><span class="text-gray-600">›</span></button>`).join('')}
-                </div>
-            </div>` : '';
-            html += `
-                <div class="border-b border-[#21262d] last:border-0">
-                    <div onclick="app._toggleSectorRow('${sk}')" class="grid grid-cols-[1fr_46px_46px_58px_76px] gap-1.5 items-center py-1.5 cursor-pointer hover:bg-white/5 rounded">
-                        <span class="text-gray-200 font-bold truncate text-[11px] flex items-center gap-1"><span id="secChev_${sk}" class="text-gray-500 text-[9px] transition-transform inline-block">▶</span>${sl}${(() => {
-                            // 🕵️ V71.7.5 偷布局徽章改放板塊名旁(原本用 <br> 塞在外資數字下面 → 撐高該列)
-                            const f = _cf[sk];
-                            if (f?.stealth_deep) return '<span class="text-[8px] text-amber-300 font-bold whitespace-nowrap flex-shrink-0">🕵️深蹲</span>';
-                            if (f?.stealth) return '<span class="text-[8px] text-cyan-300 font-bold whitespace-nowrap flex-shrink-0">🕵️布局</span>';
-                            return '';
-                        })()}</span>
-                        <span class="${usCls} font-mono text-right text-[11px]">${_usTxt}</span>
-                        <span class="${twCls} font-mono text-right text-[11px]">${_twTxt}</span>
-                        ${(() => {   // 🧭 V71.0.0 外資近 5 日買賣超(張)+ 偷布局徽章
-                            const f = _cf[sk];
-                            if (!f) return '<span class="text-right text-[10px] text-gray-600">—</span>';
-                            const v = +f.fi5 || 0;
-                            const cls = v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400';
-                            const txt = Math.abs(v) >= 10000 ? `${(v / 10000).toFixed(1)}萬` : v.toLocaleString();
-                            // 🔬 V71.0.5 兩層:深蹲版(已跌深)實測每個天期都優於基本版 → 標更醒目
-                            // 🔁 V79.4.3 拉長到 2012~2026 重跑:兩層都沒過(深蹲 +0.41pp・3/6,2012~2019 五年負)→ 徽章只描述事實,圖例拿掉「較強」
-                            // 🧹 V71.1.4 欄寬只有 58px,原「偷布局·深蹲」會被斷字換行(截圖實測斷成「偷布局·深/蹲」)
-                            //   → 縮成 2 字 + whitespace-nowrap;完整定義寫在表尾圖例
-                            // 🧹 V71.7.5 原本用 <br> 把「🕵️深蹲」塞在數字下面 → 那一列被撐高,
-                            //   整張表高度參差(使用者說「很亂」的原因之一)。改放板塊名旁邊(nameBadge)。
-                            return `<span class="text-right font-mono text-[10px] ${cls}">${v > 0 ? '+' : ''}${txt}</span>`;
-                        })()}
-                        <span class="text-right">${gapBadge}</span>
-                    </div>
-                    ${stkHtml}
-                </div>`;
-        }
-        const _cfUp = this._sectorChipFlow?.updated ? `　籌碼資料:${this._dW(this._sectorChipFlow.updated, { rel: 1 })}` : '';
-        html += `<div class="text-[9px] text-gray-600 text-center mt-1.5 leading-snug">👆 點板塊看成分股。<b class="text-cyan-300">🕵️布局</b>=價跌但外資5日買超;<b class="text-amber-300">🕵️深蹲</b>=而且已跌深 12% 以上(兩種都只是描述,⛔ 不是買進訊號)。${_cfUp}</div>`;
-        html += '</div>';   // V30.1 — 底部 💡 長圖例已移除,改標題 ⓘ popover(showJargon('板塊輪動訊號'))
-        result.innerHTML = html;
     },
 
     // V20.2 — 注意股機制教學(alert,使用者點「📖 教學」鈕觸發)
@@ -35059,7 +34845,7 @@ ${this._reportFacts(sym)}
         styleBtn('subTab_rot', tab === 'rot', 'emerald');
         styleBtn('subTab_eve', tab === 'eve', 'sky');
         styleBtn('subTab_global2', tab === 'global', 'cyan');
-        if (tab === 'rot') { this._renderRotTab().catch(() => {}); }
+        if (tab === 'rot') { this._renderRotTab().catch(() => {}).then(() => { try { if (this._liveQuotes && Object.keys(this._liveQuotes).length) this._renderConceptLive(); else this._conceptLiveRefresh(); } catch (_) { } }); }
         if (tab === 'eve') { this.renderEvening().catch(() => {}); }
         if (tab === 'idx') { try { this._renderIndexRow(); } catch (_) {} try { this.renderMarketBreadth(); } catch (_) {} }
         // 🗞️ V72.6.2 進「消息面」時把三格分頁初始化(記住上次選的;預設新聞焦點)
@@ -35288,6 +35074,75 @@ ${this._reportFacts(sym)}
             ${mem.map(row).join('')}
             ${isTh && auto ? `<div class="text-[9px] text-gray-500 pt-1">🔗 = 本站算出來最近跟這個概念一起動的(每天重算),不是公司自己說的業務。</div>` : ''}
         </div>`;
+    },
+    // ⚡ V79.9.6 概念股盤中即時(使用者:「📊市場板塊輪動內容改成概念股盤中即時更新」)
+    //   ⭐ 成員 = `_regimeStats(20).tmem`(跟上面排名、展開成分股同一份,⛔ 另組名單);
+    //      今天漲跌 = `_liveQuote(sym).c`(全市場快照,只回今天的);快照不是今天 → 改用選股快照的收盤漲跌並講出來(⛔ 拿舊快照當現價)。
+    //   只描述「今天錢在哪幾群」,⛔ 買賣指令、⛔ 研究數字;成員 <3 檔不列、<5 檔標樣本少(同排名表)。
+    _conceptLiveRows() {
+        const S = this._regimeStats(20), D = this._scrData;
+        if (!S || !S.tmem || !S.tmem.size || !D || !D.rows) return null;
+        const live = this._liveFresh();
+        const md = a => { const b = a.slice().sort((p, q) => p - q); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+        const rows = [];
+        for (const [k, mem] of S.tmem) {
+            const ms = [];
+            for (const [sym, seed] of mem) {
+                const q = live ? this._liveQuote(sym) : null;
+                const c = q && Number.isFinite(+q.c) ? +q.c : (live ? null : this._scrV(D.rows[sym], 'chg'));
+                const px = q && Number.isFinite(+q.p) ? +q.p : this._scrV(D.rows[sym], 'c');
+                if (c === null || !Number.isFinite(+c)) continue;
+                ms.push({ s: sym, seed, c: +c, p: px });
+            }
+            if (ms.length < 3) continue;
+            ms.sort((a, b) => b.c - a.c);
+            rows.push({ k, name: S.tname[k] || k, med: md(ms.map(x => x.c)), up: ms.filter(x => x.c > 0).length, dn: ms.filter(x => x.c < 0).length, n: ms.length, ms });
+        }
+        rows.sort((a, b) => b.med - a.med);
+        return { live, rows, day: D.data_date || (D.updated || '').slice(0, 10) };
+    },
+    _conceptLiveToggle(k) { this._clOpenK = this._clOpenK === k ? null : k; this._renderConceptLive(); },
+    async _conceptLiveRefresh() {
+        const btn = document.getElementById('conceptLiveBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 讀取中'; }
+        try { await this._loadLiveQuotes(); } catch (_) { }
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 重新整理'; }
+        this._renderConceptLive();
+    },
+    _renderConceptLive() {
+        const box = document.getElementById('conceptLiveBox'), when = document.getElementById('conceptLiveWhen');
+        if (!box) return;
+        const R = this._conceptLiveRows();
+        if (!R || !R.rows.length) {
+            box.innerHTML = `<div class="text-[10px] text-gray-500 px-1" data-cl="0">⏳ 概念股名單或選股快照還沒載入,算不出來。</div>`;
+            if (when) when.textContent = '';
+            return;
+        }
+        if (when) {
+            const open = this.isMarketOpen ? this.isMarketOpen() : false;
+            when.textContent = R.live ? `${this._liveTs || ''} ${open ? '盤中' : '收盤'}` : `${this._dW ? this._dW(R.day) : R.day} 收盤`;
+        }
+        const pct = v => `<span class="${this._rpDir(v)}">${v > 0 ? '+' : ''}${v.toFixed(2)}%</span>`;
+        const G = 'grid-template-columns:minmax(0,1fr) 62px 66px 34px';
+        const mem = r => `<div class="pl-6 pr-1 pb-2" data-clmem="${r.ms.length}" onclick="event.stopPropagation()">
+            <div class="grid gap-1 text-[9px] text-gray-500 py-1" style="grid-template-columns:minmax(0,1fr) 60px 62px"><span>成分股 ${r.ms.length} 檔</span><span class="text-right">現價</span><span class="text-right">今天</span></div>
+            ${r.ms.map(x => `<div class="grid gap-1 items-center py-1 border-b border-[#21262d] last:border-0" style="grid-template-columns:minmax(0,1fr) 60px 62px" data-clmemrow="${this._escHtml(x.s)}">
+                <button class="text-left min-w-0 truncate cursor-pointer" onclick="event.stopPropagation(); app.analyze('${this._escHtml(x.s)}')">${this._nmPair(x.s, 'text-[11px]')}${x.seed ? '' : '<span class="text-[9px] text-gray-500 ml-1" title="本站算出來最近跟這個概念一起動的(每天重算)">🔗</span>'}</button>
+                <span class="font-mono text-[11px] text-gray-200 text-right">${x.p === null || x.p === undefined ? '—' : (+x.p).toLocaleString()}</span>
+                <span class="font-mono text-[11px] text-right">${pct(x.c)}</span></div>`).join('')}
+        </div>`;
+        const head = `<div class="grid gap-1 text-[9px] text-gray-500 px-1 pb-1 border-b border-[#21262d]" style="${G}"><span>概念(點開看成分股)</span><span class="text-right">今天中位數</span><span class="text-right">漲 / 跌家數</span><span class="text-right">檔數</span></div>`;
+        const body = R.rows.map(r => {
+            const open = this._clOpenK === r.k;
+            return `<div data-clrow="${this._escHtml(r.k)}"><div class="grid gap-1 items-center px-1 py-1.5 border-b border-[#21262d] cursor-pointer" style="${G}" onclick="app._conceptLiveToggle('${this._escHtml(r.k)}')">
+                <span class="min-w-0 truncate text-[11px] text-gray-100 font-bold">${open ? '▾' : '▸'} ${this._escHtml(r.name)}${r.n < 5 ? '<span class="text-[9px] text-gray-500 font-normal ml-1">樣本少</span>' : ''}</span>
+                <span class="font-mono text-[11px] text-right font-bold">${pct(r.med)}</span>
+                <span class="font-mono text-[10px] text-right"><span class="text-red-400">${r.up}</span><span class="text-gray-600"> / </span><span class="text-green-400">${r.dn}</span></span>
+                <span class="font-mono text-[10px] text-gray-400 text-right">${r.n}</span></div>${open ? mem(r) : ''}</div>`;
+        }).join('');
+        const stale = R.live ? '' : `<div class="text-[10px] text-yellow-300 px-1 pb-1" data-clstale="1">⚠️ 全市場即時快照不是今天盤中的 → 這裡用 ${this._dW ? this._dW(R.day) : R.day} 的<b>收盤</b>漲跌,⛔ 不拿舊快照當現價。</div>`;
+        box.innerHTML = `${stale}<div data-cl="${R.rows.length}">${head}${body}</div>
+            <div class="text-[9px] text-gray-500 px-1 pt-1 leading-snug">每個概念 = 成分股今天漲跌的中位數(一檔大漲大跌拉不動它),照強到弱排;盤中約每 5 分鐘自動更新。只描述今天錢在哪幾群,⛔ 不是買賣訊號。</div>`;
     },
     switchRotView(v) {
         try { localStorage.setItem('rotView', v === 'ind' ? 'ind' : 'theme'); } catch (_) { }
@@ -42469,160 +42324,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
         // 順手更新:大跌泡沫判讀(送分題/系統準度已遷至雷達頁 layup tab)
         this._updateBubbleCrashCard();
-        // 🏭 V69.7.8 盤中自動帶出官方產業指數(有 FinMind key 才顯,3 分節流,不用手按)
-        try {
-            const _t = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
-            const _hm = _t.getHours() * 60 + _t.getMinutes();
-            if (_t.getDay() >= 1 && _t.getDay() <= 5 && _hm >= 540 && _hm <= 810) this._refreshOfficialSectorIdx();
-        } catch (_) {}
-    },
-
-    // 🏭 V69.7.8 官方產業指數盤中快照(FinMind 付費 token 直抓證交所指數;XQ 付費版同款功能)
-    //   條件觸發:沒填 FinMind key 整條隱藏;3 分節流護額度;抓不齊(非付費/斷線)也隱藏,零噪音。
-    async _refreshOfficialSectorIdx(force) {
-        const el = document.getElementById('sectorIdxStrip');
-        if (!el) return;
-        const keys = [this.settings.finmindKey1, this.settings.finmindKey2, this.settings.finmindKey3, this.settings.finmindKey4].filter(k => k && String(k).trim());
-        if (!keys.length) { el.classList.add('hidden'); return; }
-        const nowTs = Date.now();
-        if (!force && this._secIdxTs && nowTs - this._secIdxTs < 180e3) return;
-        this._secIdxTs = nowTs;
-        const IDX = [['001', '大盤'], ['101', '櫃買'], ['036', '半導體'], ['037', '電腦週邊'], ['038', '光電'],
-                     ['039', '通信網路'], ['040', '電子零組件'], ['031', '金融'], ['029', '航運'], ['028', '營建']];
-        const out = [];
-        for (let i = 0; i < IDX.length; i++) {
-            const [id, nm] = IDX[i];
-            try {
-                const key = keys[i % keys.length];
-                const r = await fetch(`https://api.finmindtrade.com/api/v4/taiwan_stock_tick_snapshot?data_id=${id}`,
-                    { headers: { 'Authorization': `Bearer ${key}` }, signal: AbortSignal.timeout(6000) });
-                const j = await r.json();
-                const d = Array.isArray(j?.data) ? j.data[0] : j?.data;
-                const chg = d ? +(d.change_rate) : null;
-                if (d && Number.isFinite(chg)) out.push({ nm, chg });
-            } catch (_) {}
-        }
-        if (out.length < 4) { el.classList.add('hidden'); return; }
-        out.sort((a, b) => b.chg - a.chg);
-        const chip = o => {
-            const cls = o.chg >= 0.3 ? 'text-red-300 border-red-700/50' : o.chg <= -0.3 ? 'text-green-300 border-green-700/50' : 'text-gray-300 border-[#30363d]';
-            return `<span class="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded border ${cls}">${o.nm} ${o.chg > 0 ? '+' : ''}${o.chg.toFixed(2)}%</span>`;
-        };
-        const tpe = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
-        el.className = 'mb-2 bg-[#0d1117] border border-[#30363d] rounded-lg p-2';
-        el.innerHTML = `<div class="text-[9px] text-gray-500 font-bold mb-1">🏭 官方產業指數 <span class="font-normal">(證交所即時 ${this._dW(tpe)} ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2, '0')} ・ 強→弱排,錢往哪流一眼看)</span></div><div class="flex flex-wrap gap-1">${out.map(chip).join('')}</div>`;
-        el.classList.remove('hidden');
-    },
-
-    // 🔄 盤中即時更新資金板塊(手動觸發 + 讀取條,防 ban:純手動 + Fugle 既有 1.1s 間隔/token 輪動/60s 快取)
-    async refreshSectorIntraday() {
-        const btn = document.getElementById('sectorIntradayBtn');
-        const bar = document.getElementById('sectorIntradayBar');
-        const fill = document.getElementById('sectorIntradayBarFill');
-        // 盤中時段提醒(台北 09:00-13:30),非盤中仍可按但提示
-        const now = new Date();
-        const tpe = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
-        const hm = tpe.getHours() * 60 + tpe.getMinutes();
-        const inSession = (tpe.getDay() >= 1 && tpe.getDay() <= 5) && hm >= 540 && hm <= 810;
-        if (!inSession) this.showToast('非盤中時段,顯示的是最近成交價', 'info');
-        // 🐛 V70.0.1 修(使用者實測抓包):舊版只蓋 9 板塊、每板塊只抓 1 檔領頭股 →
-        //   ① DRAM 顯 -10% 其實是南亞科一檔跌停 ② 矽晶圓等新板塊沒領頭股,回退「昨日挖礦值」卻標成今日
-        //   → 改:全部板塊都更新,每板塊取前 3 檔成分股「平均」,才是板塊的真實今日臉色
-        const keys = this._getFugleKeys().filter(k => k && k.trim());
-        if (!keys.length) { this.showToast('請先到 ⚙️ 設定填 Fugle token 才能盤中即時更新'); return; }
-
-        if (btn) { btn.disabled = true; btn.textContent = '⏳ 即時抓取中...'; }
-        if (bar) bar.classList.remove('hidden');
-        const entries = Object.entries(this._sectorStocks).map(([sk, arr]) => [sk, (arr || []).slice(0, 3).map(x => x[0])]);
-        let done = 0;
-        const liveChg = {};
-        for (const [sector, syms] of entries) {
-            const chgs = [];
-            // 同板塊 3 檔並發(fetchFugleData 自帶 60s 快取 + token 輪動;3 檔一批不會撞限流)
-            await Promise.all(syms.map(async (sym) => {
-                try {
-                    const q = await this.fetchFugleData(sym);
-                    if (q && q.price && q.prevClose) chgs.push((q.price - q.prevClose) / q.prevClose * 100);
-                } catch (_) {}
-            }));
-            if (chgs.length) liveChg[sector] = chgs.reduce((a, b) => a + b, 0) / chgs.length;
-            done++;
-            if (fill) fill.style.width = `${Math.round(done / entries.length * 100)}%`;
-        }
-        // 更新板塊 chip(紅漲綠跌)
-        const fmt = (chg) => {
-            if (chg == null || isNaN(chg)) return { txt: '--', cls: 'text-gray-500' };
-            const arrow = chg > 0.3 ? '🔺' : chg < -0.3 ? '🔻' : '→';
-            const cls = chg > 0.3 ? 'text-red-400' : chg < -0.3 ? 'text-green-400' : 'text-gray-400';
-            return { txt: `${arrow}${chg > 0 ? '+' : ''}${chg.toFixed(2)}%`, cls };
-        };
-        for (const [sector, chg] of Object.entries(liveChg)) {
-            const el = document.querySelector(`[data-sector="${sector}"] .sector-heat`);
-            if (!el) continue;
-            const f = fmt(chg);
-            el.textContent = f.txt;
-            el.className = `text-sm font-mono font-black sector-heat ${f.cls}`;
-        }
-        // 🏭 V69.7.8 順手刷官方產業指數(有 FinMind key 才顯)
-        try { await this._refreshOfficialSectorIdx(true); } catch (_) {}
-        // 記憶體:盤中即時結果存 localStorage(沿用上批機制 key)
-        try { localStorage.setItem('sectorIntradayLastGood', JSON.stringify({ at: Date.now(), chg: liveChg })); } catch(_){}
-        // V22.2 — 台股 .sector-heat 已更新,重算每張卡的同步 chip + 頂部摘要卡
-        if (this._macroRiskCache?.sector_etfs) this._renderSectorEtfs(this._macroRiskCache.sector_etfs);
-        const srcEl = document.getElementById('sectorSource');
-        if (srcEl) { srcEl.textContent = `(盤中 ${this._dW(tpe)} ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2,'0')})`; srcEl.classList.remove('opacity-60'); }
-
-        if (bar) setTimeout(() => bar.classList.add('hidden'), 800);
-        const got = Object.keys(liveChg).length;
-        // V30.1 — 成功改綁按鈕回饋(綠框 + ✓ 已更新 N 板塊,1.8s 還原),不再彈 toast 擋底部 TabBar;失敗才彈(toast 已移中上方)
-        if (btn) {
-            btn.disabled = false;
-            if (got) {
-                btn.textContent = `✓ 已更新 ${got} 板塊`;
-                btn.classList.add('border-green-500', 'text-green-300');
-                btn.classList.remove('border-purple-700/50', 'text-purple-200');
-                setTimeout(() => {
-                    btn.textContent = '🔄 盤中即時更新';
-                    btn.classList.add('border-purple-700/50', 'text-purple-200');
-                    btn.classList.remove('border-green-500', 'text-green-300');
-                }, 1800);
-            } else {
-                btn.textContent = '🔄 盤中即時更新';
-            }
-        }
-        if (!got) this.showToast('⚠️ Fugle 額度用盡或 token 失效,稍後再試', 'error');
-    },
-
-    // 🔄 還原上次「盤中即時更新」記憶,切 tab 回來時不會被 sectorHeat 蓋成「(實時)/(範例)」
-    // 6 小時內視為新鮮(隔日盤資料失效就不還原)
-    _restoreSectorIntradayMemory() {
-        let cached = null;
-        try { cached = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null'); } catch (_) { return; }
-        if (!cached || !cached.chg || !cached.at) return;
-        const ageMin = (Date.now() - cached.at) / 60000;
-        if (ageMin > 360) return;
-        const fmt = (chg) => {
-            if (chg == null || isNaN(chg)) return null;
-            const arrow = chg > 0.3 ? '🔺' : chg < -0.3 ? '🔻' : '→';
-            const cls = chg > 0.3 ? 'text-red-400' : chg < -0.3 ? 'text-green-400' : 'text-gray-400';
-            return { txt: `${arrow}${chg > 0 ? '+' : ''}${chg.toFixed(2)}%`, cls };
-        };
-        for (const [sector, chg] of Object.entries(cached.chg)) {
-            const el = document.querySelector(`[data-sector="${sector}"] .sector-heat`);
-            if (!el) continue;
-            const f = fmt(chg);
-            if (!f) continue;
-            el.textContent = f.txt;
-            el.className = `text-sm font-mono font-black sector-heat ${f.cls}`;
-        }
-        const srcEl = document.getElementById('sectorSource');
-        if (srcEl) {
-            const d = new Date(cached.at);
-            const hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-            srcEl.textContent = `(盤中記憶 ${hm})`;
-            srcEl.className = srcEl.className.replace(/text-(?:gray|green|yellow|red)-\d{3}/g, '') + ' text-purple-300';
-            srcEl.classList.remove('opacity-60');
-        }
     },
 
     // 📉 真泡沫 vs 假泡沫判讀(純算式,不打 Groq)
@@ -54144,7 +53845,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 const tab = this.navStack?.[this.navStack.length - 1];
                 if (tab === 'fav') this._patchFavPrices();
                 else if (tab === 'inv') this.renderInventory();
-                else if (tab === 'market') { this.renderMarketBreadth(); }   // 📊 V67.2 大盤盤中刷新(🗑️ V79.3.5 狀態機死卡已刪)
+                else if (tab === 'market') { this.renderMarketBreadth(); const _rt = document.getElementById('subContent_rot'); if (_rt && _rt.offsetParent) this._renderConceptLive(); }   // ⚡ V79.9.6 概念股盤中即時跟著快照刷   // 📊 V67.2 大盤盤中刷新(🗑️ V79.3.5 狀態機死卡已刪)
             } catch (_) {}
         }, 15000);
     },

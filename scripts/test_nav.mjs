@@ -135,6 +135,41 @@ for (const [q, want] of [['?noise=1', 'lab|trap|open'], ['?log=1', 'log'], ['?ta
   ok('①e 從散戶救星回來 → 回到上次那一頁(sessionStorage,30 分鐘內)', got === 'chain', got);
   await page.close();
 }
+// ‹ ⑧ V79.9.6 左上角「‹」回散戶救星(使用者:「產業作戰室 PRO 左上角新增 < 符號可以返回到散戶 app」)
+{
+  const page = await open(390, 844);
+  const g = await page.evaluate(() => {
+    const b = document.getElementById('proBackBtn'), r = b && b.getBoundingClientRect();
+    const logo = document.querySelector('.brand .logo').getBoundingClientRect();
+    return { has: !!b, txt: b && b.textContent.trim(), vis: !!(b && b.offsetParent), left: r && r.left, leftOfLogo: !!r && r.right <= logo.left + 1, inBrand: !!(b && b.closest('.brandbar')) };
+  });
+  ok('⑧a 一般模式:左上角有「‹」、在 🛰️ 左邊、在 brandbar 裡(⛔ 不在固定那條)', g.has && g.txt === '‹' && g.vis && g.leftOfLogo && g.inBrand && g.left < 40, JSON.stringify(g));
+  // 直接開作戰室(沒有上一頁)→ 點了去 index.html
+  await Promise.all([page.waitForURL(/index\.html/, { timeout: 15000 }).catch(() => null), page.click('#proBackBtn')]);
+  ok('⑧b 沒有上一頁 → 點「‹」開 index.html', /index\.html/.test(page.url()), page.url());
+  await page.close();
+}
+{
+  const page = await open(390, 844, '?app=fish');
+  const v = await page.evaluate(() => { const b = document.getElementById('proBackBtn'); return !!(b && b.offsetParent); });
+  ok('⑧c 股海釣手模式看不到「‹」(⛔ 連到別的程式)', !v);
+  await page.close();
+}
+{
+  // 從散戶救星進來(同站的上一頁)→ history.back(),⛔ 開新的一頁
+  const page = await open(390, 844);
+  const r = await page.evaluate(() => {
+    let backed = 0, href = null;
+    const H = history.back; history.back = () => { backed++; };
+    Object.defineProperty(document, 'referrer', { get: () => location.href.replace(/pro\.html.*$/, 'index.html'), configurable: true });
+    history.pushState({}, '', location.href);
+    try { PRO.goRetail(); } catch (e) { href = String(e); }
+    history.back = H;
+    return { backed, href };
+  });
+  ok('⑧d 上一頁是散戶救星 → 退回上一頁(回到原本那一頁)', r.backed === 1 && !r.href, JSON.stringify(r));
+  await page.close();
+}
 ok('⑦b 無 pageerror', !errs.length, errs.join(' | '));
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ test_nav 全過');

@@ -83,8 +83,8 @@ const ver = (html.match(/_APP_VERSION:\s*'([^']+)'/) || [])[1];
 // 🚨 V79.1.3:清單裡的名字被功能下架刪掉時(V79.0.0 刪 _brokerEl),這關會把「清單過期」誤判成
 //    「壓縮吃掉東西」→ 每次都退回未壓縮版部署(4.7MB),而且 workflow 全綠零訊息。
 //    → 原始碼裡本來就沒有的,是清單的問題不是壓縮的問題:印出來、不算;但活著的至少要 5 個。
-const MUST = [ver, 'renderSectorGapTable', '_renderGuardRuler', '_exitDistance', 'renderDeck',
-               '_scheduleChart', 'renderDayTradeTab', '偷布局', '防守價一覽'].filter(Boolean);
+const MUST = [ver, '_renderConceptLive', '_renderGuardRuler', '_exitDistance', 'renderDeck',
+               '_scheduleChart', 'renderDayTradeTab', '概念股盤中即時', '防守價一覽'].filter(Boolean);
 const stale = MUST.filter(s => !html.includes(s));
 if (stale.length) console.warn('⚠️ 抽樣清單過期(原始碼裡本來就沒有,請更新 build_min.mjs):' + stale.join(', '));
 const live = MUST.filter(s => html.includes(s));
