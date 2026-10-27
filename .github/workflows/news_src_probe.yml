@@ -27,4 +27,4 @@ jobs:
       - name: 🧪 selftest
         run: python3 scripts/news_src_probe.py --selftest
       - name: 🔬 探路
-        run: python3 scripts/news_src_probe.py
+        run: python3 scripts/news_src_probe.py --quick

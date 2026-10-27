@@ -107,6 +107,30 @@ def probe_news():
     return res
 
 
+def probe_cnyes_depth():
+    """鉅亨關鍵字搜尋能翻到多舊(回補用):富喬 / 聯茂 翻第 2、4、8、16 頁看最舊那則的日期"""
+    print('\n📚 鉅亨搜尋翻頁深度')
+    for nm in ('富喬', '聯茂'):
+        for pg in (2, 4, 8, 16, 40):
+            url = 'https://ess.api.cnyes.com/ess/api/v1/news/keyword?' + urllib.parse.urlencode({'q': nm, 'limit': 100, 'page': pg})
+            code, ct, body, sec = get(url)
+            try:
+                j = json.loads(body); d = j.get('data') or {}
+                ts = sorted(int(x.get('publishAt') or 0) for x in (d.get('items') or []) if x.get('publishAt'))
+                rng = f"{datetime.fromtimestamp(ts[0], timezone.utc):%Y-%m-%d} ~ {datetime.fromtimestamp(ts[-1], timezone.utc):%Y-%m-%d}" if ts else '—'
+                print(f"  {nm} page {pg}: HTTP {code} ・{len(d.get('items') or [])} 則 ・{rng} ・keys {sorted(d.keys())[:8]}")
+            except Exception as e:
+                print(f"  {nm} page {pg}: HTTP {code} {type(e).__name__} {body[:100]!r}")
+            time.sleep(1.2)
+    # 鉅亨個股新聞(以代號)
+    for sym in ('1815', '6213'):
+        for url in (f'https://api.cnyes.com/media/api/v1/newslist/TWS:{sym}:STOCK/symbolNews?limit=100&page=1',
+                    f'https://ess.api.cnyes.com/ess/api/v1/news/stock/TWS:{sym}:STOCK?limit=100&page=1'):
+            code, ct, body, sec = get(url)
+            print(f"  個股 {sym} {url.split('/api/')[1][:50]}: HTTP {code} {ct[:25]} 開頭 {body[:160]!r}")
+            time.sleep(1.2)
+
+
 def probe_concepts():
     print('\n🎯 Yahoo 股市 概念股分類頁')
     out = {}
@@ -119,9 +143,10 @@ def probe_concepts():
         if u not in seen:
             seen.add(u)
             uniq.append((u, n))
-    print(f"  class-quote 連結 {len(uniq)} 個;前 40 個名字:{[n for _, n in uniq[:40]]}")
+    print(f"  class-quote 連結 {len(uniq)} 個;全部名字:{[n for _, n in uniq]}")
+    print(f"  連結樣本:{[u for u, _ in uniq[40:50]]}")
     out['n_links'] = len(uniq)
-    for u, n in uniq[:3] + [x for x in uniq if any(k in x[1] for k in ('玻纖', '散熱', 'CPO', '矽光', '機器人'))][:4]:
+    for u, n in uniq[40:46] + [x for x in uniq if any(k in x[1] for k in ('玻纖', '散熱', 'CPO', '矽光', '機器人', '記憶體', 'AI'))][:6]:
         code2, ct2, b2, s2 = get('https://tw.stock.yahoo.com' + u.replace('&amp;', '&'))
         syms = sorted(set(re.findall(r'/quote/(\d{4,6})\.TWO?\b', b2)))
         print(f"    {n}: HTTP {code2} ・{len(syms)} 檔 ・{syms[:12]}")
@@ -141,7 +166,9 @@ def main():
         ok = len(it) == 2 and it[0]['t'] == '富喬 玻纖布漲' and it[0]['s'] == '工商時報' and it[0]['d'].day == 26 and it[1]['d'] is None
         print('✅ NEWS_SRC_SELFTEST_PASS' if ok else f'❌ selftest {it}')
         return 0 if ok else 1
-    probe_news()
+    if '--quick' not in sys.argv:
+        probe_news()
+    probe_cnyes_depth()
     probe_concepts()
     print('\n(只量測,⛔ 沒寫任何檔)')
     return 0
