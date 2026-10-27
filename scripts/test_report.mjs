@@ -86,7 +86,7 @@ const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '
     //   那是釘住當時的實作而不是用意(CLAUDE.md:斷言要釘用意)。用意 = 它有在那個陣列裡。
     ok('① switchSubTab 的容器陣列含 Report(⛔ 漏加 = 分頁永遠顯示不出來)', /\['Strategy'[^\]]*'Report'[^\]]*\]/.test(sw));
     ok('①c ⭐ 報告分頁的按鈕就排在「總覽」右邊(使用者指定的位置)',
-       /id="subTabBtnStrategy"[\s\S]{0,400}?id="subTabBtnReport"[\s\S]{0,400}?id="subTabBtnLive"/.test(SRC));
+       /id="subTabBtnStrategy"[\s\S]{0,400}?id="subTabBtnReport"[\s\S]{0,500}?id="subTabBtn(?:DayTrade|Live)"/.test(SRC));   // 🔁 V79.9.6 即時 / 當沖互換 → 報告後面接哪一個都行(用意是報告緊接總覽)
     ok('①b switchSubTab 有 report 分支呼叫 renderReportTab', /tab === 'report'[\s\S]{0,200}renderReportTab/.test(sw));
     ok('② _idxHiddenSubTabs 含 report 且 MAP 含 report: \'Report\'', /_idxHiddenSubTabs: \[[^\]]*'report'\]/.test(SRC) && /bullbear: 'BullBear', report: 'Report'/.test(SRC));
     ok('⑪a analyze() 切股清單含每一個 rp*(⛔ 少一個 = 那一段顯上一檔;V76.2.5 移除已下架的 rpNum/rpAct;V77.2.0 錨點從已刪除的 deepBriefCard 改成 marginCallBox)', ['rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpSrc', 'rpQuick', 'rpWalls', 'rpPaste', 'rpImg'].every(id => new RegExp(`'marginCallBox',[\\s\\S]{0,400}'${id}'`).test(SRC)));
