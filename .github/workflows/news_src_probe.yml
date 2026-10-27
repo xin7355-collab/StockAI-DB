@@ -1,0 +1,30 @@
+name: 🔬 新聞逐檔來源 + 概念股分類 探路 (news_src_probe)
+
+# 🔬 V79.9.4 只量測、⛔ 不寫任何檔、⛔ 不推任何分支:逐檔新聞(Google 新聞 RSS / Yahoo 個股 RSS / 鉅亨搜尋)
+#    一次幾則、日期跨多久、能不能指定月份(回補用);Yahoo / 鉅亨「概念股」分類頁有幾類、每類幾檔。
+#    沙箱連不到這些網站,所以在 Actions 上跑。手動觸發。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: news-src-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+      - name: 🐍 Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+      - name: 🧪 selftest
+        run: python3 scripts/news_src_probe.py --selftest
+      - name: 🔬 探路
+        run: python3 scripts/news_src_probe.py
