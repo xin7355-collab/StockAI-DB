@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.9.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.9.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.9.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.9.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2581,7 +2581,7 @@
                         class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-purple-300 border border-transparent" title="盤前檢視">🌅 盤前</button>
                 <!-- 💧 V76.0.3 第 4 格「板塊輪動」(使用者:放在盤前檢視右手邊)—— 市場板塊輪動卡從「行情」搬來 + 20 日相對強弱排名 -->
                 <button onclick="app.switchMarketSubTab('rot')" id="subTab_rot"
-                        class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-emerald-300 border border-transparent" title="板塊輪動">💧 輪動</button>
+                        class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-emerald-300 border border-transparent" title="概念股輪動(錢最近往哪個概念跑)">🎯 概念股</button>
                 <button onclick="app.switchMarketSubTab('global')" id="subTab_global2"
                         class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-cyan-300 border border-transparent">🗞️ 消息面</button>
                 <!-- 📰 V78.4.0 盤後晚報 / 週報(參考 signova「AI 解盤晚報」;只轉述既有資料) -->
@@ -8767,10 +8767,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.9.4',
+    _APP_VERSION: 'V79.9.5',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.9.5', d: [
+            '🎯 大盤頁「💧 輪動」改叫「🎯 概念股」:預設看概念股(玻纖布、CPO、散熱、記憶體、重電、軍工、航運…),點一列就展開裡面有哪幾檔(現價 / 今天 / 近 20 日),點股名進個股頁;官方產業照留一顆鈕切過去',
+            '🎯 概念股從 21 組擴到 38 組、每組至少 5 檔(新的那幾組下一輪採礦跑完才會出現)',
+            '📰 開始逐檔記錄每一檔每天被報導幾則新聞(目前只存資料,畫面還沒用)',
+        ], dt: '2026-10-27' },
         { v: 'V79.9.4', d: [
             '🎲 你手上的股票碰到專欄裡講的情況(跌破月線、散戶接刀、融資追繳…)→ 🔔 鈴鐺安靜記一筆,寫出「過去碰到這種情況之後怎樣」的比例(這檔自己 / 一般股票);⛔ 不跳窗、⛔ 不叫你先賣,手上的照你的出場規則走(要先打開 📰 專欄)',
         ] },
@@ -9021,9 +9026,6 @@ ${list}
             '🥊 提醒視窗裡「接下來怎麼做」的現價,跟標題用同一個即時價(以前會出現兩個不同的現價)',
             '👑 決策台「今天要做的事」:換倉後那天白天寫「今天」(以前寫成明天)、每天列出現在會買哪 5 檔 + 現價、今天要動的那行加顏色',
             '👑 換倉後那天開盤 / 13:20 會提醒一次(App 開著跳視窗;Telegram 也會推)',
-        ], dt: '2026-10-12' },
-        { v: 'V79.1.4', d: [
-            '⚡ 每天下午採礦更新後,網站檔案也維持縮小版(以前採礦後會變回大的)',
         ], dt: '2026-10-12' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -21057,15 +21059,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!D || !D.rows || !D.ind) return null;
         if (this._regCache && this._regCache.src === D && this._regCache.tsrc === this._tagsCache
             && this._regCache.win === W) return this._regCache;
-        const all = [], byInd = new Map();
+        const all = [], byInd = new Map(), imem = new Map();
         for (const s of Object.keys(D.rows)) {
             const k = D.ind[s];
             if (!k) continue;                                  // ⭐ 只用「有官方產業別」的那批(= 回測母體)
             const x = this._scrV(D.rows[s], COL);
             if (x === null) continue;
             all.push(x);
-            if (!byInd.has(k)) byInd.set(k, []);
-            byInd.get(k).push(x);
+            if (!byInd.has(k)) { byInd.set(k, []); imem.set(k, []); }
+            byInd.get(k).push(x); imem.get(k).push(s);
         }
         if (all.length < 300) return null;                     // 空過守門
         const srt = a => a.slice().sort((p, q) => p - q);
@@ -21083,7 +21085,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         //     並排時會出現「同一族兩個漲跌幅」(使用者講最多次的那條)。
         //   ⚠️ 題材成員少(實測 3~34 檔)→ 少於 `TMIN` 的**照顯但標樣本少**,
         //      而且**不進前 3 / 後 3**(陷阱 #27:占比/中位數都要先問樣本夠不夠)。
-        const tmed = new Map(), tcnt = new Map();
+        const tmed = new Map(), tcnt = new Map(), tmem = new Map();
         const TG = this._tagsCache;
         if (TG && TG.by_stock) {
             const byTh = new Map();
@@ -21091,14 +21093,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 if (!D.rows[sym]) continue;
                 const x = this._scrV(D.rows[sym], COL);
                 if (x === null) continue;
-                const ks = new Set([...(v.s || []), ...((v.n || []).map(z => Array.isArray(z) ? z[0] : z))]);
-                for (const k of ks) { if (!k) continue; if (!byTh.has(k)) byTh.set(k, []); byTh.get(k).push(x); }
+                const seed = new Set(v.s || []);
+                const ks = new Set([...seed, ...((v.n || []).map(z => Array.isArray(z) ? z[0] : z))]);
+                for (const k of ks) {
+                    if (!k) continue;
+                    if (!byTh.has(k)) { byTh.set(k, []); tmem.set(k, []); }
+                    byTh.get(k).push(x); tmem.get(k).push([sym, seed.has(k) ? 1 : 0]);   // 1 = 人工種子 / 0 = 本站算出來一起動的
+                }
             }
-            for (const [k, arr] of byTh) { if (arr.length >= 3) { tmed.set(k, md(arr)); tcnt.set(k, arr.length); } }
+            for (const [k, arr] of byTh) { if (arr.length >= 3) { tmed.set(k, md(arr)); tcnt.set(k, arr.length); } else tmem.delete(k); }
         }
         return (this._regCache = {
-            src: D, tsrc: TG, win: W, n: all.length, rank, imed,
-            tmed, tcnt, tname: (TG && TG.names) || {}, tdate: (TG && TG.data_date) || null,
+            src: D, tsrc: TG, win: W, n: all.length, rank, imed, imem,
+            tmed, tcnt, tmem, tname: (TG && TG.names) || {}, tdate: (TG && TG.data_date) || null,
             mktMed: A[A.length >> 1], mktP80: A[Math.floor(A.length * 0.8)],
         });
     },
@@ -35251,6 +35258,37 @@ ${this._reportFacts(sym)}
     //      **官方 33 個產業**測出來的;題材是本站自己框的名單(種子人工 + 連動每天重算),
     //      **從來沒有回測過** → 題材那一頁一律寫「沒有回測過」,⛔ 不給買賣指令。
     _rotView() { try { return localStorage.getItem('rotView') === 'ind' ? 'ind' : 'theme'; } catch (_) { return 'theme'; } },
+    // 🎯 V79.9.5 點一列 → 展開成分股(使用者 10/27:「板塊輪動改成概念股」)
+    //   ⭐ 成員跟名次同一份(`_regimeStats` 的 tmem / imem),⛔ 不另外組一份名單。
+    //   每一檔:現價 ・今天 ・這個天期的漲跌(跟上面排名同一欄),照這個天期由強到弱排;點股名進個股頁。
+    //   概念股的成員分兩種:人工種子(這個概念的代表股)/ 🔗 本站算出來最近跟它一起動的(每天重算)。
+    _rotToggle(kind, key) {
+        const id = kind + ':' + key;
+        this._rotOpenK = this._rotOpenK === id ? null : id;
+        try { this._renderRotTab(); } catch (_) { }
+    },
+    _rotMembersHtml(S, isTh, key, W) {
+        const D = this._scrData; if (!D || !D.rows) return '';
+        const COL = this._rotWinCol(W);
+        const raw = isTh ? ((S.tmem && S.tmem.get(key)) || []) : (((S.imem && S.imem.get(key)) || []).map(s => [s, 1]));
+        const mem = raw.map(([s, seed]) => ({ s, seed, c: this._scrV(D.rows[s], 'c'), d: this._scrV(D.rows[s], 'chg'), w: this._scrV(D.rows[s], COL) }))
+            .filter(x => x.w !== null).sort((a, b) => b.w - a.w);
+        if (!mem.length) return `<div class="text-[10px] text-gray-500 py-1 pl-8" data-rotmem="0">這一組今天沒有算得出漲跌的成分股。</div>`;
+        const pct = v => v === null || !Number.isFinite(+v) ? '<span class="text-gray-600">—</span>'
+            : `<span class="${this._rpDir ? this._rpDir(+v) : ''}">${+v >= 0 ? '+' : ''}${(+v).toFixed(1)}%</span>`;
+        const row = x => `<div class="grid gap-1 items-center py-1 border-b border-[#21262d] last:border-0" style="grid-template-columns:minmax(0,1fr) 54px 50px 54px" data-rotmemrow="${this._escHtml(x.s)}">
+                <button class="text-left min-w-0 truncate cursor-pointer" onclick="event.stopPropagation(); app.analyze('${this._escHtml(x.s)}')">${this._nmPair(x.s, 'text-[11px]')}${x.seed ? '' : '<span class="text-[9px] text-gray-500 ml-1" title="本站算出來最近跟這個概念一起動的(每天重算)">🔗</span>'}</button>
+                <span class="font-mono text-[11px] text-gray-200 text-right">${x.c === null ? '—' : (+x.c).toLocaleString()}</span>
+                <span class="font-mono text-[11px] text-right">${pct(x.d)}</span>
+                <span class="font-mono text-[11px] text-right font-bold">${pct(x.w)}</span>
+            </div>`;
+        const auto = mem.filter(x => !x.seed).length;
+        return `<div class="pl-8 pr-1 pb-2" data-rotmem="${mem.length}" onclick="event.stopPropagation()">
+            <div class="grid gap-1 text-[9px] text-gray-500 py-1" style="grid-template-columns:minmax(0,1fr) 54px 50px 54px"><span>成分股 ${mem.length} 檔</span><span class="text-right">現價</span><span class="text-right">今天</span><span class="text-right">近 ${W} 日</span></div>
+            ${mem.map(row).join('')}
+            ${isTh && auto ? `<div class="text-[9px] text-gray-500 pt-1">🔗 = 本站算出來最近跟這個概念一起動的(每天重算),不是公司自己說的業務。</div>` : ''}
+        </div>`;
+    },
     switchRotView(v) {
         try { localStorage.setItem('rotView', v === 'ind' ? 'ind' : 'theme'); } catch (_) { }
         try { this._renderRotTab(); } catch (_) { }
@@ -35280,8 +35318,8 @@ ${this._reportFacts(sym)}
         const V = this._rotView(), isTh = V === 'theme' && S.tmed && S.tmed.size >= 5;
         const TMIN = 5;   // ⚠️ 少於這個檔數的題材照顯,但**不進前3/後3**(陷阱 #27)
         const rows = isTh
-            ? [...S.tmed.entries()].map(([k, v]) => [S.tname[k] || k, v, S.tcnt.get(k) || 0]).sort((a, b) => b[1] - a[1])
-            : [...S.imed.entries()].map(([k, v]) => [k, v, cnt.get(k) || 0]).sort((a, b) => b[1] - a[1]);
+            ? [...S.tmed.entries()].map(([k, v]) => [S.tname[k] || k, v, S.tcnt.get(k) || 0, k]).sort((a, b) => b[1] - a[1])
+            : [...S.imed.entries()].map(([k, v]) => [k, v, cnt.get(k) || 0, k]).sort((a, b) => b[1] - a[1]);
         const m = rows.length;
         const big = rows.filter(x => x[2] >= TMIN);   // ⭐ 頭尾三名只從「樣本夠」的裡面挑
         const top = big.slice(0, 3), bot = big.slice(-3).reverse();
@@ -35312,21 +35350,22 @@ ${this._reportFacts(sym)}
             evid + `<span class="text-gray-600">資料 ${dt}${isTh ? '・題材名單 ' + (S.tdate || '—') : (this._labMode() && E && E.src ? '・' + E.src : '')}</span>`);
         const maxAbs = Math.max(0.5, ...rows.map(x => Math.abs(x[1])));
         const topSet = new Set(top.map(x => x[0])), botSet = new Set(bot.map(x => x[0]));
-        const rowHtml = rows.map(([k, v, n], i) => {
+        const rowHtml = rows.map(([k, v, n, key], i) => {
             const rank = i + 1, w = Math.min(50, Math.abs(v) / maxAbs * 50);
             const strong = topSet.has(k), weak = botSet.has(k), thin = n < TMIN;
             const tag = strong ? '<span class="text-red-300 text-[9px] font-bold">🔺 前 3</span>'
                       : (weak ? '<span class="text-green-300 text-[9px] font-bold">🔻 後 3</span>'
                       : (thin ? '<span class="text-gray-500 text-[9px]">⏳ 樣本少</span>' : ''));
             const col = v >= 0 ? 'bg-red-400' : 'bg-green-400';
-            return `<div class="grid grid-cols-[28px_1fr_auto] gap-2 items-center py-1 ${strong || weak ? '' : 'opacity-80'} border-b border-[#21262d] last:border-0" data-rotrank="${rank}" data-rotind="${this._escHtml(k)}">
+            const open = this._rotOpenK === (isTh ? 't:' : 'i:') + key;
+            return `<div class="grid grid-cols-[28px_1fr_auto] gap-2 items-center py-1 cursor-pointer ${strong || weak || open ? '' : 'opacity-80'} border-b border-[#21262d] last:border-0" data-rotrank="${rank}" data-rotind="${this._escHtml(k)}" data-rotkey="${this._escHtml(key)}" onclick="app._rotToggle('${isTh ? 't' : 'i'}', '${this._escHtml(String(key)).replace(/'/g, '&#39;')}')">
                 <div class="text-[10px] font-mono text-gray-500 text-right">${rank}</div>
                 <div>
                     <div class="flex items-center gap-1.5"><span class="text-[11px] ${strong || weak ? 'font-black text-gray-100' : 'text-gray-300'}">${this._escHtml(k)}</span><span class="text-[9px] text-gray-600">${n} 檔</span>${tag}</div>
                     <div class="relative h-1 bg-[#21262d] rounded-full mt-0.5 overflow-hidden"><div class="absolute top-0 h-full ${col}" style="left:${v >= 0 ? 50 : 50 - w}%;width:${w}%"></div></div>
                 </div>
-                <div class="font-mono text-[11px] font-bold ${this._rpDir ? this._rpDir(v) : ''} text-right">${v >= 0 ? '+' : ''}${(+v).toFixed(1)}%</div>
-            </div>`;
+                <div class="font-mono text-[11px] font-bold ${this._rpDir ? this._rpDir(v) : ''} text-right">${v >= 0 ? '+' : ''}${(+v).toFixed(1)}%<span class="text-gray-600 font-normal ml-1">${open ? '▴' : '▾'}</span></div>
+            </div>${open ? this._rotMembersHtml(S, isTh, key, W) : ''}`;
         }).join('');
         //   🔘 分頁鈕:⛔ 用 `cursor-pointer` 讓全站無框那條 CSS 不要把它拉平(V77.0.0)
         const btn = (v, t, sub) => {
@@ -35355,7 +35394,7 @@ ${this._reportFacts(sym)}
                 <span class="text-[12px] font-black text-gray-100">📊 ${m} 個${isTh ? '題材' : '產業'}近 ${W} 日相對強弱</span>
                 <span class="text-[9px] text-gray-500">中位數 ・全市場中位 ${S.mktMed >= 0 ? '+' : ''}${(+S.mktMed).toFixed(1)}%</span>
             </div>
-            <div class="text-[9px] text-gray-500 mb-1.5 leading-snug">每一${isTh ? '個題材' : '族'}取成員近 ${W} 日漲跌的<b>中位數</b>(⛔ 不是平均,免得一檔飆股把整族拉高);條形以 0 為中線,右紅左綠 = 漲跌方向。${isTh ? `⚠️ 題材成員少(${TMIN} 檔以下標「樣本少」),那幾個<b>不列進前 3 / 後 3</b>;一檔可以同時屬於好幾個題材,所以加起來會超過總檔數。` : ''}</div>
+            <div class="text-[9px] text-gray-500 mb-1.5 leading-snug">每一${isTh ? '個題材' : '族'}取成員近 ${W} 日漲跌的<b>中位數</b>(⛔ 不是平均,免得一檔飆股把整族拉高);條形以 0 為中線,右紅左綠 = 漲跌方向。<b>點一列</b>看裡面有哪幾檔。${isTh ? `⚠️ 題材成員少(${TMIN} 檔以下標「樣本少」),那幾個<b>不列進前 3 / 後 3</b>;一檔可以同時屬於好幾個題材,所以加起來會超過總檔數。` : ''}</div>
             ${rowHtml}
         </div>`;
         card.classList.remove('hidden');

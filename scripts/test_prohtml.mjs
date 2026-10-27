@@ -269,6 +269,7 @@ const J = await page.evaluate(async () => {
 });
 // ㉒ 💧 板塊輪動:四象限泡泡(使用者回報「不好看 / 一頁式 / 上上下下」後改版)
 const T = await page.evaluate(async () => {
+    PRO._rotMode = 'ind';   // 🎯 V79.9.5 板塊輪動預設改概念股 → 這一段驗的是官方產業,自己切回來(⛔ 放寬斷言)
     PRO._cache['data/sector_rot.json'] = {
         updated: '2026-08-31 20:00', win: 20, listed_only: true,
         flow_keys: { f: '外資', t: '投信', dl: '自營', mg: '融資(散戶代理)' },

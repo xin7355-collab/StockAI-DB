@@ -74,6 +74,12 @@ const R = await page.evaluate(async () => {
   o.rot = T('homeRot'); o.rotList = PRO._rotRankAt(1, PRO._rotSetOf('ind', J)).map(x => PRO.IND_NAME[x.c]);
   { const keep = PRO._rotRankAt; PRO._rotRankAt = (k, G) => keep.call(PRO, k, G).reverse();
     await PRO._homeRot(); o.rotRev = T('homeRot'); PRO._rotRankAt = keep; }
+  // 🎯 V79.9.5 有概念股就看概念股(跟板塊輪動頁預設同一份)
+  { const J2 = { days: J.days, ind: J.ind, themes: {}, theme_names: {} };
+    ['ta', 'tb', 'tc', 'td', 'te', 'tf'].forEach((k, i) => { J2.themes[k] = { r20: [0, [4, -2, 9, 1, -7, 3][i]], n: 5 }; J2.theme_names[k] = '概念' + k; });
+    PRO._cache['data/sector_rot.json'] = J2;
+    await PRO._homeRot(); o.rotTh = T('homeRot'); o.rotThMode = (document.querySelector('#homeRot [data-home-rotmode]') || {}).dataset?.homeRotmode || '';
+    PRO._cache['data/sector_rot.json'] = J; }
   { const keep = PRO.fetchJson; PRO.fetchJson = async p => (p === 'data/sector_rot.json' ? null : keep.call(PRO, p));
     await PRO._homeRot(); o.rotNo = T('homeRot'); o.rotNoTag = (document.querySelector('#homeRot [data-home-rot]') || {}).dataset?.homeRot || ''; PRO.fetchJson = keep; }
   // ── 📒 你的策略今天:= _raceEnsure(🏠 與成績單共用同一次計算)──
@@ -120,6 +126,7 @@ ok('① 🛰️ 雷達 == _radarCalc(數量 / 只列變多的 / 點了先切到�
 const top3 = R.rotList.slice(0, 3), bot3 = R.rotList.slice(-3);
 ok('① 🏭 板塊最強 / 最弱 == _rotRankAt(官方產業、近 20 日)', top3.every(n => R.rot.includes(n)) && R.rot.indexOf(top3[0]) < R.rot.indexOf('最弱') && bot3.every(n => R.rot.includes(n)), JSON.stringify([top3, bot3, R.rot.slice(0, 160)]));
 ok('② 決定性對照:_rotRankAt 倒過來 → 🏠「最強」第一個變成原本最弱的', R.rotRev.indexOf(R.rotList[R.rotList.length - 1]) > -1 && R.rotRev.indexOf(R.rotList[R.rotList.length - 1]) < R.rotRev.indexOf('最弱'), R.rotRev.slice(0, 160));
+ok('⑦ 🎯 V79.9.5 有概念股 → 🏠 看概念股(最強第一個 = 概念tc、最弱 = 概念te)', R.rotThMode === 'th' && /概念股/.test(R.rotTh) && R.rotTh.indexOf('概念tc') > -1 && R.rotTh.indexOf('概念tc') < R.rotTh.indexOf('概念te'), R.rotTh.slice(0, 200));
 ok('④c 板塊檔讀不到 → 說「讀不到」⛔ 長得像「今天沒有輪動」', R.rotNoTag === 'nofile' && /不是今天沒有輪動/.test(R.rotNo), R.rotNo.slice(0, 80));
 ok('① 📒 你的策略今天 == 起跑那份(每一套一列、金額照抄、你現在用的標出來)', JSON.stringify(R.raceRows) === '["park","hot","0050"]' && JSON.stringify(R.raceVals) === '["1012345","990000","1007345"]' && /你現在用的/.test(R.race) && /1,012,345 元/.test(R.race), JSON.stringify([R.raceRows, R.raceVals]));
 ok('①c 明天要看的 = 最後一晚的名單(有觸發價寫觸發價、沒有寫「沒有觸發價」)', /觸發價 1234\.5/.test(R.race) && /沒有觸發價/.test(R.race), R.race.slice(-160));

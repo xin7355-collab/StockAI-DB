@@ -133,6 +133,45 @@ ok('⑨d ⏳ 採礦還沒補到 chg3 時,3 日那顆要 disabled 並標「待採
    `has3=${wv.has3}`);
 await pw.close();
 
+// 🎯 ⑩ V79.9.5 點一列 → 展開成分股(使用者 10/27:「板塊輪動改成概念股」)
+//   ⭐ 成員跟名次同一份(_regimeStats 的 tmem / imem),照那個天期由強到弱排;再點一次收起
+const pm = await boot({ width: 390, height: 844 });
+const mv = await pm.evaluate(async () => {
+    app.switchAppTab('market'); app.switchMarketSubTab('rot');
+    await new Promise(r => setTimeout(r, 3000));
+    app.switchRotView('theme'); app.switchRotWin(20);
+    await new Promise(r => setTimeout(r, 900));
+    const S = app._regimeStats(20), isTh = app._rotView() === 'theme' && S.tmed && S.tmed.size >= 5;
+    const first = document.querySelector('[data-rotrank="1"]');
+    const key = first && first.getAttribute('data-rotkey');
+    first && first.click();
+    await new Promise(r => setTimeout(r, 400));
+    const box = document.querySelector('[data-rotmem]');
+    const rows = [...document.querySelectorAll('[data-rotmemrow]')].map(e => e.getAttribute('data-rotmemrow'));
+    const D = app._scrData, c20 = s => app._scrV(D.rows[s], 'chg20');
+    const truth = isTh ? (S.tmem.get(key) || []).map(x => x[0]).filter(s => c20(s) !== null) : [];
+    const sorted = rows.every((s, i) => i === 0 || c20(rows[i - 1]) >= c20(s));
+    const txt = box ? box.innerText : '';
+    const tab = (document.getElementById('subTab_rot') || {}).innerText || '';
+    window.scrollTo(80, 0); const sx = window.scrollX;
+    document.querySelector('[data-rotrank="1"]').click();
+    await new Promise(r => setTimeout(r, 400));
+    const closed = !document.querySelector('[data-rotmem]');
+    // 官方產業也點得開(成員 = 那個產業有 K 線的那批)
+    app.switchRotView('ind'); await new Promise(r => setTimeout(r, 600));
+    const f2 = document.querySelector('[data-rotrank="1"]'), ik = f2.getAttribute('data-rotkey'); f2.click();
+    await new Promise(r => setTimeout(r, 400));
+    const indN = document.querySelectorAll('[data-rotmemrow]').length, indTruth = (S.imem.get(ik) || []).length;
+    return { isTh, key, n: rows.length, truthN: truth.length, same: truth.slice().sort().join() === rows.slice().sort().join(), sorted, txt, tab, sx, closed, indN, indTruth };
+});
+ok('⑩a 分頁鈕改叫「🎯 概念股」', /概念股/.test(mv.tab), mv.tab);
+ok('⑩b 預設是概念股、點第一列展開成分股 = _regimeStats 的 tmem(⛔ 另一份名單)', mv.isTh && mv.n > 0 && mv.same && mv.n === mv.truthN, JSON.stringify({ k: mv.key, n: mv.n, t: mv.truthN }));
+ok('⑩c 成分股照近 20 日由強到弱排', mv.sorted);
+ok('⑩d 再點一次收起來', mv.closed);
+ok('⑩e 官方產業那一頁也點得開,檔數 = 那個產業的成員', mv.indN > 0 && mv.indN === mv.indTruth, `${mv.indN} vs ${mv.indTruth}`);
+ok('⑩f 展開區⛔ 買賣指令、⛔ 研究字樣;390px 不橫捲', !/(可以進場|建議買進|建議賣出|可加碼|放心做多)/.test(mv.txt) && !_RES.test(mv.txt) && mv.sx <= 2, mv.txt.slice(0, 160));
+await pm.close();
+
 // ⑥ 空過守門:選股快照抓不到 → 誠實空狀態,⛔ 不留空殼、⛔ 不假造排名
 const p2 = await boot({ width: 390, height: 844 });
 const e = await p2.evaluate(async () => {
