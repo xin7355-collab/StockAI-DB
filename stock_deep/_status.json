@@ -229,26 +229,26 @@
    "Depreciation",
    "CashFlowsFromOperatingActivities"
   ],
-  "at": "2026-10-26",
+  "at": "2026-10-27",
   "chk_miss": {
-   "CashFlowsFromOperatingActivities": 37,
-   "PropertyAndPlantAndEquipment": 11,
-   "Depreciation": 10
+   "CashFlowsFromOperatingActivities": 18,
+   "PropertyAndPlantAndEquipment": 10,
+   "Depreciation": 2
   },
   "chk_dup": [
    0,
    0
   ],
   "chk_cell": {
-   "PropertyAndPlantAndEquipment": 0.9862,
-   "Depreciation": 0.9881,
-   "CashFlowsFromOperatingActivities": 0.9558
+   "PropertyAndPlantAndEquipment": 0.9756,
+   "Depreciation": 0.9951,
+   "CashFlowsFromOperatingActivities": 0.9561
   },
-  "have": 1805,
+  "have": 2404,
   "of": 2548,
   "chk": [
-   396,
-   436
+   191,
+   207
   ],
   "done": false
  }
