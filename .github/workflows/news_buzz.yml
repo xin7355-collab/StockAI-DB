@@ -1,0 +1,104 @@
+name: 📰 逐檔新聞熱度 (news_buzz)
+
+# 📰 V79.9.5 每一檔每天「被報導幾則 / 幾家媒體 / 幾則講到分析師、目標價」→ data/news_buzz.json(研究用,畫面還沒讀)
+#    使用者 2026-10-27:「新聞抓得不夠完整,要先解決」—— 以前只從 12 個大盤新聞 RSS 的標題比對股名(富喬 48 天 2 則)。
+#    來源是 news_src_probe 實測過的:Google 新聞 RSS(名字 + 代號)+ 鉅亨個股新聞;回補 = 鉅亨關鍵字搜尋 + Google 指定月份。
+#
+# 🚨 誰來觸發:**跟在 playbook_scan 後面**(`workflow_run`,⛔ 不新開 cron —— 排程配額已經不夠用,見 CLAUDE.md V73.9.0 / V75.2.0)。
+#    playbook_scan 本身只跟 daily_miner 的排程 / 叫醒那一輪 → 一個交易日一輪。
+#
+# ⛔ 三個刻意的設計:
+#   ① 不叫 AI、不吃 FinMind 額度(只問新聞網站的公開 RSS / API,每次請求間隔 1.2 秒 + 指數退避)
+#   ② 產物推 data 分支(daily_miner 的 orphan force-push 之後 🛟 撿回會帶回來,陷阱 #41),⛔ 不另推 gh-pages(畫面還沒讀)
+#   ③ backfill=1 = 回補模式(每檔翻鉅亨搜尋 4 頁 + Google 近 12 個月;一輪 50 分做不完會記住停在哪,再按一次接著做)
+
+on:
+  workflow_run:
+    workflows: ["🎯 明日作戰清單 (playbook_scan)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: '1 = 回補過去一年(一輪最多 50 分,做不完再按一次接著做);空白 = 每天模式'
+        required: false
+        default: ''
+      topn:
+        description: '成交額前幾檔(預設 300;另外一定加上所有概念股成員)'
+        required: false
+        default: ''
+
+# ⛔ 不跟 gh-pages-push 共用鎖(V79.5.0 weekly_backtest 的教訓)→ 自己一個 group;推的那步 fetch + 重試
+concurrency:
+  group: news-buzz
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  buzz:
+    name: 📰 逐檔數新聞
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    # ⏱️ 程式自己 50 分就停止開新的一檔(BUZZ_MAX_MIN)→ 留 15 分給安裝與推
+    timeout-minutes: 65
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝(requests;universal_radar 的歸群 / 誤配規則要用)
+        run: pip install -q requests
+
+      # ⚠️ git show 失敗會留下 0 bytes 的檔(陷阱 #18/#20)→ 一律驗非空
+      - name: 📂 還原母體 + 上一輪的累積檔 (origin/data)
+        run: |
+          mkdir -p data
+          git fetch origin data --depth=1 2>/dev/null || true
+          for f in screener.json stock_names.json stock_tags.json news_buzz.json; do
+            if git show "origin/data:data/$f" > "data/$f" 2>/dev/null && [ -s "data/$f" ]; then echo "✅ $f $(wc -c < "data/$f") bytes"; else
+              rm -f "data/$f"; echo "⚠️ $f 還原失敗(當成沒有)"
+            fi
+          done
+
+      - name: 📰 selftest → 逐檔數新聞
+        id: run
+        env:
+          PYTHONUNBUFFERED: '1'
+          BUZZ_TOPN: ${{ github.event.inputs.topn }}
+          BUZZ_BACKFILL: ${{ github.event.inputs.backfill }}
+        run: |
+          set -o pipefail
+          python3 news_buzz_miner.py --selftest
+          if [ "$BUZZ_BACKFILL" = "1" ]; then ARGS=--backfill; else ARGS=; fi
+          python3 -u news_buzz_miner.py $ARGS 2>&1 | tee /tmp/buzz.log
+
+      - name: 🚀 推 data/news_buzz.json 到 data 分支
+        run: |
+          set -e
+          [ -s data/news_buzz.json ] || { echo "ℹ️ 沒有產物 → 不推"; exit 0; }
+          python3 -c "import json,sys; json.load(open(sys.argv[1]))" data/news_buzz.json || { echo "❌ 不是完整 JSON → 不推"; exit 1; }
+          cp data/news_buzz.json /tmp/news_buzz.json
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdxq 2>/dev/null || true
+          git fetch origin data 2>/dev/null || true
+          git checkout -f -B data origin/data
+          for i in 1 2 3 4 5; do
+            cp /tmp/news_buzz.json data/news_buzz.json
+            git add -f data/news_buzz.json
+            if git diff --cached --quiet; then echo "ℹ️ data 無變更"; exit 0; fi
+            git commit -q -m "📰 逐檔新聞熱度 $(date -u '+%Y-%m-%d %H:%M UTC')" || true
+            if git push origin data; then echo "✅ data push 成功 (attempt $i)"; exit 0; fi
+            [ "$i" -eq 5 ] && { echo "❌ data push 連 5 次失敗"; exit 1; }
+            sleep $((i*5)); git fetch origin data 2>/dev/null || true
+            git reset --hard -q origin/data
+          done
