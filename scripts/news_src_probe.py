@@ -128,7 +128,8 @@ def probe_concepts():
         time.sleep(1.5)
     # 鉅亨概念股(備援)
     code, ct, body, sec = get('https://www.cnyes.com/twstock/concept')
-    print(f"  鉅亨 /twstock/concept: HTTP {code} {ct[:30]} ・{len(body)} 字 ・概念連結 {len(set(re.findall(r'/twstock/concept/[^\"\\s]+', body)))} 個")
+    n_cn = len(set(re.findall(r'/twstock/concept/[^"\s]+', body)))
+    print(f"  鉅亨 /twstock/concept: HTTP {code} {ct[:30]} ・{len(body)} 字 ・概念連結 {n_cn} 個")
     return out
 
 
