@@ -3,6 +3,10 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### ⏱️ V80.0.0(2026-10-30)`scripts/perf_probe.mjs` 手機冷開量測
+- 回答:index.html 在中階手機(390×844、CPU 降速 4 倍)冷開要多久、哪一段最慢。`CPU=4 node scripts/perf_probe.mjs`;量部署那份加 `PAGE=<build_min 產出>`。
+- 2026-10-30:壓縮版第一次畫面 0.47 秒・app 就緒 1.5 秒・最長任務 240 ms → 沒有瓶頸,⛔ 沒改。⏭️ index.html 再大 ≥20% 或使用者說變慢時重跑。
+
 ### 🧪 V79.8.2(2026-10-25)「混著用」組合回測的跑法(🏭 只買強勢產業 / 📞 法說會前後先不買 / 📈 符合進場整套資金 / 👑 + 營收加速)
 - **共同設定 = 現行 🅿️(L4n)**:`portfolio_backtest.mjs 9999 2` + `DATA_DIR=<d16> DIV_TRADES=<d16>/_div16.json DIV=<d16>/_div0050.json BENCH0050=<d16>/_bench0050.json LOT=150000 SELF=high+hivolat+nobear STOPFILL=close RANK_MIN=85 VOLAT_MIN=60 EXIT=chand2 MAXD=20 GATE=lb CLIFF=20 STATS_WIN=1200 MIN_MKT_N=0 MIN_N=8 LB_Z=0 LB_TOP=99 ALLFIRE=1 TRADES_CACHE=<tc_chand2af> LISTK=2 LIST_TRIG=<trig_mall> FILTER= PARK=idle`;
   三個窗口各 17 個起點 `WARMUPS`:ai2(d16 3170+5k,2022-11 起)・long(251+3k,2011-01 起)・cc(2870+3k,2021-09 起,含 2022 空頭;📞 法說會清單只從 2021-07 起)。跟 L4n 那 17 條逐條配對。

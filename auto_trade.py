@@ -144,8 +144,33 @@ STATE_PATH = os.getenv('STATE_PATH') or (_STATE_LIVE if LIVE else _STATE_SIM)
 TW = timezone(timedelta(hours=8))
 
 
+# 📝 V80.0.0 log 也寫一份到檔案(交易安全檢查清單:「每一個決定都要留紀錄」)—— 以前只印在螢幕上,關掉視窗就沒了,
+#   出事時查不到那天它看到什麼、為什麼買 / 不買。檔名跟狀態檔放一起(真實 .log / 模擬 .sim.log);AUTO_LOG=0 關掉、AUTO_LOG=路徑 自己指定。
+#   ⛔ 寫檔失敗一律吞掉(紀錄壞了 ⛔ 不可以擋到下單 / 賣出);超過 2 MB 換成 .1(只留一份舊的)。⛔ 不寫任何金鑰(test_no_token_leak 照掃)。
+_AUTO_LOG_ENV = (os.getenv('AUTO_LOG') or '').strip()
+AUTO_LOG = None if _AUTO_LOG_ENV == '0' else (_AUTO_LOG_ENV or (STATE_PATH[:-5] if STATE_PATH.endswith('.json') else STATE_PATH) + '.log')
+AUTO_LOG_MAX = 2 * 1024 * 1024
+
+
+def _log_file(line):
+    if not AUTO_LOG:
+        return
+    try:
+        if os.path.exists(AUTO_LOG) and os.path.getsize(AUTO_LOG) > AUTO_LOG_MAX:
+            os.replace(AUTO_LOG, AUTO_LOG + '.1')
+        with open(AUTO_LOG, 'a', encoding='utf-8') as f:
+            f.write(line + '\n')
+    except Exception:
+        pass
+
+
 def log(*a):
-    print(f"[{datetime.now(TW).strftime('%H:%M:%S')}]", *a, flush=True)
+    now = datetime.now(TW)
+    print(f"[{now.strftime('%H:%M:%S')}]", *a, flush=True)
+    try:
+        _log_file(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] " + ' '.join(str(x) for x in a))
+    except Exception:
+        pass
 
 
 def tpe_now():
