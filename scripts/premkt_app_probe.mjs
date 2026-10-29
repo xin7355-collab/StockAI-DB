@@ -20,7 +20,13 @@
  *   B0050     0050 日 K(逗號分隔多份,先出現的優先;16 年:<d16>/_bench0050.json,再接 gh-pages data/0050.json)
  *   DIV       0050 股利(_div0050.json 格式 {d:{'0050':{h:[[除息日,…]]}}});沒給 → 不剔除除息日(會寫出來)
  *   HTML      index.html(預設 repo 那份)
- * 判準(V75.0.9):候選要「方向猜對」與「名次相關」**兩個都** ≥13/17 年比現行好才算過;
+ *   TW2330    🧪 V79.9.8 台積電台股日 K(逗號分隔多份,同 B0050;給了才算 ADRREL 候選)
+ * 🧪 V79.9.8 兩個「看大小」的候選(使用者 10/30:「這兩天都很高分,開出來很差」—— 10/29 美股只漲 0.2~0.3%、ADR +0.17% 照樣滿分):
+ *   DEAD x   美股四項 + 台積電 ADR 漲跌 |%| < x 算 0 分(x = 0.1 / 0.2 / 0.3 / 0.5,看是不是高原)
+ *   ADRREL   台積電 ADR 那 ±2 分改看「ADR 換算價(× 台幣 ÷ 5)對台股前一天收盤的溢價,扣掉前 20 天平常的溢價」= 隔夜真的新增的那一段
+ *            (⛔ 只用 D 之前最近一根 ADR / 台幣與 D 的前一個台股交易日收盤;平常的溢價只用以前 20 天)
+ *   另外細分數桶 ≥85 / 75~84 / 65~74
+ * 判準(V75.0.9):候選要「方向猜對」與「名次相關」**兩個都** ≥13/17 年比現行好才算過(V79.9.8 起還要講話天數 ≥ 現行八成);
  *   「拿掉某幾項」再加逐年樣本外(每一年只看以前的年份決定拿不拿)。⛔ 這支只量,不改 App。
  * 跑法:node scripts/premkt_app_probe.mjs [--selftest]
  */
@@ -168,6 +174,11 @@ async function main() {
   const nqMode = process.env.NQ === 'daily' ? 'daily' : 'none';
   if (nqMode === 'daily') notes.push('⚠️ NQ=daily:那指期用整天日線(App 早上拿到的是晚上 2 小時的漂移,這是參考上限)');
 
+  // 🧪 V79.9.8 ADRREL:台積電 ADR 換算價 vs 台股前一天收盤(扣前 20 天平常的溢價)
+  const T2330 = load0050(String(process.env.TW2330 || '').split(',').filter(Boolean));
+  const tsmC = mkSeries(ser('syms', 'TSM')), twdC = mkSeries(ser('mac', 'TWD=X'));
+  const premHist = [];
+  if (T2330.size) notes.push(`ADRREL:台積電台股 ${T2330.size} 根、ADR ${tsmC.ds.length} 根、台幣 ${twdC.ds.length} 根`);
   const TD = [...B.keys()].sort();
   const days = [], meta = [];
   for (let i = 1; i < TD.length; i++) {
@@ -180,16 +191,46 @@ async function main() {
     const aS = c => c == null ? 0 : (c >= 1 ? 1 : c >= 0.3 ? 0.5 : c <= -1 ? -1 : c <= -0.3 ? -0.5 : 0);
     const fresh = d => !!d && d >= TD[i - 1];
     const asiaOld = (fresh(mr.nikkei_date) ? aS(x.nk) : 0) + (fresh(mr.kospi_date) ? aS(x.ks) : 0) + (fresh(mr.hsi_date) ? aS(x.hs) * 0.5 : 0);
-    meta.push({ d: D, gap: (o / pc - 1) * 100, io: (c / o - 1) * 100, cc: (c / pc - 1) * 100, ex: ex.has(D), asiaOld });
+    let adrRel = null;
+    if (T2330.size) {
+      const ti = tsmC.idx(D), fi = twdC.idx(D), tw = T2330.get(TD[i - 1]);
+      if (ti >= 0 && fi >= 0 && tw && tw[1] > 0) {
+        const prem = (tsmC.vs[ti] * twdC.vs[fi] / 5) / tw[1] - 1;
+        const h = premHist.slice(-20);
+        if (h.length >= 20) adrRel = Math.round((prem - h.reduce((a, b) => a + b, 0) / h.length) * 10000) / 100;
+        premHist.push(prem);
+      }
+    }
+    meta.push({ d: D, gap: (o / pc - 1) * 100, io: (c / o - 1) * 100, cc: (c / pc - 1) * 100, ex: ex.has(D), asiaOld, adrRel });
   }
   const sc = await scoreAll(days, html);
-  const rows = meta.map((m, i) => ({ ...m, s: sc[i].s, sPct: sc[i].sPct, p: sc[i].p })).filter(r => !r.ex);
+  const rows = meta.map((m, i) => ({ ...m, x: days[i].x, s: sc[i].s, sPct: sc[i].sPct, p: sc[i].p })).filter(r => !r.ex);
   console.log(`🌅 App 盤前分數逐日重建:${rows[0].d} ~ ${rows.at(-1).d} ・${rows.length} 天(剔除除息 ${meta.length - rows.length} 天)`);
   for (const n of notes) console.log('   ' + n);
   console.log('   ⛔ 沒有歷史 = 0 分:台指期夜盤 / 恐懼貪婪' + (nqMode === 'none' ? ' / 那指期(App 早上幾乎拿不到)' : ''));
   return { rows };
 }
 
+// 🧪 V79.9.8 DEAD:美股四項 + 台積電 ADR 漲跌太小(|%| < th)那一項改 0 分(⛔ 不動別的項目)
+const DEADK = [['🇺🇸 道瓊', 'dji'], ['🇺🇸 那斯達克', 'ndx'], ['🇺🇸 S&P500', 'spx'], ['💾 費半', 'sox'], ['🏭 台積電 ADR', 'tsm']];
+export function deadOf(r, th) {
+  let s = r.s;
+  for (const [nm, k] of DEADK) { const v = r.x ? r.x[k] : null; if (v == null || Math.abs(v) >= th) continue; const q = r.p.find(q => q[0] === nm && !q[2]); if (q) s -= q[1]; }
+  return Math.round(s * 10) / 10;
+}
+// 🧪 V79.9.8 ADRREL:台積電 ADR 那一項改看「換算價對台股前一天收盤的溢價 − 平常的溢價」的方向(同樣 ±2 分;|rel| < dz 算 0)
+export function adrRelOf(r, dz = 0) {
+  if (r.adrRel == null) return r.s;
+  const q = r.p.find(q => q[0] === '🏭 台積電 ADR' && !q[2]); if (!q) return r.s;
+  const nd = Math.abs(r.adrRel) < dz ? 0 : Math.sign(r.adrRel) * 2;
+  return Math.round((r.s - q[1] + nd) * 10) / 10;
+}
+// 🧪 V79.9.8 兩個一起:台積電 ADR 用 ADRREL、美股四項用 DEAD
+export function comboOf(r, th) {
+  let s = adrRelOf(r, 0);
+  for (const [nm, k] of DEADK.slice(0, 4)) { const v = r.x ? r.x[k] : null; if (v == null || Math.abs(v) >= th) continue; const q = r.p.find(q => q[0] === nm && !q[2]); if (q) s -= q[1]; }
+  return Math.round(s * 10) / 10;
+}
 export function report(rows) {
   const S0 = r => r.s;
   const drop = ks => r => Math.round((r.s - r.p.filter(q => ks.includes(q[0])).reduce((a, q) => a + q[1], 0)) * 10) / 10;
@@ -202,13 +243,17 @@ export function report(rows) {
     '拿掉 台幣(當日+5日)': drop(FX), '拿掉 匯率四項': drop(FX3), '拿掉 日月光/聯電': drop(['🔌 日月光 ADR', '🔌 聯電 ADR']),
     '拿掉 VIX+美債+台幣': drop(['😱 VIX', '📜 美債 10 年期', ...FX]),
   };
+  // 🧪 V79.9.8 看大小
+  if (rows.some(r => r.x)) for (const th of (process.env.DEAD_THS || '0.1,0.2,0.3,0.5').split(',').map(Number)) cands[`DEAD ${th}(漲跌太小 0 分)`] = r => deadOf(r, th);
+  if (rows.some(r => r.adrRel != null)) { cands['ADRREL(ADR 扣平常溢價)'] = r => adrRelOf(r, 0); cands['ADRREL 小於 0.3% 算 0'] = r => adrRelOf(r, 0.3);
+    cands['ADRREL + 美股 DEAD 0.2'] = r => comboOf(r, 0.2); }
   const out = [];
   out.push('\n== 全期(使用者看到的:開高偏多 = 分數 ≥65、開低偏空 = ≤35;開高 / 開低 = 0050 開盤跳空超過 ±0.3%)');
   out.push(line('現行(App)', judge(rows, S0)));
   for (const [k, f] of Object.entries(cands)) out.push(line(k, judge(rows, f)));
   for (const w of [60, 120, 250]) { out.push(`\n== 最近 ${w} 天`); out.push(line('現行(App)', judge(rows.slice(-w), S0))); }
   out.push('\n== 分數桶(0050 開盤跳空 / 開盤到收盤 / 全天)');
-  for (const [nm, f] of [['≥65', v => v >= 65], ['55~64', v => v >= 55 && v < 65], ['45~54', v => v >= 45 && v < 55], ['36~44', v => v > 35 && v < 45], ['≤35', v => v <= 35]]) {
+  for (const [nm, f] of [['≥85', v => v >= 85], ['75~84', v => v >= 75 && v < 85], ['65~74', v => v >= 65 && v < 75], ['≥65', v => v >= 65], ['55~64', v => v >= 55 && v < 65], ['45~54', v => v >= 45 && v < 55], ['36~44', v => v > 35 && v < 45], ['≤35', v => v <= 35]]) {
     const sub = rows.filter(r => f(r.sPct)); if (sub.length < 15) { out.push(`   ${nm}: ${sub.length} 天(太少)`); continue; }
     const avg = k => sub.reduce((a, r) => a + r[k], 0) / sub.length, pc = g => sub.filter(g).length / sub.length * 100;
     out.push(`   ${nm.padEnd(6)} ${String(sub.length).padStart(4)} 天 ・開高 ${f1(pc(r => r.gap > BAND))}% 開平 ${f1(pc(r => Math.abs(r.gap) <= BAND))}% 開低 ${f1(pc(r => r.gap < -BAND))}% ・跳空 ${avg('gap').toFixed(2)}% ・開盤到收盤 ${avg('io').toFixed(2)}% ・全天 ${avg('cc').toFixed(2)}%`);
@@ -223,9 +268,10 @@ export function report(rows) {
   for (const [k, f] of Object.entries(cands)) {
     const Y = byY(f);
     const a = years.filter(y => Y[y].hit > Y0[y].hit).length, b = years.filter(y => Y[y].rho > Y0[y].rho).length, c = years.filter(y => Y[y].wrong < Y0[y].wrong).length;
-    const pass = a >= 13 && b >= 13;
-    verdict[k] = { a, b, c, pass };
-    out.push(`   ${pass ? '✅' : '⛔'} ${k.padEnd(20)} 方向對 ${a}/${years.length} ・相關 ${b}/${years.length} ・開反較少 ${c}/${years.length}`);
+    const callOk = judge(rows, f).call >= 0.8 * judge(rows, S0).call;
+    const pass = a >= 13 && b >= 13 && callOk;
+    verdict[k] = { a, b, c, pass, callOk };
+    out.push(`   ${pass ? '✅' : '⛔'} ${k.padEnd(20)} 方向對 ${a}/${years.length} ・相關 ${b}/${years.length} ・開反較少 ${c}/${years.length}${callOk ? '' : ' ・⛔ 講話天數 < 現行八成'}`);
   }
   // 逐年樣本外:每一年只看「以前的年份」決定每一項要不要拿掉(以前 ≥75% 的年份拿掉比較好才拿)
   const items = [...new Set(rows.flatMap(r => r.p.map(q => q[0])))];
@@ -272,6 +318,12 @@ async function selftest() {
   const fx = mkSeries(days.slice(0, 6).map(d => [d, 0.2]));
   const b5 = buildInputs({ ...src, twd: fx, krw: fx, cny: fx }, days[6], days[5], 'none');
   ok('④ 5 根累計 = 連乘(1.002^5 − 1 = 1.00%)', b5.x.twd5 === 1 && b5.x.krw5 === 1 && b5.x.cny5 === 1, JSON.stringify(b5.x));
+  // ⑤ V79.9.8 DEAD:道瓊 +0.05%(太小)→ 那 1 分拿掉;道瓊 +0.5% → 留著;舊了的那一項不動
+  const rD = { s: 3, x: { dji: 0.05, ndx: 0.5 }, p: [['🇺🇸 道瓊', 1, 0], ['🇺🇸 那斯達克', 1, 0], ['🏭 台積電 ADR', 2, 1]] };
+  ok('⑤ DEAD 0.2:漲跌太小的那一項拿掉、夠大的留著、舊了的不動', deadOf(rD, 0.2) === 2 && deadOf(rD, 0.01) === 3, String(deadOf(rD, 0.2)));
+  // ⑥ ADRREL:ADR 那 +2 換成溢價方向(負 → −2);沒有溢價資料 → 照舊
+  const rA = { s: 5, adrRel: -0.4, p: [['🏭 台積電 ADR', 2, 0]] };
+  ok('⑥ ADRREL:溢價縮水(−0.4%)→ ADR 那一項 +2 變 −2;沒資料照舊;小於門檻算 0', adrRelOf(rA) === 1 && adrRelOf({ ...rA, adrRel: null }) === 5 && adrRelOf(rA, 0.5) === 3, `${adrRelOf(rA)} / ${adrRelOf(rA, 0.5)}`);
   console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ PREMKT_APP_SELFTEST_PASS');
   process.exit(fails ? 1 : 0);
 }

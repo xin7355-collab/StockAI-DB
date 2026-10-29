@@ -16,7 +16,9 @@
  *   ④ 資料舊了(stale)→ 那一項 0 分、寫「資料舊了・不計分」
  *   ⑤ ⭐ 決定性對照:抓不到(null)⛔ 不可當成 0 —— 恐懼貪婪 null 以前會變「極度恐慌 +0.5 分」;同一組換成 10 → 才 +0.5
  *   ⑥ 接線:renderMarketBriefing 實跑的 `_preOpenCalc` == 直接呼叫 `_preOpenScore`(同一份輸入);每一項的說明 = 餵進去的那個值
- *   INJECT=1:台積電權重 ×2→×1 / 恐懼貪婪 null 退回 `+x.fg` / 呼叫端把那斯達克跟 S&P 接反 / 亞股又算分 / 只改產業作戰室那份 → 每一種都要紅
+ *   ⑥d ⑥e V79.9.8 台指期只有真的夜盤(sess 'night')才算分:前一天日盤 / 不知道哪一盤 → 0 分,那一格寫日期 +「日盤」+「只列出來」(決定性對照:同一個 +2.47% 換成夜盤 → +1.5)
+ *   ⑨ V79.9.8 開盤發生率(`_PREMKT_OCC`)== 產業作戰室 `_PREMKT`;高分 / 低分那一行三個比例跟著換、⛔ 研究字樣
+ *   INJECT=1:台積電權重 ×2→×1 / 恐懼貪婪 null 退回 `+x.fg` / 呼叫端把那斯達克跟 S&P 接反 / 亞股又算分 / 日盤又算分(App 或只改產業作戰室那份)/ 只改產業作戰室台積電權重 → 每一種都要紅
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -31,10 +33,13 @@ const INJ = {
   fgnull: ['const _fgN = _num(x.fg);', 'const _fgN = +x.fg;'],
   wiring: ["dji: usPct('dji'), ndx: usPct('nasdaq'), spx: usPct('sp500'),", "dji: usPct('dji'), ndx: usPct('sp500'), spx: usPct('nasdaq'),"],
   asia: ["const _asia = (nm, k, c) => _info(nm,", "const _asia = (nm, k, c) => _add(nm, Number.isFinite(c) ? Math.sign(c) : 0,"],
+  txday: ["if (txNight && txNight.sess === 'night' && txNight.est !== true", "if (txNight && txNight.est !== true"],
+  occ: ["hi: { n: 1857, up: 48.7, flat: 45.9, dn: 5.3 }, mid: { n: 944", "hi: { n: 1857, up: 58.7, flat: 35.9, dn: 5.3 }, mid: { n: 944"],
 };
 const PRO_SRC = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 // ⑧ 注入在 pro 那一份(只改一邊 → 兩邊對不上要紅)
-const INJ_PRO = { proTsm: ["if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, sg(tsm) * 2);", "if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, sg(tsm) * 1.5);"] };
+const INJ_PRO = { proTsm: ["if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, sg(tsm) * 2);", "if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, sg(tsm) * 1.5);"],
+                  proTxDay: ["if (tx && tx.sess === 'night' && tx.est !== true", "if (tx && tx.est !== true"] };
 
 const fnBody = html => {
   const i = html.indexOf('    _preOpenScore(x) {');
@@ -118,7 +123,7 @@ async function run(html, proHtml = PRO_SRC) {
       dji_chg_pct: 0.11, nasdaq_chg_pct: -0.22, sp500_chg_pct: 0.33, sox_chg_pct: -0.44, tsm_chg_pct: 0.55,
       asx_chg_pct: 0.66, umc_chg_pct: -0.77, tsm_date: '2026-10-21', asx_date: '2026-10-21', umc_date: '2026-10-21',
       vix: 26.5, vix_date: '2026-10-22', nq_fut_chg_pct: 0.88, ust10y_chg_pct: -2.5,
-      fi_spot_net: -123, fi_total_net: 456, taifex_tx_now: { chg: -0.35, est: false },
+      fi_spot_net: -123, fi_total_net: 456, taifex_tx_now: { chg: -0.35, est: false, sess: 'night' },
       nikkei_chg_pct: 1.11, kospi_chg_pct: -0.45, hsi_chg_pct: 0.6, nikkei_date: '2026-10-21', kospi_date: '2026-10-21', hsi_date: '2026-10-21',
       fear_greed: null, usdtwd_chg_pct: 0.2, usdtwd_chg_5d: 0.9, krw_chg_5d: 0.85, cny_chg_5d: 1.3,
     };
@@ -135,6 +140,19 @@ async function run(html, proHtml = PRO_SRC) {
       notes: Object.fromEntries((C.parts || []).map(p => [p.nm, p.note])),
       txt: (document.getElementById('marketBriefing') || {}).innerText || '',
     };
+    // ⑥d V79.9.8 台指期:前一天日盤(sess 'day')/ 不知道哪一盤 ⛔ 算分;同一個 +2.47% 換成真的夜盤才算(決定性對照)
+    const runTx = async tx => { A._macroRiskCache = { ...mr, taifex_tx_now: tx }; await A.renderMarketBriefing(); const c = A._preOpenCalc || {};
+      return { d: ((c.parts || []).find(p => p.nm === '🌙 台指期夜盤') || {}).d, s: c.s, txt: (document.getElementById('marketBriefing') || {}).textContent || '' }; };
+    o.txDay = await runTx({ price: 23456, chg: 2.47, est: false, sess: 'day', date: '2026-10-28' });
+    o.txNa = await runTx({ price: 23456, chg: 2.47, est: false });
+    o.txNight = await runTx({ price: 23456, chg: 2.47, est: false, sess: 'night' });
+    // ⑨ V79.9.8 開盤發生率那一行:高分 / 低分各跑一次,三個比例跟著換
+    const occOf = async extra => { A._macroRiskCache = { ...mr, ...extra }; await A.renderMarketBriefing();
+      const el = document.querySelector('#marketBriefing [data-occ="premkt"]'); return { p: (A._preOpenCalc || {}).sPct, t: el ? el.textContent : '' }; };
+    o.occHi = await occOf({ dji_chg_pct: 1, nasdaq_chg_pct: 1, sp500_chg_pct: 1, sox_chg_pct: 1, tsm_chg_pct: 1, vix: 15, nq_fut_chg_pct: 1 });
+    o.occLo = await occOf({ dji_chg_pct: -1, nasdaq_chg_pct: -1, sp500_chg_pct: -1, sox_chg_pct: -1, tsm_chg_pct: -1, vix: 35, nq_fut_chg_pct: -1, asx_chg_pct: -1 });
+    o.occK = JSON.parse(JSON.stringify(A._PREMKT_OCC || null));
+    A._macroRiskCache = mr;
     return o;
   });
 
@@ -170,6 +188,12 @@ async function run(html, proHtml = PRO_SRC) {
      && N['🇯🇵 日經'] === '1.11% ・不計分' && N['🇰🇷 韓股'] === '-0.45% ・不計分' && N['🇭🇰 恆指'] === '0.6% ・不計分' && !('🧭 恐懼貪婪' in N)
      && N['💱 台幣(當日)'] === '0.2%' && /台幣 0\.9% ・韓元 0\.8%/.test(N['💱 亞幣競貶'] || '') && N['💱 人民幣急貶'] === '1.30%',
      JSON.stringify(N));
+  const TX = { day: R.txDay && R.txDay.d, na: R.txNa && R.txNa.d, night: R.txNight && R.txNight.d, ds: R.txNight && R.txDay && R.txNight.s - R.txDay.s };
+  ok('⑥d V79.9.8 台指期前一天日盤 / 不知道哪一盤 ⛔ 算分;同一個 +2.47% 換成真的夜盤才 +1.5(決定性對照)',
+     TX.day === undefined && TX.na === undefined && TX.night === 1.5 && Math.abs(TX.ds - 1.5) < 1e-9, JSON.stringify(TX));
+  ok('⑥e 日盤那一格寫出哪一天、「日盤」、「只列出來」;⛔ 寫「夜盤走強」',
+     /10\/28/.test(R.txDay.txt) && /日盤/.test(R.txDay.txt) && /只列出來/.test(R.txDay.txt) && !/夜盤走強/.test(R.txDay.txt) && !/夜盤走強/.test(R.txNa.txt),
+     R.txDay.txt.slice(0, 160));
   ok('⑥c 恐懼貪婪抓不到 → 分析師那段 ⛔ 不可寫「極度恐慌」', !/極度恐慌|恐懼貪婪 0\)/.test(R.wire.txt), R.wire.txt.slice(0, 200));
   ok('⑦ V79.5.4 亞股三項照樣列出來(看得到漲跌)但 0 分:日經 +5% / 韓股 −1% / 恆指 +1% 都是 0,說明寫「不計分」',
      W.nk5 === 0 && W.ksm1 === 0 && W.hs1 === 0 && R.empty.names.includes('🇯🇵 日經') && R.empty.names.includes('🇭🇰 恆指')
@@ -193,7 +217,7 @@ async function run(html, proHtml = PRO_SRC) {
     dji_chg_pct: num(-3, 3), nasdaq_chg_pct: num(-4, 4), sp500_chg_pct: num(-3, 3), sox_chg_pct: num(-6, 6), tsm_chg_pct: num(-6, 6),
     asx_chg_pct: num(-5, 5), umc_chg_pct: num(-5, 5), tsm_date: pick(['2026-10-21', '2026-10-21', '2026-10-20']), asx_date: pick(['2026-10-21', '2026-10-20']), umc_date: pick(['2026-10-21', '']),
     vix: num(11, 40, 0.05), nq_fut_chg_pct: num(-1.5, 1.5, 0.5), ust10y_chg_pct: num(-4, 4, 0.2),
-    taifex_tx_now: rnd() < 0.5 ? null : { chg: num(-2.5, 2.5, 0), est: rnd() < 0.2 },
+    taifex_tx_now: rnd() < 0.4 ? null : { chg: num(-2.5, 2.5, 0), est: rnd() < 0.2, sess: pick(['night', 'night', 'day', undefined]) },
     nikkei_chg_pct: num(-4, 4), kospi_chg_pct: num(-5, 5), hsi_chg_pct: num(-4, 4), nikkei_date: '2026-10-21', kospi_date: '2026-10-21', hsi_date: '2026-10-20',
     fear_greed: num(5, 95, 0.15), usdtwd_chg_pct: num(-0.8, 0.8, 0.1), usdtwd_chg_5d: num(-2, 2, 0.1), krw_chg_5d: num(-2, 2, 0.2), cny_chg_5d: num(-1.5, 1.8, 0.2),
     fi_total_net: 100, fi_spot_net: -50,
@@ -206,6 +230,17 @@ async function run(html, proHtml = PRO_SRC) {
     return out;
   }, fx);
   const proS = await pp.evaluate(F => F.map(mr => { const r = PRO._premktScore(mr); return r && !r.na ? r.s : null; }), fx);
+  // ⑨ 跨檔:散戶 App 的開盤發生率 == 產業作戰室 `_PREMKT`(同一支探針的數字,⛔ 只改一邊)
+  const proP = await pp.evaluate(() => JSON.parse(JSON.stringify(PRO._PREMKT)));
+  const K = R.occK || {}, pick3 = b => b && [b.up, b.flat, b.dn, b.n == null ? null : b.n].join('/');
+  const occSame = ['hi', 'mid', 'lo', 'all'].every(k => pick3(K[k]) === pick3(proP[k])) && K.from === proP.from && K.days === proP.days;
+  ok('⑨ 開盤發生率 `_PREMKT_OCC` == 產業作戰室 `_PREMKT`(高 / 中 / 低 / 隨便一天、起始年、天數)', occSame,
+     JSON.stringify({ idx: K, pro: { hi: proP.hi, mid: proP.mid, lo: proP.lo, all: proP.all, from: proP.from, days: proP.days } }));
+  const { badOf } = await import(pathToFileURL(path.join(ROOT, 'scripts/lib_retailbad.mjs')).href);
+  const hiT = R.occHi.t, loT = R.occLo.t;
+  ok('⑨b 高分那天那一行:開高 49% ・開平 46% ・開低 5% + 隨便一天 30 / 48 / 22 +「不是今天會漲或會跌」;低分那天換成開低 50%;⛔ 研究字樣',
+     R.occHi.p >= 65 && R.occLo.p <= 35 && /開高 49% ・開平 46% ・開低 5%/.test(hiT) && /隨便一天 30% \/ 48% \/ 22%/.test(hiT) && /不是今天會漲或會跌/.test(hiT)
+     && /開高 10% ・開平 41% ・開低 50%/.test(loT) && badOf(hiT + loT).length === 0, JSON.stringify({ hi: [R.occHi.p, hiT], lo: [R.occLo.p, loT], bad: badOf(hiT + loT) }));
   const both = appS.map((a, i) => [a, proS[i]]).filter(([a, b]) => b != null);
   const diff = both.filter(([a, b]) => a !== b);
   ok('⑧ 產業作戰室 `PRO._premktScore` == App(300 組隨機 macro_risk,兩邊都有分數的那幾組逐一相同)',
@@ -229,7 +264,7 @@ if (process.env.INJECT) {
     console.log(`${f.length ? '✅' : '❌'} 注入 ${k} → ${f.length ? '紅:' + f.join(' / ').slice(0, 160) : '⛔ 全綠(這個注入沒被抓到)'}`);
     if (!f.length) bad++;
   }
-  console.log(bad ? `\n❌ ${bad} 種注入沒被抓到` : '\n✅ 五種注入全部叫得出來');
+  console.log(bad ? `\n❌ ${bad} 種注入沒被抓到` : `\n✅ ${Object.keys(INJ).length + Object.keys(INJ_PRO).length} 種注入全部叫得出來`);
   process.exit(bad ? 1 : 0);
 }
 const f = await run(SRC);

@@ -1,4 +1,4 @@
-// 🧪 接刀階梯 + 兩條「沒有資料」的說明(V71.8.0)
+// 🧪 反攻條件雷達(V71.8.0 兩條「沒有資料」的說明)+ V79.9.8 只描述・拿掉接刀階梯・空頭守門那一行・價差標日期
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
@@ -22,16 +22,16 @@ await pg.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
 await pg.waitForTimeout(2500);
 
 const R = await pg.evaluate(() => {
-    // 造 300 根加權:從 43,600 一路跌到 40,270(對應使用者當下的盤)
+    // 造 300 根加權(帶日期):從 43,600 一路跌到 40,270
     const hist = [];
+    const d0 = new Date('2025-08-01T00:00:00Z');
     for (let i = 0; i < 300; i++) {
         const c = i < 250 ? 38000 + i * 22 : 43600 - (i - 250) * 66;
-        hist.push({ close: c });
+        const d = new Date(d0.getTime() + i * 86400000).toISOString().slice(0, 10);
+        hist.push({ date: d, close: c });
     }
+    const lastD = hist[hist.length - 1].date;
     app.usMacroCache = { twii_history: hist };
-    app._d0050Close = 93.5;
-    const L = app._dipLadder();
-    const html = app._dipLadderHtml();
 
     // 兩條「沒資料」的說明
     app._macroRiskCache = {
@@ -43,37 +43,44 @@ const R = await pg.evaluate(() => {
     };
     app._riskHistCache = []; app._distDayCount = 1;
     app._renderReboundRadar();
-    const txt = document.getElementById('reboundRadarCard').innerText;
-    // 有值時要顯示兩條腿
-    app._macroRiskCache = { ...app._macroRiskCache, taifex_backwardation: 231, taifex_near: 40270, taiex_close: 40039 };
+    const card = () => document.getElementById('reboundRadarCard');
+    const txt = card().innerText, html = card().innerHTML;
+    const bearEl = card().querySelector('[data-bear60]');
+    const bear = { attr: bearEl ? bearEl.getAttribute('data-bear60') : null, t: bearEl ? bearEl.innerText : '', want: app._bear60Of(hist) };
+    // 有值時要顯示兩條腿;價差日期比加權那根舊 → 標日期
+    const prevD = hist[hist.length - 2].date;
+    app._macroRiskCache = { ...app._macroRiskCache, taifex_backwardation: 231, taifex_near: 40270, taiex_close: 40039, taifex_fut_date: prevD, taiex_date: prevD };
     app._renderReboundRadar();
-    const txt2 = document.getElementById('reboundRadarCard').innerText;
-    return { L, html, txt, txt2 };
+    const txt2 = card().innerText, bwOld = card().querySelector('[data-bwdate]') ? card().querySelector('[data-bwdate]').getAttribute('data-bwdate') : null;
+    // 決定性對照:同一天 → ⛔ 標日期
+    app._macroRiskCache = { ...app._macroRiskCache, taifex_fut_date: lastD, taiex_date: lastD };
+    app._renderReboundRadar();
+    const bwSame = !!card().querySelector('[data-bwdate]');
+    // 決定性對照:把加權改成多頭(一路漲)→ 空頭守門那一行要跟著翻
+    const up = hist.map((r, k) => ({ date: r.date, close: 30000 + k * 40 }));
+    app.usMacroCache = { twii_history: up };
+    app._renderReboundRadar();
+    const bearEl2 = card().querySelector('[data-bear60]');
+    const bear2 = { attr: bearEl2 ? bearEl2.getAttribute('data-bear60') : null, t: bearEl2 ? bearEl2.innerText : '', want: app._bear60Of(up) };
+    app.usMacroCache = { twii_history: hist };
+    return { txt, html, txt2, bear, bear2, bwOld, bwSame, prevD,
+             gone: ['_dipLadder', '_dipLadderHtml'].filter(k => typeof app[k] === 'function'), d0050: '_d0050Close' in app };
 });
 await b.close();
 
 ok('渲染無 pageerror', errs.length === 0, errs[0] || '');
-const L = R.L;
-console.log('   階梯:', JSON.stringify(L.steps.map(s => ({ n: s.n, v: Math.round(s.v), pct: +s.pct.toFixed(1), etf: s.etf && +s.etf.toFixed(1) }))));
-ok('① 有算出階梯', L && L.steps.length >= 2, JSON.stringify(L && L.steps.length));
-ok('① 每一檔都在現價下方(不能列上方的)', L.steps.every(s => s.v < L.now), String(L.now));
-ok('① 由近到遠排序(先碰到的在上)', L.steps.every((s, i) => i === 0 || s.v <= L.steps[i - 1].v), '');
-ok('② 有千點整數關(分析師講的「4 萬點」就是這種)', L.steps.some(s => s.v % 1000 === 0), JSON.stringify(L.steps.map(s => s.v)));
-// ⚠️ 年線只有在「現價還在年線之上」時才會是接刀檔位;跌破年線後它變成上方壓力 → 不該出現。
-//    這組測資正是跌破年線的情境,所以改成檢查「一定要有回檔門檻那兩檔」把階梯撐住。
-ok('② 跌破年線時不可誤列年線(那是壓力不是接刀點)', !L.steps.some(s => s.n.includes('年線')), JSON.stringify(L.steps.map(s => s.n)));
-ok('② 一定有「高點回檔 15%/20%」把階梯撐住(不會只剩一格)',
-   L.steps.filter(s => s.n.includes('回檔')).length >= 1 && L.steps.length >= 3,
-   JSON.stringify(L.steps.map(s => s.n)));
-ok('② 最多列 4 檔(不爆炸)', L.steps.length <= 4, String(L.steps.length));
-ok('③ 距現在 % 是負的(還要再跌)', L.steps.every(s => s.pct < 0), JSON.stringify(L.steps.map(s => +s.pct.toFixed(1))));
-ok('③ 有「從一年高點回檔幾%」', L.steps.every(s => s.ddHi < 0), JSON.stringify(L.steps.map(s => +s.ddHi.toFixed(1))));
-ok('④ 0050 換算價 + 一張多少錢都有(使用者要實際金額)',
-   L.steps.every(s => s.etf > 0 && s.lot > 0) && R.html.includes('一張'), JSON.stringify(L.steps.map(s => s.lot)));
-ok('④ 金額有千分位逗號', /一張 \d{2,3},\d{3} 元/.test(R.html), (R.html.match(/一張 [\d,]+ 元/g) || []).slice(0, 2).join(' '));
-ok('⑤ 明講「不是預測低點」', R.html.includes('先設價位') && R.html.includes('分批'), '');
-ok('⑤ 誠實揭露 0050 是換算值非報價', R.html.includes('換算的約略值'), '');
-ok('⑥ 階梯有掛進反攻雷達卡(不另開新卡)', R.txt.includes('跌到哪裡才敢買'), R.txt.slice(0, 120));
+// 🗑️ V79.9.8 「🪜 跌到哪裡才敢買」拿掉(跟 dipbuy 研究相反、而且叫你「第 1 批 3 成」跟決策台打架)
+ok('① 階梯函式不可復活(_dipLadder / _dipLadderHtml / _d0050Close)', R.gone.length === 0 && !R.d0050, JSON.stringify(R.gone));
+ok('② 雷達卡上 ⛔「跌到哪裡才敢買」「第 N 批 3 成」', !/跌到哪裡才敢買|第\s*\d\s*批|定價不定時/.test(R.txt), (R.txt.match(/跌到哪裡[\s\S]{0,60}|第\s*\d\s*批[\s\S]{0,30}/) || [''])[0]);
+ok('③ 替代那一行在:想買 0050 ⛔ 不用等跌到某個價位、⛔ 不用硬分好幾批', /data-dip0050/.test(R.html) && /不用等跌到某個價位/.test(R.txt) && /不用硬分好幾批/.test(R.txt), '');
+ok('④ 雷達只描述:⛔「才進場 / 分批回場 / 先 1/3 / 跌破今日低點停損 / 新單先等 / 進場門檻」,要寫「不是買賣訊號」',
+   !/才進場|分批回場|先\s*1\/3|跌破今日低點停損|新單先等|進場門檻|空手準備/.test(R.txt) && /不是買賣訊號|不是叫你等/.test(R.txt) && /成形門檻/.test(R.txt),
+   (R.txt.match(/才進場[\s\S]{0,30}|分批回場[\s\S]{0,30}|新單先等|進場門檻/) || [''])[0]);
+ok('⑤ 大盤空頭守門那一行 = `_bear60Of` 的結果(空頭那組);換成多頭的加權 → 跟著翻(決定性對照)',
+   R.bear.want && R.bear.attr === (R.bear.want.on ? '1' : '0') && R.bear2.want && R.bear2.attr === (R.bear2.want.on ? '1' : '0') && R.bear.attr !== R.bear2.attr
+   && /已觸發/.test(R.bear.t) === R.bear.want.on && /沒有觸發/.test(R.bear2.t) === !R.bear2.want.on,
+   JSON.stringify({ a: [R.bear.attr, R.bear.want && R.bear.want.on], b: [R.bear2.attr, R.bear2.want && R.bear2.want.on] }));
+ok('⑥ 價差比加權那根舊 → 標日期;同一天 ⛔ 標(決定性對照)', R.bwOld === R.prevD && R.bwSame === false, JSON.stringify({ old: R.bwOld, same: R.bwSame }));
 
 ok('⑦ 價差沒資料時要講原因,不是只顯「沒有資料」',
    R.txt.includes('不是同一天的收盤') || R.txt.includes('不同交易日'), (R.txt.match(/價差翻正[\s\S]{0,120}/) || [])[0]);

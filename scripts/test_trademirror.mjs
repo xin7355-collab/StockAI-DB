@@ -7,7 +7,7 @@
  *
  * ⛔ 釘死五件事:
  *   ① 鈕在庫存股標題列、就在「📖 點看說明」右邊
- *   ② 鈕上要直接標「N 筆 · 勝率 X%」(⛔ 只寫「勝率鏡子」的話,使用者不知道有沒有東西可看)
+ *   ② 鈕上要直接標筆數(⛔ 只寫「勝率鏡子」的話,使用者不知道有沒有東西可看);V79.9.8 起未滿 10 筆寫「(還太少)」、滿了寫「賺 W 筆」,⛔「勝率 X%」
  *   ③ 一筆都沒有時鈕**照顯示**(標「還沒紀錄」)—— 那正是要教他去結算平倉的時候
  *   ④ 內容一個字都沒改(勝率/賺賠比/總損益/賺短賠長診斷都還在)
  *   ⑤ ⛔ 舊的整張卡不可再留在庫存頁(不然又變成兩份)
@@ -69,11 +69,21 @@ const R = await page.evaluate(async () => {
     o.title = (document.getElementById('updateLogTitle') || {}).textContent || '';
     o.txt = document.getElementById('updateLogBody').innerText.replace(/\s+/g, ' ');
     o.html = document.getElementById('updateLogBody').innerHTML;
+    // ── ②b V79.9.8 滿 10 筆:12 筆、賺 8 筆 ──
+    const L12 = []; for (let k = 0; k < 12; k++) L12.push({ symbol: '2330', name: '台積電', pnlNTD: k < 8 ? 1000 : -1000, pnlPct: k < 8 ? 1 : -1, holdDays: 3, date: '2026-08-' + String(10 + k).padStart(2, '0') });
+    localStorage.setItem('proTerminalTradeLog', JSON.stringify(L12));
+    A.renderTradeJournal();
+    o.btn12 = document.getElementById('tradeMirrorBtnSlot').innerText.replace(/\s+/g, ' ');
+    o.btn12html = document.getElementById('tradeMirrorBtnSlot').innerHTML;
     return o;
 });
 
-ok('② 鈕上直接標「N 筆 · 勝率 X%」(⛔ 只寫名字的話不知道有沒有東西可看)',
-    /勝率鏡子/.test(R.btn) && /4 筆/.test(R.btn) && /勝率 75%/.test(R.btn), R.btn);
+// 🪞 V79.9.8 筆數太少 ⛔ 給百分比(使用者 10/30 截圖「3 筆・勝率 100%」紅字):未滿 10 筆 → 「N 筆(還太少)」;滿了 → 「N 筆 · 賺 W 筆」;⛔ 紅綠
+ok('② 鈕上直接標筆數;未滿 10 筆寫「(還太少)」、⛔「勝率 X%」(⛔ 只寫名字的話不知道有沒有東西可看)',
+    /勝率鏡子/.test(R.btn) && /4 筆\(還太少\)/.test(R.btn) && !/勝率\s*\d+\s*%/.test(R.btn), R.btn);
+ok('②c 點開(4 筆)要先寫「還太少」、⛔「長期正期望」這種結論', /還太少/.test(R.txt) && !/長期正期望/.test(R.txt), R.txt.slice(0, 200));
+ok('②b 滿 10 筆:「12 筆 · 賺 8 筆」、⛔「勝率 X%」、⛔ 紅綠底(好壞不准用紅綠)',
+    /12 筆 · 賺 8 筆/.test(R.btn12) && !/勝率\s*\d+\s*%/.test(R.btn12) && !/text-red-|text-green-|bg-red-|bg-green-/.test(R.btn12html), R.btn12);
 ok('③ 一筆都沒有時鈕照顯示、標「還沒紀錄」(⛔ 不可整顆消失)',
     R.emptyBtnShown && /還沒紀錄/.test(R.emptyBtn), R.emptyBtn);
 // 🎯 V78.5.7 產生第一筆的入口搬到「編輯庫存 → 🎯 賣出」(使用者:原本的位置很難按)

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.9.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.9.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.9.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4046,7 +4046,7 @@ const app = {
         '價格斷崖': '這一檔的歷史 K 線裡,有某一天的收盤價**跳得物理上不可能**(台股上市櫃一天最多 ±10%,但那天直接變成好幾倍或剩幾分之一)。\n\n三個常見原因:\n• 🔢 **股票分割 / 反分割**(例如 1 股拆成 4 股,價格變 1/4)\n• ✂️ **減資**(股數減少,價格等比例調高)\n• 💰 **除權息**(配股配息後,參考價往下調)\n\n🚨 **對你的影響**:那一天**以前**的價格是「另一把尺」量出來的 → 跨過那一天的**均線(季線/半年線/年線)、基期位階**都會失真。\n\n⭐ **本站的處理方式(誠實講清楚)**:採礦時會自動還原「**整數倍**的分割/減資」(2~10 倍),因為那種一定是尺標變了。但**除權息**與**非整數比例的減資**(例如價格變成 1.63 倍)**刻意不動** —— 那些比例是任意的,硬要「修掉」會把**真正的除權與真正的大跌也一起亂乘**,反而製造出新的錯誤。\n\n💡 **你該怎麼做**:看這一檔的長天期均線與位階時,先確認資料有沒有跨過那一天;跨過了就只當參考,別拿它當進出場依據。近期(斷崖之後)的價格是乾淨的。\n\n⚠️ 興櫃股**不會**出現這個提醒 —— 它本來就沒有漲跌幅限制,單日大跳是真實行情,不是壞資料。',
         '基期位階': '把「近 1 年的最高價~最低價」當成一把尺,現價落在這把尺的第幾 %。\n\n🧊 低基期(≤35% 且距高點跌 ≥25%):股價在相對低檔,分析師說的「低基期」就是這個。好處是萬一利多來,漲幅空間大(基期低=比較基準低);風險是「便宜還有更便宜」,低基期不等於會漲。\n\n📊 中基期(35~80%):不上不下。\n\n⛰️ 高基期(≥80%):股價在相對高檔,追高要嚴設停損。\n\n💡 用法:低基期 + 打底跡象(月線翻揚/底部抬高/外資回補/量能回溫)才是真的有爆發力 → 選股頁「🧊 低基期爆發」榜已經幫你篩好。單看低基期就買,常買到還在跌的股票。\n\n🚨 **不要跟「估值基期」搞混,那是另一個數字**(報告頁 §4 估值那一格):\n• 📊 **股價基期**(這一顆)= 股價在**近一年高低區間**的位置\n• 💰 **估值基期** = **本益比**在它自己**近三年**的位置\n\n⭐ **兩個常常相反,而且相反的時候最有意義**。實例(國巨 2327,2026/09/16):股價從 1220 跌到 536(股價基期只有 **37%**,跌了 56%),但本益比 36.2 倍落在近三年第 **89** 百分位(中位才 14.3 倍)→ 意思是**獲利掉得比股價還快**,所以「跌了一大段」不等於「變便宜了」。景氣循環股(被動元件/航運/面板/記憶體)在景氣高點過後常常長這樣。\n\n⛔ 所以看到「股價基期低」不要直接當成便宜,要同時看估值那一格。',
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
-        '盤前體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 🌙 台指期夜盤(15:00~次日5:00,台灣資金對隔夜美股+盤後事件的即時反應,最直接的隔日開盤風向球;有真實漲跌%才計分,夜盤重挫權重略高)\n  ・ 🧭 恐懼貪婪情緒(≥80 過熱偏空/≤20 極恐偏多,輕權重)\n  ・ ⏳ 台積電/日月光/聯電 ADR 如果是比該有的那天還舊的資料(例如前天的),只列出來、不算分\n\n📋 只列出來看、不算進分數:亞股(日經/韓股/恆指)、外資台指期、外資現貨、三大法人合計、加權指數自己的技術面(這幾項對隔天開盤高低沒有幫助,算進去反而不準;亞股早上看得到的是前一天的收盤,台股前一天已經一起反映過了)\n\n🎯 總結:🔴 開高偏多 / 🟡 中性震盪 / 🟢 開低偏空(紅漲綠跌)。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額、台指期夜盤源(修復中時暫不計分)。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n🕘 這張卡只預判「開盤」偏高或偏低;開盤之後會不會繼續漲、會不會開高走低,這裡不預測。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
+        '盤前體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 🌙 台指期夜盤(15:00~次日5:00;只有拿到**真的夜盤**才計分 —— 目前本站拿到的是前一個交易日的**日盤**,那一天的漲跌台股收盤時已經反映了,所以只列出來、不算分)\n  ・ 🧭 恐懼貪婪情緒(≥80 過熱偏空/≤20 極恐偏多,輕權重)\n  ・ ⏳ 台積電/日月光/聯電 ADR 如果是比該有的那天還舊的資料(例如前天的),只列出來、不算分\n\n📋 只列出來看、不算進分數:亞股(日經/韓股/恆指)、外資台指期、外資現貨、三大法人合計、加權指數自己的技術面(這幾項對隔天開盤高低沒有幫助,算進去反而不準;亞股早上看得到的是前一天的收盤,台股前一天已經一起反映過了)\n\n🎯 總結:🔴 開高偏多 / 🟡 中性震盪 / 🟢 開低偏空(紅漲綠跌)。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n🕘 這張卡只預判「開盤」偏高或偏低;開盤之後會不會繼續漲、會不會開高走低,這裡不預測。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
         '進場體檢': '把這支股票所有「純公式」技術訊號(三星轉折=晨星/夜星、吞噬、橫盤突破、量能=攻擊/出貨/換手量、均線排列)一次彙總,算出一個 0-100「進場友善度」+ 紅綠燈總結,給初學者一眼判斷:\n\n• 🔴 偏多(分數≥65)= 多方訊號 + 站上 5 日線/月線多頭排列 → 可分批試單,務必設停損。\n• 🟡 觀望(38~65 或多空打架)= 訊號不明或正在換手 → 先別進,等明確型態。\n• 🟢 偏空(分數≤38)= 空方訊號 + 跌破均線 → 別接刀,有貨者顧好停損。\n\n⚠️ 台股慣例 🔴=漲、🟢=跌(跟紅綠燈相反,別看反)。這是型態統計、不是預言:偏多不代表一定漲、偏空也不保證跌,真正的安全來自「進場就設好停損、跌破就走」。全部 JS 計算,絕不丟給 AI 算(防幻覺)。',
         '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。\n\n⭐ 越靠近壓力的,越容易在幾天內站上去;⛔ 但站上去不等於賺得到。\n\n→ 所以它是「誰快碰到壓力了」的觀察清單,排第一⛔ 不代表最該買,也⛔ 不是買進順序。要不要進場看總覽「現在怎麼做」。\n\n已突破無壓力、振幅太大已噴/崩、或「均線空頭排列(現價還在 5日線+月線之下的逆勢股)」都會自動排除 — 這種首席頁會判偏空、要你別接刀,不會再列來這裡跟首席打架。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
@@ -8749,10 +8749,17 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.9.7',
+    _APP_VERSION: 'V79.9.8',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.9.8', d: [
+            '🌅 盤前體檢:「🌙 台指期夜盤」那一項其實是<b>前一天的日盤</b>(那一天的漲跌台股收盤早就反映了)→ 改成只列出來、⛔ 不算分,寫清楚是哪一天的日盤;分析師那段不再寫「夜盤走強 / 翻黑」',
+            '🌅 盤前體檢「今天怎麼看」講法改誠實:分數高只代表<b>比較少開低</b>,開高跟開平差不多一樣常見;底下多一行 🎲 開盤發生率(同樣分數的早上開高 / 開平 / 開低各幾 % + 隨便一天),⛔ 不是今天會漲或會跌',
+            '🧭 反攻條件雷達改成<b>只描述外面的狀況</b>:拿掉「幾條才進場」「分批回場(先 1/3)」「新單先等」這類指令,「進場門檻」改叫「成形門檻」;要不要買新的照決策台(你選的策略自己的規則)。多一行「🐻 大盤空頭守門」現在有沒有觸發;價差那一列比加權舊時標日期',
+            '🗑️ 拿掉「🪜 跌到哪裡才敢買」那張表(叫你第 1 批 3 成在某個點位),改成一句:想買 0050 照你的計畫買,⛔ 不用等跌到某個價位、也不用硬分好幾批',
+            '🪞 勝率鏡子:未滿 10 筆寫「N 筆(還太少)」,⛔ 不再顯示「勝率 100%」這種只有幾筆的百分比;點開也會先提醒筆數太少',
+        ] },
         { v: 'V79.9.7', d: ['📅 👑 決策台「下次換倉還有 N 個交易日」後面直接寫日期:<b>哪一天收盤換倉、哪一天照名單買賣</b>(週末不算;遇到颱風、放假再往後順延)。換倉規則一個字都沒改'] },
         { v: 'V79.9.6', d: [
             '💧 大盤頁「🎯 概念股」分頁改名回「板塊輪動」(裡面照舊是概念股排名,點一列看成分股)',
@@ -8996,10 +9003,6 @@ ${list}
         { v: 'V79.1.8', d: [
             '📅 產業作戰室「實測總表」那幾張表,每一列都多了<b>每月平均報酬</b>(原本只有每年);小資金那張選「每月再投」時不換算(中途加錢,換算出來的 % 沒有意義)',
             '🔬 實測總表改成不用另外解鎖就能看到全部做法的回測數字',
-        ] },
-        { v: 'V79.1.7', d: [
-            '📌 換倉日那天講清楚:排名照上一個交易日收盤排、盤中不會變,今天收盤後晚上資料更新才定案',
-            '⏭️ 明天(或下週一)才是買賣日:要賣的 09:00 開盤賣、要買的 13:25 買(不是一早就買;開盤跌 3% 以上 / 開盤漲停各怎麼做也寫出來)',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -16221,6 +16224,20 @@ const marginByDate = {};
         return { stale, at, tw, us, today };
     },
 
+    // 🎲 V79.9.8 盤前分數的「開盤發生率」(使用者 10/30:「這兩天都寫很高分,實際開出來很差」)——
+    //   高分只代表「比較少開低」,開高跟開平差不多一樣常見(10/29 98 分開平 = 第二常見的結果)→ 三個比例一起印(V79.8.6 發生率格式,`data-occ`)。
+    //   數字 = scripts/premkt_app_probe.mjs(App 這條公式 2010 起逐日重建、0050 真的開盤、開平 = 差不到 0.3%)= pro `_PREMKT` 同一組
+    //   ⛔ 手改:test_premkt_formula ⑨ 跨檔比對(只改一邊會紅)。
+    _PREMKT_OCC: { from: '2010', days: 4090,
+        hi: { n: 1857, up: 48.7, flat: 45.9, dn: 5.3 }, mid: { n: 944, up: 20.8, flat: 63.6, dn: 15.7 }, lo: { n: 1289, up: 9.5, flat: 40.5, dn: 50.0 },
+        all: { up: 29.9, flat: 48.3, dn: 21.8 } },
+    _premktOccHtml(sPct) {
+        const O = this._PREMKT_OCC; if (!O || !Number.isFinite(+sPct)) return '';
+        const k = sPct >= 65 ? 'hi' : sPct <= 35 ? 'lo' : 'mid', b = O[k], a = O.all, r = v => Math.round(v);
+        const lab = k === 'hi' ? '分數 65 以上' : k === 'lo' ? '分數 35 以下' : '分數 36~64';
+        return `<div data-occ="premkt" class="mt-1 text-[10px] text-amber-200/80 leading-snug">🎲 開盤發生率(${O.from} 年起、0050 開盤比前一天收盤,差不到 0.3% 算開平):${lab}的早上 ${b.n.toLocaleString()} 次 → 開高 ${r(b.up)}% ・開平 ${r(b.flat)}% ・開低 ${r(b.dn)}%;隨便一天 ${r(a.up)}% / ${r(a.flat)}% / ${r(a.dn)}%。⛔ 只講開盤,不是今天會漲或會跌。</div>`;
+    },
+
     /** 🌅 V79.5.4 盤前體檢的開盤分數 —— 全 App 唯一一份算法(以前長在 renderMarketBriefing 裡面,回測與產業作戰室都拿不到)
      *   ⛔ 不讀 DOM、⛔ 不 fetch、⛔ 不看現在幾點 → 回測探針 scripts/premkt_app_probe.mjs 拿同一支函式重算 2010 起每一天。
      *   x(都是「已經取好的值」;漲跌一律 %,沒有就 null):
@@ -16285,6 +16302,7 @@ const marginByDate = {};
         if (x.tech != null) _info('📈 加權自己的技術面', x.tech);
         // 🌙 V42.0 台指期夜盤(15:00~次日5:00,台灣資金對隔夜美股+盤後事件的即時反應=最直接的隔日開盤風向球)
         //   僅在有「真實漲跌%」(非估算)時計分(呼叫端已排除估算值);夜盤重挫權重略高(夜盤大跌常代表盤後有突發利空)
+        //   🐛 V79.9.8 呼叫端只餵 sess === 'night'(真的夜盤);採礦現在拿到的都是前一天日盤 → 這一項目前不計分(= 16 年回測那條公式,那裡本來就沒有夜盤歷史)
         const nightChg = (x.night != null && Number.isFinite(+x.night)) ? +x.night : null;
         if (nightChg != null) _add('🌙 台指期夜盤', nightChg >= 1 ? 1.5 : nightChg >= 0.2 ? 1 : nightChg <= -1 ? -2 : nightChg <= -0.2 ? -1 : 0, `${nightChg}%`);
         // 🧪 V79.5.4 亞股三項(日經 / 韓股 / 恆指)只列出來、⛔ 不算分(V50.2 起原本是 ±1 / ±1 / ±0.5):
@@ -16547,92 +16565,16 @@ const marginByDate = {};
         return { vol, pct: below / hist.length * 100, n: hist.length };
     },
 
-    // 🪜 V71.8.0 「跌到哪裡才敢買」階梯(使用者問:分析師為何能買在低點?)
-    //   答案是**他沒有預測低點**,他是「定價不定時」—— 先設好價位、跌到就分批進。
-    //   這支把那套做法變成算得出來的東西:用加權現價 + 年線 + 近兩年低點 + 整數關卡,
-    //   算出三個檔位,各標「距現在 %」「從高點回檔 %」「對應的 0050 價位與一張多少錢」。
-    //   ⛔ 只用既有資料(twii_history + 0050 最新收盤),不預測、不編目標價。
-    _dipLadder() {
-        const h = Array.isArray(this.usMacroCache?.twii_history) ? this.usMacroCache.twii_history : [];
-        const cl = h.map(r => +r.close).filter(v => v > 0);
-        if (cl.length < 60) return null;
-        const now = cl[cl.length - 1];
-        const hi250 = Math.max(...cl.slice(-250));
-        const lo250 = Math.min(...cl.slice(-250));
-        const ma240 = cl.length >= 240 ? cl.slice(-240).reduce((a, b) => a + b, 0) / 240 : null;
-        // 整數關卡:現價下方最近的千點整數(如 40,270 → 40,000)
-        const round1k = Math.floor((now - 1) / 1000) * 1000;
-        const cand = [
-            { n: `${(round1k / 1000).toFixed(0)} 千點整數關`, v: round1k, why: '心理關卡,大單常掛在這' },
-            ma240 ? { n: '年線(240 日均)', v: ma240, why: '長線多空分界,法人常在此接' } : null,
-            // 📉 從高點回檔 −15% / −20%:機構口中的「修正」與「熊市」門檻,
-            //    price 已經跌破年線時,上面那兩檔會消失 → 這兩檔保證階梯不會只剩一格。
-            { n: '高點回檔 15%(修正)', v: hi250 * 0.85, why: '一般「修正」的深度,常見的第一個承接區' },
-            { n: '高點回檔 20%(熊市)', v: hi250 * 0.80, why: '跌破 20% 才叫熊市,長線資金多在這附近分批' },
-            { n: '近一年最低', v: lo250, why: '前一次的止跌位置' },
-        ].filter(Boolean)
-         .filter(x => x.v > 0 && x.v < now * 0.999)          // 只留還在下方的
-         .sort((a, b) => b.v - a.v);                          // 由近到遠(先碰到的在上)
-        if (!cand.length) return null;
-        // 去重(相差 <1% 視為同一檔,保留名字較具體的那個)
-        const steps = [];
-        for (const c of cand) if (!steps.some(s => Math.abs(s.v - c.v) / c.v < 0.01)) steps.push(c);
-        const PORTION = ['3 成', '3 成', '4 成'];
-        // 最多列 4 檔:再多就變成「資訊爆炸」,而且太深的價位參考性也低
-        steps.length = Math.min(steps.length, 4);
-        const p0050 = +this._d0050Close || null;              // 0050 最新收盤(比例換算用)
-        steps.forEach((s, i) => {
-            s.portion = PORTION[i] || '';
-            s.pct = (s.v - now) / now * 100;                  // 負值=還要跌多少
-            s.ddHi = (s.v - hi250) / hi250 * 100;             // 到那時等於從一年高點回檔多少
-            s.etf = p0050 ? p0050 * (s.v / now) : null;       // 0050 約略對應價
-            s.lot = s.etf ? Math.round(s.etf * 1000) : null;  // 一張約要多少錢
-        });
-        return { now, hi250, steps, p0050 };
-    },
-
-    _dipLadderHtml() {
-        const L = this._dipLadder();
-        if (!L) return '';
-        const cma = v => Math.round(v).toLocaleString('en-US');
-        const rows = L.steps.map((s, i) => `<div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center py-1 border-b border-[#21262d] last:border-0">
-            <div class="min-w-0">
-                <div class="text-[11px] ${i === 0 ? 'text-gray-100 font-bold' : 'text-gray-300'} truncate">${s.portion ? `<span class="text-[9px] text-gray-500 mr-1">第${i + 1}批 ${s.portion}</span>` : ''}${s.n}</div>
-                <div class="text-[9px] text-gray-500 truncate">${s.why}${s.lot ? ` ・0050 約 ${s.etf.toFixed(1)} 元(一張 ${cma(s.lot)} 元)` : ''}</div>
-            </div>
-            <span class="font-mono text-[12px] font-black text-gray-100">${cma(s.v)}</span>
-            <span class="font-mono text-[10px] w-[92px] text-right"><span class="text-green-300">${s.pct.toFixed(1)}%</span><br><span class="text-gray-500 text-[9px]">高點 ${s.ddHi.toFixed(0)}%</span></span>
-        </div>`).join('');
-        return `<div class="mt-2.5 pt-2 border-t border-[#30363d]">
-            <div class="text-[11px] font-black text-gray-100 mb-1">🪜 跌到哪裡才敢買(定價不定時)
-                <button onclick="app._helpBox('🪜 定價不定時 — 這張表在幹嘛\\n\\n電視上分析師講「破 4 萬我就敢買 0050」,常被誤會成他預測到低點。\\n其實他做的是「定價不定時」:先設好價位,跌到就分批買,不猜什麼時候到。\\n\\n・事後看像抄底,實際上是紀律\\n・他買 0050(一籃子、不會下市),所以敢在下跌途中接\\n・他的 1 億是配置的一小塊,套半年也不影響生活 —— 這點你我都學不來\\n\\n這張表只做「算得出來的部分」:用加權現價、年線、近一年最低、千點整數關,\\n列出三個檔位與各自要準備多少錢。⛔ 它不預測低點,也不保證跌到就會反彈。\\n\\n💡 搭配上面的條件雷達看:價位到了、雷達也過門檻,才是比較完整的進場理由。')" class="text-[9px] text-gray-500 hover:text-blue-300 font-normal">📖 教學</button>
-            </div>
-            <div class="text-[9px] text-gray-500 leading-snug mb-1.5">分析師不是預測低點,是<b class="text-gray-300">先設價位、跌到就分批進</b>。目前加權 ${cma(L.now)}(一年高 ${cma(L.hi250)})。</div>
-            ${rows}
-            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">※ 0050 價位是用「加權比例」換算的約略值,非報價;分批成數是常見做法,不是建議。跌到價位不代表會反彈,務必配合上方條件雷達與自己的停損。</div>
-        </div>`;
-    },
-
+    // 🗑️ V79.9.8 拿掉「🪜 跌到哪裡才敢買」階梯(`_dipLadder` / `_dipLadderHtml` / 只為它抓的 `_d0050Close`)——
+    //   它叫你「第 1 批 3 成在 46,000」,跟本站自己的研究相反(大跌那天買 ≈ 隨便一天買、一次買比分批多賺、
+    //   存錢等大跌一條都沒贏;dipbuy 那條),而且同一張卡上面還寫「幾條才進場」= 自己打架(使用者 10/30:不敢換股)。
+    //   ⛔ 別加回來;想買 0050 的那一行在雷達底下(`data-dip0050`)。test_dipladder ①~⑥。
     _renderReboundRadar() {
         const box = document.getElementById('reboundRadarCard');
         if (!box) return;
         const mr = this._macroRiskCache || {};
         const usm = this.usMacroCache || {};
         if (mr.vix == null && mr.fi_futures_net == null) { box.classList.add('hidden'); return; }
-        // 🪜 V71.8.0 接刀階梯要用 0050 最新收盤做比例換算 → 背景抓一次就好(抓到再重畫一次)
-        if (this._d0050Close === undefined) {
-            this._d0050Close = null;
-            (async () => {
-                try {
-                    const gh = window.location.href.split('?')[0].split('#')[0];
-                    const r = await fetch(new URL('data/0050.json', gh).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
-                    if (!r.ok) return;
-                    const a = await r.json();
-                    const c = Array.isArray(a) && a.length ? +a[a.length - 1].close : 0;
-                    if (c > 0) { this._d0050Close = c; this._renderReboundRadar(); }   // 只重畫這張卡
-                } catch (_) {}
-            })();
-        }
         const N = v => (v == null || isNaN(+v)) ? null : +v;
         const f1 = v => v == null ? '—' : (+v).toFixed(1);
         // 台股 5MA / 季線(twii_history)
@@ -16718,8 +16660,12 @@ const marginByDate = {};
             if (e) return `⏳ 暫時算不出來:${e.slice(0, 60)}。此條不計分,不影響其他判斷`;
             return '⏳ 期貨或加權收盤還沒到齊,此條暫不計分(不影響其他條件)';
         })();
+        // 📅 V79.9.8 價差是哪一天的:比旁邊加權那根舊就標日期(10/30 凌晨:價差是 10/28、加權已經 10/29,沒標 = 看起來像同一天)
+        const _bwD = String(mr.taifex_fut_date || mr.taiex_date || '').slice(0, 10);
+        const _twD = (() => { try { const h = Array.isArray(usm.twii_history) ? usm.twii_history : []; const l = h[h.length - 1] || {}; return String(l.date || l.d || '').replace(/\//g, '-').slice(0, 10); } catch (_) { return ''; } })();
+        const _bwOld = !!(_bwD && _twD && _bwD < _twD);
         add('📐', '價差翻正',
-            bwd == null ? '—' : `${bwd >= 0 ? '正價差 +' : '逆價差 '}${Math.round(bwd)} 點`,
+            bwd == null ? '—' : `${bwd >= 0 ? '正價差 +' : '逆價差 '}${Math.round(bwd)} 點${_bwOld ? `<span class="text-gray-500" data-bwdate="${_bwD}">(${this._dW(_bwD)})</span>` : ''}`,
             bwd != null && bwd >= 0, _bwWhy, bwd == null);
         // 🌡️ V71.5.0 台指 VIX 沒資料時要講原因 —— 使用者反映「VIX 沒有資料」但只看到一個「—」,
         //   分不出是「還沒抓到」還是「這條壞掉了」。有 tw_vix_error 就明說資料源在維護,
@@ -16810,23 +16756,23 @@ const marginByDate = {};
         if (isSwan) {
             // 🔕 V79.3.5 只描述(使用者:「回測沒過的推播拿掉、改成只描述」)—— 這幾條沒有一條測得出能事先預告大跌
             heroIcon = '🚨'; heroTxt = '外面壓力很大'; heroCls = 'text-amber-300 border-amber-500';
-            act = `觸發:${swanHits.join('、')}。<b class="text-amber-300">只描述外面發生的事,⛔ 不是叫你全部賣掉</b>;手上的照你的出場規則走,新單照你的規則慢慢來。`;
+            act = `觸發:${swanHits.join('、')}。<b class="text-amber-300">只描述外面發生的事,⛔ 不是叫你全部賣掉</b>;手上的照你的出場規則走,要不要買新的照決策台(你選的策略自己的規則)。`;
         } else if (passN >= needN) {
             // 🚦 V71.1.6 依 V70.2.8 燈號鐵則:這張卡回答「能不能進場」= 風險,不是漲跌方向
             //   → 一律用 ✅⚠️⛔🚨,不用 🔴🟢(原本 🟢=別接刀、🔴=可進場,視覺上剛好讀反)
             heroIcon = '✅'; heroTxt = '反攻條件成形'; heroCls = 'text-red-300 border-red-500';
-            act = `${passN}/${judged.length} 條通過 → 可<b class="text-red-300">分批回場(先 1/3)</b>,買強不買弱;跌破今日低點停損。`;
+            act = `${passN}/${judged.length} 條通過 → 外面的條件多半回穩了。<b class="text-gray-100">這張卡只描述外面的狀況,⛔ 不是買賣訊號</b>:要不要買新的照決策台(你選的策略自己的規則),手上的照你的出場規則走。`;
         } else if (passN >= halfN) {
             heroIcon = '⚠️'; heroTxt = '打底觀察中'; heroCls = 'text-yellow-300 border-yellow-500';
             // 「還差幾條」講清楚:缺的那幾條裡,**任意** needN−passN 條轉綠就翻成「反攻條件成形」,
             // 不必等全部亮(這正是使用者會誤會的地方)。
             const gap = Math.max(1, needN - passN);
             act = `${passN}/${judged.length} 條,<b class="text-yellow-300">缺:${missing.map(c => c.name).join('、')}</b>`
-                + ` → <b class="text-yellow-300">這 ${missing.length} 條裡再亮 ${gap} 條(湊到 ${needN}/${judged.length})就翻「反攻條件成形」,不用等全亮</b>;`
-                + `在那之前新單先等;手上的照你的出場規則走。`;
+                + ` → <b class="text-yellow-300">這 ${missing.length} 條裡再亮 ${gap} 條(湊到 ${needN}/${judged.length})就翻「反攻條件成形」,不用等全亮</b>。`
+                + `這張卡只描述外面的狀況,⛔ 不是叫你等:要不要買新的照決策台(你選的策略自己的規則),手上的照你的出場規則走。`;
         } else {
             heroIcon = '⛔'; heroTxt = '空方主控'; heroCls = 'text-green-300 border-green-500';
-            act = `只過 ${passN}/${judged.length} 條 → 先到 ${halfN}/${judged.length} 才算打底、${needN}/${judged.length} 才進場;<b class="text-green-300">手上的照你的出場規則走</b>(⛔ 不用因為這張卡就全賣)。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',但「便宜」不等於「止跌」,等訊號)' : ''}`;
+            act = `只過 ${passN}/${judged.length} 條(過半 ${halfN} 條算打底、${needN} 條算條件成形)。<b class="text-gray-100">這張卡只描述外面的狀況,⛔ 不是買賣訊號</b>:要不要買新的照決策台(你選的策略自己的規則),手上的照你的出場規則走(⛔ 不用因為這張卡就全賣)。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',「便宜」不等於「止跌」)' : ''}`;
         }
         // 🔗 V71.2.1 存下結論供「盤前體檢」引用 —— 兩張卡時間尺度不同(盤前=今天開盤、雷達=這波跌完沒),
         //   本來就該一起看;而且兩張都在下操作指令,不接起來萬一分歧會給出兩套矛盾指示(違反單一劇本原則)。
@@ -16863,16 +16809,20 @@ const marginByDate = {};
                 </div>
             </div>`;
         };
+        // 🐻 V79.9.8 大盤空頭守門的狀態(只轉述 `_bear60Of`,⛔ 另算):決策台真正會「先不買新的」看的是這一條,⛔ 不是上面幾條過幾條
+        const _bear = (() => { try { return this._bear60Of(usm.twii_history); } catch (_) { return null; } })();
+        const _bearLine = _bear ? `<div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-bear60="${_bear.on ? 1 : 0}">🐻 大盤空頭守門(收盤在季線下、月線也在季線下):<b class="text-gray-200">${_bear.on ? '⚠️ 已觸發' : '目前沒有觸發'}</b>(${_bear.d ? this._dW(_bear.d) + ' ' : ''}收盤 ${Math.round(_bear.c).toLocaleString()} ・月線 ${Math.round(_bear.ma20).toLocaleString()} ・季線 ${Math.round(_bear.ma60).toLocaleString()})${_bear.on ? '→ 決策台會照你選的策略自己的規則處理(有的策略空頭時先不買新的)' : '→ 決策台照常'}。</div>` : '';
         box.className = 'bg-[#161b22] border-l-4 ' + heroCls.split(' ')[1] + ' border-y border-r border-[#30363d] rounded-r p-3';
         box.innerHTML = `
             <div class="flex items-center justify-between gap-2">
-                <span class="text-[12px] font-black text-gray-100">🧭 反攻條件雷達 <button onclick="app._helpBox('🧭 反攻條件雷達 — 怎麼用\n\n回答一個問題:「還差什麼,台股才會漲?」\n\n每一條都是歷史上台股止跌回升的必要條件,右邊寫著現值與「何時轉綠」。\n\n🎯 要幾條才算過?不用全亮:\n・過半(${halfN}/${judged.length})=打底中,空手準備\n・${needN}/${judged.length}=反攻條件成形,分批回場(先1/3)\n  → 門檻是「全部條件數 −2」(至少 6 條),也就是容許 2 條沒過;條件數變動時門檻自動跟著算。\n・外面壓力很大(VIX ≥32 / 外資期貨 5 日急加空 ≥8,000 口 / 台指深度逆價差 / 日圓急升 / 日韓股 −5% / 標普 −3%,兩條以上)= 只描述外面發生的事,⛔ 不是賣出訊號;手上的照出場規則走\n\n全部純公式即時算,資料來源與盤前體檢相同;非投資建議。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></span>
-                <span class="text-sm font-black ${heroCls.split(' ')[0]} text-right">${heroIcon} ${heroTxt} <span class="font-mono text-[11px] text-gray-500">${passN}/${judged.length}${C.length > judged.length ? `<span class="text-gray-600">(+${C.length - judged.length}⏳)</span>` : ''}</span><br><span class="font-mono text-[9px] text-gray-600 font-normal">進場門檻 ${needN}/${judged.length}</span></span>
+                <span class="text-[12px] font-black text-gray-100">🧭 反攻條件雷達 <button onclick="app._helpBox('🧭 反攻條件雷達 — 怎麼用\n\n回答一個問題:「還差什麼,台股才會漲?」\n\n每一條是台股止跌時常被拿來看的外部條件,右邊寫著現值與「何時轉綠」。\n\n⛔ 這張卡只描述外面的狀況,⛔ 不是買賣訊號:要不要買新的照決策台(你選的策略自己的規則),手上的照你的出場規則走。\n\n🎯 幾條算「條件成形」?不用全亮:\n・過半(${halfN}/${judged.length})=打底中\n・${needN}/${judged.length}=反攻條件成形(外面多半回穩了)\n  → 門檻是「全部條件數 −2」(至少 6 條),也就是容許 2 條沒過;條件數變動時門檻自動跟著算。\n・外面壓力很大(VIX ≥32 / 外資期貨 5 日急加空 ≥8,000 口 / 台指深度逆價差 / 日圓急升 / 日韓股 −5% / 標普 −3%,兩條以上)= 只描述外面發生的事,⛔ 不是賣出訊號;手上的照出場規則走\n\n全部純公式即時算,資料來源與盤前體檢相同;非投資建議。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></span>
+                <span class="text-sm font-black ${heroCls.split(' ')[0]} text-right">${heroIcon} ${heroTxt} <span class="font-mono text-[11px] text-gray-500">${passN}/${judged.length}${C.length > judged.length ? `<span class="text-gray-600">(+${C.length - judged.length}⏳)</span>` : ''}</span><br><span class="font-mono text-[9px] text-gray-600 font-normal">成形門檻 ${needN}/${judged.length}</span></span>
             </div>
             <div class="bg-[#0d1117] border-l-4 ${heroCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1 mt-2">${C.map(row).join('')}</div>
-            ${this._dipLadderHtml()}
-            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 純公式・${this._dW(mr.updated ? String(mr.updated).slice(0, 10) : new Date(), { rel: 1 })}・門檻=歷史台股止跌共同條件・黑天鵝會自動推播。非投資建議。</div>`;
+            ${_bearLine}
+            <div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-dip0050="1">🪙 想買 0050 照你的計畫買,⛔ 不用等跌到某個價位、也不用硬分好幾批(那樣通常比較少賺)。</div>
+            <div class="text-[9px] text-gray-500 mt-1.5 leading-snug">🧮 純公式・${this._dW(mr.updated ? String(mr.updated).slice(0, 10) : new Date(), { rel: 1 })}・只描述外面的狀況(⛔ 不是買賣訊號)・外面壓力很大時只記在 🔔 鈴鐺、不跳通知。非投資建議。</div>`;
         box.classList.remove('hidden');
     },
 
@@ -17004,8 +16954,11 @@ const marginByDate = {};
         //   —— 這裡只負責把值取好。⛔ 算術一個字沒改(test_premkt_formula 金樣本 300 組逐項比)。
         const _age = this._premktFieldAge(mr);
         const _f5 = this._fiFutState();
-        let nightChg = null;   // 只認「真實漲跌%」(非估算)
-        if (txNight && txNight.est !== true && txNight.chg != null && Number.isFinite(+txNight.chg)) nightChg = +txNight.chg;
+        // 🐛 V79.9.8 只認「真的夜盤」(sess === 'night')的漲跌%:採礦那份 taifex_tx_now 其實是**前一個交易日的日盤**
+        //   (TAIFEX OpenAPI;10/29 早上拿到的是 10/28 日盤 +2.47%)→ 那一天的漲跌台股前一天收盤早就反映了,
+        //   以前當成「夜盤」+1.5 分、分析師那行寫「夜盤走強」= 講錯。⛔ 沒有 sess / 日盤 / 估算 一律不算分(pro `_premktScore` 同一條,test_premkt_formula ⑥⑧)。
+        let nightChg = null;
+        if (txNight && txNight.sess === 'night' && txNight.est !== true && txNight.chg != null && Number.isFinite(+txNight.chg)) nightChg = +txNight.chg;
         const _po = this._preOpenScore({
             dji: usPct('dji'), ndx: usPct('nasdaq'), spx: usPct('sp500'), sox: usPct('sox'), tsm: usPct('tsm'),
             asx: asxChg, umc: umcChg, vix, nq: mr.nq_fut_chg_pct, ust: mr.ust10y_chg_pct, night: nightChg,
@@ -17026,8 +16979,9 @@ const marginByDate = {};
         //   → 只講開盤(海外那一半有實測);開盤之後怎麼走 ⛔ 不預測。「別在開盤追高」有實測(dt_daily_probe D11:
         //     偏多那天熱門股開盤買、收盤賣平均是賠的)→ 保留;其他做法照產業作戰室「盤前體檢分數準嗎」那篇專欄的 do。
         let patNote;
-        if (s >= 3) patNote = '隔夜海外偏多,今天多半開高 → 照原本計畫做。開高大多是昨晚美股造成的,開盤之後會不會繼續漲這裡不預測,⛔ 別在開盤追高。';
-        else if (s <= -3) patNote = '隔夜海外偏弱,今天多半開低 → 新買的先縮小部位、別在開盤前掛大單;⛔ 不用因為分數低就整天不做,手上的照你的出場規則走。';
+        // 🎲 V79.9.8 講法照發生率(`_PREMKT_OCC`):高分 = 比較少開低、開高跟開平差不多一樣常見;低分 = 開低大約一半、開平也很常見
+        if (s >= 3) patNote = '隔夜海外偏多 → 今天比較少開低,但開高跟開平差不多一樣常見 → 照原本計畫做。開高大多是昨晚美股造成的,開盤之後會不會繼續漲這裡不預測,⛔ 別在開盤追高。';
+        else if (s <= -3) patNote = '隔夜海外偏弱 → 今天比較常開低(大約一半),開平也很常見 → 新買的先縮小部位、別在開盤前掛大單;⛔ 不用因為分數低就整天不做,手上的照你的出場規則走。';
         else patNote = '多空拉扯,今天多半開平 → 照原本計畫做;開盤之後怎麼走這裡不預測。';
         if (_usClosed) patNote = '🌙 美股週末休市(以下美股為上週五收盤,今天美股台灣晚間才開)→ 美股那幾項參考度降低。' + patNote;
         let light, verdict, vColor;
@@ -17064,9 +17018,15 @@ const marginByDate = {};
         const fiSpotLine = (fiSpot != null && fiSpot !== '' && Number.isFinite(+fiSpot))
             ? `<span class="${+fiSpot >= 0 ? 'text-red-300' : 'text-green-300'} font-mono font-bold">${+fiSpot >= 0 ? '+' : ''}${(+fiSpot).toFixed(0)} 億</span>`
             : `<span class="text-gray-500">採集中</span>`;
-        const txNightLine = (txNight && txNight.price)
-            ? `<span class="font-mono ${txNight.chg > 0 ? 'text-red-300' : txNight.chg < 0 ? 'text-green-300' : 'text-gray-300'}">${(+txNight.price).toFixed(0)}${txNight.chg != null ? ` (${txNight.chg > 0 ? '+' : ''}${txNight.chg}%)` : '(估)'}</span>`
-            : `<span class="text-gray-500">採集中(夜盤源修復中)</span>`;
+        // 🐛 V79.9.8 寫清楚是哪一盤、哪一天:sess 'night' = 真的夜盤(算分)・'day' = 前一個交易日的日盤(只列出來)・其他 = 不知道哪一盤(只列出來)
+        const txNightLine = (() => {
+            if (!(txNight && txNight.price)) return `<span class="text-gray-500">採集中</span>`;
+            const px = `<span class="font-mono ${txNight.chg > 0 ? 'text-red-300' : txNight.chg < 0 ? 'text-green-300' : 'text-gray-300'}">${(+txNight.price).toFixed(0)}${txNight.chg != null ? ` (${txNight.chg > 0 ? '+' : ''}${txNight.chg}%)` : '(估)'}</span>`;
+            if (txNight.sess === 'night') return `${px} <span class="text-gray-500 text-[10px]">夜盤</span>`;
+            const dTxt = txNight.date ? this._dW(String(txNight.date).slice(0, 10)) + ' ' : '';
+            if (txNight.sess === 'day') return `<span class="text-gray-500 text-[10px]" data-txsess="day">${dTxt}日盤</span> ${px} <span class="text-gray-500 text-[10px]">(那天收盤已反映,只列出來)</span>`;
+            return `${px} <span class="text-gray-500 text-[10px]" data-txsess="na">(不知道是哪一盤,只列出來)</span>`;
+        })();
 
         // 🐛 V40.1 期現基差(taifex_backwardation = 期-現:>0 順價差/<0 逆價差)→ 判讀外資大空單是「避險套利」還是「真看空」
         //   分析師觀點:外資大空單若伴隨順價差,常是「買現賣期」期現套利鎖利(保證獲利),不可純當看空
@@ -17358,7 +17318,7 @@ const marginByDate = {};
                         </div>
                     </details>`;
                 })()}
-                <div class="mt-2 pt-2 border-t border-[#30363d] text-[11px] text-gray-300 leading-relaxed" data-ppnote="1"><b class="${sc}">📌 今天怎麼看:</b>${patNote}</div>
+                <div class="mt-2 pt-2 border-t border-[#30363d] text-[11px] text-gray-300 leading-relaxed" data-ppnote="1"><b class="${sc}">📌 今天怎麼看:</b>${patNote}${this._premktOccHtml(sPct)}</div>
                 <!-- 🧹 V69.8.0 原 💡 一句話總結已併入下方「🎙️ 分析師盤勢解讀」(使用者:兩段判斷重複) -->
             </div>
             <!-- 🎙️ V69.0.4 分析師盤勢解讀(常駐,不折疊) -->
@@ -17390,7 +17350,7 @@ const marginByDate = {};
                         ${idxCell('📦 日月光ADR', 'asx', pctStr(asxChg) || '')}
                         ${idxCell('🔧 聯電ADR', 'umc', pctStr(umcChg) || '')}
                         <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">😱 VIX</span><span class="text-right">${vix ? `<span class="font-mono font-bold text-gray-200">${vix}</span>` : '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>
-                        <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">🌃 夜盤</span><span class="text-right">${txNightLine}</span></div>
+                        <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">🌃 台指期</span><span class="text-right">${txNightLine}</span></div>
                     </div>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1 mt-1.5 pt-1.5 border-t border-[#21262d]/40">
                         ${gCell('🔮 標普期', mr.es_fut, mr.es_fut_chg_pct)}
@@ -21770,7 +21730,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //     ③ K 線日期追不上大盤最新收盤的那一檔 ⛔ 不判斷(舊資料不冒充今天);⛔ 不彈窗,只在決策台那一區列出來。
     //   ⭐ 永久規則(test_column 釘住):pro.html 每一篇 col 都要寫 `trig`(或 'none' + 為什麼),新專欄沒寫就紅。
     // ⛔ 下一行由 scripts/embed_col_trig.mjs 產生
-    _COL_TRIG: {"asof":"2026-10-27","cols":[{"k":"lu-gapdown","r":67,"myth":false,"q":"昨天收盤鎖漲停的股票,今天開盤卻開低,可以接嗎?","do":["只看兩種:今天開低 5% 以上,或昨天是「量縮鎖死」(量只有平常六成以下)又開低 1% 以上","開低 1~5% 的一般漲停股不用看:等到真的買得到的時候,已經沒東西了","開盤後 5 分鐘左右買,當天尾盤賣;要能現股當沖才做得到","連續第 2 根以上漲停之後的開低,不算"],"warn":"這是當沖,不是抱著的策略。開盤那一瞬間的價你通常買不到;改成開盤 5 分鐘後才買,平均只剩一點點,而且一半的日子是賠的,只有上面兩種還留得住。","trig":["lu_held","lu_fav"],"lead":false},{"k":"crash-recovery","r":38,"myth":false,"q":"加權跌 20%,要多久才回來?","do":["準備好一年多沒回本的耐心","跌到 -20% 那天不是底,中間值還會再跌到 -29% 左右","不要因為跌 20% 就加碼,只有 5 次不夠當訊號"],"warn":"2010~2026 這 16 年只有 5 次,每次原因都不同;「全部回來了」不代表下次一定會。","trig":["crash20"],"lead":false},{"k":"limitup-hold","r":66,"myth":false,"q":"手上的股票收盤鎖漲停,明天怎麼賣?","do":["當天先不要賣,留到明天","明天開盤就在漲停 → 繼續抱,收盤沒鎖住就尾盤賣","明天開高但沒漲停 → 開盤就賣;開平或開低 → 別在開盤殺,尾盤再賣"],"warn":"這只給已經持有的人,鎖住的漲停現在去掛買多半買不到;最差的一成還是會賠 2~4%。","trig":["lu_held"],"lead":false},{"k":"breakout-exit","r":67,"myth":false,"q":"股票創新高之後,要抱多久?","do":["創新高後不要因為「跌破 5 日線」就賣,那樣幾乎白做","改用「收盤跌破近 20 天最低價」或目前預設的賣法,讓它多跑一點","不用等爆量才算數,創新高那天本來就大多有量","創一年新高、上方沒有套牢的也一樣:照目前預設的賣法走,不用另外一套"],"warn":"這樣做十次大概只有三次賺,一半以上是停損出場;整套會賺全靠少數抱得夠久的大賺,要能忍受連續停損。","trig":["nh60_held"],"lead":false},{"k":"rev-accel","r":69,"myth":false,"q":"營收在成長,要看什麼才算真的好?","do":["看「這一季營收年增率」有沒有比上一季更高(在加速)","已經符合 🧬 的股票裡,營收在加速的排前面;每股盈餘也在成長更好","財報一公布就能用,不用等下一季"],"warn":"它提高的是平均,不是比較會抓到飆股;放進整套買賣去算,總共賺的錢沒有比「隨便刪掉同樣多的股票」多,所以沒有變成預設,好處只是中途少賠一些。","trig":["rev_day"],"lead":false},{"k":"avoid-desctri","r":59,"myth":false,"q":"高點越來越低、低點卻持平,代表什麼?","do":["這叫下降三角形,之後通常偏弱","手上有的別加碼,照原本的賣法走;空手的別接","個股總覽「重點判讀」符合時會跳出來"],"warn":"這不是放空訊號,也不能反過來把「高點持平、低點墊高」當買點(那個沒測過);意思是比隨便挑一天差,不是一定會跌。","trig":["desc_tri"],"lead":false},{"k":"exdiv-hold","r":45,"myth":false,"q":"要不要參加除息?","do":["殖利率不到 2% 的不用在意","要股利:除息前一天收盤前買進(除息當天買領不到)","不想繳股利的稅:除息前賣掉"],"warn":"抱過除息賺到的幾乎全是股利本身,股價通常不會額外補漲;那筆股利還要繳稅和二代健保。","trig":["exdiv"],"lead":false},{"k":"dip-hot-3pct","r":37,"myth":false,"q":"大盤一天跌超過 3%,有沒有辦法撿到便宜?要撿哪些?","do":["只在加權一天跌超過 3% 的日子才撿(跌 2% 那種沒有差)","撿「最近一個月成交金額最大的熱門股裡,今天跌最多的 10 檔」,隔天開盤買、抱 20~40 天","挑「最近漲最兇的前幾名」起伏最大,不比熱門股全部好多少","只拿一部分錢做(例如 3 成),其餘照原本放 0050"],"warn":"2011~2026 這 16 年只有約 20 次這種日子,而且 5 次裡大約有 1 次還是賠(最慘的一次 20 天賠約一成);遇到一路跌好幾個月的大空頭,會接在半山腰。","trig":["idx_drop3"],"lead":false},{"k":"regime-ldred","r":77,"myth":false,"q":"大盤空頭的時候,有什麼能做?","do":["空頭時決策台不開新倉,大部分招式先停","唯一例外:大盤一起跌造成的跌停,隔天收大紅,再隔天開盤買、抱 20 天","其餘的錢停在 0050 或現金,等大盤轉好"],"warn":"空頭時能做的機會很少,一個月可能只有幾次;不要為了「有事做」硬找。","trig":["bear_on"],"lead":false},{"k":"regime-two","r":56,"myth":false,"q":"多頭和空頭要用一樣的方法嗎?","do":["大盤在季線上而且往上:追強勢股","大盤在季線下而且往下:追強的那些全部失效,跌深的反而有機會","兩種方法不要混著用"],"warn":"這是固定抱 20 天量出來的;實際有停損和賣法時,空頭裡追強是「少賺」不是「賠」,不要直接拿它當開關。","trig":["bear_on","bull_on"],"lead":false},{"k":"rebuy","r":16,"myth":false,"q":"賣掉之後又漲回來,要買回嗎?","do":["App 現在不會幫你買回","這是在舊賣法(跌破 5 日線)上測的","每買回一次就多付一次手續費"],"warn":"2022 和 2025 年是負的,沒有每一年都好,所以沒有採用。","trig":["rebuy"],"lead":false},{"k":"nh60-retest","r":71,"myth":false,"q":"創新高之後回檔,還能不能追?","do":["條件:最近創了 60 天新高,回檔沒有跌破,今天又收紅站回來","看到就當作「這檔偏強」的佐證","買賣價位仍以總覽或決策台為準,不要因為這條加大金額"],"warn":"效果不大,扣掉手續費後平均只剩約 0.3%;拉長到 2010~2026 這 16 年看更薄,而且有兩年是負的 —— 只能當佐證,不能當買進理由。","trig":["nh60_retest"],"lead":false},{"k":"exit-widen","r":20,"myth":false,"q":"跌破 5 日線就賣好嗎?","do":["不要,太早賣會把贏家洗掉","放寬的賣法每一種都賺比較多","目前預設的賣法就是放寬那一族,看「買了之後什麼時候賣?」那篇"],"warn":"這條的數字是舊算法(停損假設剛好賣在停損價),修正後差距變小,但方向不變。","trig":["ma5_break"],"lead":false},{"k":"avoid-attn30","r":61,"myth":false,"q":"股票被列「注意股」,要賣嗎?","do":["看進注意股之前 5 天漲了多少:漲 30% 以上才是警訊","手上有就分批減碼,沒有的別追","其他情況進注意股影響很小,不用為了它賣"],"warn":"這不是放空訊號(容易被軋);「跌著進注意股」看起來會反彈,但那是從四組裡挑出來的,不可當買點。","trig":["attn"],"lead":false},{"k":"premkt-score","r":55,"myth":false,"q":"盤前體檢分數準嗎?要怎麼用?","do":["分數 65 以上:照原本計畫做,⛔ 別在開盤追高","分數 35 以下:新買的先縮小部位、別在開盤前掛大單","不要因為分數低就整天不做,手上的照你的出場規則走","它只講開盤高低,開盤之後怎麼走它不知道"],"warn":"它講的是大盤開盤,不是挑哪一檔;開盤之後到收盤,分數高的日子跟分數低的日子幾乎一樣(扣完手續費是負的),⛔ 不要拿它決定開盤後要不要追。","trig":["premkt_low"],"lead":false},{"k":"ld-redk","r":80,"myth":false,"q":"跌停之後可以撿嗎?","do":["跌停當天不要接","等隔一天收一根漲 3% 以上的紅 K","再隔一天開盤買"],"warn":"只有小紅 K(漲不到 3%)的不算;而且要先看是不是大盤一起跌造成的(見「怎麼分辨能不能碰」那篇)。","trig":["ld_redk"],"lead":false},{"k":"ld-market","r":79,"myth":false,"q":"跌停的股票,怎麼分辨能不能碰?","do":["先看跌停那天大盤有沒有也大跌","大盤一起跌造成的:可以照「跌停之後可以撿嗎」那篇的方法等紅 K","大盤沒跌、只有它自己跌停(通常是公司出事):不要碰"],"warn":"「大盤一起跌」要看加權指數當天也明顯下跌,不是只有小跌。","trig":["ld_redk"],"lead":false},{"k":"mkt-floor300","r":58,"myth":false,"q":"全市場一堆股票跌停,是不是該逃?","do":["當天跌到接近跌停的股票超過 300 檔,大盤短線常常是低點","可以開始找買點、把部位慢慢加回來","這是看大盤用的,不能拿來挑個股"],"warn":"","trig":["floor300"],"lead":false},{"k":"lu-nextday","r":45,"myth":false,"q":"昨天漲停,今天可以追嗎?","do":["昨天漲停、今天成交量中等(週轉率 1~3%)才算","只做今天,收盤前一定要賣","量太大的反而比較差"],"warn":"抱到 3~5 天就變成虧損,別當波段抱;這個數字還沒扣當沖成本。","trig":["lu_fav"],"lead":false},{"k":"holiday-vol","r":38,"myth":false,"q":"連假後第一天要注意什麼?","do":["連假、週末之後第一天波動比較大","那天停損放寬一點或部位小一點","不代表會漲或會跌"],"warn":"只講會不會晃,不講方向;方向試過量不出來。","trig":["holiday_post"],"lead":false},{"k":"quant-lab","r":64,"myth":true,"q":"KD 黃金交叉、跳空開高、帶量突破、外資連買…這些常見的買點,照著買有賺嗎?","do":["⛔ 別因為 KD 黃金交叉、跳空開高、帶量突破、外資連買就買 —— 這些常見的買點照著追,扣完手續費和稅通常不划算","尤其跳空開高走高、帶量突破 20 日新高、融資減少站上月線這 3 種:看到了先別追","要買照決策台那一套;手上的照你的出場規則走"],"warn":"這裡是一筆一筆的平均(隔天收盤買、吊燈 ATR 2 倍出場、最長 20 天),⛔ 不是整套資金的總報酬;處置只有上市的、法人 2012 起、月營收 2009 起。換別的出場(固定抱 10 天)結論一樣。","trig":["qlab_trap"],"lead":false},{"k":"confcall-habit","r":62,"myth":true,"q":"有些公司的法說會常常開完就大跌(俗稱「法會」),是董事長的慣性嗎?下一場也會這樣嗎?","do":["看這檔過去幾場、平常隨便兩天、一般股票三個比例一起看 —— 平常就很會動的,法說會那兩天當然也很會動","⛔ 不要因為「這家常常法會」就在法說會前先賣,或反過來搶著買","手上的照你的出場規則走;單筆別押太重,那兩天常常晃比較大"],"warn":"這裡只算開完那兩天跟大盤比,⛔ 沒看法說會講了什麼;除權息落在那兩天的已經用參考價接回去。法說會一覽表從 2021-07 才有,每家只有幾場到二十幾場,場數少的那個比例跳很大。","trig":["cc_soon"],"lead":false},{"k":"combo-ccwin","r":95,"myth":true,"q":"手上或想買的股票快開法說會了,要先賣掉、或等開完再買嗎?","do":["⛔ 不用因為快開法說會就先賣,手上的照你原本的出場規則走","要買的照原本的買點,⛔ 不用特別等法說會開完","法說會隔天大漲大跌,大約兩天就反映完 —— ⛔ 過幾天才追進去"],"warn":"法說會前後股價常常動得比較大;這裡看的是「要不要避開」,沒有看法說會講了什麼(講的內容也看不出之後會漲還會跌)。","trig":["cc_soon"],"lead":false},{"k":"fi-burst","r":74,"myth":true,"q":"外資突然一大筆買超、那天還漲停(像富喬),是不是有人知道什麼、可以跟?","do":["看到外資突然一大筆買超,不要隔天開盤去追","大盤跌那天的突然大買、逆勢漲停,也不要追","選股照決策台那套;名單裡剛好有這種股票,照規則買,不用多買也不用跳過"],"warn":"這是收盤後才公布的法人買賣超;盤中看到大單那種沒有測。外資買得多的股票,之後的平均報酬看起來比較高,但那是因為它們本來就比較會動,跟同一天其他股票比就沒有了。","trig":["fi_burst"],"lead":false},{"k":"hightop-sell","r":87,"myth":true,"q":"大盤在高點、新聞說外資拋售、今天又收綠,要不要先停手不買?","do":["照領頭羊的規則換倉,不用因為外資拋售的新聞停手","外資台指期「急遽加空」亮了也照做 —— 照著停買反而少賺最多","真正的防守是規則裡的「大盤轉空頭不買新的」,還有一開始放多少錢"],"warn":"2022~2026 這 4 年停手大多比較好,拉長到 2011~2026 這 16 年就反過來 —— 結論會隨年代變,所以不拿來改規則;外資期貨的資料只有 2018 年起。","trig":["fifut_cut"],"lead":true},{"k":"crash-warn","r":86,"myth":true,"q":"台股大跌之前有沒有徵兆?看到「崩盤前兆」就先賣?","do":["平常就把部位放在跌一半也睡得著的大小","⛔ 不要因為「崩盤前兆」的說法就全部賣掉","手上的照出場規則走;大盤轉空只是先不買新的"],"warn":"這是用加權指數算的,個股通常跌得更深;個股家數那類的徵兆只有 2010 年起、而且只算到現在還在的股票。","trig":["idx_drop3","crash20"],"lead":false},{"k":"dip-buy-0050","r":75,"myth":true,"q":"大盤大跌那天,是撿便宜的好時機嗎?要一次買還是分批買?平常要不要存錢等大跌?","do":["大跌第一天不用急著撿 —— 跟隨便一天買差不多","同一段跌勢第二次又跌 ≥3%(恐慌加深)那天,2010~2026 這 16 年 10 次裡 8 次 20 天後比較好,但次數太少只能參考","手上有閒錢決定要買 0050,一次買比分批買、等更低再買好","每月的定期定額照常扣,不要停下來存錢等大跌"],"warn":"台股長期是往上的,所以「早點買」本來就比較有利。拉長到 2000 年起(含 2000~2002、2008 兩段跌很多年的盤)再看一次:分批買贏一次買的次數變多,但平均還是一次買比較多;跌 ≥3% 那天買,2013 年以前其實比隨便一天差、之後才變好,所以不能當規律。個股跌深不在這裡,看「跌停後收紅」那篇。","trig":["crash20","floor300"],"lead":false},{"k":"premkt-bear-day","r":73,"myth":true,"q":"盤前體檢 0 分、全市場一片綠,那天買什麼比較會漲?開盤或 5 分鐘後進場當沖、隔天開盤賣可以嗎?","do":["分數很低那天不要為了「撿反彈」開盤就進場","開盤跌很多的股票,開盤那一筆看起來很便宜,5 分鐘後通常就沒那麼便宜了","手上的股票照原本的出場規則走,不用因為分數低就先賣","真的想做,隔天再看,不要當天衝"],"warn":"分數裡有一半(外資期貨、夜盤、法人、大盤技術分數)沒有歷史資料,這裡只用美股、費半、台積電 ADR、日韓股、台幣那一半;所以「0 分」本身沒辦法直接測,只能測「海外那一半也很差」的日子。","trig":["premkt_low"],"lead":false},{"k":"lu-touch","r":72,"myth":true,"q":"盤中漲停打開、又攻上去、又打開,收盤沒鎖住,隔天會再衝嗎?","do":["收盤沒鎖住的,不要收盤追進去等隔天","手上本來就有的,照原本的出場規則走,不用因為打開就先賣","收盤有鎖回漲停的,看「手上的股票收盤鎖漲停,明天怎麼賣」那篇"],"warn":"只看了成交量大的熱門股;5 分鐘線看不到 5 分鐘內的開開鎖鎖。抱 10 天有的會漲回來,但看不出比別的大漲股好。","trig":["lu_touch"],"lead":false},{"k":"myth-retail-catch","r":84,"myth":true,"q":"融資一直增加、法人一直賣(「散戶在接、大戶在倒貨」),之後會跌嗎?","do":["看到「散戶在接、法人在賣」不要急著賣","反過來「散戶在逃、法人在接」也不要當買點","手上的照你的出場規則走,買點照決策台那套"],"warn":"這裡算的是收盤後公布的融資與三大法人;一天之內的大單、分點沒有算在裡面。前半段(2012~2019)略差、後半段(2019~2026)略好,兩段都不夠大。","trig":["retail_catch"],"lead":false},{"k":"margin-call-bounce","r":66,"myth":true,"q":"融資斷頭、恐慌殺盤之後,是撿便宜的時候嗎?","do":["不要因為「斷頭了」就去撿","手上剛好有的,照你的出場規則走,不用另外加碼攤平","想吃大跌後的反彈,0050 抱著就吃得到"],"warn":"斷頭有一半集中在少數幾個大跌月份(2025 年 4 月、2020 年 3 月、2015 年 8 月…),次數看起來多,其實是那幾次;追繳線是用融資增加的日子推估的,不是任何人真正的成本。","trig":["margin_call"],"lead":false},{"k":"downday-lu","r":79,"myth":true,"q":"大盤大跌那天還能漲停的股票,是不是最強、可以追?","do":["大盤大跌那天的逆勢漲停股,隔天不要開盤去追","手上本來就有的,照你的出場規則走(收盤鎖漲停可以留到隔天看開盤)","想找強勢股,照決策台的規則挑,不要用『大跌日抗跌』當理由"],"warn":"隔天一開盤就漲停、根本買不到的有 2,494 次 —— 買得到的通常是開出來之後就沒力的那種。","trig":["lu_fav"],"lead":false},{"k":"myth-revday","r":44,"myth":true,"q":"每個月 10 號公布營收那幾天,股票比較會漲(或跌)嗎?","do":["營收公布那幾天照原本的規則走","要看的是營收本身有沒有在加速,不是公布的日子","那幾天比較晃,停損別設太近"],"warn":"這是全市場的平均;個別公司的營收好壞當然會讓它當天大漲大跌。","trig":["rev_day"],"lead":false},{"k":"fi-trust-sync","r":64,"myth":true,"q":"外資連續買好幾天、投信也跟著買,是不是比較會漲?","do":["不要因為「外資投信一起連買」就買","手上有的照原本的賣出規則走","買點照決策台那套"],"warn":"2026 年看起來不錯,但 2012、2016、2018、2022、2023 那幾年是負的 —— 只看最近一年會以為有用。","trig":["fi_streak5"],"lead":false},{"k":"bear-exit","r":78,"myth":true,"q":"大盤進入空頭,手上的股票是不是要先全部賣掉?","do":["空頭時不買新的","手上的照出場規則走","不要在空頭那天一口氣全部賣掉"],"warn":"這段時間只有一次大空頭。","trig":["bear_on"],"lead":false},{"k":"myth-fistreak","r":79,"myth":true,"q":"外資連續買超好幾天,是不是會漲?","do":["不要只因為外資連買就進場","外資投信一起連買也不要","買點照決策台那套"],"warn":"這是收盤後才公布的法人買賣超;只測了「連買」,連賣沒測。","trig":["fi_streak5"],"lead":false},{"k":"myth-nearma20","r":89,"myth":true,"q":"差一點就站上月線,是不是快噴了?","do":["看到「差 1% 就站上月線」不要讀成快噴了","兩種情況都不能當買點","買點照決策台那套"],"warn":"這段時間偏多頭,走完下一次空頭會再驗一次。","trig":["near_ma20"],"lead":false},{"k":"myth-shortsq","r":77,"myth":true,"q":"券資比很高,是不是會軋空、可以買?","do":["不要因為券資比高就買","也不要因為券資比高就放空","買點照決策台那套"],"warn":"這段時間大多是多頭;但之前一段空頭也測過,一樣沒有東西。","trig":["short_hi"],"lead":false},{"k":"myth-crashwiden","r":79,"myth":true,"q":"台股大跌那天跌破出場線,是不是該放寬、等它彈回來?","do":["大跌那天跌破出場線,照規則賣","不要等「明天就會彈回來」","真的想少被洗,改用比較寬的出場規則,而不是臨時放寬"],"warn":"這段時間只有一次大空頭。","trig":["crash20"],"lead":false},{"k":"myth-lockprofit","r":93,"myth":true,"q":"賺了要先賣一半「落袋為安」嗎?","do":["不要設「賺 10% 就賣」","不要「賺了先賣一半」","把保住獲利的工作交給「從最高點退一段就賣」那條"],"warn":"看著獲利縮水很難受,這是這套方法最難做到的一點。","trig":["gain20"],"lead":false},{"k":"myth-beartocash","r":91,"myth":true,"q":"遇到空頭,是不是該先賣掉換現金?","do":["長期部位就抱著","真的怕,就一開始少買一點","短線部位照決策台的賣法,不用全賣"],"warn":"它唯一的好處是中途賠得少,但那大部分是因為錢根本不在市場裡。","trig":["bear_on"],"lead":false},{"k":"myth-overheat","r":97,"myth":true,"q":"漲多了「過熱」要先賣,等回檔再買?","do":["不要因為「漲太多」就先賣","不要等大跌回檔才敢買強勢股","賣的時機交給賣出規則(從高點退一段、最多抱 20 天)"],"warn":"這不代表高檔股不會跌,只是「漲多」本身不是賣出理由。","trig":["gain20"],"lead":false},{"k":"myth-ma20stop","r":95,"myth":true,"q":"跌破月線就要停損?","do":["不要把「跌破月線」當成賣出理由","照決策台那三條賣出條件走","反過來「低檔跌破月線是買點」也不成立,不要去接"],"warn":"如果你用的是別的賣出規則(例如跌破 20 天最低),照那條走即可。","trig":["ma20_break"],"lead":false},{"k":"calendar-filter","r":76,"myth":true,"q":"結算日、連假前,要不要先賣掉或先不買?","do":["結算日、連假前不用特別先賣或停買","照你原本的賣出條件走","那幾天如果比較晃,部位小一點、停損別設太近"],"warn":"這只說「不用避開」;那幾天可能比較晃,但會漲還是會跌量不出來,⛔ 別拿來押方向。","trig":["holiday_pre","settle"],"lead":false}]},
+    _COL_TRIG: {"asof":"2026-10-30","cols":[{"k":"lu-gapdown","r":67,"myth":false,"q":"昨天收盤鎖漲停的股票,今天開盤卻開低,可以接嗎?","do":["只看兩種:今天開低 5% 以上,或昨天是「量縮鎖死」(量只有平常六成以下)又開低 1% 以上","開低 1~5% 的一般漲停股不用看:等到真的買得到的時候,已經沒東西了","開盤後 5 分鐘左右買,當天尾盤賣;要能現股當沖才做得到","連續第 2 根以上漲停之後的開低,不算"],"warn":"這是當沖,不是抱著的策略。開盤那一瞬間的價你通常買不到;改成開盤 5 分鐘後才買,平均只剩一點點,而且一半的日子是賠的,只有上面兩種還留得住。","trig":["lu_held","lu_fav"],"lead":false},{"k":"crash-recovery","r":38,"myth":false,"q":"加權跌 20%,要多久才回來?","do":["準備好一年多沒回本的耐心","跌到 -20% 那天不是底,中間值還會再跌到 -29% 左右","不要因為跌 20% 就加碼,只有 5 次不夠當訊號"],"warn":"2010~2026 這 16 年只有 5 次,每次原因都不同;「全部回來了」不代表下次一定會。","trig":["crash20"],"lead":false},{"k":"limitup-hold","r":66,"myth":false,"q":"手上的股票收盤鎖漲停,明天怎麼賣?","do":["當天先不要賣,留到明天","明天開盤就在漲停 → 繼續抱,收盤沒鎖住就尾盤賣","明天開高但沒漲停 → 開盤就賣;開平或開低 → 別在開盤殺,尾盤再賣"],"warn":"這只給已經持有的人,鎖住的漲停現在去掛買多半買不到;最差的一成還是會賠 2~4%。","trig":["lu_held"],"lead":false},{"k":"breakout-exit","r":67,"myth":false,"q":"股票創新高之後,要抱多久?","do":["創新高後不要因為「跌破 5 日線」就賣,那樣幾乎白做","改用「收盤跌破近 20 天最低價」或目前預設的賣法,讓它多跑一點","不用等爆量才算數,創新高那天本來就大多有量","創一年新高、上方沒有套牢的也一樣:照目前預設的賣法走,不用另外一套"],"warn":"這樣做十次大概只有三次賺,一半以上是停損出場;整套會賺全靠少數抱得夠久的大賺,要能忍受連續停損。","trig":["nh60_held"],"lead":false},{"k":"rev-accel","r":69,"myth":false,"q":"營收在成長,要看什麼才算真的好?","do":["看「這一季營收年增率」有沒有比上一季更高(在加速)","已經符合 🧬 的股票裡,營收在加速的排前面;每股盈餘也在成長更好","財報一公布就能用,不用等下一季"],"warn":"它提高的是平均,不是比較會抓到飆股;放進整套買賣去算,總共賺的錢沒有比「隨便刪掉同樣多的股票」多,所以沒有變成預設,好處只是中途少賠一些。","trig":["rev_day"],"lead":false},{"k":"avoid-desctri","r":59,"myth":false,"q":"高點越來越低、低點卻持平,代表什麼?","do":["這叫下降三角形,之後通常偏弱","手上有的別加碼,照原本的賣法走;空手的別接","個股總覽「重點判讀」符合時會跳出來"],"warn":"這不是放空訊號,也不能反過來把「高點持平、低點墊高」當買點(那個沒測過);意思是比隨便挑一天差,不是一定會跌。","trig":["desc_tri"],"lead":false},{"k":"exdiv-hold","r":45,"myth":false,"q":"要不要參加除息?","do":["殖利率不到 2% 的不用在意","要股利:除息前一天收盤前買進(除息當天買領不到)","不想繳股利的稅:除息前賣掉"],"warn":"抱過除息賺到的幾乎全是股利本身,股價通常不會額外補漲;那筆股利還要繳稅和二代健保。","trig":["exdiv"],"lead":false},{"k":"dip-hot-3pct","r":37,"myth":false,"q":"大盤一天跌超過 3%,有沒有辦法撿到便宜?要撿哪些?","do":["只在加權一天跌超過 3% 的日子才撿(跌 2% 那種沒有差)","撿「最近一個月成交金額最大的熱門股裡,今天跌最多的 10 檔」,隔天開盤買、抱 20~40 天","挑「最近漲最兇的前幾名」起伏最大,不比熱門股全部好多少","只拿一部分錢做(例如 3 成),其餘照原本放 0050"],"warn":"2011~2026 這 16 年只有約 20 次這種日子,而且 5 次裡大約有 1 次還是賠(最慘的一次 20 天賠約一成);遇到一路跌好幾個月的大空頭,會接在半山腰。","trig":["idx_drop3"],"lead":false},{"k":"regime-ldred","r":77,"myth":false,"q":"大盤空頭的時候,有什麼能做?","do":["空頭時決策台不開新倉,大部分招式先停","唯一例外:大盤一起跌造成的跌停,隔天收大紅,再隔天開盤買、抱 20 天","其餘的錢停在 0050 或現金,等大盤轉好"],"warn":"空頭時能做的機會很少,一個月可能只有幾次;不要為了「有事做」硬找。","trig":["bear_on"],"lead":false},{"k":"regime-two","r":56,"myth":false,"q":"多頭和空頭要用一樣的方法嗎?","do":["大盤在季線上而且往上:追強勢股","大盤在季線下而且往下:追強的那些全部失效,跌深的反而有機會","兩種方法不要混著用"],"warn":"這是固定抱 20 天量出來的;實際有停損和賣法時,空頭裡追強是「少賺」不是「賠」,不要直接拿它當開關。","trig":["bear_on","bull_on"],"lead":false},{"k":"rebuy","r":16,"myth":false,"q":"賣掉之後又漲回來,要買回嗎?","do":["App 現在不會幫你買回","這是在舊賣法(跌破 5 日線)上測的","每買回一次就多付一次手續費"],"warn":"2022 和 2025 年是負的,沒有每一年都好,所以沒有採用。","trig":["rebuy"],"lead":false},{"k":"nh60-retest","r":71,"myth":false,"q":"創新高之後回檔,還能不能追?","do":["條件:最近創了 60 天新高,回檔沒有跌破,今天又收紅站回來","看到就當作「這檔偏強」的佐證","買賣價位仍以總覽或決策台為準,不要因為這條加大金額"],"warn":"效果不大,扣掉手續費後平均只剩約 0.3%;拉長到 2010~2026 這 16 年看更薄,而且有兩年是負的 —— 只能當佐證,不能當買進理由。","trig":["nh60_retest"],"lead":false},{"k":"exit-widen","r":20,"myth":false,"q":"跌破 5 日線就賣好嗎?","do":["不要,太早賣會把贏家洗掉","放寬的賣法每一種都賺比較多","目前預設的賣法就是放寬那一族,看「買了之後什麼時候賣?」那篇"],"warn":"這條的數字是舊算法(停損假設剛好賣在停損價),修正後差距變小,但方向不變。","trig":["ma5_break"],"lead":false},{"k":"avoid-attn30","r":61,"myth":false,"q":"股票被列「注意股」,要賣嗎?","do":["看進注意股之前 5 天漲了多少:漲 30% 以上才是警訊","手上有就分批減碼,沒有的別追","其他情況進注意股影響很小,不用為了它賣"],"warn":"這不是放空訊號(容易被軋);「跌著進注意股」看起來會反彈,但那是從四組裡挑出來的,不可當買點。","trig":["attn"],"lead":false},{"k":"premkt-score","r":55,"myth":false,"q":"盤前體檢分數準嗎?要怎麼用?","do":["分數 65 以上:照原本計畫做,⛔ 別在開盤追高","分數 35 以下:新買的先縮小部位、別在開盤前掛大單","不要因為分數低就整天不做,手上的照你的出場規則走","它只講開盤高低,開盤之後怎麼走它不知道"],"warn":"它講的是大盤開盤,不是挑哪一檔;開盤之後到收盤,分數高的日子跟分數低的日子幾乎一樣(扣完手續費是負的),⛔ 不要拿它決定開盤後要不要追。","trig":["premkt_low"],"lead":false},{"k":"ld-redk","r":80,"myth":false,"q":"跌停之後可以撿嗎?","do":["跌停當天不要接","等隔一天收一根漲 3% 以上的紅 K","再隔一天開盤買"],"warn":"只有小紅 K(漲不到 3%)的不算;而且要先看是不是大盤一起跌造成的(見「怎麼分辨能不能碰」那篇)。","trig":["ld_redk"],"lead":false},{"k":"ld-market","r":79,"myth":false,"q":"跌停的股票,怎麼分辨能不能碰?","do":["先看跌停那天大盤有沒有也大跌","大盤一起跌造成的:可以照「跌停之後可以撿嗎」那篇的方法等紅 K","大盤沒跌、只有它自己跌停(通常是公司出事):不要碰"],"warn":"「大盤一起跌」要看加權指數當天也明顯下跌,不是只有小跌。","trig":["ld_redk"],"lead":false},{"k":"mkt-floor300","r":58,"myth":false,"q":"全市場一堆股票跌停,是不是該逃?","do":["當天跌到接近跌停的股票超過 300 檔,大盤短線常常是低點","可以開始找買點、把部位慢慢加回來","這是看大盤用的,不能拿來挑個股"],"warn":"","trig":["floor300"],"lead":false},{"k":"lu-nextday","r":45,"myth":false,"q":"昨天漲停,今天可以追嗎?","do":["昨天漲停、今天成交量中等(週轉率 1~3%)才算","只做今天,收盤前一定要賣","量太大的反而比較差"],"warn":"抱到 3~5 天就變成虧損,別當波段抱;這個數字還沒扣當沖成本。","trig":["lu_fav"],"lead":false},{"k":"holiday-vol","r":38,"myth":false,"q":"連假後第一天要注意什麼?","do":["連假、週末之後第一天波動比較大","那天停損放寬一點或部位小一點","不代表會漲或會跌"],"warn":"只講會不會晃,不講方向;方向試過量不出來。","trig":["holiday_post"],"lead":false},{"k":"quant-lab","r":64,"myth":true,"q":"KD 黃金交叉、跳空開高、帶量突破、外資連買…這些常見的買點,照著買有賺嗎?","do":["⛔ 別因為 KD 黃金交叉、跳空開高、帶量突破、外資連買就買 —— 這些常見的買點照著追,扣完手續費和稅通常不划算","尤其跳空開高走高、帶量突破 20 日新高、融資減少站上月線這 3 種:看到了先別追","要買照決策台那一套;手上的照你的出場規則走"],"warn":"這裡是一筆一筆的平均(隔天收盤買、吊燈 ATR 2 倍出場、最長 20 天),⛔ 不是整套資金的總報酬;處置只有上市的、法人 2012 起、月營收 2009 起。換別的出場(固定抱 10 天)結論一樣。","trig":["qlab_trap"],"lead":false},{"k":"confcall-habit","r":62,"myth":true,"q":"有些公司的法說會常常開完就大跌(俗稱「法會」),是董事長的慣性嗎?下一場也會這樣嗎?","do":["看這檔過去幾場、平常隨便兩天、一般股票三個比例一起看 —— 平常就很會動的,法說會那兩天當然也很會動","⛔ 不要因為「這家常常法會」就在法說會前先賣,或反過來搶著買","手上的照你的出場規則走;單筆別押太重,那兩天常常晃比較大"],"warn":"這裡只算開完那兩天跟大盤比,⛔ 沒看法說會講了什麼;除權息落在那兩天的已經用參考價接回去。法說會一覽表從 2021-07 才有,每家只有幾場到二十幾場,場數少的那個比例跳很大。","trig":["cc_soon"],"lead":false},{"k":"combo-ccwin","r":95,"myth":true,"q":"手上或想買的股票快開法說會了,要先賣掉、或等開完再買嗎?","do":["⛔ 不用因為快開法說會就先賣,手上的照你原本的出場規則走","要買的照原本的買點,⛔ 不用特別等法說會開完","法說會隔天大漲大跌,大約兩天就反映完 —— ⛔ 過幾天才追進去"],"warn":"法說會前後股價常常動得比較大;這裡看的是「要不要避開」,沒有看法說會講了什麼(講的內容也看不出之後會漲還會跌)。","trig":["cc_soon"],"lead":false},{"k":"fi-burst","r":74,"myth":true,"q":"外資突然一大筆買超、那天還漲停(像富喬),是不是有人知道什麼、可以跟?","do":["看到外資突然一大筆買超,不要隔天開盤去追","大盤跌那天的突然大買、逆勢漲停,也不要追","選股照決策台那套;名單裡剛好有這種股票,照規則買,不用多買也不用跳過"],"warn":"這是收盤後才公布的法人買賣超;盤中看到大單那種沒有測。外資買得多的股票,之後的平均報酬看起來比較高,但那是因為它們本來就比較會動,跟同一天其他股票比就沒有了。","trig":["fi_burst"],"lead":false},{"k":"hightop-sell","r":87,"myth":true,"q":"大盤在高點、新聞說外資拋售、今天又收綠,要不要先停手不買?","do":["照領頭羊的規則換倉,不用因為外資拋售的新聞停手","外資台指期「急遽加空」亮了也照做 —— 照著停買反而少賺最多","真正的防守是規則裡的「大盤轉空頭不買新的」,還有一開始放多少錢"],"warn":"2022~2026 這 4 年停手大多比較好,拉長到 2011~2026 這 16 年就反過來 —— 結論會隨年代變,所以不拿來改規則;外資期貨的資料只有 2018 年起。","trig":["fifut_cut"],"lead":true},{"k":"crash-warn","r":86,"myth":true,"q":"台股大跌之前有沒有徵兆?看到「崩盤前兆」就先賣?","do":["平常就把部位放在跌一半也睡得著的大小","⛔ 不要因為「崩盤前兆」的說法就全部賣掉","手上的照出場規則走;大盤轉空只是先不買新的"],"warn":"這是用加權指數算的,個股通常跌得更深;個股家數那類的徵兆只有 2010 年起、而且只算到現在還在的股票。","trig":["idx_drop3","crash20"],"lead":false},{"k":"dip-buy-0050","r":75,"myth":true,"q":"大盤大跌那天,是撿便宜的好時機嗎?要一次買還是分批買?平常要不要存錢等大跌?","do":["大跌第一天不用急著撿 —— 跟隨便一天買差不多","同一段跌勢第二次又跌 ≥3%(恐慌加深)那天,2010~2026 這 16 年 10 次裡 8 次 20 天後比較好,但次數太少只能參考","手上有閒錢決定要買 0050,一次買比分批買、等更低再買好","每月的定期定額照常扣,不要停下來存錢等大跌"],"warn":"台股長期是往上的,所以「早點買」本來就比較有利。拉長到 2000 年起(含 2000~2002、2008 兩段跌很多年的盤)再看一次:分批買贏一次買的次數變多,但平均還是一次買比較多;跌 ≥3% 那天買,2013 年以前其實比隨便一天差、之後才變好,所以不能當規律。個股跌深不在這裡,看「跌停後收紅」那篇。","trig":["crash20","floor300"],"lead":false},{"k":"premkt-bear-day","r":73,"myth":true,"q":"盤前體檢 0 分、全市場一片綠,那天買什麼比較會漲?開盤或 5 分鐘後進場當沖、隔天開盤賣可以嗎?","do":["分數很低那天不要為了「撿反彈」開盤就進場","開盤跌很多的股票,開盤那一筆看起來很便宜,5 分鐘後通常就沒那麼便宜了","手上的股票照原本的出場規則走,不用因為分數低就先賣","真的想做,隔天再看,不要當天衝"],"warn":"分數裡有一半(外資期貨、夜盤、法人、大盤技術分數)沒有歷史資料,這裡只用美股、費半、台積電 ADR、日韓股、台幣那一半;所以「0 分」本身沒辦法直接測,只能測「海外那一半也很差」的日子。","trig":["premkt_low"],"lead":false},{"k":"lu-touch","r":72,"myth":true,"q":"盤中漲停打開、又攻上去、又打開,收盤沒鎖住,隔天會再衝嗎?","do":["收盤沒鎖住的,不要收盤追進去等隔天","手上本來就有的,照原本的出場規則走,不用因為打開就先賣","收盤有鎖回漲停的,看「手上的股票收盤鎖漲停,明天怎麼賣」那篇"],"warn":"只看了成交量大的熱門股;5 分鐘線看不到 5 分鐘內的開開鎖鎖。抱 10 天有的會漲回來,但看不出比別的大漲股好。","trig":["lu_touch"],"lead":false},{"k":"myth-retail-catch","r":84,"myth":true,"q":"融資一直增加、法人一直賣(「散戶在接、大戶在倒貨」),之後會跌嗎?","do":["看到「散戶在接、法人在賣」不要急著賣","反過來「散戶在逃、法人在接」也不要當買點","手上的照你的出場規則走,買點照決策台那套"],"warn":"這裡算的是收盤後公布的融資與三大法人;一天之內的大單、分點沒有算在裡面。前半段(2012~2019)略差、後半段(2019~2026)略好,兩段都不夠大。","trig":["retail_catch"],"lead":false},{"k":"margin-call-bounce","r":66,"myth":true,"q":"融資斷頭、恐慌殺盤之後,是撿便宜的時候嗎?","do":["不要因為「斷頭了」就去撿","手上剛好有的,照你的出場規則走,不用另外加碼攤平","想吃大跌後的反彈,0050 抱著就吃得到"],"warn":"斷頭有一半集中在少數幾個大跌月份(2025 年 4 月、2020 年 3 月、2015 年 8 月…),次數看起來多,其實是那幾次;追繳線是用融資增加的日子推估的,不是任何人真正的成本。","trig":["margin_call"],"lead":false},{"k":"downday-lu","r":79,"myth":true,"q":"大盤大跌那天還能漲停的股票,是不是最強、可以追?","do":["大盤大跌那天的逆勢漲停股,隔天不要開盤去追","手上本來就有的,照你的出場規則走(收盤鎖漲停可以留到隔天看開盤)","想找強勢股,照決策台的規則挑,不要用『大跌日抗跌』當理由"],"warn":"隔天一開盤就漲停、根本買不到的有 2,494 次 —— 買得到的通常是開出來之後就沒力的那種。","trig":["lu_fav"],"lead":false},{"k":"myth-revday","r":44,"myth":true,"q":"每個月 10 號公布營收那幾天,股票比較會漲(或跌)嗎?","do":["營收公布那幾天照原本的規則走","要看的是營收本身有沒有在加速,不是公布的日子","那幾天比較晃,停損別設太近"],"warn":"這是全市場的平均;個別公司的營收好壞當然會讓它當天大漲大跌。","trig":["rev_day"],"lead":false},{"k":"fi-trust-sync","r":64,"myth":true,"q":"外資連續買好幾天、投信也跟著買,是不是比較會漲?","do":["不要因為「外資投信一起連買」就買","手上有的照原本的賣出規則走","買點照決策台那套"],"warn":"2026 年看起來不錯,但 2012、2016、2018、2022、2023 那幾年是負的 —— 只看最近一年會以為有用。","trig":["fi_streak5"],"lead":false},{"k":"bear-exit","r":78,"myth":true,"q":"大盤進入空頭,手上的股票是不是要先全部賣掉?","do":["空頭時不買新的","手上的照出場規則走","不要在空頭那天一口氣全部賣掉"],"warn":"這段時間只有一次大空頭。","trig":["bear_on"],"lead":false},{"k":"myth-fistreak","r":79,"myth":true,"q":"外資連續買超好幾天,是不是會漲?","do":["不要只因為外資連買就進場","外資投信一起連買也不要","買點照決策台那套"],"warn":"這是收盤後才公布的法人買賣超;只測了「連買」,連賣沒測。","trig":["fi_streak5"],"lead":false},{"k":"myth-nearma20","r":89,"myth":true,"q":"差一點就站上月線,是不是快噴了?","do":["看到「差 1% 就站上月線」不要讀成快噴了","兩種情況都不能當買點","買點照決策台那套"],"warn":"這段時間偏多頭,走完下一次空頭會再驗一次。","trig":["near_ma20"],"lead":false},{"k":"myth-shortsq","r":77,"myth":true,"q":"券資比很高,是不是會軋空、可以買?","do":["不要因為券資比高就買","也不要因為券資比高就放空","買點照決策台那套"],"warn":"這段時間大多是多頭;但之前一段空頭也測過,一樣沒有東西。","trig":["short_hi"],"lead":false},{"k":"myth-crashwiden","r":79,"myth":true,"q":"台股大跌那天跌破出場線,是不是該放寬、等它彈回來?","do":["大跌那天跌破出場線,照規則賣","不要等「明天就會彈回來」","真的想少被洗,改用比較寬的出場規則,而不是臨時放寬"],"warn":"這段時間只有一次大空頭。","trig":["crash20"],"lead":false},{"k":"myth-lockprofit","r":93,"myth":true,"q":"賺了要先賣一半「落袋為安」嗎?","do":["不要設「賺 10% 就賣」","不要「賺了先賣一半」","把保住獲利的工作交給「從最高點退一段就賣」那條"],"warn":"看著獲利縮水很難受,這是這套方法最難做到的一點。","trig":["gain20"],"lead":false},{"k":"myth-beartocash","r":91,"myth":true,"q":"遇到空頭,是不是該先賣掉換現金?","do":["長期部位就抱著","真的怕,就一開始少買一點","短線部位照決策台的賣法,不用全賣"],"warn":"它唯一的好處是中途賠得少,但那大部分是因為錢根本不在市場裡。","trig":["bear_on"],"lead":false},{"k":"myth-overheat","r":97,"myth":true,"q":"漲多了「過熱」要先賣,等回檔再買?","do":["不要因為「漲太多」就先賣","不要等大跌回檔才敢買強勢股","賣的時機交給賣出規則(從高點退一段、最多抱 20 天)"],"warn":"這不代表高檔股不會跌,只是「漲多」本身不是賣出理由。","trig":["gain20"],"lead":false},{"k":"myth-ma20stop","r":95,"myth":true,"q":"跌破月線就要停損?","do":["不要把「跌破月線」當成賣出理由","照決策台那三條賣出條件走","反過來「低檔跌破月線是買點」也不成立,不要去接"],"warn":"如果你用的是別的賣出規則(例如跌破 20 天最低),照那條走即可。","trig":["ma20_break"],"lead":false},{"k":"calendar-filter","r":76,"myth":true,"q":"結算日、連假前,要不要先賣掉或先不買?","do":["結算日、連假前不用特別先賣或停買","照你原本的賣出條件走","那幾天如果比較晃,部位小一點、停損別設太近"],"warn":"這只說「不用避開」;那幾天可能比較晃,但會漲還是會跌量不出來,⛔ 別拿來押方向。","trig":["holiday_pre","settle"],"lead":false}]},
     // sc = 誰碰到:held 你的庫存 / fav 你的自選 / mkt 大盤 / date 日子(畫面照這個順序排,同一層再照專欄名次)
     _COL_TRIG_IDS: [
         { id: 'lu_held', sc: 'held' }, { id: 'ld_redk', sc: 'held' }, { id: 'attn', sc: 'held' }, { id: 'ma20_break', sc: 'held' },
@@ -47716,7 +47676,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } else if (plRatio < 1 && winRate < 55) {
             insight = `⚠️ <b>賺賠比 ${plRatio.toFixed(1)} 又勝率不高</b>:平均賺 ${avgWinPct.toFixed(1)}% 卻賠 ${Math.abs(avgLossPct).toFixed(1)}%——賺太少賠太多。停損要更快、停利要更有耐心。`;
             insightCls = 'text-orange-300';
-        } else if (winRate >= 50 && plRatio >= 1.5) {
+        } else if (this._wrEnough(n) && winRate >= 50 && plRatio >= 1.5) {   // 🪞 V79.9.8 未滿 10 筆 ⛔ 下「長期正期望」這種結論
             insight = `✅ <b>健康的交易習慣</b>:勝率 ${winRate.toFixed(0)}% + 賺賠比 ${plRatio.toFixed(1)}(賺的比賠的多)= 長期正期望,繼續保持紀律。`;
             insightCls = 'text-red-300';
         } else if (avgWinHold != null && avgLossHold != null) {
@@ -47734,6 +47694,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-[12px] font-black text-gray-100">📓 你的真實勝率鏡子 <span class="text-[9px] text-gray-500 font-normal">${n} 筆已平倉</span></span>
                 <button onclick="app._clearTradeLog()" class="text-[9px] text-gray-500 hover:text-red-300">清空</button>
             </div>
+            ${this._wrEnough(n) ? '' : `<div class="text-[10px] text-amber-200/90 leading-snug mb-1.5" data-mirrorfew="1">⏳ 只有 ${n} 筆,還太少 —— 再一兩筆就會讓下面的比例大幅改變,先當參考,⛔ 別當成你真的有幾成把握(滿 10 筆再看比較準)。</div>`}
             <div class="grid grid-cols-3 gap-1.5 text-center mb-1.5">
                 <div class="bg-[#0d1117] border border-[#30363d] rounded px-1 py-1.5"><div class="text-[9px] text-gray-500">勝率</div><div class="font-mono font-black text-base ${wrCls}">${winRate.toFixed(0)}%</div><div class="text-[8px] text-gray-500">${wins.length}勝 ${losses.length}敗</div></div>
                 <div class="bg-[#0d1117] border border-[#30363d] rounded px-1 py-1.5"><div class="text-[9px] text-gray-500">賺賠比</div><div class="font-mono font-black text-base ${plRatio >= 1.5 ? 'text-red-300' : plRatio >= 1 ? 'text-yellow-300' : 'text-green-300'}">${plRatio >= 99 ? '全賺' : plRatio.toFixed(1)}</div><div class="text-[8px] text-gray-500">賺${avgWinPct.toFixed(0)}%/賠${Math.abs(avgLossPct).toFixed(0)}%</div></div>
@@ -47744,16 +47705,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="text-[9px] text-gray-600 mt-1.5">💡 只算在編輯庫存按「🎯 賣出」的單,損益已扣買賣手續費與證交稅。純刪除不計入。這面鏡子照的是你自己——比任何訊號都重要。</div>`;
         return box.innerHTML;
     },
-    // 🪞 庫存股標題列那顆鈕:算出「N 筆 · 勝率 X%」讓使用者一眼知道有沒有東西可看
+    // 🪞 庫存股標題列那顆鈕:一眼知道有沒有東西可看(V79.9.8 起:未滿 10 筆「N 筆(還太少)」、滿了「N 筆 · 賺 W 筆」)
     _tradeMirrorBtnHtml() {
         const log = this._tradeLogNet();
         const n = log.length;
         let label = '還沒紀錄', cls = 'text-gray-400 border-[#30363d] bg-white/5';
+        // 🪞 V79.9.8 筆數太少 ⛔ 給百分比(使用者 10/30 截圖「3 筆・勝率 100%」紅字,而手上 5 檔全是虧的 = 看起來很準其實不知道)
+        //   未滿 `_wrEnough`(10 筆)→ 灰字「N 筆(還太少)」;滿了也只寫「N 筆・賺 W 筆」(⛔「勝率 X%」、⛔ 紅綠 —— 好壞不准用紅綠)
         if (n) {
             const w = log.filter(t => (+t.pnlNTD || 0) > 0).length;
-            const wr = Math.round(w / n * 100);
-            label = `${n} 筆 · 勝率 ${wr}%`;
-            cls = wr >= 50 ? 'text-red-300 border-red-500/40 bg-red-500/10' : 'text-yellow-300 border-yellow-500/40 bg-yellow-500/10';
+            label = this._wrEnough(n) ? `${n} 筆 · 賺 ${w} 筆` : `${n} 筆(還太少)`;
+            cls = 'text-gray-300 border-[#30363d] bg-white/5';
         }
         return `<button onclick="app._showTradeMirror(); app.vibrate(20); event.stopPropagation();" title="你自己的真實勝率、賺賠比、賺短賠長診斷" class="text-[10px] font-bold ${cls} border px-1.5 py-0.5 rounded leading-none flex-shrink-0 cursor-pointer transition-colors">🪞 勝率鏡子 <span class="font-mono">${label}</span></button>`;
     },

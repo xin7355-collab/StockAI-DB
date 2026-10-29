@@ -2855,7 +2855,7 @@ def fetch_taifex_tx_now():
         if _v is not None and _c is not None:
             return {"price": round(float(_v), 2), "chg": _c, "est": False,
                     "date": _YF_LAST_DATE.get("^TXF=F"), "src": "yfinance ^TXF=F(盤中)",
-                    "error": None}
+                    "sess": "yf", "error": None}
     except Exception as e:
         print(f"   ⚠️ 台指期盤中取價失敗:{str(e)[:70]} → 改試日線")
     try:
@@ -2878,22 +2878,24 @@ def fetch_taifex_tx_now():
                     except Exception:
                         pass
                     return {"price": round(last, 2), "chg": chg, "est": False,
-                            "date": _d, "src": "yfinance ^TXF=F", "error": None}
+                            "date": _d, "src": "yfinance ^TXF=F", "sess": "day", "error": None}
     except Exception as e:
         print(f"   ⚠️ 台指期 yfinance 失敗:{str(e)[:80]} → 改用 TAIFEX 官方 OpenAPI")
     # ② V27.3 — yfinance 失敗 → TAIFEX 官方 OpenAPI 近月收盤
-    #   V54.x — 救「夜盤不計分」:OpenAPI 期貨行情本身就帶「漲跌」欄,直接取來算 chg%
-    #   → 有漲跌% 就 est=False(前端會計分);真的取不到才退回純價 est=True。
+    #   🐛 V79.9.8 OpenAPI 給的是**前一個交易日的日盤**(10/29 早上拿到的是 10/28 日盤 +2.47%,10/27 早上拿到 10/22 日盤),
+    #     那一天的漲跌前一天收盤早就反映了 —— ⛔ 不是夜盤。以前標 date=None、前端當成「台指期夜盤」算進盤前分數
+    #     (10/29 那天 +1.5 分、分析師那行寫「夜盤走強」= 講錯)。→ 一律標 sess='day' + 那一列自己的日期;
+    #     前端只有 sess === 'night'(真的夜盤)才計分(index renderMarketBriefing / pro _premktScore 同一條,test_premkt_formula)。
     try:
-        off, off_pct = _taifex_openapi_tx_close_change()
+        off, off_pct, off_d = _taifex_openapi_tx_close_change()
         if off and off > 0:
             if off_pct is not None:
-                print(f"   ✅ 台指期 OpenAPI 收盤 {off}、漲跌 {off_pct}% → 夜盤可計分")
+                print(f"   ✅ 台指期 OpenAPI 收盤 {off}、漲跌 {off_pct}%(資料日 {off_d or '不明'},日盤 → 盤前只列出來不計分)")
                 return {"price": round(float(off), 2), "chg": off_pct, "est": False,
-                        "date": None, "src": "TAIFEX OpenAPI", "error": None}
+                        "date": off_d, "src": "TAIFEX OpenAPI", "sess": "day", "error": None}
             print(f"   ✅ 台指期改用 TAIFEX 官方 OpenAPI 收盤:{off}(無漲跌欄,顯純價)")
             return {"price": round(float(off), 2), "chg": None, "est": True,
-                    "date": None, "src": "TAIFEX OpenAPI", "error": None}
+                    "date": off_d, "src": "TAIFEX OpenAPI", "sess": "day", "error": None}
     except Exception as e:
         return {"price": None, "chg": None, "est": False, "error": f"both failed: {str(e)[:60]}"}
     return {"price": None, "chg": None, "est": False, "error": "yfinance+openapi both empty"}
@@ -2954,13 +2956,13 @@ def _taifex_openapi_tx_fut_close():
 
 
 def _taifex_openapi_tx_close_change():
-    """V54.x — 官方 OpenAPI『期貨每日交易行情』→ TX 近月 (收盤價, 漲跌%)。失敗回 (None, None)。
-    救「台指期夜盤不計分」:yfinance ^TXF=F 失敗時,改直接從 OpenAPI 的漲跌欄算 %。
-    漲跌%:① 直接的百分比欄(ChangePercent/%Change/漲跌幅) ② 漲跌價 ÷ 昨收(收盤−漲跌價)。"""
+    """V54.x — 官方 OpenAPI『期貨每日交易行情』→ TX 近月 (收盤價, 漲跌%, 資料日)。失敗回 (None, None, None)。
+    yfinance ^TXF=F 失敗時的備援。漲跌%:① 直接的百分比欄(ChangePercent/%Change/漲跌幅) ② 漲跌價 ÷ 昨收(收盤−漲跌價)。
+    🐛 V79.9.8 這份是**前一個交易日的日盤**(⛔ 不是夜盤)→ 一定回「資料日」,呼叫端標 sess='day'。"""
     data, err = _taifex_openapi(["DailyMarketReportFut", "DailyMarketReportFutures"])
     if not data:
-        print(f"  [台指期夜盤 OpenAPI] 期貨行情端點失敗：{err}")
-        return None, None
+        print(f"  [台指期 OpenAPI] 期貨行情端點失敗：{err}")
+        return None, None, None
 
     def _numf(v):
         try:
@@ -2968,7 +2970,7 @@ def _taifex_openapi_tx_close_change():
         except Exception:
             return None
 
-    best_close, best_pct, best_oi = None, None, -1.0
+    best_close, best_pct, best_oi, best_date = None, None, -1.0, None
     for row in data:
         if not isinstance(row, dict):
             continue
@@ -2999,9 +3001,23 @@ def _taifex_openapi_tx_close_change():
               or _row_pick(row, '未平倉') or 0)
         if oi >= best_oi:
             best_oi, best_close, best_pct = oi, close, pct
+            best_date = _openapi_row_date(row)
     if best_close is None:
-        print(f"  [台指期夜盤 OpenAPI] 未匹配 TX 列；keys={list(data[0].keys())}")
-    return best_close, best_pct
+        print(f"  [台指期 OpenAPI] 未匹配 TX 列；keys={list(data[0].keys())}")
+        return None, None, None
+    return best_close, best_pct, best_date
+
+
+def _openapi_row_date(row):
+    """OpenAPI 一列的資料日(Date / 日期 / TradeDate;20261028 / 2026/10/28 → 2026-10-28)。讀不到回 None。
+    跟 _taifex_openapi_tx_fut_close 同一套欄名(V71.8.0)。"""
+    _, _d = _find_key(row, ['Date', '日期', 'TradeDate'])
+    if _d is None:
+        return None
+    _ds = str(_d).strip().replace('/', '-')
+    if len(_ds) == 8 and _ds.isdigit():
+        _ds = f"{_ds[:4]}-{_ds[4:6]}-{_ds[6:]}"
+    return _ds[:10] if len(_ds) >= 10 else None
 
 
 # 📌 V71.1.6 副產物:fetch_taifex_backwardation 內部本來就抓了 ^TWII 現貨收盤,

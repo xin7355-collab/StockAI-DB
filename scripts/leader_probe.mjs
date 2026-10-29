@@ -139,7 +139,12 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     //   xsFile = JSON {日期: {代號: 名次%(0~100,越大越好)}} ・xsMin = 名次 ≥ x 才買(null = 不濾)・xsUnk = 'keep' / 'drop'(那天沒值怎麼辦)
     //   xsSham = p:候選以機率 p 隨機不買(同通過率安慰劑,另一顆亂數;⛔ 不用 shamKeep —— 它會順便關掉位置門檻)
     //   xsW = w:排名改成 (1−w)×動能名次 + w×變因名次(0 = 照舊只看動能)
-    xsFile: '', xsMin: null, xsUnk: 'keep', xsSham: 0, xsW: 0 };
+    xsFile: '', xsMin: null, xsUnk: 'keep', xsSham: 0, xsW: 0,
+    // 📉 V79.9.8 上一期跌很多 → 這次換倉要不要先不換(使用者 10/30:「這期績效很差,明天不敢換股」)⛔ 不設時逐位相同(selftest ㊿g):
+    //   skipDrop = x(%):帳戶淨值從上一次換倉日收盤到這次換倉日收盤 ≤ x% → 這一次換倉不照規則做(⛔ 只用當天收盤以前就知道的事)
+    //   skipMode = 'hold':整段換倉都不做(手上的照抱、不賣不買 = 抱著舊名單)・'park':照規則賣掉的照賣,⛔ 不買新的(錢停 0050,同空頭守門)
+    //   skipSham = p:每一次換倉以機率 p 隨機不換(同樣 skipMode;安慰劑,另一顆亂數)—— 拿來比「是跌很多那幾次不換才有差,還是隨便哪幾次不換都一樣」
+    skipDrop: null, skipMode: 'hold', skipSham: 0 };
 // 🟥 V79.1.6 換倉日收盤就漲停 / 跌停的候選(使用者:「如果換倉日漲跌停,隔天還要買嗎?還是就都買 0050」)⛔ 不設時逐位相同(selftest ㊴):
 //   判定(同 luExit / dt_daily_probe.lockUp):換倉日收盤 ≥ 前收 ×(1+漲跌幅−1%)且收在最高 = 漲停;≤ 前收 ×(1−漲跌幅+1%)且收在最低 = 跌停;除權息日不判
 //   rkLu / rkLd = 'park':本來會買的那一檔不買,那一份錢留在 0050 到下一次換倉 ・'next':改買名單上的下一名
@@ -342,6 +347,11 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     if ((P.xsMin != null || P.xsW > 0) && !XS) throw new Error('xsMin / xsW 要配 xsFile');
     const xsAt = (sym, d) => { const r = XS && XS.get(d); const v = r ? r.get(sym) : undefined; return Number.isFinite(v) ? v : null; };
     const rand7 = rng(seed * 2971215073 + 17);
+    // 📉 V79.9.8 skipDrop / skipSham(⛔ 不設 → SKIP = false,下面整段不跑、亂數也不消耗)
+    if (P.skipMode !== 'hold' && P.skipMode !== 'park') throw new Error(`skipMode 只認 hold / park,收到 ${JSON.stringify(P.skipMode)}`);
+    const SKIP = P.skipDrop != null || P.skipSham > 0;
+    const rand8 = rng(seed * 433494437 + 31);
+    let lastRebVal = null;
     // 🏪 V79.2.4 bearIdx:空頭守門看哪個指數('' / 'twii' = 加權(預設,逐位相同)・'otc' 櫃買・'both' 兩個都空頭才算・'either' 任一空頭就算;櫃買那天沒資料(標 2)→ 退回加權並計數)
     if (P.bearIdx && !['twii', 'otc', 'both', 'either'].includes(P.bearIdx)) throw new Error(`bearIdx 只認 twii / otc / both / either,收到 ${JSON.stringify(P.bearIdx)}`);
     const bearAt = i => { const b = ctx.bear[i]; if (!P.bearIdx || P.bearIdx === 'twii') return b; const o = ctx.bearOtc ? ctx.bearOtc[i] : 2;
@@ -612,13 +622,24 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             if (buyL.length || pending) pending = { sell: pending ? pending.sell : [], buy: buyL };
             else parkCash(i);
         }
-        if (!DIP && ((i - s0 + P.phase) % P.R === 0 || (P.join === 'now' && i === s0)) && i + 1 < n) {
+        const rebNow = isReb && i + 1 < n;
+        let skipHold = false, skipPark = false;
+        if (rebNow && SKIP) {
+            const vNow = value(i);
+            if (lastRebVal > 0) {
+                st.rebN = (st.rebN || 0) + 1;
+                const hit = P.skipSham > 0 ? rand8() < P.skipSham : (vNow / lastRebVal - 1) * 100 <= P.skipDrop;
+                if (hit) { st.skipN = (st.skipN || 0) + 1; if (P.skipMode === 'park') skipPark = true; else skipHold = true; }
+            }
+            lastRebVal = vNow;
+        }
+        if (rebNow && !skipHold) {
             let trimNow = false;
             if (P.glide > 0 && glideAt === null && value(i) >= P.glide * contributed) { glideAt = i; P.core = P.glideCore ?? 0.5; trimNow = pos.size > 0; }   // 🌱 先衝再穩:之後只用一半錢,手上的也砍一半
             const { ranked, ok } = rankAt(i);
             const keepSet = new Set(ranked.slice(0, P.pick === 'all' ? ranked.length : P.N * P.hyst).map(S => S.sym));
             const sellL = [...pos.keys()].filter(s => !keepSet.has(s));
-            const bearNow = noBuy(i);
+            const bearNow = noBuy(i) || skipPark;
             if (PZ && PZ[i] === 1 && !(P.bear && bearAt(i))) st.pauseReb = (st.pauseReb || 0) + 1;   // 🛑 換倉日因為停手才沒買(空頭本來就不買的不算)
             const N = P.pick === 'all' ? Math.max(1, ranked.length) : P.N;
             let cand = ranked;
@@ -857,6 +878,8 @@ function runSet(ctx, name, cfg, startDate, paths = 17) {
         rk: (cfg.rkLu || cfg.rkLd || cfg.rkSham) ? { seen: med(r => r.st.rkSeen || 0), park: med(r => r.st.rkPark || 0), next: med(r => r.st.rkNext || 0), sham: med(r => r.st.rkSham || 0) } : null,
         gate: cfg.parkGate ? r2(res.reduce((a, r) => a + (r.st.gOpen || 0), 0) / Math.max(1, res.reduce((a, r) => a + (r.st.gTot || 0), 0)) * 100) : null,
         otcMiss: (cfg.bearIdx && cfg.bearIdx !== 'twii') ? med(r => r.st.otcMiss || 0) : null,   // 🏪 櫃買沒資料、退回加權的日子(中位)
+        skip: (cfg.skipDrop != null || cfg.skipSham > 0) ? { reb: med(r => r.st.rebN || 0), n: med(r => r.st.skipN || 0),   // 📉 V79.9.8 換倉幾次 / 跳過幾次(中位)+ 17 條合計的跳過比例
+            rate: r2(res.reduce((a, r) => a + (r.st.skipN || 0), 0) / Math.max(1, res.reduce((a, r) => a + (r.st.rebN || 0), 0)) * 100) } : null,
         trades: med(r => r.trades), win: med(r => r.win * 100), avg: med(r => r.avg * 100), turnYr: med(r => r.turnover / ((r.eq.length - 1) / 244)),
         years: Object.fromEntries(years.map(y => [y, { s: med(r => r.y[y]?.s ?? NaN), c: med(r => r.y[y]?.c ?? NaN) }])) };
 }
@@ -1353,6 +1376,18 @@ function selftest() {
     const fKeep = simulate({ ...ctxK, fin: () => null }, 100, { ...cfgK, finAcc: true, finUnk: 'keep' }, 7);
     t(fOff.trades > 0 && [fOn, fM4, fKeep].every(r => r.eq.every((v, k) => v === fOff.eq[k])) && fM6.trades === 0 && fY11.trades === 0 && fDrop.trades === 0 && (fKeep.st.finMiss || 0) > 0,
         `㊿f 營收加速門檻:全部通過 == 不濾、門檻 4 == 原樣、門檻 6 / 年增 11 → 0 筆、沒資料剔除 → 0 筆、finUnk keep == 不濾(沒資料 ${fKeep.st.finMiss || 0} 次)`);
+    // ㊿g 📉 V79.9.8 上一期跌很多先不換:不設 == skipDrop −1e9(永遠不觸發)== skipSham 0(逐位相同,而且 −1e9 那組真的有算換倉次數);
+    //      skipDrop +1e9 hold → 第一次之後每一次都跳過(skipN == rebN)、淨值跟不設不同、一筆都沒賣;skipSham 1 hold == skipDrop +1e9 hold(逐位相同);
+    //      park → 有跳過、照規則賣掉的照賣(筆數 > 0)、淨值跟不設不同;skipMode 打錯字 → throw
+    const kOff = simulate(ctxK, 100, cfgK, 7);
+    const kNever = simulate(ctxK, 100, { ...cfgK, skipDrop: -1e9 }, 7), kSh0 = simulate(ctxK, 100, { ...cfgK, skipSham: 0 }, 7);
+    const kAll = simulate(ctxK, 100, { ...cfgK, skipDrop: 1e9 }, 7), kShAll = simulate(ctxK, 100, { ...cfgK, skipSham: 1 }, 7);
+    const kPark = simulate(ctxK, 100, { ...cfgK, skipDrop: 1e9, skipMode: 'park' }, 7);
+    let thK = ''; try { simulate(ctxK, 100, { ...cfgK, skipDrop: -5, skipMode: 'holdd' }, 7); } catch (e) { thK = String(e.message); }
+    t([kNever, kSh0].every(r => r.eq.every((v, k) => v === kOff.eq[k])) && (kNever.st.rebN || 0) > 0 && !(kNever.st.skipN > 0)
+        && kAll.st.skipN > 0 && kAll.st.skipN === kAll.st.rebN && kAll.eq.at(-1) !== kOff.eq.at(-1) && kAll.trades === 0 && kOff.trades > 0
+        && kShAll.eq.every((v, k) => v === kAll.eq[k]) && kPark.st.skipN > 0 && kPark.trades > 0 && kPark.eq.at(-1) !== kOff.eq.at(-1) && /skipMode/.test(thK),
+        `㊿g 跌很多先不換:永遠不觸發 / sham 0 == 不設(換倉 ${kNever.st.rebN || 0} 次)、每次都跳過 hold → 0 筆賣出(${kAll.st.skipN}/${kAll.st.rebN})、sham 1 == 每次都跳過、park 照賣 ${kPark.trades} 筆、打錯字 throw`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
@@ -1460,6 +1495,7 @@ function main() {
         if (R.rk) console.log(`    🟥 換倉日漲跌停(中位):本來會買 ${R.rk.seen} 檔 ・不買放 0050 ${R.rk.park} ・換下一名 ${R.rk.next} ・安慰劑少買 ${R.rk.sham}`);
         if (R.gate != null) console.log(`    🅿️ 0050 閘門開著的日子 ${R.gate}%`);
         if (R.otcMiss != null) console.log(`    🏪 櫃買沒資料退回加權的日子 ${R.otcMiss}(中位)`);
+        if (R.skip) console.log(`    📉 換倉 ${R.skip.reb} 次裡跳過 ${R.skip.n} 次(中位;17 條合計跳過 ${R.skip.rate}%)・每條總報酬 ${R.eqEnd.join(' / ')}`);
         console.log('    逐年 ' + Object.entries(R.years).map(([y, v]) => `${y} ${r2(v.s)}/${r2(v.c)}`).join(' ・'));
     }
     if (out) fs.writeFileSync(out, JSON.stringify(res));

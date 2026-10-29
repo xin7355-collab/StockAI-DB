@@ -52,7 +52,10 @@ ok('渲染無 pageerror', errs.length === 0, errs[0] || '');
 const v = res.v;
 console.log(`   → 判定 ${v.icon} ${v.txt} ${v.passN}/${v.total}`);
 const need = Math.max(6, v.total - 2);
-ok('① 卡上明確標出「進場門檻 N/M」', res.txt.includes(`進場門檻 ${need}/${v.total}`), res.txt.slice(0, 200));
+// 🧭 V79.9.8 「進場門檻」→「成形門檻」:雷達只描述外面的狀況,⛔ 不是進場訊號(要不要買照決策台)
+ok('① 卡上明確標出「成形門檻 N/M」(⛔ 不可再叫「進場門檻」)', res.txt.includes(`成形門檻 ${need}/${v.total}`) && !res.txt.includes('進場門檻'), res.txt.slice(0, 200));
+ok('①b 只描述:⛔「才進場 / 分批回場 / 先 1/3 / 新單先等」,要寫「不是買賣訊號 / 不是叫你等」+ 照決策台',
+   !/才進場|分批回場|先\s*1\/3|新單先等/.test(res.txt) && /不是買賣訊號|不是叫你等/.test(res.txt) && /照決策台/.test(res.txt), (res.txt.match(/💡[\s\S]{0,160}/) || [''])[0]);
 ok('② 門檻不是全亮(M 條時門檻 = M−2,至少 6)', need < v.total, `need=${need} total=${v.total}`);
 if (v.passN >= Math.ceil(v.total / 2) && v.passN < need) {
     ok('③ 打底觀察中要講「再亮 X 條就翻」', /再亮 \d+ 條/.test(res.txt), res.txt.slice(0, 400));
