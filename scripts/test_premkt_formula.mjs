@@ -17,8 +17,9 @@
  *   ⑤ ⭐ 決定性對照:抓不到(null)⛔ 不可當成 0 —— 恐懼貪婪 null 以前會變「極度恐慌 +0.5 分」;同一組換成 10 → 才 +0.5
  *   ⑥ 接線:renderMarketBriefing 實跑的 `_preOpenCalc` == 直接呼叫 `_preOpenScore`(同一份輸入);每一項的說明 = 餵進去的那個值
  *   ⑥d ⑥e V79.9.8 台指期只有真的夜盤(sess 'night')才算分:前一天日盤 / 不知道哪一盤 → 0 分,那一格寫日期 +「日盤」+「只列出來」(決定性對照:同一個 +2.47% 換成夜盤 → +1.5)
+ *   ⑩ V79.9.9 美股四項 + 台積電 ADR 漲跌太小(|%| < 0.4)算 0 分:門檻 App == pro、邊界 0.39 → 0 / 0.4 → 照算;注入「拿掉門檻」必紅
  *   ⑨ V79.9.8 開盤發生率(`_PREMKT_OCC`)== 產業作戰室 `_PREMKT`;高分 / 低分那一行三個比例跟著換、⛔ 研究字樣
- *   INJECT=1:台積電權重 ×2→×1 / 恐懼貪婪 null 退回 `+x.fg` / 呼叫端把那斯達克跟 S&P 接反 / 亞股又算分 / 日盤又算分(App 或只改產業作戰室那份)/ 只改產業作戰室台積電權重 → 每一種都要紅
+ *   INJECT=1:漲跌太小也算分 / 台積電權重 ×2→×1 / 恐懼貪婪 null 退回 `+x.fg` / 呼叫端把那斯達克跟 S&P 接反 / 亞股又算分 / 日盤又算分(App 或只改產業作戰室那份)/ 只改產業作戰室台積電權重 → 每一種都要紅
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -29,16 +30,18 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 const INJ = {
-  tsmw: ["else _add('🏭 台積電 ADR', sign(tsmChg) * 2, tsmChg || '沒有資料');", "else _add('🏭 台積電 ADR', sign(tsmChg) * 1, tsmChg || '沒有資料');"],
+  tsmw: ["else _add('🏭 台積電 ADR', _sd(tsmChg, x.tsm) * 2, _dn(tsmChg, x.tsm));", "else _add('🏭 台積電 ADR', _sd(tsmChg, x.tsm) * 1, _dn(tsmChg, x.tsm));"],
   fgnull: ['const _fgN = _num(x.fg);', 'const _fgN = +x.fg;'],
   wiring: ["dji: usPct('dji'), ndx: usPct('nasdaq'), spx: usPct('sp500'),", "dji: usPct('dji'), ndx: usPct('sp500'), spx: usPct('nasdaq'),"],
   asia: ["const _asia = (nm, k, c) => _info(nm,", "const _asia = (nm, k, c) => _add(nm, Number.isFinite(c) ? Math.sign(c) : 0,"],
   txday: ["if (txNight && txNight.sess === 'night' && txNight.est !== true", "if (txNight && txNight.est !== true"],
-  occ: ["hi: { n: 1857, up: 48.7, flat: 45.9, dn: 5.3 }, mid: { n: 944", "hi: { n: 1857, up: 58.7, flat: 35.9, dn: 5.3 }, mid: { n: 944"],
+  occ: ['hi: { n: 1738, up: 50.7,', 'hi: { n: 1738, up: 99.9,'],
+  dead: ["const _dz = v => { const n = N(v); return n != null && Math.abs(Math.round(n * 100) / 100) < this._PREMKT_DEAD; };", "const _dz = v => false;"],
 };
 const PRO_SRC = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 // ⑧ 注入在 pro 那一份(只改一邊 → 兩邊對不上要紅)
-const INJ_PRO = { proTsm: ["if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, sg(tsm) * 2);", "if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, sg(tsm) * 1.5);"],
+const INJ_PRO = { proTsm: ["if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, dz(tsm) ? 0 : sg(tsm) * 2);", "if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, dz(tsm) ? 0 : sg(tsm) * 1.5);"],
+                  proDead: ["const DEAD = 0.4, dz = v => Math.abs(Math.round(v * 100) / 100) < DEAD;", "const DEAD = 0.4, dz = v => false;"],
                   proTxDay: ["if (tx && tx.sess === 'night' && tx.est !== true", "if (tx && tx.est !== true"] };
 
 const fnBody = html => {
@@ -85,7 +88,9 @@ async function run(html, proHtml = PRO_SRC) {
     // ② 單項權重 / 門檻
     const one = (k, v, nm, extra) => d(F(Object.assign({ [k]: v }, extra || {})), nm);
     o.w = {
-      dji_up: one('dji', 0.1, '🇺🇸 道瓊'), dji_dn: one('dji', -0.1, '🇺🇸 道瓊'), dji_0: one('dji', 0, '🇺🇸 道瓊'),
+      dji_up: one('dji', 0.4, '🇺🇸 道瓊'), dji_dn: one('dji', -0.4, '🇺🇸 道瓊'), dji_0: one('dji', 0, '🇺🇸 道瓊'),
+      // 🧪 V79.9.9 漲跌太小(|%| < 0.4)算 0 分:0.39 / −0.39 / 0.1 都是 0;0.4 起照算(邊界)
+      dji_039: one('dji', 0.39, '🇺🇸 道瓊'), dji_m039: one('dji', -0.39, '🇺🇸 道瓊'), sox_03: one('sox', 0.3, '💾 費半'), tsm_02: one('tsm', 0.2, '🏭 台積電 ADR'), spx_m01: one('spx', -0.1, '🇺🇸 S&P500'),
       ndx: one('ndx', -1, '🇺🇸 那斯達克'), spx: one('spx', 2, '🇺🇸 S&P500'), sox: one('sox', 1, '💾 費半'), sox_dn: one('sox', -1, '💾 費半'),
       tsm: one('tsm', 0.5, '🏭 台積電 ADR'), tsm_dn: one('tsm', -0.5, '🏭 台積電 ADR'),
       asx: one('asx', 0.3, '🔌 日月光 ADR'), umc: one('umc', -0.2, '🔌 聯電 ADR'), umc0: one('umc', 0, '🔌 聯電 ADR'),
@@ -160,14 +165,14 @@ async function run(html, proHtml = PRO_SRC) {
   ok('① 全部沒有資料 → 0 分 / 50 分;美股 5 項 + 亞股 3 項照樣列出', R.empty.s === 0 && R.empty.sPct === 50 && R.empty.n === 8
      && R.empty.notes.every(n => /^沒有資料/.test(n)), JSON.stringify(R.empty));
   const exp = {
-    dji_up: 1, dji_dn: -1, dji_0: 1, ndx: -1, spx: 1, sox: 1.5, sox_dn: -1.5, tsm: 2, tsm_dn: -2, asx: 0.5, umc: -0.5, umc0: 0,
+    dji_up: 1, dji_dn: -1, dji_0: 0, dji_039: 0, dji_m039: 0, sox_03: 0, tsm_02: 0, spx_m01: 0, ndx: -1, spx: 1, sox: 1.5, sox_dn: -1.5, tsm: 2, tsm_dn: -2, asx: 0.5, umc: -0.5, umc0: 0,
     vix31: -2, vix26: -1, vix22: 0, vix19: 1, nq_up: 1, nq_dn: -1, nq_flat: 0, ust_up: -0.5, ust_dn: 0.5, ust_mid: 0,
     n1: 1.5, n02: 1, nm02: -1, nm1: -2, n01: 0, nk03: 0, nk1: 0, nk5: 0, ksm1: 0, ksm03: 0, hs1: 0,
     fg80: -0.5, fg20: 0.5, fg50: 0, twd04: -1, twd015: -0.5, twdm04: 1, twdm015: 0.5, twd01: 0, twd5: -0.5,
     fx: -1, fx_no: undefined, cny: -0.5, cny_no: undefined, fut: 0, spot: 0, tot: 0, tech: 0,
   };
   const badW = Object.keys(exp).filter(k => W[k] !== exp[k]);
-  ok('② 每一項的權重 / 門檻(50 條;改任何一個都要先跑 premkt_app_probe)', badW.length === 0,
+  ok('② 每一項的權重 / 門檻(55 條;改任何一個都要先跑 premkt_app_probe)', badW.length === 0,
      badW.map(k => `${k}: ${W[k]} ≠ ${exp[k]}`).join(' ・'));
   ok('③ 完整例子:3 + 費半 1.5 + 台積電 2 + VIX 1 + 台幣升 0.5 = 8 分 ・90 / 100(日經 1.2 / 韓股 0.4 / 恆指 −0.5 只列出來)',
      R.full.s === 8 && R.full.sPct === 90 && R.full.raw === 90 && !R.full.clamped, JSON.stringify(R.full));
@@ -182,7 +187,7 @@ async function run(html, proHtml = PRO_SRC) {
   ok('⑥ 接線:實跑的 `_preOpenCalc` == 直接呼叫(同一份輸入)', R.wire.same, `\n  實跑 ${R.wire.C}\n  直接 ${R.wire.D}`);
   const N = R.wire.notes;
   ok('⑥b 每一項的說明 = 餵進去的那個值(⛔ 接反了會對不上)',
-     N['🇺🇸 道瓊'] === '+0.11%' && N['🇺🇸 那斯達克'] === '-0.22%' && N['🇺🇸 S&P500'] === '+0.33%' && N['💾 費半'] === '-0.44%'
+     N['🇺🇸 道瓊'] === '+0.11%・太小不計分' && N['🇺🇸 那斯達克'] === '-0.22%・太小不計分' && N['🇺🇸 S&P500'] === '+0.33%・太小不計分' && N['💾 費半'] === '-0.44%'
      && N['🏭 台積電 ADR'] === '+0.55%' && N['🔌 日月光 ADR'] === '0.66%' && N['🔌 聯電 ADR'] === '-0.77%' && N['😱 VIX'] === '26.5'
      && N['🔮 那指期夜盤'] === '0.88%' && N['📜 美債 10 年期'] === '-2.5%' && N['🌙 台指期夜盤'] === '-0.35%'
      && N['🇯🇵 日經'] === '1.11% ・不計分' && N['🇰🇷 韓股'] === '-0.45% ・不計分' && N['🇭🇰 恆指'] === '0.6% ・不計分' && !('🧭 恐懼貪婪' in N)
@@ -230,6 +235,12 @@ async function run(html, proHtml = PRO_SRC) {
     return out;
   }, fx);
   const proS = await pp.evaluate(F => F.map(mr => { const r = PRO._premktScore(mr); return r && !r.na ? r.s : null; }), fx);
+  // ⑩ V79.9.9 漲跌太小的門檻兩邊一樣(App `_PREMKT_DEAD` == pro `_premktScore` 裡的 DEAD),而且 300 組裡真的有落在 ±0.4 內的(⛔ 沒有就測不到)
+  const deadIdx = await page.evaluate(() => app._PREMKT_DEAD);
+  const deadPro = +((proHtml.match(/const DEAD = ([0-9.]+), dz = /) || [])[1]);
+  const deadNote = await pp.evaluate(() => PRO._PREMKT && PRO._PREMKT.dead ? PRO._PREMKT.dead.th : null);   // 作戰室說明文字用的那個數字也要一樣
+  const nSmall = fx.filter(m => ['dji_chg_pct', 'nasdaq_chg_pct', 'sp500_chg_pct', 'sox_chg_pct', 'tsm_chg_pct'].some(k => m[k] != null && Math.abs(m[k]) < 0.4)).length;
+  ok('⑩ 漲跌太小算 0 分的門檻:App `_PREMKT_DEAD` == 產業作戰室那份 == 0.4,而且 ⑧ 的 300 組裡有 ≥30 組會碰到', deadIdx === 0.4 && deadPro === deadIdx && deadNote === deadIdx && nSmall >= 30, `App ${deadIdx} / pro ${deadPro} / pro 說明 ${deadNote} / 碰到 ${nSmall} 組`);
   // ⑨ 跨檔:散戶 App 的開盤發生率 == 產業作戰室 `_PREMKT`(同一支探針的數字,⛔ 只改一邊)
   const proP = await pp.evaluate(() => JSON.parse(JSON.stringify(PRO._PREMKT)));
   const K = R.occK || {}, pick3 = b => b && [b.up, b.flat, b.dn, b.n == null ? null : b.n].join('/');
@@ -238,9 +249,10 @@ async function run(html, proHtml = PRO_SRC) {
      JSON.stringify({ idx: K, pro: { hi: proP.hi, mid: proP.mid, lo: proP.lo, all: proP.all, from: proP.from, days: proP.days } }));
   const { badOf } = await import(pathToFileURL(path.join(ROOT, 'scripts/lib_retailbad.mjs')).href);
   const hiT = R.occHi.t, loT = R.occLo.t;
-  ok('⑨b 高分那天那一行:開高 49% ・開平 46% ・開低 5% + 隨便一天 30 / 48 / 22 +「不是今天會漲或會跌」;低分那天換成開低 50%;⛔ 研究字樣',
-     R.occHi.p >= 65 && R.occLo.p <= 35 && /開高 49% ・開平 46% ・開低 5%/.test(hiT) && /隨便一天 30% \/ 48% \/ 22%/.test(hiT) && /不是今天會漲或會跌/.test(hiT)
-     && /開高 10% ・開平 41% ・開低 50%/.test(loT) && badOf(hiT + loT).length === 0, JSON.stringify({ hi: [R.occHi.p, hiT], lo: [R.occLo.p, loT], bad: badOf(hiT + loT) }));
+  const r0 = v => Math.round(v), tri = b => `開高 ${r0(b.up)}% ・開平 ${r0(b.flat)}% ・開低 ${r0(b.dn)}%`;
+  ok('⑨b 高分 / 低分那天那一行的三個比例 = `_PREMKT_OCC` 那一格(隨便一天那組也是)+「不是今天會漲或會跌」;⛔ 研究字樣',
+     R.occHi.p >= 65 && R.occLo.p <= 35 && K.hi && hiT.includes(tri(K.hi)) && hiT.includes(`隨便一天 ${r0(K.all.up)}% / ${r0(K.all.flat)}% / ${r0(K.all.dn)}%`) && /不是今天會漲或會跌/.test(hiT)
+     && loT.includes(tri(K.lo)) && badOf(hiT + loT).length === 0, JSON.stringify({ hi: [R.occHi.p, hiT], lo: [R.occLo.p, loT], bad: badOf(hiT + loT) }));
   const both = appS.map((a, i) => [a, proS[i]]).filter(([a, b]) => b != null);
   const diff = both.filter(([a, b]) => a !== b);
   ok('⑧ 產業作戰室 `PRO._premktScore` == App(300 組隨機 macro_risk,兩邊都有分數的那幾組逐一相同)',
