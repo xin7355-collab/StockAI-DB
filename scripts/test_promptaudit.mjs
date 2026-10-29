@@ -41,5 +41,16 @@ ok('③b 事件影響⛔ 不叫 AI 寫代號', !/代號\+名稱|代表股 2-3 �
 ok('③c 輸出掛「🤖 AI 推測」而且要說「僅供參考、只代表波動變大」(🧹 V78.3.6 取代「沒有實測背書」)', /🤖 AI 推測\(⛔ 僅供參考;行事曆日只代表「波動變大」\)/.test(E) && !/'🤖 AI 推測[^']*(實測|回測)/.test(E), (E.match(/🤖 AI 推測[^\n]{0,60}/) || [])[0]);
 ok('③d 舊快取(有利多利空 + 代號的那版)換鍵且清掉', /'evImpact2_'/.test(E) && /removeItem\('evImpact_'/.test(E), '');
 
+// ④ V80.0.1 全域自律條款 _injectDisciplineClause(會加在每一支 _callAI / _callDeepAI 前面):
+//    ⛔ 不可再要 AI「必須給出具體點位」「必須直接下達操作指令」(禁 AI 算數 + 不下買賣指令);要有「價位只能引用資料」那條
+const DC = (() => {
+    const i = SRC.indexOf('    _injectDisciplineClause(p) {'); if (i < 0) return '';
+    const j = SRC.indexOf('\n    },', i); return SRC.slice(i, j).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+})();
+ok('④ 自律條款找得到(⛔ 空字串 = 假綠燈)', DC.length > 200, DC.length);
+ok('④b ⛔ 不可要 AI 自己給具體點位 / 下操作指令', !/必須給出具體點位|必須直接下達操作指令/.test(DC), (DC.match(/必須[^\n]{0,20}/) || [])[0]);
+ok('④c 價位只能引用資料裡算好的數字', /價位一律引用上面資料裡已經算好的數字/.test(DC) && /不可自己算或編/.test(DC), '');
+ok('④d 燈號只講方向(⛔ 🔴=可以買、🟢=賣出 這種把燈號當指令)', !/🔴\(可以買|🟢\(賣出/.test(DC), '');
+
 console.log(FAIL.length ? `❌ ${FAIL.length} 條沒過` : '✅ 全部通過');
 process.exit(FAIL.length ? 1 : 0);

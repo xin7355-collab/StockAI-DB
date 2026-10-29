@@ -525,10 +525,36 @@ def num_gate(text, source):
     return miss
 
 
+def _pages_of(source):
+    """原文(ai_prompt 的 src)每行「p12 …」→ {12: 那一頁的字}(同一頁多行就接起來)。"""
+    pages = {}
+    for line in (source or '').split('\n'):
+        m = re.match(r'p(\d+) (.*)', line)
+        if m:
+            pg = int(m.group(1))
+            pages[pg] = pages.get(pg, '') + '\n' + m.group(2)
+    return pages
+
+
+def page_fix(t, p, pages):
+    """🧾 V80.0.1 頁碼核對:數字核對只拿「整份原文」比 → 數字對、頁碼寫錯照樣過,點「p12」看到的不是那句。
+    回這一點該掛的頁碼:頁碼不存在 → None;句子有數字 → 數字要全部在那一頁,不在就改成**唯一**全部找得到的那頁,
+    找不到唯一的 → None(⛔ 猜一頁)。沒有數字的句子沒辦法核對,頁碼存在就照留。⛔ 不丟掉那一點(數字本身已經過了 num_gate)。"""
+    if not isinstance(p, int) or p not in pages:
+        return None
+    if not _NUM_ONLY.findall(_AI_PAGE.sub(' ', t or '')):
+        return p
+    if not num_gate(t, 'p%d %s' % (p, pages[p])):
+        return p
+    hit = [pg for pg, txt in pages.items() if not num_gate(t, 'p%d %s' % (pg, txt))]
+    return hit[0] if len(hit) == 1 else None
+
+
 def gate_ai(ai, source):
-    """把 AI 回的每一點過數字核對;回 (乾淨的 ai, 丟掉幾點)。頁碼欄位不算數字主張。"""
+    """把 AI 回的每一點過數字核對;回 (乾淨的 ai, 丟掉幾點)。頁碼欄位不算數字主張,但頁碼要對得上(page_fix)。"""
     if not isinstance(ai, dict):
         return None, 0
+    pages = _pages_of(source)
     dropped = 0
     out = {}
     one = str(ai.get('one') or '').strip()
@@ -549,8 +575,7 @@ def gate_ai(ai, source):
             if num_gate(t, source):
                 dropped += 1
                 continue
-            p = it.get('p')
-            keep.append({'t': t[:120], 'p': p if isinstance(p, int) else None})
+            keep.append({'t': t[:120], 'p': page_fix(t, it.get('p'), pages)})
         out[k] = keep
     return out, dropped
 
@@ -1956,6 +1981,12 @@ def selftest():
     ok('⑤ 數字核對:原文有的過、編的抓到', num_gate('營收 9,000 億、季增 10%', src) == [] and num_gate('營收成長 25%', src) == ['25'], num_gate('營收成長 25%', src))
     clean, dr = gate_ai({'one': '第四季營收 9,500~9,800 億', 'outlook': [{'t': '毛利率 61%', 'p': 2}, {'t': '先進封裝擴產', 'p': 2}], 'new': [], 'risk': []}, src)
     ok('⑤b ⭐ 決定性對照:AI 編的那一點整點丟掉、其他留著', dr == 1 and clean['one'] and [x['t'] for x in clean['outlook']] == ['先進封裝擴產'], (clean, dr))
+    c2, _ = gate_ai({'one': '', 'outlook': [{'t': '預期第四季營收 9,500~9,800 億', 'p': 1}, {'t': '季增 10%', 'p': 9},
+                                              {'t': '先進封裝擴產', 'p': 2}], 'new': [], 'risk': []}, src)
+    ok('⑤c 頁碼核對:寫錯頁改成唯一找得到的那頁(p1→p2)、不存在的頁 → 不掛、沒數字的照留',
+       [x['p'] for x in c2['outlook']] == [2, None, 2] and page_fix('季增 10%', 1, _pages_of(src)) == 1, c2)
+    ok('⑤d ⭐ 決定性對照:數字兩頁都有 → ⛔ 猜一頁', page_fix('營收 9000', 1, {1: '營收 9000', 2: '營收 9000 億'}) == 1
+       and page_fix('營收 9000', 3, {1: '營收 9000', 2: '營收 9000'}) is None)
     ok('⑥ AI 回 ```json 包起來 / <think> 也解析得到', parse_ai_json('<think>x</think>```json\n{"one":"a"}\n```') == {'one': 'a'})
     ok('⑦ 語氣計數(研究用)', tone_of([[1, '營收成長、創新高'], [2, '保守看待庫存去化']]) == [2, 2], tone_of([[1, '營收成長、創新高'], [2, '保守看待庫存去化']]))
     # pptx 抽字(零依賴)
