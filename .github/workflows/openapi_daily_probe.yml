@@ -1,0 +1,41 @@
+name: 🌐 全市場當日 K 線探針 (openapi daily probe)
+
+# 純驗證用(V80.0.2):回答「daily_miner 可不可以打開 TW_DAILY_ALL」—— 官方全市場行情
+# 跟網站上現有 K 線同一天逐欄對拍,順便量逐股端點從 runner 打是不是被擋。
+# 只讀、不寫任何產物、不碰任何分支;結果寫在 job summary(只有數量)。
+# ⛔ 手動觸發 only —— 不佔排程配額(V73.9.0)。
+on:
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: '每個市場抽幾檔對拍'
+        default: '200'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openapi-daily-probe
+  cancel-in-progress: true   # 探針 ~2 分 ≪ 手動觸發間隔
+
+jobs:
+  probe:
+    name: 🌐 全市場 K 線探針
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安裝套件
+        run: pip install -q requests
+
+      - name: 🌐 探針
+        env:
+          PROBE_SAMPLE: ${{ inputs.sample }}
+        run: python3 scripts/openapi_daily_probe.py

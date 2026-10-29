@@ -350,49 +350,176 @@ def _roc_to_gregorian(roc_date: str) -> str:
     return f'{int(parts[0]) + 1911}/{parts[1]}/{parts[2]}'
 
 
-def twse_ohlcv(symbol: str, year_month: str, _max_retries: int = 3) -> list:
+# 🧯 V80.0.2 官方逐股端點的「被擋 vs 沒資料」+ 斷路器
+#   ⭐ 為什麼:舊版 twse_ohlcv / tpex_ohlcv 遇到 HTTP 403/429、HTML 擋頁、JSON 壞掉、重試用完,
+#      一律回 [] —— 跟「這個月真的沒交易」長得一模一樣 → 整批被擋時 log 只會看到「雙源無資料」,
+#      ⛔ 沒有人知道是被封鎖(V73.6.1 才發現 TPEx 整站對 GitHub runner 回 403,之前一直被當成沒公布)。
+#   現在:回 None = 被擋/壞掉(要算進健康度)、回 [] = 真的沒資料。
+#   斷路器:同一個主機連續 5 次被擋 → 冷卻 120 秒(冷卻期間直接回 None,交給後段 yfinance,⛔ 不硬撞);
+#      冷卻 3 次 → 這一輪不再打這個主機(繼續撞只會讓 IP 被擋更久)。
+_CB_STREAK, _CB_COOL, _CB_MAX_TRIPS = 5, 120.0, 3
+_FETCH_HEALTH = {h: {'ok': 0, 'empty': 0, 'blocked': 0, 'skipped': 0, 'streak': 0,
+                     'trips': 0, 'open_until': 0.0, 'dead': False, 'why': {}}
+                 for h in ('twse', 'tpex')}
+# 🔢 數字解析品質:'--'/空白 → None(⛔ 舊版回 0);解析不了的字串另外記數(格式變了要看得到)
+_OHLCV_Q = {'bad_num': 0, 'fill_ohl': 0, 'no_vol': 0, 'examples': []}
+
+
+def _cb_allow(host: str) -> bool:
+    h = _FETCH_HEALTH[host]
+    if h['dead'] or time.time() < h['open_until']:
+        h['skipped'] += 1
+        return False
+    return True
+
+
+def _cb_record(host: str, outcome: str, why: str = '') -> None:
+    """outcome = 'ok' / 'empty' / 'blocked'。只有 blocked 會累積連續次數。"""
+    h = _FETCH_HEALTH[host]
+    h[outcome] += 1
+    if outcome != 'blocked':
+        h['streak'] = 0
+        return
+    if why:
+        h['why'][why] = h['why'].get(why, 0) + 1
+    h['streak'] += 1
+    if h['streak'] < _CB_STREAK:
+        return
+    h['streak'] = 0
+    h['trips'] += 1
+    if h['trips'] >= _CB_MAX_TRIPS:
+        h['dead'] = True
+        print(f"\n::error::{host.upper()} 逐股端點連續被擋 {h['trips']} 輪 → 這一輪不再打它(後段 yfinance 補)")
+    else:
+        h['open_until'] = time.time() + _CB_COOL
+        print(f"\n::warning::{host.upper()} 逐股端點連續 {_CB_STREAK} 次被擋 → 冷卻 {int(_CB_COOL)} 秒(第 {h['trips']} 次)")
+
+
+def _ohlcv_num(v, t=float):
+    """官方表格的一格 → 數字;'--'、空白 → None(⛔ 不可回 0:0 會被當成真的價位/量)。"""
+    s = str(v if v is not None else '').replace(',', '').strip()
+    if s in ('', '--', '---', '----', 'X', '-'):
+        return None
+    try:
+        return t(float(s)) if t is int else t(s)
+    except (TypeError, ValueError):
+        _OHLCV_Q['bad_num'] += 1
+        if len(_OHLCV_Q['examples']) < 5:
+            _OHLCV_Q['examples'].append(s[:20])
+        return None
+
+
+def _ohlcv_bar(fmt_date, o, h, l, c, vol):
+    """收盤沒有 → None(那天沒成交);開高低缺 → 用收盤補但**記數**;量缺 → 0 並記數。"""
+    if not c or c <= 0:
+        return None
+    if o is None or h is None or l is None:
+        _OHLCV_Q['fill_ohl'] += 1
+    if vol is None:
+        _OHLCV_Q['no_vol'] += 1
+    return {'date': fmt_date, 'open': o or c, 'high': h or c, 'low': l or c,
+            'close': c, 'volume': vol or 0}
+
+
+def fetch_health_summary() -> list:
+    """給 log / job summary 用的幾行字(只有數量,⛔ 不含個股)。"""
+    out = []
+    for host, h in _FETCH_HEALTH.items():
+        tot = h['ok'] + h['empty'] + h['blocked']
+        if not tot and not h['skipped']:
+            continue
+        why = '、'.join(f'{k}×{v}' for k, v in sorted(h['why'].items(), key=lambda x: -x[1])[:4])
+        line = (f"{host.upper()} 逐股:成功 {h['ok']}、沒資料 {h['empty']}、被擋/壞掉 {h['blocked']}"
+                + (f"({why})" if why else '') + f"、冷卻跳過 {h['skipped']}、斷路 {h['trips']} 次")
+        out.append(line)
+    q = _OHLCV_Q
+    if q['bad_num'] or q['fill_ohl'] or q['no_vol']:
+        out.append(f"數字解析:看不懂 {q['bad_num']} 格" + (f"(例:{', '.join(q['examples'])})" if q['examples'] else '')
+                   + f"、開高低用收盤補 {q['fill_ohl']} 根、沒有量 {q['no_vol']} 根")
+    return out
+
+
+def _report_fetch_health(da_stats=None) -> None:
+    """印 log + 寫 job summary(只有數量)。被擋比例 ≥ 20% → ::warning::(真的壞掉要看得到紅黃燈)。"""
+    lines = fetch_health_summary()
+    if da_stats is not None:
+        lines.insert(0, f"全市場當日 K 線:快速路徑 {da_stats['fast']} 檔、照舊逐月抓 {da_stats['slow']} 檔")
+    for ln in lines:
+        print(f"  🧯 {ln}")
+    for host, h in _FETCH_HEALTH.items():
+        tot = h['ok'] + h['empty'] + h['blocked']
+        if tot >= 20 and h['blocked'] / tot >= 0.2 and not h['dead']:
+            print(f"::warning::{host.upper()} 逐股端點被擋 {h['blocked']}/{tot} 次(後段 yfinance 補;常態如此請看 openapi_daily_probe)")
+    _sp = os.environ.get('GITHUB_STEP_SUMMARY')
+    if _sp and lines:
+        try:
+            with open(_sp, 'a', encoding='utf-8') as f:
+                f.write(f"\n### 🧯 K 線抓取健康度(批次 {os.environ.get('BATCH_INDEX', '?')})\n"
+                        + ''.join(f'- {ln}\n' for ln in lines))
+        except OSError:
+            pass
+
+
+def twse_ohlcv(symbol: str, year_month: str, _max_retries: int = 3):
     """TWSE 上市股月 OHLCV。year_month='YYYYMM'。
+    回傳:list(可能是空的 = 真的沒資料)或 None(被擋 / 回應壞掉 / 重試用完 —— 呼叫端要當成「不知道」)。
     🛡️ 反防火牆強化(2026-06-12 Gemini 建議的免費招式):
     - timeout 10 → 20 秒(TWSE 自家 server 確實慢,常 10 秒 connect 不上)
     - 每股每月之間 random.uniform(0.8, 2.0) 秒模擬人類看盤速度
     - timeout/ConnectionError 用 exponential backoff(2/4/8 秒)重試 3 次
     """
+    if not _cb_allow('twse'):
+        return None
     url = (f'https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY'
            f'?response=json&date={year_month}01&stockNo={symbol}')
     # 🎲 隨機遲緩:模糊機器人連點特徵(必做,即使第一次成功)
     time.sleep(random.uniform(0.8, 2.0))
     for attempt in range(_max_retries):
         try:
-            j = http_session.get(url, headers=_HDRS, timeout=20).json()
+            res = http_session.get(url, headers=_HDRS, timeout=20)
+            if res.status_code != 200:
+                _cb_record('twse', 'blocked', f'HTTP{res.status_code}')
+                return None
+            body = (res.text or '').strip()
+            if not body:
+                # 興櫃 006xxx 等 TWSE 無資料的股票會回空字串 → 真的沒資料
+                _cb_record('twse', 'empty')
+                return []
+            if body[0] == '<':
+                # ⛔ 證交所的擋頁是 HTML(HTTP 200)—— 不是「沒資料」
+                _cb_record('twse', 'blocked', 'HTML')
+                return None
+            try:
+                j = json.loads(body)
+            except ValueError:
+                _cb_record('twse', 'blocked', 'JSON壞')
+                return None
             if j.get('stat') != 'OK':
+                # 「很抱歉，沒有符合條件的資料」= 這檔不是上市股或當月沒交易
+                _cb_record('twse', 'empty')
                 return []
             fields = j.get('fields', [])
             fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), None)
             i_dt = fi('日期'); i_op = fi('開盤'); i_hi = fi('最高')
             i_lo = fi('最低'); i_cl = fi('收盤'); i_vo = fi('成交股數')
-            if i_dt is None:
-                print(f"  ⚠️ TWSE OHLCV '日期' 欄位找不到，headers={fields[:5]}"); return []
+            if i_dt is None or i_cl is None:
+                print(f"  ⚠️ TWSE OHLCV 欄位找不到(格式變了?),headers={fields[:5]}")
+                _cb_record('twse', 'blocked', '欄位變了')
+                return None
+            cell = lambda row, i, t=float: _ohlcv_num(row[i], t) if i is not None and i < len(row) else None
             out = []
             for row in (j.get('data') or []):
                 try:
-                    fmt_date = _roc_to_gregorian(str(row[i_dt]))
-                    def num(i, t=float):
-                        v = str(row[i]).replace(',', '').strip() if i >= 0 else ''
-                        try: return t(v) if v not in ('--', '') else 0
-                        except: return 0
-                    c = num(i_cl)
-                    if c == 0:
-                        continue
-                    out.append({'date': fmt_date,
-                                'open': num(i_op) or c, 'high': num(i_hi) or c,
-                                'low':  num(i_lo) or c, 'close': c,
-                                'volume': num(i_vo, int)})
-                except Exception:
+                    bar = _ohlcv_bar(_roc_to_gregorian(str(row[i_dt])),
+                                     cell(row, i_op), cell(row, i_hi), cell(row, i_lo),
+                                     cell(row, i_cl), cell(row, i_vo, int))
+                except (IndexError, ValueError):
+                    _OHLCV_Q['bad_num'] += 1
                     continue
+                if bar:
+                    out.append(bar)
+            _cb_record('twse', 'ok' if out else 'empty')
             return out
-        except (json.JSONDecodeError, ValueError):
-            # 興櫃 006xxx 等 TWSE 無資料的股票會回空字串，靜默略過避免 log 淹沒
-            return []
         except Exception as e:
             # 🛡️ Timeout / Connection error → exponential backoff 重試
             if attempt < _max_retries - 1:
@@ -401,14 +528,17 @@ def twse_ohlcv(symbol: str, year_month: str, _max_retries: int = 3) -> list:
                 time.sleep(wait)
                 continue
             print(f"  ⚠️  TWSE STOCK_DAY {symbol} {year_month}({_max_retries}次重試後仍失敗):{e}")
-            return []
-    return []
+            _cb_record('twse', 'blocked', type(e).__name__)
+            return None
+    return None
 
 
-def tpex_ohlcv(symbol: str, year_month: str, _max_retries: int = 3) -> list:
-    """TPEX 上櫃股月 OHLCV。year_month='YYYYMM'。
+def tpex_ohlcv(symbol: str, year_month: str, _max_retries: int = 3):
+    """TPEX 上櫃股月 OHLCV。year_month='YYYYMM'。回傳規則同 twse_ohlcv(None = 被擋/壞掉)。
     🛡️ 反防火牆強化:timeout 10 → 20 秒,random delay 0.8-2s,exponential backoff 3 次
     """
+    if not _cb_allow('tpex'):
+        return None
     y, m = int(year_month[:4]), year_month[4:]
     roc_year = y - 1911
     url = (f'https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/'
@@ -417,29 +547,33 @@ def tpex_ohlcv(symbol: str, year_month: str, _max_retries: int = 3) -> list:
     for attempt in range(_max_retries):
         try:
             res = http_session.get(url, headers=_HDRS, timeout=20)
+            if res.status_code != 200:
+                # ⛔ V73.6.1:TPEx 整站對 GitHub runner 回 403 —— 以前這裡被當成「當月尚未公布」吞掉
+                _cb_record('tpex', 'blocked', f'HTTP{res.status_code}')
+                return None
             body = res.text.strip()
-            if not body or body[0] == '<':  # 空白或 HTML = 當月尚未公布，靜默略過
+            if not body or body[0] == '<':  # HTTP 200 + 空白或 HTML = 當月尚未公布 / 不是上櫃股
+                _cb_record('tpex', 'empty')
                 return []
-            j = res.json()
+            try:
+                j = json.loads(body)
+            except ValueError:
+                _cb_record('tpex', 'blocked', 'JSON壞')
+                return None
             aa = j.get('aaData') or []
             # row: [日期, 成交股數, 成交金額, 開盤, 最高, 最低, 收盤, 漲跌, 筆數]
             out = []
             for row in aa:
                 try:
-                    fmt_date = _roc_to_gregorian(str(row[0]))
-                    def num(i, t=float):
-                        v = str(row[i]).replace(',', '').strip()
-                        try: return t(v) if v not in ('--', '') else 0
-                        except: return 0
-                    c = num(6)
-                    if c == 0:
-                        continue
-                    out.append({'date': fmt_date,
-                                'open': num(3) or c, 'high': num(4) or c,
-                                'low':  num(5) or c, 'close': c,
-                                'volume': num(1, int)})
-                except Exception:
+                    bar = _ohlcv_bar(_roc_to_gregorian(str(row[0])),
+                                     _ohlcv_num(row[3]), _ohlcv_num(row[4]), _ohlcv_num(row[5]),
+                                     _ohlcv_num(row[6]), _ohlcv_num(row[1], int))
+                except (IndexError, ValueError):
+                    _OHLCV_Q['bad_num'] += 1
                     continue
+                if bar:
+                    out.append(bar)
+            _cb_record('tpex', 'ok' if out else 'empty')
             return out
         except Exception as e:
             if attempt < _max_retries - 1:
@@ -448,8 +582,141 @@ def tpex_ohlcv(symbol: str, year_month: str, _max_retries: int = 3) -> list:
                 time.sleep(wait)
                 continue
             print(f"  ⚠️  TPEX {symbol} {year_month}({_max_retries}次重試後仍失敗):{e}")
-            return []
-    return []
+            _cb_record('tpex', 'blocked', type(e).__name__)
+            return None
+    return None
+
+
+# ── 🌐 V80.0.2 全市場當日 K 線(官方 OpenAPI:上市 STOCK_DAY_ALL + 上櫃每日收盤行情)──
+#   ⭐ 為什麼:每天每檔要打 3 次逐月端點(3 萬多次請求)只為了拿「今天那一根」;
+#      這兩支 OpenAPI 一次給全市場當天的開高低收量 → 一天 2 個請求就夠。
+#   ⛔ 2026-05 教訓(_margin_apply 那段):沒驗日期的 OpenAPI 被寫成「今天」→ 錯位。
+#      這裡一定要:① 每列都有日期且九成五以上是同一天 ② 那一天等於要補的那天 ③ 列數過最低門檻
+#      任何一關不過 → 整個市場不用(回空 dict),主迴圈自動走原本的逐月抓。
+_DAILY_ALL_SRC = {
+    'twse': ('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',
+             {'code': 'Code', 'date': 'Date', 'open': 'OpeningPrice', 'high': 'HighestPrice',
+              'low': 'LowestPrice', 'close': 'ClosingPrice', 'volume': 'TradeVolume'}),
+    'tpex': ('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',
+             {'code': 'SecuritiesCompanyCode', 'date': 'Date', 'open': 'Open', 'high': 'High',
+              'low': 'Low', 'close': 'Close', 'volume': 'TradingShares'}),
+}
+# 最低列數:上市約 1 千多列、上櫃(含權證債券)更多;少於這個數 = 回應被截斷或換格式。
+#   ⚠️ 預設值是保守估計,實際列數以 scripts/openapi_daily_probe.py 在 Actions 的結果為準
+_DAILY_ALL_MIN = {'twse': int(os.environ.get('TW_DAILY_ALL_MIN_TWSE', '900')),
+                  'tpex': int(os.environ.get('TW_DAILY_ALL_MIN_TPEX', '600'))}
+
+
+def _oapi_date(v):
+    """OpenAPI 日期 → 'YYYY/MM/DD'。吃 1151029(民國)、115/10/29、20261029、2026-10-29;其他 → None。"""
+    s = str(v or '').strip()
+    m = re.fullmatch(r'(\d{3})(\d{2})(\d{2})', s) or re.fullmatch(r'(\d{2,3})/(\d{1,2})/(\d{1,2})', s)
+    if m:
+        y, mo, d = int(m.group(1)) + 1911, int(m.group(2)), int(m.group(3))
+    else:
+        m = re.fullmatch(r'(\d{4})[-/]?(\d{1,2})[-/]?(\d{1,2})', s)
+        if not m:
+            return None
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    try:
+        return date(y, mo, d).strftime('%Y/%m/%d')
+    except ValueError:
+        return None
+
+
+def parse_daily_all(rows, mkt: str, known=None, expect_date=None):
+    """全市場行情 → ({代號: K 棒}, 說明 dict)。任何一關不過 → ({}, 說明裡寫原因)。純函式(selftest 直接測)。"""
+    fmap = _DAILY_ALL_SRC[mkt][1]
+    info = {'mkt': mkt, 'raw': 0, 'date': None, 'share': 0.0, 'kept': 0,
+            'no_trade': 0, 'bad': 0, 'not_known': 0, 'reason': ''}
+    if not isinstance(rows, list) or not rows:
+        info['reason'] = '回應不是 list 或是空的'
+        return {}, info
+    info['raw'] = len(rows)
+    dates = {}
+    for r in rows:
+        dd = _oapi_date(r.get(fmap['date'])) if isinstance(r, dict) else None
+        dates[dd] = dates.get(dd, 0) + 1
+    main, n_main = max(dates.items(), key=lambda kv: kv[1])
+    info['date'], info['share'] = main, round(n_main / len(rows), 4)
+    if main is None:
+        info['reason'] = '大多數列沒有可讀的日期(⛔ 沒日期不敢當成任何一天)'
+        return {}, info
+    if info['share'] < 0.95:
+        info['reason'] = f'日期不一致(最多的那天只佔 {info["share"]:.0%})'
+        return {}, info
+    if len(rows) < _DAILY_ALL_MIN[mkt]:
+        info['reason'] = f'列數 {len(rows)} < 門檻 {_DAILY_ALL_MIN[mkt]}(回應可能被截斷)'
+        return {}, info
+    if expect_date and main != expect_date:
+        info['reason'] = f'資料日期 {main} ≠ 要補的 {expect_date}(還沒更新或今天休市)'
+        return {}, info
+    out = {}
+    for r in rows:
+        if not isinstance(r, dict) or _oapi_date(r.get(fmap['date'])) != main:
+            continue
+        code = str(r.get(fmap['code']) or '').strip()
+        if not code:
+            continue
+        if known is not None and code not in known:
+            info['not_known'] += 1            # 權證 / 債券 / 沒在追的標的
+            continue
+        o, h, l, c = (_ohlcv_num(r.get(fmap[k])) for k in ('open', 'high', 'low', 'close'))
+        vol = _ohlcv_num(r.get(fmap['volume']), int)
+        if not c or c <= 0:
+            info['no_trade'] += 1             # 當天沒成交 → 不給這根,讓舊路徑照舊處理
+            continue
+        if o is None or h is None or l is None or vol is None or not (l <= min(o, c) and h >= max(o, c)):
+            info['bad'] += 1                  # ⛔ 開高低缺或彼此矛盾 → 不收(不拿收盤去補)
+            continue
+        out[code] = {'date': main, 'open': o, 'high': h, 'low': l, 'close': c, 'volume': vol}
+    info['kept'] = len(out)
+    return out, info
+
+
+def fetch_daily_all(known=None, expect_date=None):
+    """抓上市 + 上櫃全市場當日行情 → ({代號: K 棒}, [每個市場的說明])。單一市場失敗不影響另一個。"""
+    bars, infos = {}, []
+    for mkt, (url, _f) in _DAILY_ALL_SRC.items():
+        try:
+            r = http_session.get(url, headers=_rnd_hdrs(), timeout=40)
+            if r.status_code != 200:
+                infos.append({'mkt': mkt, 'reason': f'HTTP {r.status_code}', 'kept': 0, 'raw': 0})
+                continue
+            got, info = parse_daily_all(r.json(), mkt, known, expect_date)
+        except Exception as e:
+            infos.append({'mkt': mkt, 'reason': f'{type(e).__name__}', 'kept': 0, 'raw': 0})
+            continue
+        infos.append(info)
+        for k, v in got.items():
+            bars.setdefault(k, v)             # 同代號兩邊都有(不該發生)→ 先到的上市為準
+        time.sleep(random.uniform(0.8, 2.0))
+    return bars, infos
+
+
+def daily_all_fast_ok(existing_map: dict, recent_days, bar_date: str, closed=()) -> bool:
+    """這一檔能不能只靠「全市場當日那一根」就好(不打逐月端點)?純函式。
+    條件:要補的那天 == recent_days 最後一天,而且前面每一天(休市日除外)都已經是完整 K 棒。
+    ⛔ 前面有任何缺口 / 殘留空殼 → 走原本的逐月抓(它一次補整個月,也會校正盤中快照)。"""
+    if not recent_days or recent_days[-1] != bar_date:
+        return False
+    return all(d in closed or (d in existing_map and bar_is_complete(existing_map[d]))
+               for d in recent_days[:-1])
+
+
+def market_closed_days(day_counts: dict, days) -> set:
+    """平日休市(颱風假 / 國定假日)推斷:這批股票在那天有 K 棒的檔數 < 最多那天的 5% → 休市。
+    ⭐ 不維護行事曆(V16.7 同一個想法);⛔ 不拿來判斷「今天」—— 今天本來就還沒寫進去。"""
+    top = max((day_counts.get(d, 0) for d in days), default=0)
+    if top < 50:                       # 樣本太少判不準 → 一天都不認定休市(走舊路徑最安全)
+        return set()
+    return {d for d in days if day_counts.get(d, 0) < top * 0.05}
+
+
+def weekly_refresh_slot(sym: str) -> int:
+    """每檔固定在一週的某一天(0=週一…4=週五)仍走原本的逐月重抓,用來校正以前留下的盤中快照 / 補缺口。
+    ⭐ 用字元和(⛔ 不用 hash():Python 每次啟動 hash 會變,同一檔每天會換日子)。"""
+    return sum(map(ord, sym)) % 5
 
 
 # V15.0 — 已下市股黑名單(yfinance possibly delisted 偵測後寫入,下次直接跳過)
@@ -3518,6 +3785,28 @@ def run():
 
     updated_total = 0
 
+    # 🌐 V80.0.2 全市場當日 K 線(預設關;TW_DAILY_ALL=1 才開 —— 先用 openapi_daily_probe 在 Actions 對拍過才開)
+    _DA_BARS, _DA_CLOSED, _DA_STATS = {}, set(), {'fast': 0, 'slow': 0}
+    _recent10 = [d.strftime('%Y/%m/%d') for d in trading_days[-10:]]
+    if os.environ.get('TW_DAILY_ALL', '0') == '1':
+        _DA_BARS, _da_infos = fetch_daily_all(known=set(full_watchlist), expect_date=_recent10[-1])
+        for _inf in _da_infos:
+            _why = _inf.get('reason') or 'OK'
+            print(f"  🌐 全市場當日 {_inf['mkt'].upper()}:回 {_inf.get('raw', 0)} 列、日期 {_inf.get('date')}、"
+                  f"收 {_inf.get('kept', 0)} 檔、沒成交 {_inf.get('no_trade', 0)}、欄位有問題 {_inf.get('bad', 0)} → {_why}")
+        if _DA_BARS:
+            try:
+                _ph = ','.join('?' * len(_recent10))
+                db_cur.execute(f"SELECT trade_date, COUNT(*) AS n FROM stock_history "
+                               f"WHERE trade_date IN ({_ph}) AND close > 0 GROUP BY trade_date",
+                               [d.replace('/', '-') for d in _recent10])
+                _cnt = {r['trade_date'].replace('-', '/'): r['n'] for r in db_cur.fetchall()}
+                _DA_CLOSED = market_closed_days(_cnt, _recent10[:-1])
+                if _DA_CLOSED:
+                    print(f"  🌐 推斷休市日:{sorted(_DA_CLOSED)}")
+            except Exception as e:
+                print(f"  ⚠️ 休市日推斷失敗({type(e).__name__})→ 不認定任何休市日")
+
     try:
         for idx, sym in enumerate(watchlist):
             _t_stock = time.time()  # V14.12 timing
@@ -3587,27 +3876,43 @@ def run():
                 new_rows = []
                 first_ym_empty = False
                 market_type = None  # 智慧記憶：記錄該股是上市或上櫃，不再盲目瞎猜
+                _blocked = 0        # 🧯 V80.0.2 這檔有幾個月是「被擋 / 壞掉」(⛔ 不是沒資料)
 
-                for i, ym in enumerate(fetch_months):
+                # 🌐 V80.0.2 快速路徑:全市場那一根就夠 → 不打逐月端點(每週輪到的那天照舊重抓)
+                _da_bar = _DA_BARS.get(sym)
+                use_fast = (_da_bar is not None and fetch_months is months
+                            and weekly_refresh_slot(sym) != today.weekday()
+                            and daily_all_fast_ok(existing_map, _recent10, _da_bar['date'], _DA_CLOSED))
+                if use_fast:
+                    new_rows = [dict(_da_bar)]
+                    _DA_STATS['fast'] += 1
+                elif _DA_BARS:
+                    _DA_STATS['slow'] += 1
+
+                for i, ym in enumerate([] if use_fast else fetch_months):
                     rows = []
                     # 若為上市股或尚未確定，先查 TWSE
                     if market_type in (None, 'twse'):
                         rows = twse_ohlcv(sym, ym)
+                        if rows is None: _blocked += 1
                         if rows: market_type = 'twse'
 
                     # 若 TWSE 查無資料，且為上櫃股或尚未確定，再查 TPEX
                     if not rows and market_type in (None, 'tpex'):
                         rows = tpex_ohlcv(sym, ym)
+                        if rows is None: _blocked += 1
                         if rows: market_type = 'tpex'
 
                     # TPEX 偶發限流重試
                     if not rows and market_type == 'tpex':
                         time.sleep(0.5)
-                        rows = tpex_ohlcv(sym, ym)  
-                        
+                        rows = tpex_ohlcv(sym, ym)
+                    rows = rows or []   # 🧯 None(被擋)到這裡就只是「這個月沒拿到」,⛔ 不可 extend(None)
+
                     if i == 0 and not rows:
                         first_ym_empty = True
-                        print(f"  ⚠️ {sym} {ym}：TWSE/TPEX 雙源無資料，將靠後段 yfinance 補洞（若 Yahoo 也缺，當日 K 線將漏記）")
+                        _src = '被擋或回應壞掉' if _blocked else '雙源無資料'
+                        print(f"  ⚠️ {sym} {ym}：TWSE/TPEX {_src}，將靠後段 yfinance 補洞（若 Yahoo 也缺，當日 K 線將漏記）")
                     if i == 1 and first_ym_empty and rows:
                         print(f"  📅 {sym} {fetch_months[0]} 無資料，改用 {fetch_months[1]}（{len(rows)} 筆）")
 
@@ -3622,7 +3927,9 @@ def run():
                 # (b) 歷史已足夠 → yfinance 只看最近 10 天補當日資料
                 is_history_short = len(existing_map) < 240   # V15.0 同步調整
 
-                if is_history_short:
+                if use_fast:
+                    pass   # 🌐 前面 9 天都完整 + 今天是官方那根 → ⛔ 不叫 yfinance(模式 B 會把 9 天全當「官方沒回」)
+                elif is_history_short:
                     # 模式 A:歷史不足 → 用 yfinance 抓 2 年,全部沒有的日期都補
                     yf_rows = yfinance_ohlcv_fallback(sym, market_type, days_back=730)
                     if yf_rows:
@@ -3793,6 +4100,8 @@ def run():
         raise
     finally:
         db_conn.close()
+        # 🧯 V80.0.2 抓取健康度(⛔ 以前被擋也只看到「雙源無資料」)—— 放 finally:中途出錯也要印出來
+        _report_fetch_health(_DA_STATS if _DA_BARS else None)
 
         # 斷點續傳：記錄已完成的股票代號（覆蓋寫入）
         try:
