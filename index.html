@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V80.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V80.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.0.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.0.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1591,7 +1591,7 @@
         </div>
     </div>
 
-    <div id="invModal" class="modal-base hidden" data-edit-idx="-1" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="invModalTitle" class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有股數</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：1000 (股)" min="1" step="1" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="app.closeInvModal()" class="px-4 py-2 text-gray-400 border border-gray-700 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button id="invModalConfirmBtn" onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
+    <div id="invModal" class="modal-base hidden" data-edit-idx="-1" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="invModalTitle" class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" oninput="app._invPreTradeRender()" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有股數</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：1000 (股)" min="1" step="1" oninput="app._invPreTradeRender()" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><details id="invPreTrade" class="w-full mb-3 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5" ontoggle="if(this.open)app._invPreTradeRender()"><summary class="text-[12px] font-bold text-gray-200 cursor-pointer list-none">🧭 買之前看一眼 <span class="text-[10px] text-gray-500 font-normal">停損・這筆最多賠多少・總風險</span></summary><div id="invPreTradeBody" class="mt-1.5"></div></details><div class="flex justify-end gap-2"><button onclick="app.closeInvModal()" class="px-4 py-2 text-gray-400 border border-gray-700 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button id="invModalConfirmBtn" onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
 
     <!-- 🤖 V44.8 — AI 股神(庫存純公式全解析,對標籌碼App;輸入問題→免費查引擎,零 API 額度)
          V45.5:移到 header-fixed 之外(個股頁隱藏 header 時,此彈窗才不會被一起 display:none) -->
@@ -8749,10 +8749,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V80.0.3',
+    _APP_VERSION: 'V80.0.4',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V80.0.4', d: [
+            '🧯 勝率鏡子最上面多了「帳戶熔斷」:記進鏡子的賣出,今天虧到帳戶 2%、本週 5%、本月 8% 會亮 🟡/🟠 提醒先別開新倉(只提醒,不會替你做任何事;門檻是常見的建議值),庫存標題列那顆 🪞 鈕也看得到',
+            '🧮 同一處也算「手上全部碰到停損 ≈ 賠多少、佔帳戶幾 %」,超過 6% 會提醒',
+            '📐 鏡子每一筆多了:R(賺賠 ÷ 買進時離停損多遠)、持有期間最多曾賠 / 曾賺多少、同一段時間放 0050 會怎樣',
+            '🧭 ➕ 新增持倉視窗多一格「買之前看一眼」:這一筆碰到停損會賠多少、買完之後總風險、按確認前問自己三句',
+        ] },
         { v: 'V80.0.3', d: [
             '📰 新專欄(破解迷思):大盤跌一段後出現「追盤日」(反彈第 4 天以後大漲又放量)可以當底部確認進場嗎?台股 26 年 66 次算下來不行 —— 之後兩個月跟跌深後隨便一天買差不多,一半以上又跌破反彈前的低點',
             '🔢 進階頁(pro.html)的版本號跟 App 對齊',
@@ -9011,7 +9017,6 @@ ${list}
         { v: 'V79.2.6', d: ['📚 👑 兩本帳改回<b>選項、預設關閉</b>(一本帳照舊每 10 天一起換);想用的話到 ⚙️ 設定「🔓 進階功能」打開。打開後兩本叫 <b>甲帳</b>(青)・<b>乙帳</b>(紫):決策台頂端各自寫上次哪天換、再幾天換,每一檔標它屬於哪一本,動作寫成「乙帳 買 / 甲帳 賣」'] },
         { v: 'V79.2.5', d: ['📚 👑 領頭羊改成兩本帳:錢分兩半、換倉日錯開 4 天輪流換(決策台「📖 怎麼買・怎麼賣」裡可以換回一本帳)'] },
         { v: 'V79.2.4', d: ['🔧 修正一處計算尺標並重算相關數字;規則與畫面做法沒有變'] },
-        { v: 'V79.2.3', d: ['盤中碰到漲停、收盤沒鎖住的提醒:手上的股票也會跳了,而且收盤後就看得到(不用等晚上資料更新)'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -47660,6 +47665,171 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (!Array.isArray(log)) return [];
         return log.map(t => { const p = this._tradePnl(t); return { ...t, pnlNTD: p.ntd, pnlPct: p.pct }; });
     },
+    // 🧭 V80.0.4 交易紀律三件事(使用者「推薦都做」—— 14 個股票專案評估:claude-trading-skills 的部位 / 日誌那類)
+    //   ① 帳戶熔斷:已實現的虧損今天 / 本週 / 本月到帳戶幾 % → 亮燈提醒先別開新倉(⛔ 不自動做任何事)
+    //   ② 總風險:手上每一檔都碰到停損(全站唯一那份 _hardStopOf)會賠多少、佔帳戶幾 %
+    //   ③ 鏡子每一筆的 R(賺賠 ÷ 買進時離停損多遠)、持有期間最多曾賠 / 曾賺多少、同一段時間 0050 漲跌
+    //   ⚠️ 2 / 5 / 8% 與 6% 是常見的建議值,⛔ 本站沒有實測過 —— 畫面上照實寫「建議值」,⛔ 寫成「研究證實」。
+    //   ⛔ 燈號只用 ⚪🟡🟠(🔴🟢 只代表漲跌方向,鐵則)。
+    _BRK_LIM: { day: 2, week: 5, month: 8 },
+    _TOTAL_RISK_LIM: 6,
+    /** 已實現損益(扣成本)依今天 / 本週(週一起)/ 本月加總 → 熔斷狀態。純函式:todayStr = 'YYYY/MM/DD' */
+    _acctBreaker(log, acc, todayStr) {
+        const day = String(todayStr || this.getTodayStr()).replace(/-/g, '/');
+        const d0 = new Date(day.replace(/\//g, '-') + 'T00:00:00');
+        const mon = new Date(d0); mon.setDate(d0.getDate() - ((d0.getDay() + 6) % 7));
+        const ymd = x => `${x.getFullYear()}/${String(x.getMonth() + 1).padStart(2, '0')}/${String(x.getDate()).padStart(2, '0')}`;
+        const wk = ymd(mon), mo = day.slice(0, 7);
+        const sum = { day: 0, week: 0, month: 0 };
+        for (const t of (Array.isArray(log) ? log : [])) {
+            const d = String(t?.date || '').replace(/-/g, '/').slice(0, 10), v = +t?.pnlNTD || 0;
+            if (!d || d > day) continue;
+            if (d === day) sum.day += v;
+            if (d >= wk) sum.week += v;
+            if (d.slice(0, 7) === mo) sum.month += v;
+        }
+        acc = +acc || 0;
+        if (!(acc > 0)) return { state: 'noacc', sum, lim: this._BRK_LIM };
+        const pct = { day: -sum.day / acc * 100, week: -sum.week / acc * 100, month: -sum.month / acc * 100 };
+        const L = this._BRK_LIM;
+        const state = pct.month >= L.month ? 'month' : pct.week >= L.week ? 'week' : pct.day >= L.day ? 'day' : 'ok';
+        return { state, sum, pct, lim: L };
+    },
+    _acctBreakerHtml(b) {
+        const L = b.lim, f = v => Math.round(v).toLocaleString();
+        if (b.state === 'noacc') return `<div class="text-[10px] text-gray-500 leading-snug" data-brk="noacc">🧯 帳戶熔斷:⚙️ 設定裡還沒填帳戶資金 → 算不出今天 / 本週 / 本月虧了帳戶幾 %</div>`;
+        const p = b.pct, line = `今天 ${b.sum.day >= 0 ? '+' : ''}${f(b.sum.day)} 元(${(-p.day).toFixed(1)}%)・本週 ${b.sum.week >= 0 ? '+' : ''}${f(b.sum.week)}(${(-p.week).toFixed(1)}%)・本月 ${b.sum.month >= 0 ? '+' : ''}${f(b.sum.month)}(${(-p.month).toFixed(1)}%)`;
+        const msg = {
+            ok: ['⚪', 'text-gray-300', '正常'],
+            day: ['🟡', 'text-amber-200', `今天已實現虧損到帳戶 ${L.day}% → 今天先不開新倉,手上的照你的出場規則走`],
+            week: ['🟠', 'text-orange-300', `本週已實現虧損到帳戶 ${L.week}% → 這週先不開新倉,手上的照你的出場規則走`],
+            month: ['🟠', 'text-orange-300', `本月已實現虧損到帳戶 ${L.month}% → 這個月先不開新倉、回頭看鏡子裡賠的那幾筆`],
+        }[b.state];
+        return `<div class="text-[11px] ${msg[1]} leading-snug" data-brk="${b.state}">${msg[0]} <b>帳戶熔斷:${msg[2]}</b></div>`
+            + `<div class="text-[9px] text-gray-500 leading-snug">${line}・門檻 ${L.day} / ${L.week} / ${L.month}% 是常見的建議值(不是本站算出來的),只算記進鏡子的賣出</div>`;
+    },
+    /** 手上全部碰到停損會賠多少(從現價算;沒有現價用成本)。extra = 還沒買的那一筆 {symbol,cost,shares(張)} */
+    _totalRisk(inv, acc, extra) {
+        let sum = 0, n = 0, nEst = 0, below = 0;
+        const list = (Array.isArray(inv) ? inv : []).concat(extra ? [extra] : []);
+        for (const it of list) {
+            const cost = +it?.cost, sh = Math.round((+it?.shares || 0) * 1000);
+            if (!(cost > 0 && sh > 0)) continue;
+            const kd = this._invKlineCache?.[it.symbol];
+            const hs = (it === extra) ? null : this._hardStopOf(kd, it.symbol, cost);
+            const stop = hs ? hs.px : (this._floorTick ? this._floorTick(cost * 0.95) : cost * 0.95);
+            if (!hs || /K 線不夠/.test(hs.why || '')) nEst++;
+            const px = it === extra ? cost : (+it.currentPrice > 0 ? +it.currentPrice : cost);
+            n++;
+            if (px <= stop) { below++; continue; }       // 已經在停損下面 = 照規則該賣了,⛔ 不算「還會再賠」
+            sum += (px - stop) * sh;
+        }
+        acc = +acc || 0;
+        return { sum: Math.round(sum), n, nEst, below, acc, pct: acc > 0 ? sum / acc * 100 : null, lim: this._TOTAL_RISK_LIM };
+    },
+    _totalRiskHtml(r, label = '手上') {
+        if (!r.n) return '';
+        const f = v => Math.round(v).toLocaleString();
+        const over = r.pct != null && r.pct > r.lim;
+        const w = r.pct == null ? 0 : Math.min(100, r.pct / (r.lim * 1.5) * 100);
+        const bar = r.pct == null ? '' : `<div class="h-1.5 rounded bg-white/10 mt-1 relative overflow-hidden"><div class="absolute inset-y-0 left-0 ${over ? 'bg-orange-400' : 'bg-amber-200/70'}" style="width:${w.toFixed(0)}%"></div><div class="absolute inset-y-0 bg-white/50" style="left:${(100 / 1.5).toFixed(1)}%;width:1px"></div></div>`;
+        return `<div class="text-[11px] ${over ? 'text-orange-300' : 'text-gray-300'} leading-snug mt-1.5" data-totrisk="${over ? 'over' : 'ok'}">🧮 <b>${label} ${r.n} 檔全部碰到停損 ≈ 賠 ${f(r.sum)} 元</b>`
+            + (r.pct == null ? '(⚙️ 填了帳戶資金才算得出佔幾 %)' : `,佔帳戶 ${r.pct.toFixed(1)}%${over ? `,超過常見建議上限 ${r.lim}%` : ''}`) + `</div>${bar}`
+            + `<div class="text-[9px] text-gray-500 leading-snug mt-0.5">從現價算到每一檔的停損(成本 −5% 與買進當天最低取低的)`
+            + (r.nEst ? `・${r.nEst} 檔還沒抓到 K 線,先用成本 −5% 估` : '') + (r.below ? `・${r.below} 檔已經在停損下面(照你的出場規則處理)` : '')
+            + `・${r.lim}% 是常見的建議值(不是本站算出來的)</div>`;
+    },
+    /** 一筆平倉的 R / 持有期間最多曾賠、曾賺 / 同期 0050。kl = 那一檔日 K、k50 = 0050 日 K。純函式 */
+    _tradeExcursion(t, kl, k50) {
+        const bd = String(t?.buyDate || '').replace(/-/g, '/').slice(0, 10), sd = String(t?.date || '').replace(/-/g, '/').slice(0, 10);
+        const cost = +t?.cost, sh = Math.round((+t?.shares || 0) * 1000);
+        if (!(cost > 0 && sh > 0) || !bd || !sd || sd < bd || !Array.isArray(kl)) return null;
+        const iB = kl.findIndex(b => String(b?.date || '') >= bd);
+        if (iB < 0) return null;
+        const seg = kl.slice(iB).filter(b => String(b.date) <= sd && +b.close > 0);
+        if (!seg.length) return null;
+        const lo = Math.min(...seg.map(b => +b.low || +b.close)), hi = Math.max(...seg.map(b => +b.high || +b.close));
+        // 停損 = 買進那天看到的那一份(全站唯一 _unifiedExitPlan;K 線不夠就退回成本 −5%)
+        let stop = null;
+        try { const pl = iB + 1 >= 25 ? this._unifiedExitPlan(kl.slice(0, iB + 1), cost, bd, {}) : null; stop = pl && pl.stopFinal > 0 ? +pl.stopFinal : null; } catch (_) {}
+        if (!(stop > 0)) stop = this._floorTick ? this._floorTick(cost * 0.95) : +(cost * 0.95).toFixed(2);
+        const per = cost - stop, pnl = this._tradePnl(t).ntd;
+        let e50 = null;
+        if (Array.isArray(k50) && k50.length) {
+            const a = k50.find(b => String(b?.date || '') >= bd && +b.close > 0);
+            let z = null; for (let i = k50.length - 1; i >= 0; i--) if (String(k50[i]?.date || '') <= sd && +k50[i].close > 0) { z = k50[i]; break; }
+            if (a && z && String(z.date) >= String(a.date)) {
+                const ret = +z.close / +a.close - 1, amt = cost * sh;
+                e50 = { pct: +(ret * 100).toFixed(2), ntd: Math.round(amt * ret - amt * (0.001425 * 2 + 0.001)) };   // ETF:手續費 ×2 + 證交稅 0.1%,不含息
+            }
+        }
+        return { mae: +((lo / cost - 1) * 100).toFixed(2), mfe: +((hi / cost - 1) * 100).toFixed(2), stop: +stop.toFixed(2),
+                 R: per > 0 ? +(pnl / (per * sh)).toFixed(2) : null, e50, nBars: seg.length };
+    },
+    _xcCache: {},
+    /** 鏡子打開後才去抓 K 線算每一筆(背景、同時 ≤4 檔;⛔ 不改使用者存的交易紀錄)→ 填進 #mirrorXc */
+    async _mirrorXcFill() {
+        const box = document.getElementById('mirrorXc');
+        if (!box) return;
+        const log = this._tradeLogNet().filter(t => t.buyDate && t.date);
+        if (!log.length) { box.innerHTML = `<div class="text-[10px] text-gray-500">📐 每一筆的 R / 最多曾賠 / 同期 0050:要有買進日的紀錄才算得出來(編輯庫存時填買進日)</div>`; return; }
+        box.innerHTML = `<div class="text-[10px] text-gray-500">📐 正在抓 K 線算每一筆…</div>`;
+        const miss = [], kl = {};
+        const syms = [...new Set(log.map(t => String(t.symbol)).concat(['0050']))];
+        await Promise.all(syms.map(async s => { try { kl[s] = await this.fetchHistoricalData(s, false, { quiet: true, miss }); } catch (_) { kl[s] = null; } }));
+        const rows = [];
+        for (const t of log) {
+            const key = `${t.symbol}|${t.buyDate}|${t.date}|${t.sellPrice}|${t.shares}`;
+            const x = this._xcCache[key] || this._tradeExcursion(t, kl[String(t.symbol)], kl['0050']);
+            if (x) { this._xcCache[key] = x; rows.push({ t, x }); }
+        }
+        if (!document.getElementById('mirrorXc')) return;
+        box.innerHTML = this._mirrorXcHtml(rows, log.length) + this._klMissNote(miss);
+    },
+    _mirrorXcHtml(rows, nAll) {
+        if (!rows.length) return `<div class="text-[10px] text-gray-500">📐 ${nAll} 筆都對不到 K 線(買進日太早或代號沒有資料)</div>`;
+        const med = a => { const b = a.filter(Number.isFinite).sort((x, y) => x - y); if (!b.length) return null; const k = b.length >> 1; return b.length % 2 ? b[k] : (b[k - 1] + b[k]) / 2; };
+        const Rs = rows.map(r => r.x.R).filter(v => v != null);
+        const big = Rs.filter(v => v <= -1.5).length, run = Rs.filter(v => v >= 2).length;
+        const wins = rows.filter(r => (+r.t.pnlNTD || 0) > 0), loss = rows.filter(r => (+r.t.pnlNTD || 0) < 0);
+        const maeW = med(wins.map(r => r.x.mae)), giveBack = loss.filter(r => r.x.mfe >= 5).length;
+        const e = rows.filter(r => r.x.e50), mine = e.reduce((a, r) => a + (+r.t.pnlNTD || 0), 0), alt = e.reduce((a, r) => a + r.x.e50.ntd, 0);
+        const sg = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+        const lines = [];
+        lines.push(`平均每筆 <b>${(Rs.reduce((a, b) => a + b, 0) / (Rs.length || 1)).toFixed(2)} R</b>(1R = 買進時到停損的距離)・賺到 2R 以上 ${run} 筆・賠超過 1.5R ${big} 筆` + (big ? '<span class="text-orange-300">(停損沒有照做的那幾筆)</span>' : ''));
+        if (maeW != null) lines.push(`賺錢的那幾筆,中途最多曾經賠到 ${maeW.toFixed(1)}%(中位)—— 停損設在比這更近的地方,這些單會先被洗掉`);
+        if (loss.length) lines.push(`賠錢的 ${loss.length} 筆裡,有 ${giveBack} 筆中途曾經賺過 5% 以上又吐回去`);
+        if (e.length) lines.push(`同一段時間、同樣的錢拿去放 0050(沒算股利、扣手續費和稅):${sg(alt)} 元;你這 ${e.length} 筆實際 ${sg(mine)} 元`);
+        const list = rows.slice(-8).reverse().map(({ t, x }) => `<div class="flex items-center justify-between text-[10px] py-0.5 border-b border-[#21262d]"><span class="text-gray-300">${t.name || t.symbol} <span class="text-gray-600">${t.date}</span></span>`
+            + `<span class="font-mono text-gray-300">${x.R == null ? '—' : (x.R >= 0 ? '+' : '') + x.R.toFixed(1) + 'R'} ・最多曾賠 ${x.mae.toFixed(1)}% ・最多曾賺 ${x.mfe >= 0 ? '+' : ''}${x.mfe.toFixed(1)}%${x.e50 ? ` ・0050 ${x.e50.pct >= 0 ? '+' : ''}${x.e50.pct.toFixed(1)}%` : ''}</span></div>`).join('');
+        return `<div class="text-[11px] font-black text-gray-100 mb-1" data-mirrorxc="${rows.length}">📐 每一筆照紀律看(${rows.length}/${nAll} 筆對得到 K 線)</div>`
+            + lines.map(l => `<div class="text-[10px] text-gray-300 leading-snug mb-0.5">・${l}</div>`).join('')
+            + `<details class="mt-1"><summary class="text-[10px] text-gray-500 cursor-pointer list-none">📜 最近 ${Math.min(8, rows.length)} 筆明細</summary><div class="mt-1">${list}</div></details>`;
+    },
+    /** 🧭 新增持倉視窗的「買之前看一眼」:熔斷 + 這一筆最多賠多少 + 買完的總風險(⛔ 不擋你按確認) */
+    _invPreTradeRender() {
+        const body = document.getElementById('invPreTradeBody');
+        if (!body) return;
+        const acc = +(this.settings?.accountSize || 0), riskPct = this.settings?.riskPct ?? 1;
+        const cost = parseFloat(document.getElementById('invCostInput')?.value) || 0;
+        const sh = parseFloat(document.getElementById('invSharesInput')?.value) || 0;
+        const sym = (document.getElementById('invModalInput')?.value || '').trim();
+        let h = this._acctBreakerHtml(this._acctBreaker(this._tradeLogNet(), acc));
+        if (cost > 0 && sh > 0) {
+            const stop = this._floorTick ? this._floorTick(cost * 0.95) : +(cost * 0.95).toFixed(2);
+            const loss = (cost - stop) * sh + cost * sh * 0.001425 * 2 + stop * sh * 0.003;
+            const pct = acc > 0 ? loss / acc * 100 : null;
+            h += `<div class="text-[11px] text-gray-300 leading-snug mt-1.5" data-pretrade="one">🛑 停損 ${stop.toFixed(2)}(成本 −5%;買進當天最低比它低就用那個,收盤確認才賣)→ 這一筆碰到停損 ≈ 賠 <b>${Math.round(loss).toLocaleString()} 元</b>`
+                + (pct == null ? '' : `,佔帳戶 ${pct.toFixed(1)}%${pct > riskPct ? `<span class="text-orange-300">,超過你設定的單筆 ${riskPct}%</span>` : ''}`) + '</div>';
+            const editIdx = parseInt(document.getElementById('invModal')?.dataset.editIdx ?? '-1', 10);
+            const inv = this._getInventory().filter((_, i) => i !== editIdx);
+            h += this._totalRiskHtml(this._totalRisk(inv, acc, { symbol: sym, cost, shares: sh / 1000 }), '買完之後');
+        } else {
+            h += `<div class="text-[10px] text-gray-500 mt-1.5">填了成本和股數,這裡會算出這一筆碰到停損會賠多少、買完之後全部持股的總風險</div>`;
+        }
+        h += `<div class="text-[10px] text-gray-400 leading-snug mt-1.5">✍️ 按確認之前問自己三句:① 停損價寫下來了嗎 ② 這一檔是照你原本的買點進的嗎(⛔ 看新聞、看別人喊)③ 跌到停損那天,你真的會賣嗎</div>`;
+        body.innerHTML = h;
+    },
     _tradeJournalHtml() {
         const box = { className: '', innerHTML: '', classList: { remove() {}, add() {} } };
         let log = this._tradeLogNet();
@@ -47667,7 +47837,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             box.className = 'mx-2 mt-2 bg-[#161b22] border border-[#30363d] rounded-lg p-3';
             box.innerHTML = `<div class="text-[12px] font-black text-gray-100 mb-1">📓 交易日誌 · 你的真實勝率</div>
                 <div class="text-[11px] text-gray-400 leading-relaxed">還沒有賣出紀錄。到庫存頁按 <b class="text-gray-200">✏️ 編輯庫存</b>,在那一檔按「🎯 賣出」填賣價和股數,系統會自動記一筆,幫你算出<b>你本人</b>的勝率、平均賺賠、賺短賠長等——這是唯一能讓你進步的鏡子。</div>`;
-            return box.innerHTML;      // ⛔ 不可回 undefined —— 這條是「還沒有平倉紀錄」的教學文字,正是最該顯示的時候
+            return box.innerHTML + this._mirrorRiskHtml();   // ⛔ 不可回 undefined —— 這條是「還沒有平倉紀錄」的教學文字,正是最該顯示的時候
         }
         const n = log.length;
         const pnls = log.map(t => +t.pnlNTD || 0);
@@ -47721,8 +47891,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>
             ${insight ? `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[11px] ${insightCls} leading-relaxed mb-1.5">${insight}</div>` : ''}
             <details><summary class="text-[10px] text-gray-500 cursor-pointer list-none">📜 最近 5 筆 · 獲利因子 ${profitFactor >= 99 ? '∞' : profitFactor.toFixed(2)} · 最大單筆虧損 ${_nf(maxLoss)}</summary><div class="mt-1">${recent}</div></details>
-            <div class="text-[9px] text-gray-600 mt-1.5">💡 只算在編輯庫存按「🎯 賣出」的單,損益已扣買賣手續費與證交稅。純刪除不計入。這面鏡子照的是你自己——比任何訊號都重要。</div>`;
-        return box.innerHTML;
+            <div class="text-[9px] text-gray-600 mt-1.5">💡 只算在編輯庫存按「🎯 賣出」的單,損益已扣買賣手續費與證交稅。純刪除不計入。這面鏡子照的是你自己——比任何訊號都重要。</div>
+            <div id="mirrorXc" class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5"></div>`;
+        return this._mirrorRiskHtml(log) + box.innerHTML;
+    },
+    /** 🧭 V80.0.4 鏡子最上面:帳戶熔斷 + 手上的總風險 */
+    _mirrorRiskHtml(log) {
+        const acc = +(this.settings?.accountSize || 0);
+        return `<div class="mx-2 mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5" data-mirrorrisk="1">`
+            + this._acctBreakerHtml(this._acctBreaker(log || this._tradeLogNet(), acc))
+            + this._totalRiskHtml(this._totalRisk(this._getInventory(), acc)) + `</div>`;
     },
     // 🪞 庫存股標題列那顆鈕:一眼知道有沒有東西可看(V79.9.8 起:未滿 10 筆「N 筆(還太少)」、滿了「N 筆 · 賺 W 筆」)
     _tradeMirrorBtnHtml() {
@@ -47735,6 +47913,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const w = log.filter(t => (+t.pnlNTD || 0) > 0).length;
             label = this._wrEnough(n) ? `${n} 筆 · 賺 ${w} 筆` : `${n} 筆(還太少)`;
             cls = 'text-gray-300 border-[#30363d] bg-white/5';
+            // 🧯 V80.0.4 熔斷了 → 鈕上直接看得到(⛔ 只有點開才知道 = 沒用)
+            const b = this._acctBreaker(log, +(this.settings?.accountSize || 0));
+            if (b.state === 'day') label += ' · 🟡 今天先停手';
+            else if (b.state === 'week' || b.state === 'month') label += ` · 🟠 ${b.state === 'week' ? '這週' : '這個月'}先停手`;
         }
         return `<button onclick="app._showTradeMirror(); app.vibrate(20); event.stopPropagation();" title="你自己的真實勝率、賺賠比、賺短賠長診斷" class="text-[10px] font-bold ${cls} border px-1.5 py-0.5 rounded leading-none flex-shrink-0 cursor-pointer transition-colors">🪞 勝率鏡子 <span class="font-mono">${label}</span></button>`;
     },
@@ -47745,6 +47927,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         body.innerHTML = this._tradeJournalHtml();
         modal.classList.remove('hidden'); modal.style.display = '';
         body.scrollTop = 0;
+        this._mirrorXcFill().catch(() => {});   // 📐 V80.0.4 背景抓 K 線算每一筆的 R / 最多曾賠 / 同期 0050
     },
     // 🔁 相容既有呼叫點(結算平倉後會呼叫它)→ 只需要把標題列那顆鈕的數字刷新
     renderTradeJournal() {
