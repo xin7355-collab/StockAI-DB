@@ -67,7 +67,7 @@
 
 ---
 
-## 📦 外部技能（從 skl 技能庫裝進來的，2026-09-24 / 2026-10-07 / 2026-10-17）
+## 📦 外部技能（從 skl 技能庫裝進來的，2026-09-24 / 2026-10-07 / 2026-10-17 / 2026-10-30）
 
 用 `xin7355-collab/skl` 的 `bootstrap_app.py install --skills … --no-hook` 裝的，清單在 `.claude/skills/.skl-vendor.json`。
 ⛔ **不要直接改這幾支的內容** —— 下次 update 會被蓋回去；要改就去 skl 改。
@@ -81,6 +81,9 @@
 | `context-budget` | 量上下文被誰吃掉(CLAUDE.md 2026-10-17 已 602KB,比 09-09 爆掉那次的 507KB 還大) | ⛔ 不自動刪 CLAUDE.md 內容 —— 要瘦身照 09-09 的做法把決策紀錄搬去 `docs/`,一個字不刪 |
 | `llm-cost-optimizer` | AI 額度:提示詞長度、`max_tokens`、快取(Gemini / Groq / OpenRouter) | ⛔ 不拿來改 AI 模型分工(CLAUDE.md 已定案);⛔ 不叫你改用 Claude API |
 | `strict-api` | 寫程式前先確認函式 / 套件版本真的存在(Shioaji 釘 `<1.7`、FinMind 資料集名曾猜錯) | ⛔ 不取代「先實跑再下結論」 —— 它只管 API 存不存在 |
+| `zh-tw-humanizer` | 寫給台灣散戶看的畫面文字、更新紀錄、專欄:交稿前用 `scripts/check.py`(只用 Python 內建)抓**大陸用語 / 隱形字元 / 引號**三類;它的「改寫不可加原文沒有的判斷、承諾、推銷」跟本站「只描述、不下指令」同一個方向 | ⛔ 不套「破折號」「emoji 密度」兩條(本站既有寫法;使用者 V25.8 明示保留 emoji);⛔ 不拿它整批重寫既有文案(會打壞釘字串的測試);「數據」不換(台灣財經用語也常用) |
+
+**2026-10-30**:新裝 `zh-tw-humanizer`;安裝器順帶把 `app-guardrails-audit` 更新到 skl 82ff80b(多了工作流權限 / 指令注入 / 機密檔被 commit 的檢查)。使用者給了 391 個候選,先讀說明、能試跑的先試跑,**寧缺勿濫**只裝 1 支。沒裝的:`full-page-screenshot`(試跑安全掃描 FAIL CMD-INJECT:用 `execSync` 拼字串跑指令 → ⛔ 不用 `--no-security-scan` 硬裝,整頁截圖照本站 Playwright 做法)/ `a11y-audit`(實跑 index + pro 479 筆:200 筆「div 有點擊沒鍵盤」+ 216 筆行內顏色,對只用手指點的手機 PWA 是雜訊;對比度已有 `test_contrast.mjs`)/ `tw-stock`(它的 5 個官方端點本站都在用)/ `tw-writing`(跟 zh-tw-humanizer 重疊,描述太像會互搶)/ `humanizer`(英文)/ `apple-hig-expert`(只有指引,UI 規範已定案)/ `adversarial-reviewer` / `code-reviewer` / `self-eval`(已有 scout + code-review)/ `statistical-analyst` / `data-quality-auditor`(已有 senior-data-scientist + `data_audit.py`)/ `zero-hallucination-coder`(已有 strict-api)/ `ship-gate`(會搶 /ship 的觸發)/ `playwright-pro` / `browser-automation`(測試慣例已完整)/ `performance-profiler`(給伺服器用)/ 其餘約 300 支行銷、經營、合規、雲端、專案管理跟這個 App 無關。
 
 **2026-10-17**:6 支更新到 skl 5223088;新裝 `dependency-auditor` / `context-budget`;移除 `sql-database-assistant`(SQLite 只在 `miner.py` / `api.py`,而且每輪由 JSON 重建,用不到)。那次判定**可選、沒裝**的:`performance-profiler` / `pw`(Playwright,本 repo 測試慣例已完整)/ `llm-trading-agent-security`(一半在講加密錢包)/ `env-secrets-manager`(安全掃描仍 FAIL PROMPT-EXFIL)。
 

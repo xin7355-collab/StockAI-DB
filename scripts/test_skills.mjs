@@ -66,17 +66,39 @@ ok('ⓥ 外部清單裡的技能資料夾都真的存在', ghost.length === 0, g
 if (docs.length === 0) { console.error('❌ 一個定義檔都沒掃到,拒絕給綠燈'); process.exit(1); }
 
 // ── ① frontmatter ────────────────────────────────────────────
+// 📦 2026-10-30:外部技能 zh-tw-humanizer 的 description 用 YAML 區塊寫法(`description: |` 下面縮排幾行)
+//    → 舊的逐行解析只讀到「|」一個字,長度 1 被判「不夠具體」,相似度③也只比到一個字(= 那一條等於沒在比)。
+//    ⭐ `|` / `>`(含 `|-` `>+` 這類)後面縮排的行都收進來;⛔ 不改外部技能的內容去遷就測試。
+function parseFm(text) {
+    const fm = {}, lines = text.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+        const kv = lines[i].match(/^([a-zA-Z_]+):\s*(.*)$/);
+        if (!kv) continue;
+        let v = kv[2].trim();
+        if (/^[|>][-+]?$/.test(v)) {
+            const body = [];
+            while (i + 1 < lines.length && (/^\s+\S/.test(lines[i + 1]) || lines[i + 1].trim() === '')) body.push(lines[++i].trim());
+            v = body.filter(Boolean).join(' ');
+        }
+        fm[kv[1]] = v.replace(/^(["'])(.*)\1$/, '$2');
+    }
+    return fm;
+}
+{   // ⭐ 決定性對照:區塊寫法要讀到內容;單行寫法照舊
+    const a = parseFm('name: x\ndescription: |\n  第一行說明文字\n  第二行說明文字\nlicense: MIT');
+    const b = parseFm('name: y\ndescription: >-\n  folded line one\n  folded line two\n');
+    const c = parseFm('name: z\ndescription: "單行的說明"');
+    ok('ⓟ frontmatter 區塊寫法(description: | / >-)讀得到內容、單行寫法不變',
+        a.description === '第一行說明文字 第二行說明文字' && a.license === 'MIT' && b.description === 'folded line one folded line two' && c.description === '單行的說明',
+        JSON.stringify([a, b, c]));
+}
 const metas = [];
 for (const d of docs) {
     const raw = fs.readFileSync(d.file, 'utf-8');
     const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
     ok(`① ${d.rel} 有 YAML frontmatter`, !!m);
     if (!m) continue;
-    const fm = {};
-    for (const line of m[1].split(/\r?\n/)) {
-        const kv = line.match(/^([a-zA-Z_]+):\s*(.*)$/);
-        if (kv) fm[kv[1]] = kv[2].trim().replace(/^(["'])(.*)\1$/, '$2');
-    }
+    const fm = parseFm(m[1]);
     ok(`① ${d.rel} name === 資料夾名「${d.dir}」`, fm.name === d.dir, `name=${fm.name}`);
     ok(`① ${d.rel} description 夠具體(30~600 字)`,
         !!fm.description && fm.description.length >= 30 && (d.vendor || fm.description.length <= 600),
