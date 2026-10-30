@@ -20,6 +20,7 @@ for _m in ('yfinance', 'pandas', 'requests'):
             sys.modules[_m] = types.ModuleType(_m)
 
 import miner as M   # noqa: E402
+import json as _j  # noqa: E402
 
 fails = []
 
@@ -127,8 +128,16 @@ tp = [{'SecuritiesCompanyCode': f'{6000 + i}', 'Date': '1151029', 'Open': '50', 
 bars, info = M.parse_daily_all(tp, 'tpex', None, '2026/10/29')
 ok('上櫃欄位名對得上', info['kept'] == 25 and bars['6000']['volume'] == 2000, str(info))
 
+# TW_DAILY_ALL 的值 → 市場
+ok("TW_DAILY_ALL:'1' = 兩個、'twse' 只上市、沒設 / 空字串 / '0' = 關",
+   M.daily_all_markets('1') == ('twse', 'tpex') and M.daily_all_markets('twse') == ('twse',)
+   and M.daily_all_markets('tpex,twse') == ('twse', 'tpex') and M.daily_all_markets(None) == ()
+   and M.daily_all_markets('') == () and M.daily_all_markets('0') == ())
+reset(); calls.clear()
+fake([Res(200, _j.dumps(base))])
+bars, infos = M.fetch_daily_all(None, '2026/10/29', markets=('twse',))
+ok('只開上市 → ⛔ 不打上櫃', len(infos) == 1 and infos[0]['mkt'] == 'twse' and not any('tpex' in c for c in calls), str(calls))
 # fetch_daily_all:單一市場 HTTP 403 不拖垮另一個
-import json as _j  # noqa: E402
 reset()
 fake([Res(200, _j.dumps(base)), Res(403, 'Forbidden')])
 bars, infos = M.fetch_daily_all(None, '2026/10/29')
@@ -191,8 +200,12 @@ reset()
 fake([Res(403, 'Forbidden')])
 ok('上櫃 HTTP 403 → None(V73.6.1 整站擋 runner)', M.tpex_ohlcv('6488', '202610') is None)
 reset()
-fake([Res(200, '<html></html>')])
-ok('上櫃 HTTP 200 + HTML → [](當月尚未公布)', M.tpex_ohlcv('6488', '202610') == [])
+fake([Res(200, '<!DOCTYPE html><html></html>')])
+ok('上櫃 HTTP 200 + HTML → None(V80.0.5 實測:runner 打真的上櫃股也回 HTML = 打不通)', M.tpex_ohlcv('6488', '202610') is None
+   and M._FETCH_HEALTH['tpex']['why'] == {'HTML': 1})
+reset()
+fake([Res(200, '')])
+ok('上櫃 HTTP 200 + 空白 → [](當月尚未公布)', M.tpex_ohlcv('6488', '202610') == [])
 reset()
 fake([Res(200, _j.dumps({'aaData': [['115/10/28', '2,000', '0', '50', '52', '49', '51', '0', '9']]}))])
 ok('上櫃正常', M.tpex_ohlcv('6488', '202610') == [{'date': '2026/10/28', 'open': 50.0, 'high': 52.0,
@@ -227,7 +240,7 @@ ok('健康度摘要只有數量', lines and '被擋/壞掉 4' in lines[0] and '2
 
 # ── 主迴圈接線(靜態檢查)──
 src = (Path(__file__).resolve().parent.parent / 'miner.py').read_text(encoding='utf-8')
-ok('全市場預設關(TW_DAILY_ALL=1 才開)', "os.environ.get('TW_DAILY_ALL', '0') == '1'" in src)
+ok('全市場預設關(TW_DAILY_ALL 沒設 = 不抓)', "_da_mk = daily_all_markets(os.environ.get('TW_DAILY_ALL'))" in src and 'if _da_mk:' in src)
 ok('被擋的 None 不會被 extend', 'rows = rows or []' in src)
 ok('快速路徑不叫 yfinance', 'if use_fast:\n                    pass' in src)
 ok('健康度在 finally 印', '_report_fetch_health(_DA_STATS if _DA_BARS else None)' in src)

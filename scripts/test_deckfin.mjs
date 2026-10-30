@@ -49,7 +49,7 @@ const R = await page.evaluate(async () => {
     A._pbEdge = { data_date: '2026-09-07', picks };
     await A.renderDeck();
     const el = document.getElementById('deckBuy');
-    const order = [...el.querySelectorAll('[onclick*="app.analyze"]')].map(b => (String(b.getAttribute('onclick')).match(/analyze\('(\d+)'/) || [])[1]).filter(Boolean);
+    const order = [...el.querySelectorAll('[onclick*="app.analyze"], [onclick*="app._deckOpen"]')].map(b => (String(b.getAttribute('onclick')).match(/(?:analyze|_deckOpen)\('(\d+)'/) || [])[1]).filter(Boolean);   // 👆 V80.0.5 起整列是 _deckOpen
     return { hits, txt: el.innerText.replace(/\s+/g, ' '), order: [...new Set(order)],
              rk: ['1000', '1001', '1002'].map(s => (A._deckRankOf(s) || {}).rank) };
 });

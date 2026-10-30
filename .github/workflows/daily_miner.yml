@@ -130,6 +130,10 @@ jobs:
           BATCH_INDEX: ${{ matrix.batch }}
           TOTAL_BATCHES: 20
           MARGIN_TWSE_DAYS: ${{ github.event.inputs.margin_twse_days }}
+          # 🌐 V80.0.5 上市股「今天那一根」改用官方全市場行情(一天 1 個請求取代每檔 3 個)。
+          #   openapi_daily_probe 2026-10-30 對拍上市 299 檔開高低收量 100% 一致才開;上櫃量沒有全對上 → 還沒開。
+          #   要關回去:刪掉這一行(或改 '0')就回到原本逐月抓。
+          TW_DAILY_ALL: twse
         run: |
           # 只有節點 0 負責抓取全球總經/期貨/法人等共用資料，節點 1~4 只專心抓個股
           if [ "${{ matrix.batch }}" != "0" ]; then

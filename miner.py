@@ -389,7 +389,8 @@ def _cb_record(host: str, outcome: str, why: str = '') -> None:
     h['trips'] += 1
     if h['trips'] >= _CB_MAX_TRIPS:
         h['dead'] = True
-        print(f"\n::error::{host.upper()} 逐股端點連續被擋 {h['trips']} 輪 → 這一輪不再打它(後段 yfinance 補)")
+        # ⚠️ 用 warning 不用 error:上櫃逐股端點從 runner 天天打不通(V80.0.5 實測),error 會讓 20 個批次天天掛紅
+        print(f"\n::warning::{host.upper()} 逐股端點連續被擋 {h['trips']} 輪 → 這一輪不再打它(後段 yfinance 補)")
     else:
         h['open_until'] = time.time() + _CB_COOL
         print(f"\n::warning::{host.upper()} 逐股端點連續 {_CB_STREAK} 次被擋 → 冷卻 {int(_CB_COOL)} 秒(第 {h['trips']} 次)")
@@ -552,9 +553,15 @@ def tpex_ohlcv(symbol: str, year_month: str, _max_retries: int = 3):
                 _cb_record('tpex', 'blocked', f'HTTP{res.status_code}')
                 return None
             body = res.text.strip()
-            if not body or body[0] == '<':  # HTTP 200 + 空白或 HTML = 當月尚未公布 / 不是上櫃股
+            if not body:                    # HTTP 200 + 空白 = 當月尚未公布 / 不是上櫃股
                 _cb_record('tpex', 'empty')
                 return []
+            if body[0] == '<':
+                # 🧯 V80.0.5 實測(openapi_daily_probe 2026-10-30,GitHub runner):6488 / 5483 / 8069 三檔
+                #   **真的上櫃股**全部回 HTTP 200 + `<!DOCTYPE html` → 這是端點從 runner 打不通,⛔ 不是「沒公布」。
+                #   以前當成沒資料吞掉 = 上櫃 K 線其實全靠 yfinance / MIS 補,而 log 看不出來。
+                _cb_record('tpex', 'blocked', 'HTML')
+                return None
             try:
                 j = json.loads(body)
             except ValueError:
@@ -674,10 +681,20 @@ def parse_daily_all(rows, mkt: str, known=None, expect_date=None):
     return out, info
 
 
-def fetch_daily_all(known=None, expect_date=None):
+def daily_all_markets(v) -> tuple:
+    """TW_DAILY_ALL 的值 → 要用哪幾個市場。'1' = 兩個都用;'twse' / 'tpex' 只用那一個;其他(含沒設、空字串)= 關。"""
+    v = str(v or '').strip().lower()
+    if v in ('1', 'all', 'both'):
+        return ('twse', 'tpex')
+    return tuple(m for m in ('twse', 'tpex') if m in v.replace(' ', '').split(','))
+
+
+def fetch_daily_all(known=None, expect_date=None, markets=('twse', 'tpex')):
     """抓上市 + 上櫃全市場當日行情 → ({代號: K 棒}, [每個市場的說明])。單一市場失敗不影響另一個。"""
     bars, infos = {}, []
     for mkt, (url, _f) in _DAILY_ALL_SRC.items():
+        if mkt not in markets:
+            continue
         try:
             r = http_session.get(url, headers=_rnd_hdrs(), timeout=40)
             if r.status_code != 200:
@@ -3785,11 +3802,14 @@ def run():
 
     updated_total = 0
 
-    # 🌐 V80.0.2 全市場當日 K 線(預設關;TW_DAILY_ALL=1 才開 —— 先用 openapi_daily_probe 在 Actions 對拍過才開)
+    # 🌐 V80.0.2 全市場當日 K 線(預設關 —— 先用 openapi_daily_probe 在 Actions 對拍過才開)
+    #   V80.0.5:TW_DAILY_ALL 可以只開一個市場。2026-10-30 對拍:上市 299 檔開高低收量 100% 一致 → daily_miner 開 twse;
+    #   上櫃收盤 100% 但量只有 34% 一模一樣(差約 0.02%,網站上那份上櫃 K 線本來就是 yfinance 補的)→ 先不開,⛔ 沒對上就不換
     _DA_BARS, _DA_CLOSED, _DA_STATS = {}, set(), {'fast': 0, 'slow': 0}
     _recent10 = [d.strftime('%Y/%m/%d') for d in trading_days[-10:]]
-    if os.environ.get('TW_DAILY_ALL', '0') == '1':
-        _DA_BARS, _da_infos = fetch_daily_all(known=set(full_watchlist), expect_date=_recent10[-1])
+    _da_mk = daily_all_markets(os.environ.get('TW_DAILY_ALL'))
+    if _da_mk:
+        _DA_BARS, _da_infos = fetch_daily_all(known=set(full_watchlist), expect_date=_recent10[-1], markets=_da_mk)
         for _inf in _da_infos:
             _why = _inf.get('reason') or 'OK'
             print(f"  🌐 全市場當日 {_inf['mkt'].upper()}:回 {_inf.get('raw', 0)} 列、日期 {_inf.get('date')}、"
