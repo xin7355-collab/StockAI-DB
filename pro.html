@@ -2572,7 +2572,7 @@ const PRO = {
     const row = r => `<div class="hm-row" data-home-race-row="${r.k}">
         <span style="min-width:0">${this._esc(r.name)}${r.cur ? ' <span style="font-size:10px;color:var(--cyan)">(你現在用的)</span>' : ''}
           ${r.err ? `<span class="hm-sub" style="display:block">⚠️ 這一套算不出來(${this._esc(String(r.err))}),⛔ 不是 0 元</span>`
-          : `<span class="hm-sub" style="display:block">${r.vs50 != null ? (Math.abs(r.vs50) < 0.5 ? '跟 0050 一樣' : `比 0050 ${r.vs50 >= 0 ? '多' : '少'} ${Math.abs(Math.round(r.vs50)).toLocaleString()} 元`) : ''}${r.k === 'lead' && r.nextLeft != null ? ` ・🔄 ${r.nextLeft ? `下次換倉還有 ${r.nextLeft} 個交易日` : '今天是換倉日'}` : ''}</span>`}</span>
+          : `<span class="hm-sub" style="display:block">${r.vs50 != null ? (Math.abs(r.vs50) < 0.5 ? '跟 0050 一樣' : `比 0050 ${r.vs50 >= 0 ? '多' : '少'} ${Math.abs(Math.round(r.vs50)).toLocaleString()} 元`) : ''}${r.wait ? ` ・${r.wait}` : r.k === 'lead' && r.nextLeft != null ? ` ・🔄 ${this._leadNextTxt(r.nextLeft, r.nextLast)}` : ''}</span>`}</span>
         <span class="v ${this.cls(r.pnl)}" data-home-race-v="${r.v == null ? '' : Math.round(r.v)}">${money(r.v)}</span></div>`;
     // 明天要看的(🔥 / 🅿️ = 前一晚名單前 N 名,收盤到觸發價才買;👑 = 下次換倉那份)
     let nxt = '';
@@ -2585,6 +2585,7 @@ const PRO = {
       nxt = `<div class="hm-sub" data-home-next="hot" style="margin-top:4px">🔥 ${md(d)} 那一晚的名單(下一個交易日收盤到觸發價才買):${L.map(q => `<b>${this._esc(this._nmTxt(String(q.s)))}</b> ${+q.trig > 0 ? '觸發價 ' + this._px(q.trig) : '<span title="沒有觸發價 = 自動下單不買">沒有觸發價</span>'}`).join(' ・')}</div>`;
     }
     el.innerHTML = `<div class="hm-sub">每一套都從 <b>${md(R.S)} 收盤</b>拿 100 萬開始,照 App 真正的買法算;數字 = 今天收盤全部賣掉拿回多少(已扣手續費、稅;紙上成績)。</div>`
+      + (this._raceLiveNote(R.last) ? `<div class="hm-sub" data-home-race-live="1" style="color:var(--amber)">${this._raceLiveNote(R.last)}</div>` : '')
       + (R.rows || []).map(row).join('') + nxt;
   },
   // 🧹 雜訊清單 —— V79.8.0 起住在實測總表「⛔ 沒用」那一頁最下面的摺疊(#labNoiseWrap),打開才讀 index.html
@@ -3309,7 +3310,7 @@ const PRO = {
       picked.push({ ...r, sym: x.sym, tier: 1, why: null, lrank: x.rank, warn: w });
     }
     return { picked, warnN: picked.filter(x => x.warn.length).length,
-             thin: thinL.length, avoided, disposed, lead: true, bear: bear === true, clk };
+             thin: thinL.length, avoided, disposed, lead: true, bear: bear === true, clk, date: LD.date || D.date || '' };
   },  // 🧬 V77.9.6 你選 🧬 時用的版本(= V77.9.3 的原樣,⛔ 不改 —— 拋竿釣決策台 🧬「今天可以買的」)
   _castPickGene(D) {
     const rows = D.rows || [];
@@ -3999,7 +4000,7 @@ const PRO = {
     const P = this._LEAD, LD = (this._fishD && this._fishD.LD) || {};
     const clk = LD.date ? this._leadClock(LD.date) : null, bear = LD.date ? this._leadBearAt(LD.date) : null;
     const when = bear === true ? ' ・🐻 <b>今天大盤空頭 → 照規則不買</b>'
-      : clk && clk.isRebal ? ' ・🔁 <b>今天是換倉日</b>'
+      : clk && clk.isRebal ? ' ・🔁 <b>' + this._leadNextTxt(0, LD.date) + '</b>'
       : clk && clk.left != null ? ' ・⏳ 還要 <b>' + clk.left + '</b> 個交易日才換倉' : '';
     return '幫你挑 —— <b>釣 👑 領頭羊前 ' + P.N + ' 名</b>(= 決策台現在的預設;成交額前 ' + P.U + ' 大裡近 ' + P.L
       + ' 日漲最多、而且站上月線、月線又在季線之上的)' + when + '。⭐ 釣到的魚 = 決策台叫你買的,📒 成績單 👑 頁有照規則自動記的帳。'
@@ -4220,11 +4221,13 @@ const PRO = {
     if (!R) { el.innerHTML = ''; return; }
     if (!ps.length) { el.innerHTML = '<div class="note" style="margin:0 0 6px">🎣 這一次沒有魚上鉤(理由在下面那張卡)。</div>'; return; }
     const P = this._LEAD, clk = R.clk;
+    // 🔄 V80.0.7 「今天」都是資料最後一天(隔天早上看就講錯天)→ 一律寫日期
+    const dd = String(R.date || '').slice(5, 10).replace('-', '/'), on = dd ? dd + ' ' : '';
     const head = R.bear
-      ? '🐻 <b>大盤空頭(加權收盤 &lt; 60 日線且 20 日線 &lt; 60 日線)→ 照規則今天不買</b>,下面是今天的前 ' + P.N + ' 名,只看不動:'
+      ? '🐻 <b>' + on + '大盤空頭(加權收盤 &lt; 60 日線且 20 日線 &lt; 60 日線)→ 照規則不買</b>,下面是那天的前 ' + P.N + ' 名,只看不動:'
       : (clk && !clk.isRebal && clk.left != null
-        ? '👑 今天的領頭羊前 <b>' + ps.length + '</b> 名 ・⏳ 照規則<b>還要 ' + clk.left + ' 個交易日</b>才換倉(每 ' + P.R + ' 天一次;手上已經有的,掉出前 ' + (P.N * P.hyst) + ' 名才賣):'
-        : '👑 <b>今天是換倉日</b> → 領頭羊前 <b>' + ps.length + '</b> 名(照規則隔天尾盤買進,⛔ 不設停損):');
+        ? '👑 ' + on + '領頭羊前 <b>' + ps.length + '</b> 名 ・⏳ 照規則<b>還要 ' + clk.left + ' 個交易日</b>才換倉(每 ' + P.R + ' 天一次;手上已經有的,掉出前 ' + (P.N * P.hyst) + ' 名才賣):'
+        : '👑 <b>' + this._leadNextTxt(0, R.date) + '</b> → 領頭羊前 <b>' + ps.length + '</b> 名(⛔ 不設停損):');
     el.innerHTML = '<div class="note" style="margin:0 0 6px">' + head
       + ps.map(x => '<span class="sigtag" style="cursor:pointer;margin:2px 3px 0 0" onclick="PRO._fishPick(\'' + x.sym + '\')">'
         + (x.lrank ? '👑' + x.lrank + ' ' : '') + this._nmTxt(x.sym) + (x.warn || []).map(t => ' ' + (WN[t] || '')).join('') + '</span>').join('') + '</div>';
@@ -6092,7 +6095,11 @@ const PRO = {
       if (Array.isArray(rows)) {
         const m = new Map();
         for (const r of rows) { const c = +r.close; if (c > 0) m.set(String(r.date || '').replace(/\//g, '-').slice(0, 10), c); }
-        if (m.size > 100) out = { m, days: [...m.keys()].sort() };
+        if (m.size > 100) {
+          const days = [...m.keys()].sort(), lastD = days[days.length - 1];
+          const lr = rows.find(r => String(r.date || '').replace(/\//g, '-').slice(0, 10) === lastD) || {};
+          out = { m, days, lastAmt: +lr.amount > 0 };   // 🕐 V80.0.7 最後一根有沒有官方成交值(沒有 = 盤中 / 收盤後晚上採礦還沒跑 → 那天的數字還會變)
+        }
       }
     } catch (_) {}
     this._twii = out;
@@ -6431,7 +6438,7 @@ const PRO = {
   //  ① 規則 = 散戶救星 `_LEADER_EDGE.rule` / `.anchor` = lib_leader.py(自動下單那一份)—— 測試跨檔比對,⛔ 改一邊會被擋。
   //  ② 名單來源 = data/pick_history.json 每天的 `lead`(採礦存事實,⛔ 不靠使用者開 App);沒有那天的名單 → 那次換倉⛔ 不硬猜。
   //  ③ 換倉日 = 加權日曆從錨點起第 1、11、21… 個交易日(= `_leaderClock`);成交 = **換倉訊號隔天的開盤**
-  //     (🛒 V78.2.2 回測:隔天開盤 17/17 贏隔天尾盤 → 照建議的做法算;V78.2.4 起自動下單預設也是開盤買)。
+  //     (🛒 V78.2.2 回測:隔天開盤 17/17 贏隔天尾盤 → 照建議的做法算;V78.4.4 起 App 與自動下單預設改成開盤賣、13:25 買 → 實際買進價會跟這裡不一樣,畫面有寫)。
   //  ④ 掉出前 N×hyst 名才賣、⛔ 不設停損、⛔ 不用 `_settleReplay`(那是另一套策略的出場);大盤嚴格空頭只擋買;隔天開盤就快漲停(≥9.7%)的買不到、⛔ 不遞補(回測:換下一名跟不換差不多)。
   //  ⑤ 損益走 `_stlEnrich`(扣 0.44%、同期大盤、一張賺賠)—— 跟其他三頁同一把尺;樣本 <10 筆⛔ 不下結論。
   _LEAD: { U: 100, N: 5, R: 10, L: 10, hyst: 2, pos: 85, anchor: '2026-09-24', limUp: 9.7, books: 1, anchor2: '2026-10-02' },
@@ -6468,6 +6475,34 @@ const PRO = {
     const ranked = ok.map((r, i) => ({ ...r, rank: i + 1, posOk: !PS || (Number.isFinite(r.pos) && r.pos >= PS) })), all = {};
     for (const r of ranked) all[r.sym] = r;
     return { pool, poolRank, ranked: ranked.slice(0, P.N * P.hyst), buy: ranked.filter(r => r.posOk).slice(0, P.N), passed: ranked.length, n: pool.length, date: D.data_date || '', all, pos: PS };
+  },
+  /** 🔄 V80.0.7 換倉日那一句(全 pro 一份):`left` / `last` 都是照**資料最後一天**算的
+   *  ⛔ 不可寫「今天是換倉日」—— 10/29 收盤是換倉日,隔天早上打開還寫「今天」就講錯天(使用者 10/30 截圖) */
+  _leadNextTxt(left, last) {
+    if (left == null) return '';
+    if (left) return `下次換倉還有 ${left} 個交易日`;
+    const md = String(last || '').slice(5, 10).replace('-', '/');
+    return `${md ? md + ' ' : ''}換倉 → 下一個交易日買`;
+  },
+  /** 🕐 V80.0.7 最後一天是今天、而且還沒定案(盤中;或收盤後晚上採礦還沒跑,加權那根還沒有官方成交值)
+   *  → 那天用的是盤中價,⛔ 不可讓「今天收盤全部賣掉拿回多少」看起來已經是收盤價(使用者 10/30 上午看的那張就是) */
+  _tpeMins() { const t = new Date(Date.now() + 8 * 3600e3); return t.getUTCHours() * 60 + t.getUTCMinutes(); },
+  _raceLiveNote(last) {
+    if (!last || last !== this._recoToday()) return '';
+    const T = this._twii;
+    if (this._tpeMins() >= 13 * 60 + 30 && T && T.lastAmt) return '';
+    return `⏳ ${String(last).slice(5, 10).replace('-', '/')} 還沒定案:最後一天用的是盤中價,晚上採礦跑完換成收盤價,數字會再變。`;
+  },
+  /** ⏳ V80.0.7 👑 起算日之後還沒買過 → 講為什麼(⛔ 不讓「跟 0050 一樣 / 還是 100 萬」看起來像壞掉)
+   *  起算日之前的換倉不算、從空手開始(V79.5.3)→ 要等起算日之後第一次換倉,下一個交易日才會買 */
+  _raceLeadWait(done, plan, nx, park) {
+    const md = d => String(d || '').slice(5, 10).replace('-', '/');
+    const money = park ? '錢全部停在 0050,所以跟 0050 一樣' : '錢放現金,所以還是 100 萬';
+    if (!(done || []).length) {
+      if (plan) return `⏳ 起算日之後第一次換倉在 ${md(plan.d)},下一個交易日才開始買;在那之前${money}。`;
+      return `⏳ 起算日之後還沒換倉過${nx && nx.left != null ? `(${this._leadNextTxt(nx.left, nx.last)})` : ''};在那之前${money}。`;
+    }
+    return `⏳ 起算日之後換倉 ${done.length} 次都沒有買進(原因在 📒 👑 那頁「每一次換倉做了什麼」);${money}。`;
   },
   /** 👑 換倉節拍(= index `_leaderClock` / lib_leader `leader_clock`):錨點那天 = 第 1 天,每 R 個交易日一次。回 {day, isRebal, left, next}(next = 下次換倉的日期,算不到 = null) */
   _leadClock(date) {
@@ -6684,7 +6719,7 @@ const PRO = {
   //  ⑤ 📏 0050 = 起算日收盤買、配息再買回去(`_poliTr`)。「現在價值」一律 = **今天收盤全部賣掉拿回多少**(股票扣來回 0.44%、0050 扣賣出那一半)。
   _RACE_PCOST: 0.27,   // 0050 來回成本(= portfolio_backtest PARK_COST:手續費 0.1425%×6 折×2 + 證交稅 0.1%)
   // 🎨 線的顏色只分「哪一套」(⛔ 紅綠:燈號鐵則 —— 紅綠只講漲跌)
-  _RACE_COLORS: { park: '#38bdf8', hot: '#a8b3c4', lead: '#c4b5fd', '0050': '#f1f5f9' },
+  _RACE_COLORS: { park: '#38bdf8', hot: '#a8b3c4', lead: '#c4b5fd', leadcash: '#818cf8', '0050': '#f1f5f9' },
   /** 這一檔在 d(含)之前最近一根的收盤(停牌那幾天沿用最近一次;⛔ 找不到回 0) */
   _raceCloseAt(rows, d) {
     if (!rows || !rows.length || !d) return 0;
@@ -6882,7 +6917,8 @@ const PRO = {
     const E = this._race50({ days, b50, div });
     const fin = R => (R && R.eq && R.eq.length) ? R.eq[R.eq.length - 1].v : null;
     const v50 = fin(E);
-    const cur = this._isLead() ? 'lead' : (this._isPark() ? 'park' : 'hot');
+    // 👑 V80.0.7 兩種 👑 都算 →「你現在用的」= 設定裡選的那一種(= 看板 `_pickBoardRender` 同一條判斷)
+    const cur = this._isLead() ? (this._isPark() ? 'lead' : 'leadcash') : (this._isPark() ? 'park' : 'hot');
     const mk = (k, name, R, extra) => { const v = fin(R); return Object.assign({ k, name, v, pnl: v == null ? null : v - cap, pct: v == null ? null : (v / cap - 1) * 100,
       vs50: (v != null && v50 != null && k !== '0050') ? v - v50 : null, dd: R && R.eq ? this._raceDd(R.eq) : null, eq: (R && R.eq) || [], cur: k === cur }, extra || {}); };
     out.rows.push(mk('park', this._stratName('park'), P, { buy: P.cnt.buy, sold: P.cnt.sold, hold: P.live.length, parkV: P.parkV }));
@@ -6890,15 +6926,20 @@ const PRO = {
     if (this._recoLeadOn()) {
       try {
         const L = await this._leaderLedgerLoad({ from: S });
-        if (L.err) out.rows.push(mk('lead', this._stratName('lead'), null, { err: L.err }));
+        if (L.err) for (const k of ['lead', 'leadcash']) out.rows.push(mk(k, this._stratName(k), null, { err: L.err }));
         else {
-          const lp = this._isPark();
-          const R = this._raceLead({ days, trades: (L.trades || []).filter(t => t.st), K: this._rlK, b50, div, park: lp, N: this._LEAD.N * (L.books || 1) });
-          const nx = L.next && L.next.left != null ? L.next : null;
-          out.rows.push(mk('lead', this._stratName(lp ? 'lead' : 'leadcash'), R, { buy: R.cnt.buy, sold: R.cnt.sold, hold: R.live.length, parkV: R.parkV,
-            nextLeft: nx ? nx.left : null, plan: (L.rebs || []).filter(x => x.plan).slice(-1)[0] || null }));
+          // 👑 V80.0.7 兩種都算、並排(跟 🅿️ / 🔥 一樣):同一份換倉交易,只差沒用到的錢停 0050 還是放現金
+          //   ⛔ 以前只照你現在的設定算一種 → 看不到「單獨領頭羊」(💵 錢放現金)差多少(使用者 10/30:「為何沒有單獨領頭羊策略」)
+          //   ⚠️ 自動下單不會幫 👑 停 0050(auto_trade `_lead_reserve` 把分給 👑 的錢留現金)→ 只靠自動下單會比較像 💵 那一列
+          const trades = (L.trades || []).filter(t => t.st), nx = L.next && L.next.left != null ? L.next : null;
+          const plan = (L.rebs || []).filter(x => x.plan).slice(-1)[0] || null, done = (L.rebs || []).filter(x => !x.plan);
+          for (const [k, park] of [['lead', true], ['leadcash', false]]) {
+            const R = this._raceLead({ days, trades, K: this._rlK, b50, div, park, N: this._LEAD.N * (L.books || 1) });
+            out.rows.push(mk(k, this._stratName(k), R, { buy: R.cnt.buy, sold: R.cnt.sold, hold: R.live.length, parkV: R.parkV,
+              nextLeft: nx ? nx.left : null, nextLast: nx ? nx.last : null, plan, wait: R.cnt.buy ? '' : this._raceLeadWait(done, plan, nx, park) }));
+          }
         }
-      } catch (e) { out.rows.push(mk('lead', this._stratName('lead'), null, { err: String(e).slice(0, 80) })); }
+      } catch (e) { for (const k of ['lead', 'leadcash']) out.rows.push(mk(k, this._stratName(k), null, { err: String(e).slice(0, 80) })); }
     }
     out.rows.push(mk('0050', this._stratName('0050'), E, E ? { buyD: E.buyD, buyP: E.buyP } : { err: '讀不到 0050 那幾天的 K 線' }));
     out.e50 = E;
@@ -6976,7 +7017,8 @@ const PRO = {
           ${r.k === '0050' ? `<span>${r.buyD ? md(r.buyD) + ' 收盤買 ' + this._px(r.buyP) + ' 元・配息再買回去' : ''}</span>`
             : `<span>買過 ${r.buy || 0} 筆・賣掉 ${r.sold || 0}・抱著 ${r.hold || 0} 檔</span>`}
           ${r.parkV > 1 ? `<span>0050 停著 ${Math.round(r.parkV).toLocaleString()} 元</span>` : ''}
-          ${r.k === 'lead' && r.nextLeft != null ? `<span>🔄 ${r.nextLeft ? `下次換倉還有 ${r.nextLeft} 個交易日` : '今天是換倉日'}</span>` : ''}</div>`}
+          ${r.k === 'lead' && r.nextLeft != null && !r.wait ? `<span data-racenext="1">🔄 ${this._leadNextTxt(r.nextLeft, r.nextLast)}</span>` : ''}</div>
+        ${r.wait ? `<div class="note" style="margin:2px 0 0 20px;font-size:10.5px" data-racewait="${r.k}">${r.wait}</div>` : ''}`}
       </div>`;
     const strat = R.rows.filter(r => r.k !== '0050' && !r.err);
     const minSold = strat.length ? Math.min(...strat.map(r => r.sold || 0)) : 0;
@@ -6991,6 +7033,7 @@ const PRO = {
     el.innerHTML = `<div class="fishcard" style="margin-top:10px;border-color:var(--cyan)" data-race="ok">
       ${head}
       <div class="note" style="margin:4px 0 2px">每一套都從 <b>${md(R.S)} 收盤</b>拿 <b>100 萬</b>開始,照 App 真正的買法逐日算錢;數字 = <b>今天收盤全部賣掉拿回多少</b>(已扣手續費、稅)。</div>
+      ${this._raceLiveNote(R.last) ? `<div class="note" style="margin:2px 0;color:var(--amber)" data-racelive="1">${this._raceLiveNote(R.last)}</div>` : ''}
       ${this._raceSvg(R.rows, cap)}
       ${R.rows.map(row).join('')}
       <div class="note" style="margin-top:6px" data-raceverdict="1">${verdict}</div>
@@ -7002,7 +7045,8 @@ const PRO = {
           🔥 / 🅿️ <b>怎麼買</b>:前一晚的明日作戰清單(決策台「今天可以買的」那 ${this._RECO_PICKS} 檔)→ 隔天<b>收盤到觸發價才買</b>(收盤價成交);沒有觸發價的不買(跟自動下單一樣)、已經抱著的不重買;每筆 ${this._CAP_RULE.lot / 10000} 萬,錢不夠就不買。<br>
           🚪 <b>怎麼賣</b>:${this._exitRuleName()} / 硬停損 min(買進那天最低, 買進價 −5%)/ 最長 ${this._stlMaxd()} 個交易日,先到先賣(收盤成交)。<br>
           🅿️ 跟 🔥 <b>只差錢放哪</b>:沒用到的錢收盤停進 0050、要買股票先用現金、不夠才賣 0050。<br>
-          👑 每 ${this._LEAD.R} 個交易日換一次、換倉隔天開盤成交;每檔 = 當時總資產 ÷ ${this._LEAD.N};起算日之前的換倉不算(從空手開始)。<br>
+          👑 每 ${this._LEAD.R} 個交易日換一次、換倉隔天開盤成交(回測的做法;App 與自動下單預設是開盤賣、13:25 買,實際買進價會不一樣);每檔 = 當時總資產 ÷ ${this._LEAD.N};起算日之前的換倉不算(從空手開始)。<br>
+          👑 / 💵 <b>只差錢放哪</b>:沒用到的錢停 0050 / 放現金。⚠️ 自動下單<b>不會幫 👑 停 0050</b>(分給 👑 的錢留現金),只靠自動下單的話會比較像 💵 那一列。<br>
           📏 0050:${md(R.S)} 收盤買、一直放著、配息再買回去。<br>
           💸 成本:股票來回 0.44%、0050 來回 ${this._RACE_PCOST}%;持有中碰到除息,現金股利入帳、配股加股數(二代健保沒扣)${R.divOk ? '' : '・⚠️ 這次股利檔沒載到,股利沒算進去'}。<br>
           ⚠️ 收盤成交、沒有滑價 = <b>紙上成績</b>,⛔ 不是你的實際損益;同一段時間買的會一起漲跌,幾十筆 ⛔ 不等於幾十次獨立的證據。
@@ -7023,10 +7067,10 @@ const PRO = {
     const days = (H && Array.isArray(H.days) ? H.days : []).filter(d => d && d.d && String(d.d).slice(0, 10) >= S).sort((a, b) => (a.d < b.d ? -1 : 1));
     const last = days[days.length - 1] || null;
     const todayOf = (k, R) => {
-      if (k === 'lead') { const pl = (R.rebs || []).filter(x => x.plan).slice(-1)[0]; if (pl) return { t: '下次開盤買', s: pl.plan.buy.map(String) }; return { t: '抱著', s: (R.trades || []).filter(t => t.st && t.st.open).map(t => t.sym) }; }
+      if (k === 'lead') { const pl = (R.rebs || []).filter(x => x.plan).slice(-1)[0]; if (pl) return { t: this._leadNextTxt(0, pl.d), s: pl.plan.buy.map(String) }; return { t: '抱著', s: (R.trades || []).filter(t => t.st && t.st.open).map(t => t.sym) }; }
       if (!last) return { t: '今天推薦', s: [] };
       const a = k === 'pb' ? this._recoPicks(last.pb, last.rule) : k === 'fit' ? this._recoFitPicks(last) : (() => { const x = this._recoPicks(last.pb, last.rule) || [], y = this._recoFitPicks(last) || []; const seen = new Set(); return x.concat(y).filter(r => !seen.has(String(r.s)) && seen.add(String(r.s))); })();
-      return { t: `${String(last.d).slice(5, 10)} 推薦`, s: (a || []).map(r => String(r.s)) };
+      return { t: `${String(last.d).slice(5, 10).replace('-', '/')} 推薦`, s: (a || []).map(r => String(r.s)) };
     };
     const rows = [];
     for (const [k, name] of srcs) {
@@ -7090,12 +7134,13 @@ const PRO = {
     const minDone = strat.length ? Math.min(...strat.map(r => r.done)) : 0;
     const best = enough ? strat.slice().sort((a, b) => b.avg - a.avg)[0] : null;
     const money = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toLocaleString() + ' 元';
-    const COLS = 'grid-template-columns:minmax(0,1fr) 34px 34px 34px 58px 74px 46px';
+    // 📱 V80.0.7 策略名獨立一行、下面才是 6 個數字(⛔ 擠同一排:數字欄寫死約 304px,390px 手機名字那欄只剩約 36px → 一個字一行,使用者 10/30 截圖)
+    const COLS = 'grid-template-columns:minmax(0,.8fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,.9fr)';
     const th = c => { const on = srt.k === c.k; return `<span onclick="PRO.selCmpAllSort('${c.k}')" data-cmpsort="${c.k}" style="cursor:pointer;text-align:right;${on ? 'color:var(--cyan);font-weight:700' : ''}">${c.n}${on ? (srt.asc ? '▲' : '▼') : ''}</span>`; };
-    const hdr = `<div style="display:grid;${COLS};gap:4px;font-size:9.5px;color:var(--dim2);border-bottom:1px solid var(--line);padding:2px 0"><span>策略</span>${this._CMP_ALL_COLS.map(th).join('')}</div>`;
+    const hdr = `<div style="display:grid;${COLS};gap:4px;font-size:9.5px;color:var(--dim2);border-bottom:1px solid var(--line);padding:2px 0">${this._CMP_ALL_COLS.map(th).join('')}</div>`;
     const row = r => `<div data-cmprow="${r.k}" style="padding:4px 0;border-bottom:1px solid var(--line)">
+        <div data-cmpname="${r.k}" style="font-size:11.5px;font-weight:700;line-height:1.4">${r.name}${best && best.k === r.k ? ' 🏆' : ''}${r.k !== 'etf' && r.done < 10 ? ' <span style="font-size:9px;font-weight:400;color:var(--dim2)">⏳少</span>' : ''}</div>
         <div style="display:grid;${COLS};gap:4px;align-items:baseline;font-size:11px">
-          <span style="min-width:0;font-weight:700">${r.name}${best && best.k === r.k ? ' 🏆' : ''}${r.k !== 'etf' && r.done < 10 ? ' <span style="font-size:9px;color:var(--dim2)">⏳少</span>' : ''}</span>
           <span class="mono" style="text-align:right">${r.n}</span><span class="mono" style="text-align:right">${r.done}</span><span class="mono" style="text-align:right">${r.hold}</span>
           <span class="mono ${this.cls(r.avg)}" style="text-align:right" data-cmpavg="${r.avg == null ? '' : r.avg.toFixed(2)}">${r.avg == null ? '—' : this.fmt(r.avg, 2, true) + '%'}</span>
           <span class="mono ${this.cls(r.money)}" style="text-align:right">${money(r.money)}</span>
@@ -7187,7 +7232,7 @@ const PRO = {
       : SRC === 'lead'
       ? `⭐ <b>👑 領頭羊 = 散戶救星決策台最上面那一套</b>:成交額前 100 大(⛔ 不含 ETF)、收盤 &gt; 20 日線 &gt; 60 日線,照近 10 日漲幅排 → <b>每 ${this._LEAD.R} 個交易日換一次</b>(${this._LEAD.anchor} 起第 1、11、21… 天)。<br>
          🛒 換倉日買前 ${this._LEAD.N} 名還沒有的(最多 ${this._LEAD.N} 檔、等權)・🚪 掉出前 ${this._LEAD.N * this._LEAD.hyst} 名才賣 ・⛔ 不設停損 ・🐻 大盤嚴格空頭那天不買(賣照常)・隔天開盤就快漲停的買不到、⛔ 不遞補。<br>
-         ⏱️ 成交 = <b>換倉訊號隔天的開盤</b>(回測最好的買法;V78.2.4 起自動下單預設也是開盤買)。<br>
+         ⏱️ 成交 = <b>換倉訊號隔天的開盤</b>(回測最好的買法)。⚠️ App 與自動下單預設是<b>開盤賣、13:25 買</b>(V78.4.4 起;設定可改成全部開盤)→ 你實際的買進價會跟這裡不一樣。<br>
          ${R.bf && R.bf.length ? `🔁 ${R.bf.join('、')} 那次的名單是<b>事後用 K 線補算的</b>(採礦那時還沒開始存;注意/處置股旗標查不到)。<br>` : ''}`
       : `⭐ <b>🧪 兩張都買 = 上面兩張的聯集</b>(同一檔只算一次)。⛔ 任何一天只要有一張重建不出來,<b>那一天整天不算</b> —— 只算得出來的那一半會讓它看起來像「兩張都買」,其實只買了一張。<br>`;
     const statLine = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0 4px;font-size:10.5px;color:var(--dim2)">
@@ -7195,7 +7240,7 @@ const PRO = {
         <span style="color:var(--cyan)">・📌 持有中 ${hold.length}</span>
         <span style="color:var(--dim)">・🧾 已結算 ${done.length}</span>${pend.length ? `<span>・讀不到 K 線 ${pend.length}</span>` : ''}
         ${R.mech === 'trig' ? `<span data-recomech="1">・收盤沒到觸發價 ${(R.miss || []).length} 次・沒有觸發價(不買)${(R.noTrig || []).length} 次${R.heldSkip ? `・已經抱著不重買 ${R.heldSkip} 次` : ''}</span>` : ''}
-        ${SRC === 'lead' && R.next ? `<span>・🔄 ${R.next.left ? `下次換倉還有 ${R.next.left} 個交易日` : `${R.next.last.slice(5)} 是換倉日`}${R.books > 1 ? `(${this._LEAD_BOOK_NAME[R.next.book === 'B' ? 'B' : 'A']};📚 甲帳・乙帳各一半錢、錯開 4 天輪流換)` : ''}</span>` : ''}
+        ${SRC === 'lead' && R.next ? `<span>・🔄 ${this._leadNextTxt(R.next.left, R.next.last)}${R.books > 1 ? `(${this._LEAD_BOOK_NAME[R.next.book === 'B' ? 'B' : 'A']};📚 甲帳・乙帳各一半錢、錯開 4 天輪流換)` : ''}</span>` : ''}
         ${SRC === 'lead' && R.books > 1 ? ['A', 'B'].map(bk => { const tr = (R.trades || []).filter(t => t.book === bk && t.st), dn = tr.filter(t => !t.st.open), hd = tr.filter(t => t.st.open);
             const av = dn.length ? dn.reduce((a, t) => a + (+t.st.net || 0), 0) / dn.length : null;
             return `<span data-ledgerbook="${bk}" style="color:${bk === 'A' ? 'var(--cyan)' : '#c4b5fd'}">・${bk === 'A' ? '🔷' : '🟣'} ${this._LEAD_BOOK_NAME[bk]}:持有 ${hd.length}・已結算 ${dn.length}${av != null ? `(平均 ${this.fmt(av, 2, true)}%)` : ''}</span>`; }).join('') : ''}
@@ -7230,7 +7275,7 @@ const PRO = {
         </div>
       </details>
       ${R.trades.length ? '' : SRC === 'lead'
-        ? (_pl ? '' : `<div class="note">📭 ${since} 之後還沒有任何一次換倉成交${R.next && R.next.left != null ? `(${R.next.left ? `下次換倉還有 ${R.next.left} 個交易日` : '今天是換倉日'},換倉隔天開盤成交)` : ''}。</div>`)
+        ? (_pl ? '' : `<div class="note">📭 ${since} 之後還沒有任何一次換倉成交${R.next && R.next.left != null ? `(${this._leadNextTxt(R.next.left, R.next.last)};這裡照換倉隔天開盤成交算)` : ''}。</div>`)
         : (R.mech === 'trig' && (_pp || (R.miss || []).length || (R.noTrig || []).length))
         ? (_pp && !(R.miss || []).length && !(R.noTrig || []).length ? '' : `<div class="note">📭 ${since} 之後名單上的還沒有一檔買到 —— 收盤沒到觸發價 ${(R.miss || []).length} 次、沒有觸發價(不買)${(R.noTrig || []).length} 次(⛔ 不是壞掉:觸發價就是要漲過才買)。</div>`)
         : (R.skipped >= R.days
@@ -10256,7 +10301,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V80.0.6',
+  VER: 'V80.0.7',
   _ROT: {
     win: 20, spread: 1.95, top: 1.06, bot: -0.88,
     q1: 2.48, q2: 1.42, exBest: 1.83,

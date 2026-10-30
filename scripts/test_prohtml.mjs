@@ -672,6 +672,7 @@ const SIG = await page.evaluate(async () => {
     out.how = document.getElementById('colPremkt').textContent;   // ⚠️ 在摺疊裡 → innerText 讀不到(關著的 details)
     out.inCol = !!document.querySelector('#tabHome #colPremkt') && !!document.querySelector('#tabHome #sigDiv') && !!document.querySelector('#tabCol #colCalGo');   // 🏠 V79.8.0 搬到「🏠 今天」,專欄留一行指路
     out.div = document.getElementById('sigDiv').textContent;
+    out.P = { up: PRO._PREMKT.hi.up, dn: PRO._PREMKT.hi.dn, io: PRO._PREMKT.ioSpread };   // 🧾 V80.0.7 數字讀常數(V79.9.9 重算後舊斷言還釘著 48.7 / 0.09)
     out.premktScore = PRO._premktScore(PRO._cache['data/macro_risk.json']);
     out.premktThin = PRO._premktHtml({ nasdaq_chg_pct: 1, sp500_chg_pct: 1 });
     out.premktNone = PRO._premktHtml(null);
@@ -685,9 +686,10 @@ ok('㉜c 除權息那格有內容(有資料列出、沒資料要說出來,⛔ �
 ok('㉝ 分數 = App 盤前體檢同一條(那指 1 + 標普 1 + 費半 1.5 + 台積 2 + 台幣升 0.5 = 6;日經 / 韓股只列出來、VIX 沒水位不算)',
    SIG.premktScore && SIG.premktScore.s === 6 && SIG.premktScore.sPct === 80 && SIG.premktScore.n === 5,
    JSON.stringify(SIG.premktScore && { s: SIG.premktScore.s, sPct: SIG.premktScore.sPct, n: SIG.premktScore.n }));
-ok('㉝b 高分要對照到「≥65」那格的歷史數字(0050 開高 48.7%、開低 5.3%)', /開高 48\.7%/.test(SIG.how) && /開低 5\.3%/.test(SIG.how), SIG.how.slice(0, 160));
-ok('㉝c 🚨 只預測開盤:開盤之後只差 0.09 個百分點、扣成本是負的;⛔ 不可再寫舊的 0.574(加權開盤價湊出來的,陷阱 #47)',
-   /只預測開盤/.test(SIG.how) && /0\.09 個百分點/.test(SIG.how) && !/0\.574/.test(SIG.how) && /加權指數的開盤價/.test(SIG.how));
+// 🧾 V80.0.7 釘用意不釘當時的數字:畫面那格 == `_PREMKT` 常數(⛔ 重跑 premkt_app_probe 一次就過期 —— V79.9.9 起 48.7 / 5.3 / 0.09 都換了)
+ok('㉝b 高分要對照到「≥65」那格的歷史數字(0050 開高 / 開低 讀 `_PREMKT.hi`)', SIG.P && SIG.how.includes(`開高 ${SIG.P.up}%`) && SIG.how.includes(`開低 ${SIG.P.dn}%`), JSON.stringify(SIG.P) + ' ' + SIG.how.slice(0, 160));
+ok('㉝c 🚨 只預測開盤:開盤之後只差零點幾個百分點(讀 `_PREMKT.ioSpread`)、扣成本是負的;⛔ 不可再寫舊的 0.574(加權開盤價湊出來的,陷阱 #47)',
+   /只預測開盤/.test(SIG.how) && SIG.P && SIG.how.includes(`${SIG.P.io} 個百分點`) && SIG.P.io < 0.3 && !/0\.574/.test(SIG.how) && /加權指數的開盤價/.test(SIG.how));
 ok('㉝d 🚨 必須寫「⛔ 不是叫你買什麼」+「拿大盤方向篩個股反而少賺」',
    /不是叫你買什麼/.test(SIG.how) && /篩個股反而會少賺/.test(SIG.how));
 ok('㉝e ⚠️ 要誠實說哪幾項沒有歷史、亞股為什麼不算分', /夜盤/.test(SIG.how) && /沒有歷史/.test(SIG.how) && /亞股/.test(SIG.how) && /不算分/.test(SIG.how));

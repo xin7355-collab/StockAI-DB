@@ -14,6 +14,9 @@
 //   ⓘ 👑:每檔 = 總資產 ÷ N、開盤進出;起算日之前的換倉不算(空手開始)
 //   ⓙ 畫面:#recoRace 在 #recoCmpAll 前面、四列、起算日選擇、⛔ 無 🔴🟢、390px 不溢出、無 pageerror
 //   ⓚ 舊 🏁 表的 0050 == 這張的 📏(同一個數字,⛔ 同名不同義)
+//   ⓛ V80.0.7(使用者 10/30:「為何沒有單獨領頭羊策略」):👑 兩種都算(👑 停車 / 💵 錢放現金)、「你現在用的」跟設定走、
+//      還沒買過 → 👑 == 📏、💵 == 100 萬(決定性對照)而且寫原因;換倉日寫日期 ⛔「今天是換倉日」;兩張表起算日同一天;
+//      同一起點表在 390px 名字只佔一行(以前一個字一行);最後一天是今天還沒定案(盤中價)要寫出來
 // 跑法:node scripts/test_recorace.mjs ・INJECT=1 node scripts/test_recorace.mjs(注入必紅)
 import fs from 'node:fs';
 import os from 'node:os';
@@ -32,6 +35,18 @@ const INJ = {
   nostart: ["if ((F || D) < S) continue;", "if (false) continue;"],
   nodiv: ["const tr = this._poliTr(bars, evs, { stock: true });", "const tr = this._poliTr(bars, [], { stock: true });"],
   nols: ["try { const v = localStorage.getItem('proRecoStart'); if (this._recoStartOk(v)) return v; } catch (_) {}", ""],
+  // 🆕 V80.0.7
+  nocash: ["for (const [k, park] of [['lead', true], ['leadcash', false]]) {", "for (const [k, park] of [['lead', true]]) {"],
+  today: ["return `${md ? md + ' ' : ''}換倉 → 下一個交易日買`;", "return '今天是換倉日';"],
+  live: ["if (!last || last !== this._recoToday()) return '';", "return '';"],
+  namegrid: [
+    ["const COLS = 'grid-template-columns:minmax(0,.8fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,.9fr)';",
+     "const COLS = 'grid-template-columns:minmax(0,1fr) 34px 34px 34px 58px 74px 46px';"],
+    ["padding:2px 0\">${this._CMP_ALL_COLS.map(th).join('')}</div>`;", "padding:2px 0\"><span>策略</span>${this._CMP_ALL_COLS.map(th).join('')}</div>`;"],
+    ["<div data-cmpname=\"${r.k}\" style=\"font-size:11.5px;font-weight:700;line-height:1.4\">", "<div style=\"display:grid;${COLS};gap:4px;align-items:baseline;font-size:11px\"><span data-cmpname=\"${r.k}\" style=\"min-width:0;font-weight:700\">"],
+    ["<span style=\"font-size:9px;font-weight:400;color:var(--dim2)\">⏳少</span>' : ''}</div>\n        <div style=\"display:grid;${COLS};gap:4px;align-items:baseline;font-size:11px\">",
+     "<span style=\"font-size:9px;font-weight:400;color:var(--dim2)\">⏳少</span>' : ''}</span>"],
+  ],
 };
 
 async function run(html) {
@@ -188,10 +203,58 @@ async function run(html) {
   ok('ⓖ2 換起算日跟著變:預設 10/22 → 10/21 那筆不算(0 筆、只剩等明天的 Y1)', G.b.start === '2026-10-22' && G.b.n === 0 && G.b.pend.join() === 'Y1', JSON.stringify(G.b));
   ok('ⓘ2 👑 起算日之前的換倉不算、從空手開始:起算日在第一次成交之後 → 第二次換倉才買滿前 5 名',
      G.l1.n === 5 && G.l1.d0.join() === G.l2.F1 && G.l2.n === 5 && G.l2.d0.join() === G.l2.F2, JSON.stringify([G.l1, G.l2]));
-  ok('ⓙ 畫面:#recoRace 在 #recoCmpAll 前面、四列(🅿️ / 🔥 / 👑 / 📏)、起算日 3 個 + 自訂、四條線',
-     G.j.ok && G.j.order && G.j.rows.join() === 'park,hot,lead,0050' && G.j.chips === 4 && G.j.svg === 4 && G.j.on.join() === '2026-09-24', JSON.stringify({ ...G.j, txt: undefined }));
+  ok('ⓙ 畫面:#recoRace 在 #recoCmpAll 前面、五列(🅿️ / 🔥 / 👑 / 💵 / 📏)、起算日 3 個 + 自訂、五條線',
+     G.j.ok && G.j.order && G.j.rows.join() === 'park,hot,lead,leadcash,0050' && G.j.chips === 4 && G.j.svg === 5 && G.j.on.join() === '2026-09-24', JSON.stringify({ ...G.j, txt: undefined }));
   ok('ⓙ2 ⛔ 無 🔴🟢、390px 不橫向溢出、有「⛔ 現在還不能說誰比較厲害」', !/[🔴🟢]/u.test(G.j.txt) && G.j.sx <= 2 && /現在還不能說誰比較厲害/.test(G.j.txt), `sx=${G.j.sx} sw=${G.j.sw}`);
   ok('ⓚ 舊 🏁 表的 0050 == 這張的 📏(同一個數字)', G.k.etf != null && G.k.race != null && Math.abs(G.k.etf - G.k.race) < 1e-9, JSON.stringify(G.k));
+  // ⓛ V80.0.7:起算日 10/21、10/22 收盤才是第一次換倉(要等下一個交易日才買)
+  const Lx = await page.evaluate(async () => {
+    const r = {}, prev = PRO.fetchJson, keepL = PRO._isLead, keepP = PRO._isPark;
+    const lead = { rows: ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8', 'L9', 'L10'].map((s, i) => ({ s, c: 100, r: i + 1, x: 30 - i })), n: 100, passed: 40 };
+    PRO.fetchJson = async (u) => { const x = await prev(u); return /pick_history/.test(u) ? { days: x.days.concat([{ d: '2026-10-22', lead }]) } : x; };
+    const wait = async () => { for (let i = 0; i < 200 && !(document.querySelector('[data-race="ok"]') && document.querySelector('[data-cmpall="ok"]')); i++) await new Promise(q => setTimeout(q, 100)); };
+    const grab = () => {
+      const race = document.getElementById('recoRace'), cmp = document.getElementById('recoCmpAll');
+      const rows = [...race.querySelectorAll('[data-racerow]')];
+      const val = k => { const e = race.querySelector(`[data-racerow="${k}"] [data-racev]`); return e && e.dataset.racev !== '' ? +e.dataset.racev : null; };
+      return { rows: rows.map(e => e.dataset.racerow), cur: rows.filter(e => /你現在用的/.test(e.innerText)).map(e => e.dataset.racerow),
+        lead: val('lead'), cash: val('leadcash'), e50: val('0050'), svg: race.querySelectorAll('[data-raceline]').length,
+        wL: (race.querySelector('[data-racewait="lead"]') || {}).innerText || '', wC: (race.querySelector('[data-racewait="leadcash"]') || {}).innerText || '',
+        head: (race.querySelector('.sigtag') || {}).innerText || '', cmpHead: (cmp.querySelector('.sigtag') || {}).innerText || '',
+        today: (cmp.querySelector('[data-cmptoday="lead"]') || {}).innerText || '', txt: race.innerText + '\n' + cmp.innerText,
+        names: [...cmp.querySelectorAll('[data-cmpname]')].map(e => { const lh = parseFloat(getComputedStyle(e).lineHeight) || 16; return { k: e.dataset.cmpname, h: e.getBoundingClientRect().height, lh }; }) };
+    };
+    localStorage.setItem('proRecoStart', '2026-10-21');
+    PRO._isLead = () => true; PRO._isPark = () => true;
+    PRO._recoReset(); PRO._rlK = {}; PRO._recoLedgerRender(); await wait(); r.park = grab();
+    PRO._isPark = () => false;
+    PRO._recoReset(); PRO._recoLedgerRender(); await wait(); r.cash = grab();
+    // 🕐 最後一天是今天、還沒定案 → 寫「還沒定案」(盤中 / 收盤後加權那根還沒有官方成交值);不是今天或已定案 → 不寫
+    const keepT = PRO._recoToday, keepM = PRO._tpeMins, live = () => !!document.querySelector('#recoRace [data-racelive]');
+    PRO._recoToday = () => '2026-10-22';
+    PRO._tpeMins = () => 600; PRO._raceRender(); r.live1 = live();
+    PRO._tpeMins = () => 1000; PRO._twii.lastAmt = true; PRO._raceRender(); r.live2 = live();
+    PRO._twii.lastAmt = false; PRO._raceRender(); r.live3 = live();
+    PRO._recoToday = () => '2026-10-23'; PRO._raceRender(); r.live4 = live();
+    PRO._recoToday = keepT; PRO._tpeMins = keepM; delete PRO._twii.lastAmt; PRO._raceRender();
+    window.scrollTo(80, 0); r.sx = window.scrollX; window.scrollTo(0, 0);
+    PRO._isLead = keepL; PRO._isPark = keepP; PRO.fetchJson = prev; localStorage.removeItem('proRecoStart');
+    return r;
+  });
+  const LP = Lx.park, LC = Lx.cash;
+  ok('ⓛa 👑 兩種都算:五列 park,hot,lead,leadcash,0050 + 五條線(⛔ 只照設定算一種)',
+     LP.rows.join() === 'park,hot,lead,leadcash,0050' && LC.rows.join() === LP.rows.join() && LP.svg === 5, JSON.stringify([LP.rows, LC.rows, LP.svg]));
+  ok('ⓛb「你現在用的」跟設定走:👑+停車 → lead、👑 錢放現金 → leadcash', LP.cur.join() === 'lead' && LC.cur.join() === 'leadcash', JSON.stringify([LP.cur, LC.cur]));
+  ok('ⓛc ⭐ 決定性對照:還沒買過 → 👑+停車 == 📏 0050、💵 == 100 萬,而且寫出「第一次換倉在 10/22」與錢放哪',
+     LP.lead != null && LP.e50 != null && Math.abs(LP.lead - LP.e50) <= 1 && LP.cash === 1000000 && LP.lead !== LP.cash
+       && /第一次換倉在 10\/22/.test(LP.wL) && /停在 0050/.test(LP.wL) && /放現金/.test(LP.wC), JSON.stringify({ lead: LP.lead, e50: LP.e50, cash: LP.cash, wL: LP.wL, wC: LP.wC }));
+  ok('ⓛd 換倉日寫日期:⛔「今天是換倉日」;同一起點表 👑 那行 =「10/22 換倉 → 下一個交易日買」',
+     !/今天是換倉日/.test(LP.txt) && /10\/22 換倉 → 下一個交易日買/.test(LP.today), JSON.stringify({ today: LP.today }));
+  ok('ⓛe 兩張表起算日同一天(起算日 10/21 → 兩個標題都是 2026-10-21)', /2026-10-21/.test(LP.head) && /2026-10-21/.test(LP.cmpHead), JSON.stringify([LP.head, LP.cmpHead]));
+  ok('ⓛf 📱 同一起點表 390px:每個策略名只佔一行(以前一個字一行)、不橫向溢出',
+     LP.names.length >= 4 && LP.names.every(n => n.h > 0 && n.h < n.lh * 1.5) && Lx.sx <= 2, JSON.stringify({ names: LP.names, sx: Lx.sx }));
+  ok('ⓛg 🕐 最後一天是今天還沒定案 → 寫「還沒定案」:盤中 ✓ / 收盤後已有官方成交值 ✗ / 收盤後還沒有 ✓ / 不是今天 ✗',
+     Lx.live1 === true && Lx.live2 === false && Lx.live3 === true && Lx.live4 === false, JSON.stringify([Lx.live1, Lx.live2, Lx.live3, Lx.live4]));
   ok('ⓩ 無 pageerror', errs.length === 0, errs.join(' | '));
   await browser.close();
   return fails;
@@ -199,14 +262,16 @@ async function run(html) {
 
 if (process.env.INJECT) {
   let bad = 0;
-  for (const [k, [a, b]] of Object.entries(INJ)) {
-    if (!SRC.includes(a)) { console.log(`❌ 注入 ${k}:找不到要改的那一行(測試過期了)`); bad++; continue; }
+  for (const [k, v] of Object.entries(INJ)) {
+    const pairs = Array.isArray(v[0]) ? v : [v];
+    const miss = pairs.filter(([a]) => !SRC.includes(a));
+    if (miss.length) { console.log(`❌ 注入 ${k}:找不到要改的那一行(測試過期了):${miss[0][0].slice(0, 80)}`); bad++; continue; }
     process.env.QUIET = '1';
-    const f = await run(SRC.replace(a, b));
+    const f = await run(pairs.reduce((h, [a, b]) => h.replace(a, b), SRC));
     console.log(`${f.length ? '✅' : '❌'} 注入 ${k} → ${f.length ? '紅:' + f.join(' / ').slice(0, 160) : '⛔ 全綠(這個注入沒被抓到)'}`);
     if (!f.length) bad++;
   }
-  console.log(bad ? `\n❌ ${bad} 種注入沒被抓到` : '\n✅ 五種注入全部叫得出來');
+  console.log(bad ? `\n❌ ${bad} 種注入沒被抓到` : `\n✅ ${Object.keys(INJ).length} 種注入全部叫得出來`);
   process.exit(bad ? 1 : 0);
 }
 const f = await run(SRC);
