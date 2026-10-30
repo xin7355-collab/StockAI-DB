@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V80.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V80.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -462,6 +462,11 @@
 
         .modal-base { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(2px); z-index: 300; display: flex; position: fixed; inset: 0; align-items: flex-start; justify-content: center; overflow-y: auto; padding: max(env(safe-area-inset-top, 0px), 1rem) 1rem max(env(safe-area-inset-bottom, 0px), 1rem) 1rem; }
         .modal-base.hidden { display: none !important; }
+        /* 📱 V80.0.8 庫存編輯 / 手動新增:iOS 輸入框字 <16px 一點就整頁放大(畫面被推到一邊),
+           而 number/date 沒設 color-scheme 會畫成白底 / 淺灰底;date 有最小寬度會撐出格子 */
+        #invManualAddModal input, #inventoryEditPageModal input { font-size: 16px !important; color-scheme: dark; -webkit-appearance: none; appearance: none; background-color: #0d1117; color: #ffffff; }
+        #inventoryEditPageModal input[type="date"] { min-width: 0; max-width: 100%; text-align: right; }
+        #inventoryEditPageModal input[type="date"]::-webkit-date-and-time-value { text-align: right; }
         .modal-content { background-color: #1c2128; border: 1px solid #30363d; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 100%; padding: 1.25rem; }
         .zoomable-zone { transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); transform-origin: center; will-change: transform; overscroll-behavior: contain; touch-action: pan-y; }
         .scrollable-main { overscroll-behavior: contain; }
@@ -892,7 +897,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.0.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.0.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8773,10 +8778,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V80.0.7',
+    _APP_VERSION: 'V80.0.8',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V80.0.8', d: [
+            '📱 庫存「➕ 手動新增」視窗:左邊不再被切掉、輸入代號跳出來的清單不再透明(改成往下排,不會蓋住底下的按鈕);股數還沒填時不再寫「= 0 張」',
+            '📱 編輯庫存「🎯 賣出」:賣出價 / 股數 / 賣出日改成深色、看得清楚,賣出日不再超出畫面;右上「🔄 刷新」不再壓到手機最上面的狀態列',
+        ] },
         { v: 'V80.0.7', d: [
             '🏁 產業作戰室成績單「100 萬同一天起跑」:👑 領頭羊兩種都算出來並排(👑 停車 0050 / 💵 錢放現金),跟 🅿️ / 🔥 一樣;「你現在用的」照你的設定標',
             '📅 換倉那一句改寫日期(例:「10/29 換倉 → 下一個交易日買」),不再寫「今天是換倉日」(隔天早上打開會講錯天);起算日之後還沒買過的,寫出為什麼',
@@ -9049,8 +9058,6 @@ ${list}
         { v: 'V79.3.1', d: ['📰 新增一篇專欄(大跌那天要不要撿便宜、一次買還是分批買);盤前體檢分數很低那天,「那天怎麼辦」那篇會自動列出來'] },
         { v: 'V79.3.0', d: ['📰 產業作戰室新增一篇專欄(盤前體檢分數很低那天怎麼辦);這個 App 的畫面與規則都沒有變'] },
         { v: 'V79.2.9', d: ['🔀 決策台 👑 表格:欄位順序不變(換倉日價 → 現價),只把兩個 % 互換 —— 現價底下的小字改成「今天漲跌」,旁邊那欄改成「從換倉日到現價」(表頭寫「自MM/DD」,可點排序)。上一版把整欄對調是做錯了,已改回'] },
-        { v: 'V79.2.7', d: ['📅 👑 決策台那一行改成先講「<b>上次換倉 10/13(一)收盤 → 10/14(二)照名單買賣了</b> ・下次換倉還有幾個交易日」(以前開頭寫「10-14 是第 12 個交易日(09-24 起算)」,讀起來像很久以前換的;換倉日本來就是對的)',
-            '📝 設定「我的策略」逐條對過:👑 那兩個說的「不在名單上的持股照 🔥 高檔飆股的三條出場」改成「照三條出場(硬停損 / 你設定的線 / 抱滿天數)」(🔥 不是設定裡選得到的名字);🅿️ 改名「<b>符合進場+停車 0050</b>」(它本來就跟 📈 符合進場一模一樣,只差閒錢停 0050)'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -46837,7 +46844,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }).join('');
 
         modal.innerHTML = `
-            <div class="sticky top-0 bg-[#0d1117] border-b border-[#30363d] px-3 py-3 flex items-center justify-between z-50">
+            <div class="sticky top-0 bg-[#0d1117] border-b border-[#30363d] px-3 pb-3 flex items-center justify-between z-50" data-invedithead style="padding-top: max(env(safe-area-inset-top, 0px), 12px);">
                 <button onclick="app.closeInventoryEditPage()" class="text-white text-xl font-bold px-2 py-1">‹</button>
                 <h3 class="text-white text-base font-bold">編輯庫存股</h3>
                 <!-- V17.12 — 編輯頁標題列右上加「刷新」連動 refreshInventoryPrices,免單獨按鈕在主頁 -->
@@ -46929,22 +46936,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 暫存表單狀態
         this._manualAddState = { symbol: '', shares: 0, cost: 0 };
         modal.innerHTML = `
-            <div class="bg-[#161b22] border border-[#30363d] rounded-t-2xl md:rounded-2xl w-full max-w-md p-4 max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="keepbox bg-[#161b22] border border-[#30363d] rounded-t-2xl md:rounded-2xl w-full max-w-md p-4 max-h-[85vh] overflow-y-auto" style="overflow-x:hidden;background:#161b22" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-between mb-4 pb-2 border-b border-[#30363d]">
                     <h3 class="text-white text-base font-bold">手動新增</h3>
                     <button onclick="app._closeManualAddModal()" class="text-gray-400 hover:text-white text-2xl leading-none">×</button>
                 </div>
                 <div class="flex flex-col gap-3">
                     <!-- 股票名稱(輸入代號 + 自動帶名)-->
-                    <div class="grid grid-cols-[80px_1fr] items-center gap-2">
+                    <div class="grid items-center gap-2" style="grid-template-columns:80px minmax(0,1fr)">
                         <label class="text-sm text-gray-300 font-bold">股票名稱</label>
-                        <div class="relative">
+                        <div class="min-w-0">
                             <input type="text" id="manualAddSymInput" placeholder="🔍 輸入代號或股名" oninput="app._onManualAddSymInput(this.value)" class="w-full bg-[#0d1117] text-white px-3 py-2 rounded border border-[#30363d] outline-none focus:border-blue-500 text-sm">
-                            <div id="manualAddSymDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-[#0d1117] border border-[#30363d] rounded max-h-48 overflow-y-auto z-10"></div>
+                            <div id="manualAddSymDropdown" class="keepbox hidden mt-1 border border-[#30363d] rounded max-h-48 overflow-y-auto" style="position:static;background:#0d1117"></div>
                         </div>
                     </div>
                     <!-- 種類(目前只支援現股)-->
-                    <div class="grid grid-cols-[80px_1fr] items-center gap-2">
+                    <div class="grid items-center gap-2" style="grid-template-columns:80px minmax(0,1fr)">
                         <label class="text-sm text-gray-300 font-bold">種類</label>
                         <div class="flex gap-1.5">
                             <button class="flex-1 bg-orange-600 text-white px-3 py-2 rounded text-sm font-bold">現股</button>
@@ -46953,20 +46960,20 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         </div>
                     </div>
                     <!-- 總股數(− input + 股);V51.8 修:input 加 min-w-0 防 + 與「股」被擠出畫面 + 加「= X 張」換算提示 -->
-                    <div class="grid grid-cols-[80px_1fr] items-start gap-2">
+                    <div class="grid items-start gap-2" style="grid-template-columns:80px minmax(0,1fr)">
                         <label class="text-sm text-gray-300 font-bold pt-2">股數</label>
                         <div class="flex flex-col gap-0.5 min-w-0">
                             <div class="flex items-center gap-1">
                                 <button onclick="app._adjManualShares(-1000)" class="bg-[#21262d] hover:bg-gray-700 text-white px-2 py-2 rounded text-lg font-bold flex-shrink-0 w-10">−</button>
-                                <input type="number" id="manualAddSharesInput" placeholder="1000 = 1 張" min="0" step="1000" oninput="app._manualAddState.shares = +this.value || 0; app._updateManualLotHint();" class="flex-1 min-w-0 bg-[#0d1117] text-white text-center px-1 py-2 rounded border border-[#30363d] outline-none focus:border-blue-500 font-mono text-base">
+                                <input type="number" id="manualAddSharesInput" placeholder="填股數,例 1000" min="0" step="1000" oninput="app._manualAddState.shares = +this.value || 0; app._updateManualLotHint();" class="flex-1 min-w-0 bg-[#0d1117] text-white text-center px-1 py-2 rounded border border-[#30363d] outline-none focus:border-blue-500 font-mono text-base">
                                 <button onclick="app._adjManualShares(1000)" class="bg-[#21262d] hover:bg-gray-700 text-white px-2 py-2 rounded text-lg font-bold flex-shrink-0 w-10">+</button>
                                 <span class="text-gray-400 text-sm font-bold flex-shrink-0">股</span>
                             </div>
-                            <div id="manualLotHint" class="text-[10px] text-cyan-300 font-mono pl-1">= 0 張(1 張 = 1000 股)</div>
+                            <div id="manualLotHint" class="text-[10px] text-cyan-300 font-mono pl-1">1 張 = 1000 股,零股照實填</div>
                         </div>
                     </div>
                     <!-- 成本均價 -->
-                    <div class="grid grid-cols-[80px_1fr] items-center gap-2">
+                    <div class="grid items-center gap-2" style="grid-template-columns:80px minmax(0,1fr)">
                         <label class="text-sm text-gray-300 font-bold">成本均價</label>
                         <div class="flex items-center gap-1">
                             <input type="number" id="manualAddCostInput" placeholder="填入成本均價" min="0" step="0.01" oninput="app._manualAddState.cost = +this.value || 0;" class="flex-1 bg-[#0d1117] text-white px-3 py-2 rounded border border-[#30363d] outline-none focus:border-blue-500 font-mono text-base text-right">
@@ -47017,7 +47024,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const sh = (this._manualAddState && this._manualAddState.shares) || 0;
         const lots = sh / 1000;
         const lotStr = Number.isInteger(lots) ? lots : +lots.toFixed(3);
-        el.textContent = `= ${lotStr} 張(1 張 = 1000 股)`;
+        // 📱 V80.0.8 還沒填 → ⛔ 不寫「= 0 張」(跟框裡的提示打架)
+        el.textContent = sh > 0 ? `= ${lotStr} 張(1 張 = 1000 股)` : '1 張 = 1000 股,零股照實填';
     },
 
     _confirmManualAdd() {
@@ -47100,10 +47108,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return `<div data-sellpanel="${idx}" class="mx-2 mb-2 px-2 py-2 border-l-4 border-orange-500 bg-orange-900/10">
             <div class="text-[12px] font-black text-orange-200 mb-1.5">🎯 賣出這一檔(記入勝率鏡子)</div>
             ${noOrig ? `<div class="text-[11px] text-yellow-300 leading-relaxed">這一列是剛新增、還沒儲存的,請先按下方 💾 儲存,再回來賣出。</div>` : `
-            <div class="grid grid-cols-3 gap-1.5 mb-1.5">
-                <label class="flex flex-col gap-0.5"><span class="text-[10px] text-gray-400">賣出價</span><input type="number" step="0.01" min="0" inputmode="decimal" value="${df.price}" data-sellf="price" oninput="app._invSellPreview(${idx})" class="${inp}" style="min-height:38px"></label>
-                <label class="flex flex-col gap-0.5"><span class="text-[10px] text-gray-400">賣出股數</span><input type="number" step="1" min="1" max="${df.shares}" inputmode="numeric" value="${df.shares}" data-sellf="shares" oninput="app._invSellPreview(${idx})" class="${inp}" style="min-height:38px"></label>
-                <label class="flex flex-col gap-0.5"><span class="text-[10px] text-gray-400">賣出日</span><input type="date" value="${df.date}" data-sellf="date" oninput="app._invSellPreview(${idx})" class="bg-[#0d1117] text-white text-[12px] font-mono px-1 rounded border border-[#30363d] outline-none focus:border-orange-500 w-full" style="min-height:38px"></label>
+            <div class="grid gap-1.5 mb-1.5" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+                <label class="flex flex-col gap-0.5" style="min-width:0"><span class="text-[10px] text-gray-400">賣出價</span><input type="number" step="0.01" min="0" inputmode="decimal" value="${df.price}" data-sellf="price" oninput="app._invSellPreview(${idx})" class="${inp}" style="min-height:38px"></label>
+                <label class="flex flex-col gap-0.5" style="min-width:0"><span class="text-[10px] text-gray-400">賣出股數</span><input type="number" step="1" min="1" max="${df.shares}" inputmode="numeric" value="${df.shares}" data-sellf="shares" oninput="app._invSellPreview(${idx})" class="${inp}" style="min-height:38px"></label>
+                <label class="flex flex-col gap-0.5" style="min-width:0;grid-column:1 / -1"><span class="text-[10px] text-gray-400">賣出日</span><input type="date" value="${df.date}" data-sellf="date" oninput="app._invSellPreview(${idx})" class="bg-[#0d1117] text-white text-[12px] font-mono px-1 rounded border border-[#30363d] outline-none focus:border-orange-500 w-full" style="min-height:38px"></label>
             </div>
             <div data-sellprev class="text-[12px] leading-relaxed mb-1.5">${this._invSellPreviewHtml(item, df.price, df.shares)}</div>
             <div class="flex gap-2">
