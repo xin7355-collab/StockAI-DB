@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V80.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V80.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.0.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.0.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8389,6 +8389,24 @@ ${list}
         }));
     },
 
+    /** 👆 V80.0.5 App 真正在捲的是 #appMainArea(body 固定高 overflow:hidden),⛔ 不是 window */
+    _scrollEl() { return document.getElementById('appMainArea') || document.scrollingElement || document.documentElement; },
+    _TAB_IDS: ['desk', 'diag', 'market', 'fav', 'inv', 'radar', 'hunt', 'potential'],
+    /** 👆 V80.0.5 返回時捲回這一頁上次的位置。頁面還在畫(決策台 async)→ 畫完再捲一次;使用者自己已經捲動了就不搶。 */
+    _tabScrollRestore(tabId, pending) {
+        const y = (this._tabScrollY || {})[tabId];
+        if (!(y > 0)) return;
+        let last = null;
+        const sc = this._scrollEl();
+        const go = () => { try {
+            const el = document.getElementById(`tabContent${tabId[0].toUpperCase()}${tabId.slice(1)}`);
+            if (!el || !el.classList.contains('tab-active')) return;
+            if (last != null && Math.abs((sc.scrollTop || 0) - last) > 4) return;   // 使用者捲過了 → 不搶
+            sc.scrollTop = y; last = sc.scrollTop || 0;
+        } catch (_) {} };
+        requestAnimationFrame(go);
+        Promise.resolve(pending).then(() => { requestAnimationFrame(go); setTimeout(go, 300); }).catch(() => {});
+    },
     switchAppTab(tabId, isGoBack = false) {
         try {   // V24.5 — 整段包 try/catch 防中斷(原本某行拋錯就無法切換)
         if(tabId !== 'diag') {
@@ -8397,6 +8415,10 @@ ${list}
                 this.saveSettings(); _settingsModal.classList.add('hidden');
             }
         }
+        // 👆 V80.0.5 離開一個分頁前記下它捲到哪裡 → 按「返回」回來時捲回原位(以前只有潛力頁記;決策台每次都跳回最上面)
+        try { const _cur = this._TAB_IDS.find(t => document.getElementById(`tabContent${t[0].toUpperCase()}${t.slice(1)}`)?.classList.contains('tab-active'));
+              if (_cur && _cur !== tabId) { const _sc = this._scrollEl(); (this._tabScrollY || (this._tabScrollY = {}))[_cur] = _sc.scrollTop || 0;
+                  if (!isGoBack) _sc.scrollTop = 0; } } catch (_) {}   // 換到別頁一律從最上面開始(以前共用同一個捲動區 → 個股頁會停在決策台捲到的那個高度)
         if (!isGoBack && this.navStack[this.navStack.length - 1] !== tabId) this.navStack.push(tabId);
         this._stopInvPricePoll();   // 🔄 V45.13 離開任何頁先停庫存輪詢,進 inv 再開
         if (tabId !== 'fav') { try { this._stopFavPricePoll(); } catch (_) {} }   // ⚡ V63.2 離開自選頁停即時輪詢
@@ -8407,7 +8429,7 @@ ${list}
         if (tabId !== 'radar') this._radarTrigRun = (this._radarTrigRun || 0) + 1;   // 📶 V79.9.2 離開選股頁停背景抓「今日觸發」徽章(以前切到決策台照樣抓、抓不到就跳紅框在決策台上)
         // 💎 V46.7 — 離開潛力頁前記住捲動位置(切走再回來還原,不跳回頂端)
         const _potElNow = document.getElementById('tabContentPotential');
-        if (_potElNow && _potElNow.style.display !== 'none' && tabId !== 'potential') this._potentialScrollY = window.scrollY || 0;
+        if (_potElNow && _potElNow.style.display !== 'none' && tabId !== 'potential') this._potentialScrollY = (this._tabScrollY || {}).potential || 0;   // 👆 V80.0.5 捲動區是 #appMainArea(⛔ window),上面已經記好
 
         ['Desk', 'Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Potential'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
@@ -8456,7 +8478,7 @@ ${list}
         }
         if (tabId !== 'fav') { try { this._resetFavEditMode(); } catch(_) {} }   // 🐛 V57.2 切走自動退出自選編輯模式
         if (tabId === 'fav') { try { this.renderFavTabs(); this._scanBreakoutCandidates(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }   // 🗑️ V57.2 進場體檢榜已刪(_scanWatchlistCheckup 不再呼叫)
-        if (tabId === 'inv') { try { this.renderInventory(); window.scrollTo(0, 0); this._startInvPricePoll(); } catch(e) { this._handleTabRenderError('inv', '💼 庫存', e); } }
+        if (tabId === 'inv') { try { this.renderInventory(); if (!isGoBack) window.scrollTo(0, 0); this._startInvPricePoll(); } catch(e) { this._handleTabRenderError('inv', '💼 庫存', e); } }
         if (tabId === 'radar') {
             // 🎯 V72.5.0 訊號榜的紅點數字 + 「今天有訊號就自動開它」(背景載入,不卡主榜)
             try {
@@ -8473,7 +8495,9 @@ ${list}
             try { this._startHuntAutoScan(); } catch (_) {} }
         // 🏦 V71.2.4 ETF 已搬進「選股 → 🏦 ETF」;舊的 switchAppTab('etf') 呼叫一律導過去,不留空白頁
         if (tabId === 'etf') { try { this.switchAppTab('radar'); this.switchRadarMode('etf'); } catch(e) { this._handleTabRenderError('radar', '🏦 ETF', e); } return; }
-        if (tabId === 'desk') { try { this.renderDeck(); } catch(e) { this._handleTabRenderError('desk', '🎯 決策台', e); } }
+        let _tabRender = null;   // 👆 V80.0.5 返回時等這一頁畫完再捲回原位
+        if (tabId === 'desk') { try { _tabRender = this.renderDeck(); } catch(e) { this._handleTabRenderError('desk', '🎯 決策台', e); } }
+        if (isGoBack && tabId !== 'potential') this._tabScrollRestore(tabId, _tabRender);   // 潛力頁有自己的還原(_potentialScrollY)
         if (tabId === 'potential') { try { this._potentialRestoreScroll = true; this.renderPotentialTab(); } catch(e) { this._handleTabRenderError('potential', '💎 潛力', e); } }
         // V25.2 — 救援卡邏輯已砍(V25.0 修真因後 5 tab 正常顯示,不再需要)
         } catch (e) {   // V24.5 — switchAppTab 整段 try/catch 結尾
@@ -8749,10 +8773,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V80.0.4',
+    _APP_VERSION: 'V80.0.5',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V80.0.5', d: [
+            '👆 決策台:整列都可以點進個股頁(以前只有股票名字那一小格能點,點價格 / 漲跌那幾格沒反應)—— 👑 名單、你手上的、今天要做的事、🔥 今天可以買的都一樣',
+            '↩️ 從個股頁按「返回」回到決策台原本捲到的位置(以前會跳回最上面);打開個股頁一律從最上面開始',
+        ] },
         { v: 'V80.0.4', d: [
             '🧯 勝率鏡子最上面多了「帳戶熔斷」:記進鏡子的賣出,今天虧到帳戶 2%、本週 5%、本月 8% 會亮 🟡/🟠 提醒先別開新倉(只提醒,不會替你做任何事;門檻是常見的建議值),庫存標題列那顆 🪞 鈕也看得到',
             '🧮 同一處也算「手上全部碰到停損 ≈ 賠多少、佔帳戶幾 %」,超過 6% 會提醒',
@@ -9016,7 +9044,6 @@ ${list}
             '📝 設定「我的策略」逐條對過:👑 那兩個說的「不在名單上的持股照 🔥 高檔飆股的三條出場」改成「照三條出場(硬停損 / 你設定的線 / 抱滿天數)」(🔥 不是設定裡選得到的名字);🅿️ 改名「<b>符合進場+停車 0050</b>」(它本來就跟 📈 符合進場一模一樣,只差閒錢停 0050)'] },
         { v: 'V79.2.6', d: ['📚 👑 兩本帳改回<b>選項、預設關閉</b>(一本帳照舊每 10 天一起換);想用的話到 ⚙️ 設定「🔓 進階功能」打開。打開後兩本叫 <b>甲帳</b>(青)・<b>乙帳</b>(紫):決策台頂端各自寫上次哪天換、再幾天換,每一檔標它屬於哪一本,動作寫成「乙帳 買 / 甲帳 賣」'] },
         { v: 'V79.2.5', d: ['📚 👑 領頭羊改成兩本帳:錢分兩半、換倉日錯開 4 天輪流換(決策台「📖 怎麼買・怎麼賣」裡可以換回一本帳)'] },
-        { v: 'V79.2.4', d: ['🔧 修正一處計算尺標並重算相關數字;規則與畫面做法沒有變'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -11171,7 +11198,7 @@ ${list}
         if (this._potentialRestoreScroll) {
             this._potentialRestoreScroll = false;
             const _y = this._potentialScrollY || 0;
-            if (_y > 0) requestAnimationFrame(() => window.scrollTo(0, _y));
+            if (_y > 0) requestAnimationFrame(() => { this._scrollEl().scrollTop = _y; });
         }
     },
 
@@ -22510,6 +22537,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         }
         return out;
     },
+    /** 👆 V80.0.5 決策台任何一列點下去都進個股頁(使用者:「裡面個股點擊後不會到個股畫面」—— 以前只有股票名字那一小格能點,點價格 / 漲跌那幾格沒反應)。
+     *  返回時回到決策台原本捲到的位置(`_tabScrollY`,switchAppTab 記、goBack 還原)。列裡的按鈕一律 event.stopPropagation()。 */
+    _deckOpen(sym) {
+        if (!sym) return;
+        try { this.analyze(String(sym)); } catch (_) {}
+        this.switchAppTab('diag');
+        try { this.vibrate(15); } catch (_) {}
+    },
     async _leaderDeckHtml() {
         const E = this._LEADER_EDGE, R = E.rule;
         const esc = x => this._escHtml(String(x ?? ''));
@@ -22619,7 +22654,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 🏷️ V79.1.6 使用者:「漲停、處置等等移到股票代號右手邊」—— 名字那一行只放名字,標籤接在代號後面(讀不到名字時代號就在第一行);👜 = 你手上有
         const tagHtml = r => `${this._leadBookChip(this._leadBookOf(r.sym))}${invSet.has(r.sym) ? '<span class="ml-0.5" data-leaderheldtag="1" title="你手上有">👜</span>' : ''}${this._deckLimTag(r.sym, this._deckLimOf(r.chg))}${r.att ? `<span class="text-orange-300" data-leaderatt="${r.att}"> ${r.att === 2 ? '處置' : '注意'}</span>` : ''}`;
         const nameCell = r => { const nm = this._nmDual(r.sym), tags = tagHtml(r);
-            return `<span class="min-w-0 cursor-pointer leading-tight" onclick="app.analyze('${r.sym}'); app.switchAppTab('diag'); app.vibrate(15);" data-leadername="${r.sym}">${nm.sub
+            return `<span class="min-w-0 leading-tight" data-leadername="${r.sym}">${nm.sub
                 ? `<span class="block truncate text-[12px] text-gray-100">${esc(nm.n)}</span><span class="block truncate text-[9px] text-gray-500"><span class="font-mono" data-leadercode="${r.sym}">${esc(nm.sub)}</span>${tags}</span>`
                 : `<span class="block truncate text-[12px] text-gray-100"><span class="font-mono" data-leadercode="${r.sym}">${esc(nm.n)}</span><span class="text-[9px]">${tags}</span></span>`}</span>`; };
         const rebCell = r => r.reb > 0
@@ -22629,7 +22664,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const pxCell = r => `<span class="text-right leading-tight" data-leaderpx="${r.sym}"><span class="font-mono text-[11px] ${this._deckLimCls(this._deckLimOf(r.chg))}" data-leaderclose="${r.c ?? ''}" data-leaderlive="${r.live ? 1 : 0}" data-lqp="${r.sym}"${r.live ? '' : ` data-lqdim="1" title="${esc(md)} 收盤"`}>${px(r.c)}</span><span class="block font-mono text-[9px] ${r.chg == null ? 'text-gray-500' : r.chg >= 0 ? 'text-red-400' : 'text-green-400'}" data-lqc="${r.sym}"${r.live ? '' : ' data-lqdim="1"'} title="${esc(chgLbl)}漲跌">${r.chg == null ? '' : pct(r.chg)}</span></span>`;
         // 🔀 V79.2.9 % 欄 = 從換倉日到現價(跟著現價跳)
         const rebPctCell = r => `<span class="font-mono text-[10px] text-right ${r.rebPct == null ? 'text-gray-500' : r.rebPct >= 0 ? 'text-red-400' : 'text-green-400'}" data-leaderrebpct="${r.sym}" data-lqr="${r.sym}" data-lqreb="${r.reb > 0 ? r.reb : ''}" title="從 ${esc(rebLbl)} 到現價">${r.rebPct == null ? '—' : pct(r.rebPct)}</span>`;
-        const row = r => `<div class="py-1 border-b border-[#21262d] items-center" style="display:grid;${COLS};gap:4px" data-leaderrow="${r.sym}" data-leaderrank="${r.rank}">
+        const row = r => `<div class="py-1 border-b border-[#21262d] items-center cursor-pointer active:bg-[#21262d]" style="display:grid;${COLS};gap:4px" onclick="app._deckOpen('${r.sym}')" data-leaderrow="${r.sym}" data-leaderrank="${r.rank}">
             <span class="font-mono text-[10px] text-gray-500 text-right" title="${r.batch ? `${esc(clk.reb)} 換這一批那天排第 ${r.rank} 名` : `近 10 日 ${pct(r.chg10)}(排名依據)`}">${r.rank}</span>
             ${nameCell(r)}
             ${rebCell(r)}
@@ -22659,12 +22694,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const verdict = h.mine
                 ? `<span class="text-[10px] font-bold ${h.keep ? 'text-gray-200' : 'text-amber-300'}">${h.keep ? '✅ 續抱' : `${clk.isRebal ? '⛔' : '⏳'} ${h.r ? '掉出' : '不在'}前 ${H} 名 → ${sellWhen}`}</span>`
                 : `<span class="text-[10px] text-gray-500">只對照,⛔ 不下指令</span>`;
-            return `<div class="flex items-baseline gap-2 py-0.5 flex-wrap" data-leaderheld="${h.sym}" data-leaderkeep="${h.keep ? 1 : 0}" data-leadermine="${h.mine ? 1 : 0}">${this._nmPair(h.sym, 'text-[11px]')}${this._leadBookChip(this._leadBookOf(h.sym))}<span class="text-[10px] font-mono text-gray-500">${where}</span>${verdict}
+            return `<div class="flex items-baseline gap-2 py-0.5 flex-wrap cursor-pointer active:bg-[#21262d]" onclick="app._deckOpen('${h.sym}')" data-leaderheld="${h.sym}" data-leaderkeep="${h.keep ? 1 : 0}" data-leadermine="${h.mine ? 1 : 0}">${this._nmPair(h.sym, 'text-[11px]')}${this._leadBookChip(this._leadBookOf(h.sym))}<span class="text-[10px] font-mono text-gray-500">${where}</span>${verdict}
                 </div>`;
         };
         // 🔥 V78.5.5 不在上次換倉名單上的持股照 🔥 三條出場(在下面「🚪 手上的要不要賣」那塊)→ 這裡寫出是哪幾檔,⛔ 不讓它們消失
         const fireHeld = invSyms.filter(s => /^\d{4}$/.test(s) && !this._isEtfSym?.(s) && !mine.has(s));
-        const fireHtml = fireHeld.length ? `<div class="text-[10px] text-gray-400 mt-1" data-leaderfire="${fireHeld.length}">🔥 不在上次換倉名單上的:${fireHeld.map(s => `<b class="text-gray-200">${esc(this.getStockName ? (this.getStockName(s) || s) : s)}</b>`).join('、')} → 照三條出場(硬停損 / 你設定的線 / 抱滿天數,看下面「🚪 手上的要不要賣」);換倉日還在前 ${H} 名就改歸 👑</div>` : '';
+        const fireHtml = fireHeld.length ? `<div class="text-[10px] text-gray-400 mt-1" data-leaderfire="${fireHeld.length}">🔥 不在上次換倉名單上的:${fireHeld.map(s => `<b class="text-gray-200 cursor-pointer underline decoration-dotted" onclick="app._deckOpen('${s}')" data-leaderfirestk="${s}">${esc(this.getStockName ? (this.getStockName(s) || s) : s)}</b>`).join('、')} → 照三條出場(硬停損 / 你設定的線 / 抱滿天數,看下面「🚪 手上的要不要賣」);換倉日還在前 ${H} 名就改歸 👑</div>` : '';
         const heldHtml = (held.length ? `<div class="mt-1.5 text-[11px]" data-leaderheldbox="1"><div class="text-[10px] text-gray-400 mb-0.5">👜 你手上、上次換倉名單上有的 → 照 👑:換倉日還在前 ${H} 名就續抱、掉出去就賣,⛔ 沒有停損線(ETF 照舊買了放著)</div>${held.map(heldRow).join('')}</div>` : '') + fireHtml;
         const attN = L.ranked.filter(r => r.att).length;
         const attTxt = attN ? `<div class="text-[10px] text-gray-400 mb-1">🚨 名單裡 ${attN} 檔在注意 / 處置名單上 → ⛔ <b>不要跳過</b>,⛔ <b>也別在處置前先賣、等大跌或出關再買回</b> —— 照名單買、照規則賣就好。⚠️ 第二次處置要預收款券。</div>` : '';
@@ -22680,7 +22715,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const C2 = 'grid-template-columns:18px minmax(0,1fr) 60px 50px 58px';
             const tRow = r => { const q = this._deckQuoteOf(r.sym), live = !!q;
                 const c = live ? q.p : r.c, chg = live ? q.chg : r.chg, inB = bSet.has(r.sym), rr = { ...r, c, chg, live };
-                return `<div class="py-1 border-b border-[#21262d] items-center" style="display:grid;${C2};gap:4px" data-leadtodayrow="${r.sym}" data-leadtodayrank="${r.rank}">
+                return `<div class="py-1 border-b border-[#21262d] items-center cursor-pointer active:bg-[#21262d]" style="display:grid;${C2};gap:4px" onclick="app._deckOpen('${r.sym}')" data-leadtodayrow="${r.sym}" data-leadtodayrank="${r.rank}">
                 <span class="font-mono text-[10px] text-gray-500 text-right">${r.rank}</span>${nameCell(rr)}
                 <span class="text-right"><span class="font-mono text-[11px] ${this._deckLimCls(this._deckLimOf(chg))}" data-lqp="${r.sym}"${live ? '' : ' data-lqdim="1"'}>${px(c)}</span></span>
                 <span class="font-mono text-[10px] text-right ${chg == null ? 'text-gray-500' : chg >= 0 ? 'text-red-400' : 'text-green-400'}" data-lqc="${r.sym}"${live ? '' : ' data-lqdim="1"'}>${pct(chg)}</span>
@@ -22741,7 +22776,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return q ? { p: q.p, c: q.chg, q } : { p: r && r.c > 0 ? r.c : null, c: r ? r.chg : null, q: null }; };
         const pxTxt = v => +v >= 100 ? (+v).toFixed(1) : (+v).toFixed(2);
         const stk = (s, tag) => { const { p, c } = pxOf(s);
-            return `<span class="whitespace-nowrap" data-todostk="${s}"><b class="font-black text-amber-200">${nm(s)}</b>${bkTag(s)}${p ? ` <span class="font-mono text-[11px] text-gray-100" data-lqp="${s}">${pxTxt(p)}</span>` : ''}${c != null ? ` <span class="font-mono text-[10px] ${c >= 0 ? 'text-red-400' : 'text-green-400'}" data-lqc="${s}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>` : ''}${tag || ''}</span>`; };
+            return `<span class="whitespace-nowrap cursor-pointer" onclick="app._deckOpen('${s}')" data-todostk="${s}"><b class="font-black text-amber-200">${nm(s)}</b>${bkTag(s)}${p ? ` <span class="font-mono text-[11px] text-gray-100" data-lqp="${s}">${pxTxt(p)}</span>` : ''}${c != null ? ` <span class="font-mono text-[10px] ${c >= 0 ? 'text-red-400' : 'text-green-400'}" data-lqc="${s}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>` : ''}${tag || ''}</span>`; };
         const list = (a, tagOf) => a.map(s => stk(s, tagOf ? tagOf(s) : '')).join('<span class="text-gray-600"> ・</span>');
         const names = a => a.map(s => { const r = rk(s); return `<b class="text-gray-100">${nm(s)}</b>${r ? `<span class="font-mono text-[10px] text-gray-400"> 第${r}</span>` : ''}`; }).join('、');
         const box = (t, k, hot) => `<div class="text-[12px] text-gray-100 leading-relaxed ${hot ? 'border-l-4 border-amber-500 bg-amber-900/15 pl-2 py-1 rounded-r' : ''}" data-todo="${k}" data-todohot="${hot ? 1 : 0}" data-todophase="${P.ph}">${t}</div>`;
@@ -50253,9 +50288,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 ? `<span class="text-right leading-tight" data-deckbuytrig="${r.trig}"><span class="font-mono text-[11px] text-gray-100 block">${px(r.trig)}</span><span class="font-mono text-[9px] text-gray-500">${r.up != null ? `+${r.up.toFixed(1)}%` : ''}</span></span>`
                 : `<span class="text-[9px] text-gray-500 text-right leading-tight" data-deckbuytrig="none" title="這招不是靠「漲過某個數字」成立,App 盤中會用即時價重算">盤中算</span>`;
             return `<div class="py-1 border-b border-[#21262d] ${isMine ? 'bg-amber-900/15' : ''}" data-deckbuyrow="${esc(sym)}" data-deckbuyrank="${r.rank}">
-                <div class="items-center" style="display:grid;${COLS};gap:4px">
+                <div class="items-center cursor-pointer active:bg-[#21262d]" style="display:grid;${COLS};gap:4px" onclick="app._deckOpen('${esc(sym)}')" data-deckbuyopen="${esc(sym)}">
                     <span class="font-mono text-[10px] ${r.rank <= 3 ? 'text-amber-300' : 'text-gray-500'} text-right">${r.rank}</span>
-                    <span class="min-w-0 cursor-pointer leading-tight" onclick="app.analyze('${esc(sym)}'); app.switchAppTab('diag'); app.vibrate(15);" data-deckbuyname="${esc(sym)}"><span class="block truncate text-[12px] text-gray-100">${isMine ? '👜 ' : ''}${esc(nm.n)}</span><span class="flex items-center gap-1 flex-wrap"><span class="text-[9px] text-gray-500 font-mono">${esc(nm.sub || sym)}</span>${T.dispTag}${T.thinTag}${T._offTag}${T._noFinTag}${+x.bear ? '<span class="text-[9px] text-yellow-300" title="收盤同時跌破 20 日線與 60 日線">⚠️破線</span>' : ''}</span></span>
+                    <span class="min-w-0 leading-tight" data-deckbuyname="${esc(sym)}"><span class="block truncate text-[12px] text-gray-100">${isMine ? '👜 ' : ''}${esc(nm.n)}</span><span class="flex items-center gap-1 flex-wrap"><span class="text-[9px] text-gray-500 font-mono">${esc(nm.sub || sym)}</span>${T.dispTag}${T.thinTag}${T._offTag}${T._noFinTag}${+x.bear ? '<span class="text-[9px] text-yellow-300" title="收盤同時跌破 20 日線與 60 日線">⚠️破線</span>' : ''}</span></span>
                     <span class="font-mono text-[11px] text-gray-100 text-right">${px(r.c)}</span>
                     ${trigCell}
                     <span class="font-mono text-[11px] text-gray-100 text-right">${px(r.stop)}</span>

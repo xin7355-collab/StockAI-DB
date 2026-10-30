@@ -47,7 +47,7 @@ const R = await page.evaluate(() => {
     A._deckBuySort = null; paint();
     out.keys = [...box.querySelectorAll('[data-deckbuysort]')].map(e => e.getAttribute('data-deckbuysort'));
     out.def = order();
-    out.analyze = [...box.querySelectorAll('[data-deckbuyrow]')].every(r => /app\.analyze\('\d+'\)/.test(r.innerHTML));
+    out.analyze = [...box.querySelectorAll('[data-deckbuyrow]')].every(r => /app\._deckOpen\('\d+'\)|app\.analyze\('\d+'\)/.test(r.innerHTML));   // 👆 V80.0.5 整列 _deckOpen
     out.prob = box.querySelectorAll('[data-deckprob]').length;
     out.html = box.innerHTML; out.txt = box.innerText;
     // 排序:觸發價(預設由大到小)→ 再點一次反向;null 一律最後
