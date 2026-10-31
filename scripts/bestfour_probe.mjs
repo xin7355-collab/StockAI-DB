@@ -13,15 +13,37 @@
  *   對照 = **同一天**全部股票同樣買法的平均(大盤抵銷);同一檔同一條 10 日內只算一次;
  *   量的基準只跟**昨天**比(⛔ 不含今天,陷阱 #43)。
  *
+ * 🔁 V80.1.3「精確版」(19 個專案評估 4-3,照 twstock analytics.py BestFourPoint 逐條對):
+ *   B2x = 量縮 且 收盤 > **前一天開盤**(我們舊版用前一天收盤)
+ *   GRSx = 任一買點(B1 / B2x / B3 / B4)且「最近 5 天的 3 日均 − 6 日均全部 < 0、最低那天在 1~2 天前」
+ *          (twstock ma_bias_ratio_pivot:用差值不是比率;同一個最低值取第一次出現)
+ *   隔天開盤買不到的判斷改用 lib_limit(2015-06 以前漲跌停 7%;舊版寫死 9.5%,陷阱 #52)
  * 用法:DATA_DIR=<修好日 K 的目錄> node scripts/bestfour_probe.mjs [out.json]
  *       node scripts/bestfour_probe.mjs --selftest
  */
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import path from 'path';
 import { baseAdd, increments, gates, negate, fmtG } from './lib_evgate.mjs';
+import { limitOf } from './lib_limit.mjs';
 
 const HOLDS = [5, 10, 20], HI = 1, DEDUP = 10;
 const D = s => String(s || '').slice(0, 10).replace(/\//g, '-');
+
+/** rows → 精簡陣列(價格 Float64Array、日期共用同一個字串)—— 16 年 2,400 檔整份載入時省記憶體(結果逐位相同) */
+const _dtPool = new Map();
+export function compact(rows) {
+    const n = rows.length, o = new Float64Array(n), h = new Float64Array(n), l = new Float64Array(n), c = new Float64Array(n), v = new Float64Array(n), dt = new Array(n);
+    for (let i = 0; i < n; i++) {
+        const r = rows[i];
+        o[i] = +r.open; h[i] = +r.high; l[i] = +r.low; c[i] = +r.close; v[i] = +r.volume || 0;
+        const d = D(r.date);
+        let p = _dtPool.get(d);
+        if (p === undefined) { _dtPool.set(d, d); p = d; }
+        dt[i] = p;
+    }
+    return { n, o, h, l, c, v, dt };
+}
 
 /** 一檔股票 → 每一天每一條規則亮不亮(⛔ 只用 ≤ i 的資料) */
 export function rulesAt(o, h, l, c, v, i, opt = {}) {
@@ -39,12 +61,21 @@ export function rulesAt(o, h, l, c, v, i, opt = {}) {
     const S3 = m3 < m3a && m3a >= m3b;
     const S4 = m3 < m6;
     const anyB = B1 || B2 || B3 || B4, anyS = S1 || S2 || S3 || S4;
+    // 🔁 精確版(twstock):B2 跟前一天「開盤」比;乖離谷底 = 最近 5 天 (3 日均 − 6 日均) 全負、最低在 1~2 天前
+    const B2x = v[i] < v[i - 1] && c[i] > o[i - 1];
+    let minsBias = false;
+    if (i >= 9) {
+        const smp = [4, 3, 2, 1, 0].map(k => ma(3, i - k) - ma(6, i - k));
+        const mn = Math.min(...smp), at = smp.indexOf(mn);
+        minsBias = Math.max(...smp) < 0 && at >= 2 && at <= 3;
+    }
     return {
         B1, B2, B3, B4, S1, S2, S3, S4,
         B3x: (B1 || B2) && B3 && B4,                         // 三條同時(四條不可能)
         X36: m3 > m6 && m3a <= m6a,                          // 3 日均剛上穿 6 日均(B4 的「剛發生」版)
         GRS: anyB && biasA < 0 && biasA <= biasB && bias > biasA,   // 近似 grs 合併:乖離谷底翻上 + 任一買點
         BnoS: anyB && !anyS,
+        B2x, GRSx: (B1 || B2x || B3 || B4) && minsBias,
     };
 }
 
@@ -58,15 +89,13 @@ export function scan(universe, opt = {}) {
         const E = events[rule] || (events[rule] = HOLDS.map(() => []));
         rets.forEach((r, k) => { if (r != null) E[k].push({ d, r }); });
     };
-    for (const { sym, rows } of universe) {
-        const n = rows.length;
-        const o = rows.map(r => +r.open), h = rows.map(r => +r.high), l = rows.map(r => +r.low), c = rows.map(r => +r.close), v = rows.map(r => +r.volume || 0);
-        const dt = rows.map(r => D(r.date));
+    for (const u of universe) {
+        const sym = u.sym, { n, o, h, l, c, v, dt } = u.A || compact(u.rows);   // loadUniverse 已經轉好(省記憶體);selftest 給 rows
         for (let i = 7; i < n - 1; i++) {
             if (!(c[i] > 0) || !(o[i] > 0) || !(c[i - 1] > 0)) { skip.bad++; continue; }
             const e = o[i + 1];
             if (!(e > 0)) { skip.bad++; continue; }
-            if (e >= c[i] * 1.095) { skip.lock++; continue; }          // 隔天開在漲停附近 = 買不到
+            if (e >= c[i] * (1 + limitOf(dt[i + 1]) - 0.005)) { skip.lock++; continue; }   // 隔天開在漲停附近 = 買不到(lib_limit:2015-06 前 7%)
             const rets = HOLDS.map(H => (i + H < n && c[i + H] > 0) ? (c[i + H] / e - 1) * 100 : null);
             rets.forEach((r, k) => { if (r != null) baseAdd(base[k], dt[i], r); });
             const R = (opt.rulesAt || rulesAt)(o, h, l, c, v, i, opt);
@@ -80,6 +109,7 @@ export function scan(universe, opt = {}) {
 const NAMES = {
     B1: 'B1 量大收紅', B2: 'B2 量縮價不跌', B3: 'B3 三日均轉上', B4: 'B4 三日均>六日均', B3x: '三條同時(四條不可能)',
     X36: '3日均剛上穿6日均', GRS: 'grs 合併(近似)', BnoS: '有買點且沒賣點',
+    B2x: 'B2 精確版(收>前一天開盤)', GRSx: 'grs 合併(精確版 twstock)',
     S1: 'S1 量大收黑', S2: 'S2 量縮價跌', S3: 'S3 三日均轉下', S4: 'S4 三日均<六日均',
 };
 
@@ -87,7 +117,7 @@ function loadUniverse(dir) {
     const files = fs.readdirSync(dir).filter(f => /^[1-9]\d{3}\.json$/.test(f));
     const U = [];
     for (const f of files) {
-        try { const j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); const rows = Array.isArray(j) ? j : (j.data || []); if (rows.length >= 260) U.push({ sym: f.slice(0, 4), rows }); } catch { }
+        try { const j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); const rows = Array.isArray(j) ? j : (j.data || []); if (rows.length >= 260) U.push({ sym: f.slice(0, 4), A: compact(rows) }); } catch { }
     }
     return U;
 }
@@ -102,7 +132,7 @@ function main() {
     const d0 = [...S.base[HI].keys()].sort();
     console.log(`📦 ${U.length} 檔 ・${d0[0]} ~ ${d0[d0.length - 1]} ・隔天開盤買 ・對照 = 同一天全部股票 ・漲停買不到剔除 ${S.skip.lock.toLocaleString()} 筆`);
     console.log(`\n🧭 買點(增量 = 比同一天全部股票多賺幾 %;主看抱 ${HOLDS[HI]} 天)`);
-    for (const k of ['B1', 'B2', 'B3', 'B4', 'B3x', 'X36', 'GRS', 'BnoS']) {
+    for (const k of ['B1', 'B2', 'B3', 'B4', 'B3x', 'X36', 'GRS', 'BnoS', 'B2x', 'GRSx']) {
         if (!S.events[k]) continue;
         const gs = HOLDS.map((_, hi) => gates(increments(S.events[k][hi], S.base[hi])));
         out.rules[k] = { name: NAMES[k], dir: 'buy', g: gs.map(g => ({ d: g.d, n: g.n, p: g.p, nPass: g.nPass, H: g.H, YR: g.YR })) };
@@ -173,8 +203,29 @@ function selftest() {
     // ⑥ 量的基準只跟昨天比(⛔ 不含今天):今天量 = 昨天量 → B1 不亮
     const o = [1, 1, 1, 1, 1, 1, 1, 1, 1], c = [1, 1, 1, 1, 1, 1, 1, 1, 1.1], v = [5, 5, 5, 5, 5, 5, 5, 5, 5];
     ok('⑥ 今天量 == 昨天量 → B1 ⛔ 不亮', !rulesAt(o, null, null, c, v, 8).B1);
+    // ⑦ 🔁 精確版:B2x 跟前一天開盤比(收盤 > 昨收但 < 昨開 → B2 亮、B2x ⛔)
+    const o7 = [1, 1, 1, 1, 1, 1, 1, 1, 1.2, 1], c7 = [1, 1, 1, 1, 1, 1, 1, 1, 1.0, 1.1], v7 = [5, 5, 5, 5, 5, 5, 5, 5, 5, 4];
+    const R7 = rulesAt(o7, null, null, c7, v7, 9);
+    ok('⑦ 收盤 1.1 > 昨收 1.0 但 < 昨開 1.2、量縮 → B2 亮、B2x ⛔(精確版跟前一天開盤比)', R7.B2 && !R7.B2x);
+    // ⑧ 精確版乖離谷底:最近 5 天 (3 日均 − 6 日均) 全負、最低在 2 天前 → 亮;最低在今天 → ⛔;有一天 ≥ 0 → ⛔
+    const mkC = tail => { const c = Array(12).fill(10); tail.forEach((x, k) => { c[12 - tail.length + k] = x; }); return c; };
+    const down = mkC([9.6, 9.2, 8.8, 8.4, 8.0, 8.3, 8.6]);       // 跌完反彈兩天 → 最近 5 天乖離最低在 2 天前
+    const deep = mkC([9.8, 9.6, 9.3, 8.9, 8.4, 7.8, 7.0]);       // 越跌越快 → 最低就是今天
+    const vU = Array(12).fill(5); vU[11] = 6;
+    const oB = c => c.map((x, k) => (k === 11 ? x * 0.98 : x));  // 最後一根收 > 開 + 量增 → B1 亮(⛔ 讓「谷底」那條變成唯一的差別)
+    const Rd = rulesAt(oB(down), null, null, down, vU, 11), Rp = rulesAt(oB(deep), null, null, deep, vU, 11);
+    const up5 = mkC([10.4, 10.8, 11.2, 11.6, 12, 11.8, 11.9]), Ru = rulesAt(oB(up5), null, null, up5, vU, 11);
+    ok('⑧ 三組都有買點(B1 亮,⛔ 空過)', Rd.B1 && Rp.B1 && Ru.B1, `${Rd.B1} ${Rp.B1} ${Ru.B1}`);
+    ok('⑧ 乖離全負、谷底 2 天前 → GRSx 亮;谷底在今天 → ⛔;乖離是正的 → ⛔', Rd.GRSx && !Rp.GRSx && !Ru.GRSx, `${Rd.GRSx} ${Rp.GRSx} ${Ru.GRSx}`);
+    // ⑨ 2013 年(漲跌停 7%):隔天開盤 +7% = 買不到(舊版寫死 9.5% 會當成買得到)
+    const rows9 = days.slice(0, 40).map(d => ({ date: '2013' + d.slice(4), open: 10, high: 10, low: 10, close: 10, volume: 1000 }));
+    rows9[20] = { ...rows9[20], open: 10.7, high: 10.7, low: 10.7, close: 10.7 };
+    const S9 = scan([{ sym: '9997', rows: rows9 }]);
+    ok('⑨ 2013 年隔天開盤 +7% → 算「買不到」(lib_limit,⛔ 寫死 9.5%)', S9.skip.lock === 1, S9.skip.lock);
     console.log(bad ? `\n❌ ${bad} 條失敗` : '\n✅ SELFTEST_PASS');
     process.exit(bad ? 1 : 0);
 }
 
-if (process.argv.includes('--selftest')) selftest(); else main();
+// ⛔ 被 import 的時候不跑(同 dispo_backtest IS_MAIN)
+const IS_MAIN = !!process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (IS_MAIN && process.argv.includes('--selftest')) selftest(); else if (IS_MAIN) main();

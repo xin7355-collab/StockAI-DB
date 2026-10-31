@@ -185,8 +185,16 @@ def merge_items(rec, items, name, sym, bf=False):
             day['e'] += 1
         day['t'].append(norm_title(it['t'])[:80])
         if bf:
-            day['bf'] = 1
+            # 🔢 V80.1.3 bf = 那天有幾則是回補來的(以前是一個「有回補過」的旗標,一標就永遠黏住 → 分不出那天是不是混了每天的)
+            day['bf'] = int(day.get('bf') or 0) + 1
     return add
+
+
+def mark_asked(rec, day, ok):
+    """📋 V80.1.3 每天模式問過這一檔(至少一個來源有回應)→ 那天一定留一筆(0 則也留)。
+    研究時:有紀錄 = 那天問過(n 可能是 0);沒紀錄 = 那天沒問(⛔ 當成 0 則)。兩個來源都失敗 → ⛔ 標(不知道)。"""
+    if ok:
+        rec.setdefault(day, {'n': 0, 'e': 0, 'm': [], 'a': 0, 't': [], 'k': []})
 
 
 def prune(rec, today):
@@ -265,6 +273,7 @@ def run(backfill=False):
             if c is None:
                 st['c_fail'] += 1
             got += merge_items(rec, c or [], nm, sym)
+            mark_asked(rec, today, g is not None or c is not None)
             time.sleep(SLEEP)
         prune(rec, today)
         st['add'] += got
@@ -280,7 +289,9 @@ def run(backfill=False):
         return 1
     J.update({'updated': datetime.now(TPE).strftime('%Y-%m-%d %H:%M'), 'days_kept': DAYS_KEPT, 'title_days': TITLE_DAYS,
               'src': 'Google 新聞 RSS(名字 + 代號)+ 鉅亨個股新聞;回補:鉅亨關鍵字搜尋 4 頁 + Google 指定月份(bf:1)',
-              'fields': {'n': '被報導幾則(同一則只算一次)', 'e': '同一天幾件事(同一件事多家報算一件)', 'm': '幾家媒體', 'a': '幾則講到分析師 / 目標價 / 評等', 'bf': '回補來的(越舊越少)'},
+              'fields': {'n': '被報導幾則(同一則只算一次)', 'e': '同一天幾件事(同一件事多家報算一件)', 'm': '幾家媒體', 'a': '幾則講到分析師 / 目標價 / 評等',
+                         'bf': '其中幾則是回補來的(越舊越少;V80.1.3 以前是 1 = 有回補過)',
+                         '(那一天有沒有紀錄)': 'V80.1.3 起每天模式問過就一定留一筆(0 則也留);沒有紀錄 = 那天沒問,⛔ 當成 0 則'},
               'n_syms': len(S)})
     OUT.write_text(json.dumps(J, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     print(f'✅ {tried} 檔 ・新增 {st["add"]} 則 ・Google 失敗 {st["g_fail"]} ・鉅亨失敗 {st["c_fail"]} ・{(time.time() - t0) / 60:.1f} 分 → {OUT}')
@@ -328,6 +339,23 @@ def _selftest():
     ok('⑧ 已經壓成只剩數字的那天又抓到新聞 → ⛔ 當掉、⛔ 加(那天的數字不動)', e8 is None and n8 == 0 and json.dumps(old, sort_keys=True) == snap, (n8, e8))
     n8b = merge_items(old, [{'t': '富喬法說會釋出展望', 'dt': datetime(2026, 10, 20, 2, 0, tzinfo=timezone.utc), 'src': 'C'}], '富喬', '1815')
     ok('⑧b 決定性對照:還沒壓過的那天(10/20)照收 1 則', n8b == 1 and old['2026-10-20']['n'] == 2, (n8b, old['2026-10-20']))
+    # ⑨ 🔢 V80.1.3 bf = 那天幾則是回補來的(⛔ 一標就黏住):回補 2 則 + 每天 1 則 → n 3、bf 2
+    r9 = {}
+    dt9 = datetime(2026, 10, 28, 2, 0, tzinfo=timezone.utc)
+    merge_items(r9, [{'t': '富喬擴產', 'dt': dt9, 'src': 'A'}, {'t': '富喬接單', 'dt': dt9, 'src': 'B'}], '富喬', '1815', bf=True)
+    merge_items(r9, [{'t': '富喬漲停', 'dt': dt9, 'src': 'C'}], '富喬', '1815')
+    ok('⑨ 回補 2 則 + 每天 1 則 → n 3、bf 2(分得出混了每天的)', r9['2026-10-28']['n'] == 3 and r9['2026-10-28']['bf'] == 2, r9)
+    # ⑩ 📋 問過就留一筆(0 則也留);兩個來源都失敗 → ⛔ 留(不知道);已經有新聞的那天 ⛔ 被蓋掉
+    r10 = {}
+    mark_asked(r10, '2026-10-30', True)
+    mark_asked(r10, '2026-10-29', False)
+    mark_asked(r9, '2026-10-28', True)
+    ok('⑩ 問過 → 留 n 0 的一筆;兩個來源都失敗 → ⛔ 留;已有新聞那天不動', r10 == {'2026-10-30': {'n': 0, 'e': 0, 'm': [], 'a': 0, 't': [], 'k': []}}
+       and r9['2026-10-28']['n'] == 3, (r10, r9))
+    prune(r10, '2026-11-20')
+    ok('⑩ 0 則那天過了 10 天照樣壓成數字(n 0 留著 = 問過沒新聞)', r10 == {'2026-10-30': {'n': 0, 'e': 0, 'm': 0, 'a': 0}}, r10)
+    import inspect
+    ok('⑩ 每天模式真的有呼叫 mark_asked(⛔ 只有函式沒接上)', 'mark_asked(rec, today, g is not None or c is not None)' in inspect.getsource(run))
     print('\n✅ NEWS_BUZZ_SELFTEST_PASS' if not bad else f'\n❌ NEWS_BUZZ_SELFTEST_FAIL {len(bad)}')
     return 1 if bad else 0
 

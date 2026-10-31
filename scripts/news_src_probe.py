@@ -233,26 +233,8 @@ def probe_hist():
             time.sleep(1.5)
 
 
-def _codes(item):
-    """鉅亨一則新聞標了哪些台股代號(market[].code / stock[] / market[].symbol 'TWS:2330:STOCK')→ 排好的 list;沒有 → []"""
-    out = set()
-    if not isinstance(item, dict):
-        return []
-    for m in item.get('market') or []:
-        if isinstance(m, dict):
-            c = str(m.get('code') or '')
-            sym = str(m.get('symbol') or '')
-            if sym.startswith('TWS:') or sym.startswith('TWG:'):
-                c = sym.split(':')[1]
-            if re.fullmatch(r'\d{4,6}[A-Z]?', c):
-                out.add(c)
-        elif isinstance(m, str) and re.fullmatch(r'\d{4,6}[A-Z]?', m):
-            out.add(m)
-    for c in item.get('stock') or []:
-        c = str(c.get('code') if isinstance(c, dict) else c)
-        if re.fullmatch(r'\d{4,6}[A-Z]?', c):
-            out.add(c)
-    return sorted(out)
+# 🏷️ 代號判讀只有一份:news_deep.codes(⛔ 不抄;回補與探路同一把尺)
+from news_deep import codes as _codes   # noqa: E402
 
 
 def probe_fields():

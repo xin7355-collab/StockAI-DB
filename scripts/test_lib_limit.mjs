@@ -55,6 +55,8 @@ const MIGRATED = [
     'scripts/mops_event_probe.py',
     // 📞 V79.7.3 法說會隔天反應研究
     'scripts/confcall_event_probe.mjs',
+    // 🛬 V80.1.3 停機坪 / 四大買點精確版(16 年,2015 前漲停 7%)
+    'scripts/parking_apron_probe.mjs', 'scripts/bestfour_probe.mjs',
 ];
 const BANNED = [
     [/\*\s*1\.095\b/, '× 1.095(寫死 ±10% 的鎖漲停)'],
