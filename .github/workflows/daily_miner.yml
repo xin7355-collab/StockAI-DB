@@ -30,6 +30,13 @@ on:
         description: '上市融資回補幾個平日(空 = 不回補;修錯位時填 120)'
         required: false
         default: ''
+      # 🏪 V80.1.1 上櫃 K 線回補:上櫃股這一輪重抓幾個月的逐股官方月資料(新站 tradingStock)。
+      #   空 = 照舊(慢路徑只抓最近 3 個月)。2026-06 起上櫃 K 線常是沒收完的盤中那根 → 修好後手動派一次填 12。
+      #   ⚠️ 每檔每月一個請求(上櫃約 900 檔 × 12 = 1 萬多個,分 20 台機器約多 12 分鐘)。
+      tpex_months:
+        description: '上櫃 K 線重抓幾個月(空 = 不回補;修上櫃舊 K 線時填 12,最多 24)'
+        required: false
+        default: ''
   # ⏰ V79.1.9 使用者:「換倉名單請改成最早的時間,不然沒時間看」——
   #   GitHub 排程在這個 repo 常遲到好幾小時(10/12 那輪凌晨 02:03 才跑)→
   #   Cloudflare Worker 台北 17:00 那一輪看到資料還不是今天就發 `daily-miner`(⛔ 不吃排程配額)。
@@ -130,10 +137,13 @@ jobs:
           BATCH_INDEX: ${{ matrix.batch }}
           TOTAL_BATCHES: 20
           MARGIN_TWSE_DAYS: ${{ github.event.inputs.margin_twse_days }}
+          TPEX_MONTHS: ${{ github.event.inputs.tpex_months }}
           # 🌐 V80.0.5 上市股「今天那一根」改用官方全市場行情(一天 1 個請求取代每檔 3 個)。
-          #   openapi_daily_probe 2026-10-30 對拍上市 299 檔開高低收量 100% 一致才開;上櫃量沒有全對上 → 還沒開。
-          #   要關回去:刪掉這一行(或改 '0')就回到原本逐月抓。
-          TW_DAILY_ALL: twse
+          #   openapi_daily_probe 2026-10-30 對拍上市 299 檔開高低收量 100% 一致才開。
+          # 🏪 V80.1.1 上櫃也開:2026-10-31 三方對拍,網站對不上的 12 檔裡「全市場那根 == 逐股官方」12/12、
+          #   「網站那根 == 逐股官方」0/12 → 對不上是網站那根沒收完(盤中快照 / yfinance),⛔ 不是全市場那份錯。
+          #   要關回去:改成 twse(只關上櫃)或刪掉這一行(兩個都關)就回到原本逐月抓。
+          TW_DAILY_ALL: '1'
         run: |
           # 只有節點 0 負責抓取全球總經/期貨/法人等共用資料，節點 1~4 只專心抓個股
           if [ "${{ matrix.batch }}" != "0" ]; then

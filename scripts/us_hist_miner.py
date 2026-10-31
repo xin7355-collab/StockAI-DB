@@ -39,7 +39,11 @@ FUTURES = {'ES=F', 'NQ=F'}   # 連續合約換月會製造假報酬 → 探針�
 # 🧪 V79.3.8 變因研究的「大盤狀態」用:匯率 / 美債 10 年殖利率 / 美元指數 / 原油 / 黃金 → 另放 `mac`(⛔ 不進 syms:
 #   us_tw_lead_probe 會把 syms 每一檔都當事件源;也⛔ 不讓它們的交易日進 `days` —— 匯率在美股休市日也有報價,
 #   混進來會讓美股那天變成 None、隔天的報酬算不出來(陷阱 #17 的日曆版)→ mac 只對齊美股的交易日)
-MACRO = ['TWD=X', '^TNX', 'DX-Y.NYB', 'CL=F', 'GC=F']
+MACRO = ['TWD=X', '^TNX', 'DX-Y.NYB', 'CL=F', 'GC=F', 'JPY=X']
+# 🧭 V80.1.1 反攻條件雷達回測用(使用者 10/31「反攻條件要不要加進分數」):韓股 / 日經 → 另放 `asia`,**帶自己的交易日**
+#   ⛔ 不對齊美股的 days(韓國 / 日本放假跟美股不同天,對齊會把「前一天」算錯),⛔ 不進 syms(不是事件源)。
+#   JPY=X(美元兌日圓)跟其他匯率一樣放 MACRO。
+ASIA = ['^KS11', '^N225']
 
 # 🔧 排程/workflow_run 觸發時 inputs.* 是**空字串**不是不存在 → 一律 `or 預設`(check_env_default.py)
 YEARS = os.environ.get('YEARS') or '5y'
@@ -56,7 +60,7 @@ def hist_kwargs(years=YEARS, start=START):
     return {'start': start, 'auto_adjust': True} if start else {'period': years, 'auto_adjust': True}
 
 
-def fetch_all(tickers=TICKERS + MACRO, years=YEARS, start=START):
+def fetch_all(tickers=TICKERS + MACRO + ASIA, years=YEARS, start=START):
     """回 ({ticker: {date: (o, c, v)}}, {ticker: error})。逐檔 try/except,一檔壞不拖累其他檔。"""
     import yfinance as yf
     frames, errors = {}, {}
@@ -87,9 +91,16 @@ def fetch_all(tickers=TICKERS + MACRO, years=YEARS, start=START):
 
 def compact(frames, errors, years=YEARS):
     """欄式壓縮:日期聯集共用(⛔ 只用 syms 那幾檔的交易日,MACRO 對齊過來),缺值 None;順手做分割守門。"""
-    days = sorted({d for t, ser in frames.items() if t not in MACRO for d in ser})
+    days = sorted({d for t, ser in frames.items() if t not in MACRO and t not in ASIA for d in ser})
     syms, mac, first, split_suspect = {}, {}, {}, {}
+    asia = {}
     for t, ser in frames.items():
+        if t in ASIA:
+            # 🧭 自己的交易日、只存收盤(雷達只看當天漲跌);⛔ 不做分割守門(指數沒有分割)
+            dd = sorted(ser)
+            asia[t] = {'d': dd, 'c': [round(ser[d][1], 2) for d in dd]}
+            first[t] = dd[0] if dd else None
+            continue
         o_arr, c_arr, v_arr = [], [], []
         prev_c, susp_c = None, None   # prev_c = 最近一個「可信」收盤;susp_c = 上一個被判可疑的收盤
         for d in days:
@@ -123,6 +134,9 @@ def compact(frames, errors, years=YEARS):
     }
     if mac:
         doc['mac'] = mac
+    if asia:
+        doc['asia'] = asia
+        doc['meta']['asia'] = sorted(asia)
     return doc
 
 
@@ -152,7 +166,7 @@ def write(doc, out=OUT):
 
 
 def main():
-    print(f'🇺🇸 美股日線歷史 ・{len(TICKERS)} 檔 + 大盤狀態 {len(MACRO)} 檔 ・' + (f'從 {START} 起' if START else f'period={YEARS}') + ' ・adjusted')
+    print(f'🇺🇸 美股日線歷史 ・{len(TICKERS)} 檔 + 大盤狀態 {len(MACRO)} 檔 + 亞股指數 {len(ASIA)} 檔 ・' + (f'從 {START} 起' if START else f'period={YEARS}') + ' ・adjusted')
     frames, errors = fetch_all()
     doc = compact(frames, errors)
     ok, why = guard(doc)
@@ -245,6 +259,18 @@ def selftest():
     ok('⑨ MACRO 另放 mac、不進 syms、不算進 n_syms', 'TWD=X' in doc_m.get('mac', {}) and 'TWD=X' not in doc_m['syms'] and doc_m['meta']['n_syms'] == 37 and doc_m['meta']['mac'] == ['TWD=X'])
     ok('⑨ MACRO 自己的交易日 ⛔ 不進 days(美股那天才不會變 None)', extra_day not in doc_m['days'] and len(doc_m['days']) == len(days) and len(doc_m['mac']['TWD=X']['c']) == len(days))
     ok('⑨ 沒有 MACRO 時檔案形狀跟以前一樣(沒有 mac 鍵)', 'mac' not in doc)
+    # ⑪ V80.1.1 ASIA:帶自己的交易日、⛔ 不進 days / syms / mac
+    fa_, _ = _synth()
+    kd = [d for i, d in enumerate(days) if i % 7 != 3] + ['2099-02-02']   # 韓國自己的日曆(少幾天、多一天)
+    fa_['^KS11'] = {d: (2000.0 + i, 2001.0 + i, 0.0) for i, d in enumerate(kd)}
+    doc_a = compact(fa_, {}, '5y')
+    ok('⑪ ASIA 另放 asia、自己的交易日原樣保留', doc_a.get('asia', {}).get('^KS11', {}).get('d') == sorted(kd)
+       and doc_a['asia']['^KS11']['c'][0] == 2001.0 and len(doc_a['asia']['^KS11']['c']) == len(kd))
+    ok('⑪ ASIA ⛔ 進 days / syms / mac、⛔ 算進 n_syms', '2099-02-02' not in doc_a['days'] and len(doc_a['days']) == len(days)
+       and '^KS11' not in doc_a['syms'] and '^KS11' not in doc_a.get('mac', {}) and doc_a['meta']['n_syms'] == 37 and doc_a['meta']['asia'] == ['^KS11'])
+    ok('⑪ 沒有 ASIA 時檔案形狀跟以前一樣(沒有 asia 鍵)', 'asia' not in doc)
+    ok('⑪ 預設抓的清單含 ^KS11 / ^N225 / JPY=X', '^KS11' in ASIA and '^N225' in ASIA and 'JPY=X' in MACRO
+       and fetch_all.__defaults__[0] == TICKERS + MACRO + ASIA)
     ok('⑩ START 有設 → 用 start、沒設 → 用 period', hist_kwargs('5y', '2009-01-01') == {'start': '2009-01-01', 'auto_adjust': True} and hist_kwargs('5y', '') == {'period': '5y', 'auto_adjust': True})
     # ⑧ write 原子替換 + 不覆蓋:guard 沒過時 main 路徑不會呼叫 write(這裡只驗 write 本身可讀回)
     import tempfile

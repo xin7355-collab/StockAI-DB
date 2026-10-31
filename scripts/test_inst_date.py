@@ -5,8 +5,9 @@
  ① _resp_dates 認得:YYYYMMDD / YYYY/MM/DD / 民國 NNN/MM/DD / 標題「NNN年MM月DD日」;看不出 → 空
  ② 上市 T86 日期 = 要的那天 → 收;⭐ 決定性對照:同一份回應只把日期改成前一天 → ⛔ 不收(而且 log 寫原因)
  ③ T86 沒有 date 欄、標題日期不對 → ⛔ 不收;完全看不出是哪一天 → 照收 + log「看不出」
- ④ 上櫃:日期不對 → 現在只記錄、照收(_OTC_INST_DATE_STRICT = False,等探針量到真的格式);
-    打開嚴格 → 第一條不收、換下一條(下一條日期對 → 收那一條,決定性對照)
+ ④ 上櫃:V80.1.1 起預設嚴格(_OTC_INST_DATE_STRICT = True,探針量到三條候選都帶 date / tables[0].date)
+    → 第一條日期不對不收、換下一條(日期對 → 收那一條);
+    ④b 決定性對照:關掉嚴格 → 照收第一條 + log「只記錄」(V80.1.0 的行為)
  ⑤ FinMind 備援:別天的列 ⛔ 不收
 跑法:python3 scripts/test_inst_date.py
 """
@@ -58,7 +59,7 @@ class R:
         return self._j
 
 
-def run(t86=None, otc=None, fm=None, strict=False):
+def run(t86=None, otc=None, fm=None, strict=None):
     """t86 / otc = dict 或 (url 片段 → dict)的 list;回 (res, log)"""
     otc = otc or []
 
@@ -75,7 +76,8 @@ def run(t86=None, otc=None, fm=None, strict=False):
     M.time.sleep = lambda *a, **k: None
     M.fm_request = lambda *a, **k: fm
     M._FINMIND_BLOCKED = fm is None
-    M._OTC_INST_DATE_STRICT = strict
+    if strict is not None:
+        M._OTC_INST_DATE_STRICT = strict
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
@@ -98,12 +100,18 @@ ck('1100' in res4 and '看不出' in log4, '③b 完全看不出是哪一天 →
 
 otc_bad = {'tables': [{'date': '115/10/29', 'fields': OTC_FIELDS, 'data': OTC_DATA}]}
 otc_ok = {'tables': [{'date': '115/10/30', 'fields': OTC_FIELDS, 'data': [[r[0], r[1], r[2], r[3], str(int(r[4]) + 1)] + r[5:] for r in OTC_DATA]}]}
+ck(M._OTC_INST_DATE_STRICT is True, '④ 預設嚴格(V80.1.1 探針量到上櫃回應帶日期之後打開)')
 res5, log5 = run(t86=ok_t86, otc=[('/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date=2026/10/30', otc_bad),
                                   ('/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date=115/10/30', otc_ok)])
-ck(res5.get('6100', {}).get('foreign_net') == 2000 and '只記錄' in log5, '④ 上櫃日期不對 → 現在只記錄、照收第一條(_OTC_INST_DATE_STRICT = False)', (res5.get('6100'), log5[-240:]))
+ck(res5.get('6100', {}).get('foreign_net') == 2001 and '只記錄' not in log5,
+   '④ 預設:第一條日期不對 ⛔ 不收、換第二條(日期對 → 收 6100 外資 +2001)', (res5.get('6100'), log5[-240:]))
+res5b, log5b = run(t86=ok_t86, otc=[('/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date=2026/10/30', otc_bad)])
+ck('6100' not in res5b and '115/10/29' not in str(res5b) and '2026-10-29' in log5b,
+   '④ 唯一一條日期不對 → 上櫃一檔都不收,原因寫進 log(⛔ 不可把 10/29 蓋成 10/30)', log5b[-240:])
 res6, log6 = run(t86=ok_t86, otc=[('/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date=2026/10/30', otc_bad),
-                                  ('/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date=115/10/30', otc_ok)], strict=True)
-ck(res6.get('6100', {}).get('foreign_net') == 2001, '④b ⭐ 打開嚴格 → 第一條日期不對不收、換第二條(日期對)', (res6.get('6100'), log6[-240:]))
+                                  ('/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date=115/10/30', otc_ok)], strict=False)
+ck(res6.get('6100', {}).get('foreign_net') == 2000 and '只記錄' in log6,
+   '④b ⭐ 決定性對照:關掉嚴格 → 照收第一條(10/29 的數字)+ log「只記錄」', (res6.get('6100'), log6[-240:]))
 
 fm = {'data': [{'stock_id': '6200', 'date': '2026-10-30', 'name': 'Foreign_Investor', 'buy': 500, 'sell': 100},
                {'stock_id': '6201', 'date': '2026-10-29', 'name': 'Foreign_Investor', 'buy': 900, 'sell': 100}]}

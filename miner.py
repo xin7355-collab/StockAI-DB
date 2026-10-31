@@ -345,9 +345,9 @@ def write_radar_to_db(results):
 
 # ── TWSE OHLCV（上市股票月資料）──────────────────────────────────────────────
 def _roc_to_gregorian(roc_date: str) -> str:
-    """'115/05/02' → '2026/05/02'"""
-    parts = roc_date.strip().split('/')
-    return f'{int(parts[0]) + 1911}/{parts[1]}/{parts[2]}'
+    """'115/05/02' → '2026/05/02'。🗓️ V80.1.1:日期格可能帶註記星號('115/05/02*' / '＊115/05/02')→ 先拿掉。"""
+    parts = str(roc_date).replace('*', '').replace('＊', '').strip().split('/')
+    return f'{int(parts[0]) + 1911}/{int(parts[1]):02d}/{int(parts[2]):02d}'
 
 
 # 🧯 V80.0.2 官方逐股端點的「被擋 vs 沒資料」+ 斷路器
@@ -444,7 +444,8 @@ def _report_fetch_health(da_stats=None) -> None:
     """印 log + 寫 job summary(只有數量)。被擋比例 ≥ 20% → ::warning::(真的壞掉要看得到紅黃燈)。"""
     lines = fetch_health_summary()
     if da_stats is not None:
-        lines.insert(0, f"全市場當日 K 線:快速路徑 {da_stats['fast']} 檔、照舊逐月抓 {da_stats['slow']} 檔")
+        lines.insert(0, f"全市場當日 K 線:快速路徑 {da_stats['fast']} 檔、照舊逐月抓 {da_stats['slow']} 檔"
+                        + (f"、今天那根換成官方那根 {da_stats['fix']} 檔" if da_stats.get('fix') else ''))
     for ln in lines:
         print(f"  🧯 {ln}")
     for host, h in _FETCH_HEALTH.items():
@@ -536,14 +537,19 @@ def twse_ohlcv(symbol: str, year_month: str, _max_retries: int = 3):
 
 def tpex_ohlcv(symbol: str, year_month: str, _max_retries: int = 3):
     """TPEX 上櫃股月 OHLCV。year_month='YYYYMM'。回傳規則同 twse_ohlcv(None = 被擋/壞掉)。
-    🛡️ 反防火牆強化:timeout 10 → 20 秒,random delay 0.8-2s,exponential backoff 3 次
+    🏪 V80.1.1 換成上櫃新站逐股月資料 tradingStock(舊的 st43 從 GitHub runner 打一律回網頁 = 從 V80.0.5 起整條沒用)。
+      openapi_daily_probe(2026-10-31,runner 實打):HTTP 200 + JSON,tables[0].fields =
+      ['日 期','成交張數','成交仟元','開盤','最高','最低','收盤','漲跌','筆數'],日期是民國 '115/10/01'。
+      ⚠️ 網址的 date **只吃西元**(YYYY/MM/01;民國回空表)。成交是「張」→ ×1000 換成股(網站 K 線一律是股)。
+    ⛔ 欄位照名字找(⛔ 寫死位置);每一列的日期都要落在要的那個月 —— 一列都對不上 = 回應不是那個月(⛔ 不可當成這個月),
+      算「被擋/壞掉」讓斷路器看得到。
+    🛡️ 反防火牆:timeout 20 秒、random delay 0.8-2s、exponential backoff 3 次、斷路器(_cb_allow / _cb_record)
     """
     if not _cb_allow('tpex'):
         return None
-    y, m = int(year_month[:4]), year_month[4:]
-    roc_year = y - 1911
-    url = (f'https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/'
-           f'st43_result.php?l=zh-tw&d={roc_year}/{m}&stkno={symbol}&o=json')
+    y, m = int(year_month[:4]), int(year_month[4:])
+    url = (f'https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock'
+           f'?code={symbol}&date={y}/{m:02d}/01&response=json')
     time.sleep(random.uniform(0.8, 2.0))
     for attempt in range(_max_retries):
         try:
@@ -552,14 +558,12 @@ def tpex_ohlcv(symbol: str, year_month: str, _max_retries: int = 3):
                 # ⛔ V73.6.1:TPEx 整站對 GitHub runner 回 403 —— 以前這裡被當成「當月尚未公布」吞掉
                 _cb_record('tpex', 'blocked', f'HTTP{res.status_code}')
                 return None
-            body = res.text.strip()
+            body = (res.text or '').strip()
             if not body:                    # HTTP 200 + 空白 = 當月尚未公布 / 不是上櫃股
                 _cb_record('tpex', 'empty')
                 return []
             if body[0] == '<':
-                # 🧯 V80.0.5 實測(openapi_daily_probe 2026-10-30,GitHub runner):6488 / 5483 / 8069 三檔
-                #   **真的上櫃股**全部回 HTTP 200 + `<!DOCTYPE html` → 這是端點從 runner 打不通,⛔ 不是「沒公布」。
-                #   以前當成沒資料吞掉 = 上櫃 K 線其實全靠 yfinance / MIS 補,而 log 看不出來。
+                # 🧯 V80.0.5:runner 打舊 st43 一律回 `<!DOCTYPE html`(真的上櫃股也一樣)→ 這是端點打不通,⛔ 不是「沒公布」
                 _cb_record('tpex', 'blocked', 'HTML')
                 return None
             try:
@@ -567,19 +571,45 @@ def tpex_ohlcv(symbol: str, year_month: str, _max_retries: int = 3):
             except ValueError:
                 _cb_record('tpex', 'blocked', 'JSON壞')
                 return None
-            aa = j.get('aaData') or []
-            # row: [日期, 成交股數, 成交金額, 開盤, 最高, 最低, 收盤, 漲跌, 筆數]
-            out = []
-            for row in aa:
+            tabs = j.get('tables') if isinstance(j, dict) else None
+            t0 = tabs[0] if isinstance(tabs, list) and tabs and isinstance(tabs[0], dict) else {}
+            data = t0.get('data') or []
+            if not data:                    # 不是上櫃股 / 這個月沒交易 → 新站回空表
+                _cb_record('tpex', 'empty')
+                return []
+            fields = [str(f).replace(' ', '').replace('\u3000', '') for f in (t0.get('fields') or [])]
+            fi = lambda kw: next((k for k, f in enumerate(fields) if kw in f), None)
+            i_dt, i_op, i_hi, i_lo, i_cl = fi('日期'), fi('開盤'), fi('最高'), fi('最低'), fi('收盤')
+            i_lot, i_sh = fi('成交張數'), fi('成交股數')
+            if i_dt is None or i_cl is None or (i_lot is None and i_sh is None):
+                print(f"  ⚠️ TPEX tradingStock 欄位找不到(格式變了?),fields={(t0.get('fields') or [])[:9]}")
+                _cb_record('tpex', 'blocked', '欄位變了')
+                return None
+            cell = lambda row, k, t=float: _ohlcv_num(row[k], t) if k is not None and k < len(row) else None
+            want = f'{y}/{m:02d}/'
+            out, other = [], 0
+            for row in data:
                 try:
-                    bar = _ohlcv_bar(_roc_to_gregorian(str(row[0])),
-                                     _ohlcv_num(row[3]), _ohlcv_num(row[4]), _ohlcv_num(row[5]),
-                                     _ohlcv_num(row[6]), _ohlcv_num(row[1], int))
-                except (IndexError, ValueError):
+                    ds = _roc_to_gregorian(str(row[i_dt]))
+                    if not ds.startswith(want):
+                        other += 1
+                        continue
+                    if i_sh is not None:
+                        vol = cell(row, i_sh, int)
+                    else:
+                        lots = cell(row, i_lot)
+                        vol = int(round(lots * 1000)) if lots is not None else None
+                    bar = _ohlcv_bar(ds, cell(row, i_op), cell(row, i_hi), cell(row, i_lo), cell(row, i_cl), vol)
+                except (IndexError, ValueError, TypeError):
                     _OHLCV_Q['bad_num'] += 1
                     continue
                 if bar:
                     out.append(bar)
+            if other and not out:
+                # ⛔ 每一列都是別的月 → 網址的日期沒被吃進去(格式變了),⛔ 不可當成這個月
+                print(f"  ⚠️ TPEX tradingStock {symbol} {year_month}:回來的 {other} 列都不是 {y}/{m:02d}(網址日期沒被吃進去?)")
+                _cb_record('tpex', 'blocked', '月份不對')
+                return None
             _cb_record('tpex', 'ok' if out else 'empty')
             return out
         except Exception as e:
@@ -734,6 +764,53 @@ def weekly_refresh_slot(sym: str) -> int:
     """每檔固定在一週的某一天(0=週一…4=週五)仍走原本的逐月重抓,用來校正以前留下的盤中快照 / 補缺口。
     ⭐ 用字元和(⛔ 不用 hash():Python 每次啟動 hash 會變,同一檔每天會換日子)。"""
     return sum(map(ord, sym)) % 5
+
+
+# 🏪 V80.1.1 上櫃 K 線一次性回補(手動派 daily_miner 填 tpex_months)
+#   ⭐ 為什麼:上櫃舊 st43 從 runner 打不通 → 上櫃 K 線靠 yfinance / 盤中快照,2026-06 起最新那根常是沒收完的
+#      (10/30 抽查:網站收盤跟官方只有 53% 一樣、量中位只有官方一半);平常的慢路徑只重抓 3 個月 → 更早的錯 K 永遠留著。
+#   做法:TPEX_MONTHS=N(4~24)→ 上櫃股(看 data/stock_names.json 第三欄市場別)這一輪重抓 N 個月逐股官方月資料,
+#      不走「安全略過」、不走全市場快速路徑;其他股票照舊。⛔ 市場別讀不到 → 這一輪不回補(⛔ 不猜)。
+def _market_map(path=None) -> dict:
+    """{代號: 'twse' / 'tpex' / …}(stock_names.json 第三欄);讀不到 → {}。"""
+    try:
+        j = json.loads(Path(path or Path(DATA_DIR) / 'stock_names.json').read_text(encoding='utf-8'))
+        names = j.get('names') if isinstance(j, dict) else None
+        return {str(k): v[2] for k, v in (names or {}).items()
+                if isinstance(v, (list, tuple)) and len(v) > 2 and v[2]}
+    except Exception:
+        return {}
+
+
+def tpex_backfill_months(raw, today_d, base_n: int = 3) -> list:
+    """TPEX_MONTHS 的值 → 要重抓的月份 ['YYYYMM', …](新 → 舊);沒設 / 看不懂 / 不比平常多 → []。純函式。"""
+    try:
+        n = int(str(raw or '').strip() or 0)
+    except ValueError:
+        return []
+    n = max(0, min(24, n))
+    if n <= base_n:
+        return []
+    out, cur = [], today_d.replace(day=1)
+    for _ in range(n):
+        out.append(cur.strftime('%Y%m'))
+        cur = (cur - timedelta(days=1)).replace(day=1)
+    return out
+
+
+def daily_all_fix_needed(today_record: dict, da_bar, today_str: str) -> bool:
+    """今天那根已經在了,但跟官方全市場那根不一樣(收盤不同,或量差 ≥ 1 張)→ True(⛔ 安全略過,換成官方那根)。
+    ⭐ 為什麼:傍晚那輪寫進來的常是盤中快照(上市量只有整股、上櫃常是沒收完的),晚上那輪又因為「K 線 + 籌碼都有了」
+       整檔略過 → 錯的那根一直留到每週重抓才換掉。全市場那根本來就抓好了,換掉不用多打任何請求。
+    ⚠️ 量差 < 1000 股不算(上櫃逐股官方是「張」×1000 四捨五入,⛔ 為了零股尾數每天改來改去)。純函式。"""
+    if not da_bar or not today_record or da_bar.get('date') != today_str:
+        return False
+    try:
+        if abs(float(today_record.get('close') or 0) - float(da_bar.get('close') or 0)) > 1e-6:
+            return True
+        return abs(float(today_record.get('volume') or 0) - float(da_bar.get('volume') or 0)) >= 1000
+    except (TypeError, ValueError):
+        return False
 
 
 # V15.0 — 已下市股黑名單(yfinance possibly delisted 偵測後寫入,下次直接跳過)
@@ -1062,8 +1139,10 @@ def _otc_inst_parse(rows, fields):
 
 # 🗓️ V80.1.0 回應裡的日期 vs 要的那天(陷阱 #60:沒驗日期 = 別天的數字被蓋上這一天)
 _ROC_TXT_DATE = re.compile(r'(\d{2,3})年(\d{1,2})月(\d{1,2})日')
-# 上櫃法人回應的日期欄位長什麼樣子沙箱看不到(陷阱 #23)→ 先只記錄、⛔ 不擋;openapi_daily_probe 量到真的格式後再改成 True
-_OTC_INST_DATE_STRICT = False
+# 🗓️ V80.1.1 打開:openapi_daily_probe(2026-10-31,runner 實打)上櫃三條候選(新站西元 / 新站民國 / 舊站)回應都帶
+#   最上層 date='20261030' + tables[0].date='115/10/30',兩個交易日(10/21、10/30)都跟要的那天一致 → 對不上就不收、換下一條。
+#   (V80.1.0 先只記錄;改回 False = 對不上照收、只印 log)
+_OTC_INST_DATE_STRICT = True
 
 
 def _resp_dates(j):
@@ -3991,6 +4070,16 @@ def run():
     #   V80.0.5:TW_DAILY_ALL 可以只開一個市場。2026-10-30 對拍:上市 299 檔開高低收量 100% 一致 → daily_miner 開 twse;
     #   上櫃收盤 100% 但量只有 34% 一模一樣(差約 0.02%,網站上那份上櫃 K 線本來就是 yfinance 補的)→ 先不開,⛔ 沒對上就不換
     _DA_BARS, _DA_CLOSED, _DA_STATS = {}, set(), {'fast': 0, 'slow': 0}
+    _TPX_MONTHS = tpex_backfill_months(os.environ.get('TPEX_MONTHS'), today, len(months))
+    _MKT_OF = _market_map() if _TPX_MONTHS else {}
+    if _TPX_MONTHS:
+        if _MKT_OF:
+            print(f"  🏪 上櫃 K 線回補:這一批 {sum(1 for s_ in watchlist if _MKT_OF.get(s_) == 'tpex')} 檔上櫃股 × "
+                  f"{len(_TPX_MONTHS)} 個月({_TPX_MONTHS[-1]}~{_TPX_MONTHS[0]},逐股官方月資料)")
+        else:
+            print("  ⚠️ TPEX_MONTHS 有設,但 data/stock_names.json 讀不到市場別 → 這一輪不回補(⛔ 不猜哪幾檔是上櫃)")
+            _TPX_MONTHS = []
+    _DA_FIX = 0
     _recent10 = [d.strftime('%Y/%m/%d') for d in trading_days[-10:]]
     _da_mk = daily_all_markets(os.environ.get('TW_DAILY_ALL'))
     if _da_mk:
@@ -4062,6 +4151,7 @@ def run():
             # 資料稀疏偵測:現有 < 480 筆(約 2 年交易日)→ 補抓 24 個月,讓回測有完整 2 年歷史
             # V15.0:歷史補洞門檻 480 → 240(2 年 → 1 年),減少 yfinance 730 天強化補洞觸發率
             #        歷史 1-2 年的股票不再過度補洞,240MA 由前端 V14.17 週 K 邏輯取代不依賴
+            _tpx_deep = bool(_TPX_MONTHS) and _MKT_OF.get(sym) == 'tpex'
             if len(existing_map) < 240:
                 fetch_months = []
                 _tmp = today.replace(day=1)
@@ -4069,13 +4159,24 @@ def run():
                     fetch_months.append(_tmp.strftime('%Y%m'))
                     _tmp = (_tmp - timedelta(days=1)).replace(day=1)
                 print(f"  📉 歷史不足 2 年(現有 {len(existing_map)} 筆 < 480),延長至 24 個月回溯")
+            elif _tpx_deep:
+                fetch_months = _TPX_MONTHS          # 🏪 V80.1.1 上櫃回補(不是 months 那個 list → 自然不走快速路徑)
             else:
                 fetch_months = months
 
-            if not has_gap and latest_valid_date == target_today_str and (not is_post_market or has_final_chips):
+            # 🌐 V80.1.1 今天那根跟官方全市場那根不一樣 → 不可「安全略過」(換成官方那根,不多打請求)
+            _da_fix = daily_all_fix_needed(today_record, _DA_BARS.get(sym), target_today_str)
+
+            if (not has_gap and latest_valid_date == target_today_str and (not is_post_market or has_final_chips)
+                    and not _da_fix and not _tpx_deep):
                 print(f"⚡ 本日 K 線與最終籌碼已完整，安全略過證交所請求")
                 new_rows = []
             else:
+                if _da_fix:
+                    _DA_FIX += 1
+                    _dab = _DA_BARS.get(sym) or {}
+                    print(f"🌐 今天那根跟官方全市場那根不一樣(收 {today_record.get('close')}→{_dab.get('close')}、"
+                          f"量 {today_record.get('volume')}→{_dab.get('volume')})→ 換成官方那根 ", end='')
                 if is_post_market and latest_valid_date == target_today_str and not has_final_chips:
                     print(f"🔄 盤後採礦：K 線存在但籌碼尚未更新，強制重新下載...")
                 new_rows = []
@@ -4306,6 +4407,7 @@ def run():
     finally:
         db_conn.close()
         # 🧯 V80.0.2 抓取健康度(⛔ 以前被擋也只看到「雙源無資料」)—— 放 finally:中途出錯也要印出來
+        _DA_STATS['fix'] = _DA_FIX
         _report_fetch_health(_DA_STATS if _DA_BARS else None)
 
         # 斷點續傳：記錄已完成的股票代號（覆蓋寫入）
