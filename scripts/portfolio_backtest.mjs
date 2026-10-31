@@ -835,7 +835,7 @@ for (const sym of SCAN_SYMS) {
                         const stop0 = stop;                       // 初始風險(rr 用)
                         const atrAt = (j, n = 14) => {            // ATR(n) 到第 j 天為止(預設 14)
                             let tr = 0, k = 0;
-                            for (let q = Math.max(1, j - (n - 1)); q <= j; q++) {
+                            for (let q = Math.max(1, j - n + 1); q <= j; q++) {
                                 const h = data[q].high, l = data[q].low, pc = C(q - 1);
                                 tr += Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)); k++;
                             }
