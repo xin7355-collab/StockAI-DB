@@ -66,6 +66,8 @@ NAMES = [
     'revY', 'yoyAcc', 'gmY', 'epsY', 'roe4', 'acc', 'nImp', 'ttmPos12', 'ep', 'bp',
     # H 新聞(V80.1.4,news_factor.py → NEWS=…;沒設 / 那幾天不知道 / 股名對不到 → NaN,⛔ 不當 0)
     'nw1', 'nw5', 'nw20', 'nwAb', 'nwFst', 'nwOff5',
+    # I 借券賣出(V80.1.4,stock_deep/sbl = FinMind TaiwanDailyShortSaleBalances → SBL_DIR=…;沒設 / 那天沒有 → NaN)
+    'sbl5r', 'sblDays', 'sblChg20',
 ]
 K = len(NAMES)
 NI = {n: i for i, n in enumerate(NAMES)}
@@ -167,6 +169,40 @@ def news_cal(rows, known):
             'nwOff5': rsum_strict(o, 5)}
 
 
+SBL_COLS = ('sbl5r', 'sblDays', 'sblChg20')
+SBL_SS, SBL_BAL = 'SBLShortSalesShortSales', 'SBLShortSalesCurrentDayBalance'
+
+
+def load_sbl(sbl_dir, sym):
+    """stock_deep/sbl/{sym}.json.gz({'d':[日期],'c':[欄名],'v':[[…]]})→ {日期: (借券賣出股數, 借券賣出餘額)};沒有檔 / 讀不出 → None"""
+    if not sbl_dir:
+        return None
+    p = Path(sbl_dir) / f'{sym}.json.gz'
+    if not p.exists():
+        return None
+    try:
+        import gzip
+        j = json.loads(gzip.decompress(p.read_bytes()).decode('utf-8'))
+        ci, cb = j['c'].index(SBL_SS), j['c'].index(SBL_BAL)
+        return {_d(d): (float(v[ci]), float(v[cb])) for d, v in zip(j['d'], j['v']) if v and v[ci] is not None and v[cb] is not None}
+    except Exception:
+        return None
+
+
+def sbl_cols(dates, V, sbl):
+    """借券賣出(收盤後公布 → 當天的值可以用,進場是隔天開盤;同 foreign_net)→ 三欄:
+    sbl5r 近 5 天借券賣出 ÷ 近 5 天成交量(%)・sblDays 借券賣出餘額 ÷ 近 20 天平均量(幾天的量)・
+    sblChg20 餘額 20 天增減 ÷ 近 20 天平均量。那天沒有資料 → NaN(⛔ 當 0)"""
+    n = len(dates)
+    ss = np.array([sbl[d][0] if d in sbl else np.nan for d in dates])
+    bal = np.array([sbl[d][1] if d in sbl else np.nan for d in dates])
+    v5, v20 = rsum_strict(V, 5), rolling(V, 20, lambda w: w.mean(axis=1))
+    bal20 = np.concatenate([np.full(20, np.nan), bal[:-20]]) if n > 20 else np.full(n, np.nan)
+    return {'sbl5r': np.where(v5 > 0, rsum_strict(ss, 5) / np.where(v5 > 0, v5, 1) * 100, np.nan),
+            'sblDays': np.where(v20 > 0, bal / np.where(v20 > 0, v20, 1), np.nan),
+            'sblChg20': np.where(v20 > 0, (bal - bal20) / np.where(v20 > 0, v20, 1), np.nan)}
+
+
 def streak_pos(x):
     """連續 > 0 的天數(NaN / ≤0 中斷),逐日。"""
     out = np.zeros(len(x))
@@ -202,7 +238,7 @@ def div_factors(dates, C, divs):
     return F
 
 
-def per_stock(sym, rows, cal_pos, tw_ret, divs, fund, sample_set, news=None):
+def per_stock(sym, rows, cal_pos, tw_ret, divs, fund, sample_set, news=None, sbl=None):
     """一檔 → (cal_i 陣列, X[m,K], R[m,3], lock[m]);沒有可用的列回 None。"""
     recs = []
     for r in rows or []:
@@ -360,6 +396,10 @@ def per_stock(sym, rows, cal_pos, tw_ret, divs, fund, sample_set, news=None):
     put('mg5p', np.where(np.concatenate([np.full(5, np.nan), MB[:-5]]) > 0, (MB / np.concatenate([np.full(5, np.nan), MB[:-5]]) - 1) * 100, np.nan))
     put('mg20p', np.where(np.concatenate([np.full(20, np.nan), MB[:-20]]) > 0, (MB / np.concatenate([np.full(20, np.nan), MB[:-20]]) - 1) * 100, np.nan))
     put('sbr', np.where(MB > 0, SB / np.where(MB > 0, MB, 1) * 100, np.nan))
+    # ── I 借券賣出 ──
+    if sbl:
+        for nm_, arr in sbl_cols(dates, V, sbl).items():
+            put(nm_, arr)
     # ── H 新聞(日曆層級算好 → 對到這一檔有的那幾天;停牌那幾天的新聞照樣算在日曆上)──
     if news is not None:
         okc = ci >= 0
@@ -474,6 +514,7 @@ def pool_days(files, cal_pos, ncal, top):
 
 
 POOL_TOP = int(os.getenv('POOL_TOP') or 0)
+SBL_DIR = os.getenv('SBL_DIR') or ''
 
 
 def build(data=None, out=None, verbose=True):
@@ -515,7 +556,7 @@ def build(data=None, out=None, verbose=True):
         if isinstance(divs, dict):
             divs = divs.get('h')
         res = per_stock(sym, rows, cal_pos, tw_ret, divs, fund.get(sym), pool_sets.get(sym) if pool_sets is not None else sample_set,
-                        news_for(news, sym))
+                        news_for(news, sym), load_sbl(SBL_DIR, sym))
         if res is None:
             n_skip += 1
             continue
@@ -747,6 +788,28 @@ def selftest():
         ok('⑩ 零前視:隔天才有的新聞 ⛔ 改到今天那一列', same_nw)
         ok('⑩ …但 5 天後那一列看得到(注入真的有效)', r_nw2[1][k2b + 1][NI['nw5']] == 9, r_nw2[1][k2b + 1][NI['nw5']])
         ok('⑩ 沒給新聞 → 新聞欄全 NaN(其他欄照舊)', np.all(~np.isfinite(res[1][:, [NI[c_] for c_ in NEWS_COLS]])))
+        # ⑪ 借券賣出:每天借券賣出 = 當天量的 10%、餘額每天 +1 天量 → sbl5r 10%、sblChg20 ≈ 20;某一天沒資料 → 那 5 天的 NaN;零前視
+        dts = [r['date'].replace('/', '-') for r in rows_a]
+        vol = {d: float(r['volume']) for d, r in zip(dts, rows_a)}
+        bal, sb = 0.0, {}
+        for d in dts:
+            bal += vol[d]
+            sb[d] = (vol[d] * 0.1, bal)
+        r_s = per_stock('1101', rows_a, cal_pos, tw_ret, None, None, ss, None, sb)
+        rs_ = dict(zip(NAMES, r_s[1][4]))
+        ok('⑪ 借券賣出 = 量的 10% → sbl5r 10%、餘額 20 天增加 ≈ 20 天的量', abs(rs_['sbl5r'] - 10) < 1e-6 and abs(rs_['sblChg20'] - 20) < 0.5,
+           {k: rs_[k] for k in SBL_COLS})
+        sb2 = dict(sb)
+        i4 = cal_pos[cal[cis[4]]]
+        del sb2[dts[i4 - 1]]
+        rs2 = dict(zip(NAMES, per_stock('1101', rows_a, cal_pos, tw_ret, None, None, ss, None, sb2)[1][4]))
+        ok('⑪ 前一天沒有借券資料 → 近 5 天那欄 NaN(⛔ 當 0)', not np.isfinite(rs2['sbl5r']) and np.isfinite(rs2['sblDays']), {k: rs2[k] for k in SBL_COLS})
+        sb3 = dict(sb)
+        for d in dts[i4 + 1:]:
+            sb3[d] = (9e12, 9e12)
+        rs3 = per_stock('1101', rows_a, cal_pos, tw_ret, None, None, ss, None, sb3)[1][4]
+        ok('⑪ 零前視:之後的借券資料改掉 → 那天的欄位不變', np.allclose(np.nan_to_num(r_s[1][4], nan=-7), np.nan_to_num(rs3, nan=-7)))
+        ok('⑪ 沒給借券 → 三欄全 NaN', np.all(~np.isfinite(res[1][:, [NI[c_] for c_ in SBL_COLS]])))
         # ⑧ build():沒有 ^TWII → 不跑
         (t / '^TWII.json').unlink()
         ok('⑧ 沒有 ^TWII.json → 回 None(⛔ 不寫空面板)', build(t, t / 'out', verbose=False) is None)

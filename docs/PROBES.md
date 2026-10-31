@@ -24,6 +24,7 @@
   ⛔ 只看標題(2015~2020 鉅亨幾乎沒標代號,混用「有標代號」會讓 2021 起憑空變多)・13:30 以後 / 週末歸下一個交易日・
   沒做完的週 / 讀不出來的月份 / 範圍外 → 不知道(NaN,⛔ 當 0)・股名對不到的代號(多半已下市)不輸出。`--selftest`(含兩種注入)。
 - `factor_panel.py` 加 `NEWS=<news_cnt.json>` → 6 欄 nw1 / nw5 / nw20 / nwAb(近 5 天 vs 前 60 天,log)/ nwFst(250 天來第一次)/ nwOff5(盤外發的);沒設全 NaN。selftest ⑩。
+  同一版加 `SBL_DIR=<stock_deep/sbl>` → 借券賣出 3 欄 sbl5r(近 5 天借券賣出 ÷ 成交量 %)/ sblDays(餘額 ÷ 20 日均量)/ sblChg20(餘額 20 天增減 ÷ 20 日均量);那天沒資料 NaN。selftest ⑪(含零前視)。資料 2010-01 ~ 2026-10、2,548 檔(stock_deep 已到齊)。
 - `factor_zoo_probe.py` 第一層加**二分組**:一個值佔 ≥40%(0/1、次數類)→ 五等分最低那格是空的,以前整個變因直接「n < 30 沒測」
   (bull n=0、lu20 n=10)→ 改比「大於那個值 vs 等於那個值」,其他關卡照舊、單調那關不適用。selftest ④b~④d / ⑥(注入「關掉二分組」必紅)。
 - 跑法:`git archive origin/news_deep | tar -x -C <dir>` → `NEWS_DIR=<dir>/news_deep DATA_DIR=<d16> OUT=news_cnt.json python3 scripts/news_factor.py`
