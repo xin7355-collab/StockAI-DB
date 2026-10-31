@@ -233,6 +233,68 @@ def probe_hist():
             time.sleep(1.5)
 
 
+def _codes(item):
+    """鉅亨一則新聞標了哪些台股代號(market[].code / stock[] / market[].symbol 'TWS:2330:STOCK')→ 排好的 list;沒有 → []"""
+    out = set()
+    if not isinstance(item, dict):
+        return []
+    for m in item.get('market') or []:
+        if isinstance(m, dict):
+            c = str(m.get('code') or '')
+            sym = str(m.get('symbol') or '')
+            if sym.startswith('TWS:') or sym.startswith('TWG:'):
+                c = sym.split(':')[1]
+            if re.fullmatch(r'\d{4,6}[A-Z]?', c):
+                out.add(c)
+        elif isinstance(m, str) and re.fullmatch(r'\d{4,6}[A-Z]?', m):
+            out.add(m)
+    for c in item.get('stock') or []:
+        c = str(c.get('code') if isinstance(c, dict) else c)
+        if re.fullmatch(r'\d{4,6}[A-Z]?', c):
+            out.add(c)
+    return sorted(out)
+
+
+def probe_fields():
+    """📚 V80.1.3 鉅亨分類新聞的每一則有沒有標股票代號(要回補 2015 起逐檔新聞,得靠這個 —— 不然只能拿標題比對股名):
+    ① 2015 / 2021 / 2024 各一週的 tw_stock 第 1 頁:第一則有哪些欄位、跟股票有關的欄位長怎樣、這一頁幾則帶代號、子分類分布
+    ② limit=100 一頁給不給 100 則(回補要打幾次)
+    ⛔ 只印,⛔ 寫任何檔"""
+    print('\n🏷️ ① 鉅亨分類新聞的欄位 / 有沒有標股票代號')
+    for y in (2015, 2021, 2024):
+        a = int(datetime(y, 3, 4, tzinfo=timezone.utc).timestamp()); b = a + 7 * 86400
+        url = f'https://api.cnyes.com/media/api/v1/newslist/category/tw_stock?startAt={a}&endAt={b}&limit=30&page=1'
+        code, ct, body, sec = get(url)
+        items, d = _cnyes_items(body)
+        print(f"  {y}-03 一週 tw_stock page 1: HTTP {code} ・{len(items)} 則 ・total {d.get('total')}")
+        if not items:
+            time.sleep(1.2); continue
+        it0 = items[0]
+        print(f"    欄位:{sorted(it0.keys()) if isinstance(it0, dict) else type(it0).__name__}")
+        for k in ('market', 'stock', 'otherProduct', 'keyword', 'categoryName', 'categoryId', 'summary'):
+            if isinstance(it0, dict) and k in it0:
+                v = it0[k]
+                print(f"    {k} = {json.dumps(v, ensure_ascii=False)[:160]}")
+        tagged = [x for x in items if _codes(x)]
+        cats = {}
+        for x in items:
+            if isinstance(x, dict):
+                cats[x.get('categoryName')] = cats.get(x.get('categoryName'), 0) + 1
+        print(f"    這一頁 {len(tagged)}/{len(items)} 則帶台股代號 ・子分類 {cats}")
+        for x in tagged[:3]:
+            print(f"      {str(x.get('title'))[:40]} → {_codes(x)}")
+        for x in [x for x in items if not _codes(x)][:2]:
+            print(f"      (沒帶代號){str(x.get('title'))[:40]}")
+        time.sleep(1.2)
+    print('\n🏷️ ② 一頁可以拿幾則(limit=100)')
+    a = int(datetime(2018, 3, 4, tzinfo=timezone.utc).timestamp()); b = a + 7 * 86400
+    for lim in (30, 100):
+        code, ct, body, sec = get(f'https://api.cnyes.com/media/api/v1/newslist/category/tw_stock?startAt={a}&endAt={b}&limit={lim}&page=1')
+        items, d = _cnyes_items(body)
+        print(f"  limit={lim}: HTTP {code} ・{len(items)} 則 ・total {d.get('total')} ・last_page {d.get('last_page')} ・{sec:.1f} 秒")
+        time.sleep(1.2)
+
+
 def main():
     if '--selftest' in sys.argv:
         xml = ('<rss><channel><item><title><![CDATA[富喬 玻纖布漲]]></title><pubDate>Mon, 26 Oct 2026 08:00:00 GMT</pubDate>'
@@ -242,9 +304,19 @@ def main():
         its, dd = _cnyes_items(json.dumps({'items': {'data': [{'publishAt': 1700000000, 'title': 'x'}], 'total': 5, 'last_page': 1}}))
         ok2 = len(its) == 1 and dd.get('total') == 5 and _span(its)[0].startswith('2023-11-14')
         its3, _ = _cnyes_items('<html>')
-        ok = ok and ok2 and its3 == []
-        print('✅ NEWS_SRC_SELFTEST_PASS' if ok else f'❌ selftest {it} {its} {dd}')
+        # 🏷️ _codes:market[].code / market[].symbol / stock[];權證、海外代號、空的都不收
+        c1 = _codes({'market': [{'code': '2330', 'symbol': 'TWS:2330:STOCK'}, {'code': 'AAPL', 'symbol': 'USS:AAPL:STOCK'}],
+                     'stock': ['3231', {'code': '6213'}, '']})
+        c2 = _codes({'market': [{'symbol': 'TWG:8299:STOCK'}], 'stock': None})
+        c3 = _codes({'title': 'x'})
+        ok3 = c1 == ['2330', '3231', '6213'] and c2 == ['8299'] and c3 == [] and _codes('x') == []
+        ok = ok and ok2 and its3 == [] and ok3
+        print('✅ NEWS_SRC_SELFTEST_PASS' if ok else f'❌ selftest {it} {its} {dd} codes={c1} {c2} {c3}')
         return 0 if ok else 1
+    if '--fields' in sys.argv:
+        probe_fields()
+        print('\n(只量測,⛔ 沒寫任何檔)')
+        return 0
     if '--hist' in sys.argv:
         probe_hist()
         print('\n(只量測,⛔ 沒寫任何檔)')

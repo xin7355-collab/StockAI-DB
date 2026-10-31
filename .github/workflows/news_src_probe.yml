@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'quick(預設:鉅亨翻頁 + 概念股)/ hist(📚 新聞回補得到多舊:鉅亨個股翻頁・分類 + 日期區間・搜尋頁數・Google 每週窗口)/ full'
+        description: 'quick(預設:鉅亨翻頁 + 概念股)/ hist(📚 新聞回補得到多舊:鉅亨個股翻頁・分類 + 日期區間・搜尋頁數・Google 每週窗口)/ fields(🏷️ 鉅亨分類新聞有沒有標股票代號、一頁幾則)/ full'
         required: false
         default: 'quick'
 
@@ -37,6 +37,7 @@ jobs:
         run: |
           case "${MODE:-quick}" in
             hist) python3 scripts/news_src_probe.py --hist ;;
+            fields) python3 scripts/news_src_probe.py --fields ;;
             full) python3 scripts/news_src_probe.py ;;
             *)    python3 scripts/news_src_probe.py --quick ;;
           esac
