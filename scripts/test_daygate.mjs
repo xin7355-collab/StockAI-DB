@@ -13,6 +13,7 @@
  *   ⓗ 空過守門:資料範圍內一天都沒擋 → exit 1;格式不對 → exit 1;SHIFT 沒配 DAYGATE → exit 1
  *   ⓘ WARMUPS 一次跑多個起點:每個起點的 daygate.blocked 各算各的(計數有重設)
  *   ⓙ BEAR_MODE(空頭那天):skip == 同一批空頭日的 DAYGATE(逐位相同)・cash 空頭日 0050 全換現金、過了停回去・half 減半・跟 FILTER=bear60 互斥
+ *   ⓚ BEAR_LAG=1(V80.1.4,空頭狀態晚一天 = App 實際時間點):skip == 前一天是空頭那幾天的 DAYGATE(逐位相同)・跟當天的不同・沒配 BEAR_MODE / 不是 0 或 1 → exit 1
  * ⚠️ 真跑引擎(repo `data/` 25 檔),約 5 分鐘。
  */
 import fs from 'fs';
@@ -46,7 +47,7 @@ else {
     const f0050 = path.join(DATA, '0050.json');
     const gate = (nm, arr) => { const f = path.join(tmp, `${nm}.json`); fs.writeFileSync(f, JSON.stringify(arr)); return f; };
     const base = { ...process.env, DATA_DIR: DATA, LOT: '150000', SELF: 'high+hivolat', RANK_MIN: '75', VOLAT_MIN: '60', EXIT: 'chand2', MAXD: '20', FILTER: '', STOPFILL: 'close', WARMUP: String(WU), TRADES_CACHE: path.join(tmp, 'c.json') };
-    for (const k of ['DAYGATE', 'DAYGATE_SHIFT', 'VOLCAP', 'EQGATE', 'EQGATE_SRC', 'ROTATE', 'COST_X', 'PARK', 'DIV', 'DIV_TRADES', 'EQUITY_OUT', 'WARMUPS', 'YEARRUNS', 'LISTK', 'ALLFIRE']) delete base[k];
+    for (const k of ['DAYGATE', 'DAYGATE_SHIFT', 'BEAR_MODE', 'BEAR_LAG', 'VOLCAP', 'EQGATE', 'EQGATE_SRC', 'ROTATE', 'COST_X', 'PARK', 'DIV', 'DIV_TRADES', 'EQUITY_OUT', 'WARMUPS', 'YEARRUNS', 'LISTK', 'ALLFIRE']) delete base[k];
     const run = (tag, extra) => {
         const r = spawnSync(process.execPath, ['--max-old-space-size=3000', FILE, '25', '2'], { env: { ...base, ...extra, SUMMARY_OUT: extra.SUMMARY_OUT || path.join(tmp, `s_${tag}.json`) }, encoding: 'utf8', timeout: 420000, maxBuffer: 64 << 20 });
         let s = null; try { s = JSON.parse(fs.readFileSync(extra.SUMMARY_OUT || path.join(tmp, `s_${tag}.json`), 'utf8')); } catch (_) {}
@@ -146,6 +147,22 @@ else {
     } else ok('ⓙ5 沒有 0050.json → cash 那條沒驗到', false, DATA);
     const BH = run('bh', { BEAR_MODE: 'half' });
     ok('ⓙ6 half:空頭日買的那幾筆減半、成績跟不設不同', BH.r.status === 0 && BH.s && BH.s.bearMode?.half > 0 && BH.s.cum !== A.s?.cum, `${BH.r.status} ${JSON.stringify(BH.s?.bearMode)} ${BH.s?.cum} vs ${A.s?.cum}`);
+    // ⓚ V80.1.4 BEAR_LAG=1:空頭狀態用「前一天收盤」(= App 實際的時間點:決策台 / 自動下單看的是前一晚算好的大盤狀態)
+    const prevOf = {}; for (let k = 1; k < twc.length; k++) prevOf[twc[k].d] = twc[k - 1].d;
+    const bearSet = new Set(bearD);
+    const lagD = twc.filter(r => bearSet.has(prevOf[r.d])).map(r => r.d);
+    const lagWin = lagD.filter(d => d >= tw[WU]);
+    ok('ⓚ0 晚一天的空頭日跟當天的不是同一批(不然下面沒有鑑別力)', lagWin.join() !== bearWin.join() && lagWin.length >= 10, `${lagWin.length} vs ${bearWin.length}`);
+    const BL = run('bl', { BEAR_MODE: 'skip', BEAR_LAG: '1' });
+    const BLG = run('blg', { DAYGATE: gate('bearlag', lagD) });
+    ok('ⓚ1 ⭐ BEAR_LAG=1 skip == DAYGATE(前一天是空頭的那幾天)逐位相同、summary 標 lag', BL.r.status === 0 && BL.s && BLG.s && BL.s.cum === BLG.s.cum && BL.s.n === BLG.s.n && BL.s.bearMode?.lag === 1 && BL.s.bearMode?.days === lagWin.length,
+        `${BL.r.status} ${BL.s?.cum} vs ${BLG.s?.cum} ${JSON.stringify(BL.s?.bearMode)} lagWin=${lagWin.length} ${(BL.r.stderr || '').slice(-160)}`);
+    ok('ⓚ1b 決定性對照:晚一天 ≠ 當天(成績或擋掉的檔次不同;一樣代表 BEAR_LAG 沒生效)', BL.s && BS.s && (BL.s.cum !== BS.s.cum || BL.s.n !== BS.s.n || BL.s.bearMode?.cand !== BS.s.bearMode?.cand),
+        `${BL.s?.cum}/${BL.s?.n}/${BL.s?.bearMode?.cand} vs ${BS.s?.cum}/${BS.s?.n}/${BS.s?.bearMode?.cand}`);
+    const BL2 = run('bl2', { BEAR_LAG: '1' });
+    ok('ⓚ2 BEAR_LAG 沒配 BEAR_MODE → exit 1', BL2.r.status === 1 && /要配 BEAR_MODE/.test(BL2.r.stderr || ''), (BL2.r.stderr || '').slice(-160));
+    const BL3 = run('bl3', { BEAR_MODE: 'skip', BEAR_LAG: '2' });
+    ok('ⓚ3 BEAR_LAG=2 → exit 1', BL3.r.status === 1 && /只能是 0 或 1/.test(BL3.r.stderr || ''), (BL3.r.stderr || '').slice(-160));
     fs.rmSync(tmp, { recursive: true, force: true });
 }
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ test_daygate 全過');

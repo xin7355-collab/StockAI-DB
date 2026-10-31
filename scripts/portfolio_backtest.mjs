@@ -529,6 +529,11 @@ if (DAYGATE) {
 //   ⛔ 不跟 FILTER=bear60 一起設;⛔ 不進 CACHE_KEY;不設時一個字都不變
 const BEAR_MODE = (process.env.BEAR_MODE || '').trim();
 if (BEAR_MODE && !['skip', 'cash', 'half'].includes(BEAR_MODE)) { console.error(`🚨 BEAR_MODE=${BEAR_MODE} 不認得(skip | cash | half)`); process.exit(1); }
+// 🐻 V80.1.4 BEAR_LAG=1:用「前一天收盤」的空頭狀態(= App 實際的時間點:決策台 / 自動下單看的是前一晚算好的大盤狀態,
+//   收盤前那一刻還不知道今天收盤會不會變成空頭)。不設 = 當天收盤(舊行為,一個字都不變)。⛔ 不進 CACHE_KEY;只能配 BEAR_MODE。
+const BEAR_LAG = +(process.env.BEAR_LAG || 0);
+if (![0, 1].includes(BEAR_LAG)) { console.error(`🚨 BEAR_LAG=${process.env.BEAR_LAG} 只能是 0 或 1`); process.exit(1); }
+if (BEAR_LAG && !BEAR_MODE) { console.error('🚨 BEAR_LAG 要配 BEAR_MODE(它只改空頭那天是哪一天)'); process.exit(1); }
 let bmDays = 0, bmCand = 0, bmHalf = 0, bmSell = 0;
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
 const CAPITAL = +(process.env.CAPITAL || 1000000); // 💰 你手上的總本金 —— 錢用完就買不了(這才貼近現實)
@@ -1974,7 +1979,7 @@ for (let i = 0; i < days.length; i++) {
     // 🚦 DAYGATE:這天不開新倉 —— 名單照排(上面已算)、手上的照出場、🅿️ 收盤照停 0050(⛔ 不 continue,停車那段要跑到)
     if (DG_BLOCK && DG_BLOCK.has(d)) { dgBlk++; if (cand.length) dgCand += new Set(cand.map(x => x.t.sym)).size; cand.length = 0; }
     // 🐻 BEAR_MODE:空頭那天(skip / cash)同樣只是不買
-    const bearToday = BEAR_MODE ? !notBear60(i) : false;
+    const bearToday = BEAR_MODE ? (BEAR_LAG ? (i > 0 && !notBear60(i - 1)) : !notBear60(i)) : false;
     if (bearToday) { bmDays++; if (BEAR_MODE !== 'half') { if (cand.length) bmCand += new Set(cand.map(x => x.t.sym)).size; cand.length = 0; } }
     const seen = new Set(live.map(x => x.sym));
     let picked = 0;
@@ -2340,7 +2345,7 @@ if (SUMMARY_OUT) {
     if (VOLCAP > 0) summary.volcap = { pct: VOLCAP, mode: VOLCAP_MODE, hit: vcHit, cut: vcCut, skip: vcSkip };
     if (EQ_BLOCK) summary.eqgate = { rule: EQGATE, days: EQ_BLOCK.size, blocked: eqBlk };
     if (DG_BLOCK) summary.daygate = { file: path.basename(DAYGATE), shift: +(DAYGATE_SHIFT || 0), days: DG_BLOCK.size, blocked: dgBlk, cand: dgCand };
-    if (BEAR_MODE) summary.bearMode = { mode: BEAR_MODE, days: bmDays, cand: bmCand, half: bmHalf, sell: bmSell };
+    if (BEAR_MODE) summary.bearMode = { mode: BEAR_MODE, days: bmDays, cand: bmCand, half: bmHalf, sell: bmSell, ...(BEAR_LAG ? { lag: 1 } : {}) };
     if (ROTATE) summary.rot = { mode: ROTATE, n: rotN, minHold: ROT_MIN };
     if (COST_X !== 1) summary.costX = COST_X;
     if (EXIT_SCHED) { const c = {}; for (const t of taken) c[t._r] = (c[t._r] || 0) + 1; summary.sched = { file: EXIT_SCHED.split('/').pop(), taken: c }; }   // 🔄 實際成交各用了哪一套
