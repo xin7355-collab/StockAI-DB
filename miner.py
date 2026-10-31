@@ -1060,6 +1060,67 @@ def _otc_inst_parse(rows, fields):
     return out
 
 
+# 🗓️ V80.1.0 回應裡的日期 vs 要的那天(陷阱 #60:沒驗日期 = 別天的數字被蓋上這一天)
+_ROC_TXT_DATE = re.compile(r'(\d{2,3})年(\d{1,2})月(\d{1,2})日')
+# 上櫃法人回應的日期欄位長什麼樣子沙箱看不到(陷阱 #23)→ 先只記錄、⛔ 不擋;openapi_daily_probe 量到真的格式後再改成 True
+_OTC_INST_DATE_STRICT = False
+
+
+def _resp_dates(j):
+    """回應裡看得到的日期(set of date)。認得:date / reportDate / tables[].date
+    (YYYYMMDD・YYYY/MM/DD・YYYY-MM-DD・民國 NNN/MM/DD)+ title / subtitle / tables[].title 裡的「NNN年MM月DD日」。看不出 = 空集合。"""
+    out = set()
+
+    def add_str(v):
+        s_ = str(v or '').strip()
+        if not s_:
+            return
+        m = re.fullmatch(r'(\d{4})(\d{2})(\d{2})', s_) or re.fullmatch(r'(\d{4})[/-](\d{1,2})[/-](\d{1,2})', s_)
+        if m:
+            y = int(m.group(1))
+        else:
+            m = re.fullmatch(r'(\d{2,3})[/-](\d{1,2})[/-](\d{1,2})', s_)
+            if not m:
+                return
+            y = int(m.group(1)) + 1911
+        try:
+            out.add(date(y, int(m.group(2)), int(m.group(3))))
+        except ValueError:
+            pass
+
+    def add_title(v):
+        for m in _ROC_TXT_DATE.finditer(str(v or '')):
+            try:
+                out.add(date(int(m.group(1)) + 1911, int(m.group(2)), int(m.group(3))))
+            except ValueError:
+                pass
+
+    if not isinstance(j, dict):
+        return out
+    for k in ('date', 'reportDate'):
+        add_str(j.get(k))
+    for k in ('title', 'subtitle', 'reportTitle'):
+        add_title(j.get(k))
+    for t in (j.get('tables') or []):
+        if isinstance(t, dict):
+            add_str(t.get('date'))
+            add_title(t.get('title'))
+            add_title(t.get('subtitle'))
+    return out
+
+
+def _resp_date_check(j, d):
+    """回 (ok, why):看得到日期而且都 = d → (True, '');看得到但有一個 ≠ d → (False, '回應日期 … ≠ 要的 …');
+    看不出是哪一天 → (True, '沒帶日期')(照舊收,呼叫端把原因印出來)。"""
+    ds = _resp_dates(j)
+    if not ds:
+        return True, '沒帶日期'
+    bad = sorted(x for x in ds if x != d)
+    if bad:
+        return False, f"回應日期 {bad[0].isoformat()} ≠ 要的 {d.isoformat()}"
+    return True, ''
+
+
 def fetch_market_institutional(d: date) -> dict:
     """整合 TWSE (上市) 與 TPEX (上櫃) 的三大法人買賣超；缺漏時用 FinMind 補齊"""
     res = {}
@@ -1072,7 +1133,12 @@ def fetch_market_institutional(d: date) -> dict:
     try:
         url = f'https://www.twse.com.tw/rwd/zh/fund/T86?response=json&date={d8}&selectType=ALL'
         j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
-        if j.get('stat') == 'OK':
+        _ok86, _why86 = _resp_date_check(j, d) if j.get('stat') == 'OK' else (True, '')
+        if not _ok86:
+            print(f"  ⛔ [上市法人] {d} 不收:{_why86}(⛔ 別天的數字不可蓋上這一天)")
+        elif _why86:
+            print(f"  ⚠️ [上市法人] {d} 回應{_why86},看不出是哪一天(照收)")
+        if j.get('stat') == 'OK' and _ok86:
             # 🐛 V16.8 fields 正規化成字串:防某欄為 None → `'外' in f` TypeError → 整批上市法人斷檔
             fields = [str(f) if f is not None else '' for f in j.get('fields', [])]
             idx_id = next((i for i, f in enumerate(fields) if '證券代號' in f), None)
@@ -1133,6 +1199,13 @@ def fetch_market_institutional(d: date) -> dict:
             rows, fields = _otc_inst_rows(j)
             if not rows:
                 _why.append(f"{_tag}→200 但無資料列 raw={str(j)[:160]!r}"); continue
+            _okd, _whyd = _resp_date_check(j, d)
+            if not _okd:
+                if _OTC_INST_DATE_STRICT:
+                    _why.append(f"{_tag}→{_whyd}"); continue
+                print(f"  ⚠️ [上櫃法人] {_tag} {_whyd}(還在只記錄階段,照收;日期欄位={sorted(x.isoformat() for x in _resp_dates(j))})")
+            elif _whyd:
+                print(f"  ⚠️ [上櫃法人] {_tag} 回應{_whyd}")
             got = _otc_inst_parse(rows, fields)
             if len(got) < 100:
                 _why.append(f"{_tag}→只解析出 {len(got)} 檔 fields={[str(f)[:12] for f in fields][:20]}"); continue
@@ -1160,9 +1233,13 @@ def fetch_market_institutional(d: date) -> dict:
             cnt_new = 0
             # FinMind 一檔股票會回多列（每個 institution 一列），需要依 stock_id 聚合
             agg = {}
+            _fm_other = 0
             for row in ((j_fm or {}).get('data') or []):
                 sid = str(row.get('stock_id') or '').strip()
                 if not _valid_stock(sid):
+                    continue
+                if row.get('date') and str(row.get('date'))[:10] != d_iso:
+                    _fm_other += 1      # 🗓️ V80.1.0 別天的列 ⛔ 不收(陷阱 #60)
                     continue
                 a = agg.setdefault(sid, {'foreign_net': 0, 'trust_net': 0, 'dealer_net': 0})
                 inst = (row.get('name') or '').strip()
@@ -1186,7 +1263,8 @@ def fetch_market_institutional(d: date) -> dict:
                     # 🐛 V68.2.2 既有但三大法人全 0(TPEx 上櫃 se=EW 缺漏/回 0)→ 用 FinMind 非零值覆蓋(如中美晶 5483)
                     res[sid] = v
                     cnt_fix += 1
-            print(f"  [FinMind 法人] 補齊 {cnt_new} 檔（缺漏補進）＋覆蓋 {cnt_fix} 檔（TPEx 回 0 → FinMind 修正）")
+            print(f"  [FinMind 法人] 補齊 {cnt_new} 檔（缺漏補進）＋覆蓋 {cnt_fix} 檔（TPEx 回 0 → FinMind 修正）"
+                  + (f" ・別天的列 {_fm_other} 筆沒收" if _fm_other else ''))
         except Exception as e:
             print(f"  ⚠️ [FinMind 法人] 備援失敗：{e}")
 
@@ -3270,6 +3348,84 @@ def _repair_from_deep(records, sym='', deep=None):
     return records, fixed, ('、'.join(note) + ' → 沒換' if note else None)
 
 
+# 🕳️ V80.1.0 上櫃 K 線缺的那幾天:用深歷史(FinMind 原始價)補回來
+#
+# 🚨 為什麼要這支(2026-10-31 全市場清點 origin/data):加權那天有開盤、這一檔卻沒有那一根 ——
+#    上櫃 2025/08/01 缺 881/999 檔(88%)、2026/05/19 與 05/20 各缺約 789/1014 檔(78%),上市 2025/08/01 缺 54 檔。
+#    當天上游沒給 → 那幾天永遠不見(seed_db_from_json 每輪把 JSON 讀回來 = 自我延續,同陷阱 #46)。
+#    後果:均線 / 「抱滿 N 天」/ 回測 / 動能都少算一天,而且畫面上看不出來。
+# ⭐ 真值:klines_deep 分支(FinMind 原始價,2021-01 ~ 2026-08-31),零 API。
+# ⛔ 五條規則:
+#    ① 只補這一檔「第一根到最後一根之間」的日子(⛔ 不往前補到掛牌前、⛔ 不補最新那幾天)
+#    ② 加權那天有開盤 + 深歷史那天真的有成交(量 > 0、開高低收 > 0)—— 停牌那天深歷史本來就沒有 → 不補
+#    ③ 尺標 = 前後最近、深歷史也有的那一根的「我們的收盤 ÷ 深歷史收盤」(1 或 2~10 或倒數,同 _repair_from_deep 那把尺);
+#       前後不一樣(卡在分割邊界)或不是合法倍數 → ⛔ 不補
+#    ④ 法人 / 融資券那幾欄 ⛔ 不編:寫 0(K 線檔「不知道 = 0」的慣例,SQLite 讀回來本來就會變 0)
+#    ⑤ 冪等:補過的那天下一輪就「有那一根」,零動作
+#    ⑥ 深歷史那一根本身要是「真的 K 棒」:開收盤落在高低之間、四個價都在跳動單位格上 ——
+#       🚨 實測 FinMind 的興櫃 / 興櫃轉上市前那段,「開盤」欄放的是均價(6891 有 226 根、1623 有 150 根開盤在高低之外),
+#          那種列 ⛔ 不拿來補(試跑時 1623 的 2025/08/01 補出「開 212.56、低 213.0」的壞 K)
+_GAP_FILL = {'rows': 0, 'syms': 0, 'skip': 0, 'days': {}}
+
+
+def _fill_gaps_from_deep(records, sym='', cal=None, deep=None):
+    """回 (records, 補了幾根, 原因字串或 None)。cal = 加權有開盤的日子(set of 'YYYY/MM/DD');deep = [[YYYY-MM-DD, o, h, l, c, v], ...]"""
+    import bisect
+    if not records or not cal:
+        return records, 0, None
+    if deep is None:
+        deep = _load_deep(sym)
+    if not deep:
+        return records, 0, None
+    etf = str(sym).startswith('00')
+    dmap = {}
+    for row in deep:
+        try:
+            o, h, l, c, v = (float(row[1]), float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+        except (TypeError, ValueError, IndexError):
+            continue
+        if not (min(o, h, l, c) > 0 and v > 0 and l <= min(o, c) and max(o, c) <= h):
+            continue
+        if not all(_on_tick(x, etf) for x in (o, h, l, c)):
+            continue
+        dmap[str(row[0])[:10].replace('-', '/')] = row
+    have = {str(r.get('date', ''))[:10].replace('-', '/') for r in records}
+    lo, hi = min(have), max(have)
+    want = sorted(d for d in cal if lo < d < hi and d not in have and d in dmap)
+    if not want:
+        return records, 0, None
+    fac = []      # (日期, 合法倍數 或 None),照日期排
+    for r in records:
+        ds = str(r.get('date', ''))[:10].replace('-', '/')
+        dk = dmap.get(ds)
+        c = r.get('close')
+        if dk is None or not isinstance(c, (int, float)) or c <= 0:
+            continue
+        fac.append((ds, _split_factor_of(c / float(dk[4]))))
+    fac.sort(key=lambda x: x[0])
+    keys = [x[0] for x in fac]
+    added, skip = [], 0
+    for d in want:
+        k = bisect.bisect_left(keys, d)
+        a = fac[k - 1][1] if k > 0 else None
+        b = fac[k][1] if k < len(fac) else None
+        if a is None or b is None or a != b:
+            skip += 1
+            continue
+        dk = dmap[d]
+        added.append({'date': d,
+                      'open': round(float(dk[1]) * a, 4), 'high': round(float(dk[2]) * a, 4),
+                      'low': round(float(dk[3]) * a, 4), 'close': round(float(dk[4]) * a, 4),
+                      'volume': int(round(float(dk[5]) / a)),
+                      'foreign_net': 0, 'trust_net': 0, 'dealer_net': 0,
+                      'margin_balance': 0, 'short_balance': 0})
+    if added:
+        records = sorted(records + added, key=lambda r: str(r.get('date', '')).replace('-', '/'))
+        for x in added:
+            _GAP_FILL['days'][x['date']] = _GAP_FILL['days'].get(x['date'], 0) + 1
+    return records, len(added), (f'{skip} 天前後尺標對不上 → 沒補' if skip else None)
+
+
 def _round_prices(records):
     """📏 V77.2.6 把 OHLC 對到「台股價格真正的精度」= 小數 2 位。
 
@@ -3340,13 +3496,18 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
 
     exported = 0
     for sym in symbols:
+        # 🧯 V80.1.0 取「最新的」1200 根(⛔ 舊寫法 ORDER BY ASC LIMIT 1200 = 最舊的 1200 根:
+        #    一檔超過 1200 根之後,新的那一天每輪都被切掉 → K 線停在第 1200 根那天,而且全綠零訊息。
+        #    2026-10-31 實測個股最多 ~836 根,還沒踩到;約 2028 年才會到)
         rows = conn.execute("""
-            SELECT trade_date, open, high, low, close, volume,
-                   foreign_inv, invest_trust, dealer_inv, margin_bal, short_bal
-            FROM stock_history
-            WHERE symbol = ?
-            ORDER BY trade_date ASC
-            LIMIT 1200
+            SELECT * FROM (
+                SELECT trade_date, open, high, low, close, volume,
+                       foreign_inv, invest_trust, dealer_inv, margin_bal, short_bal
+                FROM stock_history
+                WHERE symbol = ?
+                ORDER BY trade_date DESC
+                LIMIT 1200
+            ) ORDER BY trade_date ASC
         """, (sym,)).fetchall()
 
         if not rows:
@@ -3413,9 +3574,10 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
 
         # 🧱 V77.7.0 陷阱 #46:還原價列換回官方成交價(klines_deep = FinMind 原始價)。⛔ 要排在分割還原**之前**
         #    (兩邊都要過同一支 _backadjust_splits 才是同一把尺)。沒設 KLINES_DEEP_DIR 就整段跳過。
+        _dk = _load_deep(sym) if _deep_dir() else None
         if _deep_dir():
             try:
-                records, _nfx, _why = _repair_from_deep(records, sym)
+                records, _nfx, _why = _repair_from_deep(records, sym, deep=_dk or [])
                 if _nfx:
                     _DEEP_FIX['rows'] += _nfx; _DEEP_FIX['syms'] += 1
                     print(f"  🧱 {sym} {_nfx} 列還原價 → 換回官方成交價(klines_deep)")
@@ -3426,6 +3588,21 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
                     print(f"  🧱 {sym} {_why}")
             except Exception as e:
                 print(f"  ⚠️ {sym} 還原價修復失敗(不影響匯出): {e}")
+
+        # 🕳️ V80.1.0 補洞:加權有開盤、這一檔沒有那一根、深歷史那天有成交 → 深歷史 × 尺標補一根。
+        #    ⛔ 要排在還原價修復**之後**(前後鄰居先換回官方價,尺標才算得準)、分割還原**之前**(補的那根一起過同一把尺)。
+        if _dk and _cal:
+            try:
+                records, _ngf, _gwhy = _fill_gaps_from_deep(records, sym, _cal, deep=_dk)
+                if _ngf:
+                    _GAP_FILL['rows'] += _ngf; _GAP_FILL['syms'] += 1
+                    records = records[-1200:]
+                if _gwhy:
+                    _GAP_FILL['skip'] += 1
+                    print(f"  🕳️ {sym} {_gwhy}")
+            except Exception as e:
+                print(f"  ⚠️ {sym} 補洞失敗(不影響匯出): {e}")
+        _dk = None
 
         # 🔧 V71.7.9 分割/減資回溯調整(見 _backadjust_splits 的說明)。
         #    放在寫檔前的最後一步 → 全市場 2,700 檔都會過這關,而且最新那筆價格不會被動到。
@@ -3457,6 +3634,14 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
               + (f"({','.join(_DEEP_FIX['split_skip'][:10])})" if _DEEP_FIX['split_skip'] else ''))
     else:
         print("  🧱 還原價修復:⏭️ 沒有 KLINES_DEEP_DIR → 這一輪沒修(陷阱 #46)")
+    # 🕳️ V80.1.0 補洞摘要(⛔ 沒跑也要說出來)
+    if _deep_dir() and _cal:
+        _top = sorted(_GAP_FILL['days'].items(), key=lambda kv: -kv[1])[:6]
+        print(f"  🕳️ 補洞:{_GAP_FILL['syms']} 檔 {_GAP_FILL['rows']} 根(加權有開盤、這一檔沒有、深歷史有成交)"
+              + (f" ・最多的日子 {', '.join(f'{d}×{n}' for d, n in _top)}" if _top else '')
+              + (f" ・{_GAP_FILL['skip']} 檔有日子卡在分割邊界沒補" if _GAP_FILL['skip'] else ''))
+    else:
+        print(f"  🕳️ 補洞:⏭️ {'沒有 KLINES_DEEP_DIR' if not _deep_dir() else '讀不到加權行事曆(' + (_cwhy or '') + ')'} → 這一輪沒補")
     if _YF_OFFGRID['rows']:
         print(f"  📏 yfinance 跳動單位守門:擋掉 {_YF_OFFGRID['rows']} 列 / {len(_YF_OFFGRID['syms'])} 檔(還原價 ⛔ 不寫)")
     if _YF_ZEROVOL['rows']:

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V80.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V80.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -897,7 +897,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.0.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.1.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8779,10 +8779,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V80.0.9',
+    _APP_VERSION: 'V80.1.0',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V80.1.0', d: [
+            '📈 上櫃股票的 K 線補回缺的那幾天(大多數上櫃股少了 2025/08/01、2026/05/19、05/20 那一根):用官方原始價補上,均線和「抱滿幾天」會跟著變準;那幾天的法人、融資本來就沒有資料,維持空白(下一輪採礦跑完生效)',
+            '🗓️ 三大法人的資料先確認「是不是那一天的」才收,別天的數字不會被蓋上去',
+        ] },
         { v: 'V80.0.9', d: [
             '🔕 所有「叫你買」的通知講同一套話:Telegram 晚上的作戰清單、13:20 尾盤買點,跟決策台一樣只列「🧬 而且這一檔自己不是空頭」的前 2 檔(以前會推決策台根本沒列的股票)',
             '🔕 Cloudflare 的盤中推播只描述、不再下買賣指令:拿掉「朱家泓 5 日線進場價 / 目標價」「漲 7% 的建倉訊號」「主力強買盤:空手可拉回低接」「漲停:賣半碼鎖利」「到價:出 1/3 鎖利」「ETF 跟單 高勝率」「全市場戰略選股」,每一則改成「要不要買照決策台,手上的照你的出場規則走」;庫存的 −5% 停損、跌破 5 日線、+20% 提醒照留',
@@ -9065,7 +9069,6 @@ ${list}
         { v: 'V79.3.3', d: ['📰 再多 9 篇專欄會在碰到時自動列出來:手上的跌破 5 日線、手上的創 60 日新高、外資連買 5 天、券資比衝高、帳面賺 20%(過熱要不要先賣)、最近賣掉的又漲回賣價、大盤剛脫離 / 剛轉成空頭、盤前體檢分數很低'] },
         { v: 'V79.3.2', d: ['📰 新增一篇專欄(大盤一天跌超過 3% 時怎麼撿便宜);那種日子會自動列出來'] },
         { v: 'V79.3.1', d: ['📰 新增一篇專欄(大跌那天要不要撿便宜、一次買還是分批買);盤前體檢分數很低那天,「那天怎麼辦」那篇會自動列出來'] },
-        { v: 'V79.3.0', d: ['📰 產業作戰室新增一篇專欄(盤前體檢分數很低那天怎麼辦);這個 App 的畫面與規則都沒有變'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },

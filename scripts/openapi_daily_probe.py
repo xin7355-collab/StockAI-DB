@@ -8,6 +8,12 @@
   ④ 順便量逐股端點(STOCK_DAY / st43)現在從 runner 打的 HTTP 狀態 —— 被擋就看得到
 ⛔ 只讀:不寫任何檔案、不碰任何分支。結果只有數量(+ 前幾個對不上的代號,公開行情,方便查)。
 
+🗓️ V80.1.0 追加三段(只量、不判):
+  ⑤ 三大法人回應「是哪一天」:最新一天 + 往前 5 個交易日,上市 T86 / 上櫃三條候選各打一次,
+     印出 date / title / tables[].date 與 miner._resp_date_check 的判斷 —— 用來決定 _OTC_INST_DATE_STRICT 能不能打開
+  ⑥ 上櫃新站逐股月資料 tradingStock:HTTP 狀態、欄位、前兩列、日期欄有沒有星號(要不要換掉已失效的 st43)
+  ⑦ ISIN 代號表(上市 / 上櫃 / 興櫃):HTTP 狀態、編碼、表格列數(要不要拿它補市場別)
+
 判準(全過才建議打開):
   上市、上櫃都 HTTP 200 + 日期一致 + 過列數門檻;抽樣對拍收盤一致 ≥ 98%、量一致 ≥ 95%。
 """
@@ -158,6 +164,82 @@ def main():
         st = type(r).__name__ if isinstance(r, Exception) else f'HTTP {r.status_code} 開頭 {r.text[:12]!r}'
         say(f'- TPEx st43 {c}:{st}({dt:.1f}s)')
         time.sleep(1.5)
+
+    # ⑤ 三大法人回應的日期欄位(V80.1.0)
+    say('\n## 🗓️ 三大法人回應「是哪一天」')
+    days = []
+    r, _ = get(f'{SITE}%5ETWII.json?t={int(time.time())}')
+    try:
+        tw = r.json() if not isinstance(r, Exception) and r.status_code == 200 else []
+        days = [str(x.get('date'))[:10] for x in tw if isinstance(x, dict)][-6:]
+    except ValueError:
+        days = []
+    if len(days) < 6:
+        say('- 讀不到網站的加權日 K,跳過這段')
+    else:
+        import datetime as _dt
+        for ds in (days[-1], days[0]):
+            dd = _dt.date(*map(int, ds.replace('-', '/').split('/')))
+            roc = f"{dd.year - 1911}/{dd.strftime('%m/%d')}"
+            urls = [('T86', f"https://www.twse.com.tw/rwd/zh/fund/T86?response=json&date={dd.strftime('%Y%m%d')}&selectType=ALL"),
+                    ('上櫃新站(西元)', f"https://www.tpex.org.tw/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date={dd.strftime('%Y/%m/%d')}&response=json"),
+                    ('上櫃新站(民國)', f"https://www.tpex.org.tw/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date={roc}&response=json"),
+                    ('上櫃舊站', f"https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=json&se=EW&t=D&d={roc}")]
+            for tag, u in urls:
+                r, dt = get(u)
+                time.sleep(2.0)
+                if isinstance(r, Exception):
+                    say(f'- {ds} {tag}:{type(r).__name__}'); continue
+                try:
+                    j = r.json()
+                except ValueError:
+                    say(f'- {ds} {tag}:HTTP {r.status_code} 不是 JSON(開頭 {r.text[:30]!r})'); continue
+                tabs = j.get('tables') if isinstance(j, dict) else None
+                t0 = tabs[0] if isinstance(tabs, list) and tabs and isinstance(tabs[0], dict) else {}
+                nrow = len((t0.get('data') if t0 else None) or (j.get('data') if isinstance(j, dict) else None) or (j.get('aaData') if isinstance(j, dict) else None) or [])
+                ok, why = M._resp_date_check(j, dd)
+                say(f"- {ds} {tag}:HTTP {r.status_code}・最上層欄位 {sorted(j.keys())[:12] if isinstance(j, dict) else type(j).__name__}"
+                    f"・date={j.get('date') if isinstance(j, dict) else None!r}・reportDate={j.get('reportDate') if isinstance(j, dict) else None!r}"
+                    f"・title={str(j.get('title') if isinstance(j, dict) else '')[:30]!r}・tables[0].date={t0.get('date')!r}"
+                    f"・tables[0].title={str(t0.get('title') or '')[:30]!r}・列數 {nrow}・判斷 {'✅' if ok else '⛔'} {why or '日期對得上'}")
+
+    # ⑥ 上櫃新站逐股月資料(V80.1.0;st43 已回網頁)
+    say('\n## 🏪 上櫃新站逐股月資料 tradingStock')
+    ym = time.strftime('%Y/%m')
+    for c in ('6488', '5483'):
+        for tag, u in (('西元月', f'https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code={c}&date={ym}/01&response=json'),
+                       ('民國月', f"https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code={c}&date={int(ym[:4]) - 1911}/{ym[5:]}/01&response=json")):
+            r, dt = get(u)
+            time.sleep(2.0)
+            if isinstance(r, Exception):
+                say(f'- {c} {tag}:{type(r).__name__}'); continue
+            try:
+                j = r.json()
+            except ValueError:
+                say(f'- {c} {tag}:HTTP {r.status_code} 不是 JSON(開頭 {r.text[:30]!r})'); continue
+            tabs = j.get('tables') if isinstance(j, dict) else None
+            t0 = tabs[0] if isinstance(tabs, list) and tabs and isinstance(tabs[0], dict) else {}
+            rows = t0.get('data') or []
+            star = sum(1 for x in rows if x and '*' in str(x[0]))
+            say(f"- {c} {tag}:HTTP {r.status_code}・欄位 {t0.get('fields')}・列數 {len(rows)}・日期有星號 {star}・前兩列 {rows[:2]}")
+
+    # ⑦ ISIN 代號表(V80.1.0)
+    say('\n## 🏷️ ISIN 代號表')
+    for mode, tag in ((2, '上市'), (4, '上櫃'), (5, '興櫃')):
+        r, dt = get(f'https://isin.twse.com.tw/isin/C_public.jsp?strMode={mode}')
+        time.sleep(2.0)
+        if isinstance(r, Exception):
+            say(f'- {tag}:{type(r).__name__}'); continue
+        raw_b = r.content or b''
+        txt = None
+        for enc in ('cp950', 'big5', 'utf-8'):
+            try:
+                txt = raw_b.decode(enc); used = enc; break
+            except UnicodeDecodeError:
+                continue
+        ntr = (txt or '').count('<tr')
+        say(f"- {tag}:HTTP {r.status_code}・{len(raw_b):,} bytes・content-type {r.headers.get('content-type')!r}・"
+            f"解得開的編碼 {used if txt is not None else '沒有'}・表格列數 {ntr}・有「2330」{'2330' in (txt or '')}・有「6488」{'6488' in (txt or '')}")
 
     say('\n## 結論')
     if verdict:

@@ -95,7 +95,7 @@ fb = src[src.index('def yfinance_ohlcv_fallback'):src.index('def needs_price_fix
 ck('if not _on_tick(cls, _etf):' in fb and 'continue' in fb.split('if not _on_tick(cls, _etf):')[1][:200],
    '⑦ yfinance 不在格上的列 ⛔ 不寫')
 ex = src[src.index('def export_json'):src.index('def seed_db_from_json')]
-ia, ib = ex.find('_repair_from_deep(records, sym)'), ex.find('_backadjust_splits(records, sym, verbose=True)')
+ia, ib = ex.find('_repair_from_deep(records, sym'), ex.find('_backadjust_splits(records, sym, verbose=True)')   # V80.1.0 起多傳一個 deep=(深歷史只讀一次,補洞也用)
 ck(ia > 0 and ib > ia, '⑧ export_json 先修還原價、再做分割還原(兩邊才是同一把尺)')
 wf = open(os.path.join(ROOT, '.github/workflows/daily_miner.yml'), encoding='utf-8').read()
 ck('KLINES_DEEP_DIR' in wf and 'git archive origin/klines_deep' in wf, '⑧b daily_miner 有把 klines_deep 解給採礦節點')
