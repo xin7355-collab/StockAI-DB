@@ -40,6 +40,7 @@ import miner as M  # noqa: E402
 SITE = 'https://xin7355-collab.github.io/StockAI-DB/data/'
 N_SAMPLE = int(os.environ.get('PROBE_SAMPLE') or '200')   # 每個市場抽幾檔(⚠️ inputs 沒填時是空字串 → 要 or 預設)
 OUT = []
+MISMATCH = []   # ⑧ 上櫃對不上的那幾檔(代號, 日期, 網站那根, 全市場那根)
 
 
 def say(s=''):
@@ -127,6 +128,8 @@ def main():
                 continue
             n_day += 1
             new = got[c]
+            if mkt == 'tpex' and abs(float(mine.get('close') or 0) - float(new['close'])) > 1e-6:
+                MISMATCH.append((c, day, mine, new))
             for k in eq:
                 a, b = mine.get(k), new[k]
                 same = a is not None and abs(float(a) - float(b)) <= (0 if k == 'volume' else 1e-6)
@@ -240,6 +243,38 @@ def main():
         ntr = (txt or '').count('<tr')
         say(f"- {tag}:HTTP {r.status_code}・{len(raw_b):,} bytes・content-type {r.headers.get('content-type')!r}・"
             f"解得開的編碼 {used if txt is not None else '沒有'}・表格列數 {ntr}・有「2330」{'2330' in (txt or '')}・有「6488」{'6488' in (txt or '')}")
+
+    # ⑧ 上櫃三方對拍(V80.1.0):全市場那根 vs 網站那根 vs 逐股新站 tradingStock(官方逐股)—— 誰才是對的
+    say('\n## ⚖️ 上櫃三方對拍(網站對不上的那幾檔)')
+    if not MISMATCH:
+        say('- 沒有對不上的(或沒有對拍到)')
+    agree_all = agree_site = n3 = 0
+    for c, day, mine, new in MISMATCH[:12]:
+        y, m, _d = day.split('/')
+        r, dt = get(f'https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code={c}&date={y}/{m}/01&response=json')
+        time.sleep(2.0)
+        if isinstance(r, Exception) or r.status_code != 200:
+            say(f'- {c}:tradingStock 抓不到'); continue
+        try:
+            j = r.json()
+        except ValueError:
+            say(f'- {c}:tradingStock 不是 JSON'); continue
+        tabs = j.get('tables') if isinstance(j, dict) else None
+        rows = (tabs[0].get('data') if isinstance(tabs, list) and tabs and isinstance(tabs[0], dict) else None) or []
+        roc = f"{int(y) - 1911}/{m}/{_d}"
+        row = next((x for x in rows if x and str(x[0]).replace('*', '').strip() == roc), None)
+        if not row:
+            say(f'- {c}:tradingStock 沒有 {roc} 那一列'); continue
+        n3 += 1
+        num = lambda v: float(str(v).replace(',', '').strip())
+        ts_c, ts_v = num(row[6]), int(num(row[1]) * 1000)
+        a = abs(ts_c - float(new['close'])) < 1e-6
+        b = abs(ts_c - float(mine.get('close') or 0)) < 1e-6
+        agree_all += a; agree_site += b
+        say(f"- {c} {day}:逐股官方 收 {ts_c} 量 {ts_v:,} 股 ・全市場那根 收 {new['close']} 量 {int(new['volume']):,} ・網站那根 收 {mine.get('close')} 量 {int(mine.get('volume') or 0):,}"
+            f" → 跟全市場{'一樣' if a else '不一樣'}、跟網站{'一樣' if b else '不一樣'}")
+    if n3:
+        say(f'- 小計:{n3} 檔裡,逐股官方跟「全市場那根」收盤一樣 {agree_all} 檔、跟「網站那根」一樣 {agree_site} 檔')
 
     say('\n## 結論')
     if verdict:
