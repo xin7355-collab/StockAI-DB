@@ -67,6 +67,12 @@ def main():
     raw = {}
     for mkt, (url, fmap) in M._DAILY_ALL_SRC.items():
         r, dt = get(url)
+        for _k in (1, 2):                 # 🔁 V80.1.1:第 4 輪上櫃讀到一半斷線一次就判「連不上」→ 跟採礦一樣再試兩次
+            if not isinstance(r, Exception):
+                break
+            say(f'- {mkt.upper()}:第 {_k} 次連線失敗 {type(r).__name__}({dt:.1f}s)→ 等 {3 * _k} 秒再試')
+            time.sleep(3 * _k)
+            r, dt = get(url)
         if isinstance(r, Exception):
             say(f'- {mkt.upper()}:連線失敗 {type(r).__name__}({dt:.1f}s)')
             verdict.append(f'{mkt} 連不上')

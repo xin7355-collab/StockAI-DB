@@ -167,6 +167,10 @@ def merge_items(rec, items, name, sym, bf=False):
         if not d:
             continue
         day = rec.setdefault(d, {'n': 0, 'e': 0, 'm': [], 'a': 0, 't': [], 'k': []})
+        # 🐛 V80.1.2 那一天已經被 prune 壓成只剩數字(超過 TITLE_DAYS 天,沒有去重鍵 k)→ 那天的數字已經定了,
+        #   ⛔ 再加(分不出是不是同一則,會重複算)。10/30 起每一輪都在這裡 KeyError: 'k' 整支掛掉(news_buzz 停在 10/27)。
+        if not isinstance(day.get('k'), list):
+            continue
         k = tkey(it['t'])
         if k in day['k']:
             continue
@@ -315,6 +319,15 @@ def _selftest():
     prune(old, '2026-10-27')
     ok('⑦ 超過 400 天刪掉;超過 10 天只留數字(m 變家數、bf 留著);10 天內原樣', '2025-01-01' not in old and old['2026-10-01'] == {'n': 2, 'e': 1, 'm': 2, 'a': 1, 'bf': 1}
        and old['2026-10-20']['t'] == ['y'], old)
+    # ⑧ 🐛 V80.1.2 新抓到一則「已經壓成只剩數字那天」的新聞 → ⛔ 當掉(以前 KeyError: 'k')、⛔ 重複算;決定性對照:沒壓過的那天照收
+    snap = json.dumps(old, sort_keys=True)
+    try:
+        n8 = merge_items(old, [{'t': '富喬法說會釋出展望', 'dt': datetime(2026, 10, 1, 2, 0, tzinfo=timezone.utc), 'src': 'C'}], '富喬', '1815'); e8 = None
+    except Exception as e:
+        n8, e8 = None, e
+    ok('⑧ 已經壓成只剩數字的那天又抓到新聞 → ⛔ 當掉、⛔ 加(那天的數字不動)', e8 is None and n8 == 0 and json.dumps(old, sort_keys=True) == snap, (n8, e8))
+    n8b = merge_items(old, [{'t': '富喬法說會釋出展望', 'dt': datetime(2026, 10, 20, 2, 0, tzinfo=timezone.utc), 'src': 'C'}], '富喬', '1815')
+    ok('⑧b 決定性對照:還沒壓過的那天(10/20)照收 1 則', n8b == 1 and old['2026-10-20']['n'] == 2, (n8b, old['2026-10-20']))
     print('\n✅ NEWS_BUZZ_SELFTEST_PASS' if not bad else f'\n❌ NEWS_BUZZ_SELFTEST_FAIL {len(bad)}')
     return 1 if bad else 0
 

@@ -5,6 +5,8 @@
 //  ⓓ 真實案例(V76.2.3):提示詞 704.4 / 606.9,回答寫 707.4 / 594.5 → 兩個都抓到
 //  ⓔ 接線:5 支函式原始碼都呼叫 _aiNumGate;盤前速報 / 總經 / 新聞 / 事件 四處 stub AI 回編造數字 → 畫面出現核對行,忠實回答 → 不出現
 //  ⓕ 燈號:核對行⛔ 不可有 🔴🟢;src 空 → null(⛔ 不可假裝核對過)
+//  ⓖ ⓗ V80.1.2 對不上的數字在正文遮掉(邊界不誤遮、全形也遮)、原文在「看原文」;忠實回答一個字都不改
+//  ⓘ V80.1.2 盤前速報這一輪沒拿到任何新聞 → 提示詞叫它別寫新聞 + 畫面一行灰字(決定性對照:放一則新聞 → 都不見)
 // 跑法:node scripts/test_ainumgate.mjs
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import fs from 'fs';
@@ -25,8 +27,9 @@ const fnBody = (name) => {
 const sites = ['runGlobalMarketAI', '_deepAnalyzeMacro', '_deepAnalyzeNews', 'askEventImpactAI', '_rpGenRun'];
 const unwired = sites.filter(n => !/_aiNumGate\(/.test(fnBody(n)));
 ok('ⓔs 五支 App 內 AI 文字輸出都呼叫 _aiNumGate', unwired.length === 0, unwired.join(','));
-ok('ⓔs2 總經 / 新聞的重畫函式都會印核對行(快取重開也看得到)', ['_renderMacroDeep', '_renderNewsDeep'].every(n => /_aiNumGateHtml\(ng\)/.test(fnBody(n))), '');
-ok('ⓔs3 報告頁只對 App 內模型核對(offline)⛔ 外部 AI 貼上的不核對', /n\.offline \? this\._aiNumGateHtml\(n\.ng\)/.test(SRC), '');
+ok('ⓔs2 總經 / 新聞的重畫函式都會印核對行 + 遮數字 + 看原文(快取重開也看得到)', ['_renderMacroDeep', '_renderNewsDeep'].every(n => { const b = fnBody(n); return /_aiNumGateHtml\(ng, red\.n\)/.test(b) && /_aiNumRedact\(txt, ng\)/.test(b) && /_aiNumRawHtml\(txt, red\.n\)/.test(b) && /_aiNumMaskHtml\(/.test(b); }), '');
+ok('ⓔs3 報告頁只對 App 內模型核對 + 遮(offline)⛔ 外部 AI 貼上的不核對也不遮', /n\.offline \? this\._aiNumGateHtml\(n\.ng, redRp\.n\)/.test(SRC) && /\(n\.offline && n\.ng\) \? this\._aiNumRedact\(n\.t, n\.ng\)/.test(SRC), '');
+ok('ⓔs4 🧾 V80.1.2 盤前速報 / 事件影響也遮', /_aiNumRedact\(text, ngG\)/.test(fnBody('runGlobalMarketAI')) && /_aiNumRedact\(text \|\| '', ng\)/.test(fnBody('askEventImpactAI')), '');
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -78,6 +81,7 @@ const R = await page.evaluate(async (K) => {
     try { await A.runGlobalMarketAI(); } catch (_) {}
     const gmPrompt = captured[captured.length - 1] || '';
     const gmHtml = (document.getElementById('globalAIModalBody') || document.getElementById('globalAIResult') || {}).innerHTML || '';
+    const gmVis = (() => { const el = document.getElementById('globalAIModalBody') || document.getElementById('globalAIResult'); if (!el) return { vis: '', raw: '' }; const c = el.cloneNode(true); const d = c.querySelector('[data-ainumraw]'); const raw = d ? d.textContent : ''; if (d) d.remove(); c.querySelectorAll('[data-ainumgate]').forEach(x => x.remove()); return { vis: c.textContent, raw, masks: el.querySelectorAll('[data-ainummask]').length }; })();
     // 盤前速報的忠實回答:拿它自己的提示詞重述
     // 🔁 V79.4.3 機器滿載時,總經 / 報價這些非同步資料可能在兩次呼叫之間才到 → 第二次的提示詞數字跟第一次不同,
     //   「拿第一次重述」就會被當成編的(假紅燈,四驗證實際踩到)。⭐ 改成:重述上一次的提示詞,直到這一次的提示詞
@@ -98,6 +102,8 @@ const R = await page.evaluate(async (K) => {
     try { localStorage.removeItem(A._macroDeepKey()); } catch (_) {}
     A._macroDeepRunning = false; await A._deepAnalyzeMacro();
     const mcHtml = (document.getElementById('macroDeepBox') || {}).innerHTML || '';
+    const visOf = el => { if (!el) return { vis: '', raw: '' }; const c = el.cloneNode(true); const d = c.querySelector('[data-ainumraw]'); const raw = d ? d.textContent : ''; if (d) d.remove(); c.querySelectorAll('[data-ainumgate]').forEach(x => x.remove()); return { vis: c.textContent, raw, masks: el.querySelectorAll('[data-ainummask]').length }; };
+    const mcVis = visOf(document.getElementById('macroDeepBox'));
     const mcCache = JSON.parse(localStorage.getItem(A._macroDeepKey()) || 'null');
     reply = 'FOMC 那幾天波動會變大,盯利率決議。';
     A._macroDeepRunning = false; await A._deepAnalyzeMacro();
@@ -108,6 +114,7 @@ const R = await page.evaluate(async (K) => {
     try { localStorage.removeItem(A._newsDeepKey()); } catch (_) {}
     A._newsDeepRunning = false; await A._deepAnalyzeNews();
     const nwHtml = (document.getElementById('newsDeepBox') || {}).innerHTML || '';
+    const nwVis = visOf(document.getElementById('newsDeepBox'));
     reply = '法說會偏樂觀,那幾天波動會變大。';
     A._newsDeepRunning = false; await A._deepAnalyzeNews();
     const nwHtml2 = (document.getElementById('newsDeepBox') || {}).innerHTML || '';
@@ -117,12 +124,26 @@ const R = await page.evaluate(async (K) => {
     reply = '半導體族群波動大,指數可能震盪 543.2 點';
     await A.askEventImpactAI('測試事件X', 'zz', false);
     const evHtml = box.innerHTML;
+    const evVis = visOf(box);
     try { localStorage.removeItem('evImpact2_測試事件Y'); } catch (_) {}
     reply = '半導體族群那幾天波動會變大。';
     box.innerHTML = ''; box.classList.add('hidden');   // ⚠️ 手動點第二次 = 收起來(那是它的正常行為)→ 先復位
     await A.askEventImpactAI('測試事件Y', 'zz', false);
     const evHtml2 = box.innerHTML;
+    // ⓘ 📰 V80.1.2 這一輪沒拿到任何新聞 → 提示詞叫 AI 別寫新聞 + 畫面最上面一行灰字;決定性對照:放一則新聞 → 兩個都不見
+    const _f0 = window.fetch;
+    window.fetch = async (u, o) => String(u).includes('tech_giants_news') ? new Response('x', { status: 404 }) : _f0(u, o);
+    const gmEl = () => document.getElementById('globalAIModalBody') || document.getElementById('globalAIResult');
+    A._globalNewsItems = []; reply = '今天只看數據。';
+    try { await A.runGlobalMarketAI(); } catch (_) {}
+    const nn = { p: captured[captured.length - 1] || '', line: !!(gmEl() && gmEl().querySelector('[data-ainonews]')), first: gmEl() && gmEl().firstElementChild && gmEl().firstElementChild.hasAttribute('data-ainonews') };
+    A._globalNewsItems = [{ title_zh: '美國 CPI 低於預期', impact_level: 'bullish' }];
+    try { await A.runGlobalMarketAI(); } catch (_) {}
+    const nn2 = { p: captured[captured.length - 1] || '', line: !!(gmEl() && gmEl().querySelector('[data-ainonews]')) };
+    window.fetch = _f0;
     return {
+        nn: { guard: /這次沒有拿到任何新聞/.test(nn.p) && /不可寫「無重大事件」/.test(nn.p), line: nn.line, first: !!nn.first,
+              guard2: /這次沒有拿到任何新聞/.test(nn2.p) || /不可寫「無重大事件」/.test(nn2.p), line2: nn2.line, news2: /美國 CPI 低於預期/.test(nn2.p) },
         ext, vGate: G(src, variants), caseGate: G(caseSrc, caseOut), nullSrc: G('', caseOut), nullSrc2: G(null, caseOut),
         rpLen: rp.length, rpClaims, rpGate, rpGateInj, gmLen: gmPrompt.length, gmGate,
         gm: /data-ainumgate/.test(gmHtml), gm2: /data-ainumgate/.test(gmHtml2), gmSnip: (gmHtml.match(/數字核對[^<]*<b>\d+/) || [''])[0],
@@ -130,6 +151,19 @@ const R = await page.evaluate(async (K) => {
         nw: /data-ainumgate/.test(nwHtml), nw2: /data-ainumgate/.test(nwHtml2),
         ev: /data-ainumgate/.test(evHtml), ev2: /data-ainumgate/.test(evHtml2),
         gateLine: A._aiNumGateHtml({ checked: 3, miss: ['707.4', '12.3%'] }), emptyLine: A._aiNumGateHtml({ checked: 3, miss: [] }),
+        // 🧾 V80.1.2 遮數字
+        red: (() => {
+            const S = A._AI_NUM_SENT, R1 = A._aiNumRedact('季線 707.4 元,半年線 594.5 元,現價 752 元,707.4 元再寫一次', { miss: ['707.4 元', '594.5 元'] });
+            const R2 = A._aiNumRedact('收盤 704.43 元、1,704 張、704 元', { miss: ['704 元'] });
+            const R3 = A._aiNumRedact('成交 11,200 張、1,200 張', { miss: ['1,200 張'] });
+            const R4 = A._aiNumRedact('原文一字不改 707.4 元', { miss: [] }), R5 = A._aiNumRedact('原文 707.4 元', null);
+            const R6 = A._aiNumRedact('ＶＩＸ 衝到 ８７.６５', { miss: ['87.65'] });
+            return { r1: R1.text.split(S).length - 1, r1n: R1.n, r1keep: R1.text.includes('752 元'), r1gone: !R1.text.includes('707.4') && !R1.text.includes('594.5'),
+                     r2: R2.text, r2n: R2.n, r3: R3.text, r3n: R3.n, r4: R4.text === '原文一字不改 707.4 元' && R4.n === 0, r5: R5.text === '原文 707.4 元' && R5.n === 0,
+                     r6n: R6.n, maskHtml: A._aiNumMaskHtml('a' + S + 'b'), raw0: A._aiNumRawHtml('x', 0), raw1: A._aiNumRawHtml('<x>707.4 元', 1), S };
+        })(),
+        mcVis, nwVis, evVis, gmVis,
+        noMask2: !/data-ainummask|data-ainumraw/.test(mcHtml2 + nwHtml2 + evHtml2 + gmHtml2),
     };
 }, K2330);
 
@@ -148,6 +182,19 @@ ok('ⓔ3 新聞綜合分析:編造 → 出現;忠實 → 不出現', R.nw && !R.
 ok('ⓔ4 事件影響:編造 → 出現;忠實 → 不出現', R.ev && !R.ev2, `${R.ev} ${R.ev2}`);
 ok('ⓕ 核對行⛔ 不可有 🔴🟢、要有 ⚠️ 與「別拿來下單」;全部對得上 → 空字串', !/[🔴🟢]/u.test(R.gateLine) && /⚠️/.test(R.gateLine) && /別拿來下單/.test(R.gateLine) && R.emptyLine === '', R.gateLine);
 ok('ⓕ2 沒有提示詞 → null(⛔ 不可假裝核對過)', R.nullSrc === null && R.nullSrc2 === null, JSON.stringify([R.nullSrc, R.nullSrc2]));
+// 🧾 V80.1.2 遮數字
+const D = R.red;
+ok('ⓖ 對不上的兩個都遮(重複出現的也遮)、對得上的 752 留著', D.r1 === 3 && D.r1n === 3 && D.r1keep && D.r1gone, JSON.stringify(D));
+ok('ⓖ2 邊界:704 元 ⛔ 不可遮到 704.43 元 / 1,704 張', D.r2n === 1 && D.r2.includes('704.43 元') && D.r2.includes('1,704 張') && !D.r2.includes(' 704 元'), D.r2);
+ok('ⓖ3 邊界:1,200 張 ⛔ 不可遮到 11,200 張的尾巴', D.r3n === 1 && D.r3.includes('11,200 張'), D.r3);
+ok('ⓖ4 全部對得上 / 沒有核對結果 → 一個字都不改', D.r4 && D.r5, '');
+ok('ⓖ5 全形數字也遮得到(核對時已經轉半形)', D.r6n === 1, D.r6n);
+ok('ⓖ6 標記換成〔數字已遮〕、看原文有跳脫、沒遮就沒有看原文', /〔數字已遮〕/.test(D.maskHtml) && !D.maskHtml.includes(D.S) && D.raw0 === '' && /&lt;x&gt;707\.4 元/.test(D.raw1) && /看原文/.test(D.raw1), D.maskHtml + ' | ' + D.raw1);
+const fabr = [['總經', R.mcVis, '87.65'], ['新聞', R.nwVis, '1,888'], ['事件', R.evVis, '543.2'], ['盤前速報', R.gmVis, '98,765']];
+for (const [nm, v, num] of fabr) ok(`ⓗ ${nm}:編的數字在正文看不到、看原文看得到、正文有〔數字已遮〕`, v && !v.vis.includes(num) && v.raw.includes(num) && v.masks >= 1, JSON.stringify({ vis: (v && v.vis || '').slice(0, 160), raw: (v && v.raw || '').slice(0, 80), masks: v && v.masks }));
+ok('ⓗ2 ⭐ 決定性對照:忠實的回答 → 一個都不遮、沒有看原文', R.noMask2, '');
+ok('ⓘ 📰 沒拿到任何新聞 → 提示詞明講「這次沒有拿到任何新聞」、巨頭那段⛔ 寫「無重大事件」;畫面最上面一行灰字', R.nn.guard && R.nn.line && R.nn.first, JSON.stringify(R.nn));
+ok('ⓘ2 ⭐ 決定性對照:放一則新聞 → 那句與那行都不見、新聞有進提示詞', !R.nn.guard2 && !R.nn.line2 && R.nn.news2, JSON.stringify(R.nn));
 ok('⓪ 沒有 pageerror', errs.length === 0, errs.slice(0, 2).join(' | '));
 
 await browser.close();

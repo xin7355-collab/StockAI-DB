@@ -150,6 +150,14 @@ TW = timezone(timedelta(hours=8))
 _AUTO_LOG_ENV = (os.getenv('AUTO_LOG') or '').strip()
 AUTO_LOG = None if _AUTO_LOG_ENV == '0' else (_AUTO_LOG_ENV or (STATE_PATH[:-5] if STATE_PATH.endswith('.json') else STATE_PATH) + '.log')
 AUTO_LOG_MAX = 2 * 1024 * 1024
+# 📒 V80.1.3 實際成交價自動記下來(19 個專案評估 1-6,借 StockSharp SlippageManager 的概念)—— 以前收工時只提醒你「回 App 手動填」。
+#   收工前問永豐今天每一筆委託的成交回報,一行一筆寫進 FILLS_LOG(真實 .fills.jsonl / 模擬 .sim.fills.jsonl):
+#   掛單價 / 成交均價 / 收盤價 → 跟回測假設的「收盤價成交」差多少。FILLS_LOG=0 關掉、FILLS_LOG=路徑 自己指定。
+#   ⛔ 只記錄:⛔ 不改狀態檔(部位 / 停損一個字都不動)、⛔ 送 / 刪任何單;查不到、寫不進去一律只印一行。
+_FILLS_ENV = (os.getenv('FILLS_LOG') or '').strip()
+FILLS_LOG = None if _FILLS_ENV == '0' else (_FILLS_ENV or (STATE_PATH[:-5] if STATE_PATH.endswith('.json') else STATE_PATH) + '.fills.jsonl')
+FILLS_WAIT_TO = 13 * 60 + 31   # 13:25 以後掛的單 13:30 收盤競價才成交、收盤價也是那時才定 → 平日還沒到 13:31 就等到 13:31 再問(最多 10 分鐘)
+_SENT_IDS = set()              # 這一次程式送出去的委託編號(只放記憶體,⛔ 不進狀態檔)→ 成交紀錄標 own
 
 
 def _log_file(line):
@@ -339,7 +347,18 @@ def _send(api, sj, contract, px, shares, buy):
             except Exception as e:
                 raise SendError(done_sh, e)
             done_sh += q * unit
+            _note_sent(sent[-1])   # 📒 V80.1.3 只記編號(⛔ 絕不丟例外、⛔ 不影響送單)
     return sent
+
+
+def _note_sent(tr):
+    """📒 記下這一次程式送出去的委託編號,收工時拿來標「這筆是程式送的」。⛔ 絕不丟例外。"""
+    try:
+        oid = str(getattr(getattr(tr, 'order', None), 'id', '') or '')
+        if oid:
+            _SENT_IDS.add(oid)
+    except Exception:
+        pass
 
 
 def _sold_part(book, sym, pos, sh, e):
@@ -1237,6 +1256,132 @@ def park_step(api, sj, st, day, sleep_fn=None):
     return 'buy' if got > 0 else 'err'
 
 
+_FILL_PENDING = ('PendingSubmit', 'PreSubmitted', 'Submitted', 'PartFilled')
+
+
+def _fill_rows(api, sj, today):
+    """📒 問永豐今天每一筆委託的成交回報 → list[dict];查不到 → None(⛔ 不猜)。⛔ 只讀:update_status / list_trades。
+    單位:整張那筆的數量是「張」、零股那筆是「股」(永豐文件);成交回報自己的總成交量(deal_quantity)跟逐筆加總對不上 → 印出來。"""
+    try:
+        try:
+            api.update_status(api.stock_account)
+        except TypeError:
+            api.update_status()
+        trades = list(api.list_trades() or [])
+    except Exception as e:
+        log(f"📒 ⚠️ 查不到今天的成交回報({type(e).__name__}: {e})→ 這次沒記到實際成交價")
+        return None
+    C = sj.constant
+    rows = []
+    for t in trades:
+        try:
+            o, s, c = t.order, t.status, t.contract
+            odd = getattr(o, 'order_lot', None) == C.StockOrderLot.IntradayOdd
+            unit = 1 if odd else 1000
+            deals = list(getattr(s, 'deals', None) or [])
+            dq = sum(float(getattr(d, 'quantity', 0) or 0) for d in deals)
+            amt = sum(float(getattr(d, 'price', 0) or 0) * float(getattr(d, 'quantity', 0) or 0) for d in deals)
+            api_dq = getattr(s, 'deal_quantity', None)
+            sym = str(getattr(c, 'code', '') or '')
+            if api_dq is not None and deals and abs(float(api_dq) - dq) > 1e-9:
+                log(f"📒 ⚠️ {sym} 成交回報的總成交量 {api_dq} 跟逐筆加總 {dq:g} 對不上(單位可能不同)→ 照逐筆記,請到永豐 App 對一下")
+            rows.append({
+                'd': today, 'oid': str(getattr(o, 'id', '') or getattr(o, 'seqno', '') or ''), 'sym': sym,
+                'side': 'B' if getattr(o, 'action', None) == C.Action.Buy else 'S', 'lot': 'O' if odd else 'C',
+                'px': float(getattr(o, 'price', 0) or 0), 'q': int(round(float(getattr(o, 'quantity', 0) or 0) * unit)),
+                'fq': int(round(dq * unit)), 'avg': round(amt / dq, 4) if dq > 0 else None,
+                'st': str(getattr(s, 'status', '') or '').split('.')[-1], 'n': len(deals), 'm': _mode(),
+            })
+        except Exception as e:
+            log(f"📒 ⚠️ 有一筆成交回報讀不懂({type(e).__name__}: {e}),略過")
+    return rows
+
+
+def _fill_closes(api, syms):
+    """📒 今天的收盤價(13:30 以後的快照 = 收盤價);拿不到的那檔 → 不放(⛔ 不猜)"""
+    out = {}
+    for sym in syms:
+        try:
+            snap = api.snapshots([api.Contracts.Stocks[sym]])[0]
+            px = float(getattr(snap, 'close', 0) or 0)
+            if px > 0:
+                out[sym] = px
+        except Exception:
+            pass
+    return out
+
+
+def fills_report(api, sj, today, now_fn=None, sleep_fn=None):
+    """📒 V80.1.3 收工前把今天的實際成交價記進 FILLS_LOG,並印出跟「回測假設的收盤價成交」差多少。
+    ⛔ 只讀(update_status / list_trades / snapshots);⛔ 不碰狀態檔、⛔ 不送 / 不刪任何單。回傳這次新寫進去幾筆(查不到 → None)。"""
+    if DRY_RUN:
+        log("📒 🧪 DRY_RUN:沒有送單,不查成交回報"); return 0
+    if not FILLS_LOG:
+        return 0
+    now_fn = now_fn or tpe_now
+    sleep_fn = sleep_fn or time.sleep
+    rows = _fill_rows(api, sj, today)
+    if rows is None:
+        return None
+    if not rows:
+        log("📒 今天沒有任何委託 → 沒有成交要記"); return 0
+    now, mins, _ = now_fn()
+    if now.weekday() < 5 and mins < FILLS_WAIT_TO:
+        wait = min(10, FILLS_WAIT_TO - mins)
+        log(f"📒 等到 {FILLS_WAIT_TO // 60}:{FILLS_WAIT_TO % 60:02d}(約 {wait} 分鐘)收盤競價成交完再記實際成交價 —— ⛔ 這段時間不會送任何單")
+        sleep_fn(wait * 60)
+        rows = _fill_rows(api, sj, today) or rows
+        now, mins, _ = now_fn()
+    closes = _fill_closes(api, sorted({r['sym'] for r in rows if r['fq'] > 0})) if mins >= 13 * 60 + 30 else {}
+    worse = []
+    for r in rows:
+        r['own'] = r['oid'] in _SENT_IDS
+        c = closes.get(r['sym'])
+        r['close'] = c
+        r['vs_px'] = round((r['avg'] / r['px'] - 1) * 100, 3) if r['avg'] and r['px'] > 0 else None
+        # 正數 = 比回測假設的收盤價成交差(買貴了 / 賣便宜了)
+        r['vs_close'] = (round(((r['avg'] / c - 1) if r['side'] == 'B' else (1 - r['avg'] / c)) * 100, 3)
+                         if r['avg'] and c else None)
+        side = '買' if r['side'] == 'B' else '賣'
+        if r['fq'] <= 0:
+            log(f"📒 {r['sym']} {side} {r['q']:,} 股:掛 {r['px']:g} → 沒成交({r['st'] or '狀態不明'})")
+            continue
+        tail = ''
+        if r['vs_close'] is not None:
+            worse.append(r['vs_close'])
+            word = ('買貴了' if r['side'] == 'B' else '賣便宜了') if r['vs_close'] > 0 else ('少付' if r['side'] == 'B' else '多拿')
+            tail = f",收盤 {c:g} → 比收盤 {word} {abs(r['vs_close']):.2f}%"
+        elif mins < 13 * 60 + 30:
+            tail = "(還沒收盤,收盤價等明天看)"
+        part = '' if r['fq'] >= r['q'] else f"(只成交 {r['fq']:,} / {r['q']:,} 股)"
+        log(f"📒 {r['sym']} {side} {r['fq']:,} 股{part}:掛 {r['px']:g} → 成交均價 {r['avg']:g}{tail}"
+            + ('' if r['own'] else '(⚠️ 不是這一次程式送的單 —— 可能是你手動下的,或是之前那一次)'))
+    seen = set()
+    try:
+        if os.path.exists(FILLS_LOG):
+            with open(FILLS_LOG, encoding='utf-8') as f:
+                for line in f.readlines()[-5000:]:
+                    try:
+                        j = json.loads(line)
+                    except Exception:
+                        continue
+                    seen.add((j.get('d'), j.get('oid'), j.get('lot'), j.get('fq'), j.get('st')))
+    except Exception:
+        pass
+    new = [r for r in rows if (r['d'], r['oid'], r['lot'], r['fq'], r['st']) not in seen]
+    try:
+        with open(FILLS_LOG, 'a', encoding='utf-8') as f:
+            for r in new:
+                f.write(json.dumps(r, ensure_ascii=False) + '\n')
+    except Exception as e:
+        log(f"📒 ⚠️ 成交紀錄寫不進去({type(e).__name__}: {e})—— ⛔ 不影響任何下單")
+        return None
+    filled = sum(1 for r in rows if r['fq'] > 0)
+    avg_w = f";跟回測假設的收盤價比,平均每筆 {sum(worse) / len(worse):+.2f}%(正數 = 比回測差)" if worse else ''
+    log(f"📒 今天 {len(rows)} 筆委託、{filled} 筆有成交 → 新記 {len(new)} 筆到 {FILLS_LOG}{avg_w}")
+    return len(new)
+
+
 def main():
     if not LIVE:
         log("🧪 模擬模式(simulation=True)—— ⛔ 不會有真的成交。要真下單請設 LIVE=1")
@@ -1361,12 +1506,17 @@ def main():
 
         time.sleep(POLL_SEC)
 
+    # 📒 V80.1.3 收工前把今天的實際成交價記下來(⛔ 只讀;出任何錯都只印一行,⛔ 不影響已經做完的買賣)
+    try:
+        fills_report(api, sj, today)
+    except Exception as e:
+        log(f"📒 ⚠️ 記成交回報時出錯({type(e).__name__}: {e})—— ⛔ 不影響任何下單")
     try:
         api.logout()
     except Exception:
         pass
-    log("👋 結束。⭐ 記得回 App 的「📌 追蹤中」把實際成交價填進去 —— "
-        "沒有那個數字,永遠不知道滑價吃掉多少。")
+    log("👋 結束。" + (f"📒 今天的實際成交價已記在 {FILLS_LOG};" if FILLS_LOG and not DRY_RUN else "")
+        + "App 的「📌 追蹤中」還是要你自己填實際成交價(手機跟這台電腦不同步)—— 沒有那個數字,永遠不知道滑價吃掉多少。")
     return 0
 
 

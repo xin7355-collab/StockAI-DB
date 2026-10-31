@@ -499,6 +499,32 @@ if (EQGATE) {
     if (!EQ_BLOCK.size) { console.error(`🚨 EQGATE=${EQGATE} 一天都沒暫停 → 沒生效(⛔ 不是「沒差別」)`); process.exit(1); }
     console.log(`🛡️ 淨值閘門 ${EQGATE}:${EQ_BLOCK.size}/${L} 天暫停開新倉(${(EQ_BLOCK.size / L * 100).toFixed(1)}%)`);
 }
+// 🚦 V80.1.1 DAYGATE=<日期檔>:那幾天「⛔ 不開新倉」(反攻雷達 / 任何「大盤這天先不買」的研究用)
+//   ⭐ 跟 EQGATE 不一樣:被擋的那天**只是不買** —— 名單照排、手上的照出場、🅿️ 收盤照把閒錢停 0050(App 就是這樣做的)
+//   檔案 = JSON 陣列 ['YYYY-MM-DD', …] 或 { block: [...] }(被擋的日子)
+//   DAYGATE_SHIFT=K → 安慰劑:同一份擋法在交易日上整段平移 K 天(循環;擋幾天、連續多長一模一樣,只是跟原本的訊號無關)
+//   ⛔ 不進 CACHE_KEY(只影響挑選,不影響交易清單);窗口內一天都沒擋 → exit 1;不設時一個字都不變
+const DAYGATE = (process.env.DAYGATE || '').trim();
+const DAYGATE_SHIFT = (process.env.DAYGATE_SHIFT || '').trim();
+let DG_RAW = null, DG_BLOCK = null, dgBlk = 0, dgCand = 0;
+if (DAYGATE_SHIFT && !DAYGATE) { console.error('🚨 DAYGATE_SHIFT 要跟 DAYGATE 一起設'); process.exit(1); }
+if (DAYGATE_SHIFT && !/^-?\d+$/.test(DAYGATE_SHIFT)) { console.error(`🚨 DAYGATE_SHIFT=${DAYGATE_SHIFT} 要是整數`); process.exit(1); }
+if (DAYGATE) {
+    let j; try { j = JSON.parse(fs.readFileSync(DAYGATE, 'utf8')); } catch (e) { console.error(`🚨 DAYGATE 讀不到:${e.message}`); process.exit(1); }
+    const arr = Array.isArray(j) ? j : (j && Array.isArray(j.block) ? j.block : null);
+    if (!arr) { console.error('🚨 DAYGATE 檔案要是日期陣列或 { block: [...] }'); process.exit(1); }
+    const bad = arr.filter(x => !/^\d{4}-\d{2}-\d{2}$/.test(String(x)));
+    if (bad.length) { console.error(`🚨 DAYGATE 有 ${bad.length} 個日期格式不對(要 YYYY-MM-DD),例如 ${bad.slice(0, 3).join(', ')}`); process.exit(1); }
+    DG_RAW = new Set(arr.map(String));
+}
+// 🐻 V80.1.1 BEAR_MODE:大盤嚴格空頭那幾天怎麼做(空頭 = 引擎同一條 notBear60,跟 FILTER=bear60 / App 空頭守門同一個定義)
+//   skip = 不開新倉(⭐ 跟 FILTER=bear60 的差別:手上的照出場、🅿️ 收盤照停 0050;FILTER=bear60 整天 continue,錢卡在現金)
+//   cash = 不開新倉,而且停在 0050 的錢那天收盤全部賣掉放現金;不是空頭那天收盤照常停回 0050(要 PARK=idle)
+//   half = 照買,但每筆金額減半
+//   ⛔ 不跟 FILTER=bear60 一起設;⛔ 不進 CACHE_KEY;不設時一個字都不變
+const BEAR_MODE = (process.env.BEAR_MODE || '').trim();
+if (BEAR_MODE && !['skip', 'cash', 'half'].includes(BEAR_MODE)) { console.error(`🚨 BEAR_MODE=${BEAR_MODE} 不認得(skip | cash | half)`); process.exit(1); }
+let bmDays = 0, bmCand = 0, bmHalf = 0, bmSell = 0;
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
 const CAPITAL = +(process.env.CAPITAL || 1000000); // 💰 你手上的總本金 —— 錢用完就買不了(這才貼近現實)
 
@@ -1070,6 +1096,8 @@ const PARK = (process.env.PARK || '').trim();
 //   跟 `PARK=0050`(只有空頭那幾天停)不同:這裡每天收盤把沒用到的錢買 0050,開新倉時先用現金、不夠再賣 0050。
 //   ⛔ 預設關閉;成本照 PARK_COST(來回)一邊一半;停泊的損益另外記在 summary 的 `park`(⛔ `cum` 仍只算打法本身)。
 const PARK_COST = +(process.env.PARK_COST || 0.27);   // ETF 來回:手續費 0.1425%×6折×2 + 證交稅 0.1%
+if (BEAR_MODE && FILTER.includes('bear60')) { console.error('🚨 BEAR_MODE 不跟 FILTER=bear60 一起設(兩個都在講空頭那天怎麼做)→ 先設 FILTER='); process.exit(1); }
+if (BEAR_MODE === 'cash' && PARK !== 'idle') { console.error('🚨 BEAR_MODE=cash 要配 PARK=idle(它在講「停在 0050 的錢」)'); process.exit(1); }
 let parkOf = null;   // ⚠️ 真正的初始化在 `days` 之後(它要用 days 對齊)
 // 🏪 V74.6.3 **櫃買指數**環境(FILTER=otcflat / otcbull)—— 使用者:「加上其它指數當變因」
 //   ⭐ 動機(regime_multi_probe 實測):加權是**市值加權**(台積電主導),而這套打法做的是
@@ -1129,6 +1157,14 @@ const indCycOk = (sym, d) => {
     return true;
 };
 const days = twii.map(r => r.d);
+if (DG_RAW) {
+    const K = +(DAYGATE_SHIFT || 0), L = days.length;
+    const hit = days.map(d => DG_RAW.has(d));
+    DG_BLOCK = new Set(days.filter((_, k) => hit[(((k - K) % L) + L) % L]));
+    const _out = [...DG_RAW].filter(d => d < days[0] || d > days[L - 1]).length;
+    console.log(`🚦 DAYGATE ${path.basename(DAYGATE)}${K ? `(平移 ${K} 個交易日)` : ''}:${DG_BLOCK.size}/${L} 個交易日不開新倉(${(DG_BLOCK.size / L * 100).toFixed(1)}%)` + (_out ? `・檔案裡 ${_out} 天在資料範圍外` : ''));
+    if (!DG_BLOCK.size) { console.error(`🚨 DAYGATE 在資料範圍內一天都沒擋 → 沒生效(⛔ 不是「沒差別」)`); process.exit(1); }
+}
 // 📚 V77.6.3 對照組 / 停泊用的 0050 可以另外指定(長歷史:k66 那段沒有 ETF,真的 0050 2010 起放在另一個檔)。
 //   ⛔ 不動「股票池」裡的 0050.json —— 那會改變 0050 當候選股的交易,交易快取就不能重用。沒設就跟以前一樣。
 const BENCH0050 = process.env.BENCH0050 || path.join(DATA, '0050.json');
@@ -1693,7 +1729,7 @@ const EQUITY_OUT = _nm(_EQ0), SUMMARY_OUT = _nm(_SO0), TAKEN_OUT = _nm(_TO0);
 const stat = {};             // 「sym|key」→ {n, sum, sq}(⭐ 每檔自己的打法成績;sq = 平方和,GATE=lb 算標準差用)
 const symKeys = new Map();   // 🎯 GATE=lb:sym -> 這檔出現過的 stat 鍵(⛔ 不掃整個 stat —— 全市場 5 萬多個鍵)
 const lkTop = new Map(), lkDirty = new Set();   // 🧾 LISTK:每檔過門檻的前 LB_TOP 招(只在成績有變的那幾檔重算)
-const lkStat = { days: 0, slots: 0, hit: 0, hitDays: 0, unk: 0, inexact: 0, blk: 0 }; listBlk = 0;   // 🧾 名單幾格、名單上當天觸發幾檔、有觸發的天數(unk / inexact = LIST_TRIG 沒判過的筆數 / 可能不準的晚數)
+const lkStat = { days: 0, slots: 0, hit: 0, hitDays: 0, unk: 0, inexact: 0, blk: 0 }; listBlk = 0; dgBlk = 0; dgCand = 0; bmDays = 0; bmCand = 0; bmHalf = 0; bmSell = 0;   // 🧾 名單幾格、名單上當天觸發幾檔、有觸發的天數(unk / inexact = LIST_TRIG 沒判過的筆數 / 可能不準的晚數)
 const mkt = {};              // key → {n, sum}(全市場該型態,當第二層門檻)
 const swBkt = [];            // 🪟 STATS_WIN:進場日索引 → [stat 鍵, mkt 鍵, ret, …](掉出視窗時照這份扣回去)
 let swPtr = 0, swOut = 0;    // 🪟 下一個要檢查的進場日索引 / 已經扣回幾筆
@@ -1913,6 +1949,11 @@ for (let i = 0; i < days.length; i++) {
         }
         fs.appendFileSync(EOD_DUMP, JSON.stringify(row) + '\n');
     }
+    // 🚦 DAYGATE:這天不開新倉 —— 名單照排(上面已算)、手上的照出場、🅿️ 收盤照停 0050(⛔ 不 continue,停車那段要跑到)
+    if (DG_BLOCK && DG_BLOCK.has(d)) { dgBlk++; if (cand.length) dgCand += new Set(cand.map(x => x.t.sym)).size; cand.length = 0; }
+    // 🐻 BEAR_MODE:空頭那天(skip / cash)同樣只是不買
+    const bearToday = BEAR_MODE ? !notBear60(i) : false;
+    if (bearToday) { bmDays++; if (BEAR_MODE !== 'half') { if (cand.length) bmCand += new Set(cand.map(x => x.t.sym)).size; cand.length = 0; } }
     const seen = new Set(live.map(x => x.sym));
     let picked = 0;
     // 📐 參考 ATR% = 今天以前最近 VP_REF 筆候選的中位數(⛔ 今天的候選在迴圈後才放進去)
@@ -1952,6 +1993,7 @@ for (let i = 0; i < days.length; i++) {
             }
             amt = Math.round(LOT * k);
         }
+        if (BEAR_MODE === 'half' && bearToday) { amt = Math.round(amt / 2); bmHalf++; }
         if (SIZING === 'risk') {
             const per = (+t.entry || 0) - (+t.stop || 0);
             if (!(per > 0) || !(+t.entry > 0)) { continue; }
@@ -2013,8 +2055,13 @@ for (let i = 0; i < days.length; i++) {
         if (SIZING === 'volpar' || SIZING === 'volsham') { vpN++; vpSum += amt; }
     }
     for (const { t } of cand) if (t.ap > 0) vpHist.push(t.ap);
+    // 🐻 BEAR_MODE=cash:空頭那天收盤把停在 0050 的錢全部賣掉放現金(⛔ 不停回去);不是空頭照常停
+    if (BEAR_MODE === 'cash' && bearToday && parkSh > 0 && parkOf && parkOf(i) > 0) {
+        const _v = parkSh * parkOf(i) * (1 - PARK_COST / 200);
+        parkPnL += _v - parkBasis; parkLog.push({ in: parkInD, out: days[i], basis: parkBasis, pnl: _v - parkBasis }); cash += _v; parkSh = 0; parkBasis = 0; parkSell++; bmSell++;
+    }
     // 🅿️ PARK=idle:收盤把今天沒用到的現金買 0050
-    if (PARK === 'idle' && parkOf && parkOf(i) > 0 && cash > 1) {
+    if (PARK === 'idle' && parkOf && parkOf(i) > 0 && cash > 1 && !(BEAR_MODE === 'cash' && bearToday)) {
         if (!parkSh) parkInD = days[i];
         parkSh += cash * (1 - PARK_COST / 200) / parkOf(i); parkBasis += cash; cash = 0; parkBuy++;
     }
@@ -2055,6 +2102,11 @@ if (process.env.STOPDIAG) {
 //    ⛔ 這是**事實統計**不是預測;要當成訊號用之前一定要過穩健性檢定。
 if (VOLCAP > 0) console.log(`🧱 成交量上限 VOLCAP=${VOLCAP}%(${VOLCAP_MODE}):超過的候選 ${vcHit} 次 ・減量 ${vcCut} ・跳過 ${vcSkip}` + (vcHit === 0 ? '  ⚠️ 0 次 = 這個上限在這組設定下碰不到' : ''));
 if (EQ_BLOCK) console.log(`🛡️ 淨值閘門 ${EQGATE}:實際擋掉 ${eqBlk} 個交易日的新倉`);
+if (DG_BLOCK) console.log(`🚦 DAYGATE:窗口內 ${dgBlk} 個交易日不開新倉,那幾天名單上有觸發的 ${dgCand} 檔次沒買`);
+if (BEAR_MODE) {
+    console.log(`🐻 BEAR_MODE=${BEAR_MODE}:窗口內空頭 ${bmDays} 天` + (BEAR_MODE === 'half' ? `・減半買了 ${bmHalf} 筆` : `・沒買的觸發 ${bmCand} 檔次`) + (BEAR_MODE === 'cash' ? `・0050 賣成現金 ${bmSell} 次` : ''));
+    if (!bmDays) { console.error('🚨 BEAR_MODE 設了但窗口內一天都不是空頭 → 沒生效(⛔ 不是「沒差別」)'); process.exit(1); }
+}
 if (ADD !== 'off') console.log(`📈 加碼模式 ${ADD}(往上 ${ADD_UP}% ・同檔上限 ${ADD_MAX} 筆):實際加碼 ${addCnt} 筆` + (addCnt === 0 ? '  🚨 0 筆 = 這個變體根本沒生效,⛔ 別把它的結果當成「沒差別」' : ''));
 if (TAKEN_OUT) {
     const rows = taken.map(t => {
@@ -2265,6 +2317,8 @@ if (SUMMARY_OUT) {
     if (LISTOK_ON && !LISTK) summary.listBlk = listBlk;   // 🏭📞 V79.8.2 沒有名單時:當天候選被擋掉幾次
     if (VOLCAP > 0) summary.volcap = { pct: VOLCAP, mode: VOLCAP_MODE, hit: vcHit, cut: vcCut, skip: vcSkip };
     if (EQ_BLOCK) summary.eqgate = { rule: EQGATE, days: EQ_BLOCK.size, blocked: eqBlk };
+    if (DG_BLOCK) summary.daygate = { file: path.basename(DAYGATE), shift: +(DAYGATE_SHIFT || 0), days: DG_BLOCK.size, blocked: dgBlk, cand: dgCand };
+    if (BEAR_MODE) summary.bearMode = { mode: BEAR_MODE, days: bmDays, cand: bmCand, half: bmHalf, sell: bmSell };
     if (ROTATE) summary.rot = { mode: ROTATE, n: rotN, minHold: ROT_MIN };
     if (COST_X !== 1) summary.costX = COST_X;
     if (EXIT_SCHED) { const c = {}; for (const t of taken) c[t._r] = (c[t._r] || 0) + 1; summary.sched = { file: EXIT_SCHED.split('/').pop(), taken: c }; }   // 🔄 實際成交各用了哪一套

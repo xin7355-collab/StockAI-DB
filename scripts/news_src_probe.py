@@ -158,14 +158,97 @@ def probe_concepts():
     return out
 
 
+def _cnyes_items(body):
+    """鉅亨 API 回應 → (items, data dict);讀不出 → ([], {})"""
+    try:
+        j = json.loads(body)
+    except Exception:
+        return [], {}
+    d = j.get('data') if isinstance(j.get('data'), dict) else (j.get('items') if isinstance(j.get('items'), dict) else j)
+    d = d if isinstance(d, dict) else {}
+    items = d.get('data') if isinstance(d.get('data'), list) else (d.get('items') if isinstance(d.get('items'), list) else [])
+    return items or [], d
+
+
+def _span(items):
+    ts = sorted(int(x.get('publishAt') or 0) for x in items if isinstance(x, dict) and x.get('publishAt'))
+    return (f"{datetime.fromtimestamp(ts[0], timezone.utc):%Y-%m-%d} ~ {datetime.fromtimestamp(ts[-1], timezone.utc):%Y-%m-%d}" if ts else '—'), (ts[0] if ts else None)
+
+
+def probe_hist():
+    """📚 V80.1.2 新聞「回補得到多舊」(19 個專案之外:使用者 10/31「新聞抓法沒有很完整,補齊後再做多因子回測」)
+    ① 鉅亨個股新聞(symbolNews)翻頁:第 1 / 2 / 5 / 10 / 20 / 50 頁還有沒有、最舊到哪天、總共幾頁
+    ② 鉅亨分類新聞 + 日期區間(台股新聞 tw_stock):2012 / 2015 / 2018 / 2021 / 2024 各一週 → 有沒有、幾則、總共幾頁
+    ③ 鉅亨關鍵字搜尋第 5 / 6 / 8 頁:「約 4 頁」是不是硬上限
+    ④ Google 新聞 每週一個窗口 vs 一整月(富喬 2025-03)+ 越舊越少:2019 / 2021 / 2023 / 2025 同一個月
+    ⛔ 只印數量 / 日期 / HTTP 狀態,⛔ 寫任何檔"""
+    print('\n📚 ① 鉅亨個股新聞(symbolNews)翻頁深度')
+    for sym in ('1815', '2330'):
+        for pg in (1, 2, 5, 10, 20, 50):
+            url = f'https://api.cnyes.com/media/api/v1/newslist/TWS:{sym}:STOCK/symbolNews?limit=30&page={pg}'
+            code, ct, body, sec = get(url)
+            items, d = _cnyes_items(body)
+            span, _ = _span(items)
+            print(f"  {sym} page {pg}: HTTP {code} ・{len(items)} 則 ・{span} ・total {d.get('total')} ・last_page {d.get('last_page')}")
+            time.sleep(1.2)
+            if code == 200 and not items:
+                break
+    print('\n📚 ② 鉅亨分類新聞 + 日期區間(台股新聞)')
+    for y in (2012, 2015, 2018, 2021, 2024):
+        a = int(datetime(y, 3, 4, tzinfo=timezone.utc).timestamp()); b = a + 7 * 86400
+        for cat in ('tw_stock', 'tw_stock_news'):
+            url = f'https://api.cnyes.com/media/api/v1/newslist/category/{cat}?startAt={a}&endAt={b}&limit=30&page=1'
+            code, ct, body, sec = get(url)
+            items, d = _cnyes_items(body)
+            span, _ = _span(items)
+            print(f"  {y}-03 一週 [{cat}]: HTTP {code} ・{len(items)} 則 ・{span} ・total {d.get('total')} ・last_page {d.get('last_page')}")
+            time.sleep(1.2)
+    print('\n📚 ③ 鉅亨關鍵字搜尋:第 4 頁之後還有沒有')
+    for nm in ('台積電', '富喬'):
+        for pg in (4, 5, 6, 8):
+            url = 'https://ess.api.cnyes.com/ess/api/v1/news/keyword?' + urllib.parse.urlencode({'q': nm, 'limit': 100, 'page': pg})
+            code, ct, body, sec = get(url)
+            items, d = _cnyes_items(body)
+            span, _ = _span(items)
+            print(f"  {nm} page {pg}: HTTP {code} ・{len(items)} 則 ・{span} ・total {d.get('total')} ・last_page {d.get('last_page')}")
+            time.sleep(1.2)
+    print('\n📚 ④ Google 新聞:每週窗口 vs 一整月、越舊越少')
+    for nm, sym in (('富喬', '1815'), ('台積電', '2330')):
+        code, ct, body, sec = get(google_news(f'{nm} {sym} after:2025-03-01 before:2025-04-01'))
+        print(f"  {nm} 2025-03 一整月: HTTP {code} ・{len(rss_items(body)) if code == 200 else 0} 則")
+        time.sleep(1.5)
+        tot = 0
+        for a, b in (('2025-03-01', '2025-03-08'), ('2025-03-08', '2025-03-15'), ('2025-03-15', '2025-03-22'), ('2025-03-22', '2025-04-01')):
+            code, ct, body, sec = get(google_news(f'{nm} {sym} after:{a} before:{b}'))
+            n = len(rss_items(body)) if code == 200 else 0
+            tot += n
+            print(f"    {a} ~ {b}: HTTP {code} ・{n} 則")
+            time.sleep(1.5)
+        print(f"  {nm} 2025-03 四週加起來 {tot} 則")
+        for y in (2019, 2021, 2023, 2025):
+            code, ct, body, sec = get(google_news(f'{nm} {sym} after:{y}-06-01 before:{y}-06-08'))
+            it = rss_items(body) if code == 200 else []
+            ds = sorted(x['d'] for x in it if x['d'])
+            print(f"    {y}-06 第一週: HTTP {code} ・{len(it)} 則" + (f" ・{ds[0]:%Y-%m-%d} ~ {ds[-1]:%Y-%m-%d}" if ds else ''))
+            time.sleep(1.5)
+
+
 def main():
     if '--selftest' in sys.argv:
         xml = ('<rss><channel><item><title><![CDATA[富喬 玻纖布漲]]></title><pubDate>Mon, 26 Oct 2026 08:00:00 GMT</pubDate>'
                '<source url="x">工商時報</source></item><item><title>b</title></item></channel></rss>')
         it = rss_items(xml)
         ok = len(it) == 2 and it[0]['t'] == '富喬 玻纖布漲' and it[0]['s'] == '工商時報' and it[0]['d'].day == 26 and it[1]['d'] is None
-        print('✅ NEWS_SRC_SELFTEST_PASS' if ok else f'❌ selftest {it}')
+        its, dd = _cnyes_items(json.dumps({'items': {'data': [{'publishAt': 1700000000, 'title': 'x'}], 'total': 5, 'last_page': 1}}))
+        ok2 = len(its) == 1 and dd.get('total') == 5 and _span(its)[0].startswith('2023-11-14')
+        its3, _ = _cnyes_items('<html>')
+        ok = ok and ok2 and its3 == []
+        print('✅ NEWS_SRC_SELFTEST_PASS' if ok else f'❌ selftest {it} {its} {dd}')
         return 0 if ok else 1
+    if '--hist' in sys.argv:
+        probe_hist()
+        print('\n(只量測,⛔ 沒寫任何檔)')
+        return 0
     if '--quick' not in sys.argv:
         probe_news()
     probe_cnyes_depth()

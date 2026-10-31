@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V80.1.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V80.1.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -636,6 +636,12 @@
     .tidyrow b{color:#c9d1d9}
     .tidyrow button{margin-left:auto;flex-shrink:0;background:#21262d;border:1px solid #30363d;color:#58a6ff;
       border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;min-height:32px}
+    /* ♿ V80.1.2 iPhone「設定 › 輔助使用 › 動態效果 › 減少動態效果」打開時:閃爍 / 旋轉 / 彈跳 / 轉場全部停
+       (全站 84 處 animate-pulse 一條 CSS 處理,⛔ 不逐一改 class;東西照樣在,只是不動) */
+    @media (prefers-reduced-motion: reduce) {
+        .animate-pulse, .animate-spin, .animate-bounce, .animate-ping { animation: none !important; }
+        *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    }
     </style>
 </head>
 <body class="flex flex-col">
@@ -897,7 +903,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.1.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.1.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1027,6 +1033,26 @@
                             <input type="checkbox" id="set_alertStrict" onchange="app.toggleAlertStrict(this.checked);" class="sr-only peer">
                             <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
                         </label>
+                    </div>
+                    <!-- 🌙 V80.1.2 勿擾時段(預設關;只管 App 內的通知,⛔ 不管 Telegram)。輸入框 16px:iPhone 才不會一點就放大 -->
+                    <div class="pt-2" data-quietrow="1">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1 min-w-0 pr-2">
+                                <label class="text-xs font-bold text-sky-300">🌙 勿擾時段</label>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">開著時,這段時間的通知<b>只收進 🔔 通知歷史</b>,不跳視窗、不跳橫幅、不發手機通知。<br>「👜 你的部位」「🔔 到價提醒」照樣叫(那是你自己設的點)。Telegram 不受影響(本來就只在台北 08:00~17:00 推)。</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                <input type="checkbox" id="set_quietOn" onchange="app.toggleQuiet(this.checked);" class="sr-only peer">
+                                <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+                            </label>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-1.5 text-[11px] text-gray-300">
+                            <span>從</span>
+                            <input type="time" id="set_quietFrom" value="22:00" onchange="app.setQuietTime();" class="keepbox rounded border border-[#30363d] px-2 py-1" style="font-size:16px;color-scheme:dark;background:#0d1117;color:#e6edf3;">
+                            <span>到</span>
+                            <input type="time" id="set_quietTo" value="07:00" onchange="app.setQuietTime();" class="keepbox rounded border border-[#30363d] px-2 py-1" style="font-size:16px;color-scheme:dark;background:#0d1117;color:#e6edf3;">
+                            <span class="text-[10px] text-gray-500">台北時間,可以跨半夜</span>
+                        </div>
                     </div>
                     <div class="flex items-center justify-between pt-2">
                         <div>
@@ -3600,7 +3626,8 @@ const masterWorkerCode = `
         }
         
         const ema = (arr, period) => { const k_f = 2 / (period + 1), res = [arr[0]]; for(let i=1; i<arr.length; i++) res.push(arr[i] * k_f + res[i-1] * (1 - k_f)); return res; };
-        const dif = ema(closes, 12).map((v, i) => v - ema(closes, 26)[i]), macd = ema(dif, 9), osc = dif.map((v, i) => (v - macd[i]) * 2);
+        const e26 = ema(closes, 26);   // ⚡ V80.1.2 只算一次(以前每一根都重算整條 26 日 EMA = 1,200 根 K 線要算 144 萬次)
+        const dif = ema(closes, 12).map((v, i) => v - e26[i]), macd = ema(dif, 9), osc = dif.map((v, i) => (v - macd[i]) * 2);
 
         // 📊 V66.3 RSI(相對強弱指標,Wilder 平滑)+ BIAS(乖離率),供副圖顯示(對標券商 K 線)
         const rsiCalc = (period) => {
@@ -4122,6 +4149,8 @@ const app = {
     },
 
     vibrate(ms) { if(navigator.vibrate) navigator.vibrate(ms); },
+    // ♿ V80.1.2 iPhone 打開「減少動態效果」→ 捲動也不要滑動(CSS 的 scroll-behavior 管不到 JS 的 scrollIntoView)
+    _scrollB() { try { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'; } catch (_) { return 'smooth'; } },
 
     // 🧠 贏家心法(11-2):月5%/年60% 獲利目標 → 本金複利 6 年試算表(逐字稿:60萬滾6年約1000萬)
     _calcGoalTable() {
@@ -6048,6 +6077,43 @@ const app = {
             return !(off && off[c.k] === true);
         } catch (_) { return true; }
     },
+    /** 🌙 V80.1.2 勿擾時段(19 個專案評估 3-4)—— 只管 App 內的通知(視窗 / 橫幅 / 手機通知),
+     *  ⛔ 不管 Telegram(worker 本來就只在台北 08:00~17:00 推)。預設**關**(⛔ 沒設定過 = 照舊全部會叫)。
+     *  起訖用台北時間,可以跨午夜(22:00 → 07:00);起訖一樣 = ⛔ 不算勿擾(不可變成整天都不叫)。 */
+    _QUIET_DEF: { from: '22:00', to: '07:00' },
+    _quietHm(v) {
+        const m = /^(\d{1,2}):(\d{2})$/.exec(String(v == null ? '' : v).trim());
+        if (!m) return null;
+        const h = +m[1], mi = +m[2];
+        return (h < 24 && mi < 60) ? h * 60 + mi : null;
+    },
+    _quietRange() {
+        const s = this.settings || {};
+        const f = this._quietHm(s.quietFrom), t = this._quietHm(s.quietTo);
+        return { from: f == null ? this._quietHm(this._QUIET_DEF.from) : f, to: t == null ? this._quietHm(this._QUIET_DEF.to) : t };
+    },
+    /** 現在(或指定的台北分鐘數 `min`)是不是勿擾時段。沒打開 → 一律 false。 */
+    _inQuiet(min) {
+        if (!(this.settings && this.settings.quietOn === true)) return false;
+        const { from, to } = this._quietRange();
+        if (from === to) return false;
+        const m = (min == null) ? this._tpeMinutes().min : min;
+        return from < to ? (m >= from && m < to) : (m >= from || m < to);
+    },
+    toggleQuiet(checked) {
+        this.settings = this.settings || {};
+        this.settings.quietOn = !!checked;
+        try { this.saveSettings?.(); } catch (_) {}
+        const { from, to } = this._quietRange(), hm = x => `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`;
+        this.showToast?.(checked ? `🌙 勿擾時段 ${hm(from)}~${hm(to)}:這段時間的通知只收進 🔔(你的部位 / 到價照樣叫)` : '🔔 已關閉勿擾時段(照舊全部會叫)', 'info', 4500);
+    },
+    setQuietTime() {
+        this.settings = this.settings || {};
+        const f = document.getElementById('set_quietFrom'), t = document.getElementById('set_quietTo');
+        if (f && this._quietHm(f.value) != null) this.settings.quietFrom = f.value;
+        if (t && this._quietHm(t.value) != null) this.settings.quietTo = t.value;
+        try { this.saveSettings?.(); } catch (_) {}
+    },
     /** 設定中心那顆勾勾。⛔ `lock` 的按了不動並說明原因。 */
     toggleAlertCat(k, checked) {
         try {
@@ -6430,6 +6496,9 @@ const app = {
         //      鈴鐺與個股頁照樣查得到;使用者要的是「不被打擾」⛔ 不是「查不到」。
         //   🔒 `pos`/`price`(你自己設的停損停利與到價)有 `lock` → 永遠過得了這一關。
         if (!this._alertCatOn(title)) return;
+        // 🌙 V80.1.2 勿擾時段(預設關):只記不吵 —— 上面 `_recordNotifHistory` 已經記過,鈴鐺照樣查得到;
+        //   🔒 `lock` 那幾類(👑 換倉日 / 👜 你的部位 / 🔔 到價)照樣叫(那是你自己設的點)。⛔ 不管 Telegram。
+        try { if (this._inQuiet() && !this._alertCatOf(title).lock) return; } catch (_) {}
         let popped = false;
         try {
             popped = !!this._alertPopup(title, body, sym);
@@ -8779,10 +8848,19 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V80.1.1',
+    _APP_VERSION: 'V80.1.2',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V80.1.2', d: [
+            '🧾 App 內 AI 寫的回答(盤前速報、總經 / 新聞深度分析、事件影響、App 內產的報告):數字對不上本站資料的,正文直接遮成〔數字已遮〕;想看它原本寫什麼,點「👁 看原文」',
+            '📰 盤前速報這一輪如果沒拿到任何新聞,最上面會寫「這次沒有用到任何新聞」,AI 也不會寫新聞事件或「無重大事件」(沒看過不等於沒有)',
+            '🌙 設定 › 通知與推播 多一個「勿擾時段」(預設關):打開後那段時間的通知只收進 🔔,不跳視窗、不發手機通知;你的部位、到價提醒照樣叫',
+            '♿ iPhone 打開「減少動態效果」時,App 裡的閃爍、轉圈和自動捲動也跟著停',
+            '👀 自選清單盤中只刷畫面上看得到的那幾檔(滑到哪刷到哪),比較省流量、刷得比較快',
+            '⚡ K 線的 MACD 算得比較快(數字一樣)',
+            '🤖 在你電腦上跑的自動下單,收工前會把今天每一筆的實際成交價記到檔案,並寫出跟「收盤價成交」差多少(只記錄,下單方式一樣)',
+        ] },
         { v: 'V80.1.1', d: [
             '📈 上櫃股票的 K 線改用櫃買中心的官方資料:以前最新那一根常是盤中還沒收完的(收盤差一兩檔、成交量少一大截),現在換成收盤後的官方數字;前幾個月抓錯的也會整批換掉(下一輪採礦跑完生效)',
             '⏱️ 上市股票當天那一根,晚上那一輪會換成官方全天的數字(以前有時只算到整股)',
@@ -9072,8 +9150,6 @@ ${list}
         { v: 'V79.3.5', d: ['🔕 大盤的警示(風險指數、黑天鵝、全球熔斷、量增下跌的日子、大跌時外面發生什麼)不再跳通知,只記在 🔔 鈴鐺;文字也改成只描述 —— ⛔ 不再叫你減碼、空手或全出清,手上的照你的出場規則走', '🐛 「量增下跌的日子」以前因為指數沒有成交量,一天都沒算到 → 改用成交金額;全球熔斷的提醒補上是哪一個指數', '🗑️ 拿掉一張從來沒顯示過的「大盤現在是什麼盤」卡'] },
         { v: 'V79.3.4', d: ['🌅 盤前體檢的美股數字以前常是「美股還沒收盤」時抓的(最後一次在台北半夜)→ 現在每天早上 08:00 會在美股收盤後再抓一次;還沒更新時標題下會寫「美股收盤後還沒更新」'] },
         { v: 'V79.3.3', d: ['📰 再多 9 篇專欄會在碰到時自動列出來:手上的跌破 5 日線、手上的創 60 日新高、外資連買 5 天、券資比衝高、帳面賺 20%(過熱要不要先賣)、最近賣掉的又漲回賣價、大盤剛脫離 / 剛轉成空頭、盤前體檢分數很低'] },
-        { v: 'V79.3.2', d: ['📰 新增一篇專欄(大盤一天跌超過 3% 時怎麼撿便宜);那種日子會自動列出來'] },
-
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -9303,6 +9379,12 @@ ${list}
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
         const asEl = document.getElementById('set_alertStrict');
         if (asEl) asEl.checked = this.settings.alertStrict !== false;   // 🔕 V76.1.7 預設開
+        try {   // 🌙 V80.1.2 勿擾時段(預設關 —— ⛔ 不可寫成 !== false)
+            const qOn = document.getElementById('set_quietOn'); if (qOn) qOn.checked = this.settings.quietOn === true;
+            const qr = this._quietRange(), hm = x => `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`;
+            const qf = document.getElementById('set_quietFrom'); if (qf) qf.value = hm(qr.from);
+            const qt = document.getElementById('set_quietTo'); if (qt) qt.value = hm(qr.to);
+        } catch (_) {}
         const bgEl = document.getElementById('set_bearGate');
         if (bgEl) bgEl.checked = this.settings.bearGate === true;        // 🐻 V79.4.9 預設關(⛔ 不可寫成 !== false —— 沒存過的人會被當成打開)
         try { this._fillBearGateDesc(); } catch (_) {}
@@ -12649,11 +12731,39 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         }
         return { checked: claims.length, miss };
     },
-    _aiNumGateHtml(r) {
+    _aiNumGateHtml(r, masked) {
         if (!r || !Array.isArray(r.miss) || !r.miss.length) return '';
         const esc = v => String(v).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
         const show = r.miss.slice(0, 6).map(esc).join('、') + (r.miss.length > 6 ? '…' : '');
-        return `<div data-ainumgate="${r.miss.length}" class="text-[10px] text-amber-300 leading-snug" style="margin-top:6px">⚠️ 🧾 數字核對:這段有 <b>${r.miss.length}</b> 個數字(共核對 ${r.checked} 個)在本站給它的資料裡找不到:<span class="font-mono">${show}</span> —— 可能是它自己算的或編的,⛔ 別拿來下單。</div>`;
+        const how = masked > 0 ? `上面已經把它們遮成〔數字已遮〕(${masked} 處;原文在「👁 看原文」)` : '';
+        return `<div data-ainumgate="${r.miss.length}" data-ainummasked="${masked > 0 ? masked : 0}" class="text-[10px] text-amber-300 leading-snug" style="margin-top:6px">⚠️ 🧾 數字核對:這段有 <b>${r.miss.length}</b> 個數字(共核對 ${r.checked} 個)在本站給它的資料裡找不到:<span class="font-mono">${show}</span> —— 可能是它自己算的或編的,⛔ 別拿來下單。${how}</div>`;
+    },
+    // 🧾 V80.1.2 再進一步:對不上的數字在正文裡直接遮掉,原文收在「👁 看原文」(19 個專案評估 1-3,使用者 10/31「都做」)
+    //   ⭐ 推翻 V77.8.1「只提醒、不改正文」:提醒列在最下面,讀的人常常先照正文的數字做了才看到
+    //   ⛔ 只遮 r.miss 那幾個(這一輪提示詞裡找不到的);同一個數字出現幾次遮幾次;⛔ 原文不丟(看原文)
+    //   ⛔ 沒核對結果(舊快取 / 外部 AI 貼上的)或全部對得上 → 一個字都不改
+    //   標記用一個私用區字元(⛔ 多字元標記會被 slice 切成兩半),顯示時才換成〔數字已遮〕
+    _AI_NUM_SENT: '\uE0A1',
+    _aiNumRedact(text, r) {
+        const s = String(text == null ? '' : text);
+        if (!r || !Array.isArray(r.miss) || !r.miss.length) return { text: s, n: 0 };
+        let t = s.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/％/g, '%').replace(/[−–—]/g, '-');
+        let n = 0;
+        const reEsc = x => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        for (const tok of [...r.miss].sort((a, b) => String(b).length - String(a).length)) {
+            // 前後都不可以接著數字(⛔ 704 不可把 704.43 遮成一半;1,200 不可遮到 11,200 的尾巴;「元,707.4」照樣遮)
+            const re = new RegExp(`(?<!\\d)(?<!\\d[.,])${reEsc(tok)}(?![\\d]|[.,]\\d)`, 'g');   // 前面是「數字 + 逗號/小數點」才擋(⛔ 一般的逗號分句照樣遮)
+            t = t.replace(re, () => { n++; return this._AI_NUM_SENT; });
+        }
+        return { text: t, n };
+    },
+    _aiNumMaskHtml(html) {
+        return String(html == null ? '' : html).split(this._AI_NUM_SENT).join('<span data-ainummask="1" class="text-amber-300 font-bold">〔數字已遮〕</span>');
+    },
+    _aiNumRawHtml(text, n) {
+        if (!(n > 0)) return '';
+        const esc = String(text == null ? '' : text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        return `<details data-ainumraw="${n}" class="text-[10px] text-gray-500" style="margin-top:4px"><summary class="cursor-pointer">👁 看原文(被遮的 ${n} 處數字還在裡面)</summary><div class="whitespace-pre-wrap text-gray-400 leading-snug" style="overflow-wrap:anywhere">${esc}</div></details>`;
     },
 
     // 🚀 深度推理(能力優先):Gemini 2.5 Flash → OpenRouter DeepSeek R1(o1 級最強推理)→ Groq 70b 兜底
@@ -27083,8 +27193,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const sym = String(C.sym), n = this._rpNote(sym);
         const asof = this._rpNoteAsofOf(n), st = this._rpNoteStale(C, n);
         let saved = '', rest = [], P = null, keepTxtOut = '';
+        let redRp = { text: '', n: 0 };
         if (n) {
-            P = this._rpPasteParse(n.t);
+            redRp = (n.offline && n.ng) ? this._aiNumRedact(n.t, n.ng) : { text: n.t, n: 0 };   // 🧾 V80.1.2 只有 App 內模型的才遮(外部 AI 會上網,數字不是本站給的)
+            P = this._rpPasteParse(redRp.text);
             const SUBJ = { 19: '因子評分', 20: '星等評分', 14: '情境機率' };   // 🚫 陷阱 #38:憑空權重,照顯但標明
             // 🚨 V77.0.8 使用者:「摘錄 §21 來源表我覺得沒有用,應該是 §19 觀察清單及 §20 投資筆記」
             //   真因:舊版第一眼抓的是「§1 + **最後一節**」,而他那份 21 節報告的最後一節正好是
@@ -27101,7 +27213,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const isFirst = x => x.n === 1 || keep.has(x.n);
             keepTxtOut = keep.size ? [...keep].sort((a, b) => a - b).map(n => `§${n}`).join(' 與 ') : '';
             //   ⚠️ AI 常在段落開頭放破折號/項目符號 → 剝掉(⛔ 只剝開頭那一個,內文的不動)
-            const sec = t => `<div class="text-[11px] text-gray-200 leading-relaxed whitespace-pre-wrap" style="overflow-wrap:anywhere">${this._rpHi(this._rpStripCite(String(t || '')).replace(/^\s*[—–\-•・]\s*/, ''))}</div>`;
+            const sec = t => `<div class="text-[11px] text-gray-200 leading-relaxed whitespace-pre-wrap" style="overflow-wrap:anywhere">${this._aiNumMaskHtml(this._rpHi(this._rpStripCite(String(t || '')).replace(/^\s*[—–\-•・]\s*/, '')))}</div>`;
             const firstHtml = P.secs.length
                 ? P.secs.filter(isFirst).map(x => { const tn = this._rpSecTone(x.n); return `<div style="margin-top:6px" data-rpsec-first="${x.n}"><div class="text-[11px] font-bold ${tn.cls}" data-rpsectone="${x.n}">● §${x.n} ${this._escHtml(x.title)}</div>${sec(x.body)}</div>`; }).join('')
                 : `<div data-rpsec-first="0">${sec(P.pre.slice(0, 500))}${P.pre.length > 500 ? '<div class="text-[10px] text-gray-500">…(全文在下面)</div>' : ''}</div>`;
@@ -27113,9 +27225,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             //   📐 V76.2.2 版面:卡頭右邊已經寫了「基準日 X」→ 這行**不再重複講一次基準日**(同一個日期講兩次看起來像壞掉)
             saved = `<div data-rpnote="1" class="bg-[#0d1117] border-l-4 border-l-[#8b949e] border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
                 <div class="text-[10px] text-amber-300/90 font-bold leading-snug" data-rpby="${this._escHtml(String(n.by || 'px'))}">📝 ${this._escHtml(this._rpGenOf(n.by || 'px').label)} 這個外部 AI 寫的,本站沒有驗證 ・⛔ 不參與買賣判斷${n.offline ? ' ・⚠️ 它<b>不會上網</b>' : ''}</div>
-                ${this._rpCiteWarn(sym, n.t)}${n.offline ? this._aiNumGateHtml(n.ng) : ''}${staleHtml}${P.secs.length ? `<div class="text-[9px] leading-snug" style="margin-top:4px" data-rpsecleg="${this._RP_SECTONE.length}">🎨 標題顏色 = 這一節在講哪一類(⛔ 不是好壞、也不是漲跌)：${this._RP_SECTONE.map(t => `<span class="${t.cls} font-bold">● ${t.t}</span>`).join(' ')}</div>` : ''}${firstHtml}
+                ${this._rpCiteWarn(sym, n.t)}${n.offline ? this._aiNumGateHtml(n.ng, redRp.n) : ''}${staleHtml}${P.secs.length ? `<div class="text-[9px] leading-snug" style="margin-top:4px" data-rpsecleg="${this._RP_SECTONE.length}">🎨 標題顏色 = 這一節在講哪一類(⛔ 不是好壞、也不是漲跌)：${this._RP_SECTONE.map(t => `<span class="${t.cls} font-bold">● ${t.t}</span>`).join(' ')}</div>` : ''}${firstHtml}
                 ${restHtml ? `<details data-dk="rest" style="margin-top:6px" data-rpsec-rest="${rest.length}"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:5px 0;list-style:none">📚 其餘 ${P.secs.length ? `${rest.length} 節` : '全文'}<span class="text-[10px] text-gray-600 font-normal"> ・逐節點開 ▾</span></summary><div style="padding-left:4px">${restHtml}</div></details>` : ''}
-                ${P.secs.length ? '' : '<div class="text-[10px] text-gray-500 leading-snug" style="margin-top:4px">⚠️ 這份沒有 §1~§20 編號 → <b>沒切節</b>,整份照原樣顯示(用本站的提示詞重產會有編號,第一眼就只留結論與筆記)。</div>'}
+                ${P.secs.length ? '' : '<div class="text-[10px] text-gray-500 leading-snug" style="margin-top:4px">⚠️ 這份沒有 §1~§20 編號 → <b>沒切節</b>,整份照原樣顯示(用本站的提示詞重產會有編號,第一眼就只留結論與筆記)。</div>'}${this._aiNumRawHtml(n.t, redRp.n)}
 
             </div>`;
         }
@@ -31020,7 +31132,7 @@ ${this._reportFacts(sym)}
         try { document.getElementById('aiGodModal')?.classList.add('hidden'); } catch (_) {}
         try { this.switchAppTab?.('diag'); } catch (_) {}
         try { this.switchOvTab?.('now'); } catch (_) {}
-        try { setTimeout(() => { const el = document.getElementById('trendCommandCard'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150); } catch (_) {}
+        try { setTimeout(() => { const el = document.getElementById('trendCommandCard'); if (el) el.scrollIntoView({ behavior: app._scrollB(), block: 'start' }); }, 150); } catch (_) {}
     },
     // 🤖 V68.6.2 個股版「你可能還想問」→ 把 App 精算數據全帶進「分析師簡報」prompt,丟免費 AI 用分析師口吻+最新新聞回答(A案)
     // 🤖 V68.6.5 恢復簡單版:短 query 帶股名丟免費查(長 prompt 會爆 Perplexity 網址/原生 App 收不到 → 使用者要求恢復)
@@ -32910,7 +33022,7 @@ ${this._reportFacts(sym)}
     // 🧭 V68.3.8 基本面支柱快捷跳轉(平滑捲到該支柱)
     _xrayJump(id) {
         const el = document.getElementById(id);
-        if (el) { try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) { el.scrollIntoView(); } this.vibrate?.(10); }
+        if (el) { try { el.scrollIntoView({ behavior: app._scrollB(), block: 'start' }); } catch (_) { el.scrollIntoView(); } this.vibrate?.(10); }
     },
     // 🧬 V76.0.8 先用**採礦快取**把「基本面 / 預期」兩格算出來 —— 零 FinMind、6 小時 memo
     //   (`_favQuickScore` 早就這樣用,原始碼自己寫「幾乎零成本」)。
@@ -34178,7 +34290,7 @@ ${this._reportFacts(sym)}
         if (!silent) {
             const diagAnchor = document.getElementById('tabContentDiag') || document.getElementById('appMainArea');
             if (diagAnchor && typeof diagAnchor.scrollIntoView === 'function') {
-                try { diagAnchor.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(_) {}
+                try { diagAnchor.scrollIntoView({ behavior: app._scrollB(), block: 'start' }); } catch(_) {}
             }
         }
 
@@ -35804,13 +35916,14 @@ ${this._reportFacts(sym)}
     _renderNewsDeep(txt, ts, ng) {
         const box = document.getElementById('newsDeepBox');
         if (!box || !txt) return;
+        const red = this._aiNumRedact(txt, ng);   // 🧾 V80.1.2 對不上的數字遮掉(原文在「看原文」)
         box.innerHTML = `
             <div class="bg-[#0d1117] border-l-4 border-purple-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
                 <div class="flex items-center justify-between gap-2 mb-1">
                     <span class="text-[11px] font-black text-purple-200">🧠 新聞綜合判讀 <span class="text-[9px] text-gray-500 font-normal">你手動要求的·以此為主</span></span>
                     <span class="text-[9px] text-gray-600">${ts || ''}</span>
                 </div>
-                <div class="text-[11px] text-gray-100 leading-relaxed whitespace-pre-wrap">${String(txt).replace(/</g, '&lt;')}</div>${this._aiNumGateHtml(ng)}
+                <div class="text-[11px] text-gray-100 leading-relaxed whitespace-pre-wrap">${this._aiNumMaskHtml(String(red.text).replace(/</g, '&lt;'))}</div>${this._aiNumGateHtml(ng, red.n)}${this._aiNumRawHtml(txt, red.n)}
             </div>`;
     },
     _restoreNewsDeep() {
@@ -35910,13 +36023,14 @@ ${this._reportFacts(sym)}
     _renderMacroDeep(txt, ts, ng) {
         const box = document.getElementById('macroDeepBox');
         if (!box || !txt) return;
+        const red = this._aiNumRedact(txt, ng);   // 🧾 V80.1.2 對不上的數字遮掉(原文在「看原文」)
         box.innerHTML = `
             <div class="bg-[#0d1117] border-l-4 border-purple-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
                 <div class="flex items-center justify-between gap-2 mb-1">
                     <span class="text-[11px] font-black text-purple-200">🧠 深度分析 <span class="text-[9px] text-gray-500 font-normal">你手動要求的·以此為主</span></span>
                     <span class="text-[9px] text-gray-600">${ts || ''}</span>
                 </div>
-                <div class="text-[11px] text-gray-100 leading-relaxed whitespace-pre-wrap">${String(txt).replace(/</g, '&lt;')}</div>${this._aiNumGateHtml(ng)}
+                <div class="text-[11px] text-gray-100 leading-relaxed whitespace-pre-wrap">${this._aiNumMaskHtml(String(red.text).replace(/</g, '&lt;'))}</div>${this._aiNumGateHtml(ng, red.n)}${this._aiNumRawHtml(txt, red.n)}
             </div>`;
     },
     _restoreMacroDeep() {
@@ -40356,13 +40470,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 prompts: { full: fullPrompt, simple: simplePrompt },
                 max_tokens: 200, temperature: 0.3
             });
-            const html = String(text || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+            const ng = this._aiNumGate(fullPrompt + '\n' + simplePrompt, text), red = this._aiNumRedact(text || '', ng);   // 🧾 V77.8.1 數字核對 + V80.1.2 遮掉對不上的
+            const html = this._aiNumMaskHtml(String(red.text || '').replace(/</g, '&lt;').replace(/\n/g, '<br>'));
             if (!html) {
                 box.innerHTML = '<div class="text-[10px] text-red-400 px-2 py-1.5">⚠️ AI 推測失敗(可能 OpenRouter 額度用完)</div>';
                 return;
             }
             const tagged = '🤖 AI 推測(⛔ 僅供參考;行事曆日只代表「波動變大」):' + html
-                + this._aiNumGateHtml(this._aiNumGate(fullPrompt + '\n' + simplePrompt, text));   // 🧾 V77.8.1 數字核對
+                + this._aiNumGateHtml(ng, red.n) + this._aiNumRawHtml(text, red.n);
             box.innerHTML = '<div class="text-[10px] text-cyan-200/90 bg-cyan-950/30 border border-cyan-800/40 rounded px-2 py-1.5 leading-relaxed">' + tagged + '</div>';
             try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html: tagged })); } catch (_) {}
         } catch (e) {
@@ -46665,19 +46780,41 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //   (庫存頁用 900ms;自選清單通常更長,這裡取較保守的 1,100ms。)
     _favPollMs() {
         const k = this._fugleKeyCount();
-        const n = Math.max(1, (this.favGroups?.[this.activeGroupName] || []).length);
+        // 👀 V80.1.2 只刷看得到的列 → 間隔照「看得到幾列」算(列少就刷得快,每把金鑰仍 < 60 次/分)
+        const n = Math.max(1, this._favVisN || (this.favGroups?.[this.activeGroupName] || []).length);
         return Math.min(12000, Math.max(1500, Math.ceil(n / k * 1100)));
+    },
+    // 👀 V80.1.2 自選清單「畫面上看得到」的那幾列(19 個專案評估 3-2):捲到的時候下一輪就會刷到;
+    //   看不到的列照樣有全市場快照的價(_patchFavPrices 免網路),只是不打即時報價 → 自選 50 檔也不會把金鑰額度吃光
+    //   ⛔ 庫存頁不這樣做:最上面的總損益要每一檔的現價
+    _favVisibleSyms(list, container) {
+        const H = window.innerHeight || document.documentElement.clientHeight || 800, out = [];
+        for (const sym of list) {
+            const row = container.querySelector(`[data-fav-row="${CSS.escape(String(sym))}"]`);
+            if (!row) continue;
+            const r = row.getBoundingClientRect();
+            if (r.height > 0 && r.bottom > 0 && r.top < H) out.push(sym);
+        }
+        return out;
     },
     _startFavPricePoll() {
         this._stopFavPricePoll();
         // ⚡ V71.3.1 改 setTimeout 自我重排:每輪重算間隔 → 換分組/加金鑰當場生效
         const tick = async () => {
+            try { await this._favPollOnce(); } catch (_) {}
+            this._favPollTimer = setTimeout(tick, this._favPollMs());
+        };
+        this._favPollTimer = setTimeout(tick, this._favPollMs());
+    },
+    async _favPollOnce() {
             try {
                 const favVisible = document.getElementById('tabContentFav')?.style.display !== 'none';
                 if (favVisible && !document.hidden && (this.isMarketOpen ? this.isMarketOpen() : true)) {
                     this._patchFavPrices();   // 全列快照 patch(免網路,瞬間跳動)
-                    const list = this.favGroups?.[this.activeGroupName] || [];
+                    const all = this.favGroups?.[this.activeGroupName] || [];
                     const container = document.getElementById('favListContainer');
+                    const list = (all.length && container) ? this._favVisibleSyms(all, container) : [];   // 👀 只刷看得到的
+                    this._favVisN = list.length;
                     if (list.length && container) {
                         // 🐛 V71.3.1 兩個真正的元凶(都跟金鑰數無關,所以加金鑰一直沒感覺):
                         //   ① 間隔寫死 15,000ms —— 庫存頁/當沖頁都會隨金鑰數變快,只有這裡沒接上
@@ -46707,9 +46844,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     }
                 }
             } catch (_) {}
-            this._favPollTimer = setTimeout(tick, this._favPollMs());
-        };
-        this._favPollTimer = setTimeout(tick, this._favPollMs());
     },
     // ⚡ V71.3.1 已改 setTimeout 自我重排 → 這裡必須用 clearTimeout,用 clearInterval 停不掉會變雙倍輪詢
     _stopFavPricePoll() { if (this._favPollTimer) { clearTimeout(this._favPollTimer); this._favPollTimer = null; } },
@@ -47146,7 +47280,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const modal = document.getElementById('inventoryEditPageModal');
         if (modal) this._renderInventoryEditPage(modal);
         if (this._invSellIdx === idx) {
-            setTimeout(() => { try { document.querySelector('[data-sellpanel]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {} }, 30);
+            setTimeout(() => { try { document.querySelector('[data-sellpanel]')?.scrollIntoView({ block: 'nearest', behavior: app._scrollB() }); } catch (_) {} }, 30);
         }
     },
     _invSellDefaults(item) {
@@ -52885,6 +53019,10 @@ App 會在那個時段幫你盯,到價自動提醒。
         // ⚠️ fallback 要收「財報詞」而不是公司名 —— 公司名那幾條上面已經各自收過了,
         //    這一桶問的是「今天有沒有財報結果」,⛔ 不是「有沒有這家公司的新聞」。
         if (_earnRaw === '今日無重大更新')   { const h = _hitKW(/earnings|guidance|財報|季報|營收|優於預期|不如預期|每股盈餘|EPS/i); if (h) _earnRaw = h; }
+        // 📰 V80.1.2 這一輪到底有沒有拿到任何新聞(19 個專案評估 3-3):全球新聞還沒載入、巨頭新聞也全部抓不到
+        //   → 提示詞明講「⛔ 不可以寫任何新聞事件」+ 畫面加一行灰字(⛔ 不可讓它看起來像「看過新聞之後覺得沒事」)
+        const _newsUsed = !!newsSection || [_trumpRaw, _huangRaw, _spacexRaw, _kuiperRaw, _earnRaw].some(x => x !== '今日無重大更新');
+        const _noNewsLine = _newsUsed ? '' : '\n【📰 新聞】這次沒有拿到任何新聞 → ⛔ 不可以寫任何新聞事件或消息面,只根據上面的數據。';
 
         const _today = new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
         const _nowTpe = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
@@ -52955,7 +53093,7 @@ ${bubbleLines}
 
 【雷達自動掃描】
 ${radarSection}
-${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLine}` : ''}${newsSection}
+${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLine}` : ''}${newsSection}${_noNewsLine}
 ━━━━━━━━━━━━━━━━━━━━
 
 嚴格依下列格式輸出(emoji 標題與 --- 分隔線必須保留,每段標題後空一行再寫內容;全文控制在精煉、可執行,不灌水):
@@ -52975,7 +53113,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
 ---
 
-🦅 巨頭情報雷達 (有料才寫,顯示「今日無重大更新」者直接寫「無重大事件,維持原框架」,嚴禁瞎掰)
+🦅 巨頭情報雷達 (${_newsUsed ? '有料才寫,顯示「今日無重大更新」者直接寫「無重大事件,維持原框架」,嚴禁瞎掰' : '這次沒有拿到新聞 → 每一項都只寫「這次沒有拿到新聞」,⛔ 不可寫「無重大事件」(沒看過不等於沒有)'})
 
 🔹 川普政經: ${_trumpRaw}
 👉 [若有事件:時機與台/美股連動 + 受影響台股族群;無則「靜待後續發言」]
@@ -53014,15 +53152,18 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             // 🚀 盤前報告 = 旗艦級分析,Gemini 2.5 Flash 為主撞 429 fallback OpenRouter R1
             // V19.5 — 使用者要求取消 Groq:chain 改 'gemini-openrouter'(原 'auto' 會兜底 Groq)
             const text = await this._callDeepAI({ prompt, max_tokens: 1800, temperature: 0.4, chain: 'gemini-openrouter' });
-            const html = text
+            const ngG = this._aiNumGate(prompt, text), redG = this._aiNumRedact(text, ngG);   // 🧾 V80.1.2 對不上的數字遮掉(原文在「看原文」)
+            const html = this._aiNumMaskHtml(redG.text
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
                 .replace(/^---$/gm, '<hr class="my-2 border-gray-700"/>')
                 .replace(/^(🚀[^\n]+)$/gm, '<div class="mt-3 mb-2 text-purple-300 font-black text-base">$1</div>')
                 .replace(/^(🟢|🟡|🔴|📊|🦅|🖥️|🛰️|🔍|🎭|⚡|⚠️ 免責)([^\n]+)$/gm, '<div class="mt-3 mb-1 text-blue-300 font-black text-sm border-l-2 border-blue-400 pl-2">$1$2</div>')
                 .replace(/^(🔹|👉|📍|💰|⚔️)([^\n]+)$/gm, '<div class="ml-2 text-gray-300 mt-0.5">$1$2</div>')
-                .replace(/\n/g, '<br>');
-            // 🧾 V77.8.1 數字核對:回答裡的數字對不上這一輪的提示詞就列出來(⛔ 不改正文)
-            const html2 = html + this._aiNumGateHtml(this._aiNumGate(prompt, text));
+                .replace(/\n/g, '<br>'));
+            // 🧾 V77.8.1 數字核對:回答裡的數字對不上這一輪的提示詞就列出來;V80.1.2 起正文裡那幾個直接遮掉
+            // 📰 V80.1.2 沒用到新聞 → 最上面一行灰字講清楚(⛔ 不可讓「沒看新聞」長得跟「看過覺得沒事」一樣)
+            const noNews = _newsUsed ? '' : '<div data-ainonews="1" class="text-[10px] text-gray-400 leading-relaxed mb-1">📰 這次沒有用到任何新聞(全球新聞還沒載入或抓不到)—— 下面只根據數據,沒有看消息面。</div>';
+            const html2 = noNews + html + this._aiNumGateHtml(ngG, redG.n) + this._aiNumRawHtml(text, redG.n);
             if (result) result.innerHTML = html2;
             const legacyResult = document.getElementById('globalAIResult');
             if (legacyResult && legacyResult !== result) legacyResult.innerHTML = html2;

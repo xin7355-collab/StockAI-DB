@@ -52,6 +52,11 @@ try {
         const cmp = { ma20: [{ f: 'ma', n: 20 }, W.ma20], ma60: [{ f: 'ma', n: 60 }, W.ma60], k: [{ f: 'k' }, W.k], d: [{ f: 'd' }, W.d], rsi5: [{ f: 'rsi', n: 5 }, W.rsi5], rsi10: [{ f: 'rsi', n: 10 }, W.rsi10], ema20: [{ f: 'ema', n: 20 }, W.ema20] };
         const bad = Object.entries(cmp).filter(([, [op, w]]) => !Array.isArray(w) || !same(S.get(op), w)).map(([k]) => k);
         ok('② ma20 / ma60 / K / D / RSI5 / RSI10 / EMA20 跟 App 逐根相同', !bad.length, bad.join(','));
+        // ⚡ V80.1.2 MACD 改成 26 日 EMA 只算一次:跟「每一根重算整條」的舊寫法逐根相同(⛔ 只能快、不能變)
+        const cl = bars.map(r => r.close), em = (a, p) => { const kf = 2 / (p + 1), r = [a[0]]; for (let i = 1; i < a.length; i++) r.push(a[i] * kf + r[i - 1] * (1 - kf)); return r; };
+        const dif0 = em(cl, 12).map((v, i) => v - em(cl, 26)[i]), mac0 = em(dif0, 9), osc0 = dif0.map((v, i) => (v - mac0[i]) * 2);
+        ok('② ⚡ MACD(dif / macd / osc)== 舊的逐根重算寫法(逐根相同)', ['dif', 'macd', 'osc'].every(k => Array.isArray(W[k]) && same(W[k], { dif: dif0, macd: mac0, osc: osc0 }[k])));
+        ok('② ⚡ 原始碼 ⛔ 不可再在 map 裡重算 ema(closes, 26)', !/ema\(closes, 26\)\[i\]/.test(idx));
     }
     // ③ chand2 == App _exitLevelAt(atr2):把 App 那兩支抽出來跑
     const grab = name => { const m = new RegExp(`\\n    ${name}\\(`).exec(idx); const s = idx.indexOf('{', m.index); let d = 0, i = s; for (; i < idx.length; i++) { if (idx[i] === '{') d++; else if (idx[i] === '}' && --d === 0) break; } return idx.slice(m.index + 5, i + 1); };
