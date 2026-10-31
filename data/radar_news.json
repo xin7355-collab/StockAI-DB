@@ -1,0 +1,205 @@
+{
+  "updated": "2026-10-31 16:03 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "自由財經",
+      "title": "光寶AI電源新品Q4量產 800VDC機櫃樣機出貨",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5625231",
+      "published_time": "Sat, 31 Oct 2026 21:08:09 +0800",
+      "matched_keywords": [
+        "出貨"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI電源新品Q4量產，營運預增",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "中油：下週汽柴油價格不調整　累計吸收約318.6億元",
+      "link": "https://www.cna.com.tw/news/ahel/202610310152.aspx",
+      "published_time": "Sat, 31 Oct 2026 17:28:25 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "中立",
+      "ai_reason": "中油吸收成本影響財報，屬預期內消息",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "中油11月民生及工業天然氣價凍漲  電業漲4％",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5625044",
+      "published_time": "Sat, 31 Oct 2026 17:11:45 +0800",
+      "matched_keywords": [
+        "調漲"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "民生工業凍漲，電業調漲4%",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "中油11月民生與工業天然氣價凍漲　電業漲4%",
+      "link": "https://www.cna.com.tw/news/ahel/202610310129.aspx",
+      "published_time": "Sat, 31 Oct 2026 16:20:36 +0800",
+      "matched_keywords": [
+        "調漲"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "民生工業凍漲，電業漲價反映成本",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "科林研發、imec 擴大合作！布局 High-NA EUV 乾式光阻，加速量產進程",
+      "link": "https://technews.tw/2026/10/31/lam-imec-collaboration/",
+      "published_time": "Sat, 31 Oct 2026 08:18:58 +0000",
+      "matched_keywords": [
+        "先進封裝"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "科林研發與imec合作，加速High-NA EUV量產",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "標普全球調降Meta信評展望至負向　AI支出與現金流引發疑慮",
+      "link": "https://www.cna.com.tw/news/aopl/202610310125.aspx",
+      "published_time": "Sat, 31 Oct 2026 15:57:27 +0800",
+      "matched_keywords": [
+        "展望",
+        "資本支出"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "Meta AI支出過高引發現金流疑慮",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "10月殺瘋了！台股市值蒸發近9兆  股民人均慘賠60萬",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5624947",
+      "published_time": "Sat, 31 Oct 2026 15:44:44 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利空",
+      "ai_reason": "台股單月重挫，市值蒸發近9兆",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "川普晶片夢恐踢鐵板？台積電前首席科學家揭殘酷真相",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5624852",
+      "published_time": "Sat, 31 Oct 2026 14:45:13 +0800",
+      "matched_keywords": [
+        "關稅"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "美製程回流受阻，台積電競爭優勢持續",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "鎖定 AI 伺服器 MLCC 需求！村田製作所未來五年擬砸 1 兆日圓擴產",
+      "link": "https://technews.tw/2026/10/31/murata-invest-6-3bn-in-capacitor-production/",
+      "published_time": "Sat, 31 Oct 2026 06:27:04 +0000",
+      "matched_keywords": [
+        "擴產"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI伺服器MLCC需求增，台廠供應鏈受惠",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "思靈機器人在輝達 GTC 柏林大會發表 Agile ONE SN 人型機器人，並與奧迪開展人形機器人試點",
+      "link": "https://technews.tw/2026/10/31/agile-robots-se_agile-one-sn/",
+      "published_time": "Sat, 31 Oct 2026 06:00:30 +0000",
+      "matched_keywords": [
+        "人形機器人"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "人形機器人商用化加速，利好相關零組件供應鏈",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "台達電 AI 訂單能見度高但出貨時點變動大，鄭平稱庫存增加屬階段性現象",
+      "link": "https://finance.technews.tw/2026/10/31/delta-electronics-ai-orders-high-visibility-shipment-timing-highly-variable/",
+      "published_time": "Sat, 31 Oct 2026 06:00:19 +0000",
+      "matched_keywords": [
+        "庫存",
+        "出貨"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "庫存增加屬階段性，訂單能見度高但時點變動",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "三檔ETF同周開募！ 00419A台股AI、00420A亞洲科技限時申購 蘋果 AMD Arista財報發布  美國期中選舉和非農雙炸彈 油價11月2日起連周凍漲｜投資早知道",
+      "link": "https://tw.stock.yahoo.com/news/%E4%B8%89%E6%AA%94etf%E5%90%8C%E5%91%A8%E9%96%8B%E5%8B%9F%EF%BC%81-00419a%E5%8F%B0%E8%82%A1ai%E3%80%8100420a%E4%BA%9E%E6%B4%B2%E7%A7%91%E6%8A%80%E9%99%90%E6%99%82%E7%94%B3%E8%B3%BC-%E8%98%8B%E6%9E%9C-amd-arista%E8%B2%A1%E5%A0%B1%E7%99%BC%E5%B8%83-%E7%BE%8E%E5%9C%8B%E6%9C%9F%E4%B8%AD%E9%81%B8%E8%88%89%E5%92%8C%E9%9D%9E%E8%BE%B2%E9%9B%99%E7%82%B8%E5%BD%88-%E6%B2%B9%E5%83%B911%E6%9C%882%E6%97%A5%E8%B5%B7%E9%80%A3%E5%91%A8%E5%87%8D%E6%BC%B2%EF%BD%9C%E6%8A%95%E8%B3%87%E6%97%A9%E7%9F%A5%E9%81%93-133627680.html",
+      "published_time": "Sat, 31 Oct 2026 13:36:27 +0800",
+      "matched_keywords": [
+        "油價",
+        "財報"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "中立",
+      "ai_reason": "ETF開募與財報選舉屬常規資訊",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "聯發科現金流轉負！ 阮慕驊揭核心關鍵：風險在下一代",
+      "link": "https://tw.stock.yahoo.com/news/%E8%81%AF%E7%99%BC%E7%A7%91%E7%8F%BE%E9%87%91%E6%B5%81%E8%BD%89%E8%B2%A0-%E9%98%AE%E6%85%95%E9%A9%8A%E6%8F%AD%E6%A0%B8%E5%BF%83%E9%97%9C%E9%8D%B5-%E9%A2%A8%E9%9A%AA%E5%9C%A8%E4%B8%8B-%E4%BB%A3-133300567.html",
+      "published_time": "Sat, 31 Oct 2026 13:33:00 +0800",
+      "matched_keywords": [
+        "法說",
+        "資本支出"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "營業現金流轉負，反映核心營運風險",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "經寶精密jpp-KY泰國自動化競賽  規格再創新高",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5624735",
+      "published_time": "Sat, 31 Oct 2026 12:17:19 +0800",
+      "matched_keywords": [
+        "新高"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利多",
+      "ai_reason": "泰國自動化競賽規格創新高，顯示業務拓展",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "從愛迪生電燈泡到AI晶片　百年康寧深耕台灣改寫玻璃新定義【專訪】",
+      "link": "https://www.cna.com.tw/news/afe/202610310032.aspx",
+      "published_time": "Sat, 31 Oct 2026 10:19:02 +0800",
+      "matched_keywords": [
+        "先進封裝"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "深耕先進封裝與面板，強化台供應鏈地位",
+      "important": true
+    }
+  ]
+}
