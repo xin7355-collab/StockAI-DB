@@ -77,6 +77,8 @@ export function geneAt(c, i) {
 export function scan(U, opt = {}) {
     const variants = opt.variants || DAYS.flatMap(d => BODY.map(b => ({ days: d, body: b })));
     const base = HOLDS.map(() => new Map()), ev = {}, last = {}, skip = { lock: 0, cliff: 0, bad: 0 };
+    // 🧬 對照組:同一天「也是 🧬 的股票」(⛔ 只拿全部股票比 → 🧬 本身的優勢會被算到停機坪頭上);opt.geneBase === false 時不算(selftest 省時間)
+    const baseG = opt.geneBase === false ? null : HOLDS.map(() => new Map());
     for (const v of variants) ev[vkey(v.days, v.body)] = { all: HOLDS.map(() => []), gene: HOLDS.map(() => []), nogene: HOLDS.map(() => []) };
     for (const u of U) {
         const sym = u.sym, { n, o, h, l, c, dt } = u.A || compact(u.rows);   // loadUniverse 已經轉好(省記憶體);selftest 給 rows
@@ -88,6 +90,7 @@ export function scan(U, opt = {}) {
             const rets = HOLDS.map(H => (i + H < n && c[i + H] > 0 && !cliffIn(pre, i, i + H)) ? (c[i + H] / e - 1) * 100 : null);
             rets.forEach((r, k) => { if (r != null) baseAdd(base[k], dt[i], r); });
             let g = null;
+            if (baseG) { g = geneAt(c, i); if (g) rets.forEach((r, k) => { if (r != null) baseAdd(baseG[k], dt[i], r); }); }
             for (const v of variants) {
                 const K = vkey(v.days, v.body);
                 const on = opt.rule ? opt.rule(o, c, dt, i, v) : apronAt(o, c, dt, i, v);
@@ -101,7 +104,7 @@ export function scan(U, opt = {}) {
             }
         }
     }
-    return { base, ev, skip };
+    return { base, baseG, ev, skip };
 }
 
 function loadUniverse(dir) {
@@ -127,16 +130,24 @@ function main() {
         const E = S.ev[K];
         const gs = HOLDS.map((_, hi) => gates(increments(E.all[hi], S.base[hi])));
         const gg = gates(increments(E.gene[HI], S.base[HI])), gn = gates(increments(E.nogene[HI], S.base[HI]));
+        const gG = S.baseG ? gates(increments(E.gene[HI], S.baseG[HI])) : null;   // 🧬 停機坪 vs 同一天全部 🧬
         out.v[K] = { g: gs.map(g => ({ d: g.d, n: g.n, p: g.p, nPass: g.nPass, H: g.H, YR: g.YR })),
                      gene: { d: gg.d, n: gg.n, nPass: gg.nPass }, nogene: { d: gn.d, n: gn.n, nPass: gn.nPass },
+                     geneVsGene: gG ? { d: gG.d, n: gG.n, p: gG.p, nPass: gG.nPass, H: gG.H, YR: gG.YR } : null,
                      geneShare: E.all[HI].length ? E.gene[HI].length / E.all[HI].length : null };
         const tag = K === ck ? '⭐ ' : '   ';
         console.log(tag + fmtG(`停機坪 ${K}`, gs[HI]) + `  (5日 ${gs[0].d.toFixed(2)} / 20日 ${gs[2].d.toFixed(2)})`);
         console.log(`      🧬 佔 ${(out.v[K].geneShare * 100 || 0).toFixed(0)}% ・是 🧬 ${gg.d >= 0 ? '+' : ''}${gg.d.toFixed(2)}pp(n=${gg.n}・${gg.nPass}/6)・不是 🧬 ${gn.d >= 0 ? '+' : ''}${gn.d.toFixed(2)}pp(n=${gn.n}・${gn.nPass}/6)`);
+        if (gG) console.log('      ' + fmtG('🧬 停機坪 vs 同一天全部 🧬', gG));
     }
     const signs = Object.values(out.v).map(x => Math.sign(x.g[HI].d));
     const c = out.v[ck];
     out.verdict = { center: ck, centerPass: c.g[HI].nPass, plateau: signs.every(s => s === signs[0]), plateauPos: signs.filter(s => s > 0).length, cells: signs.length };
+    if (c.geneVsGene) {
+        const gs2 = Object.values(out.v).map(x => Math.sign(x.geneVsGene.d));
+        out.verdict.gene = { centerD: c.geneVsGene.d, centerPass: c.geneVsGene.nPass, plateauPos: gs2.filter(x => x > 0).length, cells: gs2.length };
+        console.log(`🧬 只看 🧬:中心 vs 同一天全部 🧬 增量 ${c.geneVsGene.d.toFixed(2)}pp・${c.geneVsGene.nPass}/6・九格正的 ${out.verdict.gene.plateauPos}/${gs2.length}`);
+    }
     out.meta.secs = Math.round((Date.now() - t0) / 1000);
     console.log('\n' + '═'.repeat(90));
     console.log(`⭐ 中心(整理 ${CENTER.days} 天・實體 < ${CENTER.body}%):抱 ${HOLDS[HI]} 天增量 ${c.g[HI].d.toFixed(2)}pp・${c.g[HI].nPass}/6(成本 0.44)・九格同號 ${out.verdict.plateau ? '是' : '否'}(正的 ${out.verdict.plateauPos}/${signs.length})`);
@@ -226,6 +237,22 @@ function selftest() {
     for (let k = 280; k < 300; k++) ch[k] = 100 + (k - 279) * 2 + (k % 2 ? 8 : -8);
     ch[299] = 200;
     ok('⑩ 🧬:平盤 → 否;最後 20 天大幅震盪又創一年新高 → 是', !geneAt(cf, 299) && geneAt(ch, 299));
+    // ⑪ 🧬 對照組:每一天都亮的規則 → 🧬 那幾筆比「同一天全部 🧬」≈ 0,比全部股票就不是 0(🧬 那幾天剛好比較會漲)
+    {
+        const days2 = days.slice(0, 330);
+        const mk = (seed, hot) => { let p = 50, x = seed; const rows = [];
+            for (let i = 0; i < days2.length; i++) { x = (x * 1103515245 + 12345) % 2147483648; const z = x / 2147483648 - 0.5;
+                const amp = hot && i > 260 ? 0.2 : 0.004; p = Math.max(1, p * (1 + z * amp + (hot && i > 260 ? 0.015 : 0)));
+                rows.push({ date: days2[i], open: p, high: p * 1.002, low: p * 0.998, close: p, volume: 1000 }); }
+            return { sym: String(1500 + seed), rows }; };
+        const U11 = [];
+        for (let s2 = 0; s2 < 16; s2++) U11.push(mk(s2 + 1, s2 % 2 === 0));
+        const S11 = scan(U11, { variants: [CENTER], rule: () => true });
+        const K11 = vkey(CENTER.days, CENTER.body), E11 = S11.ev[K11];
+        const vsAll = gates(increments(E11.gene[0], S11.base[0])), vsGene = gates(increments(E11.gene[0], S11.baseG[0]));
+        ok(`⑪ 決定性對照:每天都亮 → 🧬 那幾筆 vs 同一天全部 🧬 ≈ 0(${vsGene.d.toFixed(3)}pp)、vs 全部股票明顯不是 0(${vsAll.d.toFixed(2)}pp)`,
+            E11.gene[0].length > 20 && Math.abs(vsGene.d) < 0.05 && Math.abs(vsAll.d) > 0.3, JSON.stringify({ n: E11.gene[0].length, vsAll: vsAll.d, vsGene: vsGene.d }));
+    }
     console.log(bad ? `\n❌ ${bad} 條失敗` : '\n✅ PARKING_APRON_SELFTEST_PASS');
     process.exit(bad ? 1 : 0);
 }

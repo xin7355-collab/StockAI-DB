@@ -79,15 +79,21 @@ export function rulesAt(o, h, l, c, v, i, opt = {}) {
     };
 }
 
-/** universe: [{sym, rows}] → {events: {rule: [[{d,r}] per hold]}, base: [Map per hold], skip} */
+/** universe: [{sym, rows}] → {events: {rule: [{d:[日期編號], r:[報酬]} per hold]}, base: [Map per hold], skip, dStr}
+ *  ⭐ 事件存成兩條數字陣列(⛔ 每筆一個物件)—— 16 年全市場 14 條規則 × 3 個天期約 4 千萬筆,存物件 2.5 GB 會爆;要用時 evList() 一次轉一條
+ *  opt.only = Set(規則):只收這幾條(高原那幾輪只看 B1) */
 export function scan(universe, opt = {}) {
     const base = HOLDS.map(() => new Map()), events = {}, last = {}, skip = { lock: 0, bad: 0 };
+    const dPool = new Map(), dStr = [];
+    const di = d => { let x = dPool.get(d); if (x === undefined) { x = dStr.length; dStr.push(d); dPool.set(d, x); } return x; };
     const add = (rule, sym, i, d, rets) => {
+        if (opt.only && !opt.only.has(rule)) return;
         const key = rule + '|' + sym;
         if (last[key] != null && i - last[key] < DEDUP) return;
         last[key] = i;
-        const E = events[rule] || (events[rule] = HOLDS.map(() => []));
-        rets.forEach((r, k) => { if (r != null) E[k].push({ d, r }); });
+        const E = events[rule] || (events[rule] = HOLDS.map(() => ({ d: [], r: [] })));
+        const x = di(d);
+        rets.forEach((r, k) => { if (r != null) { E[k].d.push(x); E[k].r.push(r); } });
     };
     for (const u of universe) {
         const sym = u.sym, { n, o, h, l, c, v, dt } = u.A || compact(u.rows);   // loadUniverse 已經轉好(省記憶體);selftest 給 rows
@@ -103,7 +109,16 @@ export function scan(universe, opt = {}) {
             for (const [k2, on] of Object.entries(R)) if (on) add(k2, sym, i, dt[i], rets);
         }
     }
-    return { events, base, skip };
+    return { events, base, skip, dStr };
+}
+
+/** 一條規則一個天期 → [{d, r}](給 lib_evgate.increments;用完就丟,⛔ 一次全部轉) */
+export function evList(S, rule, hi) {
+    const E = S.events[rule] && S.events[rule][hi];
+    if (!E) return [];
+    const out = new Array(E.r.length);
+    for (let j = 0; j < E.r.length; j++) out[j] = { d: S.dStr[E.d[j]], r: E.r[j] };
+    return out;
 }
 
 const NAMES = {
@@ -134,22 +149,22 @@ function main() {
     console.log(`\n🧭 買點(增量 = 比同一天全部股票多賺幾 %;主看抱 ${HOLDS[HI]} 天)`);
     for (const k of ['B1', 'B2', 'B3', 'B4', 'B3x', 'X36', 'GRS', 'BnoS', 'B2x', 'GRSx']) {
         if (!S.events[k]) continue;
-        const gs = HOLDS.map((_, hi) => gates(increments(S.events[k][hi], S.base[hi])));
+        const gs = HOLDS.map((_, hi) => gates(increments(evList(S, k, hi), S.base[hi])));
         out.rules[k] = { name: NAMES[k], dir: 'buy', g: gs.map(g => ({ d: g.d, n: g.n, p: g.p, nPass: g.nPass, H: g.H, YR: g.YR })) };
         console.log('  ' + fmtG(NAMES[k], gs[HI]) + `  (5日 ${gs[0].d.toFixed(2)} / 20日 ${gs[2].d.toFixed(2)})`);
     }
     console.log(`\n🔻 賣點(避雷型:要過的是「之後比較差」→ 增量取負號再過六關)`);
     for (const k of ['S1', 'S2', 'S3', 'S4']) {
         if (!S.events[k]) continue;
-        const inc = increments(S.events[k][HI], S.base[HI]);
+        const inc = increments(evList(S, k, HI), S.base[HI]);
         const g = gates(inc), gn = gates(negate(inc));
         out.rules[k] = { name: NAMES[k], dir: 'sell', d: g.d, n: g.n, p: g.p, nPassAvoid: gn.nPass, YR: g.YR };
         console.log('  ' + fmtG(NAMES[k], g) + `  → 當避雷 ${gn.nPass}/6`);
     }
     console.log(`\n⛰️ 高原:B1「量大」門檻改成昨天的幾倍`);
     for (const volK of [1, 1.5, 2, 3]) {
-        const SS = scan(U, { volK });
-        const g = gates(increments(SS.events.B1[HI], SS.base[HI]));
+        const SS = scan(U, { volK, only: new Set(['B1']) });
+        const g = gates(increments(evList(SS, 'B1', HI), SS.base[HI]));
         out.plateau['B1x' + volK] = { d: g.d, n: g.n, nPass: g.nPass };
         console.log(`  量 > 昨天 ×${volK}`.padEnd(18) + `增量 ${(g.d >= 0 ? '+' : '') + g.d.toFixed(2)}pp ・n=${g.n} ・${g.nPass}/6`);
     }
@@ -181,14 +196,14 @@ function selftest() {
         return { sym: String(1000 + s), rows };
     });
     // ① 純隨機:沒有東西 → 六關不可全過
-    const U0 = mkU(120, 0), S0 = scan(U0), g0 = gates(increments(S0.events.B1[HI], S0.base[HI]));
+    const U0 = mkU(120, 0), S0 = scan(U0), g0 = gates(increments(evList(S0, 'B1', HI), S0.base[HI]));
     ok('① 純隨機 → B1 增量接近 0、⛔ 不可六關全過', Math.abs(g0.d) < 0.6 && g0.nPass < 6, `${g0.d.toFixed(2)} ${g0.nPass}`);
     // ② 注入:B1 之後下一根多漲 3% → 量得到(而且只在 B1)
-    const U1 = mkU(120, 0.03), S1 = scan(U1), g1 = gates(increments(S1.events.B1[0], S1.base[0]));
+    const U1 = mkU(120, 0.03), S1 = scan(U1), g1 = gates(increments(evList(S1, 'B1', 0), S1.base[0]));
     ok('② 注入 B1 之後多漲 3% → 量到明顯正的增量', g1.d > 1.0 && g1.p < 0.01, `${g1.d.toFixed(2)} p=${g1.p}`);
     // ③ 前視注入:規則偷看隔天收盤 → 一定量到大正數(證明 scan 的報酬窗口真的在訊號之後;規則若前視就會紅)
     const peek = (o, h, l, c, v, i) => (i < 7 ? null : { P: c[i + 1] > c[i] * 1.02 });
-    const S2 = scan(U0, { rulesAt: peek }), g2 = gates(increments(S2.events.P[0], S2.base[0]));
+    const S2 = scan(U0, { rulesAt: peek }), g2 = gates(increments(evList(S2, 'P', 0), S2.base[0]));
     ok('③ 偷看隔天收盤的規則 → 量到大正數(前視一定會被看見)', g2.d > 1.0, g2.d.toFixed(2));
     // ④ 隔天開在漲停附近 → 剔除
     const rowsL = days.slice(0, 40).map((d, i) => ({ date: d, open: 10, high: 10, low: 10, close: 10, volume: 1000 }));
@@ -198,7 +213,7 @@ function selftest() {
     // ⑤ 去重:同一檔同一條 10 日內只算一次
     const always = (o, h, l, c, v, i) => (i < 7 ? null : { A: true });
     const SD = scan([{ sym: '9998', rows: U0[0].rows }], { rulesAt: always });
-    const nA = SD.events.A[HI].length, expect = Math.ceil((U0[0].rows.length - 1 - 7 - HOLDS[HI] + 1) / 10);   // ⛔ 寫死 10(用 DEDUP 變數就測不出去重被拿掉)
+    const nA = SD.events.A[HI].r.length, expect = Math.ceil((U0[0].rows.length - 1 - 7 - HOLDS[HI] + 1) / 10);   // ⛔ 寫死 10(用 DEDUP 變數就測不出去重被拿掉)
     ok('⑤ 每天都亮 → 10 日去重後約 n/10 筆', Math.abs(nA - expect) <= 2, `${nA} vs ${expect}`);
     // ⑥ 量的基準只跟昨天比(⛔ 不含今天):今天量 = 昨天量 → B1 不亮
     const o = [1, 1, 1, 1, 1, 1, 1, 1, 1], c = [1, 1, 1, 1, 1, 1, 1, 1, 1.1], v = [5, 5, 5, 5, 5, 5, 5, 5, 5];

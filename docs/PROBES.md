@@ -3,6 +3,17 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🛬 V80.1.3(2026-10-31)`scripts/parking_apron_probe.mjs`(停機坪)+ `scripts/bestfour_probe.mjs` 精確版(19 個專案評估 4-1 / 4-3)
+- 停機坪:15 天收盤新高的漲停(lib_limit,2015-06 前 7%)之後 N=2/3/4 天開收都在漲停收盤之上、實體 < 2/3/4%、單日 ±5% → 隔天開盤買、抱 5/10/20 天;對照 = 同一天全部股票 **+ 同一天全部 🧬**(⛔ 只比全部股票會把 🧬 的優勢算到型態頭上,selftest ⑪ 決定性對照)。跑法 `DATA_DIR=<d16> node scripts/parking_apron_probe.mjs out.json`(約 30 秒)。
+- 四大買點精確版:`bestfour_probe.mjs` 多 B2x(收盤高過昨天開盤)與 GRSx(最近 5 天三六乖離都 < 0、最低在 1~2 天前)。事件改存兩條數字陣列(16 年 14 條規則約 4 千萬筆,存物件會爆);跑法 `DATA_DIR=<d16> node --max-old-space-size=3000 scripts/bestfour_probe.mjs out.json`(約 2 分)。
+- 兩支都:載入改精簡陣列(本地 400 檔新舊逐位相同)、被 import 時不跑 main、登記進 `test_lib_limit ③`。
+- 2026-10-31 結果(d16・2,433 檔含下市・2010~2026):停機坪中心 −0.10pp・0/6・九格正的 1/9;🧬 比 🧬 +0.82pp・4/6・p 0.20・後半 0 → ⛔。四大買點十條 −0.07~+0.00、精確版 −0.02 / −0.06 → ⛔(LAB `parking-apron` / `grs-bestfour`)。
+- ⏭️ 走完下一次空頭再重跑一次;停機坪 🧬 那一格若變成全過,先跟 🔥 用 `PSRC=ext` 疊資金回測再談。
+
+### 📏 V80.1.3(2026-10-31)`portfolio_backtest.mjs` `RANKBY=shrink` + `SHRINK_K`(19 個專案評估 2-1,小樣本收縮)
+- 排序分 = (這檔這招的總和 + K × 同一招全市場平均) ÷ (n + K);全市場平均只用訊號日以前已出場的(引擎的 mkt)。⛔ 只換排序、⛔ 換門檻;LISTK 名單也吃。`test_pbgate ⓢh`:SHRINK_K=0 == RANKBY=mean(逐位相同)、K 很大成績要變、K < 0 exit 1。
+- 跑法:L4n 共同設定 + `RANKBY=shrink SHRINK_K=4|8|16|32`,兩窗口 × 17 條,跟現行(照平均)配對比。
+
 ### 📰 V80.1.3(2026-10-31)`scripts/news_src_probe.py`(新聞來源探路)+ `scripts/news_deep.py`(回補)
 - `news_src_probe.yml` mode:quick(鉅亨翻頁 + 概念股)/ hist(回補得到多舊:個股頁翻頁・分類 + 日期區間・搜尋頁數・Google 每週窗口)/ fields(分類新聞有沒有標代號、一頁幾則)。只印、⛔ 寫檔;沙箱連不到鉅亨 / Google → 只能在 Actions 跑。
 - 2026-10-31 結果見 DECISIONS V80.1.3:分類 + 日期區間 2015 起都有、2021 起大多帶代號;個股頁 2 個月、Google 越舊越少 → 回補只走分類那條(`news_deep.py`)。

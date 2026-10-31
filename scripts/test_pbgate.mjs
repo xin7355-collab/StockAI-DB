@@ -242,6 +242,20 @@ else {
         kbad('kb4', { GATE: 'lb', LISTK: '2', TURN: 'hi' }, /LISTK 還沒驗過/);
     }
 
+    // ⓢh 📏 V80.1.3 RANKBY=shrink(小樣本收縮):⛔ 只換排序、⛔ 換門檻
+    //   決定性對照:SHRINK_K=0 == RANKBY=mean(逐位相同);K 很大 → 幾乎只看全市場那一招 → 成績要變(⛔ 一樣 = 沒接上)
+    {
+        const SM = run('sh_mean', { GATE: 'lb', SELF: '', LISTK: '2', RANKBY: 'mean' }, DATA);
+        const S0 = run('sh_k0', { GATE: 'lb', SELF: '', LISTK: '2', RANKBY: 'shrink', SHRINK_K: '0' }, DATA);
+        const SB = run('sh_kbig', { GATE: 'lb', SELF: '', LISTK: '2', RANKBY: 'shrink', SHRINK_K: '1000000' }, DATA);
+        ok('ⓢh1 決定性對照:SHRINK_K=0 == RANKBY=mean(成績 + 逐日淨值逐位相同)', SM.s && S0.s && core(S0.s) === core(SM.s) && S0.e === SM.e, `${core(S0.s)} vs ${core(SM.s)}`);
+        ok('ⓢh2 SHRINK_K 很大 → 成績不一樣(排序真的換成全市場那一招)・cfg 記下 shrinkK', SB.s && core(SB.s) !== core(SM.s) && SB.s.cfg.rankby === 'shrink' && SB.s.cfg.shrinkK === 1000000, `${core(SB.s)} / ${core(SM.s)}`);
+        const nb = (SB.t || []).length, n0 = (S0.t || []).length;
+        ok(`ⓢh3 門檻沒變:名單照樣每天最多 2 檔(收縮 ${nb} 筆 / 平均 ${n0} 筆,兩邊都 > 0)`, nb > 0 && n0 > 0 && SB.s.listk && SB.s.listk.slots <= 2 * SB.s.listk.days, JSON.stringify(SB.s && SB.s.listk));
+        const SX = run('sh_bad', { GATE: 'lb', LISTK: '2', RANKBY: 'shrink', SHRINK_K: '-1' }, DATA);
+        ok('ⓢh4 SHRINK_K=-1 → exit 1 並說原因', SX.r.status === 1 && /SHRINK_K/.test(SX.r.stderr || ''), (SX.r.stderr || '').slice(-160));
+    }
+
     // ⓔ 設錯格式
     const bad = (tag, env, re) => { const B = run(tag, env, DATA); ok(`ⓔ ${JSON.stringify(env)} → exit 1 並說原因`, B.r.status === 1 && re.test(B.r.stderr || ''), (B.r.stderr || '').slice(-200)); };
     bad('b1', { GATE: 'xx' }, /GATE=xx 不認得/);

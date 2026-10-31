@@ -118,7 +118,7 @@ if (LISTK) {
     const _lkBad = ['EXIT_SCHED', 'USSIG', 'POOL', 'RKSHAM', 'VAL', 'FIN', 'TURN', 'EMERGING', 'ACCR', 'SIGX'].filter(k => (process.env[k] || '').trim());
     if ((process.env.FILTER || '').split('+').some(f => /^ind/.test(f))) _lkBad.push('FILTER=ind*');
     if (_lkBad.length) { console.error(`🚨 LISTK 還沒驗過跟 ${_lkBad.join(' / ')} 一起用(名單沒有套那些濾網 → 會佔名額)→ 先單獨跑,或改寫成名單層的 listOk`); process.exit(1); }
-    if (!['self', 'rand', 'mean'].includes(process.env.RANKBY || 'self')) { console.error(`🚨 LISTK 只支援 RANKBY=self|rand|mean(實得 ${process.env.RANKBY})`); process.exit(1); }
+    if (!['self', 'rand', 'mean', 'shrink'].includes(process.env.RANKBY || 'self')) { console.error(`🚨 LISTK 只支援 RANKBY=self|rand|mean|shrink(實得 ${process.env.RANKBY})`); process.exit(1); }
 }
 // 🎯 V79.4.8 重現 App 名單那道「明天漲 6% 內觸發不了就不列」(playbook_scan trigOf;引擎自己算不出來,要逐晚跑偵測器)
 //   LIST_DUMP=<檔>:每晚排好的候選(昨天沒觸發・🧬・每檔前 LB_TOP 招,照下界排)前 LIST_DUMP_N 筆寫成一行 → 給 scripts/list_trig.mjs 判
@@ -359,7 +359,12 @@ if (ALLFIRE && !(SELF.includes('high') && SELF.includes('hivolat'))) { console.e
 //   RANKBY = self(預設,這檔自己在這招的期望值)| rand(候選裡**隨機**排序,固定種子)| mkt(全市場該型態平均 = V1 舊法)
 //   GATE   = pat(預設:這檔在**這招**扣成本後為正)| stock(這檔在**任何一招**扣成本後為正 → 不看是哪一招)
 const RANKBY = process.env.RANKBY || 'self';
-if (!['self', 'rand', 'mkt', 'mom10', 'mean', 'amt', 'vol', 'pos'].includes(RANKBY)) { console.error(`🚨 RANKBY=${RANKBY} 不認得(self|rand|mkt|mom10|mean|amt|vol|pos)`); process.exit(1); }
+if (!['self', 'rand', 'mkt', 'mom10', 'mean', 'amt', 'vol', 'pos', 'shrink'].includes(RANKBY)) { console.error(`🚨 RANKBY=${RANKBY} 不認得(self|rand|mkt|mom10|mean|amt|vol|pos|shrink)`); process.exit(1); }
+//   RANKBY=shrink   = 📏 V80.1.3 小樣本收縮(19 個專案評估 2-1,ZhuLinsen 的想法):排序分 = (這檔這招的總和 + K × 同一招全市場平均) ÷ (n + K)
+//                     全市場平均 = 引擎的 mkt(只算訊號日以前已出場的,⛔ 前視);那一招全市場還沒有成績 → 退回這檔自己的平均
+//                     ⛔ 只換排序、⛔ 不換門檻(誰進得了名單照舊)→ SHRINK_K=0 == RANKBY=mean(決定性對照)
+const SHRINK_K = +(process.env.SHRINK_K ?? 8);
+if (RANKBY === 'shrink' && !(SHRINK_K >= 0 && Number.isFinite(SHRINK_K))) { console.error(`🚨 SHRINK_K=${process.env.SHRINK_K} 要 ≥ 0 的數字`); process.exit(1); }
 //   RANKBY=amt / vol / pos = 🎯 V79.4.7 照訊號日成交額 / 近 20 日波動 / 一年位階排(⛔ 只用 ≤ 訊號日;拿來比「照每檔歷史成績排」到底有沒有比隨便挑好)
 //   RANKBY=mean     = 🎯 V79.4.7 照這檔這招的**平均**排(GATE=lb 時:門檻照 App、排序換回舊的平均 → 拿來分開「門檻」跟「排序」各自的貢獻;GATE=pat 時跟 self 一樣)
 // 🚀👑 V78.0.7 從 👑 領頭羊借來試 🧬 的兩件事(候選層,⛔ 不進 CACHE_KEY、不設時逐位相同):
@@ -1710,6 +1715,8 @@ for (const t of allTrades) { if (dIdx.has(t.inD)) (byIn.get(t.inD) || byIn.set(t
 const byInR = new Map();
 if (EXIT_SCHED) for (const t of allTrades) { if (!dIdx.has(t.inD)) continue; let m = byInR.get(t._r); if (!m) byInR.set(t._r, m = new Map()); (m.get(t.inD) || m.set(t.inD, []).get(t.inD)).push(t); }
 const _rk = t => t._r ? t._r + '#' : '';   // 不設 EXIT_SCHED 時是空字串 → stat 鍵跟舊版一模一樣
+// 📏 RANKBY=shrink 的排序分(stat 鍵 → 同一招的 mkt 鍵:'r#sym|key' → 'r#key')
+const _shrOf = (s, m) => (s.sum + SHRINK_K * (m && m.n ? m.sum / m.n : s.sum / s.n)) / (s.n + SHRINK_K);
 const byOut = new Map();     // 出場日 → 已完成交易(用來累積成績)
 for (const t of allTrades) { if (ALLFIRE && t.seq === 0) continue; if (dIdx.has(t.outD)) (byOut.get(t.outD) || byOut.set(t.outD, []).get(t.outD)).push(t); }   // 🔥 ALLFIRE:成績只算一筆接一筆那幾筆(= App)
 
@@ -1731,6 +1738,9 @@ const symKeys = new Map();   // 🎯 GATE=lb:sym -> 這檔出現過的 stat 鍵(
 const lkTop = new Map(), lkDirty = new Set();   // 🧾 LISTK:每檔過門檻的前 LB_TOP 招(只在成績有變的那幾檔重算)
 const lkStat = { days: 0, slots: 0, hit: 0, hitDays: 0, unk: 0, inexact: 0, blk: 0 }; listBlk = 0; dgBlk = 0; dgCand = 0; bmDays = 0; bmCand = 0; bmHalf = 0; bmSell = 0;   // 🧾 名單幾格、名單上當天觸發幾檔、有觸發的天數(unk / inexact = LIST_TRIG 沒判過的筆數 / 可能不準的晚數)
 const mkt = {};              // key → {n, sum}(全市場該型態,當第二層門檻)
+// 📏 RANKBY=shrink / mean 的名單排序分(stat / mkt 是每個起點各一份 → 定義在迴圈裡)
+const _shrK = k => { const p = k.indexOf('|'), h = k.indexOf('#'); return _shrOf(stat[k], mkt[(h >= 0 && h < p ? k.slice(0, h + 1) : '') + k.slice(p + 1)]); };
+const _lkV = (k, v) => RANKBY === 'mean' ? stat[k].sum / stat[k].n : RANKBY === 'shrink' ? _shrK(k) : v;   // LISTK 名單的排序分
 const swBkt = [];            // 🪟 STATS_WIN:進場日索引 → [stat 鍵, mkt 鍵, ret, …](掉出視窗時照這份扣回去)
 let swPtr = 0, swOut = 0;    // 🪟 下一個要檢查的進場日索引 / 已經扣回幾筆
 if (STATS_WIN || STATS_FROM) console.log(`🪟 每檔打法成績只算${STATS_WIN ? `進場日在最近 ${STATS_WIN} 個交易日內` : ''}${STATS_WIN && STATS_FROM ? '、而且' : ''}${STATS_FROM ? ` ${STATS_FROM} 以後進場` : ''}的交易`);
@@ -1895,11 +1905,11 @@ for (let i = 0; i < days.length; i++) {
             if (dumpEnt) for (const [k, v] of rem) dumpEnt.push([k, v, sym]);
             if (TRIGM) rem = rem.filter(([k, v]) => {
                 const t = TRIGM.get(`${prevD}|${k}`);
-                if (t === undefined) { lkStat.unk++; const rv = RANKBY === 'mean' ? stat[k].sum / stat[k].n : v; if (rv > umax) umax = rv; return false; }
+                if (t === undefined) { lkStat.unk++; const rv = _lkV(k, v); if (rv > umax) umax = rv; return false; }
                 return t === 1 || (t === 2 && LIST_LOOSE);
             });
             if (LIST_BEST) rem = rem.slice(0, 1);
-            for (const [k, v] of rem) ent.push([k, RANKBY === 'mean' ? stat[k].sum / stat[k].n : v, sym]);
+            for (const [k, v] of rem) ent.push([k, _lkV(k, v), sym]);
         }
         if (dumpEnt) {
             dumpEnt.sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
@@ -1931,6 +1941,7 @@ for (let i = 0; i < days.length; i++) {
     else if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
     else if (RANKBY === 'mean') cand.sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
+    else if (RANKBY === 'shrink') cand.sort((a, b) => _shrOf(b.s, b.m) - _shrOf(a.s, a.m));
     else if (RANKBY === 'amt') cand.sort((a, b) => (+b.t.amt || 0) - (+a.t.amt || 0));
     else if (RANKBY === 'vol' || RANKBY === 'pos') { const _k = RANKBY === 'vol' ? 'vol' : 'rank', _f = x => { const f = selfFeat.get(x.t.sym)?.get(x.t.inD); return f && f[_k] != null ? f[_k] : -Infinity; }; cand.sort((a, b) => _f(b) - _f(a)); }
     else if (RANKBY === 'mom10') { const _m = x => { const f = selfFeat.get(x.t.sym)?.get(x.t.inD); return f && f.m10 != null ? f.m10 : -Infinity; }; cand.sort((a, b) => _m(b) - _m(a)); }
@@ -2300,7 +2311,7 @@ if (SUMMARY_OUT) {
     const summary = {
         // 🔁 V79.4.5 cfg 補記 rankMin / volatMin / stopFill / maxd / warmup / div(只多欄位,結果逐位相同)——
         //   每週回測(build_backtest_edge.mjs)靠這幾欄判斷「換設定了沒」:換了那一次重新起算守門基準(⛔ 不拿舊設定的筆數比)
-        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RKSHAM ? { rksham: RKSHAM } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}), ...(STATS_WIN ? { statsWin: STATS_WIN } : {}), ...(STATS_FROM ? { statsFrom: STATS_FROM } : {}), ...(GATE === 'lb' ? { gate: 'lb', minN: MIN_N, lbZ: LB_Z, lbTop: LB_TOP } : {}), ...(CLIFF >= 0 ? { cliff: CLIFF } : {}), ...(LISTK ? { listK: LISTK, listFired: LIST_FIRED, listBest: LIST_BEST, listSelf: LIST_SELF } : {}), ...(TRIGM ? { listTrig: path.basename(LIST_TRIG), listLoose: LIST_LOOSE ? 1 : 0 } : {}), ...(ALLFIRE ? { allFire: 1 } : {}), ...(PARK ? { park: PARK } : {}), ...(NOLOCK ? { nolock: 1 } : {}), ...(MIN_MKT_N !== 20 ? { minMktN: MIN_MKT_N } : {}),
+        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RKSHAM ? { rksham: RKSHAM } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}), ...(RANKBY === 'shrink' ? { shrinkK: SHRINK_K } : {}), ...(STATS_WIN ? { statsWin: STATS_WIN } : {}), ...(STATS_FROM ? { statsFrom: STATS_FROM } : {}), ...(GATE === 'lb' ? { gate: 'lb', minN: MIN_N, lbZ: LB_Z, lbTop: LB_TOP } : {}), ...(CLIFF >= 0 ? { cliff: CLIFF } : {}), ...(LISTK ? { listK: LISTK, listFired: LIST_FIRED, listBest: LIST_BEST, listSelf: LIST_SELF } : {}), ...(TRIGM ? { listTrig: path.basename(LIST_TRIG), listLoose: LIST_LOOSE ? 1 : 0 } : {}), ...(ALLFIRE ? { allFire: 1 } : {}), ...(PARK ? { park: PARK } : {}), ...(NOLOCK ? { nolock: 1 } : {}), ...(MIN_MKT_N !== 20 ? { minMktN: MIN_MKT_N } : {}),
              ...(INDRS ? { indrs: INDRS, indrsN: INDRS_N, indrsL: INDRS_L } : {}), ...(CCWIN ? { ccwin: path.basename(CCWIN), ccPre: CCWIN_PRE, ccPost: CCWIN_POST, ccShift: CCWIN_SHIFT } : {}),
              ...(PSRC ? { psrc: path.basename(PSRC.slice(4)), gate: 'ext' } : {}),
                rankMin: RANK_MIN, volatMin: VOLAT_MIN, stopFill: STOPFILL, maxd: MAXD, warmup: WARMUP, div: DIV_TRADES ? (NHI ? 'nhi' : 'gross') : '' },
