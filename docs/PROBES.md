@@ -3,6 +3,15 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🏦 V80.1.4(2026-10-31)`scripts/sbl_bucket_probe.py`(🔥 實際成交 × 借券)+ factor_zoo 第二層池子面板要一起重建
+- `python3 scripts/sbl_bucket_probe.py '<dir>/long_base_{W}.json' <W 清單逗號> <DATA_DIR> <stock_deep/sbl> [out.json]`(taken 檔 = 引擎 `TAKEN_OUT`;借券讀法 = `factor_panel.load_sbl`,⛔ 第二份)。
+  進場前 5 個交易日借券賣出 ÷ 成交量(⛔ 含進場那天 —— 借券收盤後才公布);那 5 天有一天沒資料 = 不知道(⛔ 當 0);淨報酬 = ret + dv − 0.44。`--selftest` 6 條(含零前視:進場那天改大 → 不變、前一天改大 → 變)。
+- 2026-10-31 結果:4 年 / 16 年 0 / <1% / 1~3% / 3~6% / ≥6% 每筆 +4.17 / +0.13 / +5.15 / −4.58 / +11.21% ・+1.29 / +1.80 / +0.47 / −5.88 / +8.81% → 不單調、每組太少筆 → ⛔(LAB `factor-zoo`)。
+- ⚠️ factor_zoo 的 👑 第二層讀的是**另一份**面板(`POOL_DIR`,`factor_panel.py` 的 `POOL_TOP=100` 成交額前 100 大池子)—— 換因子資料(借券 / 財報 / 新聞)時兩份面板都要重建;第一次只重建全市場那份,第二層的財報欄還是舊的 8 年。
+- 同一批(19 個專案評估 2-1 / 2-3 / 4-4,登記在 V80.1.3 那兩節):收縮排序 `RANKBY=shrink` 4 年 K=4 / 8 / 16 / 32 −25 / +9 / −2 / −60 萬(0 / 15 / 4 / 0 / 17)、16 年 K=4 +42(17/17)、K=8 +134(17/17)、K=16 {SHRINK16}、K=32 沒跑 → K=8 兩段都過 13/17,但 4 年左右兩格都輸 = 孤峰 → ⛔(LAB `lower-bound`)。
+  跟大盤多像 `corr_bucket_probe`:4 年不像(< 0.2)那組 −1.02%(0/17)、16 年 +1.98%(17/17)→ 兩段相反 → ⛔(LAB `corr-bucket`)。機器學習擋單 `ump_wf_probe`:16 年 12 個測試年 0 年贏隨機擋 → ⛔(LAB `myth-ml`)。
+- ⏭️ news_deep 回補到 2015 之後重跑 factor_zoo(新聞欄);空頭走完一次再重跑借券那兩支。
+
 ### 🛬 V80.1.3(2026-10-31)`scripts/parking_apron_probe.mjs`(停機坪)+ `scripts/bestfour_probe.mjs` 精確版(19 個專案評估 4-1 / 4-3)
 - 停機坪:15 天收盤新高的漲停(lib_limit,2015-06 前 7%)之後 N=2/3/4 天開收都在漲停收盤之上、實體 < 2/3/4%、單日 ±5% → 隔天開盤買、抱 5/10/20 天;對照 = 同一天全部股票 **+ 同一天全部 🧬**(⛔ 只比全部股票會把 🧬 的優勢算到型態頭上,selftest ⑪ 決定性對照)。跑法 `DATA_DIR=<d16> node scripts/parking_apron_probe.mjs out.json`(約 30 秒)。
 - 四大買點精確版:`bestfour_probe.mjs` 多 B2x(收盤高過昨天開盤)與 GRSx(最近 5 天三六乖離都 < 0、最低在 1~2 天前)。事件改存兩條數字陣列(16 年 14 條規則約 4 千萬筆,存物件會爆);跑法 `DATA_DIR=<d16> node --max-old-space-size=3000 scripts/bestfour_probe.mjs out.json`(約 2 分)。
