@@ -34,7 +34,9 @@ const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     ck(HOT_DEFAULT === 'mean' && HOT_RULES.mean.z === 0 && HOT_RULES.mean.minN === 8 && HOT_RULES.lb.z === 1.28 && HOT_RULES.lb.top === 2, '① 現行 = 照平均・≥8 次;舊的 = 保守下界 1.28・一檔 2 招');
     const AT = fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8'), AL = fs.readFileSync(path.join(ROOT, 'alert_system.py'), 'utf8');
     ck(/from lib_hotrule import hot_rule, rule_rows, rule_key/.test(AT) && /HOT_RULE = hot_rule\(os\.getenv\('HOT_RULE'\)\)/.test(AT) && /rule_rows\(j\.get\('picks'\) or \[\], HOT_RULE\)/.test(AT), '① auto_trade.py 讀 lib_hotrule(⛔ 不另寫一份)');
-    ck(/from lib_hotrule import hot_rule, rule_rows, rule_key/.test(AL) && /rule_rows\(picks, rule\)/.test(AL), '① alert_system.py 讀 lib_hotrule');
+    // 🧬 V80.0.9 alert_system 改走 lib_hotrule.deck_pick(= 決策台那條篩選;deck_pick 自己呼叫 rule_rows)
+    const LH = fs.readFileSync(path.join(ROOT, 'lib_hotrule.py'), 'utf8');
+    ck(/from lib_hotrule import [^\n]*deck_pick/.test(AL) && /deck_pick\(picks, hot_rule\(os\.getenv\('HOT_RULE'\)\)/.test(AL) && /def deck_pick[\s\S]*?rule_rows\(picks, rule\)/.test(LH), '① alert_system.py 讀 lib_hotrule(deck_pick → rule_rows)');
 }
 
 // 合成名單:同一檔兩招、新 / 舊排法名次不同

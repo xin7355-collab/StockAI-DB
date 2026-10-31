@@ -22,6 +22,10 @@
  *    ・六脈點火 / 熄火只在實驗室模式(V79.0.3 那條當時漏了這處)
  *    ・設定「嚴格提醒」關掉(`alertStrict === false`)= 舊行為:那些照樣跳(⭐ 決定性對照,同一份資料)
  *    INJECT=6:低基期起漲換回 trigger + 舊文字 → ⑥ 必須紅;INJECT=7:六脈拿掉實驗室守門 → ⑥ 必須紅。
+ * ⑧ V80.0.9 Cloudflare Telegram 推播(cloud-worker/worker.js)⛔ 不可再下沒回測過的買賣指令(使用者:「一直跌也叫我買,這樣對嗎?」):
+ *    「朱家泓 5MA 進場訊號 + 進場 / 停損 / 目標價」「漲 7% 借建倉訊號範本」「主力強買盤:空手可拉回低接」「漲停:賣半碼鎖利」
+ *    「到價:出 1/3 鎖利」「ETF 跟單 高勝率」「全市場戰略選股」「AI 短評給操作建議」→ 一律只描述 + 共用一句 HOW_NOTE。
+ *    INJECT=9:5 日線那則塞回「進場:」→ ⑧ 必須紅。
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
@@ -169,6 +173,22 @@ if (m) {
     ok('⑦c 只描述波動 + 手上的照出場規則走', /波動通常比較大/.test(er) && /照你的出場規則走/.test(er));
     const code = src.split('\n').map(x => x.replace(/^\s*\/\/.*$/, '')).join('\n');
     ok('⑦d 那支沒扣大盤的 _earningsHistoryReaction 已刪(⛔ 不可復活)', !/_earningsHistoryReaction\s*\(/.test(code));
+}
+
+// ⑧ 🔕 V80.0.9 Cloudflare Telegram 推播只描述(⛔ 註解不算,行尾註解也不算)
+{
+    let wk = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8');
+    if (INJ === '9') { wk = wk.replace("        `📈 量是 5 日均量的 *${volRatio?.toFixed(1)}×*`,", "        `📈 量是 5 日均量的 *${volRatio?.toFixed(1)}×*`,\n        `🎯 進場:盤中拉回 5MA 附近`,"); console.log('💉 INJECT=9:5 日線那則塞回「進場:」→ ⑧ 必須紅'); }
+    const code = wk.split('\n').filter(l => !/^\s*(\/\/|\/\*|\*)/.test(l)).map(l => l.replace(/[ \t]+\/\/[^\n]*$/, '')).join('\n');
+    ok('⑧ 空過守門:讀得到 worker 的推播範本', /function tplChu5MA\(/.test(code) && /function tplLimitUpDown\(/.test(code) && code.length > 50000, code.length);
+    const BAN8 = /進場:|進場點|建倉訊號|低接|出半碼|留半碼|賣半碼|鎖利|放空|別接刀|立刻全出|分批落袋|高勝率|中勝率|戰略選股|操作建議|順勢|減碼追蹤/;
+    ok('⑧a worker 推播 ⛔ 進場價 / 低接 / 鎖利 / 放空 / 「操作建議」/ 高勝率 / 戰略選股', !BAN8.test(code), (code.match(BAN8) || [])[0]);
+    ok('⑧b 共用一句 HOW_NOTE(5 日線 / 獵殺清單 / 獵鷹 / 盤中大漲 / 外盤內盤 / ETF 都接)', (code.match(/HOW_NOTE/g) || []).length >= 8, (code.match(/HOW_NOTE/g) || []).length);
+    ok('⑧c 盤中大漲 ⛔ 再借「建倉訊號」範本(以前漲 7% 就附進場 / 目標價)', /tplSurge\(label, sym, close, pct, surgeTh\)/.test(code) && !/tplFalcon\(label, sym, Math\.round\(fs \|\| 0\)/.test(code));
+    ok('⑧d calcLevels(進場 ±1% / 停損 / 目標 +10%)與沒呼叫端的舊範本 / 舊排程 ⛔ 不可復活',
+       !/function (calcLevels|tplInventoryStop|tplAttention|runOvernightUS|runMidday|runMonitorChuMorningScan)\(/.test(code));
+    ok('⑧e 17:00 AI 短評 ⛔ 叫 AI 給操作建議', /⛔ 不可給買賣/.test(code) && !/明日操作節奏建議|直接給操作建議/.test(code));
+    ok('⑧f 庫存提醒照留(−5% 硬停損 / 5 日線 / +20%),尾巴 ⛔ 再寫「跌破 5MA = 紀律停損」', /已破 -5% 停損線/.test(code) && /跌破 5日均價/.test(code) && /已達 \+20%/.test(code) && !/5MA = 紀律停損/.test(code));
 }
 
 const browser = await chromium.launch({

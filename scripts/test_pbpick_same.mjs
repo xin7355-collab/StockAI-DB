@@ -1,4 +1,5 @@
 // 🧬 V79.4.7 「今天可以買的」三處同一條規則:決策台 `_deckBuyOf` / 尾盤提醒 `_eodTriggerSweep` / auto_trade.py `fetch_picks`
+// 🧬 V80.0.9 第四處:Telegram alert_system.py(晚上作戰清單 + 13:20 尾盤買點)—— 以前只排序不擋,會推決策台不會列的(使用者:「一直跌也叫我買」)
 //
 // 🚨 為什麼要這支:V73.2.9 起 🧬 是**必要條件**(不挑它整套輸給 0050),決策台改了,
 //    但尾盤提醒與 auto_trade.py 還是「🧬 排前面、不擋」→ 🧬 不夠 2 檔時會推 / 買**非 🧬** 的(陷阱 #37);
@@ -53,6 +54,18 @@ print(json.dumps([p['s'] for p in picks[:A.MAX_PICKS]]))
     try { return JSON.parse(r.stdout.trim().split('\n').pop()); } catch (_) { return { err: (r.stderr || r.stdout || '').slice(-400) }; }
 };
 
+// alert_system.py:同一份清單走真的 `_rank_picks`(= lib_hotrule.deck_pick)取前 MAX_PICKS 檔
+const alPick = list => {
+    const code = `
+import sys, json
+sys.path.insert(0, ${JSON.stringify(ROOT)})
+import alert_system as A
+print(json.dumps([str(p['s']) for p in A._rank_picks(json.loads(${JSON.stringify(JSON.stringify(list))}))[:A.MAX_PICKS]]))
+`;
+    const r = spawnSync('python3', ['-c', code], { encoding: 'utf8', timeout: 60000 });
+    try { return JSON.parse(r.stdout.trim().split('\n').pop()); } catch (_) { return { err: (r.stderr || r.stdout || '').slice(-400) }; }
+};
+
 const _exec = '/opt/pw-browsers/chromium';
 const browser = await chromium.launch({ ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}), args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const page = await browser.newPage();
@@ -65,12 +78,16 @@ const deckPick = async list => page.evaluate(j => { app._mySyms = () => new Set(
     const d = await deckPick(LIST_A), p = pyPick(LIST_A);
     ck(JSON.stringify(d) === JSON.stringify(['1111', '4444']), `① 決策台前 2 名 = 1111, 4444(非 🧬 的 3333、自己空頭的 2222 都不給)— 實得 ${JSON.stringify(d)}`);
     ck(JSON.stringify(p) === JSON.stringify(d), `① auto_trade 前 2 名 == 決策台 — 實得 ${JSON.stringify(p)}`, JSON.stringify(p));
+    const a = alPick(LIST_A);
+    ck(JSON.stringify(a) === JSON.stringify(d), `① Telegram alert_system 前 2 名 == 決策台(V80.0.9)— 實得 ${JSON.stringify(a)}`, JSON.stringify(a));
 }
 // ② 決定性對照:🧬 只剩 1 檔(1111;2222 空頭、3333 / 6666 不是 🧬)→ 兩邊都只給 1 檔
 {
     const d = await deckPick(LIST_B), p = pyPick(LIST_B);
     ck(JSON.stringify(d) === JSON.stringify(['1111']), `② 決策台只給 1111(⛔ 不補非 🧬)— 實得 ${JSON.stringify(d)}`);
     ck(JSON.stringify(p) === JSON.stringify(['1111']), `② auto_trade 只給 1111(舊版會補 3333 / 2222)— 實得 ${JSON.stringify(p)}`, JSON.stringify(p));
+    const a = alPick(LIST_B);
+    ck(JSON.stringify(a) === JSON.stringify(['1111']), `② Telegram alert_system 只給 1111(V80.0.9 以前會補 3333 / 2222)— 實得 ${JSON.stringify(a)}`, JSON.stringify(a));
 }
 // ③ 尾盤提醒的掃描名單走同一個濾網
 {
@@ -80,6 +97,41 @@ const deckPick = async list => page.evaluate(j => { app._mySyms = () => new Set(
     ck(/_pbSort\(list, mine\)\.filter\(x => this\._hqOf\(x\) === 1 && !x\.bear\)/.test(body), '③ 尾盤提醒:_pbSort 之後接「🧬 + 這一檔自己不是空頭」(跟 _deckBuyOf 同一條)');
     const dk = src.indexOf('_deckBuyOf(j) {'), dbody = dk > 0 ? src.slice(dk, src.indexOf('\n    },', dk)) : '';
     ck(/this\._hqOf\(x\) === 1 && !x\.bear/.test(dbody), '③ 決策台 _deckBuyOf 還是同一條(⛔ 一邊改了另一邊沒改)');
+}
+// ④ 🐻 V80.0.9 尾盤提醒實跑(假資料、假時鐘、假報價):① 空頭守門開 + 嚴格空頭 → ⛔ 不推;關著 → 照推(決定性對照)
+//    ② 只看決策台那 2 檔:前 2 名沒成立、第 3 名成立 → ⛔ 不推第 3 名;同一檔分數拉高排進前 2 → 會推(決定性對照)
+{
+    const run = async (opt) => page.evaluate(async (o) => {
+        const pushed = [];
+        app._mySyms = () => new Set();
+        app._isLead = () => false;
+        app.settings.watchlistAlert = true;
+        app.settings.bearGate = o.gate;
+        try { Object.defineProperty(Notification, 'permission', { get: () => 'granted', configurable: true }); } catch (_) {}
+        app._tpeMinutes = () => ({ wd: 'Wed', min: app._EOD_FROM + 2 });
+        app._eodBusy = false;
+        app._kbarFiredToday = () => false;
+        app._pbRecordFire = () => {};
+        app._pbGrade = () => ({ top: false });
+        app._lotsForPlaybook = () => ({ acc: 0 });
+        app._loadPlaybookEdge = async () => ({ data_date: '2026-10-30', picks: o.picks, mkt: { bear60: o.bear, d: '2026-10-30', c: 100, ma20: 99, ma60: 101 } });
+        app.fetchFugleData = async () => ({ price: 100 });
+        app._pbExactCheck = async (sym) => ({ fired: o.fire.includes(sym), stop: 95, price: 100 });
+        app._fireAlert = (title, body, sym) => { pushed.push(String(sym)); };
+        await app._eodTriggerSweep();
+        return pushed;
+    }, opt);
+    const P = (s, lb) => ({ s, k: '💪 發動棒破昨高', lb, exp: lb, rank: 92, vol: 75, hq: 1, bear: 0, trig: 100, stop: 95, c: 98, v: 1000 });
+    const two = [P('1111', 5), P('4444', 3)];
+    const g1 = await run({ gate: true, bear: true, picks: two, fire: ['1111', '4444'] });
+    const g0 = await run({ gate: false, bear: true, picks: two, fire: ['1111', '4444'] });
+    ck(g1.length === 0, `④ 空頭守門開 + 大盤嚴格空頭 → 尾盤提醒 ⛔ 不推(決策台寫「今天不開新倉」)— 實推 ${JSON.stringify(g1)}`);
+    ck(JSON.stringify(g0) === JSON.stringify(['1111', '4444']), `④ 決定性對照:守門關(預設)→ 照推決策台那 2 檔 — 實推 ${JSON.stringify(g0)}`);
+    const three = [P('1111', 5), P('4444', 4), P('5555', 3)];
+    const t1 = await run({ gate: false, bear: false, picks: three, fire: ['5555'] });
+    const t2 = await run({ gate: false, bear: false, picks: [P('1111', 5), P('4444', 4), P('5555', 9)], fire: ['5555'] });
+    ck(t1.length === 0, `④ 只看決策台那 2 檔:第 3 名成立 → ⛔ 不推(以前掃前 8 筆會往下補)— 實推 ${JSON.stringify(t1)}`);
+    ck(JSON.stringify(t2) === JSON.stringify(['5555']), `④ 決定性對照:同一檔分數拉高排進前 2 → 會推 — 實推 ${JSON.stringify(t2)}`);
 }
 await browser.close();
 console.log(FAIL.length ? `\n❌ ${FAIL.length} 條失敗` : '\n✅ 全過');

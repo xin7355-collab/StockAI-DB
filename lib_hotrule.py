@@ -49,3 +49,39 @@ def rule_key(p, rule):
     if v is None:
         v = _num(b)
     return v if v is not None else 0.0
+
+
+# 🧬 V80.0.9 決策台「今天可以買的」那條篩選(= index `_deckBuyOf` / auto_trade `fetch_picks`):
+#   只留這套規則的列 → 🧬 排前面 → 這套規則的值 → 同一檔只留最好那一招 → 🧬 而且這一檔自己不是空頭。
+#   以前 Telegram(alert_system)只排序不擋 → 🧬 不夠 2 檔、或這一檔自己空頭時,照樣推「買點到了」(陷阱 #37)。
+#   ⛔ 少了「自己手上的優先」那一層(雲端讀不到 App 的自選 / 庫存)。test_pbpick_same 跨檔比對決策台 / auto_trade / alert_system。
+#   ⚠️ auto_trade.py 自己有一份 gene_hq(會動真錢,⛔ 不為了共用去動它)—— 兩份由 test_pbpick_same 同一份清單比對。
+GENE_RANK = 85   # 🧬 一年位階門檻(= index `_GENE_RULE.rank`;舊的是 75,環境變數 GENE_RANK=75 換回)
+GENE_VOL = 60    # 🧬 年化波動率門檻(= index `_GENE_RULE.vol`)
+
+
+def gene_rank(env=None):
+    """環境變數 GENE_RANK → 85(預設)/ 75(換回舊的);其他值一律當預設(同 auto_trade)。"""
+    return 75 if str(env or '').strip() == '75' else GENE_RANK
+
+
+def gene_hq(p, rank=GENE_RANK):
+    """🧬 這一筆是不是強勢高波動:清單帶 rank / vol 就用它算(設定換門檻時跟著變),沒帶就退回採礦端標的 hq。"""
+    r, v = _num(p.get('rank')), _num(p.get('vol'))
+    if r is not None and v is not None:
+        return 1 if (r >= rank and v >= GENE_VOL) else 0
+    return 1 if p.get('hq') else 0
+
+
+def deck_pick(picks, rule, rank=GENE_RANK):
+    """決策台那條篩選:回「🧬 而且這一檔自己不是空頭」的名單(同一檔只留最好那一招),順序 = 決策台的順序。
+    呼叫端取前 N 檔(N = 一天最多買幾檔)就是決策台「今天可以買的」。"""
+    rows = sorted(rule_rows(picks, rule), key=lambda p: (-gene_hq(p, rank), -rule_key(p, rule)))   # 穩定排序:同分照採礦端順序
+    out, seen = [], set()
+    for p in rows:
+        s = str(p.get('s') or '')
+        if not s or s in seen:
+            continue
+        seen.add(s)
+        out.append(p)
+    return [p for p in out if gene_hq(p, rank) == 1 and not p.get('bear')]

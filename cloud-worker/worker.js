@@ -114,79 +114,55 @@ function tplDeepLink(sym) {
 const SEP = '━━━━━━━━━━━━━━━━━━━━';
 
 
-// V21.3 ── 計算進場/停損/目標價(統一規則,避免每個模板自己算)
-//   進場區:現價 ± 1%(寬鬆;盤中追價或拉回都接得到)
-//   停損:現價 × 0.95(-5%)  ← 對齊朱家泓紀律(3~10%、常用 -5%)
-//   目標:現價 × 1.10(+10%) ← 對齊朱家泓短線停利目標 +10%
-function calcLevels(price) {
-    const p = Number(price);
-    if (!Number.isFinite(p) || p <= 0) return null;
-    const entryLow  = (p * 0.99).toFixed(2);
-    const entryHigh = (p * 1.01).toFixed(2);
-    const stop      = (p * 0.95).toFixed(2);
-    const target    = (p * 1.10).toFixed(2);
-    return { entryLow, entryHigh, stop, target };
-}
+// 🔕 V80.0.9 盤中推播一律只描述(使用者:「一直跌也叫我買,這樣對嗎?」)——
+//   以前 calcLevels 幫「建倉訊號 / 朱家泓 5MA 進場」附「進場 ±1%・停損 −5%・目標 +10%」,那些條件**從來沒有回測過**,
+//   而真的會買的只有 App 決策台那 2 檔(🧬 + 觸發價,Telegram 20:00 / 13:20 那兩則)。→ calcLevels 已刪,推播 ⛔ 不附任何進場 / 目標價。
+//   每一則只講「發生了什麼」+ 共用的 `HOW_NOTE`(要不要買照決策台;手上的照你的出場規則走)。test_nodirective ⑧ 釘住。
+const HOW_NOTE = '📌 這是描述,⛔ 不是買賣訊號(沒有回測過)。要不要買照 App 決策台;手上的照你的出場規則走。';
 
-// V21.3 ── 7 個事件模板生成器(全部回傳 Markdown 字串,呼叫者用 tgWithLevel 發)
-//   每則三段式:核心數字 → 明確操作 → 為什麼觸發(3 條理由) → 深連結
+// V21.3 ── 事件模板生成器(全部回傳 Markdown 字串,呼叫者用 tgWithLevel 發)
+//   每則:核心數字 → 怎麼看(HOW_NOTE)→ 深連結
 
 function tplFalcon(label, sym, score, price, reasons) {
-    const lv = calcLevels(price);
-    const lvBlock = lv
-        ? `🎯 *操作建議*\n  ▸ 進場:${lv.entryLow} ~ ${lv.entryHigh} 區間\n  ▸ 停損:${lv.stop}(-5%)\n  ▸ 目標:${lv.target}(+10%)`
-        : `🎯 *操作建議*\n  ▸ 等明日 9:00 開盤定價`;
     const why = (reasons && reasons.length)
-        ? `💡 *為什麼觸發?*\n${reasons.slice(0, 3).map((r, i) => `  ${['①','②','③'][i]} ${r}`).join('\n')}`
-        : `💡 系統綜合條件達標(細節看完整分析)`;
+        ? `💡 *亮了哪幾項*\n${reasons.slice(0, 3).map((r, i) => `  ${['①','②','③'][i]} ${r}`).join('\n')}`
+        : '';
     return [
-        `🦅 *【建倉訊號 ★★★】${label}*`,
+        `🦅 *【獵鷹分偏高】${label}*`,
         SEP,
-        `📊 獵鷹分 *${score}/100* — 極高`,
+        `📊 獵鷹分 *${score}/100*`,
         Number.isFinite(price) ? `💰 現價 *${price}* 元` : '',
-        '',
-        lvBlock,
-        '',
         why,
         '',
+        HOW_NOTE,
+        '',
         `📱 [看完整分析](${tplDeepLink(sym)})`,
-    ].filter(Boolean).join('\n');
+    ].filter(x => x !== '').join('\n');
 }
 
-function tplInventoryStop(label, sym, cost, price, ret, type) {
-    const isProfit = type === 'tp';
-    const icon = isProfit ? '💰' : '🛑';
-    const title = isProfit ? '庫存停利線觸發 ★★★' : '庫存停損線觸發 ★★★';
-    const action = isProfit
-        ? `🎯 *操作建議*\n  ▸ 出 1/2 鎖利(現價賣 50%)\n  ▸ 留半碼追蹤,若跌破成本就全出\n  ▸ 不要貪心等回檔,先拿走+20%`
-        : `🎯 *操作建議*\n  ▸ *立刻全出*,不要凹單\n  ▸ 朱老師心法:-8% 是硬停損,不討價還價\n  ▸ 出場後觀察,確認止跌再考慮接`;
+/** 🚀 V80.0.9 盤中大漲(以前借用 tplFalcon → 「建倉訊號 ★★★ + 進場 / 目標價」,漲 7% 就叫人追)*/
+function tplSurge(label, sym, price, pct, th) {
     return [
-        `${icon} *【${title}】${label}*`,
+        `🚀 *【盤中大漲 ★★】${label}*`,
         SEP,
-        `📊 損益 *${ret >= 0 ? '+' : ''}${ret.toFixed(1)}%*`,
-        `💰 成本 *${cost}* → 現價 *${price}*`,
+        `💰 現價 *${price}* 元(*+${pct.toFixed(2)}%*,超過你設的 ${th}%)`,
         '',
-        action,
+        HOW_NOTE,
         '',
         `📱 [看完整分析](${tplDeepLink(sym)})`,
     ].join('\n');
 }
 
+// 🗑️ V80.0.9 `tplInventoryStop`(「立刻全出 / −8% 是硬停損 / 出 1/2 鎖利」)已刪 —— 沒有呼叫端,而且跟現行硬停損 −5% 打架。
+
 function tplChu5MA(label, sym, price, ma5, volRatio) {
-    const lv = calcLevels(price);
     return [
-        `🎯 *【朱家泓 5MA 進場訊號 ★★】${label}*`,
+        `📈 *【帶量站上 5 日線】${label}*`,
         SEP,
-        `📊 收 *${price}* > 5MA *${ma5?.toFixed(2)}*`,
-        `📈 量增 *${volRatio?.toFixed(1)}×* 5日均量`,
+        `📊 現價 *${price}* > 5 日線 *${ma5?.toFixed(2)}*`,
+        `📈 量是 5 日均量的 *${volRatio?.toFixed(1)}×*`,
         '',
-        lv ? `🎯 *操作建議*\n  ▸ 進場:${lv.entryLow} ~ ${lv.entryHigh}\n  ▸ 停損:跌破 5MA *${ma5?.toFixed(2)}* 立停\n  ▸ 目標:${lv.target}(+10%)`
-           : `🎯 進場:盤中拉回 5MA 附近(${ma5?.toFixed(2)})`,
-        '',
-        `💡 *為什麼觸發?*`,
-        `  ① 整日沒跌破 5MA(主力守得住)`,
-        `  ② 紅 K 收(買盤強於賣盤)`,
-        `  ③ 量增放大(資金進駐)`,
+        HOW_NOTE,
         '',
         `📱 [看完整分析](${tplDeepLink(sym)})`,
     ].join('\n');
@@ -196,35 +172,24 @@ function tplChu5MA(label, sym, price, ma5, volRatio) {
 //   calendar_stock_probe:37 種行事曆日方向 0 個成立;crash_warn_probe:沒有一種大盤警示過關。
 //   重大事件改在 08:00 盤前簡報裡當一行描述(`premarketEventLine`),⛔ 不另發、⛔ 不給部位指令。
 
-function tplAttention(label, sym, status, endDate, daysLeft) {
-    return [
-        `⚠️ *【處置股關注 ★★】${label}*`,
-        SEP,
-        `📊 ${status}`,
-        endDate ? `📅 出獄日:*${endDate}*(剩 ${daysLeft} 天)` : '',
-        '',
-        `🎯 *操作建議*(雙刀流)`,
-        `  ▸ 跟對做:出獄前 1 日低接,博反彈(高風險高報酬)`,
-        `  ▸ 對著做:出獄當日反向放空(主力出場常崩)`,
-        `  ▸ 兩者皆不做:觀望即可,別碰`,
-        '',
-        `📱 [看完整處置分析](${tplDeepLink(sym)})`,
-    ].filter(Boolean).join('\n');
-}
+// 🗑️ V80.0.9 `tplAttention`(處置股「雙刀流:出獄前低接 / 出獄當日反向放空」)已刪 —— 沒有呼叫端;
+//   App V78.4.3 處置 / 注意股只講三件事:⛔ 看不出之後會漲會跌・手上的照出場規則走・⛔ 別用市價單。
 
 function tplLimitUpDown(label, sym, price, pct, type) {
     const isUp = type === 'up';
     const icon = isUp ? '🔴' : '🟢';
-    const title = isUp ? '漲停板 ★★★' : '跌停板 ★★★';
-    const action = isUp
-        ? `🎯 *操作建議*\n  ▸ 已持有:留半碼,賣半碼鎖利\n  ▸ 空手:*不追*(漲停隔日易拉回)\n  ▸ 等回測 5MA 再考慮接`
-        : `🎯 *操作建議*\n  ▸ 已持有:盤後檢視原因,若基本面無變化可留\n  ▸ *別接刀*(連續跌停常見)\n  ▸ 觀察隔日是否有量反彈確認止跌`;
+    const title = isUp ? '漲停 ★★★' : '跌停 ★★★';
+    // 🔕 V80.0.9 只描述(以前:「留半碼賣半碼鎖利 / 不追 / 等回測 5MA 再接」「別接刀」—— 都沒回測過,
+    //   而 App 對手上漲停股有實測過的做法 → 指路「🌅 開盤怎麼做」,⛔ 這裡不另給一套)
+    const how = isUp
+        ? `📌 手上有的:隔天開盤怎麼處理看 App 個股總覽「🌅 開盤怎麼做」;沒有的:要不要買照決策台。`
+        : `📌 手上有的:照你的出場規則走(收盤確認);⛔ 不是叫你現在賣。`;
     return [
         `${icon} *【${title}】${label}*`,
         SEP,
         `💰 現價 *${price}* 元 (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`,
         '',
-        action,
+        how,
         '',
         `📱 [看完整分析](${tplDeepLink(sym)})`,
     ].join('\n');
@@ -238,10 +203,7 @@ function tplPriceAlert(label, sym, hitPrice, livePrice, condText) {
         `📊 觸及${condText} *${hitPrice}*`,
         `💰 現價 *${livePrice}*`,
         '',
-        `🎯 *操作建議*`,
-        `  ▸ 立刻回顧當初設這個價的原因`,
-        `  ▸ 若是停利價 → 出 1/3 鎖利`,
-        `  ▸ 若是進場價 → 確認大盤無壓再進`,
+        `📌 這是你自己設的價。要做什麼照你當初設這個價的計畫;手上的照你的出場規則走。`,
         '',
         `📱 [看完整分析](${tplDeepLink(sym)})`,
     ].join('\n');
@@ -382,7 +344,7 @@ async function macroKick(env, now = Date.now(), fetchFn = fetch, dispatchFn = gh
     return { sent: !!(r && r.ok), why: r && r.why, upd, close };
 }
 
-const WORKER_VER = 'V22.7 (2026-10-23)';   // 🗓️ 排程星期欄 1-5 → MON-FRI(以前每個星期五整天沒跑)
+const WORKER_VER = 'V22.8 (2026-10-31)';   // 🔕 盤中推播只描述(⛔ 進場 / 目標價 / 低接 / 鎖利);V22.7 排程星期欄 1-5 → MON-FRI
 const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
 
 // 🗓️ V22.7 排程(⛔ 要跟 wrangler.toml 的 crons 一字不差 —— Cloudflare 傳進來的 event.cron 就是那串原文)
@@ -1430,7 +1392,7 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
                 queue.push({ stars: 3, text: tplLimitUpDown(label, sym, close, pct, 'down') });
                 await markPushed(env, user.chat_id, sym, 'limitDown');
             } else if (pct >= surgeTh && !(await wasPushed(env, user.chat_id, sym, 'surge'))) {
-                queue.push({ stars: 2, text: tplFalcon(label, sym, Math.round(fs || 0), close, [`當日漲幅 +${pct.toFixed(2)}% (≥${surgeTh}%)`]) });
+                queue.push({ stars: 2, text: tplSurge(label, sym, close, pct, surgeTh) });   // 🔕 V80.0.9 ⛔ 不再借「建倉訊號」範本
                 await markPushed(env, user.chat_id, sym, 'surge');
             } else if (pct <= -dropTh && !(await wasPushed(env, user.chat_id, sym, 'drop'))) {
                 queue.push({ stars: 2, text: `📉 *【大跌警示 ★★】${label}*\n${SEP}\n💰 現價 *${close}* (${pct.toFixed(2)}%)\n\n${_leadStock(user.settings?.strategy, sym) ? '👑 你選的策略:⛔ 不因單日大跌賣,換倉日看排名' : '🎯 照你的出場規則(硬停損 / 你設定的線 / 抱滿天數),⛔ 別憑一天的跌幅做決定'}\n\n📱 [看完整分析](${tplDeepLink(sym)})` });
@@ -1457,7 +1419,7 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
                 await markPushed(env, user.chat_id, sym, 'below5ma');
             }
             if (ret >= 20 && !(await wasPushed(env, user.chat_id, sym, 'tp20'))) {
-                invAlerts.push(`💰 ${label} 獲利 *+${ret.toFixed(1)}%*(成本 ${inv.cost} → ${close})→ 已達 +20%,可考慮分批落袋(提醒)`);
+                invAlerts.push(`💰 ${label} 獲利 *+${ret.toFixed(1)}%*(成本 ${inv.cost} → ${close})→ 已達 +20%(提醒,⛔ 不是${leadS ? '👑 換倉' : '三條出場'}的條件,照你的規則決定)`);
                 await markPushed(env, user.chat_id, sym, 'tp20');
             }
         }
@@ -1472,7 +1434,7 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
                 if (vRatio > 1.5 && breakMa5 && !(await wasPushed(env, user.chat_id, sym, 'volBreak5ma'))) {
                     // 🎯 V21.4 — 獵殺清單股 → 彙總成「獵殺買點」一則;其餘(自選/庫存)維持個別 tplChu5MA
                     if (monitorSet.has(sym)) {
-                        huntAlerts.push(`🎯 ${label} 現價 *${live.z}* 帶量站上 5MA *${base.ma5.toFixed(2)}*(量 *${vRatio.toFixed(1)}×*)→ 朱式進場點`);
+                        huntAlerts.push(`📈 ${label} 現價 *${live.z}* 帶量站上 5 日線 *${base.ma5.toFixed(2)}*(量 *${vRatio.toFixed(1)}×*)`);
                     } else {
                         queue.push({ stars: 2, text: tplChu5MA(label, sym, live.z, base.ma5, vRatio) });
                     }
@@ -1512,10 +1474,10 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
             if (fq && fq.bid > 0 && fq.ask > 0) {
                 const askBidRatio = fq.ask / fq.bid;
                 if (askBidRatio > 2 && !(await wasPushed(env, user.chat_id, sym, 'fugleStrongBuy'))) {
-                    queue.push({ stars: 2, text: `💪 *【主力強買盤 ★★】${label}*\n${SEP}\n外盤 ${fq.ask} / 內盤 ${fq.bid} = *${askBidRatio.toFixed(1)}×*\n💰 現價 ${live.z.toFixed(2)}\n\n🎯 *操作建議*\n  ▸ 已持有:留住,別輕易賣\n  ▸ 空手:可拉回低接\n\n📱 [看完整分析](${tplDeepLink(sym)})` });
+                    queue.push({ stars: 2, text: `💪 *【外盤遠大於內盤 ★★】${label}*\n${SEP}\n外盤 ${fq.ask} / 內盤 ${fq.bid} = *${askBidRatio.toFixed(1)}×*\n💰 現價 ${live.z.toFixed(2)}\n\n📌 這只是當下的掛單比,⛔ 不是買賣訊號。${HOW_NOTE.replace('📌 這是描述,⛔ 不是買賣訊號(沒有回測過)。', '')}\n\n📱 [看完整分析](${tplDeepLink(sym)})` });
                     await markPushed(env, user.chat_id, sym, 'fugleStrongBuy');
                 } else if (askBidRatio < 0.5 && !(await wasPushed(env, user.chat_id, sym, 'fugleStrongSell'))) {
-                    queue.push({ stars: 3, text: `🩸 *【主力強殺盤 ★★★】${label}*\n${SEP}\n內盤 ${fq.bid} / 外盤 ${fq.ask} = *${(1/askBidRatio).toFixed(1)}×*\n💰 現價 ${live.z.toFixed(2)}\n\n🎯 *操作建議*\n  ▸ 已持有:盤中先出半碼\n  ▸ 空手:絕對別接刀\n\n📱 [看完整分析](${tplDeepLink(sym)})` });
+                    queue.push({ stars: 3, text: `🩸 *【內盤遠大於外盤 ★★★】${label}*\n${SEP}\n內盤 ${fq.bid} / 外盤 ${fq.ask} = *${(1/askBidRatio).toFixed(1)}×*\n💰 現價 ${live.z.toFixed(2)}\n\n📌 這只是當下的掛單比,⛔ 不是買賣訊號。${HOW_NOTE.replace('📌 這是描述,⛔ 不是買賣訊號(沒有回測過)。', '')}\n\n📱 [看完整分析](${tplDeepLink(sym)})` });
                     await markPushed(env, user.chat_id, sym, 'fugleStrongSell');
                 }
             }
@@ -1525,11 +1487,11 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
     // 💼 V21.4 — 庫存觸發彙總成「一則」(台北時間標頭),放最前面優先送
     const tpeHM = new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 16);   // 台北 HH:MM
     if (invAlerts.length) {
-        queue.push({ stars: 3, text: `💼 *庫存盤中盤點* _${tpeHM} 台北_\n${SEP}\n${invAlerts.join('\n')}\n\n💡 朱老師心法:跌破成本 -5% 或 5MA = 紀律停損,別凹單;獲利達標分批落袋。` });
+        queue.push({ stars: 3, text: `💼 *庫存盤中盤點* _${tpeHM} 台北_\n${SEP}\n${invAlerts.join('\n')}\n\n💡 −5% 是硬停損(收盤前還在線下就尾盤賣);跌破 5 日線、+20% 只是提醒,照你的出場規則決定。` });
     }
     // 🎯 V21.4 — 獵殺清單盤中買點彙總成「一則」
     if (huntAlerts.length) {
-        queue.push({ stars: 2, text: `🎯 *獵殺清單盤中買點* _${tpeHM} 台北_\n${SEP}\n${huntAlerts.join('\n')}\n\n📋 開盤後等量穩,守 5MA 進場(跌破 5MA 立停);量若縮回別追。` });
+        queue.push({ stars: 2, text: `📈 *獵殺清單:帶量站上 5 日線* _${tpeHM} 台北_\n${SEP}\n${huntAlerts.join('\n')}\n\n${HOW_NOTE}` });
     }
 
     if (!queue.length) return;
@@ -1554,7 +1516,7 @@ async function markPushed(env, chatId, sym, type, ttl = PUSH_DEDUP_TTL) {
 // ── F1: /set <key> <value> — 用戶調閾值 ───────────────────────────────
 
 const SET_KEY_RANGES = {
-    falcon: { min: 60, max: 95, field: 'falcon_threshold', label: '🦅 獵鷹建倉分' },
+    falcon: { min: 60, max: 95, field: 'falcon_threshold', label: '🦅 獵鷹分門檻' },
     surge:  { min: 2,  max: 10, field: 'surge_threshold',  label: '🚀 大漲警戒(%)' },
     drop:   { min: 2,  max: 10, field: 'drop_threshold',   label: '📉 大跌警戒(%)' },
 };
@@ -2272,7 +2234,7 @@ async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix, mkt
     if (dnTop.length) parts.push(`*📉 自選跌幅 Top*\n${dnTop.map(r => `  ▸ ${r.label} ${formatPct(r.pct)}`).join('\n')}`);
     if (invLines.length) parts.push(`*💼 庫存今日*\n${invLines.map(l => '  ▸ ' + l).join('\n')}` + (portReturn !== null ? `\n\n總部位對成本: *${formatPct(portReturn)}*` : ''));
     if (hot.length) parts.push(`*🦅 獵鷹 ≥${falconTh}*\n${hot.map(r => `  ▸ ${r.label} 分${r.falcon}${r.tags.length ? ` (${r.tags.join('/')})` : ''}`).join('\n')}`);
-    if (topGlobal.length) parts.push(`*🎯 全市場戰略選股*\n${topGlobal.map(s => '  ▸ ' + s).join('\n')}`);
+    // 🗑️ V80.0.9 「🎯 全市場戰略選股」(top_picks)拿掉 —— 沒有回測過,而會買的只有決策台那 2 檔(20:00 明日作戰清單那則)
     parts.push(`📱 [看完整作戰指揮部](${GH_PAGES_BASE}/)`);
 
     const rawSummary = parts.join('\n\n');
@@ -2296,87 +2258,21 @@ function buildDailyPrompt(rawSummary, user) {
     return [
         '你是台股「權證小哥」風格的分析師。針對以下使用者的今日持股動態,給 2-3 句白話短評。',
         '禁止算數學(所有數字已備好);禁止套話如「以下為您分析」。',
-        '重點: ① 今天最該注意什麼  ② 明日操作節奏建議(進場/抱牢/減碼/觀望)。',
+        '重點:今天最該注意什麼(只描述發生了什麼)。⛔ 不可給買賣 / 進場 / 加碼 / 減碼 / 觀望建議(那些都沒有回測過);',
+        '要不要買照 App 決策台、手上的照使用者自己的出場規則走 —— 需要時就這樣講。',
         `使用者目前共追蹤 ${symbolCount} 檔。`,
         '',
         rawSummary,
         '',
-        '請用台股口語,2-3 句,直接給操作建議:',
+        '請用台股口語,2-3 句:',
     ].join('\n');
 }
 
 // ── V21.3: 4 段排程訊息生成 ──────────────────────────────────────────
 //   🌃 05:00 隔夜美股 / 🌅 08:30 盤前 / 🌞 12:00 午盤 / 🌆 17:00 盤後(已有)
 
-// 共用:廣播給全部用戶(過濾 muted + 按 tg_level 篩優先級)
-async function broadcastAllUsers(env, msgText, stars) {
-    let cursor = undefined;
-    while (true) {
-        const list = await env.KV.list({ prefix: 'user:', cursor });
-        for (const key of list.keys) {
-            try {
-                const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
-                if (!userData.chat_id) continue;
-                if (userData.muted_until && userData.muted_until > Date.now()) continue;
-                const userMin = PRIORITY_MIN[userData.settings?.tg_level || 'all'] || 1;
-                if (stars < userMin) continue;
-                await tg(env, userData.chat_id, msgText);
-            } catch (_) {}
-        }
-        if (list.list_complete) break;
-        cursor = list.cursor;
-    }
-}
 
-// 🌃 05:00 台北 — 隔夜美股戰報
-async function runOvernightUS(env) {
-    const t = Date.now();
-    let macro = null;
-    try {
-        const r = await fetch(`${GH_PAGES_BASE}/data/macro_risk.json?t=${t}`);
-        if (r.ok) macro = await r.json();
-    } catch (_) {}
-    if (!macro) return;
-
-    const sp500 = macro.sp500, sp500Pct = macro.sp500_chg_pct;
-    const nasdaq = macro.nasdaq, nasdaqPct = macro.nasdaq_chg_pct;
-    const vix = macro.vix;
-    const dxy = macro.dxy;
-    const fmt = (v, dec = 2) => v == null ? '--' : Number(v).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-    const pctClr = (p) => p == null ? '' : (p > 0 ? `🔴 +${p.toFixed(2)}%` : `🟢 ${p.toFixed(2)}%`);
-
-    // 對台股預判
-    let verdict, advice;
-    const usAvg = ((sp500Pct || 0) + (nasdaqPct || 0)) / 2;
-    if (usAvg > 1.0) {
-        verdict = '🟢 美股強勢 → 台股早盤偏多';
-        advice = '今天可順勢:科技股(2330/2454/3008)+ AI 概念股(廣達/緯穎/技嘉)';
-    } else if (usAvg < -1.0) {
-        verdict = '🔴 美股重挫 → 台股早盤恐開低';
-        advice = '今天保守:減碼追蹤,別接刀,等止跌訊號';
-    } else {
-        verdict = '🟡 美股平穩 → 台股看自身籌碼';
-        advice = '今天看個股表現,大盤無方向看法人態度';
-    }
-    if (vix >= 25) advice += '\n⚠️ VIX 已過 25 → 全球避險,小心黑天鵝';
-
-    const text = [
-        `🌃 *【隔夜美股戰報 ★】 ${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}*`,
-        SEP,
-        `🇺🇸 SP500 *${fmt(sp500, 0)}* (${pctClr(sp500Pct)})`,
-        `💻 NASDAQ *${fmt(nasdaq, 0)}* (${pctClr(nasdaqPct)})`,
-        `😱 VIX *${fmt(vix)}* / 💵 DXY *${fmt(dxy)}*`,
-        '',
-        `📊 *對台股預判*`,
-        `${verdict}`,
-        '',
-        `🎯 *今日操作*`,
-        advice,
-        '',
-        `📱 [看完整總經分析](${GH_PAGES_BASE}/)`,
-    ].join('\n');
-    await broadcastAllUsers(env, text, 1);
-}
+// 🗑️ V80.0.9 `runOvernightUS`(05:00 隔夜美股戰報)已刪 —— V22 起沒排程;裡面點名個股「順勢買 2330 / 2454」、「減碼追蹤,別接刀」都沒回測過。
 
 // 🌅 08:30 台北 — 盤前簡報
 async function runPreMarket(env) {
@@ -2477,128 +2373,10 @@ async function runPreMarket(env) {
     }
 }
 
-// 🌞 12:00 台北 — 午盤戰報
-async function runMidday(env) {
-    const t = Date.now();
-    const radarRes = await fetch(`${GH_PAGES_BASE}/data/radar.json?t=${t}`).catch(() => null);
-    const radar = radarRes?.ok ? await radarRes.json().catch(() => null) : null;
-    const falconMap = buildFalconMap(radar);
+// 🗑️ V80.0.9 `runMidday`(午盤戰報)已刪 —— V22 起沒排程;裡面「弱勢股已虧 5% 以上出半碼」跟現行出場規則打架。
 
-    let cursor = undefined;
-    while (true) {
-        const list = await env.KV.list({ prefix: 'user:', cursor });
-        for (const key of list.keys) {
-            try {
-                const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
-                if (!userData.chat_id) continue;
-                if (userData.muted_until && userData.muted_until > Date.now()) continue;
-                const userMin = PRIORITY_MIN[userData.settings?.tg_level || 'all'] || 1;
-                if (1 < userMin) continue;
+// 🗑️ V80.0.9 `runMonitorChuMorningScan`(朱家泓 5MA 早上推播)已刪 —— V78.1.1 起沒排程(推的是沒實測過的買點)。
 
-                const watchSyms = [...(userData.watchlist || []), ...(userData.inventory || []).map(i => i.sym)];
-                const rows = [];
-                for (const sym of watchSyms) {
-                    const s = falconMap.get(sym);
-                    if (!s) continue;
-                    const pct = Number(s.change_pct ?? s.chg_pct);
-                    if (Number.isFinite(pct)) {
-                        const label = await stockLabel(env, sym);
-                        rows.push({ label, sym, pct, close: s.close });
-                    }
-                }
-                if (!rows.length) continue;
-                const upTop = [...rows].sort((a, b) => b.pct - a.pct).slice(0, 3).filter(r => r.pct > 0);
-                const dnTop = [...rows].sort((a, b) => a.pct - b.pct).slice(0, 3).filter(r => r.pct < 0);
-
-                const text = [
-                    `🌞 *【午盤戰報 ★】 ${new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' })}*`,
-                    SEP,
-                    upTop.length ? `🚀 *自選漲幅 Top*\n${upTop.map(r => `  ▸ ${r.label} +${r.pct.toFixed(2)}% (${r.close})`).join('\n')}` : '',
-                    dnTop.length ? `\n📉 *自選跌幅 Top*\n${dnTop.map(r => `  ▸ ${r.label} ${r.pct.toFixed(2)}% (${r.close})`).join('\n')}` : '',
-                    '',
-                    `🎯 *午後操作*`,
-                    `  ▸ 強勢股:量價齊揚續抱,跌破即停利`,
-                    `  ▸ 弱勢股:已虧 5% 以上出半碼`,
-                    `  ▸ 觀察 13:00-13:25 主力動向(最後 30 分常見急拉/急殺)`,
-                    '',
-                    `📱 [看自選股完整動態](${GH_PAGES_BASE}/)`,
-                ].filter(Boolean).join('\n');
-                await tg(env, userData.chat_id, text);
-            } catch (_) {}
-        }
-        if (list.list_complete) break;
-        cursor = list.cursor;
-    }
-}
-
-// ── V17.5: 隔日 09:00 開盤 — 掃 monitorList 推朱家泓 5MA 進場觸發 ────────────
-//
-// 機制:前端 V17.4 已加「全綠燈一鍵加入監控」,使用者加完關 App 即可。
-//       本 cron 隔日 09:00 台北跑,對每 user 的 monitorList 逐檔判:
-//         整日 low ≥ ma5*0.99(整日沒跌破 5MA)+ 紅 K(close > open)+ 量 ≥ vma5*0.8
-//       觸發推 Telegram「🎯 朱老師六六大順 進場訊號觸發」+ 24h throttle 不重推
-//
-// 等同前端 _checkChu5MAEntry (index.html line 14833),確保 worker 跟前端一致判定。
-
-async function runMonitorChuMorningScan(env) {
-    let cursor = undefined;
-    let scanned = 0, sent = 0;
-    while (true) {
-        const list = await env.KV.list({ prefix: 'user:', cursor });
-        for (const key of list.keys) {
-            try {
-                const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
-                if (!userData.chat_id) continue;
-                if (userData.muted_until && userData.muted_until > Date.now()) continue;
-                // 使用者可關此功能(預設開)
-                if (userData.settings?.chuMorningPush === false) continue;
-                if (!Array.isArray(userData.monitorList) || userData.monitorList.length === 0) continue;
-                scanned++;
-                const did = await scanMonitorChuTriggers(env, userData);
-                if (did) sent++;
-            } catch (e) {
-                console.warn('[chu morning scan] user error', e?.message);
-            }
-        }
-        if (list.list_complete) break;
-        cursor = list.cursor;
-    }
-    console.log(`[chu morning scan] scanned ${scanned} users · sent ${sent} pushes`);
-}
-
-async function scanMonitorChuTriggers(env, user) {
-    const triggered = [];
-    for (const item of user.monitorList) {
-        const sym = typeof item === 'string' ? item : item?.sym;
-        if (!sym) continue;
-        try {
-            const yClose = await fetchYesterdayKLineForChu(sym);
-            if (!yClose) continue;
-            const hit = evalChu5MAEntry(yClose);
-            if (!hit) continue;
-            // throttle:同股 / chu5ma type / 24h 只推 1 次
-            if (await wasPushed(env, user.chat_id, sym, 'chu5ma')) continue;
-            triggered.push({ sym, ...hit });
-            await markPushed(env, user.chat_id, sym, 'chu5ma', 86400);
-        } catch (e) {
-            console.warn(`[chu scan] ${sym}`, e?.message);
-        }
-    }
-    if (!triggered.length) return false;
-    // V17.7.1 bugfix — tg() 用 parse_mode='Markdown',不能用 HTML <b>。改 *...* markdown 粗體
-    // 組推送(最多 5 檔,避免訊息過長)
-    const lines = triggered.slice(0, 5).map(t =>
-        `• *${t.sym}*(收 ${t.lastClose})— 站 5MA *${t.ma5}* + 紅 K + 量${t.volRatio >= 1 ? '增' : '縮'} *${t.volRatio.toFixed(1)}x*`
-    );
-    const more = triggered.length > 5 ? `\n…還有 ${triggered.length - 5} 檔(打開 App 看完整)` : '';
-    const msg =
-        `🎯 *朱老師六六大順 進場訊號觸發*\n` +
-        `(你監控的股票今早符合站穩 5MA + 紅 K + 量增條件)\n\n` +
-        `${lines.join('\n')}${more}\n\n` +
-        `📋 操作:開盤後 5-10 分等量穩,守 5MA 進(跌破 5MA 立停)`;
-    await tg(env, user.chat_id, msg);
-    return true;
-}
 
 // ════════════════════════════════════════════════════════════════════════════
 // V17.18 — ETF 跟單訊號 09:00 開盤前推送
@@ -2642,18 +2420,17 @@ async function runEtfFollowMorningPush(env) {
 
     // 4. 組訊息(Markdown)
     const date = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
-    let msg = `🌟 *ETF 跟單訊號 Top ${scored.length}* (${date} 09:00 開盤前)\n\n`;
+    let msg = `🌟 *ETF 一起加碼的股票 Top ${scored.length}* (${date} 09:00 開盤前)\n\n`;
     scored.forEach((s, i) => {
         const stars = s._score === 3 ? '✅✅✅' : '✅✅';
-        const label = s._score === 3 ? '高勝率' : '中勝率';
         const idxEmoji = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'][i] || `${i+1}.`;
-        msg += `${idxEmoji} *${s.sym} ${s.name || ''}* ${stars} (${s._score}/3 ${label})\n`;
+        msg += `${idxEmoji} *${s.sym} ${s.name || ''}* ${stars} (${s._score}/3 條件)\n`;
         msg += `   ETF×${s.etf_count} 加碼 \`${(s.shares_delta / 1000).toFixed(1)}\` 千張 · Falcon \`${s._falcon}\``;
         if (s._chip) msg += ` · 主力連買`;
         msg += `\n   昨收 \`$${s._close != null ? s._close : '—'}\`\n\n`;
     });
-    msg += `💡 跟單訊號 = ETF 共識 ∩ Falcon ≥ 70 ∩ 主力連買\n`;
-    msg += `⚠️ 僅供參考,非投資建議。實戰請看技術面 + 個股新聞`;
+    msg += `💡 三個條件:≥5 檔 ETF 一起加碼・獵鷹分 ≥ 70・主力連買\n`;
+    msg += HOW_NOTE;
 
     // 5. 推給所有訂閱使用者(用 dedup 24h)
     let cursor, sent = 0;
@@ -2701,47 +2478,4 @@ function buildConsensusFromEtfsForWorker(etfs) {
     return [...map.values()].filter(v => v.etf_count > 0).map(o => { delete o._etfs; return o; });
 }
 
-// V17.5 — 抓 gh-pages data/{sym}.json 拿昨日 OHLCV + 算 ma5/vma5
-//          (worker.js 既有 fetchVolumeBaseline 只回 ma5/vma5,本函式同時要昨日 row)
-async function fetchYesterdayKLineForChu(sym) {
-    try {
-        const url = `${GH_PAGES_BASE}/data/${encodeURIComponent(sym)}.json?t=${Date.now()}`;
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const rows = await res.json().catch(() => null);
-        if (!Array.isArray(rows) || rows.length < 5) return null;
-        const last5 = rows.slice(-5);
-        const closes = last5.map(r => Number(r.close)).filter(Number.isFinite);
-        const vols = last5.map(r => Number(r.volume)).filter(Number.isFinite);
-        if (closes.length !== 5 || vols.length !== 5) return null;
-        const yesterday = last5[4];   // 最後一根 = 昨日(剛採完的 K 線)
-        return {
-            ma5: closes.reduce((s, v) => s + v, 0) / 5,
-            vma5: vols.reduce((s, v) => s + v, 0) / 5,
-            yLow: Number(yesterday.low),
-            yClose: Number(yesterday.close),
-            yOpen: Number(yesterday.open),
-            yVol: Number(yesterday.volume),
-        };
-    } catch (_) { return null; }
-}
 
-// V17.5 — 等同 index.html line 14833 _checkChu5MAEntry,worker 版
-//          朱家泓心法:整日沒跌破 5MA(low ≥ ma5*0.99)+ 紅 K(close > open)
-//          加量增 ≥ vma5*0.8 過濾「假紅 K」(無量上漲容易回測)
-function evalChu5MAEntry(base) {
-    const { ma5, vma5, yLow, yClose, yOpen, yVol } = base;
-    if (!Number.isFinite(ma5) || ma5 <= 0) return null;
-    if (!Number.isFinite(yLow) || !Number.isFinite(yClose) || !Number.isFinite(yOpen)) return null;
-    const heldAboveMA5 = yLow >= ma5 * 0.99;
-    const isRedK = yClose > yOpen;
-    const volOk = vma5 > 0 ? (yVol >= vma5 * 0.8) : true;
-    if (heldAboveMA5 && isRedK && volOk) {
-        return {
-            ma5: ma5.toFixed(2),
-            lastClose: yClose.toFixed(2),
-            volRatio: vma5 > 0 ? yVol / vma5 : 0,
-        };
-    }
-    return null;
-}

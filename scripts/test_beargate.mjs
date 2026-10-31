@@ -49,10 +49,13 @@ ok('⑧ 🐻 兩份守門分開:App `_bearGateOn` 只認 === true(🔥 預設關
    && /_leadBearOn\(\) \{ return true; \}/.test(IDX)
    && /\nLEADER_BEAR_GATE = \(os\.getenv\('LEADER_BEAR_GATE'\) or '1'\) == '1'/.test(AT)
    && /if LEADER_BEAR_GATE and _mkt\.get\('bear60'\) is True/.test(lsSrc) && !/(^|[^_])BEAR_GATE and/.test(lsSrc), lsSrc.slice(0, 80));
-ok('⑧b 👑 兩個呼叫點都走 `_leadBearOn()`、⛔ 不再跟 🔥 的開關;🔥 那兩處(清單 / 決策台)照舊走 `_bearGateOn()`',
+// 🐻 V80.0.9 🔥 第三處:尾盤買點提醒 `_eodTriggerSweep`(以前決策台寫「今天不開新倉」、通知照推 = 兩邊講不一樣)
+const eodSrc = (IDX.match(/async _eodTriggerSweep\(\) \{[\s\S]*?\n    \},/) || [''])[0];
+ok('⑧b 👑 兩個呼叫點都走 `_leadBearOn()`、⛔ 不再跟 🔥 的開關;🔥 那三處(清單 / 決策台 / 尾盤提醒)照舊走 `_bearGateOn()`',
    (IDX.match(/this\._leadBearOn\(\) \? await this\._mktBear60\(null\)/g) || []).length === 2
    && !/this\._bearGateOn\(\) \? await this\._mktBear60\(null\)/.test(IDX)
-   && (IDX.match(/this\._bearGateOn\(\) && /g) || []).length === 2);
+   && (IDX.match(/this\._bearGateOn\(\) && /g) || []).length === 3
+   && /await this\._mktBear60\(j\)[\s\S]{0,120}if \(this\._bearGateOn\(\) && _mk && _mk\.on\) return;/.test(eodSrc), eodSrc.length);
 ok('⑧c 設定開關的勾選讀 === true(⛔ 不可 !== false:沒存過的人會被當成打開)',
    /bgEl\.checked = this\.settings\.bearGate === true;/.test(IDX) && !/bgEl\.checked = this\.settings\.bearGate !== false/.test(IDX));
 

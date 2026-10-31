@@ -18,7 +18,8 @@ import sys
 import json
 from pathlib import Path
 from datetime import datetime
-from lib_hotrule import hot_rule, rule_rows, rule_key   # 🔥 V79.4.9 名單排序規則(= scripts/lib_hotrule.mjs)
+from lib_hotrule import hot_rule, deck_pick, gene_rank   # 🔥 V79.4.9 名單排序規則(= scripts/lib_hotrule.mjs)
+#   🧬 V80.0.9 + 決策台那條篩選(🧬 而且這一檔自己不是空頭)—— 跟 App `_deckBuyOf` / auto_trade 同一條
 
 DATA_DIR = Path(__file__).parent / "data"
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
@@ -203,103 +204,85 @@ def build_summary():
 
 
 def build_watch_alerts():
-    """重大事件即時警報(只在「狀態惡化」時發,平日不吵)。
+    """重大事件即時警報(只在「狀態惡化」時發,平日不吵)。⚠️ 沒有排程,只有手動 dispatch 才會跑。
     回傳 list of str,空 list = 今日無事不發。
+    🔕 V80.0.9 只描述(同 App V79.3.5 大盤警示、worker 重大事件):`crash_warn_probe` 24 種大盤警示 0 種六關全過
+       → ⛔ 不叫人減碼 / 現金為王 / 持股先減 1/3 / 別接刀;一律「手上的照出場規則走、要不要買新的照決策台」。
     """
     alerts = []
     macro = load_json("macro_risk.json") or {}
     bubble = load_json("bubble_warning.json") or {}
-
-    # V21.3 ── 統一模板格式(三段式:核心數字 / 操作建議 / 為什麼)
     SEP = '━━━━━━━━━━━━━━━━━━━━'
+    HOW = "💡 手上的照你的出場規則走;要不要買新的照 App 決策台。這是描述,⛔ 不是叫你賣。"
 
-    # 融資 > 3200 億 ★★★
+    # 融資 > 3200 億
     # 🩹 V69.8.4 P0-4:原 margin_balance_billion 是幽靈欄位(無程式寫過→警報從沒發過),
     #    改讀 miner.py build_bubble_warning 真實輸出的 margin_leverage.total_100m(億)
     m = (bubble.get('margin_leverage') or {}).get('total_100m')
     if m is not None and m >= 3200:
-        alerts.append(
-            f"🚨 *【融資爆量警報 ★★★】*\n{SEP}\n"
-            f"📊 融資餘額 *{m} 億* (超過 3200 億警戒線)\n\n"
-            f"🎯 *操作建議*\n"
-            f"  ▸ 持有者:減碼槓桿(融資戶先還款)\n"
-            f"  ▸ 空手者:觀望,別追高\n"
-            f"  ▸ 注意盤中急殺風險(融資斷頭引發雪崩)\n\n"
-            f"💡 *為什麼?*\n"
-            f"  ① 散戶槓桿過高,大盤拉回易引發多殺多\n"
-            f"  ② 歷史高點前融資都先衝高(末升段警訊)\n"
-            f"  ③ 主力常在融資爆量時偷偷出貨"
-        )
+        alerts.append(f"⚠️ *融資餘額偏高*\n{SEP}\n📊 融資餘額 *{m} 億*(超過 3200 億):散戶槓桿偏高,大盤拉回時波動會比較大。\n\n{HOW}")
 
-    # VIX > 30 ★★★
+    # VIX > 30
     vix = macro.get('vix')
     if vix is not None and vix > 30:
-        alerts.append(
-            f"🚨 *【恐慌指數爆表 ★★★】*\n{SEP}\n"
-            f"📊 VIX *{vix}* (突破 30 = 末日恐慌)\n\n"
-            f"🎯 *操作建議*\n"
-            f"  ▸ 持有減 50% → 現金為王\n"
-            f"  ▸ 避開:航運/金融/中小型題材\n"
-            f"  ▸ 防禦:電信/民生(中華電/統一)\n\n"
-            f"💡 *為什麼?*\n"
-            f"  ① VIX > 30 歷史對應股市大底前後 1-2 週\n"
-            f"  ② 全球避險,熱錢撤離新興市場\n"
-            f"  ③ 別接刀,等紅 K 反包再考慮"
-        )
+        alerts.append(f"⚠️ *美股恐慌指數偏高*\n{SEP}\n📊 VIX *{vix}*(超過 30):恐慌很重,這幾天波動會很大。\n\n{HOW}")
 
-    # 期現比警戒 ★★
-    if macro.get('fi_ratio_alert', '').startswith('⚠️'):
-        alerts.append(
-            f"⚠️ *【外資期現異常 ★★】*\n{SEP}\n"
-            f"📊 {macro['fi_ratio_alert']}\n\n"
-            f"🎯 *操作建議*\n"
-            f"  ▸ 主力出貨訊號明確,持股先減 1/3\n"
-            f"  ▸ 新單暫緩,等期現比回正常\n"
-            f"  ▸ 留意明日盤中外資是否續空"
-        )
+    # 期現比警戒
+    if str(macro.get('fi_ratio_alert') or '').startswith('⚠️'):
+        alerts.append(f"⚠️ *外資期現比異常*\n{SEP}\n📊 {macro['fi_ratio_alert']}\n\n{HOW}")
 
     return alerts
 
 
 SEP2 = '━━━━━━━━━━━━━━━━━━━━'
-MAX_PICKS = 2          # ⭐ V73.0.0 實測:每天做 2 檔最好(6 檔 +73 萬 / 3 檔 +136 萬 / 2 檔 +171 萬)
+MAX_PICKS = 2          # 一天最多 2 檔(= App `_DECK_TRACK49.picks` / auto_trade MAX_PICKS)
 SITE = 'https://xin7355-collab.github.io/StockAI-DB/'
 
 
 def _rank_picks(picks):
-    """跟前端 `_pbSort` **同一套排序**:只留這套規則的列 → 🧬 高位階高波動優先 → 這套規則的值。
-    🔁 V79.4.9 規則讀 lib_hotrule.py(預設照這一招的平均・每一招都算;HOT_RULE=lb 換回舊的保守下界排法)。
+    """= 決策台「今天可以買的」那條篩選(`_deckBuyOf`):只留這套規則的列 → 🧬 排前面 → 這套規則的值
+    → 同一檔只留最好那一招 → **🧬 而且這一檔自己不是空頭**(lib_hotrule.deck_pick,auto_trade 同一條)。
+    🧬 V80.0.9 以前這裡只排序不擋 → 🧬 不夠 2 檔、或這一檔自己空頭時,照樣推「買點到了」,
+       而決策台根本不會列那幾檔(使用者:「一直跌也叫我買,這樣對嗎?」)。test_pbpick_same 跨檔比對。
     ⚠️ 雲端**讀不到**使用者的自選/庫存(那存在手機 localStorage)→ 少了「自己手上的優先」那一層,
        所以推播文案要誠實說「這是全市場排序」。
     """
-    rule = hot_rule(os.getenv('HOT_RULE'))
-    rows = rule_rows(picks, rule)
-    return sorted(rows, key=lambda p: (int(p.get('hq') or 0), rule_key(p, rule)), reverse=True)
+    return deck_pick(picks, hot_rule(os.getenv('HOT_RULE')), gene_rank(os.getenv('GENE_RANK')))
+
+
+def _mkt_line(j):
+    """🐻 V80.0.9 大盤狀態一行(讀名單裡採礦算好的 `mkt`,= App `_mktBear60` 同一份;⛔ 這裡不另算)。
+    只描述:嚴格空頭 = 收盤在 60 日線下而且 20 日線也在 60 日線下。⛔ 不叫人減碼 / 空手。"""
+    m = (j or {}).get('mkt') or {}
+    b = m.get('bear60')
+    f = lambda v: f"{float(v):,.0f}" if isinstance(v, (int, float)) else '—'
+    c, ma20, ma60 = m.get('c'), m.get('ma20'), m.get('ma60')
+    nums = f"(加權 {f(c)}・20 日線 {f(ma20)}・60 日線 {f(ma60)})"
+    if b is True:
+        return (f"🐻 大盤*嚴格空頭*{nums}\n"
+                f"　App 預設空頭也照買;你若在設定打開「大盤嚴格空頭不開新倉」,這幾天就不買新的。手上的照你的出場規則走。")
+    if b is False and isinstance(c, (int, float)) and isinstance(ma60, (int, float)) and c < ma60:
+        return f"⚠️ 大盤收盤在 60 日線下,但 20 日線還在 60 日線上 → *還不算空頭*{nums}"
+    if b is False:
+        return f"➖ 大盤在 60 日線上,不是空頭{nums}"
+    return ""
 
 
 def _pick_line(p, i):
-    """一檔的推播內容。⛔ 文案不可出現「開盤買」(V72.9.0 實測那樣少賺一半以上)。"""
+    """一檔的推播內容。⛔ 文案不可出現「開盤買」(V72.9.0 實測那樣少賺一半以上)。
+    🧹 V80.0.9 跟 App 尾盤提醒一樣只講怎麼做(V78.3.4 / V79.1.6):⛔ 勝率 / 平均每趟 / 「實測」字樣(研究數字在產業作戰室)。"""
     s = p.get('s')
     trig = p.get('trig')
     loose = int(p.get('loose') or 0)
     stop = p.get('stop')
-    n = p.get('n')
-    w = p.get('w')
-    lb = p.get('lb')
-    hq = int(p.get('hq') or 0)
-    bear = int(p.get('bear') or 0)
     t = f"*{i}. {stock_label(s)}* ・ {p.get('k', '')}\n"
     if loose or trig in (None, 0):
         t += "   ▸ 這招不是靠價位觸發,要盤中重算才知道\n"
     else:
         t += f"   ▸ 漲過 *{trig}* 才算成立(昨收 {p.get('c')})\n"
     if stop:
-        t += f"   ▸ 停損 {stop}\n"
-    t += f"   ▸ 這招在這檔打過 {n} 次 ・ 勝率 {w}% ・ 平均每趟 {p.get('exp')}%\n"
-    if hq:
-        t += "   ▸ 🧬 高位階+高波動(實測唯一每一關都過的條件)\n"
-    if bear:
-        t += "   ▸ ⚠️ 這檔中期趨勢偏空,別重壓\n"
+        t += f"   ▸ 停損 {stop}(收盤跌破就走)\n"
+    t += "   ▸ 🧬 高位階+高波動\n"
     return t
 
 
@@ -324,14 +307,18 @@ def build_playbook_brief():
         print(f"   ❌ playbook_edge 資料日 {dd} 已距今 {gap} 天,過期不發")
         return None
     top = _rank_picks(picks)[:MAX_PICKS]
+    if not top:
+        # 🧬 V80.0.9 名單上沒有「🧬 而且這一檔自己不是空頭」的 → 決策台明天也不會列,⛔ 不推(以前會推非 🧬 / 自己空頭的)
+        print("   ✅ 名單上沒有 🧬 而且自己不是空頭的 → 明天決策台也不會列可以買的,不發")
+        return None
+    ml = _mkt_line(j)
     msg = (f"🎯 *明天的作戰清單*\n{SEP2}\n"
-           f"全市場掃了 {j.get('scanned', '?')} 檔,{j.get('picks_syms', len(picks))} 檔有值得做的打法。\n"
-           f"⭐ *一天最多做前 2 檔就好*(實測:做 2 檔賺 171 萬、做 6 檔只剩 73 萬)\n\n")
+           + (f"{ml}\n\n" if ml else "")
+           + f"⭐ *跟 App 決策台同一份:一天最多 2 檔*\n\n")
     for i, p in enumerate(top, 1):
         msg += _pick_line(p, i) + "\n"
     msg += (f"{SEP2}\n"
             f"⛔ *不是叫你明天一開盤就買* —— 要「漲過那個價,而且撐到*尾盤 13:00~13:25* 還站得住」才進場。\n"
-            f"　 實測同一套打法只改時機:尾盤買賺 136 萬、隔天開盤買只剩 82 萬(還輸給買 0050)。\n"
             f"⚠️ 這是*全市場*排序,雲端看不到你的自選/庫存 —— App 裡的清單會把你手上的排前面。\n"
             f"👉 {SITE}")
     return msg
@@ -365,7 +352,9 @@ def build_eod_triggers():
     data = q.get('data') or {}
     picks = j.get('picks') or []
     hit = []
-    for p in _rank_picks(picks):
+    # 🧬 V80.0.9 只看決策台「今天可以買的」那 2 檔(⛔ 不再往下補第 3 名以後的 —— App 決策台與自動下單都只看前 2 名)
+    top = _rank_picks(picks)[:MAX_PICKS]
+    for p in top:
         if int(p.get('loose') or 0):
             continue                      # 這招不是靠價位 → 雲端算不出來,交給 App
         trig = p.get('trig')
@@ -388,18 +377,19 @@ def build_eod_triggers():
             hit.append(p)
         if len(hit) >= MAX_PICKS:
             break
-    print(f"   📊 掃 {len(picks)} 個候選 ・ 報價 {len(data)} 檔 ・ 觸發 {len(hit)} 檔")
+    print(f"   📊 名單 {len(picks)} 筆 → 決策台那 {len(top)} 檔 ・ 報價 {len(data)} 檔 ・ 觸發 {len(hit)} 檔")
     if not hit:
         print("   ✅ 今天沒有買點成立,不發(這是常態,⛔ 不是壞掉)")
         return None
-    msg = f"⏰ *買點到了 — 現在是尾盤,可以進場*\n{SEP2}\n"
+    ml = _mkt_line(j)
+    msg = f"⏰ *尾盤買點成立*\n{SEP2}\n" + (f"{ml}\n\n" if ml else "")
     for i, p in enumerate(hit, 1):
         msg += _pick_line(p, i)
         msg += f"   ▸ *現在 {p['_px']}*(已站上觸發價)\n\n"
     msg += (f"{SEP2}\n"
-            f"⚠️ 現在約 {now:%H:%M} —— 實測有效的進場時窗是 *13:00~13:28*,再晚就來不及了。\n"
+            f"⏰ 現在約 {now:%H:%M} —— 收盤前(*13:00~13:28*)確認還站得住再進;停損照上面那個價,收盤跌破就走。\n"
             f"⚠️ 這是*全市場*排序,雲端看不到你的自選/庫存。\n"
-            f"⛔ 一天最多做 2 檔(實測做越多賺越少)。\n"
+            f"⛔ 一天最多 2 檔。\n"
             f"👉 {SITE}")
     return msg
 

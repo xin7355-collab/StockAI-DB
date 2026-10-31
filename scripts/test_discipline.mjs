@@ -12,6 +12,8 @@
  *  ⑤ 熔斷了 → 標題列那顆鈕看得到燈
  *  ⑥ 新增持倉視窗:填了成本股數才算、超過單筆風險設定要說、沒填帳戶要說出來
  *  ⑦ 新的字 ⛔ 🔴🟢(燈號鐵則)、⛔ 研究字樣(散戶 App 鐵則,跟 test_retail_clean 同一份清單)
+ *  ⑧ V80.0.9 決策台「🧯 你的風控」一行:大盤三種狀態(嚴格空頭 / 跌破 60 日線但還不算 / 在上面)讀 `_mktBear60` 那份、
+ *     你的空頭守門設定跟著變(決定性對照:同一份大盤改設定)、有記賣出才顯示熔斷、總風險同 ②;⛔ 🔴🟢、⛔ 研究字樣;登記在 `_DECK_SECTIONS`
  * 跑法:node scripts/test_discipline.mjs
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
@@ -154,6 +156,43 @@ ok('⑥ 沒填帳戶 → ⛔ 佔帳戶幾 %、要說出來', !/佔帳戶 \d/.tes
 ok('⑦ 新的字 ⛔ 🔴🟢(燈號只代表漲跌)', R.newHtml.length > 200 && !/[🔴🟢]/u.test(R.allNew));
 const bad = badOf(R.allNew.replace(/<[^>]+>/g, ' '));
 ok('⑦ 新的字 ⛔ 研究字樣(跟 test_retail_clean 同一份清單)', !bad.length, bad.join(' '));
+// ⑧ 🧯 V80.0.9 決策台「你的風控」
+const K = await page.evaluate(() => {
+    const A = app, o = {};
+    A._isLead = () => false;
+    A.settings.accountSize = 1000000;
+    A.inventory = [{ symbol: '1234', cost: 100, shares: 1, currentPrice: 110 }];
+    const mk = (on, c, ma20, ma60) => ({ mkt: { on, c, ma20, ma60, d: '2026-10-30' } });
+    const _tl = A._tradeLogNet;
+    A._tradeLogNet = () => [];
+    A.settings.bearGate = false;
+    o.bear = A._deckRiskHtml(mk(true, 40000, 42000, 43000));
+    o.below = A._deckRiskHtml(mk(false, 44780, 47705, 46534));
+    o.up = A._deckRiskHtml(mk(false, 48000, 47705, 46534));
+    o.na = A._deckRiskHtml({});
+    A.settings.bearGate = true;
+    o.gateOn = A._deckRiskHtml(mk(true, 40000, 42000, 43000));
+    A.settings.bearGate = false;
+    const today = A.getTodayStr();
+    A._tradeLogNet = () => [{ date: today, pnlNTD: -30000 }];
+    o.brk = A._deckRiskHtml(mk(false, 48000, 47705, 46534));
+    A._tradeLogNet = _tl;
+    o.reg = (A._DECK_SECTIONS.find(c => c.k === 'risk') || null);
+    o.shown = A._deckShow().risk;
+    o.hasBox = !!document.getElementById('deckRisk');
+    return o;
+});
+const KT = h => String(h || '').replace(/<[^>]+>/g, ' ');
+ok('⑧ 嚴格空頭 → 寫「嚴格空頭」(data-deckrisk=bear)', /data-deckrisk="bear"/.test(K.bear) && /嚴格空頭/.test(KT(K.bear)), KT(K.bear).slice(0, 160));
+ok('⑧ 跌破 60 日線但 20 日線還在上面 → 寫「還不算空頭」(10/30 那種)', /data-deckrisk="below60"/.test(K.below) && /還不算空頭/.test(KT(K.below)) && !/嚴格空頭/.test(KT(K.below).split('你的設定')[0]), KT(K.below).slice(0, 200));
+ok('⑧ 在 60 日線上 → 不是空頭', /data-deckrisk="ok"/.test(K.up) && /不是空頭/.test(KT(K.up)));
+ok('⑧ 大盤還沒算出來 → 要說(⛔ 空白)', /data-deckrisk="na"/.test(K.na) && /還沒算出來/.test(KT(K.na)));
+ok('⑧ 你的設定跟著變(決定性對照:同一份大盤,守門關 → 照常買;開 → 不開新倉)', /data-deckriskgate="off"/.test(K.bear) && /照常買/.test(KT(K.bear)) && /data-deckriskgate="on"/.test(K.gateOn) && /不開新倉/.test(KT(K.gateOn)));
+ok('⑧ 沒有賣出紀錄 → ⛔ 熔斷那行;今天賠 3% → 熔斷那行出現', !/帳戶熔斷/.test(KT(K.below)) && /帳戶熔斷/.test(KT(K.brk)), KT(K.brk).slice(0, 300));
+ok('⑧ 總風險同 ②(現價 110 → 停損 95 → 15,000)', /15,000/.test(KT(K.up)), KT(K.up).slice(-260));
+ok('⑧ 登記在 _DECK_SECTIONS、預設開、決策台有容器', !!K.reg && K.reg.def === true && !K.reg.unlock && !K.reg.st && K.shown === true && K.hasBox, JSON.stringify(K.reg));
+const KA = [K.bear, K.below, K.up, K.na, K.gateOn, K.brk].join(' ');
+ok('⑧ ⛔ 🔴🟢、⛔ 研究字樣', !/[🔴🟢]/u.test(KA) && !badOf(KT(KA)).length, badOf(KT(KA)).join(' '));
 ok('⓪ 沒有 pageerror', !errs.length, errs.join(' | '));
 await browser.close();
 console.log(`\n${FAIL.length ? '❌ ' + FAIL.length + ' 項失敗' : '✅ 全部通過'}`);

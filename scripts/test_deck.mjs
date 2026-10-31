@@ -113,7 +113,9 @@ const R = await page.evaluate(async (mk) => {
     ] };
     reset(); await A.renderDeck();
     const buyEl = document.getElementById('deckBuy');
-    out.buyN = buyEl.querySelectorAll('[onclick*="app.analyze"]').length;
+    // 👆 V80.0.5 起決策台每一列是 `app._deckOpen(sym)`(整列可點、返回回到原本捲到的位置)—— 以前數 `app.analyze`,那之後一直 0 = 假紅燈;
+    //   改數「買進那幾列」本身(data-deckbuyrow),⛔ 不綁 onclick 的寫法
+    out.buyN = buyEl.querySelectorAll('[data-deckbuyrow]').length - buyEl.querySelectorAll('[data-decknear] [data-deckbuyrow]').length;
     // 👀 V78.4.0 「差一點沒入選」摺疊區刻意列出卡關的股票(標 ⛔ 今天不買)→ 只驗真的買進那幾列
     const _bc = buyEl.cloneNode(true); _bc.querySelectorAll('[data-decknear]').forEach(e => e.remove());
     out.buyHasBear = /2000|2001|2002/.test(_bc.innerHTML);
@@ -176,8 +178,8 @@ const R = await page.evaluate(async (mk) => {
     reset(); await A.renderDeck();
     // ⚠️ ⛔ 別去數「4001 出現幾次」—— 一列裡 onclick/顯示/title 都會有代號(那是在猜輸出)
     //   ⭐ 正解:把每一列的代號抽出來看是不是**兩個不同的**
-    out.dupSyms = [...document.getElementById('deckBuy').querySelectorAll('[onclick*="app.analyze"]')]
-        .map(el => (el.getAttribute('onclick').match(/analyze\('(\d+)'\)/) || [])[1]);
+    out.dupSyms = [...document.getElementById('deckBuy').querySelectorAll('[data-deckbuyrow]')]
+        .map(el => el.getAttribute('data-deckbuyrow'));
 
     out.all = txt();
     return out;

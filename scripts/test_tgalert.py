@@ -78,14 +78,22 @@ ok('⑧d ALERT_MODE 用**排程字串**對應,⛔ 不可回去用 UTC 時間判�
 
 # ── ⑤⑥ 上限與排序 ────────────────────────────────────────────────
 ok('⑤ 一天最多 2 檔', A.MAX_PICKS == 2, str(A.MAX_PICKS))
-ok('⑥ 排序用保守下界 lb(⛔ 不是原始期望值 exp)',
-   "p.get('lb')" in SRC and "int(p.get('hq')" in SRC, '')
+# 🧬 V80.0.9 排序 + 篩選一律走 lib_hotrule.deck_pick(= 決策台 `_deckBuyOf`,⛔ alert_system 不另寫一份)
+ok('⑥ 排序與篩選走 lib_hotrule.deck_pick(⛔ 不另寫一份)', 'deck_pick(picks, hot_rule(' in SRC and "int(p.get('hq')" not in SRC, '')
 _r = A._rank_picks([
     {'s': 'A', 'hq': 0, 'lb': 9.0, 'exp': 9.0},
     {'s': 'B', 'hq': 1, 'lb': 1.0, 'exp': 1.0},
     {'s': 'C', 'hq': 1, 'lb': 5.0, 'exp': 5.0},
 ])
-ok('⑥b 🧬 高位階高波動優先,同組再比保守下界', [x['s'] for x in _r] == ['C', 'B', 'A'], str([x['s'] for x in _r]))
+ok('⑥b 🧬 是必要條件(非 🧬 的 A 下界最高也 ⛔ 不給),🧬 裡照下界排', [x['s'] for x in _r] == ['C', 'B'], str([x['s'] for x in _r]))
+_r2 = A._rank_picks([
+    {'s': 'C', 'hq': 1, 'lb': 5.0, 'exp': 5.0, 'k': '招1'},
+    {'s': 'C', 'hq': 1, 'lb': 4.0, 'exp': 4.0, 'k': '招2'},
+    {'s': 'D', 'hq': 1, 'lb': 4.5, 'exp': 4.5, 'bear': 1},
+    {'s': 'E', 'hq': 1, 'lb': 3.0, 'exp': 3.0},
+])
+ok('⑥c 同一檔只留最好那一招 + 這一檔自己空頭的 ⛔ 不給(同決策台)', [(x['s'], x.get('k')) for x in _r2] == [('C', '招1'), ('E', None)],
+   str([(x['s'], x.get('k')) for x in _r2]))
 
 # ── ②③ 守門(⭐ 用注入的方式實測,⛔ 不只看程式碼有沒有那幾個字)──
 _orig = A.load_json
@@ -121,7 +129,7 @@ try:
     ok('② 🚨 即時報價超過 30 分鐘 → ⛔ 不發(舊價判買點會害人追高)', A.build_eod_triggers() is None)
     stub(pb=PB_OK, lq={'updated': A._tpe_now().isoformat(), 'data': {'1234': {'p': 999}}})
     m2 = A.build_eod_triggers()
-    ok('②b 新鮮報價 + 站上觸發價 → 有發(空過守門)', isinstance(m2, str) and '買點到了' in m2, str(m2)[:120])
+    ok('②b 新鮮報價 + 站上觸發價 → 有發(空過守門)', isinstance(m2, str) and '尾盤買點成立' in m2, str(m2)[:120])
     ok('②c 要寫出現價與時窗', m2 and '999' in m2 and '13:00~13:28' in m2)
     # 沒站上就不可發
     stub(pb=PB_OK, lq={'updated': A._tpe_now().isoformat(), 'data': {'1234': {'p': 100}}})
@@ -133,6 +141,50 @@ try:
     # 缺檔
     stub(pb=None, lq=None)
     ok('② f 兩份資料缺任一 → ⛔ 不發', A.build_eod_triggers() is None and A.build_playbook_brief() is None)
+
+    # ── 🧬 V80.0.9 跟決策台同一條:🧬 而且這一檔自己不是空頭(使用者:「一直跌也叫我買,這樣對嗎?」)──
+    LQ = {'updated': A._tpe_now().isoformat(), 'data': {'1234': {'p': 999}, '5678': {'p': 999}, '9999': {'p': 999}}}
+    P0 = PB_OK['picks'][0]
+    stub(pb={**PB_OK, 'picks': [dict(P0, hq=0, rank=50, vol=70)]}, lq=LQ)
+    ok('⑩ 🚨 不是 🧬 的(決策台不會列)→ 明日清單與尾盤買點都 ⛔ 不發', A.build_playbook_brief() is None and A.build_eod_triggers() is None)
+    stub(pb={**PB_OK, 'picks': [dict(P0, bear=1)]}, lq=LQ)
+    ok('⑩b 🚨 這一檔自己空頭(決策台不會列)→ 都 ⛔ 不發', A.build_playbook_brief() is None and A.build_eod_triggers() is None)
+    stub(pb={**PB_OK, 'picks': [dict(P0, hq=1, rank=92, vol=75, bear=0)]}, lq=LQ)
+    ok('⑩c ⭐ 決定性對照:同一檔改成 🧬 而且不是空頭 → 兩則都會發', isinstance(A.build_playbook_brief(), str) and isinstance(A.build_eod_triggers(), str))
+    # 只看決策台那 2 檔:前 2 名沒站上、第 3 名站上 → ⛔ 不往下補(舊版會推第 3 名)
+    three = [dict(P0, s='1234', lb=5.0, exp=5.0, trig=2000), dict(P0, s='5678', lb=4.0, exp=4.0, trig=2000), dict(P0, s='9999', lb=3.0, exp=3.0, trig=100)]
+    stub(pb={**PB_OK, 'picks': three}, lq=LQ)
+    ok('⑪ 🚨 尾盤只看決策台那 2 檔:前 2 名沒站上、第 3 名站上 → ⛔ 不推第 3 名', A.build_eod_triggers() is None)
+    stub(pb={**PB_OK, 'picks': [dict(three[2], lb=9.0, exp=9.0), three[0], three[1]]}, lq=LQ)
+    ok('⑪b 決定性對照:同一檔分數拉高、排進前 2 名 → 會推', '9999' in (A.build_eod_triggers() or ''))
+    # 大盤狀態一行(讀名單裡的 mkt,⛔ 這裡不另算)
+    stub(pb={**PB_OK, 'mkt': {'bear60': True, 'd': DAY, 'c': 40000, 'ma20': 42000, 'ma60': 43000}}, lq=LQ)
+    mb, me = A.build_playbook_brief() or '', A.build_eod_triggers() or ''
+    ok('⑫ 大盤嚴格空頭 → 兩則都寫「嚴格空頭」+ 預設照買 + 設定可以改', all('嚴格空頭' in x and '照買' in x and '不開新倉' in x for x in (mb, me)), mb[:200])
+    stub(pb={**PB_OK, 'mkt': {'bear60': False, 'd': DAY, 'c': 44780, 'ma20': 47705, 'ma60': 46534}}, lq=LQ)
+    mb2 = A.build_playbook_brief() or ''
+    ok('⑫b 跌破 60 日線但 20 日線還在上面 → 寫「還不算空頭」(⛔ 不可說空頭)', '還不算空頭' in mb2 and '嚴格空頭' not in mb2, mb2[:200])
+    BANNED = re.compile(r'實測|勝率|平均每趟|171 萬|136 萬|82 萬|減 ?1/3|現金為王|減碼|接刀|可以進場')
+    ok('⑬ 🧹 推播文字 ⛔ 研究數字 / 減碼指令(同 App V78.3.4 / V79.3.5)', not any(BANNED.search(x) for x in (mb, me, mb2)),
+       [BANNED.findall(x) for x in (mb, me, mb2)])
+finally:
+    A.load_json = _orig
+
+# ── 🔕 V80.0.9 重大事件(watch,只有手動 dispatch 才跑)只描述 ──────────────
+_orig = A.load_json
+try:
+    def _w(name):
+        if name == 'bubble_warning.json':
+            return {'margin_leverage': {'total_100m': 3500}}
+        if name == 'macro_risk.json':
+            return {'vix': 33, 'fi_ratio_alert': '⚠️ 期現比 3.2'}
+        return None
+    A.load_json = _w
+    W = A.build_watch_alerts()
+    ok('⑭ 空過守門:三種重大事件都有產生', len(W) == 3, len(W))
+    WB = re.compile(r'減碼|減 ?1/3|減 ?50%|現金為王|觀望|別追高|別接刀|避開|先減|新單暫緩')
+    ok('⑭b 🔕 重大事件只描述:⛔ 減碼 / 現金為王 / 觀望 / 別接刀;每則都寫「照出場規則走」',
+       not any(WB.search(x) for x in W) and all('出場規則' in x for x in W), [WB.findall(x) for x in W])
 finally:
     A.load_json = _orig
 
