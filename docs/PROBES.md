@@ -10,6 +10,11 @@
 - 2026-10-31 結果(d16・2,433 檔含下市・2010~2026):停機坪中心 −0.10pp・0/6・九格正的 1/9;🧬 比 🧬 +0.82pp・4/6・p 0.20・後半 0 → ⛔。四大買點十條 −0.07~+0.00、精確版 −0.02 / −0.06 → ⛔(LAB `parking-apron` / `grs-bestfour`)。
 - ⏭️ 走完下一次空頭再重跑一次;停機坪 🧬 那一格若變成全過,先跟 🔥 用 `PSRC=ext` 疊資金回測再談。
 
+### 🧩🤖 V80.1.3(2026-10-31)`scripts/corr_bucket_probe.mjs`(跟大盤多像分組)+ `scripts/ump_wf_probe.py`(機器學習擋單・照時間切)+ 引擎 `EXIT=chand2preK`
+- corr_bucket:`DATA_DIR=<d16> node scripts/corr_bucket_probe.mjs '<dir>/ai_base_{W}.json' out.json`(TAKEN_OUT 要先用 `TAKEN_OUT=<dir>/ai_base_{W}.json` 跑一輪 17 起點);四組 < 0.2 / 0.2~0.4 / 0.4~0.6 / ≥ 0.6,⛔ 每個起點各切分位數(組跟組不能比)。
+- ump_wf:`DATA_DIR=<d16> python3 scripts/ump_wf_probe.py '<dir>/ai_base_{W}.json' out.json`(numpy,⛔ 不用 sklearn);`BLOCK=0.3` 擋掉比例。事件層初篩,過了才接進引擎做整套資金回測。
+- chand2preK:`EXIT=chand2pre1.5`(要新建 ALLFIRE 交易快取;LIST_TRIG 可沿用 trig_mall)。
+
 ### 📏 V80.1.3(2026-10-31)`portfolio_backtest.mjs` `RANKBY=shrink` + `SHRINK_K`(19 個專案評估 2-1,小樣本收縮)
 - 排序分 = (這檔這招的總和 + K × 同一招全市場平均) ÷ (n + K);全市場平均只用訊號日以前已出場的(引擎的 mkt)。⛔ 只換排序、⛔ 換門檻;LISTK 名單也吃。`test_pbgate ⓢh`:SHRINK_K=0 == RANKBY=mean(逐位相同)、K 很大成績要變、K < 0 exit 1。
 - 跑法:L4n 共同設定 + `RANKBY=shrink SHRINK_K=4|8|16|32`,兩窗口 × 17 條,跟現行(照平均)配對比。

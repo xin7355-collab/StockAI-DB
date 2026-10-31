@@ -337,7 +337,7 @@ const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾
 const _EXIT_ALIAS = { don: 'don20', atr: 'chand2', atr2: 'chand2', trail: 'trail8' };
 const EXIT_RAW = process.env.EXIT || 'ma5';
 const EXIT = _EXIT_ALIAS[EXIT_RAW] || EXIT_RAW;
-const _EXIT_OK = /^(?:ma\d+(?:be\d+)?(?:tp\d+)?(?:rr\d+(?:\.\d+)?)?(?:half\d+)?|trail\d+|chand\d+(?:\.\d+)?(?:_p\d+)?|chandd\d+(?:\.\d+)?|atrt\d+(?:\.\d+)?|don\d+w?|plow|sar|x5_20|none|(?:ma\d+|trail\d+|none)?tm\d+_\d+)$/;
+const _EXIT_OK = /^(?:ma\d+(?:be\d+)?(?:tp\d+)?(?:rr\d+(?:\.\d+)?)?(?:half\d+)?|trail\d+|chand\d+(?:\.\d+)?(?:_p\d+)?(?:pre\d+(?:\.\d+)?)?|chandd\d+(?:\.\d+)?|atrt\d+(?:\.\d+)?|don\d+w?|plow|sar|x5_20|none|(?:ma\d+|trail\d+|none)?tm\d+_\d+)$/;
 if (!_EXIT_OK.test(EXIT)) { console.error(`🚨 EXIT=${EXIT_RAW} 不認得(別名 ${Object.keys(_EXIT_ALIAS).join('|')};合法樣式 ma5 / ma5tp10 / trail8 / chand2 / don20 / don10w / plow / sar / x5_20 / none / ma5tm5_0)`); process.exit(1); }
 if (EXIT !== EXIT_RAW) console.log(`🔁 EXIT=${EXIT_RAW} → 正規化成 ${EXIT}(App 的設定 key 對應回測的規則名)`);
 const MAXD = +(process.env.MAXD || 20);    // 最長持有幾個交易日
@@ -597,7 +597,7 @@ if (PSRC) {
     console.log(`📈 PSRC=ext:外部候選 ${Object.keys(PSRC_MAP).length.toLocaleString()} 檔 ・${n.toLocaleString()} 個訊號日(隔天收盤買)`);
 }
 const allTrades = [];        // {sym, key, inD, outD, ret, amt, entry, stop}
-let graceBlocked = 0, hsDaysAll = 0, hsHitsAll = 0, afDrop = 0;   // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)・✂️ HALFSIG:算過幾個持有日、幾天亮・🔥 afDrop:ALLFIRE 多出來但訊號日不是 🧬 → 不留的筆數
+let graceBlocked = 0, hsDaysAll = 0, hsHitsAll = 0, afDrop = 0, preHitAll = 0;   // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)・✂️ HALFSIG:算過幾個持有日、幾天亮・🔥 afDrop:ALLFIRE 多出來但訊號日不是 🧬 → 不留的筆數
 let cacheHit = false;
 // 🔄 V77.7.6 EXIT_SCHED=<json {日期:「出場:最長天數」}> + SCHED_CACHES=「出場:天數=快取路徑,…」
 //   使用者:「情勢改變時自動改成其它策略」→ 先回測「照排程換出場規則」會不會比固定用一套好。
@@ -697,7 +697,7 @@ for (const sym of SCAN_SYMS) {
         const out = [];
         // ⏳ V75.1.1 寬限期:⛔ 一定要從 `a` 拿(這段跑在**瀏覽器**裡,讀不到 Node 端的 GRACE)
         const GR = Math.max(0, +(a.grace || 0) || 0);
-        let gBlocked = 0;
+        let gBlocked = 0, preHit = 0;   // 📉 preHit:chand2pre 的「單日大跌」真的出場了幾次(空過守門用)
         // 🐻🚨 V77.6.8 強制出場日(⛔ 一定要從 `a` 拿 —— 這段跑在瀏覽器裡)
         const BD = a.bearDays ? new Set(a.bearDays) : null, FS = a.forceSell ? new Set(a.forceSell) : null;
         // ✂️ HALFSIG(⛔ 一定從 `a` 拿):每一天算一次、同一檔所有交易共用(memo)
@@ -784,10 +784,13 @@ for (const sym of SCAN_SYMS) {
                         // 🕯️ V74.3.7 Chandelier 出場(twstock-research 的做法):進場後最高收盤 − K×ATR(14)。
                         //   跟 trailN 同族但用「該股自己的波動」當回落幅度,⛔ 不是固定 %。K 用 3(它的預設)。
                         //   ATR 只用進場日之前的資料算一次(零前視;動態逐日更新 ATR 的版本另測)。
-                        const chandK = /^chand(\d+(?:\.\d+)?)(?:_p\d+)?$/.test(a.exit) ? +RegExp.$1 : 0;   // 允許小數(chand1.5 / chand2.5 做敏感度網格)
+                        const chandK = /^chand(\d+(?:\.\d+)?)(?:_p\d+)?(?:pre\d+(?:\.\d+)?)?$/.test(a.exit) ? +RegExp.$1 : 0;   // 允許小數(chand1.5 / chand2.5 做敏感度網格)
+                        // 📉 V80.1.3 `chand2pre1.5` = 吊燈之外再加「今天收盤比昨天收盤跌超過 K × ATR21(算到昨天)就收盤賣」
+                        //   (19 個專案評估 2-2,abu PreAtrNStop 的想法;⛔ 不設 pre 時一個字都不變;ATR 只用到昨天 = ⛔ 前視)
+                        const preK = chandK > 0 && /pre(\d+(?:\.\d+)?)$/.test(a.exit) ? +RegExp.$1 : 0;
                         let chandATR = 0;
                         // 📐 V77.5.9 `chand2_p10` = ATR 期數改 10(預設 14,舊輸出不變)
-                        const chandP = /_p(\d+)$/.test(a.exit) && chandK > 0 ? +RegExp.$1 : 14;
+                        const chandP = /_p(\d+)(?:pre|$)/.test(a.exit) && chandK > 0 ? +RegExp.$1 : 14;
                         if (chandK > 0) {
                             let tr = 0, k = 0;
                             for (let q = Math.max(1, eIdx - (chandP - 1)); q <= eIdx; q++) {
@@ -830,9 +833,9 @@ for (const sym of SCAN_SYMS) {
                         const chanddK = /^chandd(\d+(?:\.\d+)?)$/.test(a.exit) ? +RegExp.$1 : 0;
                         const atrtK = /^atrt(\d+(?:\.\d+)?)$/.test(a.exit) ? +RegExp.$1 : 0;
                         const stop0 = stop;                       // 初始風險(rr 用)
-                        const atrAt = j => {                      // ATR(14) 到第 j 天為止
+                        const atrAt = (j, n = 14) => {            // ATR(n) 到第 j 天為止(預設 14)
                             let tr = 0, k = 0;
-                            for (let q = Math.max(1, j - 13); q <= j; q++) {
+                            for (let q = Math.max(1, j - (n - 1)); q <= j; q++) {
                                 const h = data[q].high, l = data[q].low, pc = C(q - 1);
                                 tr += Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)); k++;
                             }
@@ -910,6 +913,7 @@ for (const sym of SCAN_SYMS) {
                             }
                             if (gx(trailPct2 > 0 && c <= peak * (1 - trailPct2 / 100))) { exitP = c; exitIdx = j; break; }
                             if (gx(chandK > 0 && chandATR > 0 && c <= peak - chandK * chandATR)) { exitP = c; exitIdx = j; break; }
+                            if (preK > 0) { const a21 = atrAt(j - 1, 21); if (gx(a21 > 0 && C(j - 1) - c > preK * a21)) { exitP = c; exitIdx = j; preHit++; break; } }
                             // 🚪 移動停利:從進場後的最高收盤回落 N% 就走(讓贏家跑,輸家照樣被 stop 砍)
                             if (j === endJ) {
                                 // 🟥 LUDEFER:時間到期那天收盤鎖漲停 → 隔天開盤賣(⛔ 資料最後一天 / 不是因為 MAXD 到期的 endJ 不延)
@@ -951,6 +955,7 @@ for (const sym of SCAN_SYMS) {
         // ⏳ 把「被寬限期擋下幾次」帶回 Node 端 —— ⛔ 陣列的自訂屬性會被結構化複製丟掉,
         //    所以塞成一筆特殊列,外面收完立刻濾掉(⛔ 不可讓它混進交易清單)
         if (GR > 0) out.push({ __g: gBlocked });
+        if (preHit) out.push({ __pre: preHit });
         if (HS) out.push({ __hs: [hsDays, hsHits] });
         return out;
     }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE, stopFill: STOPFILL, luDefer: LUDEFER,
@@ -960,6 +965,7 @@ for (const sym of SCAN_SYMS) {
     const _af = ALLFIRE ? featOf(rows) : null;
     for (const t of tr) {
         if (t.__g != null) { graceBlocked += t.__g; continue; } if (t.__hs) { hsDaysAll += t.__hs[0]; hsHitsAll += t.__hs[1]; continue; }
+        if (t.__pre != null) { preHitAll += t.__pre; continue; }
         if (_af && t.seq === 0) { const f = _af.get(t.inD); if (!(f && f.rank >= RANK_MIN && f.vol >= VOLAT_MIN)) { afDrop++; continue; } }
         allTrades.push({ ...t, sym });
     }
@@ -975,6 +981,11 @@ await browser.close();
     if (GRACE > 0) {
         console.log(`⏳ 寬限期 GRACE=${GRACE}:真的擋下 ${graceBlocked.toLocaleString()} 次移動/趨勢類出場訊號`);
         if (!graceBlocked) { console.error('❌ GRACE > 0 卻一次都沒擋到出場訊號 → 這個變體沒有生效(⛔ 不是「沒差別」)'); process.exit(1); }
+    }
+    // 📉 空過守門:設了 chand…pre 卻一次都沒因為單日大跌出場 → 變體沒生效
+    if (/pre\d/.test(EXIT)) {
+        console.log(`📉 ${EXIT}:因為「單日跌超過 K × ATR21」收盤賣掉 ${preHitAll.toLocaleString()} 筆(其他照吊燈 / 硬停損 / 抱滿)`);
+        if (!preHitAll) { console.error('❌ EXIT 有 pre 卻一次都沒觸發 → 這個變體沒有生效'); process.exit(1); }
     }
     // ✂️ 空過守門:設了 HALFSIG 卻一天都沒亮 → 變體沒生效(⛔ 不是「沒差別」)
     if (HALFSIG) {
