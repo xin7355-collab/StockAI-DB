@@ -719,21 +719,50 @@ def daily_all_markets(v) -> tuple:
     return tuple(m for m in ('twse', 'tpex') if m in v.replace(' ', '').split(','))
 
 
+def _daily_all_get(url: str, tries: int = 3):
+    """全市場那份的一次下載(帶重試)→ (JSON, None, 試了幾次) 或 (None, 原因, 試了幾次)。
+    🔁 V80.1.1:openapi_daily_probe 第 4 輪上櫃那份「ChunkedEncodingError」(讀到一半斷線)→ 一次就放棄。
+       ⭐ 連線中斷 / 逾時 / 5xx / 429 / JSON 讀一半 → 等 3、6 秒(加一點亂數)再試,最多 tries 次;
+       ⛔ 403 / 404 不重試(被擋就是被擋,連打只會擋更久)。"""
+    why = ''
+    for k in range(tries):
+        if k:
+            time.sleep(3 * (2 ** (k - 1)) + random.uniform(0, 1))
+        try:
+            r = http_session.get(url, headers=_rnd_hdrs(), timeout=40)
+        except Exception as e:  # noqa: BLE001 — 連線層的錯誤一律可重試
+            why = type(e).__name__
+            continue
+        if r.status_code == 200:
+            try:
+                return r.json(), None, k + 1
+            except Exception as e:  # noqa: BLE001 — 回應讀到一半 / 不是 JSON
+                why = f'JSON 讀不出來({type(e).__name__})'
+                continue
+        why = f'HTTP {r.status_code}'
+        if r.status_code != 429 and r.status_code < 500:
+            return None, why, k + 1
+    return None, why, tries
+
+
 def fetch_daily_all(known=None, expect_date=None, markets=('twse', 'tpex')):
     """抓上市 + 上櫃全市場當日行情 → ({代號: K 棒}, [每個市場的說明])。單一市場失敗不影響另一個。"""
     bars, infos = {}, []
     for mkt, (url, _f) in _DAILY_ALL_SRC.items():
         if mkt not in markets:
             continue
+        data, why, n = _daily_all_get(url)
+        if data is None:
+            infos.append({'mkt': mkt, 'reason': why + (f'(試了 {n} 次)' if n > 1 else ''),
+                          'kept': 0, 'raw': 0})
+            continue
         try:
-            r = http_session.get(url, headers=_rnd_hdrs(), timeout=40)
-            if r.status_code != 200:
-                infos.append({'mkt': mkt, 'reason': f'HTTP {r.status_code}', 'kept': 0, 'raw': 0})
-                continue
-            got, info = parse_daily_all(r.json(), mkt, known, expect_date)
-        except Exception as e:
+            got, info = parse_daily_all(data, mkt, known, expect_date)
+        except Exception as e:  # noqa: BLE001
             infos.append({'mkt': mkt, 'reason': f'{type(e).__name__}', 'kept': 0, 'raw': 0})
             continue
+        if n > 1:
+            info = dict(info, tries=n)
         infos.append(info)
         for k, v in got.items():
             bars.setdefault(k, v)             # 同代號兩邊都有(不該發生)→ 先到的上市為準
@@ -4085,7 +4114,7 @@ def run():
     if _da_mk:
         _DA_BARS, _da_infos = fetch_daily_all(known=set(full_watchlist), expect_date=_recent10[-1], markets=_da_mk)
         for _inf in _da_infos:
-            _why = _inf.get('reason') or 'OK'
+            _why = (_inf.get('reason') or 'OK') + (f"(試了 {_inf['tries']} 次才拿到)" if _inf.get('tries') else '')
             print(f"  🌐 全市場當日 {_inf['mkt'].upper()}:回 {_inf.get('raw', 0)} 列、日期 {_inf.get('date')}、"
                   f"收 {_inf.get('kept', 0)} 檔、沒成交 {_inf.get('no_trade', 0)}、欄位有問題 {_inf.get('bad', 0)} → {_why}")
         if _DA_BARS:

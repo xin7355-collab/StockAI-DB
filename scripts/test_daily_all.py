@@ -143,6 +143,32 @@ fake([Res(200, _j.dumps(base)), Res(403, 'Forbidden')])
 bars, infos = M.fetch_daily_all(None, '2026/10/29')
 ok('上櫃 403 → 上市照收、上櫃說明寫 HTTP 403', len(bars) == 30 and infos[1]['reason'] == 'HTTP 403',
    str(infos))
+# 🔁 V80.1.1 重試:探針第 4 輪上櫃那份讀到一半斷線(ChunkedEncodingError)→ 以前一次就放棄
+import requests as _rq  # noqa: E402
+reset(); calls.clear()
+fake([_rq.exceptions.ChunkedEncodingError('Connection broken'), Res(200, _j.dumps(base))])
+bars, infos = M.fetch_daily_all(None, '2026/10/29', markets=('twse',))
+ok('🔁 讀到一半斷線 → 再試一次就拿到(兩次請求、收 30 檔、記下試了 2 次)',
+   len(calls) == 2 and len(bars) == 30 and infos[0].get('tries') == 2 and not infos[0].get('reason'),
+   f'{calls} {infos}')
+reset(); calls.clear()
+fake([_rq.exceptions.ChunkedEncodingError('Connection broken')])
+bars, infos = M.fetch_daily_all(None, '2026/10/29', markets=('twse',))
+ok('🔁 一直斷 → 最多 3 次就放棄、說明寫原因與次數',
+   len(calls) == 3 and not bars and 'ChunkedEncodingError' in infos[0]['reason'] and '3 次' in infos[0]['reason'],
+   f'{calls} {infos}')
+reset(); calls.clear()
+fake([Res(403, 'Forbidden')])
+bars, infos = M.fetch_daily_all(None, '2026/10/29', markets=('twse',))
+ok('⛔ 403 不重試(被擋就是被擋)', len(calls) == 1 and infos[0]['reason'] == 'HTTP 403', f'{calls} {infos}')
+reset(); calls.clear()
+fake([Res(503, 'busy'), Res(200, _j.dumps(base))])
+bars, infos = M.fetch_daily_all(None, '2026/10/29', markets=('twse',))
+ok('🔁 503 → 重試後拿到', len(calls) == 2 and len(bars) == 30, f'{calls} {infos}')
+reset(); calls.clear()
+fake([Res(200, _j.dumps(base)[:500]), Res(200, _j.dumps(base))])
+bars, infos = M.fetch_daily_all(None, '2026/10/29', markets=('twse',))
+ok('🔁 JSON 只讀到一半 → 重試後拿到', len(calls) == 2 and len(bars) == 30, f'{calls} {infos}')
 
 # ── ① 只補今天那根的條件 ──
 full = {'close': 10, 'volume': 5}
