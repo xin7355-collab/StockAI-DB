@@ -24,6 +24,7 @@
 - corr_bucket:`DATA_DIR=<d16> node scripts/corr_bucket_probe.mjs '<dir>/ai_base_{W}.json' out.json`(TAKEN_OUT 要先用 `TAKEN_OUT=<dir>/ai_base_{W}.json` 跑一輪 17 起點);四組 < 0.2 / 0.2~0.4 / 0.4~0.6 / ≥ 0.6,⛔ 每個起點各切分位數(組跟組不能比)。
 - ump_wf:`DATA_DIR=<d16> python3 scripts/ump_wf_probe.py '<dir>/ai_base_{W}.json' out.json`(numpy,⛔ 不用 sklearn);`BLOCK=0.3` 擋掉比例。事件層初篩,過了才接進引擎做整套資金回測。
 - chand2preK:`EXIT=chand2pre1.5`(要新建 ALLFIRE 交易快取;LIST_TRIG 可沿用 trig_mall)。
+- 2026-10-31 結果(V80.1.5,16 年 d16 全市場 ALLFIRE 交易快取,同一批進場 321 萬筆跟現行 chand2 逐筆比):21.8 萬筆(6.8%)因此提早賣,其中 70% 少賠一點但平均每筆 −0.17pp;全部攤平 −0.01pp、17 年只有 6 年較好(前後半都負)→ ⛔(LAB `myth-crashwiden`)。比對腳本在 scratch(`cmp.py`:key = 代號 + 招 + 進場日,⛔ 不比 seq);出場相同的筆報酬差 0 = 兩份快取資料一致。
 
 ### 📏 V80.1.3(2026-10-31)`portfolio_backtest.mjs` `RANKBY=shrink` + `SHRINK_K`(19 個專案評估 2-1,小樣本收縮)
 - 排序分 = (這檔這招的總和 + K × 同一招全市場平均) ÷ (n + K);全市場平均只用訊號日以前已出場的(引擎的 mkt)。⛔ 只換排序、⛔ 換門檻;LISTK 名單也吃。`test_pbgate ⓢh`:SHRINK_K=0 == RANKBY=mean(逐位相同)、K 很大成績要變、K < 0 exit 1。

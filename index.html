@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V80.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V80.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -903,7 +903,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.1.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.1.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8859,10 +8859,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V80.1.4',
+    _APP_VERSION: 'V80.1.5',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V80.1.5', d: ['🔬 產業作戰室的研究紀錄更新(大跌那天要不要先賣);這個 App 的規則沒有變'], dt: '2026-10-31' },
         { v: 'V80.1.4', d: [
             '🅿️ 設定多一格「空頭時 0050 也賣掉放現金」(預設關,在「大盤嚴格空頭時不開新倉」下面):打開後,大盤嚴格空頭那幾天,決策台會提醒你收盤前把停在 0050 的錢賣掉放現金,不是空頭了再停回去;打開時會一起打開「空頭不開新倉」。這樣長期會明顯少賺、但大跌時帳上回檔小很多,想清楚再開。自動下單不會跟著這一格做',
             '🔬 產業作戰室的研究紀錄更新(反攻條件雷達、空頭時怎麼做、借券、財報、選股排序、機器學習等幾題);這個 App 的規則沒有變',
@@ -9166,7 +9167,6 @@ ${list}
         { v: 'V79.3.8', d: ['🌅 盤前體檢分數:外資台指期、外資現貨、三大法人合計、加權自己的技術面改成「只列出來、不算進分數」(這四項對隔天開盤高低沒有幫助,算進去反而讓分數變不準);明細照樣看得到幾口、幾億', '📱 Telegram 盤前簡報的「開高 / 開低」同步:外資現貨與台指期只列出來,不算進方向分'] },
         { v: 'V79.3.7', d: ['📰 自選或手上的股票,外資突然一天買到這檔一年來最大的一筆時,專欄會跳出「外資突然大買、還漲停,可以跟嗎?」那篇(怎麼做:不用隔天去追,照原本規則走)'] },
         { v: 'V79.3.6', d: ['📰 外資台指期「急遽加空」那天,專欄會跳出「大盤在高點、新聞說外資拋售,要不要先停手?」那篇(怎麼做:照原本規則,不用因為新聞停手)'] },
-        { v: 'V79.3.5', d: ['🔕 大盤的警示(風險指數、黑天鵝、全球熔斷、量增下跌的日子、大跌時外面發生什麼)不再跳通知,只記在 🔔 鈴鐺;文字也改成只描述 —— ⛔ 不再叫你減碼、空手或全出清,手上的照你的出場規則走', '🐛 「量增下跌的日子」以前因為指數沒有成交量,一天都沒算到 → 改用成交金額;全球熔斷的提醒補上是哪一個指數', '🗑️ 拿掉一張從來沒顯示過的「大盤現在是什麼盤」卡'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
