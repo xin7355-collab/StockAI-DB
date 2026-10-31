@@ -64,6 +64,8 @@ NAMES = [
     'mg5p', 'mg20p', 'sbr',
     # G 基本面
     'revY', 'yoyAcc', 'gmY', 'epsY', 'roe4', 'acc', 'nImp', 'ttmPos12', 'ep', 'bp',
+    # H 新聞(V80.1.4,news_factor.py → NEWS=…;沒設 / 那幾天不知道 / 股名對不到 → NaN,⛔ 不當 0)
+    'nw1', 'nw5', 'nw20', 'nwAb', 'nwFst', 'nwOff5',
 ]
 K = len(NAMES)
 NI = {n: i for i, n in enumerate(NAMES)}
@@ -117,6 +119,54 @@ def rsum_strict(x, w):
     return out
 
 
+NEWS_COLS = ('nw1', 'nw5', 'nw20', 'nwAb', 'nwFst', 'nwOff5')
+
+
+def load_news(path, cal):
+    """news_factor.py 的輸出 → {'known': 面板日曆上「知道」的 0/1、'cnt': {代號: [[面板日曆索引, 則數, 盤外], …]}、'syms': 股名對得到的代號}
+    日曆照日期對(⛔ 假設兩邊索引一樣);沒設 / 讀不到 → None"""
+    raw = load(path) if path else None
+    if not raw or not isinstance(raw.get('meta'), dict):
+        return None
+    m = raw['meta']
+    ncal, pos = len(cal), {d: i for i, d in enumerate(cal)}
+    nmap = [pos.get(d, -1) for d in m.get('cal') or []]
+    known = np.zeros(ncal, dtype=bool)
+    for j, k_ in enumerate(m.get('known') or []):
+        if k_ and j < len(nmap) and nmap[j] >= 0:
+            known[nmap[j]] = True
+    cnt = {}
+    for s_, rows in (raw.get('cnt') or {}).items():
+        cnt[s_] = [[nmap[t], n_, o_] for t, n_, o_ in rows if 0 <= t < len(nmap) and nmap[t] >= 0]
+    return {'known': known, 'cnt': cnt, 'syms': set(m.get('name_syms') or cnt)}
+
+
+def news_for(news, sym):
+    """build() 每一檔用的那一份:股名對不到(多半已下市)→ None = 整欄 NaN(⛔ 當 0:已下市的本來就比較差)"""
+    if news is None or sym not in news['syms']:
+        return None
+    return news_cal(news['cnt'].get(sym, []), news['known'])
+
+
+def news_cal(rows, known):
+    """一檔 → {欄名: 日曆長度的陣列}:知道但沒新聞 = 0、不知道 = NaN。
+    nw1 當天幾則 ・nw5 / nw20 近 5 / 20 天 ・nwAb = log((近 5 天 + 1) / (前 60 天平均每 5 天 + 1))(⛔ 不含這 5 天)
+    ・nwFst = 今天有、前 250 天一則都沒有 → 1(其他 0)・nwOff5 = 近 5 天裡盤外發的(前一天收盤後 / 週末 / 開盤前)"""
+    c = np.where(known, 0.0, np.nan)
+    o = c.copy()
+    for t, n_, off in rows:
+        if 0 <= t < len(c) and known[t]:
+            c[t], o[t] = float(n_), float(off)
+    s5, s20 = rsum_strict(c, 5), rsum_strict(c, 20)
+    s60 = rsum_strict(c, 60)
+    prev60 = np.concatenate([np.full(5, np.nan), s60[:-5]]) if len(c) > 5 else np.full(len(c), np.nan)   # [t−64, t−5]
+    s250 = rsum_strict(c, 250)
+    prev250 = np.concatenate([[np.nan], s250[:-1]]) if len(c) > 1 else np.full(len(c), np.nan)          # [t−250, t−1]
+    fst = np.where(np.isfinite(prev250) & np.isfinite(c), ((c > 0) & (prev250 == 0)).astype(float), np.nan)
+    return {'nw1': c, 'nw5': s5, 'nw20': s20, 'nwAb': np.log((s5 + 1) / (prev60 / 12 + 1)), 'nwFst': fst,
+            'nwOff5': rsum_strict(o, 5)}
+
+
 def streak_pos(x):
     """連續 > 0 的天數(NaN / ≤0 中斷),逐日。"""
     out = np.zeros(len(x))
@@ -152,7 +202,7 @@ def div_factors(dates, C, divs):
     return F
 
 
-def per_stock(sym, rows, cal_pos, tw_ret, divs, fund, sample_set):
+def per_stock(sym, rows, cal_pos, tw_ret, divs, fund, sample_set, news=None):
     """一檔 → (cal_i 陣列, X[m,K], R[m,3], lock[m]);沒有可用的列回 None。"""
     recs = []
     for r in rows or []:
@@ -310,6 +360,13 @@ def per_stock(sym, rows, cal_pos, tw_ret, divs, fund, sample_set):
     put('mg5p', np.where(np.concatenate([np.full(5, np.nan), MB[:-5]]) > 0, (MB / np.concatenate([np.full(5, np.nan), MB[:-5]]) - 1) * 100, np.nan))
     put('mg20p', np.where(np.concatenate([np.full(20, np.nan), MB[:-20]]) > 0, (MB / np.concatenate([np.full(20, np.nan), MB[:-20]]) - 1) * 100, np.nan))
     put('sbr', np.where(MB > 0, SB / np.where(MB > 0, MB, 1) * 100, np.nan))
+    # ── H 新聞(日曆層級算好 → 對到這一檔有的那幾天;停牌那幾天的新聞照樣算在日曆上)──
+    if news is not None:
+        okc = ci >= 0
+        for nm_, arr in news.items():
+            a = np.full(n, np.nan)
+            a[okc] = arr[ci[okc]]
+            put(nm_, a)
 
     # ── 取樣 + 逐列的東西(streak / fpct250 / 基本面 / 報酬)──
     pick = [i for i in range(WARM - 1, n - 1) if ci[i] >= 0 and ci[i] in sample_set]
@@ -435,6 +492,7 @@ def build(data=None, out=None, verbose=True):
     if isinstance(divs_all, dict) and 'd' in divs_all and isinstance(divs_all['d'], dict):
         divs_all = divs_all['d']
     fund = load_fund(os.getenv('FUND') or '')
+    news = load_news(os.getenv('NEWS') or '', cal)
     ind = load(os.getenv('IND_MAP') or (data / 'industry_map.json')) or {}
     files = sorted(p for p in data.glob('*.json') if p.stem.isdigit() and len(p.stem) == 4 and not p.stem.startswith('0'))
     if MAX_SYMS:
@@ -442,7 +500,8 @@ def build(data=None, out=None, verbose=True):
         files = files[::step][:MAX_SYMS]                   # 等距抽樣(⛔ 不取前 N 檔 = 按產業取樣,V72.1.7)
     if verbose:
         print(f'📂 {len(files)} 檔 ・日曆 {cal[0]}~{cal[-1]}({len(cal)} 天)・每 {STRIDE} 天一個橫切面 ・暖身 {WARM} 根 ・'
-              f'除權息 {len(divs_all)} 檔 ・基本面 {len(fund)} 檔 ・產業 {len(ind)} 檔', flush=True)
+              f'除權息 {len(divs_all)} 檔 ・基本面 {len(fund)} 檔 ・產業 {len(ind)} 檔'
+              + (f' ・新聞 {len(news["syms"])} 檔(知道的交易日 {int(news["known"].sum())})' if news else ''), flush=True)
     pool_sets = pool_days(files, cal_pos, len(cal), POOL_TOP) if POOL_TOP else None
     syms, by_year = [], {}
     n_rows = n_skip = 0
@@ -455,7 +514,8 @@ def build(data=None, out=None, verbose=True):
         divs = divs_all.get(sym) if isinstance(divs_all, dict) else None
         if isinstance(divs, dict):
             divs = divs.get('h')
-        res = per_stock(sym, rows, cal_pos, tw_ret, divs, fund.get(sym), pool_sets.get(sym) if pool_sets is not None else sample_set)
+        res = per_stock(sym, rows, cal_pos, tw_ret, divs, fund.get(sym), pool_sets.get(sym) if pool_sets is not None else sample_set,
+                        news_for(news, sym))
         if res is None:
             n_skip += 1
             continue
@@ -480,7 +540,8 @@ def build(data=None, out=None, verbose=True):
                             X=np.concatenate(b['x']), R=np.concatenate(b['r']), lock=np.concatenate(b['l']))
     meta = {'names': NAMES, 'hs': list(HS), 'cal': cal, 'syms': syms, 'ind': {s: ind.get(s) for s in syms},
             'stride': STRIDE, 'offset': OFFSET, 'warm': WARM, 'rows': n_rows, 'skipped': n_skip,
-            'years': sorted(by_year), 'div_syms': len(divs_all), 'fund_syms': len(fund), 'data': str(data)}
+            'years': sorted(by_year), 'div_syms': len(divs_all), 'fund_syms': len(fund), 'data': str(data),
+            'news_syms': len(news['syms']) if news else 0, 'news_known_days': int(news['known'].sum()) if news else 0}
     (out / 'meta.json').write_text(json.dumps(meta, ensure_ascii=False), encoding='utf-8')
     if verbose:
         print(f'✅ {len(syms)} 檔(略過 {n_skip})・{n_rows:,} 列 ・{len(by_year)} 年 → {out}', flush=True)
@@ -657,6 +718,35 @@ def selftest():
         (t / '2330.json').write_text(json.dumps(big))
         ps = pool_days([t / '1101.json', t / '2330.json'], cal_pos, len(cal), 1)
         ok('⑨ 池子前 1 名:每天都是量大的 2330、1101 一天都沒有', set(ps) == {'2330'} and len(ps['2330']) >= len(cal) - 25, {k: len(v) for k, v in ps.items()})
+        # ⑩ 新聞:當天 / 近 5 天 / 第一次;不知道的日子 NaN;股名對不到整欄 NaN;零前視
+        t0 = int(cis[2])
+        nf = t / 'news.json'
+
+        def _nw(known_, cnt_):
+            nf.write_text(json.dumps({'meta': {'cal': cal, 'known': known_, 'name_syms': ['1101']}, 'cnt': {'1101': cnt_}}))
+            NW_ = load_news(str(nf), cal)
+            r_ = per_stock('1101', rows_a, cal_pos, tw_ret, None, None, ss, news_for(NW_, '1101'))
+            k_ = list(r_[0]).index(t0)
+            return NW_, r_, k_
+        NW, r_nw, k2n = _nw([1] * len(cal), [[t0, 3, 1]])
+        row, row3 = dict(zip(NAMES, r_nw[1][k2n])), dict(zip(NAMES, r_nw[1][k2n + 1]))
+        ok('⑩ 當天 3 則(盤外 1)→ nw1 3・nw5 3・nwOff5 1・前 250 天都沒有 → 第一次 = 1',
+           (row['nw1'], row['nw5'], row['nwOff5'], row['nwFst']) == (3, 3, 1, 1), {k: row[k] for k in NEWS_COLS})
+        ok('⑩ 5 天後:當天 0・近 5 天 0・近 20 天 3・不是第一次', (row3['nw1'], row3['nw5'], row3['nw20'], row3['nwFst']) == (0, 0, 3, 0),
+           {k: row3[k] for k in NEWS_COLS})
+        ok('⑩ 熱度:這 5 天 3 則、前 60 天 0 → log(4)', abs(row['nwAb'] - math.log(4)) < 1e-6, row['nwAb'])
+        hole = [1] * len(cal)
+        hole[t0 - 2] = 0
+        _, r_h, k_h = _nw(hole, [[t0, 3, 1]])
+        rh = dict(zip(NAMES, r_h[1][k_h]))
+        ok('⑩ 5 天裡有一天不知道 → nw5 / nwFst NaN(⛔ 當 0),當天照算', rh['nw1'] == 3 and not np.isfinite(rh['nw5']) and not np.isfinite(rh['nwFst']),
+           {k: rh[k] for k in NEWS_COLS})
+        ok('⑩ 股名對不到(2330 不在 name_syms)→ 整欄 NaN(⛔ 當 0)', news_for(NW, '2330') is None)
+        _, r_nw2, k2b = _nw([1] * len(cal), [[t0, 3, 1], [t0 + 1, 9, 9]])
+        same_nw = np.allclose(np.nan_to_num(r_nw[1][k2n], nan=-7), np.nan_to_num(r_nw2[1][k2b], nan=-7))
+        ok('⑩ 零前視:隔天才有的新聞 ⛔ 改到今天那一列', same_nw)
+        ok('⑩ …但 5 天後那一列看得到(注入真的有效)', r_nw2[1][k2b + 1][NI['nw5']] == 9, r_nw2[1][k2b + 1][NI['nw5']])
+        ok('⑩ 沒給新聞 → 新聞欄全 NaN(其他欄照舊)', np.all(~np.isfinite(res[1][:, [NI[c_] for c_ in NEWS_COLS]])))
         # ⑧ build():沒有 ^TWII → 不跑
         (t / '^TWII.json').unlink()
         ok('⑧ 沒有 ^TWII.json → 回 None(⛔ 不寫空面板)', build(t, t / 'out', verbose=False) is None)

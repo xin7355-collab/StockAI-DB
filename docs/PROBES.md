@@ -19,6 +19,16 @@
 - 排序分 = (這檔這招的總和 + K × 同一招全市場平均) ÷ (n + K);全市場平均只用訊號日以前已出場的(引擎的 mkt)。⛔ 只換排序、⛔ 換門檻;LISTK 名單也吃。`test_pbgate ⓢh`:SHRINK_K=0 == RANKBY=mean(逐位相同)、K 很大成績要變、K < 0 exit 1。
 - 跑法:L4n 共同設定 + `RANKBY=shrink SHRINK_K=4|8|16|32`,兩窗口 × 17 條,跟現行(照平均)配對比。
 
+### 📰 V80.1.4(2026-10-31)`scripts/news_factor.py`(新聞 → 每檔每天幾則)+ factor_panel 新聞欄 + factor_zoo 二分組
+- `news_factor.py`:news_deep 月份檔 → 每檔每個交易日「標題講到它」幾則(括號代號或股名;誤配守門 = `universal_radar._title_hits` 那一份)。
+  ⛔ 只看標題(2015~2020 鉅亨幾乎沒標代號,混用「有標代號」會讓 2021 起憑空變多)・13:30 以後 / 週末歸下一個交易日・
+  沒做完的週 / 讀不出來的月份 / 範圍外 → 不知道(NaN,⛔ 當 0)・股名對不到的代號(多半已下市)不輸出。`--selftest`(含兩種注入)。
+- `factor_panel.py` 加 `NEWS=<news_cnt.json>` → 6 欄 nw1 / nw5 / nw20 / nwAb(近 5 天 vs 前 60 天,log)/ nwFst(250 天來第一次)/ nwOff5(盤外發的);沒設全 NaN。selftest ⑩。
+- `factor_zoo_probe.py` 第一層加**二分組**:一個值佔 ≥40%(0/1、次數類)→ 五等分最低那格是空的,以前整個變因直接「n < 30 沒測」
+  (bull n=0、lu20 n=10)→ 改比「大於那個值 vs 等於那個值」,其他關卡照舊、單調那關不適用。selftest ④b~④d / ⑥(注入「關掉二分組」必紅)。
+- 跑法:`git archive origin/news_deep | tar -x -C <dir>` → `NEWS_DIR=<dir>/news_deep DATA_DIR=<d16> OUT=news_cnt.json python3 scripts/news_factor.py`
+  → factor_panel(`NEWS=news_cnt.json`)→ factor_zoo。⏭️ news_deep 補到 2015 再跑(第二層要 8 年以上)。
+
 ### 📰 V80.1.3(2026-10-31)`scripts/news_src_probe.py`(新聞來源探路)+ `scripts/news_deep.py`(回補)
 - `news_src_probe.yml` mode:quick(鉅亨翻頁 + 概念股)/ hist(回補得到多舊:個股頁翻頁・分類 + 日期區間・搜尋頁數・Google 每週窗口)/ fields(分類新聞有沒有標代號、一頁幾則)。只印、⛔ 寫檔;沙箱連不到鉅亨 / Google → 只能在 Actions 跑。
 - 2026-10-31 結果見 DECISIONS V80.1.3:分類 + 日期區間 2015 起都有、2021 起大多帶代號;個股頁 2 個月、Google 越舊越少 → 回補只走分類那條(`news_deep.py`)。

@@ -47,6 +47,7 @@ COST = 0.44
 MIN_U1, MIN_U2 = 100, 40          # 一天至少要這麼多檔才分五等分
 AMT_MIN = 0.1                      # 億 = 1,000 萬
 POOL_N = 100
+TWO_MASS = 0.4                     # 一個值佔 ≥40% → 五等分最低那格會空 → 改用二分組(V80.1.4)
 YEAR_MIN_DATES = 12
 EXTRA = ['ind_mom20', 'rel20', 'ind_pct20']      # 族群類(面板之後在這裡算:要整個橫切面)
 L2_MIN_PP, L2_YR = 1.0, 0.6                       # 第二層:每筆 ≥ +1pp、≥60% 年份同向(先寫死)
@@ -297,6 +298,7 @@ def layer1(meta, P, names, h_idx=1, stride=5, verbose=True):
     out = {}
     for uname, U, mn in (('U1', U1, MIN_U1), ('U2', U2, MIN_U2)):
         dates, qm, ic, cs = [], [], [], []
+        g2, g2t, g2b, g2c, g2v = [], [], [], [], []   # 二分組(一個值佔 ≥ TWO_MASS):大組 vs 其他、各組平均、格內版、那個值
         for a, b in zip(seg[:-1], seg[1:]):
             mu = U[a:b]
             if mu.sum() < mn:
@@ -318,6 +320,7 @@ def layer1(meta, P, names, h_idx=1, stride=5, verbose=True):
             q_row = np.full((K, 5), np.nan)
             ic_row = np.full(K, np.nan)
             cs_row = np.full(K, np.nan)
+            g2_row, g2t_row, g2b_row, g2c_row, g2v_row = (np.full(K, np.nan) for _ in range(5))
             for j in range(K):
                 x = X[idx, j].astype(float)
                 m = np.isfinite(x)
@@ -337,25 +340,51 @@ def layer1(meta, P, names, h_idx=1, stride=5, verbose=True):
                     hi_, lo_ = np.isfinite(gr) & (qc == 4), np.isfinite(gr) & (qc == 0)
                     if hi_.sum() >= 5 and lo_.sum() >= 5:
                         cs_row[j] = np.nanmean(yc[hi_]) - np.nanmean(yc[lo_])
+                # 🔢 V80.1.4 二分組:0/1、次數類(新聞則數、連買天數、近 20 天漲停幾次)一個值就佔 ≥40% →
+                #   五等分平手取平均會讓最低那一格是空的 → 以前整個變因「n < 30」直接沒測(bull n=0、lu20 n=10)。
+                #   改比「大於那個值」vs「等於那個值」(那個值在最小端)/「等於」vs「小於」(在最大端);在中間的不做。
+                vals, cnts = np.unique(x[m], return_counts=True)
+                k0 = int(np.argmax(cnts))
+                if cnts[k0] >= TWO_MASS * m.sum() and len(vals) >= 2 and k0 in (0, len(vals) - 1):
+                    v0 = vals[k0]
+                    top_, bot_ = ((m & (x > v0)), (m & (x == v0))) if k0 == 0 else ((m & (x == v0)), (m & (x < v0)))
+                    if top_.sum() >= 5 and bot_.sum() >= 5:
+                        g2t_row[j], g2b_row[j] = y[top_].mean(), y[bot_].mean()
+                        g2_row[j], g2v_row[j] = g2t_row[j] - g2b_row[j], v0
+                        tc, bc = top_ & (cell >= 0), bot_ & (cell >= 0)
+                        if tc.sum() >= 5 and bc.sum() >= 5:
+                            g2c_row[j] = np.nanmean(yc[tc]) - np.nanmean(yc[bc])
+            g2.append(g2_row); g2t.append(g2t_row); g2b.append(g2b_row); g2c.append(g2c_row); g2v.append(g2v_row)
             dates.append(di[a])
             qm.append(q_row)
             ic.append(ic_row)
             cs.append(cs_row)
         dates = np.array(dates)
         qm, ic, cs = np.array(qm), np.array(ic), np.array(cs)
+        G2, G2T, G2B, G2C, G2V = (np.array(v_) if len(v_) else np.full((0, K), np.nan) for v_ in (g2, g2t, g2b, g2c, g2v))
+        SPM = (qm[:, :, 4] - qm[:, :, 0]) if len(dates) else None
         yrs = years_of[dates]
         mid = np.median(dates) if len(dates) else 0
         res = []
         for j in range(K):
             sp = qm[:, j, 4] - qm[:, j, 0]
             ok = np.isfinite(sp)
+            two = False
+            if ok.sum() < 30 and len(G2) and np.isfinite(G2[:, j]).sum() >= 30:
+                sp, two = G2[:, j], True                       # 五等分做不出來 → 二分組
+                ok = np.isfinite(sp)
+                SPM[:, j] = sp
             if ok.sum() < 30:
                 res.append({'f': names[j], 'n': int(ok.sum())})
                 continue
             mu, t = nw_t(sp[ok], lag)
             sg = 1.0 if mu >= 0 else -1.0
-            qmean = np.nanmean(qm[ok, j, :], axis=0)
-            mono = float(np.corrcoef(np.arange(5), qmean)[0, 1]) * sg if np.all(np.isfinite(qmean)) else float('nan')
+            if two:
+                qmean = np.array([np.nanmean(G2B[ok, j]), np.nanmean(G2T[ok, j])])
+                mono = float('nan')
+            else:
+                qmean = np.nanmean(qm[ok, j, :], axis=0)
+                mono = float(np.corrcoef(np.arange(5), qmean)[0, 1]) * sg if np.all(np.isfinite(qmean)) else float('nan')
             h1 = np.nanmean(sp[ok & (dates < mid)])
             h2 = np.nanmean(sp[ok & (dates >= mid)])
             yy = {}
@@ -367,8 +396,8 @@ def layer1(meta, P, names, h_idx=1, stride=5, verbose=True):
             same_y = sum(1 for v in yv if v * sg > 0)
             best = max(yy, key=lambda k: yy[k] * sg) if yy else None
             exb = np.nanmean(sp[ok & (yrs != best)]) if best is not None else float('nan')
-            top = qmean[4] if sg > 0 else qmean[0]
-            csm, cst = nw_t(cs[ok, j], lag)
+            top = qmean[-1] if sg > 0 else qmean[0]
+            csm, cst = nw_t((G2C if two else cs)[ok, j], lag)
             icm, ict = nw_t(ic[ok, j], lag)
             # 大盤狀態分層
             reg = {}
@@ -382,8 +411,11 @@ def layer1(meta, P, names, h_idx=1, stride=5, verbose=True):
                 'top_minus_cost': float(top * sg - COST) if np.isfinite(top) else None, 'top': float(top),
                 'cell': float(csm), 'cell_t': float(cst), 'reg': reg,
             })
+            if two:
+                vv = G2V[ok, j]
+                res[-1].update({'kind': 'two', 'two_v0': float(np.nanmedian(vv)) if np.isfinite(vv).any() else None})
         out[uname] = {'dates': int(len(dates)), 'rows': int(U.sum()), 'res': res,
-                      '_sp': (qm[:, :, 4] - qm[:, :, 0]) if len(dates) else None, '_dates': dates}   # 大盤分層用(dump 前拿掉)
+                      '_sp': SPM, '_dates': dates}   # 大盤分層用(dump 前拿掉;二分組的變因放二分組那條)
         if verbose:
             print(f'   {uname}:{len(dates)} 個橫切面 ・{int(U.sum()):,} 列', flush=True)
     # BH(兩個母體 × 全部變因一起)
@@ -404,7 +436,7 @@ def layer1(meta, P, names, h_idx=1, stride=5, verbose=True):
                 'exbest': np.isfinite(r['ex_best']) and r['ex_best'] * sg > 0,
                 'cost': r['top_minus_cost'] is not None and r['top_minus_cost'] > 0,
                 'cell': np.isfinite(r['cell']) and r['cell'] * sg > 0 and abs(r['cell_t']) >= 2,
-                'mono': np.isfinite(r['mono']) and r['mono'] >= 0.9,
+                'mono': (np.isfinite(r['mono']) and r['mono'] >= 0.9) or r.get('kind') == 'two',   # 二分組只有兩格,單調不適用
             }
             r['gates'] = {k: bool(v) for k, v in g.items()}
             r['pass1'] = bool(g['bh'] and g['half'] and g['year'] and g['cell'] and g['mono'])
@@ -677,7 +709,7 @@ def selftest():
         if np.is_busday(d0):
             cal.append(str(d0))
         d0 += np.timedelta64(1, 'D')
-    names = ['a', 'b', 'c', 'd', 'amt20', 'vol20', 'pos252', 'chg20', 'chg10']
+    names = ['a', 'b', 'c', 'd', 'amt20', 'vol20', 'pos252', 'chg20', 'chg10', 'e', 'f']
     rows_d, rows_s, X, R = [], [], [], []
     for t in range(ND):
         a = rng.normal(size=NS)
@@ -686,11 +718,13 @@ def selftest():
         d = rng.normal(size=NS)
         amt = rng.uniform(0.2, 50, NS)
         noise = rng.normal(0, 6, NS)
-        r = 0.8 * a + (0.8 * d if t < ND // 2 else -0.8 * d) + noise
+        e = (rng.random(NS) < 0.3).astype(float)          # 0/1、七成是 0(像「有新聞」「多頭排列」)
+        f = (rng.random(NS) < 0.3).astype(float)          # 一樣的形狀、跟報酬無關
+        r = 0.8 * a + (0.8 * d if t < ND // 2 else -0.8 * d) + 1.6 * e + noise
         for s in range(NS):
             rows_d.append(t * 5)
             rows_s.append(s)
-            X.append([a[s], b[s], c[s], d[s], amt[s], rng.uniform(10, 80), rng.uniform(0, 100), rng.normal(), rng.normal()])
+            X.append([a[s], b[s], c[s], d[s], amt[s], rng.uniform(10, 80), rng.uniform(0, 100), rng.normal(), rng.normal(), e[s], f[s]])
             R.append([r[s] / 2, r[s], r[s] * 1.5])
     P = {'date_i': np.array(rows_d), 'sym_i': np.array(rows_s), 'X': np.array(X, dtype=np.float32), 'R': np.array(R, dtype=np.float32), 'lock': np.zeros(len(R), bool)}
     meta = {'names': names, 'hs': [5, 10, 20], 'cal': cal, 'syms': [f'{1000 + s}' for s in range(NS)], 'ind': {f'{1000 + s}': f'{(s % 5) + 1:02d}' for s in range(NS)}, 'stride': 5}
@@ -705,6 +739,10 @@ def selftest():
         ok('② 雜訊變因 b:不過第一層(q > 0.05 或不單調)', not r['b']['pass1'], {k: r['b'].get(k) for k in ('spread', 't', 'q_bh', 'mono')})
         ok('③ 前半有效、後半反向的 d:前後半不同向 → 不過', not r['d']['pass1'] and not r['d']['gates']['half'], {k: r['d'].get(k) for k in ('h1', 'h2')})
         ok('④ 族群相對強弱 / 族群內名次:跟報酬無關 → 不過', not r['rel20']['pass1'] and not r['ind_pct20']['pass1'])
+        ok('④b 0/1 變因 e(七成是 0、有效):五等分做不出來 → 二分組、過第一層', r['e'].get('kind') == 'two' and r['e']['pass1'] and r['e']['dir'] == 1,
+           {k: r['e'].get(k) for k in ('n', 'kind', 'spread', 'q_bh', 'q', 'gates')})
+        ok('④c 0/1 雜訊 f:二分組也不過', r['f'].get('kind') == 'two' and not r['f']['pass1'], {k: r['f'].get(k) for k in ('n', 'kind', 'spread', 'q_bh')})
+        ok('④d 連續的變因不走二分組(a 照五等分)', 'kind' not in r['a'] and len(r['a']['q']) == 5)
         pairs = corr_table(meta, P, nm2, every=10)
         ok('⑤ 相關表抓得到 a 與 c(影子變因)', any({p[0], p[1]} == {'a', 'c'} for p in pairs), pairs[:5])
         # ⑥ 決定性對照:把報酬打亂(跟 a 無關)→ a 也不可以過
@@ -713,6 +751,7 @@ def selftest():
         L2_ = layer1(meta, P2, nm2, verbose=False)
         r2 = {x['f']: x for x in L2_['U1']['res']}
         ok('⑥ 決定性對照:報酬打亂 → a 不過(⛔ 不是寫死會過)', not r2['a']['pass1'], {k: r2['a'].get(k) for k in ('spread', 't', 'q_bh')})
+        ok('⑥ …二分組的 e 也不過', not r2['e']['pass1'], {k: r2['e'].get(k) for k in ('spread', 't', 'q_bh')})
     # ⑦ 統計小工具對已知答案
     q = bh([0.01, 0.04, 0.03, 0.5])
     ok('⑦ BH:[0.01,0.04,0.03,0.5] → [0.04,0.0533,0.0533,0.5]', np.allclose(q, [0.04, 0.04 * 4 / 3, 0.04 * 4 / 3, 0.5], atol=1e-4), q)
