@@ -949,6 +949,17 @@
                             <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
                         </label>
                     </div>
+                    <!-- 🅿️ V80.1.4 空頭時 0050 也賣掉放現金(併在上面那一格底下,⛔ 不另開一區):打開 = 連「空頭不開新倉」一起開;只對 🅿️ 有作用;預設關。說明由 _fillBearCashDesc 帶入 -->
+                    <div class="flex items-center justify-between pt-1 pl-3" data-setbearcash="1">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <label class="text-[11px] font-bold text-cyan-300">↳ 🅿️ 空頭時 0050 也賣掉放現金(預設關)</label>
+                            <details class="mt-0.5"><summary class="cursor-pointer select-none text-[10px] text-sky-400">📖 說明 ▾</summary><p id="set_bearCashDesc" class="text-[10px] text-gray-500 leading-relaxed mt-0.5"></p></details>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" id="set_bearCash" onchange="app.toggleBearCash(this.checked);" class="sr-only peer">
+                            <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
+                    </div>
                     <!-- 🧬 V78.0.7 選股門檻:一年位階 ≥85%(預設開)/ 關掉 = 舊的 ≥75% —— 數字由 `_fillGeneRankDesc()` 從 `_GENE_RULE` 帶入 -->
                     <div class="flex items-center justify-between pt-2 border-t border-[#21262d]">
                         <div class="flex-1 min-w-0 pr-2">
@@ -9391,6 +9402,9 @@ ${list}
         const bgEl = document.getElementById('set_bearGate');
         if (bgEl) bgEl.checked = this.settings.bearGate === true;        // 🐻 V79.4.9 預設關(⛔ 不可寫成 !== false —— 沒存過的人會被當成打開)
         try { this._fillBearGateDesc(); } catch (_) {}
+        const bcEl = document.getElementById('set_bearCash');
+        if (bcEl) bcEl.checked = this.settings.bearCash === true && this.settings.bearGate === true;   // 🅿️ V80.1.4 預設關(要兩個都存 true 才算開)
+        try { this._fillBearCashDesc(); } catch (_) {}
         const grEl = document.getElementById('set_geneRank');
         if (grEl) grEl.checked = this._geneRank() === this._GENE_RULE.rank;   // 🧬 V78.0.7 預設 85
         try { this._fillGeneRankDesc(); } catch (_) {}
@@ -21527,6 +21541,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._leadCtx = null; this._invExitAt = 0; this._deckAt = 0;
         try { this.saveSettings?.(); } catch (_) {}
         try { this._renderStratBox(); this._renderDeckShowList(); } catch (_) {}
+        try { this._fillBearCashDesc(); } catch (_) {}   // 🅿️ V80.1.4 「你現在選的不是 🅿️」那一句跟著換
         try { this.renderDeck?.(); } catch (_) {}
         try { this._syncPushSub?.(); } catch (_) {}
         try { this.telegramCloud?.sync?.(); } catch (_) {}
@@ -23424,7 +23439,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     /** 🅿️ V78.1.1 選了「符合進場+停車 0050」→ 把「閒錢停 0050」算成**今天的金額**(⛔ App 不下單;V79.4.9 起自動下單照同一個算法做,真實帳戶確認交割款前只預覽)。
      *  停多少 = 帳戶本金 − 手上**個股**市值(現價,沒有就用成本);已經在 0050 的另外列。沒填本金 → 說要填才算得出來。 */
-    _parkAmountHtml() {
+    _parkAmountHtml(mkt) {
         if (!this._park || !this._park()) return '';
         const lead = this._isLead();
         const _pn = lead ? '👑 領頭羊+停車 0050' : '🅿️ 符合進場+停車 0050';
@@ -23438,7 +23453,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 👑 V79.1.6 使用者:「0050 變貴了,我進場後墊高了我的成本」—— 回測裡 0050 只在換倉買賣那天動;天天叫你補 / 賣反而會越買越貴
         //   → 平常日子只講規則,換倉那天要賣多少寫在最上面「今天要做的事」
         if (lead) return head + `:沒用到的錢停 0050;<b>換倉日之間不用調整</b>,也不用等它便宜。換倉那天要買多少、要不要賣 0050,寫在最上面「今天要做的事」。<span class="text-gray-500">⚠️ 自動下單不會幫你做。</span></div>`;
-        const P = this._parkPlan(S);
+        const P = this._parkPlanBear(S, mkt);
+        // 🅿️ V80.1.4 空頭時 0050 也放現金(你的設定)+ 今天嚴格空頭 → 這一行改講「賣掉放現金」(⛔ 研究數字;⛔ 叫你買股票)
+        if (P.bear) return head + `:🐻 大盤嚴格空頭(${this._escHtml(String(mkt.d || ''))} 收盤在 60 日線下)—— 你的設定是<b>空頭時 0050 也放現金</b> → `
+            + (P.act === 'sell' ? `👉 今天收盤前把 0050 約 <b class="font-mono">${wan(S.park)}</b> 賣掉放現金` : '✅ 0050 已經差不多賣完了,錢放現金就好')
+            + `;空頭結束那天收盤,再照這一行的金額買回 0050。`
+            + `<div class="text-[10px] text-gray-500 mt-0.5" data-parkbear="1">⚠️ 自動下單不會跟著這個設定賣 0050,要自己賣、自己買回。設定 → 🐻 那一格底下可以關掉。</div></div>`;
         const act = P.act === 'ok' ? '✅ 差不多了,不用動'
             : P.act === 'buy' ? `👉 還可以再買約 <b class="font-mono">${wan(P.diff)}</b> 的 0050` : `👉 0050 多了約 <b class="font-mono">${wan(-P.diff)}</b>(要買股票時先從這裡賣)`;
         return head + `:帳戶 <b class="font-mono">${wan(S.acc)}</b> − 手上個股 <b class="font-mono">${wan(S.stock)}</b> = 該停在 0050 約 <b class="font-mono">${wan(P.target)}</b>(你現在 0050 約 ${wan(S.park)})。${act}。`
@@ -23461,11 +23481,44 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     toggleBearGate(checked, silent) {
         this.settings.bearGate = !!checked;
+        // 🅿️ V80.1.4 「空頭時 0050 也放現金」包含「空頭不開新倉」→ 這一格關掉時那一格一起關(⛔ 不可留下「只賣 0050 卻照常買股票」這種沒測過的組合)
+        if (!checked) this.settings.bearCash = false;
         try { localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings)); } catch (_) {}
-        try { const el = document.getElementById('set_bearGate'); if (el) el.checked = !!checked; } catch (_) {}
+        try { const el = document.getElementById('set_bearGate'); if (el) el.checked = !!checked; const ec = document.getElementById('set_bearCash'); if (ec) ec.checked = this.settings.bearCash === true && !!checked; } catch (_) {}
+        try { this._fillBearCashDesc(); } catch (_) {}
         try { this._applyExitRuleUI(); } catch (_) {}
         try { this.renderDeck?.(); } catch (_) {}
         if (!silent) this.showToast?.(checked ? '🐻 已打開:大盤嚴格空頭時不開新倉' : '🐻 已關掉:大盤空頭也照常買(預設)', 'info', 4000);
+    },
+    /** 🅿️ V80.1.4 空頭時 0050 也賣掉放現金(使用者 10/31:「目前沒有風控,要怎麼操作」;研究 C4 = 回測引擎 BEAR_MODE=cash,取捨型 → 做成選項、預設關,V75.0.9)
+     *  = 「空頭不開新倉」+ 大盤嚴格空頭那天收盤把停在 0050 的錢賣掉放現金;不是空頭那天照常停回 0050(回測就是兩件一起做的,⛔ 拆開)。
+     *  只對 🅿️(🔥 + 停 0050)有作用;👑 不適用(👑 的回測沒有這一條)。⛔ 自動下單不會跟著做(它只看 PARK / BEAR_GATE,會動真錢 → 要另外問)。
+     *  研究數字在產業作戰室實測總表(k:'bear-mode'),⛔ 不印在這裡(散戶 App V78.3.4)。 */
+    _bearCashOn() { const s = this.settings || {}; return s.bearCash === true && s.bearGate === true && this._park() && !this._isLead(); },
+    toggleBearCash(checked, silent) {
+        this.settings.bearCash = !!checked;
+        if (checked) this.settings.bearGate = true;   // 包含空頭不開新倉
+        try { localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings)); } catch (_) {}
+        try { const a = document.getElementById('set_bearCash'); if (a) a.checked = !!checked; const b = document.getElementById('set_bearGate'); if (b) b.checked = this.settings.bearGate === true; } catch (_) {}
+        try { this._fillBearGateDesc(); this._fillBearCashDesc(); } catch (_) {}
+        try { this._applyExitRuleUI(); } catch (_) {}
+        try { this.renderDeck?.(); } catch (_) {}
+        if (!silent) this.showToast?.(checked ? '🅿️ 已打開:大盤嚴格空頭時不開新倉,0050 也賣掉放現金' : '🅿️ 已關掉:空頭時 0050 照常停著', 'info', 4000);
+    },
+    _fillBearCashDesc() {
+        const el = document.getElementById('set_bearCashDesc'); if (!el) return;
+        const notPark = !(this._park && this._park()) || (this._isLead && this._isLead());
+        el.innerHTML = `<b>關著(預設)</b>= 空頭時 0050 照常停著。<b>打開</b>= 大盤嚴格空頭那天(跟上面同一條):不開新倉,而且<b>收盤前把停在 0050 的錢賣掉放現金</b>;空頭結束那天收盤,再照決策台 🅿️ 那一行的金額買回 0050。打開這一格會連上面「不開新倉」一起打開。`
+            + `<br>⚠️ 好處:空頭那段錢不跟著大盤一起跌,中途帳面賠得少很多。代價:會少賺一些 —— 空頭快結束時的反彈常常沒跟到,買回 0050 也常常比賣的時候貴。`
+            + `<br>🤖 自動下單<b>不會</b>跟著這個開關,0050 要自己賣、自己買回。`
+            + (notPark ? `<br>💡 你現在選的不是 🅿️(停 0050),這一格目前沒有作用。` : '');
+    },
+    /** 🅿️ V80.1.4 今天 0050 該停多少:有開「空頭時 0050 也放現金」而且今天嚴格空頭 → 目標 0(全部放現金);其他 = `_parkPlan`。
+     *  ⛔ 不改 `_parkPlan` 本身(它跟 auto_trade.py park_plan 跨檔比對,test_auto_park)。mkt = `_mktBear60` 的結果。 */
+    _parkPlanBear(S, mkt) {
+        S = S || this._leadSlot();
+        if (!(this._bearCashOn() && mkt && mkt.on)) return this._parkPlan(S);
+        return { target: 0, diff: -S.park, act: S.park > S.acc * 0.02 ? 'sell' : 'ok', bear: true };
     },
     _fillBearGateDesc() {
         const el = document.getElementById('set_bearGateDesc'); if (!el) return;
@@ -23473,7 +23526,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 🐻 V79.4.9 預設關 → 說明先講「關著 = 照常買」;👑 那一份一律照擋(只在選 👑 時才講,⛔ 沒解鎖的人看不到 👑 字樣)
         el.innerHTML = `<b>關著(預設)</b>= 大盤空頭也照常買。<b>打開</b>= 大盤嚴格空頭(<b>${B.rule}</b>,每天收盤後算一次)那幾天<b>只擋買進</b>,賣出照出場規則走。<br>⚠️ 照常買:空頭時買的那幾筆比較容易賠,中途帳面可能賠得比較多;打開:會錯過空頭裡的反彈。`
             + (this._isLead?.() ? `<br>👑 那一套<b>一律照擋</b>(不受這個開關影響)。` : '')
-            + `<br>🤖 有用自動下單的話:它<b>不會跟著這個開關</b>,要在自動下單那邊另外設 <code>BEAR_GATE=1</code> 才會擋。`;
+            + `<br>🤖 有用自動下單的話:它<b>不會跟著這個開關</b>,要在自動下單那邊另外設 <code>BEAR_GATE=1</code> 才會擋。`
+            + `<br>🅿️ 想連停在 0050 的錢也在空頭時放現金,打開下面那一格。`;
     },
     /** 🧯 V80.0.9 決策台「你的風控」(使用者 10/31:「最近大盤很差,App 有反攻條件…目前沒有風控,要怎麼操作」)。
      *  ⛔ 一條新規則都沒有 —— 只把已經在的四件事集中在一行講,每一件都轉述既有那一支(⛔ 另算):
@@ -23492,6 +23546,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         else if (+m.c < +m.ma60) mk = `⚠️ 大盤 ${dd}收盤 ${f(m.c)} 在 60 日線 ${f(m.ma60)} 下,但 20 日線 ${f(m.ma20)} 還在上面 → <b>還不算空頭</b>`;
         else mk = `➖ 大盤 ${dd}收盤 ${f(m.c)} 在 60 日線 ${f(m.ma60)} 上,不是空頭`;
         const gate = this._isLead() ? '👑 那一套空頭一律不開新倉'
+            : this._bearCashOn() ? '你的設定:大盤嚴格空頭時<b>不開新倉,0050 也賣掉放現金</b>'
             : (this._bearGateOn() ? '你的設定:大盤嚴格空頭時<b>不開新倉</b>' : '你的設定:大盤嚴格空頭時<b>照常買</b>(預設)');
         const acc = +(this.settings && this.settings.accountSize || 0);
         let brk = '';
@@ -23503,7 +23558,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return `<div class="${box}" data-deckrisk="${m ? (m.on ? 'bear' : (+m.c < +m.ma60 ? 'below60' : 'ok')) : 'na'}">
             <div class="text-[12px] font-black text-gray-200">🧯 你的風控</div>
             <div class="text-[11px] text-gray-300 leading-snug mt-1">${mk}</div>
-            <div class="text-[10px] text-gray-400 leading-snug mt-0.5" data-deckriskgate="${this._isLead() ? 'lead' : (this._bearGateOn() ? 'on' : 'off')}">${gate} <button onclick="app._openBearGateSetting()" class="text-cyan-300 underline">⚙️ 改</button> ・ 每一筆照你的出場規則走(硬停損收盤確認)</div>
+            <div class="text-[10px] text-gray-400 leading-snug mt-0.5" data-deckriskgate="${this._isLead() ? 'lead' : this._bearCashOn() ? 'cash' : (this._bearGateOn() ? 'on' : 'off')}">${gate} <button onclick="app._openBearGateSetting()" class="text-cyan-300 underline">⚙️ 改</button> ・ 每一筆照你的出場規則走(硬停損收盤確認)</div>
             ${brk}${tr}
         </div>`;
     },
@@ -50198,8 +50253,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             let _pp = null;
             try {
                 const pk = $('deckPark');
-                if (pk) pk.innerHTML = this._isLead() ? '' : `<div data-deckparkbox="1">${this._park() ? this._parkAmountHtml() : this._idle0050NoteHtml()}</div>`;
-                if (!this._isLead() && this._park()) { const S0 = this._leadSlot(); if (S0.st === 'ok') _pp = this._parkPlan(S0); }
+                if (pk) pk.innerHTML = this._isLead() ? '' : `<div data-deckparkbox="1">${this._park() ? this._parkAmountHtml(st.mkt) : this._idle0050NoteHtml()}</div>`;
+                if (!this._isLead() && this._park()) { const S0 = this._leadSlot(); if (S0.st === 'ok') _pp = this._parkPlanBear(S0, st.mkt); }
             } catch (_) {}
 
             // ── ✅ 今天沒事 ──
