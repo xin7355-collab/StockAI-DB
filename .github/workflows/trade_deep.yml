@@ -1,0 +1,90 @@
+name: 📦 出口 / 外銷訂單歷史(政府開放資料,研究用)
+
+# 為什麼(評估紀錄 51,2026-11-01):外部 AI 提「進出口 → 產業 → 股價」領先指標,使用者回「做」。
+# 本站沒有出口與外銷訂單的歷史;雲端工作階段連不到 data.gov.tw → 在這裡抓原檔,推到獨立 orphan 分支 trade_deep
+# (⛔ 不進 data / gh-pages,陷阱 #41)。回測在本機讀那個分支。
+# ⛔ 不加排程(研究用;回測過關才考慮每月更新)・⛔ 不用任何金鑰・改了下載程式自己會重跑一次。
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/trade_deep_fetch.py'
+      - '.github/workflows/trade_deep.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  # ⛔ 不可跟別人共用 group(V73.7.9)
+  group: trade-deep
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests
+
+      - name: 🧪 selftest(⛔ 沒過不開工)
+        run: python3 scripts/trade_deep_fetch.py --selftest
+
+      # ⚠️ V49.4 教訓:還原用 git archive,⛔ 不要 git checkout origin/x -- dir(會弄髒 index)
+      - name: 📂 還原上一輪的(這一輪抓不到的檔照舊保留)
+        run: |
+          mkdir -p trade_deep
+          if git fetch --depth=1 origin trade_deep 2>/dev/null; then
+            git archive FETCH_HEAD trade_deep | tar -x || true
+          fi
+          echo "上一輪:$(find trade_deep -type f | wc -l) 個檔"
+
+      - name: 📦 抓
+        id: run
+        env:
+          OUT_DIR: trade_deep
+          MAX_MIN: '20'
+        run: |
+          set -o pipefail
+          python3 scripts/trade_deep_fetch.py 2>&1 | tee trade_fetch.log
+          cp trade_fetch.log trade_deep/_last_run.log
+
+      # ⚠️ 順序:先把 trade_deep/ 搬到 /tmp,切完分支再搬回來(⛔ 不然 checkout 會蓋掉整輪的結果)
+      - name: 🚀 推到 trade_deep 分支
+        if: steps.run.outcome == 'success'
+        run: |
+          set -e
+          n=$(find trade_deep/raw -name '*.gz' 2>/dev/null | wc -l)
+          echo "要推 $n 個原檔"
+          [ "$n" -gt 0 ] || { echo "::error::一個原檔都沒有 → 不推"; exit 1; }
+          rm -rf /tmp/tdeep && mkdir -p /tmp/tdeep && cp -a trade_deep/. /tmp/tdeep/
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git reset --hard -q && git clean -fdq
+          if git fetch --depth=1 origin trade_deep 2>/dev/null; then
+            git checkout -f -B trade_deep FETCH_HEAD
+          else
+            git checkout -q --orphan trade_deep
+            git rm -rq --cached . 2>/dev/null || true
+            git clean -fdq
+          fi
+          rm -rf trade_deep && mkdir -p trade_deep && cp -a /tmp/tdeep/. trade_deep/
+          git add -f trade_deep
+          if git diff --cached --quiet; then echo "✅ 沒有新東西 → 不 commit"; exit 0; fi
+          git commit -q -m "📦 出口 / 外銷訂單原檔 $n 個 $(date -u +%Y-%m-%d)"
+          pushed=0
+          # ⛔ 這個 retry 迴圈不可拿掉
+          for i in 1 2 3 4 5; do
+            git push origin trade_deep && { pushed=1; echo "✅ 已推上 trade_deep(第 $i 次)"; break; }
+            sleep $((i * 3))
+            git pull --rebase origin trade_deep 2>/dev/null || true
+          done
+          [ "$pushed" -eq 1 ] || { echo "::error::push 連 5 次失敗"; exit 1; }
