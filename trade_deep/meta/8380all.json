@@ -1,0 +1,11 @@
+{
+ "result": {
+  "title": "出口值_按主要貨品分(37 類全勾)",
+  "distribution": [
+   {
+    "resourceFormat": "CSV",
+    "resourceDownloadUrl": "https://web02.mof.gov.tw/njswww/webMain.aspx?sys=220&ym=9000&kind=21&type=4&funid=i8121&cycle=41&outmode=12&compmode=00&outkind=1&fld0=1&codlst0=1111111111111111111111111111111111111&utf=1"
+   }
+  ]
+ }
+}
