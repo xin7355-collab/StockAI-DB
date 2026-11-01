@@ -1,0 +1,91 @@
+{
+ "help": "",
+ "success": true,
+ "result": {
+  "categoryService": "I00",
+  "categoryDataset": "A",
+  "datasetId": 101461,
+  "identifier": "",
+  "title": "統計處外銷訂單_礦產品",
+  "description": "礦產品外銷接單變動之統計\r\n",
+  "type": "rawData",
+  "license": "1",
+  "cost": "free",
+  "dataProvider": "twwumoea",
+  "publisherOID": "2.16.886.101.20003.20007",
+  "publisherContactName": "蔡小姐",
+  "publisherContactPhone": "02-23212200*8527",
+  "publisherContactEmail": "mjtsai1@moea.gov.tw",
+  "updateFrequency": {
+   "regularupdate": "2"
+  },
+  "dataQuality": "G",
+  "coverageStartedDate": "1984-01-01",
+  "coverageEndedDate": "",
+  "publishedDate": "2019-05-01",
+  "modifiedDate": "2025-09-19 13:22:01",
+  "spatialCoverage": "",
+  "language": "zh",
+  "relatedUrl": "",
+  "notes": "",
+  "apiDocUrl": "",
+  "distribution": [
+   {
+    "resourceDescription": "",
+    "resourceField": [
+     {
+      "name": "統計項目",
+      "description": ""
+     },
+     {
+      "name": "貨品別",
+      "description": ""
+     },
+     {
+      "name": "資料期(民國年)",
+      "description": "",
+      "uri": "api/CurrencyandFinancial/CommonData/NormalCommonData/YYYMMROC"
+     },
+     {
+      "name": "統計值(金額)",
+      "description": "",
+      "uri": "api/CurrencyandFinancial/CommonData/NormalCommonData/MillionUSD"
+     },
+     {
+      "name": "計量單位",
+      "description": ""
+     }
+    ],
+    "qcLevel": "",
+    "resourceFormat": "CSV",
+    "resourceCharacterEncoding": "UTF-8",
+    "resourceQualityCheckTime": "2026-09-21 13:36:10",
+    "resourceDownloadUrl": "https://service.moea.gov.tw/EE520/opendata/經濟部統計處_外銷訂單_礦產品.csv",
+    "resourceAmount": 499,
+    "resourceNotes": "",
+    "resourceRequestMethod": "",
+    "resourceOasUrl": "",
+    "resourceRequestParameters": [],
+    "resourcePathParameters": []
+   }
+  ],
+  "keyword": [
+   "AI-Ready Data 詮釋資料框架指標",
+   "政府統計"
+  ],
+  "en": {
+   "title": "Ministry of Economic Affairs Statistics Department_Export Orders_Mining Products",
+   "description": "Statistics of changes in exports of mineral products",
+   "publisherContactName": "蔡小姐",
+   "publisherContactPhone": "02-23212200*8527",
+   "publisherContactEmail": [
+    "mjtsai1@moea.gov.tw"
+   ],
+   "updateFrequency": "Irregular updates",
+   "cost": "free",
+   "keyword": [
+    "Government statistics"
+   ]
+  }
+ }
+}

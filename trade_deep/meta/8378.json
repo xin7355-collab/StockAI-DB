@@ -1,0 +1,102 @@
+{
+ "help": "",
+ "success": true,
+ "result": {
+  "categoryService": "I00",
+  "categoryDataset": "A",
+  "datasetId": 8378,
+  "identifier": "A07000000D-000034",
+  "title": "進出口貿易值",
+  "description": "採一般貿易制度，以進出國境(包含臺、澎、金、馬)之貨物為限，出口貨物以離岸價格（Ｆ.Ｏ.Ｂ.）計算，進口貨物以起岸價格（Ｃ.Ｉ.Ｆ.）計算，包含出口、進口、復出口、復進口。單位：百萬元。",
+  "type": "rawData",
+  "license": "1",
+  "cost": "free",
+  "dataProvider": "lophone",
+  "publisherOID": "2.16.886.101.20003.20004.20038",
+  "publisherContactName": "蔡先生",
+  "publisherContactPhone": "23228342;02-23228342",
+  "publisherContactEmail": "tsaich@mail.mof.gov.tw",
+  "updateFrequency": {
+   "regularupdate": "1",
+   "Frequency": "1",
+   "unittime": "月"
+  },
+  "dataQuality": "無(白名單)",
+  "coverageStartedDate": "",
+  "coverageEndedDate": "",
+  "publishedDate": "2014-08-01",
+  "modifiedDate": "2023-04-20 10:27:27",
+  "spatialCoverage": "",
+  "language": "zh",
+  "relatedUrl": "",
+  "notes": "授權說明網址: https://data.gov.tw/license",
+  "apiDocUrl": "",
+  "distribution": [
+   {
+    "resourceDescription": "採一般貿易制度，以進出國境(包含臺、澎、金、馬)之貨物為限，出口貨物以離岸價格（Ｆ.Ｏ.Ｂ.）計算，進口貨物以起岸價格（Ｃ.Ｉ.Ｆ.）計算，包含出口、進口、復出口、復進口。",
+    "resourceField": [
+     {
+      "name": "幣別",
+      "description": ""
+     },
+     {
+      "name": "按美元計算/ 貿易總值",
+      "description": ""
+     },
+     {
+      "name": "按美元計算/ 出口總值",
+      "description": ""
+     },
+     {
+      "name": "按美元計算/ 進口總值",
+      "description": ""
+     },
+     {
+      "name": "按美元計算/ 出(入)超",
+      "description": ""
+     }
+    ],
+    "qcLevel": "",
+    "resourceFormat": "CSV",
+    "resourceCharacterEncoding": "UTF-8",
+    "resourceQualityCheckTime": "2026-09-01 08:06:32",
+    "resourceDownloadUrl": "https://web02.mof.gov.tw/njswww/webMain.aspx?sys=220&ym=9000&kind=21&type=4&funid=i8101&cycle=41&outmode=12&compmode=00&outkind=1&fld0=1&codlst0=11001001&utf=1",
+    "resourceAmount": 290,
+    "resourceNotes": "",
+    "resourceRequestMethod": "",
+    "resourceOasUrl": "",
+    "resourceRequestParameters": [],
+    "resourcePathParameters": []
+   }
+  ],
+  "keyword": [
+   "貿易總值",
+   "入(出)超",
+   "政府統計"
+  ],
+  "en": {
+   "title": "Trade value of imports and exports",
+   "description": "Under the general trade system, the goods entering and leaving the country (including Taiwan, Penghu, Kinmen, and Matsu) are limited. The export goods are calculated based on the Free On Board (F.O.B.) price, and the import goods are calculated based on the Cost, Insurance, and Freight (C.I.F.) price, including exports, imports, re-exports, and re-imports. Unit: NT million.",
+   "publisherContactName": "蔡先生",
+   "publisherContactPhone": "23228342;02-23228342",
+   "publisherContactEmail": [
+    "tsaich@mail.mof.gov.tw"
+   ],
+   "updateFrequency": "Every 1 month",
+   "cost": "free",
+   "notes": "Authorization explanation URL: https://data.gov.tw/license",
+   "keyword": [
+    "Total trade value",
+    "Enter (Exit) Super",
+    "Government statistics"
+   ],
+   "resources": [
+    {
+     "description": "Under the general trade system, the limitation applies to the import and export of goods into and out of the country (including Taiwan, Penghu, Kinmen, and Matsu). The export goods are calculated based on the Free on Board (F.O.B.) price, and the import goods are calculated based on the Cost, Insurance, and Freight (C.I.F.) price, including export, import, re-export, and re-import.",
+     "fieldDesc": "Currency、Measured in US dollars / total trade value、Calculated in US dollars / total export value、Calculated in US dollars / Total import value、Calculate in U.S. dollars/ surplus (deficit).",
+     "note": ""
+    }
+   ]
+  }
+ }
+}

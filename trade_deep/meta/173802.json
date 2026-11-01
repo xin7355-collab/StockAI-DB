@@ -1,0 +1,95 @@
+{
+ "help": "",
+ "success": true,
+ "result": {
+  "categoryService": "I00",
+  "categoryDataset": "A",
+  "datasetId": 173802,
+  "identifier": "",
+  "title": "統計處外銷訂單_運輸工具",
+  "description": "運輸工具外銷接單變動之統計",
+  "type": "rawData",
+  "license": "1",
+  "cost": "free",
+  "dataProvider": "twwumoea",
+  "publisherOID": "2.16.886.101.20003.20007",
+  "publisherContactName": "蔡小姐",
+  "publisherContactPhone": "02-23212200#8527",
+  "publisherContactEmail": "mjtsai1@moea.gov.tw",
+  "updateFrequency": {
+   "regularupdate": "2"
+  },
+  "dataQuality": "G",
+  "coverageStartedDate": "2025-06-17",
+  "coverageEndedDate": "2025-06-17",
+  "publishedDate": "2025-06-18",
+  "modifiedDate": "2025-09-19 13:11:52",
+  "spatialCoverage": "",
+  "language": "zh",
+  "relatedUrl": "",
+  "notes": "",
+  "apiDocUrl": "",
+  "distribution": [
+   {
+    "resourceDescription": "",
+    "resourceField": [
+     {
+      "name": "統計項目",
+      "description": ""
+     },
+     {
+      "name": "貨品別",
+      "description": ""
+     },
+     {
+      "name": "資料期(民國年)",
+      "description": "",
+      "uri": "api/CurrencyandFinancial/CommonData/NormalCommonData/YYYMMROC"
+     },
+     {
+      "name": "統計值(金額)",
+      "description": "",
+      "uri": "api/CurrencyandFinancial/CommonData/NormalCommonData/MillionUSD"
+     },
+     {
+      "name": "計量單位",
+      "description": ""
+     }
+    ],
+    "qcLevel": "",
+    "resourceFormat": "CSV",
+    "resourceCharacterEncoding": "UTF-8",
+    "resourceQualityCheckTime": "2026-09-21 13:34:14",
+    "resourceDownloadUrl": "https://service.moea.gov.tw/EE520/opendata/統計處外銷訂單_運輸工具.csv",
+    "resourceAmount": 499,
+    "resourceNotes": "",
+    "resourceRequestMethod": "",
+    "resourceOasUrl": "",
+    "resourceRequestParameters": [],
+    "resourcePathParameters": []
+   }
+  ],
+  "keyword": [
+   "AI-Ready Data 詮釋資料框架指標",
+   "外銷訂單",
+   "運輸工具",
+   "政府統計"
+  ],
+  "en": {
+   "title": "Export Orders of the Department of Statistics_Transportation Tools",
+   "description": "Statistics on changes in export orders for transportation equipment.",
+   "publisherContactName": "蔡小姐",
+   "publisherContactPhone": "02-23212200#8527",
+   "publisherContactEmail": [
+    "mjtsai1@moea.gov.tw"
+   ],
+   "updateFrequency": "Irregular updates",
+   "cost": "free",
+   "keyword": [
+    "Export order",
+    "Transportation vehicles",
+    "Government statistics"
+   ]
+  }
+ }
+}

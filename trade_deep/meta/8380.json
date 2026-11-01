@@ -1,0 +1,216 @@
+{
+ "help": "",
+ "success": true,
+ "result": {
+  "categoryService": "I00",
+  "categoryDataset": "A",
+  "datasetId": 8380,
+  "identifier": "A07000000D-000036",
+  "title": "出口值_按主要貨品分",
+  "description": "採一般貿易制度，以出國境(包含臺、澎、金、馬)之貨物為限，依據「國際商品統一分類制度(HS)」及「中華民國海關進口稅則暨輸出入貨品分類表」歸類彙整。單位：百萬元。",
+  "type": "rawData",
+  "license": "1",
+  "cost": "free",
+  "dataProvider": "lophone",
+  "publisherOID": "2.16.886.101.20003.20004.20038",
+  "publisherContactName": "蔡先生",
+  "publisherContactPhone": "23228342;02-23228342",
+  "publisherContactEmail": "tsaich@mail.mof.gov.tw",
+  "updateFrequency": {
+   "regularupdate": "1",
+   "Frequency": "1",
+   "unittime": "月"
+  },
+  "dataQuality": "無(白名單)",
+  "coverageStartedDate": "",
+  "coverageEndedDate": "",
+  "publishedDate": "2014-08-01",
+  "modifiedDate": "2023-04-20 10:18:10",
+  "spatialCoverage": "",
+  "language": "zh",
+  "relatedUrl": "",
+  "notes": "授權說明網址: https://data.gov.tw/license",
+  "apiDocUrl": "",
+  "distribution": [
+   {
+    "resourceDescription": "採一般貿易制度，以出國境(包含臺、澎、金、馬)之貨物為限，依據「國際商品統一分類制度(HS)」及「中華民國海關進口稅則暨輸出入貨品分類表」歸類彙整。",
+    "resourceField": [
+     {
+      "name": "幣別",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 總計",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 1.活動物；動物產品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 2.植物產品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (1)食用蔬菜",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (2)食用果實及堅果",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 3.動植物油脂",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (1)調製食品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (3)菸及菸葉代用品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (1)有機化學品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 7.塑膠、橡膠及其製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (1)塑膠原料",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (2)塑膠製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 8.毛皮及其製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 9.木及木製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 10.紙漿；紙及其製品；印刷品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 11.紡織品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 13.非金屬礦物製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 14.珠寶及貴金屬製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ 15.基本金屬及其製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (1)鋼鐵及其製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (2)其他基本金屬及其製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (1)電子零組件",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (2)機械",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(百萬美元)/ (4)資通與視聽產品",
+      "description": ""
+     }
+    ],
+    "qcLevel": "",
+    "resourceFormat": "CSV",
+    "resourceCharacterEncoding": "UTF-8",
+    "resourceQualityCheckTime": "2026-06-01 09:47:35",
+    "resourceDownloadUrl": "https://web02.mof.gov.tw/njswww/webMain.aspx?sys=220&ym=9000&kind=21&type=4&funid=i8121&cycle=41&outmode=12&compmode=00&outkind=1&fld0=1&codlst0=1101111010100011110111100111110110100&utf=1",
+    "resourceAmount": 290,
+    "resourceNotes": "",
+    "resourceRequestMethod": "",
+    "resourceOasUrl": "",
+    "resourceRequestParameters": [],
+    "resourcePathParameters": []
+   }
+  ],
+  "keyword": [
+   "活動物；動物產品",
+   "植物產品",
+   "動植物油脂",
+   "調製食品；飲料及菸酒",
+   "礦產品",
+   "化學品",
+   "塑膠、橡膠及其製品",
+   "毛皮及其製品",
+   "木及木製品",
+   "紙漿；紙及其製品；印刷品",
+   "紡織品",
+   "鞋、帽及其他飾品",
+   "非金屬礦物製品",
+   "珠寶及貴金屬製品",
+   "基本金屬及其製品",
+   "機械及電機設備",
+   "運輸工具",
+   "光學及精密儀器；鐘錶；樂器",
+   "其他",
+   "政府統計"
+  ],
+  "en": {
+   "title": "Exports by main commodity",
+   "description": "Choose the general trade system, which limits goods leaving the country (including Taiwan, Penghu, Kinmen, and Matsu), classified and summarized according to the \"Harmonized System (HS)\" and the \"Customs Import Tariff and Export Duty Classification Table of the Republic of China\". Unit: million NT dollars.",
+   "publisherContactName": "蔡先生",
+   "publisherContactPhone": "23228342;02-23228342",
+   "publisherContactEmail": [
+    "tsaich@mail.mof.gov.tw"
+   ],
+   "updateFrequency": "Every 1 month",
+   "cost": "free",
+   "notes": "Authorization information URL: https://data.gov.tw/license",
+   "keyword": [
+    "Livestock; animal products",
+    "Plant products",
+    "Animal and vegetable oils and fats",
+    "Processed food; beverages and tobacco.",
+    "Mineral products",
+    "Chemicals",
+    "Plastic, rubber and their products",
+    "Fur and its products.",
+    "Wood and wood products",
+    "Pulp; paper and its products; printed matter",
+    "Textile",
+    "Shoes, hats, and other accessories",
+    "Non-metal mineral products",
+    "Jewelry and precious metal products",
+    "Basic metals and their products",
+    "Mechanical and electrical equipment",
+    "Transportation vehicles",
+    "Optical and precision instruments; clocks and watches; musical instruments.",
+    "Other",
+    "Government statistics"
+   ],
+   "resources": [
+    {
+     "description": "Under normal trade regulations, only goods leaving the country (including Taiwan, Penghu, Kinmen, and Matsu) are subject to classification and aggregation according to the \"Harmonized Commodity Description and Coding System (HS)\" and the \"Customs Import and Export Tariff Regulations and Classification Table of Import and Export Goods of the Republic of China\".",
+     "fieldDesc": "Currency、In dollars (millions)/ Total、In dollars (million dollars)/ 1. Live animals; animal products、In US dollars (in millions)/ 2. Plant products、When calculated in US dollars (in million US dollars)/ (1) Consumption of vegetables、In US dollars (millions)/ (2) Edible fruits and nuts、In terms of US dollars (millions)/ 3. Vegetable oils and fats、In terms of US dollars (million US dollars) / (1) Prepared food、By United States dollars (in millions)/ (3) tobacco and tobacco substitutes.、In terms of US dollars (in millions)/ (1) Organic chemicals、By US Dollar (Million US Dollar)/ 7. Plastics, Rubber, and their Products、In US dollars (in million US dollars) / (1) Plastic raw materials、Measured in US dollars (millions)/ (2) Plastic products、In terms of US dollars (millions)/ 8. Fur and fur products、In terms of US dollars (million US dollars)/ 9. Wood and wood products、In US dollars (million US dollars) / 10. Pulp; paper and its products; printed matter、Calculate in USD (in millions) / 11. Textile、In US dollars (millions)/ 13. non-metallic mineral products、In US dollars (millions)/ 14. Jewelry and precious metal products、In terms of US dollars (million US dollars)/15. Basic metals and their products、When calculated in US dollars (millions of US dollars) / (1) Iron and steel products、Calculate in US dollars (in millions) / (2) other basic metals and their products、In terms of US dollars (in millions)/ (1) Electronic components、In US dollars (million US dollars) / (2) mechanical、Calculated in US dollars (in millions)/ (4) information and audio-visual products",
+     "note": ""
+    }
+   ]
+  }
+ }
+}

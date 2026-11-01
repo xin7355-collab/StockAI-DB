@@ -1,0 +1,90 @@
+{
+ "help": "",
+ "success": true,
+ "result": {
+  "categoryService": "I00",
+  "categoryDataset": "A",
+  "datasetId": 162492,
+  "identifier": "",
+  "title": "統計處外銷訂單_電機產品",
+  "description": "電機產品外銷接單變動之統計",
+  "type": "rawData",
+  "license": "1",
+  "cost": "free",
+  "dataProvider": "twwumoea",
+  "publisherOID": "2.16.886.101.20003.20007",
+  "publisherContactName": "蔡小姐",
+  "publisherContactPhone": "02-23212200#8527",
+  "publisherContactEmail": "mjtsai1@moea.gov.tw",
+  "updateFrequency": {
+   "regularupdate": "2"
+  },
+  "dataQuality": "G",
+  "coverageStartedDate": "2023-05-19",
+  "coverageEndedDate": "2023-05-19",
+  "publishedDate": "2023-05-19",
+  "modifiedDate": "2025-09-19 13:19:19",
+  "spatialCoverage": "",
+  "language": "zh",
+  "relatedUrl": "",
+  "notes": "",
+  "apiDocUrl": "",
+  "distribution": [
+   {
+    "resourceDescription": "",
+    "resourceField": [
+     {
+      "name": "統計項目",
+      "description": ""
+     },
+     {
+      "name": "貨品別",
+      "description": ""
+     },
+     {
+      "name": "資料期(民國年)",
+      "description": "",
+      "uri": "api/CurrencyandFinancial/CommonData/NormalCommonData/YYYMMROC"
+     },
+     {
+      "name": "統計值(金額)",
+      "description": "",
+      "uri": "api/CurrencyandFinancial/CommonData/NormalCommonData/MillionUSD"
+     },
+     {
+      "name": "計量單位",
+      "description": ""
+     }
+    ],
+    "qcLevel": "",
+    "resourceFormat": "CSV",
+    "resourceCharacterEncoding": "UTF-8",
+    "resourceQualityCheckTime": "2026-09-21 13:35:41",
+    "resourceDownloadUrl": "https://service.moea.gov.tw/EE520/opendata/經濟部統計處_外銷訂單_電機產品.csv",
+    "resourceAmount": 499,
+    "resourceNotes": "",
+    "resourceRequestMethod": "",
+    "resourceOasUrl": "",
+    "resourceRequestParameters": [],
+    "resourcePathParameters": []
+   }
+  ],
+  "keyword": [
+   "AI-Ready Data 詮釋資料框架指標",
+   "外銷訂單",
+   "電機產品",
+   "政府統計"
+  ],
+  "en": {
+   "title": "Department of Economics Statistics_Export Orders_Electrical Products",
+   "description": "Electrical product export order fluctuations statistics",
+   "publisherContactName": "蔡小姐",
+   "publisherContactPhone": "02-23212200#8527",
+   "publisherContactEmail": [
+    "mjtsai1@moea.gov.tw"
+   ],
+   "updateFrequency": "Irregular updates",
+   "cost": "free"
+  }
+ }
+}

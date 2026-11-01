@@ -1,0 +1,190 @@
+{
+ "help": "",
+ "success": true,
+ "result": {
+  "categoryService": "I00",
+  "categoryDataset": "A",
+  "datasetId": 8382,
+  "identifier": "A07000000D-000038",
+  "title": "進出口貿易值_按國際貿易標準(SITC)分",
+  "description": "採一般貿易制度，進出口貿易值以「國際貿易標準(SITC)分類」及「中華民國海關進口稅則暨輸出入貨品分類表」歸類。",
+  "type": "rawData",
+  "license": "1",
+  "cost": "free",
+  "dataProvider": "lophone",
+  "publisherOID": "2.16.886.101.20003.20004.20038",
+  "publisherContactName": "蔡先生",
+  "publisherContactPhone": "23228342;02-23228342",
+  "publisherContactEmail": "tsaich@mail.mof.gov.tw",
+  "updateFrequency": {
+   "regularupdate": "1",
+   "Frequency": "1",
+   "unittime": "月"
+  },
+  "dataQuality": "無(白名單)",
+  "coverageStartedDate": "",
+  "coverageEndedDate": "",
+  "publishedDate": "2014-08-01",
+  "modifiedDate": "2023-04-20 10:19:12",
+  "spatialCoverage": "",
+  "language": "zh",
+  "relatedUrl": "",
+  "notes": "授權說明網址: https://data.gov.tw/license",
+  "apiDocUrl": "",
+  "distribution": [
+   {
+    "resourceDescription": "採一般貿易制度，進出口貿易值以「國際貿易標準(SITC)分類」及「中華民國海關進口稅則暨輸出入貨品分類表」歸類。",
+    "resourceField": [
+     {
+      "name": "幣別",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 總計",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 0 食物及活禽畜",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 1 飲料及菸類",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 2 非食用或燃料用原料",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 3 礦物性燃料潤滑油及有關材料",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 4 動植物油、脂及腊",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 5 化學品及未列名有關產品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 6 製造品(按原料區分)",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 7 機械及運輸設備",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 8 其他製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 出口/ 9 未列名商品及交易",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 總計",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 0 食物及活禽畜",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 1 飲料及菸類",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 2 非食用或燃料用原料",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 3 礦物性燃料潤滑油及有關材料",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 4 動植物油、脂及腊",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 5 化學品及未列名有關產品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 6 製造品(按原料區分)",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 7 機械及運輸設備",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 8 其他製品",
+      "description": ""
+     },
+     {
+      "name": "按美元計算(千美元)/ 進口/ 9 未列名商品及交易",
+      "description": ""
+     }
+    ],
+    "qcLevel": "",
+    "resourceFormat": "CSV",
+    "resourceCharacterEncoding": "UTF-8",
+    "resourceQualityCheckTime": "2026-09-01 08:06:43",
+    "resourceDownloadUrl": "https://web02.mof.gov.tw/njswww/webMain.aspx?sys=220&ym=9000&kind=21&type=4&funid=i8151&cycle=41&outmode=12&compmode=00&outkind=1&fld0=1&codlst0=11&codspc1=0,2,12,1,15,1,25,1,30,1,34,1,44,1,55,1,70,1,80,1,&utf=1",
+    "resourceAmount": 290,
+    "resourceNotes": "",
+    "resourceRequestMethod": "",
+    "resourceOasUrl": "",
+    "resourceRequestParameters": [],
+    "resourcePathParameters": []
+   }
+  ],
+  "keyword": [
+   "食物及活禽畜",
+   "飲料及菸類",
+   "非食用或燃料用原料",
+   "礦物性燃料潤滑油及有關材料",
+   "動植物油、脂及腊",
+   "化學品及未列名有關產品",
+   "製造品(按原料區分)",
+   "機械及運輸設備",
+   "其他製品",
+   "未列名商品及交易",
+   "政府統計"
+  ],
+  "en": {
+   "title": "The value of import and export trade _ as per the International Trade Standard (SITC) division",
+   "description": "Under the general trade system, the value of import and export trade is classified according to the \"Standard International Trade Classification (SITC)\" and the \"ROC Customs Import and Export Tariff and Classification Table.\"",
+   "publisherContactName": "蔡先生",
+   "publisherContactPhone": "23228342;02-23228342",
+   "publisherContactEmail": [
+    "tsaich@mail.mof.gov.tw"
+   ],
+   "updateFrequency": "Every 1 month",
+   "cost": "free",
+   "notes": "Authorization explanation website: https://data.gov.tw/license",
+   "keyword": [
+    "Food and live poultry",
+    "Beverages and tobacco products",
+    "Non-edible or fuel raw materials.",
+    "Mineral fuels, lubricating oils, and related materials",
+    "Vegetable and animal oils, fats, and waxes.",
+    "Chemicals and unspecified related products",
+    "Manufactured goods (classified by raw materials)",
+    "Machinery and transportation equipment",
+    "Other products",
+    "Unnamed goods and transactions",
+    "Government statistics"
+   ],
+   "resources": [
+    {
+     "description": "Under the general trade system, the value of import and export trade is classified according to the \"Standard International Trade Classification (SITC)\" and the \"Customs Import and Export Tariff and Classification Table of the Republic of China\".",
+     "fieldDesc": "Currency、In U.S. dollars (thousand U.S. dollars) / Exports / Total、In US dollars (thousand US dollars) / Exports / 0 Food and live poultry livestock、In US dollars (thousand US dollars) / Exports / 1 drinks and tobacco、In dollars (thousand dollars)/ Export/ 2 Non-edible or fuel raw materials、In US dollars (thousand US dollars)/ Export/ 3 mineral fuels, lubricants, and related materials、In USD (thousand USD)/ Export/ 4 animal and vegetable oils, fats and waxes、Measured in US dollars (thousands)/ Exports/ 5 Chemicals and products not elsewhere specified、Measured in US dollars (thousands) / Exports / 6 Manufactured Goods (by raw materials)、In U.S. dollars (thousand U.S. dollars)/ Export/ 7 Machinery and transport equipment、In US dollars (thousand US dollars) / Export / 8 other products、In terms of US dollars (thousands of US dollars)/ Export/ 9 unspecified commodities and transactions、In dollars (thousands) / Imports / Total、Measured in U.S. dollars (thousands of dollars)/imports/0/food and live animals、In dollars (thousand dollars) / Imports / 1 Beverages and tobacco、In dollars (thousand dollars) / Imports / 2 Non-edible or fuel-use raw materials、In US dollars (thousand US dollars) / Imports / 3 mineral fuels, lubricants, and related materials、Calculated in US dollars (thousand US dollars) / Import / 4 animal and vegetable oils, fats, and waxes、By US dollars (in thousands)/ Imports/ 5 chemicals and related products not elsewhere specified、In US dollars (thousands of US dollars) / imports / 6 manufactured goods (classified by raw materials)、In USD (thousands)/ Imports/ 7 Machinery and transport equipment、In US dollars (thousand US dollars) / imports / 8 other products、In dollars (thousands)/ Imports/ 9 Unspecified commodities and transactions",
+     "note": ""
+    }
+   ]
+  }
+ }
+}
