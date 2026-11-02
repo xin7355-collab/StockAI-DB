@@ -1788,7 +1788,7 @@ let rotN = 0;                // 🔁 ROTATE 換掉幾筆
 const _pxc = new Map();
 const pxAt = (sym, d) => { if (!_pxc.has(sym)) { const b = loadPx(DATA, sym); _pxc.set(sym, b ? new Map(b.map(x => [x.d, x.c])) : null); } const m = _pxc.get(sym); return m ? (m.get(String(d).replace(/\//g, '-')) || 0) : 0; };
 let cash = CAPITAL;          // 現金
-let parkSh = 0, parkBasis = 0, parkPnL = 0, parkBuy = 0, parkSell = 0, parkDays = 0;   // 🔀 停泊部位
+let parkSh = 0, parkBasis = 0, parkPnL = 0, parkBuy = 0, parkSell = 0, parkDays = 0, parkShort = 0;   // 🔀 停泊部位(parkShort = 現金 + 0050 湊不到一筆、⛔ 賣的次數)
 const parkLog = [];   // 🔀 每一段停泊 {in,out,basis,pnl} —— ⛔ 一定要留,否則停泊那條腿做不了穩健性檢定
 let parkInD = null;
 let realized = 0;            // 已實現損益
@@ -2066,11 +2066,15 @@ for (let i = 0; i < days.length; i++) {
             }
         }
         // 🅿️ PARK=idle:現金不夠就先賣掉需要的那部分 0050(⛔ 不賣超過需要的)
+        //   🧯 V80.2.2:現金 + 0050 加起來還湊不到這一筆 → ⛔ 賣(以前照賣 → 買不了 → 收盤又停回 0050 → 每天來回 PARK_COST,
+        //      賠到剩不到一筆的路徑一路磨到 0;LAB method park-churn)。ROTATE 照舊先賣(後面還會再賣最弱那檔湊)
         if (PARK === 'idle' && cash < amt && parkSh > 0 && parkOf && parkOf(i) > 0) {
             const _pps = parkOf(i) * (1 - PARK_COST / 200), _need = amt - cash;
-            const _sh = Math.min(parkSh, _need / _pps), _pro = _sh * _pps, _bp = parkBasis * _sh / parkSh;
-            parkPnL += _pro - _bp; parkBasis -= _bp; parkSh -= _sh; cash += _pro; parkSell++;
-            if (parkSh < 1e-9) { parkSh = 0; parkBasis = 0; }
+            if (ROTATE || parkSh * _pps >= _need - 1e-6) {
+                const _sh = Math.min(parkSh, _need / _pps), _pro = _sh * _pps, _bp = parkBasis * _sh / parkSh;
+                parkPnL += _pro - _bp; parkBasis -= _bp; parkSh -= _sh; cash += _pro; parkSell++;
+                if (parkSh < 1e-9) { parkSh = 0; parkBasis = 0; }
+            } else parkShort++;
         }
         // ⛔ 錢不夠就買不了 —— 這條一定要有,不然等於假設無限資金(那個報酬率是假的)
         // 🔁 ROTATE:錢不夠 → 賣掉手上最弱的一檔(今天收盤)再買
@@ -2130,7 +2134,9 @@ if (!taken.length && YEAR && SUMMARY_OUT) {
     fs.writeFileSync(SUMMARY_OUT, JSON.stringify({ year: YEAR, offset: YEAR_OFFSET, from: days[YR_FROM], to: days[YR_TO], n: 0, pnl: 0, ret: 0, skipped, note: '這一年一筆都沒進場' }));
     console.log(`📅 ${YEAR} 年一筆都沒進場 → 已寫出 n=0`); if (MULTI) continue; process.exit(0);
 }
-if (!taken.length) { console.log('❌ 暖身後一筆都沒進場(門檻太嚴或樣本太小)'); process.exit(1); }
+// 🅿️ V80.2.2 閒錢停 0050 那一行(一筆都沒進場時也要印 —— 「錢永遠湊不到一筆」正是這種情況,test_parkchurn ⓐ 讀它)
+const _idleLine = () => `   停泊進出      買 ${parkBuy} 次 / 賣 ${parkSell} 次(來回成本 ${PARK_COST}% 已扣)・湊不到一筆沒賣 ${parkShort} 次`;
+if (!taken.length) { if (PARK === 'idle') console.log(_idleLine()); console.log('❌ 暖身後一筆都沒進場(門檻太嚴或樣本太小)'); process.exit(1); }
 if (SIZING === 'volpar' || SIZING === 'volsham') {
     const _avg = vpN ? vpSum / vpN : 0;
     console.log(`📐 部位=${SIZING}(倍數 ${VP_LO}~${VP_HI}・參考=前 ${VP_REF} 筆候選 ATR% 中位):平均每筆 ${Math.round(_avg).toLocaleString()} 元(LOT ${LOT.toLocaleString()})・算出倍數 ${vpK.length} 次`);
@@ -2256,7 +2262,13 @@ if (ACCR) {
     if (!accSeen.cut.size) { console.error('🚨 ACCR 一筆都沒剔除 → 濾網沒作用(空過),停'); process.exit(1); }
 }
 if (VAL) console.log(`   💎 價值濾網 VAL=${VAL}:候選裡「不知道」(那天還沒有可用財報 / 缺欄位)剔除 ${valNoData.toLocaleString()} 筆${VAL_CYC ? ` ・非循環產業剔除 ${valNotCyc.toLocaleString()} 筆` : ''}(⛔ 不當成通過)`);
-if (PARK) {
+if (PARK === 'idle') {
+    // 🅿️ V80.2.2 閒錢停 0050 自己一段(以前套用下面「空頭停泊」那段 → idle 每次都印「一天都沒有進入空頭」,而 idle 根本不看空頭)
+    console.log(`\n🅿️ 閒錢停 0050 PARK=idle(收盤把沒用到的現金停 0050,要買時只賣需要的那部分)`);
+    console.log(_idleLine());
+    console.log(`   停泊損益      ${parkPnL >= 0 ? '+' : '−'}${nf(Math.abs(parkPnL))} 元(另外記 ・⛔ 沒有混進上面的打法損益)`);
+    if (!parkBuy) console.log('   🚨 一次都沒有真的停泊進去 —— 請先查判斷式');
+} else if (PARK) {
     // 🚧 空過守門:設了 PARK 卻**一天都沒有進入空頭** → 輸出會跟基準一字不差,看起來像「沒差別」
     console.log(`\n🔀 停泊策略 PARK=${PARK}(空頭日不開新倉)`);
     console.log(`   空頭天數      ${parkDays} 天 / ${days.length - WARMUP} 個交易日(${(parkDays / Math.max(1, days.length - WARMUP) * 100).toFixed(1)}%)`);

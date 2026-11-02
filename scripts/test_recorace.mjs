@@ -7,6 +7,7 @@
 //   ⓑ 起算日:預設 10/22;存 9/24 → 讀到 9/24;不合法(未來 / 太早 / 亂寫)→ 預設;選回預設 = 刪掉鍵(⛔ 不存死)
 //   ⓒ 🔥 收盤 < 觸發價不買、≥ 才買(收盤價成交);沒有觸發價不買;已抱著不重買
 //   ⓓ 🅿️ 現金不夠先賣 0050;🔥(錢放現金)錢不夠就不買
+//   ⓓ2 🧯 V80.2.2 現金 + 0050 湊不到一筆 → ⛔ 賣 0050(= 回測引擎 PARK=idle 那道守門;以前賣完買不了、收盤又停回去 → 每天來回)
 //   ⓔ 沒有任何買進 → 🅿️ == 📏(停車 = 0050 買了放著)、🔥 == 100 萬
 //   ⓕ 0050 碰到除息:📏 / 🅿️ 都有加(決定性對照:拿掉股利 → 變少)
 //   ⓖ 📒 🔥 那頁也是新買法,而且換起算日結果跟著變
@@ -32,6 +33,8 @@ const PB = fs.readFileSync(path.join(ROOT, 'scripts/portfolio_backtest.mjs'), 'u
 const INJ = {
   notrig: ["if (!(c >= trig)) { cnt.miss++; continue; }", "if (false) { cnt.miss++; continue; }"],
   nopark: ["if (park && cash < lot && psh > 0 && p > 0) {   // 🅿️", "if (false && park && cash < lot && psh > 0 && p > 0) {   // 🅿️"],
+  // 🧯 V80.2.2 拿掉「現金 + 0050 湊不到一筆就不賣」→ ⓓ2 必紅
+  churn: ["if (psh * pps >= lot - cash - 1e-6) {          // 🧯 V80.2.2", "if (true) {          // 🧯 V80.2.2"],
   nostart: ["if ((F || D) < S) continue;", "if (false) continue;"],
   nodiv: ["const tr = this._poliTr(bars, evs, { stock: true });", "const tr = this._poliTr(bars, [], { stock: true });"],
   nols: ["try { const v = localStorage.getItem('proRecoStart'); if (this._recoStartOk(v)) return v; } catch (_) {}", ""],
@@ -92,6 +95,10 @@ async function run(html) {
     const lots = new Map([[d0, [{ s: 'A', trig: 54 }, { s: 'B', trig: 40 }, { s: 'C', trig: 40 }]]]);
     const Ch = PRO._raceHot({ days, lists: lots, K, b50, div: null, rule: 'atr2', park: false, lot: 400000 });
     out.dCash = { buy: Ch.cnt.buy, nocash: Ch.cnt.nocash };
+    // ⓓ2 🧯 V80.2.2 本金 3 萬 < 一筆 15 萬:A 兩天都到觸發價,但現金 + 0050 湊不到一筆 → ⛔ 賣 0050(以前賣完買不了、收盤又停回去 → 每天來回)
+    const Sm = PRO._raceHot({ days, lists, K, b50, div: null, rule: 'atr2', park: true, cap: 30000, lot: 150000 });
+    const Se = PRO._raceHot({ days, lists: new Map(), K, b50, div: null, rule: 'atr2', park: true, cap: 30000, lot: 150000 });
+    out.d2 = { buy: Sm.cnt.buy, nocash: Sm.cnt.nocash, psh: Sm.psh, pshE: Se.psh, fin: Sm.eq[Sm.eq.length - 1].v, finE: Se.eq[Se.eq.length - 1].v };
     // ⓔ 沒有買進:🅿️ == 📏、🔥 == 100 萬
     const empty = new Map();
     const P0 = PRO._raceHot({ days, lists: empty, K, b50, div: null, rule: 'atr2', park: true }), C0 = PRO._raceHot({ days, lists: empty, K, b50, div: null, rule: 'atr2', park: false });
@@ -121,6 +128,8 @@ async function run(html) {
   ok('ⓒ 🔥 收盤 ≥ 觸發價才買(買在名單隔天收盤)、收盤沒到不買、沒有觸發價不買、已抱著不重買',
      R.c.buy === 1 && R.c.miss === 1 && R.c.notrig === 1 && R.c.held === 1 && R.c.t0 && R.c.t0.sym === 'A' && R.c.t0.d === R.d.d1 && R.c.t0.entry === 55 && R.c.t0.ld === R.d.d0, JSON.stringify(R.c));
   ok('ⓓ 🅿️ 錢全停在 0050 時照樣買得到(先賣 0050);🔥 錢不夠那一筆就不買', R.dPark.buy === 1 && R.dPark.nocash === 0 && R.dCash.buy === 2 && R.dCash.nocash === 1, JSON.stringify([R.dPark, R.dCash]));
+  ok('ⓓ2 🧯 現金 + 0050 湊不到一筆:⛔ 賣 0050(買 0 筆、想買但錢不夠 ≥2 次、0050 股數與最後價值 == 名單空的那一次;以前每次都來回一趟)',
+     R.d2.buy === 0 && R.d2.nocash >= 2 && R.d2.psh > 0 && Math.abs(R.d2.psh - R.d2.pshE) < 1e-9 && Math.abs(R.d2.fin - R.d2.finE) < 1e-6, JSON.stringify(R.d2));
   ok('ⓔ 沒有買進:🅿️ == 📏(停車 = 0050 買了放著)、🔥 == 100 萬', Math.abs(R.e.p - R.e.e) < 1e-6 && R.e.c === R.e.cap && R.e.e > R.e.cap * 0.99, JSON.stringify(R.e));
   ok('ⓕ 0050 除息:📏 / 🅿️ 都有加,而且兩邊差不到萬分之一(決定性對照:拿掉股利 → 變少)', R.f.e1 > R.f.e0 + 1 && R.f.p1 > R.f.p0 + 1 && Math.abs(R.f.p1 - R.f.e1) / R.f.e1 < 1e-4, JSON.stringify(R.f));
   ok('ⓗ ⭐ 決定性對照:0050 不動且沒成本 → 🅿️ == 🔥;0050 一路漲 → 🅿️ > 🔥(停車那段真的有算)', Math.abs(R.h.pf - R.h.cf) < 1e-6 && R.h.pu > R.h.cu, JSON.stringify(R.h));
