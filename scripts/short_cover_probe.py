@@ -228,6 +228,40 @@ def study(stocks, cal, events_by_sym, windows=WINDOWS, top=TOP):
     return res
 
 
+def hi_events(stocks, cal, events_by_sym, top=TOP):
+    """→ {代號: [停券開始日(交易日)]}:只收「停券前第 11 個交易日融券比例在同一天全部股票前 top%」的那幾段
+    (= study 的 'hi' 組;給回測引擎的 CCWIN 當「這幾天先不買」清單)。⛔ 只用停券前就知道的數字。"""
+    cuts = {}
+
+    def cut_at(base):
+        if base in cuts:
+            return cuts[base]
+        ra = cal[base + RANK_AT] if base + RANK_AT >= 0 else None
+        qs = []
+        if ra is not None:
+            for s, (K, ki, sh, dv) in stocks.items():
+                q = short_ratio(K, ki.get(ra), sh)
+                if q is not None:
+                    qs.append(q)
+        qs.sort(reverse=True)
+        cuts[base] = qs[max(1, int(len(qs) * top)) - 1] if len(qs) >= 30 else None
+        return cuts[base]
+    out = {}
+    for s, evs in events_by_sym.items():
+        if s not in stocks:
+            continue
+        K, ki, sh, dv = stocks[s]
+        for d, _, _ in evs:
+            ie = event_index(cal, d)
+            if ie is None or ie + RANK_AT < 0:
+                continue
+            c = cut_at(ie)
+            q = short_ratio(K, ki.get(cal[ie + RANK_AT]), sh)
+            if c is not None and q is not None and q >= c:
+                out.setdefault(s, set()).add(cal[ie])
+    return {s: sorted(v) for s, v in sorted(out.items())}
+
+
 def judge(xs, cost=COST):
     v = [x for _, x in xs]
     if not v:
@@ -282,6 +316,13 @@ def main():
         stocks[p.stem] = (K, {d: i for i, d in enumerate(K['d'])}, load_shares(share_dir, p.stem),
                           [(r[0], r[3], r[4]) for r in (divj.get(p.stem) or {}).get('h', []) if len(r) >= 5])
     print(f'📦 個股 {len(stocks)} 檔', flush=True)
+    ev_out = os.getenv('EVENTS_OUT') or ''
+    if ev_out:                                       # 只輸出「融券前 TOP%」的停券日(給引擎 CCWIN),不跑研究
+        he = hi_events(stocks, cal, events)
+        Path(ev_out).write_text(json.dumps(he, ensure_ascii=False), encoding='utf-8')
+        n = sum(len(v) for v in he.values())
+        print(f'📝 EVENTS_OUT:融券前 {int(TOP * 100)}% 的停券段 {n} 段 / {len(he)} 檔 → {ev_out}')
+        return 0 if n else 1
     res = study(stocks, cal, events)
     summary = {}
     for w in WINDOWS:
@@ -368,6 +409,24 @@ def selftest():
     l2, l2s = mean([x for _, x in r2[('pre10', 'hi', 'lo_real')]]), mean([x for _, x in r2[('pre10', 'hi', 'lo_sham')]])
     ok('⑤ ⭐ 決定性對照:融券多本身就會漲 → 比融券少的停券股是正的(≈ +2%),但挪 60 天的安慰劑一樣多 → 扣掉 ≈ 0',
        l2 > 1.0 and abs(l2 - l2s) < 1.0, (l2, l2s))
+    # ⑦ 輸出給引擎的清單 == 研究裡的 hi 組(同一套門檻)
+    rnd7 = random.Random(7)
+    n7 = 400
+    cal7 = [(date(2016, 1, 4) + timedelta(days=k)).isoformat() for k in range(n7)]
+    st7, ev7 = {}, {}
+    for k in range(60):
+        sym = str(2000 + k)
+        sb = [float(rnd7.choice((100, 500, 3000, 8000))) for _ in range(n7)]
+        cs = [50.0 * (1 + 0.001 * t) for t in range(n7)]
+        K = {'d': cal7, 'o': cs, 'c': cs, 'h': cs, 'l': cs, 'sb': sb, 'mb': [1e4] * n7}
+        st7[sym] = (K, {d: i for i, d in enumerate(cal7)}, [(cal7[0], 100_000_000)], [])
+        if k % 2 == 0:
+            ev7[sym] = [(cal7[i], cal7[i + 3], '除息') for i in (50, 120, 200, 300)]
+    he = hi_events(st7, cal7, ev7, top=0.2)
+    r7 = study(st7, cal7, ev7, top=0.2)
+    want = {(s, d) for s, ds in he.items() for d in ds}
+    n_hi = len(r7.get(('pre10', 'hi', 'all_real'), []))
+    ok('⑦ 給引擎的停券清單 == 研究裡「融券前 X%」那組(同一套門檻;清單段數 == 研究 hi 組筆數)', want and len(want) == n_hi, (len(want), n_hi))
     r3 = synth(True, False, crowd=True)
     ok('⑥ 對照組少於 10 檔 ⛔ 不算(股東會那種擠在同一天:沒停券、融券又多的只剩 5 檔 → 「比同樣融券多、沒停券」整組不出現)',
        ('pre10', 'hi', 'hi_real') not in r3 and ('pre10', 'hi', 'lo_real') in r3, sorted(k for k in r3 if k[0] == 'pre10' and k[1] == 'hi'))
