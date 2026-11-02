@@ -16,6 +16,7 @@
   · 維基百科「臺灣50指數」的調整表(日期 / 納入指數 / 剔除指數,72 列、2003 年起)→ **每一列整列印出來**
     (`WIKI\t` 開頭一行一列,格子裡的換行換成「 | 」),拿回來當對答案用的歷史(⚠️ 群眾編輯,要另外對官方公告)
   · 臺灣指數公司「技術通知」→ 列出標題有臺灣50 / 定審的通知(日期 + 標題 + 連結),往後翻頁看最早到哪一年
+  · 🆕 維基的成分股表(`WIKIMn\t` 開頭)→ 拿目前 50 檔倒推每一季的成分(模擬「誰會被納入」要用)
 
 --selftest:連結抽取、關鍵字挑選、檔案連結、表格、維基表格整列、通知清單(不用網路)。
 """
@@ -131,6 +132,22 @@ def wiki_rows(html, keys=('納入', '剔除', '刪除')):
     return out
 
 
+def member_tables(html, min_codes=30):
+    """成分股表:表格文字裡不重複的 4 碼代號 ≥ min_codes 的表,整列回傳(含表頭)。⛔ 不用調整表(那張有納入 / 剔除)。"""
+    out = []
+    for tb in re.findall(r'<table\b.*?</table>', html or '', flags=re.S | re.I):
+        txt = re.sub(r'<[^>]+>', ' ', tb)          # ⛔ 用 strip:相鄰格子黏在一起(「甲0」+「1001」→ 01001)會漏算
+        if len(set(re.findall(r'(?<!\d)(\d{4})(?!\d)', txt))) < min_codes or '納入' in txt[:3000]:
+            continue
+        rows = []
+        for tr in re.findall(r'<tr\b.*?</tr>', tb, flags=re.S | re.I):
+            cells = [cell_text(c) for c in re.findall(r'<t[dh]\b[^>]*>(.*?)</t[dh]>', tr, flags=re.S | re.I)]
+            if cells:
+                rows.append(cells)
+        out.append(rows)
+    return out
+
+
 def notice_items(html, base, keys=TW50_KEYS):
     """通知清單:連結文字有臺灣50 / 定審的 → [(日期或 None, 文字, 網址)];日期抓連結前 300 字內最後一個 YYYY/MM/DD 或 YYYY-MM-DD。"""
     out = []
@@ -166,6 +183,11 @@ def main_r2():
         print(f'=== 維基 臺灣50指數 HTTP {r.status_code} ・調整表 {len(rows)} 列(含表頭)', flush=True)
         for row in rows:
             print('WIKI\t' + '\t'.join(row), flush=True)
+        mts = member_tables(r.text or '')
+        print(f'=== 維基 成分股表 {len(mts)} 張(不重複代號 ≥30 的表)', flush=True)
+        for k, tb in enumerate(mts):
+            for row in tb:
+                print(f'WIKIM{k}\t' + '\t'.join(row), flush=True)
     seen, items, pages = set(), [], [TIP_NOTICE]
     i = 0
     while i < len(pages) and i < TIP_PAGES:
@@ -272,6 +294,9 @@ def selftest():
     ok('⑥ 通知清單:臺灣50 / 定審才收、日期取連結前面那個',
        [(d, u.rsplit('/', 1)[-1]) for d, _, u in ni] == [('2026-09-02', '1'), ('2026-09-01', '2')], ni)
     ok('⑥ 翻頁連結照頁碼排', [u[-1] for u in page_links(nt, 'https://taiwanindex.com.tw/downloads/technical_notice')] == ['2', '3'])
+    big = '<table><tr><th>代號</th><th>名稱</th></tr>' + ''.join(f'<tr><td>{1000 + k}</td><td>甲{k}</td></tr>' for k in range(35)) + '</table>'
+    mt = member_tables(big + wk)
+    ok('⑦ 成分股表:≥30 檔的表整列收、調整表不收', len(mt) == 1 and len(mt[0]) == 36 and mt[0][1] == ['1000', '甲0'], [len(x) for x in mt])
     print(('\n❌ selftest 失敗 ' + str(bad)) if bad else '\n✅ selftest 全過')
     return 1 if bad else 0
 

@@ -18,7 +18,7 @@
   ③ 表單有 co_id / year / month 的 → 依它的欄位名組幾個查詢(2330、今年、10 年前)POST ajax_<代碼>
      → `mops_probe.verdict` 印「有資料 N 列 / 參數不對(MOPS 自己的提示)/ 一頁網頁」+ 前 3 列原文
 
-🔁 第二輪(預設;MOPS_MODE=r1 跑回第一輪)——第一輪(2026-11-02 job 125024672671)找到的那幾頁直接問:
+🔁 第二輪(MOPS_MODE=r2;r1 = 第一輪;預設 = 第三輪)——第一輪(2026-11-02 job 125024672671)找到的那幾頁直接問:
   · t56sb12_q1 / q2「股權轉讓事前申報—上市 / 上櫃公司持股轉讓日報表」(表單 year / month / day,⛔ 沒帶 day 回「日期不可空白」)
     → 問 5 個日期(最近 / 5 / 10 / 15 / 20 年前),看歷史有多深、一天幾筆
   · t56sb21_q1「持股轉讓 / 未轉讓日報表」(年 + 起訖月)、query6_1「內部人持股異動事後申報表」(僅提供 86 年 11 月之後)
@@ -26,7 +26,10 @@
   ⭐ 第一輪 stapap1 有資料但 `mops_probe.table_rows` 認不得(第一欄不是代號)→ 這一輪一律用 `generic_rows` 印
   ⛔ 欄位名一律用頁面表單裡真的有的(`r2_forms`),表單沒有那個欄位就不送
 
---selftest:連結 / 代碼抽取、關鍵字挑選、表單欄位 → 查詢組合、第二輪的表單與通用表格解析(不用網路)。
+🔁 第三輪(預設):第二輪那兩支日報表(t56sb12_q1 / q2)回的是一頁有「詳細資料」按鈕的網頁、5 個日期一樣長(2962 字)
+  → 印原文 + 照按鈕 onclick 自己寫的欄位再問一次(⛔ 猜欄位)
+
+--selftest:連結 / 代碼抽取、關鍵字挑選、表單欄位 → 查詢組合、第二輪的表單與通用表格解析、按鈕欄位(不用網路)。
 """
 import os
 import re
@@ -332,6 +335,56 @@ def main_r2():
     return 0
 
 
+R3_DAY = date(2026, 10, 30)
+
+
+def onclick_forms(html):
+    """回應裡「詳細資料」按鈕的 onclick 帶了哪些欄位(document.xxx.欄位.value='值')→ [{欄位: 值}];⛔ 不猜,原文照抄。"""
+    out = []
+    for m in re.finditer(r"onclick\s*=\s*([\"'])(.*?)\1", html or '', flags=re.I | re.S):
+        kv = dict(re.findall(r"\.(\w+)\.value\s*=\s*['\"]?([^'\";]*)", m.group(2)))
+        if kv:
+            out.append(kv)
+    return out
+
+
+def main_r3():
+    import requests
+    s = requests.Session()
+    print(f'🔁 MOPS 第三輪 ・持股轉讓事前申報日報表 原文 ・{R3_DAY}', flush=True)
+    for code in ('t56sb12_q1', 't56sb12_q2'):
+        rp = get(s, f'{HOST}/mops/web/{code}')
+        if rp is None:
+            continue
+        info = mp.form_fields(rp.text or '')
+        forms = r2_forms('day', info['fields'], SAMPLE, days=(R3_DAY,))
+        if not forms:
+            print(f'   {code}:表單沒有 year/month/day', flush=True)
+            continue
+        rq = get(s, f'{HOST}/mops/web/ajax_{code}', forms[0][1])
+        if rq is None:
+            continue
+        t = rq.text or ''
+        print(f'\n=== {code} {R3_DAY}:HTTP {rq.status_code} ・{len(t)} 字 ・送出 {forms[0][1]}', flush=True)
+        print('RAW\t' + re.sub(r'\s+', ' ', t)[:3500], flush=True)
+        oc = onclick_forms(t)
+        print(f'   「詳細資料」按鈕帶的欄位:{oc[:5]}', flush=True)
+        for kv in oc[:2]:
+            f2 = dict(forms[0][1], **kv)
+            tgt = kv.get('action') or kv.get('funcName') or code
+            r2_ = get(s, f'{HOST}/mops/web/ajax_{tgt}', f2)
+            if r2_ is None:
+                continue
+            t2 = r2_.text or ''
+            rows = generic_rows(t2)
+            print(f'   ↳ 照按鈕的欄位再問一次(ajax_{tgt}):HTTP {r2_.status_code} ・{len(t2)} 字 ・資料列 {len(rows)} ・表頭 {th_cells(t2)[:20]}', flush=True)
+            for row in rows[:5]:
+                print(f'      {row[:14]}', flush=True)
+            if not rows:
+                print('RAW2\t' + re.sub(r'\s+', ' ', t2)[:2500], flush=True)
+    return 0
+
+
 def selftest():
     bad = []
 
@@ -370,9 +423,12 @@ def selftest():
     ok('⑤ 民國日期 → 西元(兩種寫法)', roc_span([['115/10/30'], ['申報日 1050628']]) == ('2016-06-28', '2026-10-30'), roc_span([['115/10/30'], ['1050628']]))
     ok('⑤ 沒有日期 → (None, None)', roc_span([['董事長', '1,000']]) == (None, None))
     ok('⑥ MOPS 提示「日期不可空白」認得出來', (r2_msg('<td>日期不可空白!</td>') or '').find('不可空白') != -1)
+    oc = onclick_forms('<input type=\'button\' value=\'詳細資料\' onclick="document.fm.co_id.value=\'2330\';document.fm.action.value=\'t56sb12_q1_d\';go();">')
+    ok('⑦ 「詳細資料」按鈕的欄位照原文抄出來', oc == [{'co_id': '2330', 'action': 't56sb12_q1_d'}], oc)
     print(('\n❌ selftest 失敗 ' + str(bad)) if bad else '\n✅ selftest 全過')
     return 1 if bad else 0
 
 
 if __name__ == '__main__':
-    sys.exit(selftest() if '--selftest' in sys.argv else (main() if os.getenv('MOPS_MODE') == 'r1' else main_r2()))
+    _m = os.getenv('MOPS_MODE') or 'r3'
+    sys.exit(selftest() if '--selftest' in sys.argv else {'r1': main, 'r2': main_r2}.get(_m, main_r3)())
