@@ -329,6 +329,9 @@ const VOLAT_MAX = +(process.env.VOLAT_MAX || 35);
 //   ⛔ 模擬門檻比快取鬆 → 快取裡根本沒有那些天 → exit 1(⛔ 不可安靜地少算)
 const AF_RANK = +(process.env.AF_RANK || RANK_MIN);
 const AF_VOL = +(process.env.AF_VOL || VOLAT_MIN);
+// 🧪 V80.1.7 AF_VOLMAX:ALLFIRE 快取多出來的觸發**只留**「波動 < AF_VOLMAX」那幾天(給 SELF 含 lovolat 用:next-gene-lowvol 照 App 買法)
+//   不設 = 不限(Infinity),快取 key 一個字都不變;設了才進 key。⛔ 配 hivolat(快取少了高波動那幾天)→ exit 1
+const AF_VOLMAX = process.env.AF_VOLMAX ? +process.env.AF_VOLMAX : Infinity;
 const FILTER = (process.env.FILTER || '').split('+').filter(Boolean);
 const LIQ = +(process.env.LIQ || 1);       // 億元
 const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾招同時觸發
@@ -362,7 +365,12 @@ const ALLFIRE = process.env.ALLFIRE === '1';
 if (ALLFIRE && REENTRY > 0) { console.error('🚨 ALLFIRE 不可跟 REENTRY 一起用'); process.exit(1); }
 //   ⚠️ 全市場 16 年「每天觸發都留」約 3 倍筆數(記憶體裝不下)→ 多出來的那幾筆(seq=0)只留「訊號日是 🧬」的(候選本來就要過 🧬)
 //      → 只能配 SELF 含 high + hivolat;門檻(RANK_MIN / VOLAT_MIN)進 CACHE_KEY(換門檻要重建)
-if (ALLFIRE && !(SELF.includes('high') && SELF.includes('hivolat'))) { console.error('🚨 ALLFIRE 要配 SELF 含 high + hivolat(多出來的觸發只留 🧬 那幾天)'); process.exit(1); }
+if (ALLFIRE && !SELF.includes('high')) { console.error('🚨 ALLFIRE 要配 SELF 含 high(多出來的觸發只留位階高的那幾天)'); process.exit(1); }
+// 🧪 V80.1.7 只看位階、不看波動(next-gene-lowvol 的「全部高位階」):快取要有全部波動那幾天(AF_VOL = 0、不設 AF_VOLMAX)
+if (ALLFIRE && !SELF.includes('hivolat') && !SELF.includes('lovolat') && !(AF_VOL <= 0 && !Number.isFinite(AF_VOLMAX))) { console.error(`🚨 ALLFIRE + 只看位階:快取只留 波動 ≥${AF_VOL}・< ${AF_VOLMAX} 那幾天 → 要 AF_VOL=0、不設 AF_VOLMAX`); process.exit(1); }
+// 🧪 V80.1.7 lovolat:快取要有低波動那幾天(AF_VOL = 0)、而且模擬的低波動門檻不可比快取寬(VOLAT_MAX ≤ AF_VOLMAX);hivolat 配 AF_VOLMAX = 快取少了高波動那幾天
+if (ALLFIRE && SELF.includes('lovolat') && !(AF_VOL <= 0 && VOLAT_MAX <= AF_VOLMAX)) { console.error(`🚨 ALLFIRE + lovolat:快取只留 波動 ≥${AF_VOL}・< ${AF_VOLMAX} 那幾天 → 要 AF_VOL=0 而且 VOLAT_MAX(${VOLAT_MAX})≤ AF_VOLMAX`); process.exit(1); }
+if (ALLFIRE && SELF.includes('hivolat') && Number.isFinite(AF_VOLMAX)) { console.error(`🚨 ALLFIRE + hivolat ⛔ 配 AF_VOLMAX(快取少了波動 ≥${AF_VOLMAX} 那幾天)`); process.exit(1); }
 if (ALLFIRE && (RANK_MIN < AF_RANK || VOLAT_MIN < AF_VOL)) { console.error(`🚨 ALLFIRE 快取只留 位階 ≥${AF_RANK}・波動 ≥${AF_VOL} 那幾天 → 模擬門檻(${RANK_MIN} / ${VOLAT_MIN})只能更嚴、⛔ 不可更鬆`); process.exit(1); }
 // 🎯 V74.9.3 增量檢定(穩定度探針說「哪一招」不會延續 → 那排序到底有沒有在做事?)
 //   RANKBY = self(預設,這檔自己在這招的期望值)| rand(候選裡**隨機**排序,固定種子)| mkt(全市場該型態平均 = V1 舊法)
@@ -601,9 +609,10 @@ const _ckStopFill = STOPFILL !== 'stop' ? { STOPFILL } : {};
 const _ckForce = { ...(BEAR_EXIT ? { BEAR_EXIT } : {}), ...(FORCE_EXIT ? { FORCE_EXIT: FORCE_HASH } : {}), ...(LUDEFER ? { LUDEFER: 1 } : {}), ...(HALFSIG ? { HALFSIG } : {}) };
 // 🔥 ALLFIRE 的交易清單不一樣(多出來的只留 🧬 那幾天 → 門檻也要進)⛔ 寫成一個變數,CACHE_KEY 那一行不可有巢狀大括號(十幾支測試用 [^}]* 抽它)
 const _ckAllFire = ALLFIRE ? { ALLFIRE: 1, AF_RANK, AF_VOL } : {};
+const _ckAfMax = (ALLFIRE && Number.isFinite(AF_VOLMAX)) ? { AF_VOLMAX } : {};   // 🧪 V80.1.7 不設 = 空物件 → key 字串跟舊版一樣
 // 📈 V79.8.2 PSRC=ext:候選清單換了 → 交易整份不一樣 → 進 key(內容雜湊,⛔ 只放檔名;同樣寫成一個變數)
 const _ckPsrc = PSRC ? { PSRC: (() => { const b = fs.readFileSync(PSRC.slice(4)); let h = 2166136261; for (let k = 0; k < b.length; k++) { h ^= b[k]; h = Math.imul(h, 16777619) >>> 0; } return `${b.length}:${h}`; })() } : {};
-const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill, ..._ckForce, ..._ckAllFire, ..._ckPsrc });
+const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill, ..._ckForce, ..._ckAllFire, ..._ckAfMax, ..._ckPsrc });
 const PSRC_MAP = PSRC ? JSON.parse(fs.readFileSync(PSRC.slice(4), 'utf8')) : null;
 if (PSRC) {
     const n = Object.values(PSRC_MAP).reduce((a2, o) => a2 + Object.keys(o).length, 0);
@@ -980,7 +989,7 @@ for (const sym of SCAN_SYMS) {
     for (const t of tr) {
         if (t.__g != null) { graceBlocked += t.__g; continue; } if (t.__hs) { hsDaysAll += t.__hs[0]; hsHitsAll += t.__hs[1]; continue; }
         if (t.__pre != null) { preHitAll += t.__pre; continue; }
-        if (_af && t.seq === 0) { const f = _af.get(t.inD); if (!(f && f.rank >= AF_RANK && f.vol >= AF_VOL)) { afDrop++; continue; } }
+        if (_af && t.seq === 0) { const f = _af.get(t.inD); if (!(f && f.rank >= AF_RANK && f.vol >= AF_VOL && f.vol < AF_VOLMAX)) { afDrop++; continue; } }
         allTrades.push({ ...t, sym });
     }
     if (++done % 50 === 0) {
