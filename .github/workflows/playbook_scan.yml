@@ -145,6 +145,47 @@ jobs:
         continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單的部署
         run: python3 pick_snapshot.py --leader
 
+      # 🔏 V80.1.9 推薦紀錄存證:pick_history.json 住在每次 force-push 覆蓋的分支 → 被改過看不出來。
+      #   每一天每一段的指紋(sha256)只增不改記在獨立分支 pick_ledger(⛔ force push、⛔ 改舊的列);
+      #   過去的紀錄指紋變了 → ⛔ 不覆蓋,印 ::warning::(scripts/pick_ledger.py 規則 ④)。
+      #   ⚠️ 排在 👑 那步之後(今天的 lead 段才在裡面);用 worktree(⛔ 不切走主工作目錄,後面還要部署)。
+      - name: 🔏 推薦紀錄存證
+        if: steps.scan.outputs.scan_rc == '0'
+        continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單的部署
+        run: |
+          set -e
+          [ -s data/pick_history.json ] || { echo "⏭️ 沒有 pick_history.json → 這輪不存證"; exit 0; }
+          WS="$PWD"
+          # 不論從哪裡結束都把 worktree 收掉(⛔ 留著:後面的部署步驟在主工作目錄切分支時會被它卡住)
+          trap 'cd "$WS"; git worktree remove --force /tmp/ledger 2>/dev/null || true' EXIT
+          cp data/pick_history.json /tmp/ph_ledger.json
+          cp scripts/pick_ledger.py /tmp/pick_ledger.py
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          rm -rf /tmp/ledger
+          if git fetch --depth=1 origin pick_ledger 2>/dev/null; then
+            git worktree add -f /tmp/ledger FETCH_HEAD
+            git -C /tmp/ledger checkout -q -B pick_ledger
+          else
+            git worktree add -f --detach /tmp/ledger
+            git -C /tmp/ledger checkout -q --orphan pick_ledger
+            git -C /tmp/ledger rm -rq --cached . 2>/dev/null || true
+            git -C /tmp/ledger clean -fdq
+          fi
+          cd /tmp/ledger
+          python3 /tmp/pick_ledger.py append /tmp/ph_ledger.json pick_ledger.tsv
+          python3 /tmp/pick_ledger.py verify /tmp/ph_ledger.json pick_ledger.tsv || echo "::warning::存證比對有對不上的段落(見上面)"
+          git add pick_ledger.tsv
+          if git diff --cached --quiet; then echo "✅ 沒有新的段落 → 不 commit"; exit 0; fi
+          git commit -q -m "🔏 推薦紀錄存證 $(date -u +%Y-%m-%d)"
+          # ⛔ 這個 retry 迴圈不可拿掉;⛔ force push
+          for i in 1 2 3 4 5; do
+            git push origin pick_ledger && { echo "✅ 已推上 pick_ledger(第 $i 次)"; exit 0; }
+            sleep $((i * 3))
+            git pull --rebase origin pick_ledger 2>/dev/null || true
+          done
+          echo "::warning::存證 push 連 5 次失敗(下一輪會補記)"
+
       # 🎤 V77.2.7 閘門改成 `!cancelled()`:掃描失敗那天 **confcall.json 照樣要部署**(陷阱 #44:
       #   一個閘門⛔ 不可掛多個產物)。playbook_edge 只在 scan_rc == 0 才 cp(掃描失敗 → /tmp 沒有它 →
       #   restore_files 用 `[ -s ]` 守門跳過 → 不會拿還原回來的舊檔冒充新產出)。

@@ -8,6 +8,8 @@
  *   ⓔ 有真正原因 → 顯示「原因」;「已關禁閉」→ 不顯示
  *   ⓕ 緊急列⛔「新手別碰」,改成不閃的 note;說明字典⛔「新手勿碰 / 高手才玩」
  *   ⓖ ⛔ 研究字樣(lib_retailbad)
+ *   ⓗ~ⓚ V80.1.9:官方理由(reason)優先於 threshold・其他官方名單 `_attentionFlagsHtml`(排序 / 起訖 / 跳脫)・
+ *       個股頁卡片的理由行放在 `extra =` 之後(⛔ 被蓋掉 —— ⓚ 就是那個決定性對照)
  * 注入:INJECT=oldfear(怕關那句加回去)/ nohot(拿掉 30% 那行)
  */
 import fs from 'fs';
@@ -51,6 +53,17 @@ const R = await page.evaluate(() => {
     app.activeData = mk(30, 29); o.n29 = txt(app._renderAttentionDetailHtml('2330'));
     app.activeData = mk(30, 31); o.n31 = txt(app._renderAttentionDetailHtml('2330'));
     o.src = app._renderAttentionDetailHtml.toString();
+    // 🆕 V80.1.9 官方理由 / 其他官方名單
+    app.attentionStatus['1569'] = { status: '⚠️ 注意股', threshold: '注意條款觸發', reason: '最近六個營業日累積週轉率 86.24%', date: '2026-10-30' };
+    o.why = txt(app._renderAttentionDetailHtml('1569'));
+    o.fl = txt(app._attentionFlagsHtml('2330', { '2330': [{ k: 'no_dt_sell_first', t: '暫停先賣後買當沖', from: '2026-11-03', to: '2026-11-09', why: '除息' }, { k: 'change_trade', t: '變更交易(全額交割)' }] }));
+    o.flNone = app._attentionFlagsHtml('2330', {});
+    o.flEsc = app._attentionFlagsHtml('9999', { '9999': [{ k: 'x', t: '<img src=x onerror=alert(1)>' }] });
+    const box = document.getElementById('dispHeadlineCard') || (() => { const d = document.createElement('div'); d.id = 'dispHeadlineCard'; document.body.appendChild(d); return d; })();
+    app.attentionFlags = { '1569': [{ k: 'change_trade', t: '變更交易(全額交割)' }] };
+    app._calcAttentionScan = () => ({ recentHitDays5: 0, recentHitDays10: 0, recentHitDays30: 0, predictText: '✅', rules: [] });
+    app._estDaysToDisposal = () => ({ days: 2, projMD: '11/4', lastNormalMD: '11/3' });
+    app.renderDispHeadline('1569'); o.head = txt(box.innerHTML);
     return o;
 });
 const ALL = R.dispT + '\n' + R.n31 + '\n' + R.src;
@@ -64,6 +77,12 @@ const IDX = fs.readFileSync(TMP, 'utf8');
 ok('ⓕ 緊急列⛔「新手別碰」、說明字典⛔「新手勿碰 / 高手才玩」', !/新手別碰|新手勿碰|高手才玩/.test(IDX));
 ok('ⓕ2 處置那句改走不閃的 emgNote', /emgNote\.push\('📋 官方處置\/注意股/.test(IDX));
 ok('ⓖ ⛔ 研究字樣', !badOf(R.dispT + R.n31 + R.dispHeld).length, badOf(R.dispT + R.n31));
+ok('ⓗ V80.1.9 有官方理由就顯示官方理由(⛔ 只印「注意條款觸發」)', /86\.24%/.test(R.why) && !/注意條款觸發/.test(R.why), R.why);
+ok('ⓘ 其他官方名單:變更交易排第一、暫停當沖帶起訖與原因;沒有就回空字串',
+   /官方還把它列在/.test(R.fl) && R.fl.indexOf('變更交易') < R.fl.indexOf('暫停先賣後買當沖') && /11\/3~11\/9・除息/.test(R.fl) && R.flNone === '', R.fl);
+ok('ⓙ 名單文字有跳脫(⛔ 直接塞 HTML)', !/<img/.test(R.flEsc) && /&lt;img/.test(R.flEsc), R.flEsc);
+ok('ⓚ 個股頁「離被關還幾步」:官方注意 + 推估天數那張框之外,理由與公告日、其他官方名單都在(⛔ 被 extra = 蓋掉)',
+   /官方理由/.test(R.head) && /10\/30 公告/.test(R.head) && /被關前這樣做/.test(R.head) && /變更交易/.test(R.head), R.head);
 ok('ⓩ 無 pageerror', !errs.length, errs.slice(0, 2));
 void ALL;
 await browser.close();

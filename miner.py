@@ -3076,7 +3076,43 @@ def _twii_calendar(path=None):
     return set(ds), ds[0], ds[-1], ''
 
 
-def _holiday_ghost_dates(day_stats, cal, lo, hi, min_n=20, min_same=0.5, min_zero=0.9):
+_TW_HOLIDAY_URL = 'https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule'
+# ⛔ 不偽裝瀏覽器(V80.1.6 決策):V80.1.9 探針用這種寫明身分的 UA 實測休市表 HTTP 200
+_HONEST_UA = 'Mozilla/5.0 (compatible; StockAI-DB miner/1.0; +https://github.com/xin7355-collab/stockai-db)'
+
+
+def parse_official_closed(rows) -> set:
+    """🗓️ V80.1.9 證交所官方休市表 → {'YYYY/MM/DD', ...}(只收「沒有交易」的日子)。純函式。
+    ⚠️ 這張表也列「國曆新年開始交易日」「農曆春節前最後交易日」—— 那兩種日子**有**交易 → 名字有
+       「開始交易」「最後交易」的 ⛔ 收。「市場無交易,僅辦理結算交割作業」= 沒交易 → 收。
+    週末那幾列(例:和平紀念日 2/28 是週六)收進來也無害,週末本來就沒有 K 棒。日期是民國 1150101 這種。"""
+    out = set()
+    for r in rows if isinstance(rows, list) else []:
+        if not isinstance(r, dict):
+            continue
+        name = str(r.get('Name') or '')
+        if '開始交易' in name or '最後交易' in name:
+            continue
+        m = re.fullmatch(r'(\d{3})(\d{2})(\d{2})', str(r.get('Date') or '').strip())
+        if m:
+            out.add(f'{int(m.group(1)) + 1911:04d}/{m.group(2)}/{m.group(3)}')
+    return out
+
+
+def _official_closed_days():
+    """抓官方休市表 → (set, why)。抓不到回 (空集合, 原因) —— 呼叫端就照舊只靠加權行事曆判(⛔ 不猜)。
+    ⚠️ 這張表只有「今年」(V80.1.9 實測 2026 年 27 列);颱風假不在表上,還是靠下面那幾條推斷。"""
+    try:
+        r = http_session.get(_TW_HOLIDAY_URL, headers={'User-Agent': _HONEST_UA}, timeout=15)
+        if r.status_code != 200:
+            return set(), f'HTTP {r.status_code}'
+        got = parse_official_closed(r.json())
+        return got, ('' if got else '回應裡沒有休市日')
+    except Exception as e:  # noqa: BLE001
+        return set(), f'{type(e).__name__}'
+
+
+def _holiday_ghost_dates(day_stats, cal, lo, hi, min_n=20, min_same=0.5, min_zero=0.9, official_closed=frozenset()):
     """🎑 V77.9.2 找出「確定沒開盤、卻被寫了 K 棒」的日子。
 
     day_stats = {'YYYY/MM/DD': (有幾檔在那天有一根, 其中幾根收盤 = 前一根收盤[, 其中幾根「量 0 且收盤 = 前一根」])}
@@ -3089,6 +3125,10 @@ def _holiday_ghost_dates(day_stats, cal, lo, hi, min_n=20, min_same=0.5, min_zer
     🌀 V79.6.5 唯一的例外:那天**九成以上**的 K 棒是「成交量 0 而且收盤 = 前一天」—— 真的交易日就算加權還沒更新,
        個股量也都 > 0,物理上不可能九成量 0 → 一定是休市日的佔位列(2026-10-23 颱風休市,Yahoo 給的那種)。
        沒有第 3 欄(舊呼叫端)= 0 → 這條永遠不成立,行為跟以前一模一樣。
+    🗓️ V80.1.9 official_closed = 證交所官方休市表(parse_official_closed):表上的日子**而且加權那天沒有一根**
+       → 確定沒交易,不看比例、也不管在不在加權最新日之後(補上「加權還沒更新到」那段的空窗;
+       中秋 / 教師節這種已公告的假日當晚就刪得掉)。加權那天有一根 → 以實際行情為準,⛔ 刪。
+       沒給(舊呼叫端 / 表抓不到)= 空集合 → 行為跟以前一模一樣。
     """
     out = set()
     if not cal:
@@ -3097,6 +3137,9 @@ def _holiday_ghost_dates(day_stats, cal, lo, hi, min_n=20, min_same=0.5, min_zer
         n, same = v[0], v[1]
         zflat = v[2] if len(v) > 2 else 0
         if d in cal or d < lo:
+            continue
+        if d in official_closed and n > 0:
+            out.add(d)
             continue
         if d >= hi:
             if n >= min_n and (zflat or 0) / n >= min_zero:
@@ -3592,7 +3635,9 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
                       FROM stock_history)
                 GROUP BY trade_date"""):
                 _stats[str(d).replace('-', '/')] = (n, same or 0, zflat or 0)
-            _ghost = _holiday_ghost_dates(_stats, _cal, _clo, _chi)
+            _offc, _owhy = _official_closed_days()   # 🗓️ V80.1.9 官方休市表(抓不到 = 空集合,照舊只靠加權)
+            print(f"  🗓️ 官方休市表:{len(_offc)} 天" + (f"(抓不到:{_owhy} → 只靠加權行事曆判)" if _owhy else ''))
+            _ghost = _holiday_ghost_dates(_stats, _cal, _clo, _chi, official_closed=_offc)
             if _ghost:
                 _after = sorted(x for x in _ghost if x > _chi)
                 print(f"  🎑 假日幽靈 K:{sorted(_ghost)} 加權沒有開盤 → 匯出時整天刪掉"

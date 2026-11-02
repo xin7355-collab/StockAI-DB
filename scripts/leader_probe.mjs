@@ -107,6 +107,22 @@ export function mom(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0; 
 export function momRaw(S, i, L) { if (!(S.C[i] > 0)) return NaN; let j = i, c = 0; while (j > 0 && c < L) { j--; if (S.C[j] > 0) c++; } return c === L ? S.C[i] / S.C[j] - 1 : NaN; }
 /** 🧪 V79.2.4 fipMin:近 L 個交易日裡「上漲天數」的比例(調整價;穩穩漲 vs 幾根長紅撐出來的) */
 export function upShare(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0, up = 0, later = S.A[i]; while (j > 0 && c < L) { j--; if (!(S.A[j] > 0)) continue; if (later > S.A[j]) up++; later = S.A[j]; c++; } return c === L ? up / L : NaN; }
+/** 🧪 BT25 pick='rs':RS 加權分數(IBD / Minervini 那種相對強度)= 0.20×r21 + 0.30×r63 + 0.20×r126 + 0.15×r189 + 0.15×r252
+ *  r = 近 L 個「有交易的」日子的報酬(跟 mom 同一把尺:調整價;rankRaw 時改原始收盤)—— 五段都算得出來才有分數(要 252 根以前的資料)。
+ *  ⛔ 回看那 252 根裡有資料斷崖(S.jump:減資 / 停牌恢復)→ 沒有分數:r189 / r252 會跨過那一跳變成假的(10 日動能靠池子的「120 天內沒斷崖」擋,252 天的要自己擋)。
+ *  同一天的百分位名次跟分數同順序 → 池內排名直接用分數。只用 ≤ i 的資料(selftest ㊿h 改未來的 K 線 → 分數不變)。 */
+export const RS_W = [[21, 0.20], [63, 0.30], [126, 0.20], [189, 0.15], [252, 0.15]];
+export function rsScore(S, i, raw = false) {
+    const X = raw ? S.C : S.A;
+    if (!(X[i] > 0)) return NaN;
+    let j = i, c = 0, s = 0;
+    for (const [L, w] of RS_W) {
+        while (j > 0 && c < L) { j--; if (X[j] > 0) c++; }
+        if (c < L) return NaN;
+        s += w * (X[i] / X[j] - 1);
+    }
+    return S.jump[i] > j ? NaN : s;
+}
 /** 🧪 V79.2.4 volMin:近 20 個交易日振幅(最高 − 最低)÷ 收盤(原始價);每檔算一次快取(只對進到池子的算) */
 export function amp20(S, i) {
     if (!S._amp) { const n = S.C.length, out = new Float64Array(n).fill(NaN), hq = [], lq = []; for (let k = 0; k < n; k++) { if (!(S.C[k] > 0)) continue; hq.push(S.H[k] > 0 ? S.H[k] : S.C[k]); lq.push(S.L[k] > 0 ? S.L[k] : S.C[k]); if (hq.length > 20) { hq.shift(); lq.shift(); } if (hq.length === 20) out[k] = (Math.max(...hq) - Math.min(...lq)) / S.C[k]; } S._amp = out; }
@@ -125,6 +141,7 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     // 🧪 V79.2.4 沒測過的做法(⛔ 不設時逐位相同,selftest ㊺~㊿b):momMin = 候選 L 日動能 ≥ x% 才買(null = 不看;0 也算一個門檻)・fipMin = L 日裡上漲天數比例 ≥ p 才買
     //   ・volMin = 池內 20 日振幅位階(%)≥ 才買 ・rankRaw = 動能用原始收盤(= App 的 chg10)・bearIdx = 空頭守門看哪個指數('' / twii / otc / both / either)
     //   ・pick 多兩種:'blend'(5/10/20 日名次平均)/ 'rel'(減同產業中位,要 IND_MAP)
+    //   ・🧪 BT25 pick 'rs':照 RS 加權分數(rsScore,r21/63/126/189/252)排;算不出來的(不滿 252 根 / 回看期間有斷崖)不進榜;其他規則一字不動(selftest ㊿h)
     momMin: null, fipMin: 0, volMin: 0, rankRaw: false, bearIdx: '',
     // 📚 V79.2.5 兩本帳(使用者:「依照你說的做」)⛔ 不設(books 1)時逐位相同(selftest ㊿c):
     //   books = B → 錢平分 B 本帳,每本帳是**完全獨立**的帳戶(各自的現金 / 0050 / 持股,同一檔兩本都買 = 各持一份),
@@ -428,6 +445,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 const byG = new Map(); for (const x of rows) { if (!byG.has(x.g)) byG.set(x.g, []); byG.get(x.g).push(x.m); }
                 const all = median(rows.map(x => x.m)) || 0, medG = new Map([...byG].map(([g, a]) => [g, a.length >= 3 ? median(a) : all]));
                 ranked = rows.map(x => ({ S: x.S, m: x.m - medG.get(x.g) })).sort((a, b) => b.m - a.m).map(x => x.S);
+            } else if (P.pick === 'rs') {                                          // 🧪 BT25 RS 加權分數(算不出來的不進榜;同分照代號)
+                ranked = ok.map(S => ({ S, m: rsScore(S, i, P.rankRaw) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m || a.S.sym.localeCompare(b.S.sym)).map(x => x.S);
             } else if (P.xsW > 0) {                                                // 🦓 V79.3.8 動能名次 × 變因名次加權(那天沒值 = 中間 0.5)
                 const arr = ok.map(S => ({ S, m: momOf(S) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m), N = arr.length;
                 ranked = arr.map((x, k) => { const v = xsAt(x.S.sym, cal[i]); return { S: x.S, s: (1 - P.xsW) * (N > 1 ? 1 - k / (N - 1) : 1) + P.xsW * (v === null ? 0.5 : v / 100) }; })
@@ -713,8 +732,9 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     return { eq, trades, win: trades ? wins / trades : null, avg: trades ? sumRet / trades : null, turnover, skipLimit, jumpExit, from: cal[s0], contributed, glideAt, st,
         sumAmt, worstAmt, bestAmt, held: pos.size, openPnl: [...pos.values()].reduce((a, p) => a + p.sh * lastC(p.S, nEnd - 1) - p.paid, 0) };
 }
-/** 一年位置(近 252 個有交易日的調整後收盤,0~100)—— 用到才算(單調佇列 O(n)) */
-function pos252(S, i, raw = false) {
+/** 一年位置(近 252 個有交易日的調整後收盤,0~100)—— 用到才算(單調佇列 O(n))
+ *  BT25 起 export:trend_template_probe 的「位階高檔」直接 import 這一份(raw = screener_miner pos252 的 JS 版;⛔ 第二份) */
+export function pos252(S, i, raw = false) {
     // raw = App / screener_miner 的算法:原始收盤(不還原除息)、不足一年就用現有天數 —— 決策台與 auto_trade 能算得出來的那一個
     const key = raw ? '_posR' : '_pos';
     if (!S[key]) {
@@ -1388,6 +1408,33 @@ function selftest() {
         && kAll.st.skipN > 0 && kAll.st.skipN === kAll.st.rebN && kAll.eq.at(-1) !== kOff.eq.at(-1) && kAll.trades === 0 && kOff.trades > 0
         && kShAll.eq.every((v, k) => v === kAll.eq[k]) && kPark.st.skipN > 0 && kPark.trades > 0 && kPark.eq.at(-1) !== kOff.eq.at(-1) && /skipMode/.test(thK),
         `㊿g 跌很多先不換:永遠不觸發 / sham 0 == 不設(換倉 ${kNever.st.rebN || 0} 次)、每次都跳過 hold → 0 筆賣出(${kAll.st.skipN}/${kAll.st.rebN})、sham 1 == 每次都跳過、park 照賣 ${kPark.trades} 筆、打錯字 throw`);
+    {   // ㊿h 🧪 BT25 pick 'rs'(RS 加權分數排名):
+        //   ① 不設 == pick 'mom' 明寫(逐位相同:預設那條路一字沒動)
+        //   ② 一年來穩漲、最近 10 天不動的 R(RS 最高)vs 一年來陰跌、最近 10 天急拉的 M(10 日動能最高)→ 預設買 M、rs 買 R
+        //   ③ 不滿 252 根的 Y(一路大漲)、回看期間有 ×1.6 資料斷崖的 J(假跳動讓分數最高)→ rs 都 ⛔ 進榜(注入:拿掉斷崖檢查 → J 會被選)
+        //   ④ 零前視:第 289 天之後的 K 線全部換掉 → 第 289 天的分數與那次買誰一模一樣
+        //   ⑤ 分數 = 五段報酬加權(手算對得上)
+        const nH = 300, calH = Array.from({ length: nH }, (_, i) => new Date(Date.UTC(2022, 0, 3 + i)).toISOString().slice(0, 10));
+        const mkH = (sym, f, from = 0) => prepStock(sym, calH.map((d, i) => { const c = f(i); return { d, o: c, h: c * 1.005, l: c * 0.995, c, v: 1e7 }; }).slice(from), calH, []);
+        const fR = i => 100 * Math.pow(1.003, Math.min(i, 279));
+        const fM = i => i <= 279 ? 100 * Math.pow(0.998, i) : 100 * Math.pow(0.998, 279) * Math.pow(1.02, i - 279);
+        const fY = i => 100 * Math.pow(1.01, i), fJ = i => 100 * Math.pow(1.003, i) * (i >= 150 ? 1.6 : 1);
+        const build = (fut = null) => [['7451', fR], ['7452', fM], ['7453', fY, 110], ['7454', fJ]].map(([s, f, from]) => mkH(s, fut ? (i => i > 289 ? fut(s, i) : f(i)) : f, from || 0));
+        const ctxH = { cal: calH, stocks: build(), etf: { tr: new Float64Array(nH).fill(1) }, bear: new Uint8Array(nH) };
+        const cfgH = { U: 4, N: 1, R: 1000, L: 10, chand: 0, park: false, trend: false, bear: false };
+        const buyH = (ctx, extra) => { const lg = []; const r = simulate(ctx, 289, { ...cfgH, ...extra, log: lg }); return { r, s: (lg.find(x => x.side === 'B') || {}).s || null }; };
+        const hU = buyH(ctxH, {}), hM = buyH(ctxH, { pick: 'mom' }), hR = buyH(ctxH, { pick: 'rs' });
+        const [SR, SM, SY, SJ] = ctxH.stocks;
+        const hand = RS_W.reduce((a, [L, w]) => a + w * (fR(289) / fR(289 - L) - 1), 0);
+        const noJumpChk = S => { const j = S.jump; S.jump = new Int32Array(nH).fill(-1e9); const v = rsScore(S, 289); S.jump = j; return v; };
+        const ctxF2 = { ...ctxH, stocks: build((s, i) => s === '7451' ? 10 : 500 * Math.pow(1.05, i - 289)) };
+        const hF = buyH(ctxF2, { pick: 'rs' });
+        t(hU.r.eq.every((v, k) => v === hM.r.eq[k]) && hU.s === '7452' && hR.s === '7451'
+            && Number.isNaN(rsScore(SY, 289)) && SY.C[289] > 0 && Number.isNaN(rsScore(SJ, 289)) && noJumpChk(SJ) > rsScore(SR, 289)
+            && rsScore(ctxF2.stocks[0], 289) === rsScore(SR, 289) && rsScore(ctxF2.stocks[1], 289) === rsScore(SM, 289) && hF.s === hR.s
+            && Math.abs(rsScore(SR, 289) - hand) < 1e-12 && rsScore(SR, 289) > rsScore(SM, 289),
+            `㊿h pick rs:不設 == mom(逐位相同)、預設買急拉的 M=${hU.s}、rs 買穩漲的 R=${hR.s}(RS ${r2(rsScore(SR, 289) * 100)}% vs ${r2(rsScore(SM, 289) * 100)}%)、不滿 252 根 / 回看有斷崖 → 不進榜(拿掉斷崖檢查 J 會變 ${r2(noJumpChk(SJ) * 100)}%)、改未來 K 線分數與選擇不變`);
+    }
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }

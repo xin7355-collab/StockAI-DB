@@ -26,6 +26,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.argv = [sys.argv[0]]
 import miner  # noqa: E402
+# 🗓️ V80.1.9 export_json 會去抓官方休市表 → 測試 ⛔ 連網:換成「抓不到」(= 舊行為,只靠加權行事曆)
+miner._official_closed_days = lambda: (set(), '測試不連網')
 
 FAIL = []
 

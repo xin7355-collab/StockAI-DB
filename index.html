@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V80.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V80.1.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -903,7 +903,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.1.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V80.1.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -988,7 +988,13 @@
                     <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-cyan-700/40 rounded">
                         <label class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">💰 我的券商手續費折數<span class="text-[9px] text-gray-500 font-normal">(電子單常見 0.2~0.6 折)</span></label>
                         <input id="set_feeDiscount" type="number" step="0.01" min="0.1" max="1" inputmode="decimal" placeholder="0.28" onchange="app.saveSettings()" class="w-full bg-[#010409] text-cyan-200 p-2 rounded border border-[#30363d] outline-none text-sm font-mono font-bold focus:border-cyan-500 transition-colors">
-                        <p class="text-[10px] text-gray-500 leading-snug">牌價手續費 0.1425%×折數。設一次,<b class="text-cyan-300">當沖試算機、作戰指令的掛單賺賠元</b>全部自動用你的折數算(在試算機改折數也會自動記住回這裡)。</p>
+                        <!-- 💰 最低手續費:每一筆(買、賣各一次)至少收這麼多 —— 沒有它,小額 / 零股的淨賺會被算多(_netPL 唯一一份) -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0">最低手續費(元)</span>
+                            <input id="set_minFee" type="number" step="1" min="0" max="100" inputmode="numeric" placeholder="20" onchange="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-cyan-200 p-2 rounded border border-[#30363d] outline-none text-sm font-mono font-bold focus:border-cyan-500 transition-colors">
+                        </div>
+                        <p class="text-[10px] text-gray-500 leading-snug">牌價手續費 0.1425%×折數,每一筆(買、賣各算一次)至少收「最低手續費」;很多券商零股低消 1 元,自己查。設一次,<b class="text-cyan-300">當沖試算機、作戰指令的掛單賺賠元</b>全部自動用你的設定算(在試算機改折數也會自動記住回這裡)。</p>
+                        <p id="set_minFeeTip" class="text-[10px] text-gray-400 leading-snug" data-minfeetip="1"></p>
                     </div>
                     <!-- 🎯 V66.9 — 風控:帳戶總資金 + 單筆風險%(ATR 波動率部位管理用:算「這檔該買幾張」把單筆虧損控在風險%內) -->
                     <!-- 🎯 V73.2.6 — 重新顯示:V72.9 起「明日作戰清單/尾盤買點」要用它算「買幾張、會虧多少元」,沒填就只能顯示 CTA -->
@@ -3286,6 +3292,8 @@
                             <span id="invCostBasis" class="text-[10px] font-bold font-mono text-gray-500">成本 --</span>
                         </div>
                     </div>
+                    <!-- 📊 本週持股賺賠拆成「大盤帶動 / 個股自己」(_invWeekAttrFill 背景算好才填;⛔ 另開一張卡 —— 併進這張統計卡) -->
+                    <div id="invWeekAttr" class="hidden mt-1.5 pt-1.5 border-t border-[#21262d]"></div>
                 </div>
                 <!-- V17.11 — 表頭 + 內容區包在同一個 horizontal scroll container,讓所有 column 寬度對齊 -->
                 <div class="flex-grow min-h-0 bg-[#0d1117] overflow-hidden">
@@ -3953,6 +3961,7 @@ const app = {
     MAX_FAV_PER_GROUP: 50,
     // 🚨 處置神器全域名單(radar_miner.py 生成 data/attention_status.json,前端啟動時 fetch 一次)
     attentionStatus: {},
+    attentionFlags: {},   // 🆕 V80.1.9 其他官方名單(變更交易 / 理財節目異常推介 / 停資停券 / 暫停先賣後買當沖)
     // 🐛 V41.28 修:localStorage 壞資料時 JSON.parse 會 throw,在物件建構期炸掉 → 整個 app 白畫面。全部包 try/catch。
     favGroups: (() => { try { return JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "自選清單": [] }; } catch (_) { return { "自選清單": [] }; } })(),
     monitorList: (() => { try { return JSON.parse(localStorage.getItem('proTerminalHunt') || '[]') || []; } catch (_) { return []; } })(),
@@ -4105,7 +4114,7 @@ const app = {
         '填息機率': '填息 = 除息日後股價回到除息前的水準。填息機率 = 近 5 年配息中成功填息次數 ÷ 總配息次數。100% = 每次配息都填回去(像 TSMC 這種成長股)、70-90% 算優、<50% 代表配息只是「左手換右手」,股價長期難回。算法:取除息日前一天 close,看之後幾個交易日 close 能 ≥ 那個值即算填息;6 個月內未填則記不填。',
         '平均填息天數': '從除息日到股價填回除息前 close 的平均交易日數。1-3 天 = 強勢股(市場搶填息);1-2 週 = 健康;> 1 個月 = 配息不夠吸引力或本身弱勢。⚠️ 跟「填息機率」一起看,機率高 + 天數短 = 真存股標的;機率高但要等 60+ 天填回 = 配息綁住資金影響操作。',
         '分批資金不足': '極罕見狀態:你的單檔總資金太少,連 1 股都買不起(預算 < 股價)。✅ 解決方案:① 把單檔總資金提高到至少 1 股的價格 ② 換股價較低的標的 ③ 不操作這檔(朱老師心法:預算不夠就別硬上,不准重壓)。⚠️ 朱老師原則上教整張紀律(交易成本低),但現代零股已合法且廣泛,小資族(5-50 萬)用零股跟著心法分批,概念完全一樣 — 比例 3-3-4、停損紀律、不准攤平、不准倒金字塔,跟整張一樣有效。詳見「零股操作」說明手續費實務。',
-        '零股操作': '零股 = 不是整張(1 張 = 1000 股),可以買 1-999 股或任何零數。台股自 2020/10 後盤中零股交易跟整張一樣方便,09:00-13:30 競價成交。⚠️ 成本提醒:券商手續費率 0.1425%,單筆最低約 20 元 — 如果你只買 100 股 50 元股 = 5,000 元,手續費 20 元佔 0.4%,比正常 0.1425% 高近 3 倍。建議:① 單筆金額 ≥ 14,000 元手續費比例才正常(20 / 0.1425% ≈ 14,000)② 高股價權值股(>200 元如 2330、台塑、富邦金)零股操作 ROI 高 ③ 低價股(<50 元)寧可存夠買 1 整張再進,別零股 ④ 不少券商推「定期定額」/「零股優惠」,手續費低消可降到 1 元,可查自家券商。朱老師原則上教整張,但程式為了讓小資族也能跟,預設零股精算 — 比例 3-3-4、停損紀律一樣套用。',
+        '零股操作': '零股 = 不是整張(1 張 = 1000 股),可以買 1-999 股或任何零數。台股自 2020/10 後盤中零股交易跟整張一樣方便,09:00-13:30 競價成交。⚠️ 成本提醒:① 用你 ⚙️ 設定的最低手續費與折數算:{{_oddLotFeeTxt}}② 高股價權值股(>200 元如 2330、台塑、富邦金)零股操作 ROI 高 ③ 低價股(<50 元)寧可存夠買 1 整張再進,別零股 ④ 不少券商推「定期定額」/「零股優惠」,手續費低消可降到 1 元,可查自家券商(查到了改 ⚙️ 設定的「最低手續費」)。朱老師原則上教整張,但程式為了讓小資族也能跟,預設零股精算 — 比例 3-3-4、停損紀律一樣套用。',
         'PEG': 'PEG = 本益比 ÷ EPS 年成長率(%)。彼得林區法則,用來避免「成長股 PE 看起來很貴但其實便宜」的陷阱。例:PE 40 嚇人,但 EPS 年成長 50% → PEG = 0.8 反而便宜!綠=便宜(<1)、黃=合理(1-2)、紅=昂貴(>2)、橘=衰退(成長率負,不適用)。⚠️ 高速成長股(>50%)PEG 可能誤判低估,要看成長持續性。',
         '產業相對PE': '產業相對 PE = 個股 PE ÷ 該產業中位數 PE。看「跟同業比是便宜還是貴」。例:航運平均 PE 7,長榮 PE 5 → 相對 0.71(同業便宜);半導體平均 PE 22,台積電 PE 28 → 相對 1.27(同業偏貴)。綠 <0.8 比同業便宜 / 黃 0.8-1.2 中性 / 紅 >1.2 比同業貴。⚠️ 航運/塑化/鋼鐵等景氣循環股,PE 低反而是景氣高點,別誤判。',
         '殖利率': '殖利率 = 每年配的現金股利 ÷ 股價,白話就是「把錢放這檔股票,一年領幾 % 利息」。5% 以上算高息(定存才 1-2%),適合存股族。顏色是「健康度」:綠=高息(>5%)、黃=普通、灰=低息(<2%),不是漲跌色。注意高殖利率也可能是股價大跌造成的假象。',
@@ -8859,10 +8868,21 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V80.1.8',
+    _APP_VERSION: 'V80.1.9',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V80.1.9', d: [
+            '🚨 上櫃股票的「注意股」現在也用櫃買中心的官方名單了(以前只能用公式推估);個股頁「這檔離被關還有幾步」會寫官方列它的理由和公告日',
+            '🏷️ 同一張卡片多一行:證交所還把它列在哪些名單 —— 全額交割(變更交易)、被理財節目異常推薦、停資停券、暫停先賣後買當沖',
+            '🗓️ 證交所公告的休市日(像中秋、教師節),當天晚上就會把那天多出來的假 K 棒清掉',
+            '💰 設定多一格「最低手續費」(預設 20 元,在手續費折數下面):券商每一筆至少收這麼多,算淨賺淨賠時買、賣兩邊都照這個收,小額、零股的淨損益會比以前少一點、比較接近對帳單;很多券商零股最低只收 1 元,自己查清楚再改。「零股操作」說明的金額門檻也改成用你的設定算',
+            '📊 庫存頁多一行「本週持股賺賠多少:大盤帶動多少、個股自己多少」,點開看每一檔(拿 0050 當大盤,沒算股利)',
+            '🪁 勝率鏡子多一段「賣掉之後」:每一筆賣掉後最多看 20 個交易日、跟同一段大盤比,幾筆賣飛(少賺多少)、幾筆賣對(少賠多少);還不到 20 天的標「才 N 天」',
+            '🗂️ App 內 AI 的回答底下多一行「這段用到」哪些本站資料;回答裡的股票代號、公司名、「引號裡的話」在給它的資料裡找不到的,會列成「未核對」,要用之前自己查證',
+            '🫧 產業作戰室「板塊輪動」的泡泡多了淡淡的小點,是每一顆前 5 天的位置(只是位置紀錄,不是買賣訊號)',
+            '🔬 產業作戰室的研究紀錄更新(趨勢樣板、👑 換一種排名、大漲家數開關這三題都沒有比現在的做法好,選股和 👑 的規則不變)',
+        ], dt: '2026-11-02' },
         { v: 'V80.1.8', d: ['🔬 產業作戰室的研究紀錄更新(融券強制回補、只買剛創一年新高、高位階低波動這幾題有結論了;大股東申報賣股的資料還在補);這個 App 的規則沒有變'], dt: '2026-11-02' },
         { v: 'V80.1.7', d: ['🔬 產業作戰室的研究紀錄更新(投信季底作帳、景氣燈號、臺灣 50 換成分股這三題,還有大股東申報賣股、融券強制回補兩份資料開始補);這個 App 的規則沒有變'], dt: '2026-11-02' },
         { v: 'V80.1.6', d: ['🔬 產業作戰室的研究紀錄更新(出口數字能不能比月營收更早找到強勢產業);這個 App 的規則沒有變'], dt: '2026-11-01' },
@@ -9166,7 +9186,6 @@ ${list}
             '📚 產業作戰室:注意股、處置股那兩條改用 2010 年起(含後來下市的股票)的資料重新整理(散戶 App 的用法不變)',
         ], dt: '2026-10-20' },
         { v: 'V79.4.0', d: ['📚 產業作戰室:注意股那一條的資料拉長到 2010 年重新整理(散戶 App 的用法不變)'] },
-        { v: 'V79.3.9', d: ['📚 產業作戰室:處置股、重大訊息、選擇權 P/C 那幾條的資料拉長到 2010 年前後重新整理(散戶 App 的用法不變)'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -9373,6 +9392,9 @@ ${list}
         if (freeEngEl) freeEngEl.value = this.settings.freeAiEngine || 'perplexity';
         const feeEl = document.getElementById('set_feeDiscount');   // 💰 V55.7 券商手續費折數
         if (feeEl) feeEl.value = this.settings.feeDiscount ?? 0.28;
+        const minFeeEl = document.getElementById('set_minFee');     // 💰 最低手續費(壞值一律當 20,⛔ 顯示成空白讓人以為是 0)
+        if (minFeeEl) minFeeEl.value = this._minFee();
+        this._minFeeTipRender();
         const liveBtcEl = document.getElementById('set_liveBtc');   // 🌍 V66.1 比特幣前端即時(預設開)
         if (liveBtcEl) liveBtcEl.checked = this.settings.liveBtc !== false;
         const liveTwEl = document.getElementById('set_liveTwIndex');   // 📊 V66.2 加權/櫃買前端即時(預設開)
@@ -9469,6 +9491,9 @@ ${list}
         if (freeEngEl) this.settings.freeAiEngine = freeEngEl.value || 'perplexity';
         const feeEl = document.getElementById('set_feeDiscount');   // 💰 V55.7 券商手續費折數(0.1~1,壞值回 0.28)
         if (feeEl) { const v = parseFloat(feeEl.value); this.settings.feeDiscount = (Number.isFinite(v) && v >= 0.1 && v <= 1) ? v : 0.28; }
+        const minFeeEl = document.getElementById('set_minFee');   // 💰 最低手續費(0~100 元;空白 / 負數 / 超過 100 回 20 —— ⛔ 空白當 0 會讓小額試算偷偷變便宜)
+        if (minFeeEl) { const raw = String(minFeeEl.value ?? '').trim(), v = Number(raw); this.settings.minFee = (raw !== '' && Number.isFinite(v) && v >= 0 && v <= 100) ? v : 20; minFeeEl.value = this.settings.minFee; }
+        this._minFeeTipRender();
         const liveBtcEl = document.getElementById('set_liveBtc');   // 🌍 V66.1 比特幣前端即時開關
         if (liveBtcEl) this.settings.liveBtc = liveBtcEl.checked;
         const liveTwEl = document.getElementById('set_liveTwIndex');   // 📊 V66.2 加權/櫃買前端即時開關
@@ -12736,12 +12761,14 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         }
         return out;
     },
-    _aiNumGate(src, outText) {
+    _aiNumGate(src, outText, used) {
         if (!src || !outText) return null;
         const S = this._aiNumTokens(src, false);
         const pool = [];
         for (const x of S) { pool.push(x.raw); if (x.sc !== 1) pool.push(x.raw * x.sc); }
-        const claims = this._aiNumTokens(outText, true);
+        // 🔎 股票代號(2330 / 00878)不是「數字主張」→ 先挖掉,交給下面的引文核對(⛔ 被遮成〔數字已遮〕、⛔ 同一個代號兩邊各報一次)
+        const ref = this._aiStockRef();
+        const claims = this._aiNumTokens(this._aiCodeBlank(outText, ref.ids, ref.nameOf), true);
         const miss = [];
         for (const c of claims) {
             const cand = [[c.raw, c.tol]];
@@ -12749,14 +12776,118 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const hit = cand.some(([v, tol]) => pool.some(p => Math.abs(Math.abs(v) - Math.abs(p)) <= tol));
             if (!hit && !miss.includes(c.s)) miss.push(c.s);
         }
-        return { checked: claims.length, miss };
+        const r = { checked: claims.length, miss };
+        const q = this._aiQuoteGate(src, outText, ref);
+        if (q) r.q = q;
+        // 🗂️ 這一輪提示詞「真的放進去」的資料(組提示詞時一邊組一邊記,⛔ 事後從文字猜)→ 跟核對結果一起存,重開快取也看得到
+        if (Array.isArray(used) && used.length) r.used = [...new Set(used.filter(Boolean).map(String))];
+        return r;
     },
     _aiNumGateHtml(r, masked) {
-        if (!r || !Array.isArray(r.miss) || !r.miss.length) return '';
-        const esc = v => String(v).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-        const show = r.miss.slice(0, 6).map(esc).join('、') + (r.miss.length > 6 ? '…' : '');
-        const how = masked > 0 ? `上面已經把它們遮成〔數字已遮〕(${masked} 處;原文在「👁 看原文」)` : '';
-        return `<div data-ainumgate="${r.miss.length}" data-ainummasked="${masked > 0 ? masked : 0}" class="text-[10px] text-amber-300 leading-snug" style="margin-top:6px">⚠️ 🧾 數字核對:這段有 <b>${r.miss.length}</b> 個數字(共核對 ${r.checked} 個)在本站給它的資料裡找不到:<span class="font-mono">${show}</span> —— 可能是它自己算的或編的,⛔ 別拿來下單。${how}</div>`;
+        if (!r) return '';
+        let h = '';
+        if (Array.isArray(r.miss) && r.miss.length) {
+            const show = r.miss.slice(0, 6).map(v => this._escHtml(v)).join('、') + (r.miss.length > 6 ? '…' : '');
+            const how = masked > 0 ? `上面已經把它們遮成〔數字已遮〕(${masked} 處;原文在「👁 看原文」)` : '';
+            h = `<div data-ainumgate="${r.miss.length}" data-ainummasked="${masked > 0 ? masked : 0}" class="text-[10px] text-amber-300 leading-snug" style="margin-top:6px">⚠️ 🧾 數字核對:這段有 <b>${r.miss.length}</b> 個數字(共核對 ${r.checked} 個)在本站給它的資料裡找不到:<span class="font-mono">${show}</span> —— 可能是它自己算的或編的,⛔ 別拿來下單。${how}</div>`;
+        }
+        return this._aiSrcHtml(r.used) + h + this._aiQuoteGateHtml(r.q);
+    },
+    // 🗂️ 這段 AI 回答用到哪些資料(只列提示詞裡真的有放的;日期是那份資料自己的日期)
+    _aiSrcHtml(used) {
+        const a = (Array.isArray(used) ? used : []).filter(Boolean);
+        if (!a.length) return '';
+        return `<div data-aisrc="${a.length}" class="text-[10px] text-gray-500 leading-snug" style="margin-top:6px">🗂️ 這段用到:${a.map(v => this._escHtml(v)).join('、')}</div>`;
+    },
+    // 🔎 引文核對(數字核對的延伸,純程式、⛔ 多叫一次 AI):回答裡的股票代號、上市櫃公司名、「引號裡的話」
+    //   有沒有出現在**這一輪送出去的提示詞**裡。App 內三條 AI 鏈都不會上網 → 提示詞裡沒有的,只可能是它自己記得的或編的。
+    //   ⛔ 找不到的一律列出來標「未核對」—— ⛔ 不遮(遮只給數字;代號 / 名字遮掉整句就看不懂了),
+    //      ⛔ 也不可默默放行(參考的那個專案核對失敗照樣過,這裡反過來:一律標出來)。
+    //   ⚠️ 公司名只核對 3 個字以上的:2 個字的股名一半以上(統一、大同、中華…)同時是常用詞,拿來核對會一直誤報;
+    //      那些公司寫了代號照樣核對得到。下面幾個 3 個字的股名也是常用詞,同理不核對。
+    _AI_NAME_SKIP: ['台灣大', '大台北', '新零售', '新天地', '大車隊'],
+    /** 全市場代號 / 股名對照(從 allStockList 來;清單還沒載入 → 空的,代號改用「長得像代號」判斷) */
+    _aiStockRef() {
+        const L = Array.isArray(this.allStockList) ? this.allStockList : [];
+        if (this._aiRefCache && this._aiRefCache.n === L.length) return this._aiRefCache.ref;
+        const ids = new Set(), names = [], nameOf = new Map();
+        for (const x of L) {
+            const id = String(x?.stock_id || '').trim(), nm = String(x?.stock_name || '').replace(/\*+$/, '').trim();
+            if (!id) continue;
+            ids.add(id);
+            if (nm && nm !== id) { names.push([nm, id]); nameOf.set(id, nm); }
+        }
+        const ref = { ids, names, nameOf };
+        this._aiRefCache = { n: L.length, ref };
+        return ref;
+    },
+    /** 文字裡「當成股票代號用」的那幾個(位置 + 字串)。純函式:ids = 已知代號(Set,空 = 不限)、nameOf = 代號 → 股名(Map)
+     *  ⭐ 只認看得出是代號的寫法:00 開頭 / 括號裡 / 緊貼著它自己的股名 /「代號」後面。
+     *  ⛔ 光是「四位數、剛好是某一檔的代號」不算 —— 股價常常就是四位數(「台積電收 2415」的 2415 是價錢,
+     *     剛好也是錩新的代號);那種照舊交給數字核對(對不上就遮),⛔ 被當成代號放過
+     *  loose = 提示詞那一邊:出現過這個代號就算(只會讓核對比較容易過,⛔ 多報;提示詞偶爾只印代號、沒印股名) */
+    _aiCodeHits(text, ids, nameOf, loose) {
+        const t = String(text || '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+        // 前後⛔ 接著數字 / 英數 / 小數點 / 正負號 / 日期;後面⛔ 接單位(2025 年、1085 元、2330 張 都不是代號)
+        //   ⚠️ 前面⛔ 擋冒號:「代號名稱:2330 台積電」就是這樣寫的(時間 13:30 兩邊都只有兩位數,本來就不會被當成代號)
+        const re = /(?<![0-9A-Za-z.,$#+\-−\/])(00\d{2,4}[A-Z]?|[1-9]\d{3})(?![0-9A-Za-z]|[.,:\/\-]\d|\s*(?:年|元|點|張|%|％|億|萬|兆|倍|口|股|天|日|月|季|檔|家|名|筆|次|個|分|秒|小時|週|周|號|樓|位|人))/g;
+        const has = ids instanceof Set && ids.size > 0;
+        const out = [];
+        let m;
+        while ((m = re.exec(t))) {
+            const tok = m[1];
+            if (has && !ids.has(tok)) continue;                      // 清單有載入:不在全市場代號裡的四位數 ⛔ 算
+            if (loose) { out.push({ s: tok, i: m.index }); continue; }
+            const pre = t.slice(Math.max(0, m.index - 16), m.index), post = t.slice(re.lastIndex, re.lastIndex + 16);
+            const nm = nameOf instanceof Map ? nameOf.get(tok) : null;
+            const ok = /^00/.test(tok) || /[(（]\s*$/.test(pre) || /^\s*[)）]/.test(post) || /代號\s*[::]?\s*$/.test(pre)
+                || (!!nm && (pre.replace(/\s+$/, '').endsWith(nm) || post.replace(/^\s+/, '').startsWith(nm)));
+            if (ok) out.push({ s: tok, i: m.index });
+        }
+        return out;
+    },
+    /** 把代號換成空白(長度不變)→ 數字核對就不會把它當成數字 */
+    _aiCodeBlank(text, ids, nameOf) {
+        const n = String(text || '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));   // 全形數字跟 _aiCodeHits 一樣先轉半形(長度不變)
+        const hits = this._aiCodeHits(n, ids, nameOf);
+        if (!hits.length) return n;
+        let out = '', k = 0;
+        for (const h of hits) { out += n.slice(k, h.i) + ' '.repeat(h.s.length); k = h.i + h.s.length; }
+        return out + n.slice(k);
+    },
+    /** 純函式:src = 這一輪送出去的提示詞、out = 回答、ref = {ids:Set, names:[[名稱, 代號]]} → null(沒有提示詞 = 沒核對)/ {checked, miss:[{k,s}]} */
+    _aiQuoteGate(src, out, ref) {
+        if (!src || !out) return null;
+        const N = s => String(s || '').normalize('NFKC').replace(/\s+/g, '');
+        const S = N(src), O = String(out);
+        const ids = ref && ref.ids instanceof Set ? ref.ids : new Set();
+        const names = ref && Array.isArray(ref.names) ? ref.names : [];
+        const nameOf = ref && ref.nameOf instanceof Map ? ref.nameOf : new Map(names.map(([nm, id]) => [id, nm]));
+        // 提示詞那邊也用同一支挑代號(放寬:有出現過就算;⛔ 連「2330 張」這種數量都算 —— 那樣回答亂寫的代號反而過關)
+        const srcCodes = new Set(this._aiCodeHits(src, ids, nameOf, true).map(h => h.s));
+        // ⭐ 用本站自己的股名表也核對得到的算過:提示詞寫「台積電」、回答寫「2330」(或反過來)→ 對照表一查就對得上
+        //   (⛔ 每次都把這種報成未核對 —— 那一行天天出現,真的編錯的那次反而沒人看)
+        const items = [], seen = new Set();
+        const add = (k, s, okFn) => { const key = k + '|' + s; if (seen.has(key)) return; seen.add(key); items.push({ k, s, ok: okFn() }); };
+        for (const h of this._aiCodeHits(O, ids, nameOf)) add('code', h.s, () => srcCodes.has(h.s) || (nameOf.has(h.s) && S.includes(N(nameOf.get(h.s)))));
+        for (const [nm, id] of names) {
+            if ([...nm].length < 3 || this._AI_NAME_SKIP.includes(nm) || !O.includes(nm)) continue;
+            add('name', nm, () => S.includes(N(nm)) || srcCodes.has(id));
+        }
+        const qre = /「([^「」\n]{2,80})」|『([^『』\n]{2,80})』/g;
+        let m;
+        while ((m = qre.exec(O))) {
+            const inner = (m[1] || m[2] || '').trim();
+            // 引號裡只有數字 / 符號 → 交給數字核對(⛔ 兩邊各報一次)
+            if (!/[\u4e00-\u9fffA-Za-z]/.test(inner)) continue;
+            add('quote', inner, () => S.includes(N(inner)));
+        }
+        return { checked: items.length, miss: items.filter(x => !x.ok).map(({ k, s }) => ({ k, s })) };
+    },
+    _aiQuoteGateHtml(q) {
+        if (!q || !Array.isArray(q.miss) || !q.miss.length) return '';
+        const show = q.miss.slice(0, 8).map(x => x.k === 'quote' ? `「${this._escHtml(x.s)}」` : this._escHtml(x.s)).join('、') + (q.miss.length > 8 ? '…' : '');
+        return `<div data-aiquote="${q.miss.length}" class="text-[10px] text-amber-200 leading-snug" style="margin-top:4px">🔎 引用核對:這段有 <b>${q.miss.length}</b> 個代號 / 公司名 / 引號(共核對 ${q.checked} 個)在本站給它的資料裡找不到 → <b>未核對</b>:<span class="font-mono">${show}</span> —— 可能是它自己記得的或編的,要用之前自己查證。</div>`;
     },
     // 🧾 V80.1.2 再進一步:對不上的數字在正文裡直接遮掉,原文收在「👁 看原文」(19 個專案評估 1-3,使用者 10/31「都做」)
     //   ⭐ 推翻 V77.8.1「只提醒、不改正文」:提醒列在最下面,讀的人常常先照正文的數字做了才看到
@@ -13515,6 +13646,7 @@ const marginByDate = {};
             const j = await r.json();
             if (j?.stocks && typeof j.stocks === 'object') {
                 this.attentionStatus = j.stocks;
+                this.attentionFlags = (j.flags && typeof j.flags === 'object') ? j.flags : {};   // 🆕 V80.1.9 舊檔沒有 flags → 空
                 this._attentionUpdated = j.updated || j.date || null;   // 📅 V70.2.0 官方名單日期(供卡片標示)
                 console.log(`[處置神器] 已載入 ${Object.keys(j.stocks).length} 檔注意/處置股`);
                 // 若已渲染過雷達或自選股,觸發重畫讓 badge 補上
@@ -14262,6 +14394,23 @@ const marginByDate = {};
         } catch (_) { return null; }
     },
 
+    // 🆕 V80.1.9 其他官方名單一行(沒有就回空字串)。純函式:flags = attention_status.json 的 flags
+    //   變更交易 = 全額交割(要先把錢準備好才能買,常見於財務出問題的公司)、理財節目異常推介 → 排前面、橘字;其他灰字
+    _attentionFlagsHtml(sym, flags = this.attentionFlags) {
+        const list = (flags && Array.isArray(flags[String(sym).trim()])) ? flags[String(sym).trim()] : [];
+        if (!list.length) return '';
+        const md = iso => { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(String(iso || '')); return m ? `${+m[1]}/${+m[2]}` : ''; };
+        const order = { change_trade: 0, tv_pump: 1, stop_margin: 2, no_dt_sell_first: 3 };
+        const items = list.slice().sort((a, b) => (order[a?.k] ?? 9) - (order[b?.k] ?? 9)).map(f => {
+            const span = f?.from && f?.to ? `${md(f.from)}~${md(f.to)}` : (f?.from ? `${md(f.from)} 起` : '');
+            const why = f?.why ? this._escHtml(f.why) : '';
+            const paren = [span, why].filter(Boolean).join('・');
+            const txt = `${this._escHtml(f?.t || '官方名單')}${paren ? `(${paren})` : ''}`;
+            return (f?.k === 'change_trade' || f?.k === 'tv_pump') ? `<b class="text-orange-300">${txt}</b>` : txt;
+        });
+        return `<div class="text-[10px] text-gray-300 leading-snug mt-1.5" data-dispflags="${list.length}">🏷️ 官方還把它列在:${items.join('、')}</div>`;
+    },
+
     // 🚨 V66.0/V67.6 — 處置頁 headline「這檔離被關還有幾步」
     //   官方資料(注意/處置)優先且標「官方」;無官方資料才退回公式並誠實標「參考推估·非官方」+ 官方查證連結。
     renderDispHeadline(sym) {
@@ -14295,6 +14444,9 @@ const marginByDate = {};
                 } else {
                     sub = `官方已把它列<b>注意股</b> — 持股嚴守 5MA 短線停利、別過夜凹單;空手別追高,等脫離注意再看。`;
                 }
+                // 🆕 V80.1.9 官方寫的理由 + 公告日(上櫃注意股 V80.1.9 起才有官方名單;白天看到的可能是上一個交易日公告的)
+                //   ⚠️ 放在上面 if/else 之後 —— 那裡是 `extra =`(整個換掉),放前面會被蓋掉
+                if (info.reason || info.date) extra = `<div class="text-[10px] text-gray-400 leading-snug mt-1" data-dispwhy="1">📄 官方理由:${info.reason ? this._escHtml(info.reason) : '(名單沒寫)'}${info.date ? `(${this._fmtMD(info.date)} 公告)` : ''}</div>` + extra;
             } else {
                 // 無官方資料 → 公式參考推估(誠實降級,大字標「推估」不裝準)
                 const need5 = Math.max(0, 5 - (x.recentHitDays5 || 0));
@@ -14306,6 +14458,8 @@ const marginByDate = {};
                 else if (x.predictText.startsWith('💡')) { big = '💡 累積中(推估)'; bCls = 'border-yellow-500'; tCls = 'text-yellow-300'; sub = `公式推估還有約 <b>${steps}</b> 步才踩門檻 — 強勢股可抱,守 5MA 短線停利。`; }
                 else { big = '✅ 目前安全'; bCls = 'border-green-500'; tCls = 'text-green-300'; sub = '目前沒有被關風險,照正常技術分析操作即可。'; }
             }
+            // 🆕 V80.1.9 其他官方名單(radar_miner flags):⛔ 不改上面「離被關還幾步」的判斷,只多一行告訴你官方還把它列在哪
+            extra += this._attentionFlagsHtml(sym);
             // 官方查證連結(非「安全」時都給,帶股名開 Google 直接查官方公告)
             let linkLine = '';
             if (!(big.startsWith('✅'))) {   // 🐛 V74.8.8 修:原本比 '🟢',但 big 從來沒有 🟢 開頭的分支 = 死條件
@@ -17901,7 +18055,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             daysToEnd = Math.ceil((new Date(info.end_date).getTime() - Date.now()) / 86400000);
         }
         // 「觸發條件」只有寫出真的原因才顯示(⛔「已關禁閉」這種沒資訊的字不印)
-        const reason = String(info.threshold || '').trim();
+        // 🆕 V80.1.9 採礦有抓到官方寫的理由(上櫃注意 TradingInformation / 上市 notice)就用它,沒有才退回 threshold
+        const reason = String(info.reason || info.threshold || '').trim();
         const showReason = reason && !/禁閉|^—$|^-+$/.test(reason);
         const held = (() => { try { return (this._getInventory() || []).some(i => i && String(i.symbol) === String(sym)); } catch (_) { return false; } })();
         const surge = isNotice && !isDisp ? this._attSurge5(this.activeData) : null;
@@ -20706,6 +20861,48 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _feeDisc() {
         const v = this.settings?.feeDiscount;
         return (Number.isFinite(+v) && +v >= 0.1 && +v <= 1) ? +v : 0.28;
+    },
+    // 💰 最低手續費:券商每一筆(買或賣各算一次)至少收這麼多(整股常見 20 元;很多券商零股低消 1 元)。
+    //   ⭐ 為什麼要有:以前只算「金額 × 0.1425% × 折數」→ 小額 / 零股的手續費被算少、淨賺被算多
+    //      (例:1 萬元的零股,0.28 折算出 4 元,券商實際收 20 元)。
+    //   ⛔ 壞值(空白 / 負數 / 超過 100)一律回 20 —— 跟折數同一個處理:⛔ 自己變成 0(那會讓每一筆小額試算都偷偷變便宜)。
+    _minFee() {
+        const v = this.settings?.minFee;
+        return (v !== '' && v != null && Number.isFinite(+v) && +v >= 0 && +v <= 100) ? +v : 20;
+    },
+    /** 一筆(買或賣)的手續費 = max(最低手續費, 四捨五入(金額 × 0.1425% × 折數))。disc 不給 = 你的設定(當沖試算機會傳它自己那格) */
+    _feeOf(amount, disc) {
+        const a = +amount;
+        if (!(a > 0)) return 0;
+        const d = disc != null && Number.isFinite(+disc) ? +disc : this._feeDisc();
+        return Math.max(this._minFee(), Math.round(a * 0.001425 * d));
+    },
+    /** 🧩 單筆金額低於 amt 時收的是最低手續費 → 實際費率比你的折扣費率高。純算術:最低手續費 ÷(0.1425% × 折數) */
+    _oddLotMin() {
+        const minFee = this._minFee(), disc = this._feeDisc(), rate = 0.001425 * disc;
+        return { minFee, disc, rate, amt: minFee > 0 ? Math.round(minFee / rate) : 0 };
+    },
+    _oddLotFeeTxt() {
+        const o = this._oddLotMin(), pct = (o.rate * 100).toFixed(4).replace(/0+$/, '');
+        if (!(o.minFee > 0)) return `你設的最低手續費是 0 元 → 不管金額多小,手續費都照 ${pct}%(0.1425% × 折數 ${o.disc})算。`;
+        return `手續費 = 金額 × 0.1425% × 折數 ${o.disc} = ${pct}%,每一筆至少收 ${o.minFee} 元 → 單筆不到 ${o.amt.toLocaleString()} 元(= ${o.minFee} ÷ ${pct}%)收的是 ${o.minFee} 元,實際費率比 ${pct}% 高、金額越小差越多。`;
+    },
+    /** 這一筆金額收的是最低手續費 → 一小段說明;不是 → ''(條件到了才出現) */
+    _minFeeNote(amount) {
+        const o = this._oddLotMin(), a = +amount;
+        if (!(o.minFee > 0) || !(a > 0) || a >= o.amt) return '';
+        return `・不到 ${o.amt.toLocaleString()} 元,手續費收最低 ${o.minFee} 元`;
+    },
+    /** 一張清單裡有幾筆不到門檻 → 清單底下講一次(⛔ 每一列各寫一次:每筆金額都差不多時,同一句會重複十幾行) */
+    _minFeeListNote(amts) {
+        const o = this._oddLotMin();
+        const n = (Array.isArray(amts) ? amts : []).filter(a => +a > 0 && +a < o.amt).length;
+        if (!(o.minFee > 0) || !n) return '';
+        return `<div class="text-[10px] text-gray-400 mt-1 leading-snug" data-minfeelist="${n}">🧩 有 ${n} 筆金額不到 ${o.amt.toLocaleString()} 元 → 每一筆手續費收最低 ${o.minFee} 元,實際費率比 ${(o.rate * 100).toFixed(4).replace(/0+$/, '')}% 高 <button onclick="event.stopPropagation();app.showJargon('零股操作')" class="text-cyan-300">ⓘ 怎麼算</button></div>`;
+    },
+    _minFeeTipRender() {
+        const el = document.getElementById('set_minFeeTip');
+        if (el) el.textContent = '🧩 ' + this._oddLotFeeTxt();
     },
     // 📏 台股升降單位(全 App 唯一一份;採礦端 playbook_scan.mjs 有對應的一份,兩邊要一致)
     //    ⛔ 別再 inline 寫 `v < 50 ? 0.05 : …`(陷阱 #37:同一個公式散成好幾份,改一處就會不同步)
@@ -24541,7 +24738,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     // 買 buy → 賣 sell,shares 股的「淨」損益(元,已四捨五入到元)
-    //   扣:買+賣兩邊手續費(牌價 0.1425% × 你的折數)+ 賣出證交稅 0.3%(波段;當沖減半由當沖試算機另算)
+    //   扣:買+賣兩邊手續費(牌價 0.1425% × 你的折數,每一邊至少收最低手續費 —— _feeOf)+ 賣出證交稅 0.3%(波段;當沖減半由當沖試算機另算)
     // 🧮 V72.4.6 你手上這檔實際有幾股(沒有就回 null)——⭐ 使用者截圖抓到:
     //   他只有 **0.07 張(70 股)**,但「上檔空間」寫「一張淨賺 +49,210 元」,
     //   實際只有 +3,445 元 —— **差 14 倍**。零股/小資族看了會嚴重高估。
@@ -24556,8 +24753,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
     _netPL(buy, sell, shares = 1000) {
         if (!(buy > 0) || !(sell > 0) || !(shares > 0)) return null;
-        const fd = this._feeDisc();
-        return Math.round((sell - buy) * shares - (buy + sell) * shares * 0.001425 * fd - sell * shares * 0.003);
+        // 💰 手續費買賣各算一次、每一次都有最低手續費(_feeOf)—— ⛔ 兩邊合起來只算一次百分比:小額 / 零股會少扣
+        return Math.round((sell - buy) * shares - this._feeOf(buy * shares) - this._feeOf(sell * shares) - sell * shares * 0.003);
     },
 
     // 💸 V72.3.1 「來回一趟要先賺回多少 %」——**單一真相源**,跟 `_netPL` 用同一組費率。
@@ -26972,6 +27169,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!this._hasDeepAIKey || !this._hasDeepAIKey()) { this.showToast?.('⚠️ 先到 ⚙️ 設定中心填 Gemini 或 OpenRouter 金鑰'); return; }
         const box = document.getElementById('rpGenStat');
         const q = this._reportPrompt(sym); if (!q) { this.showToast?.('⚠️ 這一檔的資料還在載入,稍後再試'); return; }
+        const used = (this._rpFactsUsed || []).slice();   // 🗂️ 剛剛組提示詞時 _reportFacts 記下的「用到哪些資料」(同步、一次一份)
         const offline = `\n\n【🚨 你是 App 內直接呼叫的模型,⛔ 沒有上網能力】\n`
             + `所以 §5 盈餘預期差 ・§6 法人預估變化 ・§7 法說會訊號 ・§8 產業領先指標 這幾節,\n`
             + `⛔ **一個網址都不准寫**(你查不到,寫出來就是編的)→ 一律寫「查不到(這個模型不能上網)」。\n`
@@ -26983,7 +27181,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const t = String(text || '').trim();
             if (!t) throw new Error('模型沒有回傳內容');
             const rec = { t: t.slice(0, 30000), ts: Date.now(), asof: this._rpNoteAsof(t), v: 2, by: id, offline: 1,
-                ng: this._aiNumGate(q + offline, t) };   // 🧾 V77.8.1 數字核對(只有 App 內模型才核對;外部 AI 會上網,數字本來就不是本站給的)
+                ng: this._aiNumGate(q + offline, t, used) };   // 🧾 V77.8.1 數字核對(只有 App 內模型才核對;外部 AI 會上網,數字本來就不是本站給的)
             (this._rpNoteCache = this._rpNoteCache || {})[sym] = rec;
             let ok = false;
             try { ok = await this.idb.put(this._rpNoteKey(sym), rec); } catch (_) { ok = false; }
@@ -28603,6 +28801,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         L.push(`- AI 產業鏈定位(本站人工整理):${chain}`);
         // 📌 ⑧ 那三行本站自己寫好 —— ⛔ 留空位給 AI 填,它就會把融資追繳線填進「跌破 ___」(V76.3.7 使用者截圖)
         L.push(`- 接下來怎麼看(⭐ 本站已經寫好,「接下來怎麼看」那一段**逐字照抄這三行**,⛔ 不要自己重寫、⛔ 不要換掉任何一個價位):${nextLines.length ? '\n' + nextLines.map((t, i) => `  ${i + 1}. ${t}`).join('\n') : '—'}`);
+        // 🗂️ 給 AI 回答底下那一行「這段用到」:只記上面那張表**真的有值**的資料(值是「—」的不算)
+        //   ⚠️ 記在 `_rpFactsUsed`(每組一次就換一份)而不是多一個參數 —— 好幾支測試拿 `_reportFacts(sym) {` 切原始碼
+        const used = this._rpFactsUsed = [];
+        if (C && C.kDate) used.push(`K 線到 ${this._dW(C.kDate)}`);
+        if ((C && C.s5 && C.s5.hasInst) || (C && C.s20 && C.s20.hasInst)) used.push('三大法人');
+        if (C && C.mcs && Number.isFinite(+C.mcs.callLine)) used.push('融資');
+        if (C && C.mrev != null) used.push(`月營收${C.yoyM ? ` ${C.yoyM}` : ''}`);
+        if (fin || (C && C.ae)) used.push(`財報${fin && fin.p ? ` ${String(fin.p).slice(0, 7)} 季` : ''}`);
+        if (b && Number.isFinite(+b.pct)) used.push('本益比歷史區間');
+        if (td) used.push('集保大戶 / 散戶');
+        if (_me.length || nf || up || earn) used.push('財經行事曆');   // ⚠️ 「月營收 X 前」是本站照規則推的日子,⛔ 算一份資料
+        if ((ind && !/本站沒有它的官方產業分類/.test(String(ind))) || themes.length) used.push('產業 / 題材');
         return L.join('\n');
     },
     // 📖 V77.1.8 **法人級**研究提示詞(使用者貼了一份 40 節規格,這裡是併進來之後的版本)
@@ -34948,7 +35158,9 @@ ${this._reportFacts(sym)}
 
 
     showJargon(term) {
-        const desc = this.jargonDict[term]; if(!desc) return;
+        let desc = this.jargonDict[term]; if(!desc) return;
+        // 🧩 `{{_函式名}}` = 打開那一刻才用使用者自己的設定算(例:零股的最低手續費門檻)—— ⛔ 寫死數字(舊版「≥ 14,000 元」沒算折數)
+        desc = String(desc).replace(/\{\{(_[A-Za-z0-9]+)\}\}/g, (m, k) => { try { return typeof this[k] === 'function' ? String(this[k]()) : ''; } catch (_) { return ''; } });
         document.getElementById('jargonTitle').innerHTML = `💡 ${term}`;
         document.getElementById('jargonDesc').innerText = desc;
         const modal = document.getElementById('jargonModal');
@@ -35996,7 +36208,7 @@ ${this._reportFacts(sym)}
         } catch (_) {}
     },
     // 把「當下盤面」整理成一段已算好的事實(給 prompt 用),全部取自既有快取,不重算
-    _newsDeepFacts() {
+    _newsDeepFacts(used) {
         const mr = this._macroRiskCache || {};
         const N = v => (v == null || isNaN(+v)) ? null : +v;
         const f = [];
@@ -36024,6 +36236,14 @@ ${this._reportFacts(sym)}
         if (dl) f.push(`融資自高點 ${dl.mgDrop.toFixed(1)}% vs 指數 ${dl.idxDrop.toFixed(1)}%(去槓桿比 ${dl.ratio.toFixed(2)})`);
         if (N(mr.vix) != null) f.push(`美股 VIX ${N(mr.vix)}`);
         if (this._reboundVerdict) f.push(`反攻條件雷達:${this._reboundVerdict.txt}(${this._reboundVerdict.passN}/${this._reboundVerdict.total} 條通過)`);
+        // 🗂️ 「這段用到」:上面真的有放進去的那幾類(⛔ 沒值的不算)
+        if (Array.isArray(used)) {
+            if (this._taiexToday || tw != null || bd || amt || (adl && adl.ready && adl.chg5 != null)) used.push(`大盤數字${mr.updated ? ` ${this._dW(mr.updated)}` : ''}`);
+            if (N(mr.fi_spot_net) != null || _fmtd || N(mr.fi_futures_net) != null) used.push('外資現貨 / 期貨');
+            if (dl) used.push('融資');
+            if (N(mr.vix) != null) used.push('VIX');
+            if (this._reboundVerdict) used.push('反攻條件雷達');
+        }
         return f;
     },
     async _deepAnalyzeNews() {
@@ -36040,7 +36260,8 @@ ${this._reportFacts(sym)}
                 const lv = lvMap[x.impact_level] || '';
                 return `${i + 1}. ${t}${lv ? `(採礦端標記:${lv})` : ''}`;
             }).join('\n');
-            const facts = this._newsDeepFacts();
+            const used = [`新聞 ${Math.min(25, items.length)} 則`];   // 🗂️ 組提示詞時一邊記
+            const facts = this._newsDeepFacts(used);
             const prompt = `你是台股資深策略分析師,講白話文,國中生也看得懂。\n\n`
                 + `【今天的新聞(共 ${items.length} 則,以下列出前 ${Math.min(25, items.length)} 則)】\n${list}\n\n`
                 + `【當下盤面(這些數字是系統實際算好的,直接引用,🛑 禁止自己計算或杜撰任何數字)】\n`
@@ -36060,7 +36281,7 @@ ${this._reportFacts(sym)}
             const txt = await this._callDeepAI({ prompt, max_tokens: 1400, temperature: 0.4, chain: 'gemini-openrouter' });
             if (!txt) throw new Error('AI 回空');
             const ts = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-            const ng = this._aiNumGate(prompt, txt);   // 🧾 V77.8.1 數字核對(存進快取,重開也看得到)
+            const ng = this._aiNumGate(prompt, txt, used);   // 🧾 V77.8.1 數字核對(存進快取,重開也看得到)+ 🗂️ 用到哪些資料 + 🔎 引文核對
             try { localStorage.setItem(this._newsDeepKey(), JSON.stringify({ txt, ts, ng })); } catch (_) {}
             this._renderNewsDeep(txt, ts, ng);
             this.vibrate?.(30);
@@ -36126,11 +36347,20 @@ ${this._reportFacts(sym)}
                 `恐懼貪婪 ${N(mr.fear_greed)}`,
             ].join('、');
             const rb = this._reboundVerdict ? `反攻條件雷達:${this._reboundVerdict.txt}(${this._reboundVerdict.passN}/${this._reboundVerdict.total} 條通過)` : '';
+            // 🗂️ 「這段用到」:只記上面真的有值的(值是「—」的⛔ 算)
+            const ok = v => v != null && !isNaN(+v), _ff = this._fiFutState();
+            const used = [`財經行事曆 ${Math.min(12, (mr.upcoming_macro_events || []).length)} 件`];
+            if (+this._taiexToday > 0) used.push('加權指數');   // 提示詞那格是 `N(…) || '—'`:0 也印成「—」
+            if (ok(this._vixState()?.val)) used.push('VIX');
+            if (ok(mr.kospi_chg_pct) || ok(mr.nikkei_chg_pct)) used.push('日韓股市');
+            if (ok(mr.fi_spot_net) || this._fiMtdStr?.() || (_ff && _ff.label)) used.push('外資現貨 / 期貨');
+            if (ok(mr.fear_greed)) used.push('恐懼貪婪');
+            if (rb) used.push('反攻條件雷達');
             const prompt = `你是台股資深策略分析師,講白話文。\n\n【未來兩週事件】\n${evs}\n\n【目前市場狀態(實測數字,直接引用,禁止自己計算或杜撰任何數字)】\n${state}${rb ? '\n' + rb : ''}\n\n請深度分析(比一般摘要更深入):\n1. 這些事件裡,以「現在這個市場狀態」來看,最該提防的是哪一件?為什麼(講清楚傳導路徑:事件→影響什麼→影響台股哪些族群)。\n2. 有沒有兩件以上的事件會疊加放大風險?時間點怎麼排?\n3. 那幾天波動會不會變大、要盯哪一個數字看它有沒有真的發生。\n\n用條列,每點 2-3 句,講具體不要空話。不確定就說不確定,不要編造市場預期數據。\n⛔ 規則:本 App 實測 37 種財經行事曆日「會漲還是會跌」一個都不成立,只有「波動會變大」是真的 → ⛔ 不要給部位成數(幾成)、⛔ 不要叫人加碼或降部位、⛔ 不要預測會漲會跌;只講波動與要盯的數字。`;
             const txt = await this._callDeepAI({ prompt, max_tokens: 1400, temperature: 0.4, chain: 'gemini-openrouter' });
             if (!txt) throw new Error('AI 回空');
             const ts = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-            const ng = this._aiNumGate(prompt, txt);   // 🧾 V77.8.1 數字核對(存進快取,重開也看得到)
+            const ng = this._aiNumGate(prompt, txt, used);   // 🧾 V77.8.1 數字核對(存進快取,重開也看得到)+ 🗂️ 用到哪些資料 + 🔎 引文核對
             try { localStorage.setItem(this._macroDeepKey(), JSON.stringify({ txt, ts, ng })); } catch (_) {}
             this._renderMacroDeep(txt, ts, ng);
             this.vibrate?.(30);
@@ -40531,7 +40761,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 prompts: { full: fullPrompt, simple: simplePrompt },
                 max_tokens: 200, temperature: 0.3
             });
-            const ng = this._aiNumGate(fullPrompt + '\n' + simplePrompt, text), red = this._aiNumRedact(text || '', ng);   // 🧾 V77.8.1 數字核對 + V80.1.2 遮掉對不上的
+            // 🗂️ 這兩段提示詞裡只有事件名稱,沒有放任何本站數字 → 照實講(⛔ 讓人以為它看過資料)
+            const ng = this._aiNumGate(fullPrompt + '\n' + simplePrompt, text, ['只有事件名稱(沒有給它任何本站數字)']), red = this._aiNumRedact(text || '', ng);   // 🧾 V77.8.1 數字核對 + V80.1.2 遮掉對不上的
             const html = this._aiNumMaskHtml(String(red.text || '').replace(/</g, '&lt;').replace(/\n/g, '<br>'));
             if (!html) {
                 box.innerHTML = '<div class="text-[10px] text-red-400 px-2 py-1.5">⚠️ AI 推測失敗(可能 OpenRouter 額度用完)</div>';
@@ -47381,8 +47612,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const pct = cost > 0 ? net / (cost * shares) * 100 : 0;
         const cls = net > 0 ? 'text-red-300' : net < 0 ? 'text-green-300' : 'text-gray-300';
         const rest = own - shares;
+        // 🧩 買或賣那一邊金額小到收最低手續費 → 講一聲(⛔ 不講的話,使用者用 0.1425% × 折數驗算會對不起來)
+        const mfNote = this._minFeeNote(Math.min(cost * shares, price * shares));
         return `<b class="${cls} font-mono">${net >= 0 ? '+' : ''}${net.toLocaleString()} 元(${net > 0 ? '獲利' : net < 0 ? '虧損' : '打平'})・${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</b>
-            <div class="text-[10px] text-gray-500">已扣買賣手續費與證交稅・${rest > 0 ? `賣完還剩 ${rest.toLocaleString()} 股` : '全部賣出,這一檔會從庫存拿掉'}</div>`;
+            <div class="text-[10px] text-gray-500">已扣買賣手續費與證交稅${mfNote}・${rest > 0 ? `賣完還剩 ${rest.toLocaleString()} 股` : '全部賣出,這一檔會從庫存拿掉'}</div>`;
     },
     _invSellRead(idx) {
         const p = document.querySelector(`[data-sellpanel="${idx}"]`);
@@ -47734,6 +47967,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const el = document.getElementById(id);
                 if (el) el.innerText = '--';
             });
+            this._invWeekAttrFill().catch(() => {});   // 📊 空庫存 → 那一行收起來
             return;
         }
 
@@ -47867,6 +48101,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         setEl('invCostBasis', '成本 ' + Math.round(totalCostNTD).toLocaleString(), 'text-[10px] font-bold font-mono text-gray-500');
         // 🔌 V68.9.1 庫存檔數/代號變動 → 同步 WS 訂閱(新增/刪除即時納入毫秒串流)
         try { this._syncInvWsStream(); } catch (_) {}
+        this._invWeekAttrFill().catch(() => {});   // 📊 本週大盤帶動 vs 個股自己(背景算,⛔ 擋住清單)
     },
 
     removeInventoryEntry(idx) {
@@ -47974,13 +48209,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //   ⛔ 燈號只用 ⚪🟡🟠(🔴🟢 只代表漲跌方向,鐵則)。
     _BRK_LIM: { day: 2, week: 5, month: 8 },
     _TOTAL_RISK_LIM: 6,
+    /** 那一天所在那一週的週一 'YYYY/MM/DD'(帳戶熔斷的「本週」與持股歸因的「本週」同一份定義)。純函式 */
+    _wkMonday(ymd, back = 0) {
+        const m = String(ymd || '').match(/^(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+        if (!m) return '';
+        const mon = new Date(+m[1], +m[2] - 1, +m[3]);
+        mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7) - 7 * back);   // back = 往前幾週
+        return `${mon.getFullYear()}/${String(mon.getMonth() + 1).padStart(2, '0')}/${String(mon.getDate()).padStart(2, '0')}`;
+    },
     /** 已實現損益(扣成本)依今天 / 本週(週一起)/ 本月加總 → 熔斷狀態。純函式:todayStr = 'YYYY/MM/DD' */
     _acctBreaker(log, acc, todayStr) {
         const day = String(todayStr || this.getTodayStr()).replace(/-/g, '/');
-        const d0 = new Date(day.replace(/\//g, '-') + 'T00:00:00');
-        const mon = new Date(d0); mon.setDate(d0.getDate() - ((d0.getDay() + 6) % 7));
-        const ymd = x => `${x.getFullYear()}/${String(x.getMonth() + 1).padStart(2, '0')}/${String(x.getDate()).padStart(2, '0')}`;
-        const wk = ymd(mon), mo = day.slice(0, 7);
+        const wk = this._wkMonday(day), mo = day.slice(0, 7);
         const sum = { day: 0, week: 0, month: 0 };
         for (const t of (Array.isArray(log) ? log : [])) {
             const d = String(t?.date || '').replace(/-/g, '/').slice(0, 10), v = +t?.pnlNTD || 0;
@@ -48040,6 +48280,171 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             + (r.nEst ? `・${r.nEst} 檔還沒抓到 K 線,先用成本 −5% 估` : '') + (r.below ? `・${r.below} 檔已經在停損下面(照你的出場規則處理)` : '')
             + `・${r.lim}% 是常見的建議值(不是本站算出來的)</div>`;
     },
+    // 📊 持股損益歸因:這段時間賺賠多少是「大盤帶動」、多少是「個股自己」
+    //   (拆法參考 desk-note app/analytics/core.py 的 fit_betas / attribution,MIT;只借想法、程式是這裡自己寫的)
+    //   ⭐ 大盤 = 0050(全站跟大盤比都用它,同 _tradeExcursion)・β = 這檔日報酬對 0050 日報酬的迴歸斜率,只用「那段之前」約一年
+    //   ⛔ 畫面上一定要講:0050 當大盤、沒算股利(除息那天的跌會算在「個股自己」)、β 是用過去一年算的
+    //   ⛔ 只描述「已經發生的」賺賠怎麼分,⛔ 不是買賣訊號、⛔ 不預測
+    _BETA_WIN: 250,     // β 最多看幾個交易日(約一年)
+    _BETA_MIN: 60,      // 兩邊都有收盤的日報酬不到這麼多天 → β 當 1,標「估」(⛔ 十幾天迴歸出來的斜率是雜訊)
+    _kDate(d) { return String(d || '').replace(/-/g, '/').slice(0, 10); },
+    _closeMap(k) {
+        const m = new Map();
+        for (const b of (Array.isArray(k) ? k : [])) { const d = this._kDate(b?.date), c = +b?.close; if (d && c > 0) m.set(d, c); }
+        return m;
+    },
+    /** β:這檔日報酬對 0050 日報酬的 OLS 斜率,只用 upTo(含)以前、兩邊都有收盤的最近 _BETA_WIN 天。純函式 → {beta, n, est} */
+    _betaFit(kl, k50, upTo) {
+        const m = this._closeMap(k50), lim = this._kDate(upTo);
+        const xs = [], ys = [];
+        let pS = null, pM = null;
+        for (const b of (Array.isArray(kl) ? kl : [])) {
+            const d = this._kDate(b?.date), c = +b?.close, cm = m.get(d);
+            if (!d || (lim && d > lim) || !(c > 0) || !(cm > 0)) continue;
+            if (pS != null) {
+                const rs = c / pS - 1, rm = cm / pM - 1;
+                // ⛔ 單日 ±25% 以上 = K 線裡沒還原的分割 / 減資斷崖(上市櫃一天最多 ±10%)→ 不放進迴歸,⛔ 不然一根就把 β 拉歪
+                if (Math.abs(rs) <= 0.25 && Math.abs(rm) <= 0.25) { ys.push(rs); xs.push(rm); }
+            }
+            pS = c; pM = cm;
+        }
+        const n = Math.min(this._BETA_WIN, xs.length);
+        if (n < this._BETA_MIN) return { beta: 1, n, est: true };
+        const X = xs.slice(-n), Y = ys.slice(-n);
+        const mx = X.reduce((a, v) => a + v, 0) / n, my = Y.reduce((a, v) => a + v, 0) / n;
+        let sxy = 0, sxx = 0;
+        for (let i = 0; i < n; i++) { sxy += (X[i] - mx) * (Y[i] - my); sxx += (X[i] - mx) ** 2; }
+        if (!(sxx > 0)) return { beta: 1, n, est: true };
+        return { beta: sxy / sxx, n, est: false };
+    },
+    /** 一檔持股在「wk 那一週」的歸因。it = 庫存那一筆 {symbol, shares(張), cost, buyDate};
+     *  kl / k50 = 這檔與 0050 的日 K(舊 → 新,已拿掉還沒收盤那根)。純函式 → null / {skip} / 結果 */
+    _wkAttrOne(it, kl, k50, wk) {
+        const sym = String(it?.symbol || ''), sh = Math.round((+it?.shares || 0) * 1000), cost = +it?.cost;
+        if (!sym || !(sh > 0) || !Array.isArray(kl) || !Array.isArray(k50)) return null;
+        const m = this._closeMap(k50), w0 = this._kDate(wk);
+        const ds = [];   // 這檔與 0050 都有收盤的日子 [日期, 這檔收盤](⛔ 兩邊各用各的最後一天 = 比的不是同一段時間)
+        for (const b of kl) { const d = this._kDate(b?.date), c = +b?.close; if (d && c > 0 && m.get(d) > 0) ds.push([d, c]); }
+        if (!ds.length) return null;
+        const [d1, end] = ds[ds.length - 1];
+        if (d1 < w0) return { sym, sh, skip: 'noweek' };             // 這週還沒有收盤(停牌 / 資料還沒更新)
+        const bd = this._kDate(it?.buyDate);
+        const fresh = !!bd && bd >= w0;                             // 這週才買的 → 起點 = 你的買進成本
+        if (fresh && d1 < bd) return { sym, sh, skip: 'nobar' };      // 買了之後還沒有收盤
+        if (fresh && !(cost > 0)) return { sym, sh, skip: 'nocost' };
+        // 起點那一個收盤:這週以前最後一個;這週才買的 = 買進日以前最後一個(不知道你盤中哪一刻買的,大盤從前一個收盤算起)
+        const cut = fresh ? bd : w0;
+        let i0 = -1, iW = -1;
+        for (let i = ds.length - 1; i >= 0; i--) { if (i0 < 0 && ds[i][0] < cut) i0 = i; if (iW < 0 && ds[i][0] < w0) iW = i; if (i0 >= 0 && iW >= 0) break; }
+        if (i0 < 0) return { sym, sh, skip: 'nobase' };              // K 線太短,找不到起點
+        const d0 = ds[i0][0], start = fresh ? cost : ds[i0][1];
+        const mRet = m.get(d1) / m.get(d0) - 1;
+        // β 一律用「這週以前」那一年(這週才買的也一樣)—— ⛔ 用到這週的報酬 = 拿要解釋的結果去算解釋它的係數
+        const bf = iW >= 0 ? this._betaFit(kl, k50, ds[iW][0]) : { beta: 1, n: 0, est: true };
+        const total = sh * (end - start), mkt = bf.beta * mRet * sh * start;
+        return { sym, sh, d0, d1, start, end, fresh, total, mkt, stock: total - mkt, beta: bf.beta, est: bf.est, nFit: bf.n, mRet };
+    },
+    /** 全部持股加總。kls = {代號: 日 K}。⭐ 每檔先四捨五入到元,總數 = 各檔相加、個股自己 = 總 − 大盤(使用者會拿三個數字驗算)。純函式 */
+    _wkAttr(inv, kls, k50, wk) {
+        const rows = [], skip = [];
+        let total = 0, mkt = 0, d1 = '';
+        for (const it of (Array.isArray(inv) ? inv : [])) {
+            const sym = String(it?.symbol || '');
+            if (!sym) continue;
+            const r = this._wkAttrOne(it, (kls || {})[sym], k50, wk);
+            if (!r || r.skip) { skip.push({ sym, why: r ? r.skip : 'nok' }); continue; }
+            const t = Math.round(r.total), mk = Math.round(r.mkt);
+            rows.push({ ...r, t, mk, st: t - mk });
+            total += t; mkt += mk;
+            if (r.d1 > d1) d1 = r.d1;
+        }
+        return { wk: this._kDate(wk), d1, rows, total, mkt, stock: total - mkt, nEst: rows.filter(r => r.est).length, skip };
+    },
+    /** 今天那根還沒收盤(台北 13:30 以前)就先不算 —— 「最新收盤」要是真的收盤價 */
+    _wkClosed(k) {
+        if (!Array.isArray(k) || !k.length || !this._lastBarIsToday(k)) return k;
+        let open = true;
+        try { const t = this._tpeMinutes(); open = !/Sat|Sun/.test(t.wd) && t.min < 810; } catch (_) {}
+        return open ? k.slice(0, -1) : k;
+    },
+    /** 週一 → 「本週 / 上週 / MM/DD(一) 那週」(週一早上還沒有這週的收盤時,顯示的是上週,⛔ 不可寫成本週) */
+    _wkLabel(wk) {
+        const today = this.getTodayStr();
+        return wk === this._wkMonday(today) ? '本週' : wk === this._wkMonday(today, 1) ? '上週' : `${this._dW(wk)} 那週`;
+    },
+    _wkAttrMemo: null,
+    /** 庫存頁統計卡底下那一行:背景抓 K 線算(⛔ 擋畫面),同一天同一批持股只算一次(⛔ 每 20 秒刷價就重抓一輪) */
+    async _invWeekAttrFill() {
+        const box = document.getElementById('invWeekAttr');
+        if (!box) return;
+        const inv = this._getInventory().filter(it => it && it.symbol && +it.shares > 0);
+        if (!inv.length) { this._wkAttrPaint(box, ''); return; }
+        const today = this.getTodayStr();
+        const sigOf = list => today + '|' + list.map(it => [it.symbol, it.shares, it.cost, it.buyDate || ''].join(',')).sort().join(';');
+        const sig = sigOf(inv);
+        const M = this._wkAttrMemo;
+        // ⏱️ 今天的收盤還可能進來(平日、傍晚採礦更新前)→ 30 分鐘後再算一次;已經含今天收盤或週末 → 今天不用再算
+        if (M && M.sig === sig && (M.full || Date.now() - M.ts < 30 * 60e3)) { this._wkAttrPaint(box, M.html); return; }
+        if (this._wkAttrBusy) return;
+        this._wkAttrBusy = true;
+        try {
+            if (!M || M.sig !== sig) this._wkAttrPaint(box, `<div class="text-[10px] text-gray-500" data-wkattr="loading">📊 正在抓 K 線,算持股這週的賺賠有多少是大盤帶動、多少是個股自己…</div>`);
+            const miss = [], raw = {};
+            const syms = [...new Set(inv.map(it => String(it.symbol)).concat(['0050']))];
+            await Promise.all(syms.map(async s => { try { raw[s] = await this.fetchHistoricalData(s, false, { quiet: true, miss }); } catch (_) { raw[s] = null; } }));
+            const kls = {};
+            for (const s of syms) kls[s] = this._wkClosed(raw[s]);
+            const k50 = kls['0050'];
+            let html, full = false;
+            if (!Array.isArray(k50) || !k50.length) {
+                html = `<div class="text-[10px] text-gray-500" data-wkattr="no50">📊 本週持股:0050 的 K 線這次沒抓到(拿它當大盤)→ 拆不出大盤帶動多少,下次打開會再抓</div>`;
+            } else {
+                const res = this._wkAttr(inv, kls, k50, this._wkMonday(k50[k50.length - 1].date));
+                html = this._invWeekAttrHtml(res, miss);
+                let t = null; try { t = this._tpeMinutes(); } catch (_) {}
+                full = !!t && (/Sat|Sun/.test(t.wd) || (res.d1 === today && t.min >= 17 * 60));
+            }
+            this._wkAttrMemo = { sig, ts: Date.now(), html, full };
+            if (document.getElementById('invWeekAttr') === box) this._wkAttrPaint(box, html);
+        } catch (e) {
+            this._wkAttrPaint(box, `<div class="text-[10px] text-gray-500" data-wkattr="err">📊 本週持股:這次算不出來(${String(e && e.message || e).slice(0, 40)}),下次打開會再算</div>`);
+        } finally {
+            this._wkAttrBusy = false;
+            // 算的那段時間持股被改了(新增 / 賣出)→ 再算一次(⛔ 畫面停在舊的那批持股,要等下一次重畫才會換)
+            const now = this._getInventory().filter(it => it && it.symbol && +it.shares > 0);
+            if (now.length && sigOf(now) !== sig) setTimeout(() => this._invWeekAttrFill().catch(() => {}), 0);
+        }
+    },
+    /** 只有內容變了才重寫(⛔ 每次都寫 → 使用者自己打開的明細會被關掉,同 _rpSet 那條規則) */
+    _wkAttrPaint(box, html) {
+        if (box._wkHtml === html) return;
+        const wasOpen = !!box.querySelector('details[data-wkattrdet]')?.open;
+        box.innerHTML = html; box._wkHtml = html;
+        box.classList.toggle('hidden', !html);   // 空字串 = 收起來(空庫存)
+        if (wasOpen) { const d = box.querySelector('details[data-wkattrdet]'); if (d) d.open = true; }
+        // 📏 統計卡變高 / 變矮 → 清單捲動區的上限要重量(⛔ 沿用 renderInventory 那時量的:清單底部會被底部導覽蓋住)
+        try { this._invFitHeight(); } catch (_) {}
+    },
+    _invWeekAttrHtml(res, miss) {
+        const f = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(Math.round(v)).toLocaleString();
+        const col = v => v > 0 ? 'text-[#f87171]' : v < 0 ? 'text-[#4ade80]' : 'text-gray-300';
+        const lab = this._wkLabel(res.wk);
+        const skipTxt = res.skip.length ? `・${res.skip.length} 檔${lab}沒有收盤資料可比(${res.skip.map(x => x.sym).slice(0, 4).join('、')}${res.skip.length > 4 ? '…' : ''})` : '';
+        if (!res.rows.length) return `<div class="text-[10px] text-gray-500 leading-snug" data-wkattr="none">📊 ${lab}持股:還算不出來${skipTxt}</div>${this._klMissNote(miss)}`;
+        const range = `${this._dW(res.wk)}~${this._dW(res.d1)}`;
+        const rows = res.rows.slice().sort((a, b) => Math.abs(b.t) - Math.abs(a.t)).map(r =>
+            `<div class="grid items-baseline gap-1 py-0.5 border-b border-[#21262d] text-[10px]" style="grid-template-columns:minmax(0,1.6fr) minmax(52px,1fr) minmax(52px,1fr) minmax(52px,1fr) minmax(34px,.6fr)" data-wkattrrow="${r.sym}">`
+            + `<span class="text-gray-300 truncate">${this._nmPair(r.sym)}${r.fresh ? ' 🆕' : ''}</span>`
+            + `<span class="font-mono text-right ${col(r.t)}">${f(r.t)}</span><span class="font-mono text-right ${col(r.mk)}">${f(r.mk)}</span><span class="font-mono text-right ${col(r.st)}">${f(r.st)}</span>`
+            + `<span class="font-mono text-right text-gray-400">${r.beta.toFixed(2)}${r.est ? '<span class="text-amber-300">估</span>' : ''}</span></div>`).join('');
+        const hdr = `<div class="grid gap-1 text-[9px] text-gray-500 pb-0.5 border-b border-[#30363d]" style="grid-template-columns:minmax(0,1.6fr) minmax(52px,1fr) minmax(52px,1fr) minmax(52px,1fr) minmax(34px,.6fr)"><span>持股</span><span class="text-right">合計</span><span class="text-right">大盤帶動</span><span class="text-right">個股自己</span><span class="text-right">β</span></div>`;
+        return `<div data-wkattr="ok" data-wkattrsum="${res.total}|${res.mkt}|${res.stock}">`
+            + `<div class="text-[11px] text-gray-200 leading-snug">📊 <b>${lab}持股 <span class="font-mono ${col(res.total)}">${f(res.total)}</span> 元</b>:大盤帶動 <span class="font-mono ${col(res.mkt)}">${f(res.mkt)}</span>、個股自己 <span class="font-mono ${col(res.stock)}">${f(res.stock)}</span></div>`
+            + `<details data-wkattrdet class="mt-0.5" ontoggle="app._invFitHeight()"><summary class="text-[10px] text-gray-500 cursor-pointer list-none">${range} 收盤・每一檔怎麼分 ▾</summary><div class="mt-1">${hdr}${rows}</div>`
+            + `<div class="text-[9px] text-gray-500 leading-snug mt-1">大盤帶動 = β × 同一段 0050 漲跌 × 起點市值;個股自己 = 合計 − 大盤帶動。起點 = ${this._dW(res.wk)} 以前最後一個收盤${res.rows.some(r => r.fresh) ? `;🆕 = ${lab}才買的,起點用你的買進成本` : ''}。${res.nEst ? `${res.nEst} 檔兩邊一起有收盤的天數不到 ${this._BETA_MIN} 天,β 先當 1(標「估」)。` : ''}</div></details>`
+            + `<div class="text-[9px] text-gray-500 leading-snug">0050 當大盤、沒算股利、β 用過去一年${skipTxt}</div>`
+            + `</div>${this._klMissNote(miss)}`;
+    },
     /** 一筆平倉的 R / 持有期間最多曾賠、曾賺 / 同期 0050。kl = 那一檔日 K、k50 = 0050 日 K。純函式 */
     _tradeExcursion(t, kl, k50) {
         const bd = String(t?.buyDate || '').replace(/-/g, '/').slice(0, 10), sd = String(t?.date || '').replace(/-/g, '/').slice(0, 10);
@@ -48068,15 +48473,39 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                  R: per > 0 ? +(pnl / (per * sh)).toFixed(2) : null, e50, nBars: seg.length };
     },
     _xcCache: {},
+    // 🪁 賣掉之後(想法參考 desk-note app/analytics/journal.py since_decision,MIT;程式是這裡自己寫的):
+    //   從賣出那天起最多看 _POST_N 個交易日(到最新收盤為止),這檔漲跌 vs 同一段 0050 × β(β 用賣出以前那一年,規則同持股歸因)
+    //   fly = 股數 ×(之後收盤 − 你的賣價):正 = 賣掉之後還在漲(少賺的)、負 = 賣掉之後跌了(少賠的)
+    //   adj = 股數 × 賣價 ×(這檔報酬 − β × 0050 報酬):正 = 賣掉之後比「照平常跟大盤的連動該漲的」漲得多
+    //   ⛔ 只描述賣掉之後發生什麼,⛔ 不是叫你買回來;⛔ 好壞不用 🔴🟢(燈號只代表漲跌)
+    _POST_N: 20,
+    /** 一筆賣出之後的走勢。kl / k50 = 這檔與 0050 日 K(舊 → 新,已拿掉還沒收盤那根)。純函式 → null / {n:0} / 結果 */
+    _postSale(t, kl, k50) {
+        const sd = this._kDate(t?.date), sell = +t?.sellPrice, sh = Math.round((+t?.shares || 0) * 1000);
+        if (!sd || !(sell > 0) || !(sh > 0) || !Array.isArray(kl) || !Array.isArray(k50)) return null;
+        const m = this._closeMap(k50), ds = [];
+        for (const b of kl) { const d = this._kDate(b?.date), c = +b?.close; if (d && c > 0 && m.get(d) > 0) ds.push([d, c]); }
+        let iS = -1, iB = -1;   // iS = 賣出那天(或之前最後一個)收盤;iB = 賣出那天以前最後一個收盤(β 只用到這裡)
+        for (let i = ds.length - 1; i >= 0; i--) { if (iS < 0 && ds[i][0] <= sd) iS = i; if (ds[i][0] < sd) { iB = i; break; } }
+        if (iS < 0) return null;                                     // K 線比賣出日還新(資料太短)
+        const iE = Math.min(iS + this._POST_N, ds.length - 1), n = iE - iS;
+        if (n < 1) return { n: 0, full: false };                     // 賣出之後還沒有收盤
+        const dS = ds[iS][0], [dE, cE] = ds[iE];
+        const ret = cE / sell - 1, mRet = m.get(dE) / m.get(dS) - 1;
+        const bf = iB >= 0 ? this._betaFit(kl, k50, ds[iB][0]) : { beta: 1, n: 0, est: true };
+        return { n, full: n >= this._POST_N, dS, dE, close: cE, ret, mRet, beta: bf.beta, est: bf.est,
+                 fly: Math.round(sh * (cE - sell)), adj: Math.round(sh * sell * (ret - bf.beta * mRet)) };
+    },
     /** 鏡子打開後才去抓 K 線算每一筆(背景、同時 ≤4 檔;⛔ 不改使用者存的交易紀錄)→ 填進 #mirrorXc */
     async _mirrorXcFill() {
         const box = document.getElementById('mirrorXc');
         if (!box) return;
-        const log = this._tradeLogNet().filter(t => t.buyDate && t.date);
-        if (!log.length) { box.innerHTML = `<div class="text-[10px] text-gray-500">📐 每一筆的 R / 最多曾賠 / 同期 0050:要有買進日的紀錄才算得出來(編輯庫存時填買進日)</div>`; return; }
+        const all = this._tradeLogNet().filter(t => t.date);        // 🪁 賣掉之後:有賣出日就算得出來
+        const log = all.filter(t => t.buyDate);                       // 📐 R / 最多曾賠:還要買進日
+        if (!all.length) { box.innerHTML = `<div class="text-[10px] text-gray-500">📐 每一筆的 R / 最多曾賠 / 同期 0050:要有買進日的紀錄才算得出來(編輯庫存時填買進日)</div>`; return; }
         box.innerHTML = `<div class="text-[10px] text-gray-500">📐 正在抓 K 線算每一筆…</div>`;
         const miss = [], kl = {};
-        const syms = [...new Set(log.map(t => String(t.symbol)).concat(['0050']))];
+        const syms = [...new Set(all.map(t => String(t.symbol)).concat(['0050']))];
         await Promise.all(syms.map(async s => { try { kl[s] = await this.fetchHistoricalData(s, false, { quiet: true, miss }); } catch (_) { kl[s] = null; } }));
         const rows = [];
         for (const t of log) {
@@ -48084,11 +48513,54 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const x = this._xcCache[key] || this._tradeExcursion(t, kl[String(t.symbol)], kl['0050']);
             if (x) { this._xcCache[key] = x; rows.push({ t, x }); }
         }
+        // ⭐ 「賣掉之後」每多一根收盤就會變 → 快取鍵帶 0050 最新一根的日期(⛔ App 開著過夜,隔天還顯示「才 3 天」)
+        const k50 = this._wkClosed(kl['0050']), lastD = Array.isArray(k50) && k50.length ? this._kDate(k50[k50.length - 1].date) : '';
+        const posts = [];
+        for (const t of all) {
+            const key = `ps|${t.symbol}|${t.date}|${t.sellPrice}|${t.shares}|${lastD}`;
+            const p = this._xcCache[key] || this._postSale(t, this._wkClosed(kl[String(t.symbol)]), k50);
+            if (p) { this._xcCache[key] = p; posts.push({ t, p }); }
+        }
         if (!document.getElementById('mirrorXc')) return;
-        box.innerHTML = this._mirrorXcHtml(rows, log.length) + this._klMissNote(miss);
+        box.innerHTML = this._mirrorXcHtml(rows, log.length, posts, all) + this._klMissNote(miss);
     },
-    _mirrorXcHtml(rows, nAll) {
-        if (!rows.length) return `<div class="text-[10px] text-gray-500">📐 ${nAll} 筆都對不到 K 線(買進日太早或代號沒有資料)</div>`;
+    /** 🪁 一行摘要:賣掉之後比大盤漲得多(賣飛)幾筆、少賺多少;跌了(賣對)幾筆、少賠多少。純函式 */
+    _soldFlySum(posts) {
+        const P = (Array.isArray(posts) ? posts : []).map(r => r.p).filter(p => p && p.n >= 1);
+        const fly = P.filter(p => p.fly > 0 && p.adj > 0), right = P.filter(p => p.fly < 0);
+        return { n: P.length, nFly: fly.length, gaveUp: fly.reduce((a, p) => a + p.fly, 0), nRight: right.length,
+                 avoided: right.reduce((a, p) => a - p.fly, 0), nRest: P.length - fly.length - right.length, nShort: P.filter(p => !p.full).length };
+    },
+    _soldFlyHtml(posts) {
+        const S = this._soldFlySum(posts);
+        if (!S.n) return '';
+        const f = v => Math.round(v).toLocaleString();
+        return `<div class="text-[10px] text-gray-300 leading-snug mt-1" data-soldfly="${S.nFly}|${S.gaveUp}|${S.nRight}|${S.avoided}">🪁 <b>賣掉之後</b>(最多看 ${this._POST_N} 個交易日,跟同一段 0050 × β 比):`
+            + `<b>${S.nFly}</b> 筆比大盤漲得多(賣飛),少賺 <b class="font-mono">${f(S.gaveUp)}</b> 元;<b>${S.nRight}</b> 筆跌了(賣對),少賠 <b class="font-mono">${f(S.avoided)}</b> 元`
+            + (S.nRest ? `;其餘 ${S.nRest} 筆漲得沒大盤多或沒動` : '')
+            + (S.nShort ? `<span class="text-gray-500">(其中 ${S.nShort} 筆賣掉還不到 ${this._POST_N} 天,數字還會變)</span>` : '') + `</div>`;
+    },
+    /** 明細的「賣掉之後」那一行 */
+    _soldFlyRow(p) {
+        if (!p) return '';
+        if (!(p.n >= 1)) return `<div class="text-[9px] text-gray-500 leading-snug" data-soldflyrow="0">🪁 賣掉之後還沒有收盤可以比</div>`;
+        const pc = v => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`, f = v => `${v >= 0 ? '+' : '−'}${Math.abs(v).toLocaleString()}`;
+        const verdict = p.fly > 0 && p.adj > 0 ? `賣飛 ${f(p.fly)} 元(比大盤多漲 ${Math.abs(p.adj).toLocaleString()} 元)`
+            : p.fly > 0 ? `之後 ${f(p.fly)} 元,但沒大盤漲得多`
+            : p.fly < 0 ? `賣對,少賠 ${Math.abs(p.fly).toLocaleString()} 元` : '之後沒漲沒跌';
+        return `<div class="text-[9px] text-gray-400 leading-snug" data-soldflyrow="${p.n}">🪁 ${p.full ? `賣後 ${p.n} 天` : `<span class="text-amber-200/90">才 ${p.n} 天</span>`}:${pc(p.ret)}(0050 ${pc(p.mRet)}・β ${p.beta.toFixed(2)}${p.est ? '估' : ''})→ ${verdict}</div>`;
+    },
+    _mirrorXcHtml(rows, nAll, posts = [], all = null) {
+        const xs = new Map(rows.map(r => [r.t, r.x])), ps = new Map((posts || []).map(r => [r.t, r.p]));
+        const trades = Array.isArray(all) && all.length ? all : rows.map(r => r.t);
+        // 📜 明細:每一筆兩行 —— 照紀律看(要買進日)/ 🪁 賣掉之後(只要賣出日)
+        const list = trades.slice(-8).reverse().map(t => { const x = xs.get(t); return `<div class="py-0.5 border-b border-[#21262d]"><div class="flex items-center justify-between text-[10px]"><span class="text-gray-300">${t.name || t.symbol} <span class="text-gray-600">${t.date}</span></span>`
+            + (x ? `<span class="font-mono text-gray-300">${x.R == null ? '—' : (x.R >= 0 ? '+' : '') + x.R.toFixed(1) + 'R'} ・最多曾賠 ${x.mae.toFixed(1)}% ・最多曾賺 ${x.mfe >= 0 ? '+' : ''}${x.mfe.toFixed(1)}%${x.e50 ? ` ・0050 ${x.e50.pct >= 0 ? '+' : ''}${x.e50.pct.toFixed(1)}%` : ''}</span>` : `<span class="text-[9px] text-gray-500">${t.buyDate ? '對不到 K 線' : '沒填買進日 → 算不出 R'}</span>`)
+            + `</div>${this._soldFlyRow(ps.get(t))}</div>`; }).join('');
+        const det = list ? `<details class="mt-1"><summary class="text-[10px] text-gray-500 cursor-pointer list-none">📜 最近 ${Math.min(8, trades.length)} 筆明細</summary><div class="mt-1">${list}</div></details>` : '';
+        const fly = this._soldFlyHtml(posts);
+        if (!nAll) return `<div class="text-[10px] text-gray-500">📐 每一筆的 R / 最多曾賠 / 同期 0050:要有買進日的紀錄才算得出來(編輯庫存時填買進日)</div>` + fly + det;
+        if (!rows.length) return `<div class="text-[10px] text-gray-500">📐 ${nAll} 筆都對不到 K 線(買進日太早或代號沒有資料)</div>` + fly + det;
         const med = a => { const b = a.filter(Number.isFinite).sort((x, y) => x - y); if (!b.length) return null; const k = b.length >> 1; return b.length % 2 ? b[k] : (b[k - 1] + b[k]) / 2; };
         const Rs = rows.map(r => r.x.R).filter(v => v != null);
         const big = Rs.filter(v => v <= -1.5).length, run = Rs.filter(v => v >= 2).length;
@@ -48101,11 +48573,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (maeW != null) lines.push(`賺錢的那幾筆,中途最多曾經賠到 ${maeW.toFixed(1)}%(中位)—— 停損設在比這更近的地方,這些單會先被洗掉`);
         if (loss.length) lines.push(`賠錢的 ${loss.length} 筆裡,有 ${giveBack} 筆中途曾經賺過 5% 以上又吐回去`);
         if (e.length) lines.push(`同一段時間、同樣的錢拿去放 0050(沒算股利、扣手續費和稅):${sg(alt)} 元;你這 ${e.length} 筆實際 ${sg(mine)} 元`);
-        const list = rows.slice(-8).reverse().map(({ t, x }) => `<div class="flex items-center justify-between text-[10px] py-0.5 border-b border-[#21262d]"><span class="text-gray-300">${t.name || t.symbol} <span class="text-gray-600">${t.date}</span></span>`
-            + `<span class="font-mono text-gray-300">${x.R == null ? '—' : (x.R >= 0 ? '+' : '') + x.R.toFixed(1) + 'R'} ・最多曾賠 ${x.mae.toFixed(1)}% ・最多曾賺 ${x.mfe >= 0 ? '+' : ''}${x.mfe.toFixed(1)}%${x.e50 ? ` ・0050 ${x.e50.pct >= 0 ? '+' : ''}${x.e50.pct.toFixed(1)}%` : ''}</span></div>`).join('');
         return `<div class="text-[11px] font-black text-gray-100 mb-1" data-mirrorxc="${rows.length}">📐 每一筆照紀律看(${rows.length}/${nAll} 筆對得到 K 線)</div>`
             + lines.map(l => `<div class="text-[10px] text-gray-300 leading-snug mb-0.5">・${l}</div>`).join('')
-            + `<details class="mt-1"><summary class="text-[10px] text-gray-500 cursor-pointer list-none">📜 最近 ${Math.min(8, rows.length)} 筆明細</summary><div class="mt-1">${list}</div></details>`;
+            + fly + det;
     },
     /** 🧭 新增持倉視窗的「買之前看一眼」:熔斷 + 這一筆最多賠多少 + 買完的總風險(⛔ 不擋你按確認) */
     _invPreTradeRender() {
@@ -50540,11 +51010,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const th = c => { const on = sort.k === c.k; return `<button onclick="app.deckBuySortBy('${c.k}')" data-deckbuysort="${c.k}" class="text-right ${on ? 'text-cyan-300 font-bold' : 'text-gray-500'}">${c.n}${on ? (sort.asc ? '▲' : '▼') : ''}</button>`; };
         const hdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] items-baseline" style="display:grid;${COLS};gap:4px" data-deckbuyhdr="1">${th(C.rank)}<span class="text-gray-500">股票</span>${th(C.c)}${th(C.trig)}${th(C.stop)}<span class="text-gray-500 text-right">買幾張</span></div>`;
         let noAcc = false;
+        const amts = [];   // 🧩 每一列這筆要花多少 → 不到最低手續費門檻的,表格底下講一次
         const row = r => {
             const x = r.x, sym = String(x.s), isMine = mine.has(sym), nf = noFin(sym);
             const T = this._pbTagsHtml(x, nf);
             const nm = this._nmDual ? this._nmDual(sym) : { n: sym, sub: '' };
             const ps = this._lotsForPlaybook(r.trig != null ? r.trig : r.c, +x.stop);
+            if (ps.acc > 0 && ps.shares > 0) amts.push(ps.investAmt);
             const lots = ps.acc > 0 ? (ps.shares > 0 ? `<b class="text-red-300">${esc(ps.howTxt)}</b>` : '<span class="text-yellow-400">買不起</span>') : '<span class="text-gray-500" title="先到 ⚙️ 設定填「帳戶總資金」">—</span>';
             // 沒填帳戶資金 → 每一列⛔ 不重複同一句提示(表格底下講一次)
             const sub = ps.acc > 0 && ps.shares > 0
@@ -50571,9 +51043,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>`;
         };
         const body = rows.map(row).join('');
-        return `<div data-deckbuytbl="1">${hdr}${body}${noAcc ? '<div class="text-[10px] text-gray-400 mt-1" data-deckbuynoacc="1">買幾張?先到 ⚙️ 設定填「帳戶總資金」就會幫你算</div>' : ''}<div class="text-[9px] text-gray-600 mt-1 leading-snug">觸發價 = 收盤前<b>漲過</b>它才買(底下「+%」= 離現價還差多少)・停損 = 跌破就賣・點股名看個股・點表頭可排序</div></div>`;
+        return `<div data-deckbuytbl="1">${hdr}${body}${noAcc ? '<div class="text-[10px] text-gray-400 mt-1" data-deckbuynoacc="1">買幾張?先到 ⚙️ 設定填「帳戶總資金」就會幫你算</div>' : ''}${this._minFeeListNote(amts)}<div class="text-[9px] text-gray-600 mt-1 leading-snug">觸發價 = 收盤前<b>漲過</b>它才買(底下「+%」= 離現價還差多少)・停損 = 跌破就賣・點股名看個股・點表頭可排序</div></div>`;
     },
-    _pbRowHtml(x, mine, rank, dupN, noFin) {
+    _pbRowHtml(x, mine, rank, dupN, noFin, amts) {
         const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
         const isMine = mine.has(String(x.s));
         const c = +x.c, stop = +x.stop;
@@ -50583,6 +51055,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const { dispTag, thinTag, _offTag, _noFinTag } = this._pbTagsHtml(x, noFin);
         // ⭐ V73.0.1 改用**等權**(⛔ 不是風險法)—— 理由見 `_lotsForPlaybook` 上方的實測數字
         const ps = this._lotsForPlaybook(trig, stop);
+        if (Array.isArray(amts) && ps.acc > 0 && ps.shares > 0) amts.push(ps.investAmt);   // 🧩 清單底下講一次最低手續費(⛔ 每一張卡各講一次)
         // 🔁 V79.4.9 主數字 = 排序用的那個值(`_pbKey`:預設照平均;設定換回舊的 = 保守下界)—— ⛔ 畫面與排序不可各用一個
         const shown = this._pbKey(x);
         // 💰 使用者鐵則:% 一定要配「元」。沒填帳戶資金就誠實說要去設定,⛔ 不自己編一個本金
@@ -50920,6 +51393,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 🧬 今天沒有一檔同時符合「位階 ≥${this._geneRank()}% + 波動率 ≥60%」(決策台會買的那一格)——
                 <span class="text-gray-500">清單照給,但這種日子本來就比較難做。</span>
                </div>`;
+        const _amts = [];   // 🧩 前 SHOW 張卡各要花多少(_pbRowHtml 填)→ 不到最低手續費門檻的,清單底下講一次
         return `<div class="mb-2.5 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
             <div class="flex items-center justify-between mb-1">
                 <span class="text-[12px] font-black text-gray-100">🎯 明天要盯的清單 <span class="text-[10px] text-gray-500 font-normal">共 <b class="text-gray-300 font-mono">${new Set(rows.map(r => String(r.s))).size.toLocaleString()}</b> 檔</span></span>
@@ -50938,7 +51412,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ${this._pbWhySameHtml(list)}${this._verifiedEdgeHtml()}
             ${this._pbTrackRecordHtml()}
             ${mktLine}${riskLine}
-            <div class="space-y-1 mt-1.5">${rows.slice(0, SHOW).map((x, i) => this._pbRowHtml(x, mine, i + 1, _dupIdx.get(x) || 0)).join('')}</div>
+            <div class="space-y-1 mt-1.5">${rows.slice(0, SHOW).map((x, i) => this._pbRowHtml(x, mine, i + 1, _dupIdx.get(x) || 0, undefined, _amts)).join('')}</div>
+            ${this._minFeeListNote(_amts)}
             ${rows.length > SHOW ? `<details class="mt-1.5"><summary class="text-[10px] text-gray-500 cursor-pointer">➕ 另外 ${rows.length - SHOW} 檔(同樣標準,排在後面)</summary><div class="space-y-1 mt-1">${rows.slice(SHOW).map((x, i) => this._pbRowHtml(x, mine, SHOW + i + 1, _dupIdx.get(x) || 0)).join('')}</div></details>` : ''}
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📅 ${this._dW ? this._dW(j.data_date) : (j.data_date || '')} 收盤算的・全市場 ${(j.scanned || 0).toLocaleString()} 檔 ｜ 觸發價是<b class="text-gray-500">估計值</b>(盤中會用即時價重算)</div>
         </div>`;
@@ -53083,6 +53558,22 @@ App 會在那個時段幫你盯,到價自動提醒。
         // 📰 V80.1.2 這一輪到底有沒有拿到任何新聞(19 個專案評估 3-3):全球新聞還沒載入、巨頭新聞也全部抓不到
         //   → 提示詞明講「⛔ 不可以寫任何新聞事件」+ 畫面加一行灰字(⛔ 不可讓它看起來像「看過新聞之後覺得沒事」)
         const _newsUsed = !!newsSection || [_trumpRaw, _huangRaw, _spacexRaw, _kuiperRaw, _earnRaw].some(x => x !== '今日無重大更新');
+        // 🗂️ 「這段用到」:下面提示詞裡**真的有值**的那幾類(「--」「待採」「今日無重大更新」都不算)
+        const _has = v => v != null && !/^(--|待採|計算中)?$/.test(String(v).trim());
+        const used = [];
+        if ([spx, ndx, sox, vix, tsm, nvda, dxy].some(_has)) used.push('美股 / ADR');
+        if (_has(twii) || _has(twoii)) used.push('加權 / 櫃買');
+        if (fi !== null) used.push('外資台指期');
+        if (mr.fi_spot_net != null) used.push('外資現貨');
+        if ([mr.us10y_yield, mr.us2y_yield, mr.fear_greed, mr.retail_ls_pct, mr.usdtwd, mr.taifex_backwardation, mr.gold, mr.wti, mr.btc, mr.nikkei, mr.kospi, mr.hsi].some(v => v != null)) used.push(`總經 / 國際行情${mr.updated ? ` ${this._dW(mr.updated)}` : ''}`);
+        if ([dim_pv, dim_chip, dim_macro, dim_tech, dim_senti].some(_has) || riskScore != null) used.push('戰情 5 維 / 風險指數');
+        if (sh.warzones || sh.sectors) used.push('板塊漲跌');
+        if (_syncLines.length) used.push('台美族群同步');
+        if (bubbleLines !== '（資料待採）') used.push('泡沫 4 維');
+        if (Object.values(allRadarData).some(a => Array.isArray(a) && a.length)) used.push('雷達掃描');
+        if (topPicksLine) used.push('AI 戰略選股');
+        if (newsSection) used.push(`新聞 ${Math.min(12, (this._globalNewsItems || []).length)} 則`);
+        if ([_trumpRaw, _huangRaw, _spacexRaw, _kuiperRaw, _earnRaw].some(x => x !== '今日無重大更新')) used.push('巨頭新聞');
         const _noNewsLine = _newsUsed ? '' : '\n【📰 新聞】這次沒有拿到任何新聞 → ⛔ 不可以寫任何新聞事件或消息面,只根據上面的數據。';
 
         const _today = new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
@@ -53213,7 +53704,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             // 🚀 盤前報告 = 旗艦級分析,Gemini 2.5 Flash 為主撞 429 fallback OpenRouter R1
             // V19.5 — 使用者要求取消 Groq:chain 改 'gemini-openrouter'(原 'auto' 會兜底 Groq)
             const text = await this._callDeepAI({ prompt, max_tokens: 1800, temperature: 0.4, chain: 'gemini-openrouter' });
-            const ngG = this._aiNumGate(prompt, text), redG = this._aiNumRedact(text, ngG);   // 🧾 V80.1.2 對不上的數字遮掉(原文在「看原文」)
+            const ngG = this._aiNumGate(prompt, text, used), redG = this._aiNumRedact(text, ngG);   // 🧾 V80.1.2 對不上的數字遮掉(原文在「看原文」)
             const html = this._aiNumMaskHtml(redG.text
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
                 .replace(/^---$/gm, '<hr class="my-2 border-gray-700"/>')
@@ -55670,8 +56161,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         if (!(buy > 0) || !(sell > 0)) { out.innerHTML = '<div class="text-[10px] text-gray-500 text-center py-2">請輸入買進價與賣出價</div>'; return; }
         const shares = lots * 1000;
         const buyAmt = buy * shares, sellAmt = sell * shares;
-        const buyFee = Math.round(buyAmt * 0.001425 * disc);
-        const sellFee = Math.round(sellAmt * 0.001425 * disc);
+        // 💰 手續費走全 App 同一支 _feeOf(含最低手續費)—— ⛔ 這裡再寫一份百分比:設定改了最低手續費,這台試算機會少扣
+        const buyFee = this._feeOf(buyAmt, disc);
+        const sellFee = this._feeOf(sellAmt, disc);
         const tax = Math.round(sellAmt * 0.0015);   // 當沖證交稅減半
         const gross = (sell - buy) * shares;
         const cost = buyFee + sellFee + tax;
@@ -55679,8 +56171,11 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const netPct = buyAmt > 0 ? net / buyAmt * 100 : 0;
         const win = net >= 0;
         const netCls = win ? 'text-red-400' : 'text-green-400';
-        // 損益兩平賣價:sell 使 net=0 → sell*shares*(1-0.001425*disc-0.0015) = buy*shares*(1+0.001425*disc)
-        const bep = buy * (1 + 0.001425 * disc) / (1 - 0.001425 * disc - 0.0015);
+        // 損益兩平賣價:sell 使 net=0。賣出手續費有兩段(照百分比 / 收最低手續費)→ 先照百分比解,
+        //   解出來那個價位的手續費其實不到最低手續費,就改用「固定收最低手續費」那一段重解(⛔ 小額時只照百分比會把兩平價算低)
+        const rd = 0.001425 * disc, mf = this._minFee();
+        let bep = (buyAmt + buyFee) / (shares * (1 - rd - 0.0015));
+        if (bep * shares * rd < mf) bep = (buyAmt + buyFee + mf) / (shares * (1 - 0.0015));
         out.innerHTML = `
         <div class="bg-[#0d1117] border border-[#30363d] rounded p-2.5">
             <div class="flex items-baseline justify-between mb-1.5">
@@ -55697,7 +56192,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 <div class="flex justify-between"><span class="text-gray-500">賣出手續費</span><span class="font-mono text-gray-300">-${sellFee.toLocaleString()}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">證交稅(減半)</span><span class="font-mono text-gray-300">-${tax.toLocaleString()}</span></div>
             </div>
-            <div class="text-[10px] text-gray-500 mt-1.5 pt-1.5 border-t border-[#21262d]">💡 損益兩平賣價 ≈ <b class="text-yellow-300 font-mono">${bep.toFixed(2)}</b>(賣超過這價才真的賺,含來回成本 ${((0.001425 * disc * 2 + 0.0015) * 100).toFixed(3)}%)</div>
+            <div class="text-[10px] text-gray-500 mt-1.5 pt-1.5 border-t border-[#21262d]">💡 損益兩平賣價 ≈ <b class="text-yellow-300 font-mono">${bep.toFixed(2)}</b>(賣超過這價才真的賺,含來回成本 ${((bep / buy - 1) * 100).toFixed(3)}%${this._minFeeNote(buyAmt)})</div>
         </div>`;
     },
 

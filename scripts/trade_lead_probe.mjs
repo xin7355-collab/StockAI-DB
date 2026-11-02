@@ -33,6 +33,7 @@
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
+import { fileURLToPath } from 'url';
 import { gates, COST, pTwo } from './lib_evgate.mjs';
 import { bhQ } from './lib_fdr.mjs';
 import { CLIFF_LO, CLIFF_HI } from './lib_cliff.mjs';
@@ -729,6 +730,9 @@ function selftest() {
     process.exit(bad ? 1 : 0);
 }
 
-if (process.argv.includes('--selftest')) selftest();
-else if (process.argv.includes('--help')) console.log('用法:DATA_DIR=<d16> REV_DIR=<stock_deep/rev> TRADE_DIR=<trade_deep> IDX_LONG=<idx_long.json> node scripts/trade_lead_probe.mjs out.json\n      node scripts/trade_lead_probe.mjs --selftest');
-else main(process.argv.slice(2).find(a => a.endsWith('.json')) || '');
+// ⭐ V80.1.9 只有直接執行才跑(block_trade_probe.mjs 會 import 這裡的 alignStock / fwdRet / nwP —— ⛔ 複製一份,陷阱 #37)
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    if (process.argv.includes('--selftest')) selftest();
+    else if (process.argv.includes('--help')) console.log('用法:DATA_DIR=<d16> REV_DIR=<stock_deep/rev> TRADE_DIR=<trade_deep> IDX_LONG=<idx_long.json> node scripts/trade_lead_probe.mjs out.json\n      node scripts/trade_lead_probe.mjs --selftest');
+    else main(process.argv.slice(2).find(a => a.endsWith('.json')) || '');
+}

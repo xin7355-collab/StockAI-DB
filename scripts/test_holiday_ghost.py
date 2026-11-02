@@ -98,12 +98,35 @@ ck(after not in miner._holiday_ghost_dates({after: (100, 100, 0)}, cal, lo, hi),
 ck(after not in miner._holiday_ghost_dates({after: (100, 100, 30)}, cal, lo, hi), '④h 只有三成量 0 → ⛔ 不刪')
 ck(after not in miner._holiday_ghost_dates({after: (10, 10, 10)}, cal, lo, hi), '④i 不到 20 檔 → ⛔ 不判')
 ck(ghost_d in miner._holiday_ghost_dates({ghost_d: (100, 92, 0)}, cal, lo, hi), '④j 第 3 欄不影響加權範圍內的舊判斷(量 > 0 的假日照樣刪)')
+# 🗓️ V80.1.9 官方休市表:表上的日子 + 加權沒有 → 不看比例、不管在不在加權最新日之後
+off = frozenset({after, days[257]})
+ck(after in miner._holiday_ghost_dates({after: (3, 0, 0)}, cal, lo, hi, official_closed=off),
+   '④k 官方休市表上的日子(加權最新日之後、只有 3 檔、收盤都有動)→ 一樣刪')
+ck(after not in miner._holiday_ghost_dates({after: (3, 0, 0)}, cal, lo, hi),
+   '④l 決定性對照:同一天不在官方表上 → ⛔ 刪(舊行為)')
+ck(days[100] not in miner._holiday_ghost_dates({days[100]: (100, 5)}, cal, lo, hi, official_closed=frozenset({days[100]})),
+   '④m 官方表說休市、加權那天卻有一根 → 以實際行情為準,⛔ 刪')
+ck(hole_d not in miner._holiday_ghost_dates({hole_d: (100, 9)}, cal, lo, hi, official_closed=frozenset({after})),
+   '④n 給了官方表也不影響其他日子的舊判斷(加權漏一天的真交易日照樣不刪)')
+# 官方表本身(V80.1.9 探針實測的 2026 年那幾列)
+rows = [{'Name': '中華民國開國紀念日', 'Date': '1150101', 'Weekday': '四', 'Description': '依規定放假1日。'},
+        {'Name': '國曆新年開始交易日', 'Date': '1150102', 'Weekday': '五', 'Description': '國曆新年開始交易。'},
+        {'Name': '農曆春節前最後交易日', 'Date': '1150211', 'Weekday': '三', 'Description': '農曆春節前最後交易。<br>'},
+        {'Name': '市場無交易，僅辦理結算交割作業', 'Date': '1150212', 'Weekday': '四', 'Description': ''},
+        {'Name': '中秋節', 'Date': '1150925', 'Weekday': '五', 'Description': '依規定放假1日。'},
+        {'Name': '壞列', 'Date': '115/10/10'}, 'not a dict']
+got = miner.parse_official_closed(rows)
+ck(got == {'2026/01/01', '2026/02/12', '2026/09/25'}, f'④o 官方表:放假 / 無交易收、開始交易日 / 最後交易日 ⛔ 收、壞列跳過 → {sorted(got)}')
+ck(miner.parse_official_closed(None) == set() and miner.parse_official_closed({'x': 1}) == set(), '④p 回應不是清單 → 空集合(⛔ 炸)')
 
 # ⑤ export_json 端到端
 db = os.path.join(tmp, 'h.db')
 ddir = os.path.join(tmp, 'data'); os.makedirs(ddir)
 json.dump([{'date': x, 'close': 1} for x in twii], open(os.path.join(ddir, '^TWII.json'), 'w'))
 _real_db, _real_dir = miner.DB_PATH, miner.DATA_DIR
+# 🗓️ V80.1.9 export_json 會去抓官方休市表 → 測試 ⛔ 連網(CI 會真的打出去、慢又不穩):換成「抓不到」= 舊行為
+_real_offc = miner._official_closed_days
+miner._official_closed_days = lambda: (set(), '測試不連網')
 try:
     miner.DB_PATH, miner.DATA_DIR = db, ddir
     miner.init_db()
@@ -179,5 +202,6 @@ finally:
         sys.modules['yfinance'] = _real_yf
     miner._load_delisted_blacklist = _real_bl
 
+miner._official_closed_days = _real_offc
 print(f"\n{'❌ ' + str(len(FAIL)) + ' 條失敗' if FAIL else '✅ 全部通過'}")
 sys.exit(1 if FAIL else 0)

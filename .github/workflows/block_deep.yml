@@ -1,0 +1,115 @@
+name: 🐘 鉅額交易歷史(證交所 BFIAUU,研究用)
+
+# 為什麼(評估紀錄 52,2026-11-02):V79.0.0 鉅額交易跟著 FinMind 付費資料一起拿掉;V80.1.9 探針證實
+# 證交所免費官方 BFIAUU 抓得到 2008-06 起每一天 → 抓回來回測「鉅額交易占成交量前 1%」。
+# 推到獨立 orphan 分支 block_deep(⛔ 不進 data / gh-pages,陷阱 #41);回測在本機讀那個分支。
+# ⛔ 不加排程(研究用,不佔排程配額 V73.9.0)・⛔ 不用金鑰・⛔ 不偽裝瀏覽器(lib_http.Gate:證交所隔 3 秒、被擋就停)。
+# 一輪最多 600 次(間隔 5 秒,約 1 小時);沒抓完(more=1)就隔天再按一次 Run,會從上次停的地方接著抓。改了下載程式自己會跑一次。
+# 🚦 第一輪(2026-11-02)隔 3 秒問到第 1,127 次被證交所擋(回 HTML)→ ⛔ 被擋就換一台機器馬上重抓(= 繞過封鎖),一天一輪就好。
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: '最早抓到哪個月(YYYY-MM)'
+        default: '2009-01'
+      max_min:
+        description: '這一輪最多抓幾分鐘'
+        default: '80'
+      max_req:
+        description: '這一輪最多問幾次(第一輪 1,127 次被擋)'
+        default: '600'
+  push:
+    paths:
+      - 'scripts/block_deep_fetch.py'
+      - 'lib_http.py'
+      - '.github/workflows/block_deep.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  # ⛔ 不可跟別人共用 group(V73.7.9)
+  group: block-deep
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests
+
+      - name: 🧪 selftest(⛔ 沒過不開工)
+        run: |
+          python3 lib_http.py --selftest
+          python3 scripts/block_deep_fetch.py --selftest
+
+      # ⚠️ V49.4 教訓:還原用 git archive,⛔ 不要 git checkout origin/x -- dir(會弄髒 index)
+      - name: 📂 還原上一輪的(已經抓完的月份 ⛔ 重抓)
+        run: |
+          mkdir -p block_deep
+          if git fetch --depth=1 origin block_deep 2>/dev/null; then
+            git archive FETCH_HEAD block_deep | tar -x || true
+          fi
+          echo "上一輪:$(find block_deep -name '*.json' | wc -l) 個檔"
+
+      - name: 🐘 抓
+        id: run
+        env:
+          OUT_DIR: block_deep
+          START: ${{ inputs.start }}
+          MAX_MIN: ${{ inputs.max_min }}
+          MAX_REQ: ${{ inputs.max_req }}
+        run: |
+          set -o pipefail
+          rc=0
+          python3 scripts/block_deep_fetch.py 2>&1 | tee block_fetch.log || rc=$?
+          cp block_fetch.log block_deep/_last_run.log
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+
+      # ⚠️ 順序:先把 block_deep/ 搬到 /tmp,切完分支再搬回來(⛔ 不然 checkout 會蓋掉整輪的結果)
+      # ⭐ 被擋(rc=3)也要推:已經抓到的照存,下一輪接著抓
+      - name: 🚀 推到 block_deep 分支
+        run: |
+          set -e
+          n=$(find block_deep -name '[0-9]*.json' 2>/dev/null | wc -l)
+          echo "要推 $n 個月份檔"
+          [ "$n" -gt 0 ] || { echo "::error::一個月份檔都沒有 → 不推"; exit 1; }
+          rm -rf /tmp/bdeep && mkdir -p /tmp/bdeep && cp -a block_deep/. /tmp/bdeep/
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git reset --hard -q && git clean -fdq
+          if git fetch --depth=1 origin block_deep 2>/dev/null; then
+            git checkout -f -B block_deep FETCH_HEAD
+          else
+            git checkout -q --orphan block_deep
+            git rm -rq --cached . 2>/dev/null || true
+            git clean -fdq
+          fi
+          rm -rf block_deep && mkdir -p block_deep && cp -a /tmp/bdeep/. block_deep/
+          git add -f block_deep
+          if git diff --cached --quiet; then echo "✅ 沒有新東西 → 不 commit"; exit 0; fi
+          git commit -q -m "🐘 鉅額交易歷史 $n 個月 $(date -u +%Y-%m-%d)"
+          pushed=0
+          # ⛔ 這個 retry 迴圈不可拿掉
+          for i in 1 2 3 4 5; do
+            git push origin block_deep && { pushed=1; echo "✅ 已推上 block_deep(第 $i 次)"; break; }
+            sleep $((i * 3))
+            git pull --rebase origin block_deep 2>/dev/null || true
+          done
+          [ "$pushed" -eq 1 ] || { echo "::error::push 連 5 次失敗"; exit 1; }
+
+      - name: 🚦 被擋 / 格式變了 → 紅燈(時間到沒抓完 = 正常,再按一次 Run)
+        if: steps.run.outputs.rc != '0'
+        run: |
+          echo "::error::鉅額交易下載停手(rc=${{ steps.run.outputs.rc }}):看 _status.json 的 stopped —— 被證交所擋就先別再按,隔天再試"
+          exit 1

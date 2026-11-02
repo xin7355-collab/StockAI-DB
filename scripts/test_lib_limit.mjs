@@ -57,6 +57,8 @@ const MIGRATED = [
     'scripts/confcall_event_probe.mjs',
     // 🛬 V80.1.3 停機坪 / 四大買點精確版(16 年,2015 前漲停 7%)
     'scripts/parking_apron_probe.mjs', 'scripts/bestfour_probe.mjs',
+    // 📈 BT25 趨勢樣板 + RS vs 位階高檔(16 年 d16,2015 前漲停 7%);leader_rs_breadth_probe 的進出場走這支的 fwdRet(⛔ 自己 import lib_limit)
+    'scripts/trend_template_probe.mjs',
 ];
 const BANNED = [
     [/\*\s*1\.095\b/, '× 1.095(寫死 ±10% 的鎖漲停)'],

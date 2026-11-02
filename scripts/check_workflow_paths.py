@@ -186,6 +186,9 @@ def check_script_secrets():
 #   ⭐ 分界:**行情可以在雲端跑,下單只能在自己的電腦跑。**
 #   ⛔ 這是純粹靠人記不住的那種規則 → 寫成守門,納入 push 前四驗證。
 NEVER_IN_CI = ('auto_trade.py',)
+_AT_WORD = re.compile(r'\bauto_trade\b')
+_AT_IMPORT = re.compile(r'^\s*(?:import\s+auto_trade\b|from\s+auto_trade\s+import)|[\'"]auto_trade[\'"]', re.M)
+_PY_REF = re.compile(r'[\w./-]+\.py\b')
 
 
 def check_no_trading_in_ci():
@@ -198,6 +201,22 @@ def check_no_trading_in_ci():
         for name in NEVER_IN_CI:
             if name in txt:
                 bad.append((f.name, name))
+        # 🔐 V80.1.9 補兩個繞路(評估紀錄 52:portfolio-copilot 的「編輯時就擋」想法 —— 那要改 .claude/settings.json,
+        #   Claude 不准改 → 改成把這道 push 前的守門補嚴):
+        #   ① 不帶 .py 也算(`python -m auto_trade`、`python -c "import auto_trade"`)
+        #   ② workflow 跑的那支 .py 自己 import auto_trade(換一層包裝)也算;test_*.py 除外(那些用假的券商、沒有憑證)
+        if _AT_WORD.search(txt) and not any(n in txt for n in NEVER_IN_CI):
+            bad.append((f.name, 'auto_trade(沒寫 .py)'))
+        for py in sorted(set(_PY_REF.findall(txt))):
+            pp = ROOT / py.lstrip('./')
+            if pp.name.startswith('test_') or pp.name in NEVER_IN_CI or not pp.is_file():
+                continue
+            try:
+                body = pp.read_text(encoding='utf-8')
+            except Exception:
+                continue
+            if _AT_IMPORT.search(body):
+                bad.append((f.name, f'{py} 裡 import 了 auto_trade'))
     # 順便擋「憑證類機密被塞進 workflow」
     CA_SECRETS = ('SJ_CA_PATH', 'SJ_CA_PASSWD', 'SJ_PERSON_ID', 'CA_PASSWD', 'PERSON_ID')
     for f in sorted(WF_DIR.glob('*.yml')) + sorted(WF_DIR.glob('*.yaml')):

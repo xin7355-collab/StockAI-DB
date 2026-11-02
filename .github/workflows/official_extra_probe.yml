@@ -1,0 +1,46 @@
+name: 🔭 新官方資料探路 (official extra probe)
+
+# 為什麼(評估紀錄 52,2026-11-02):20 個開源專案對照找到幾個本站沒用過的免費官方網址
+# (上櫃注意股、上市風險名單、休市表、鉅額、借券、外資持股、期交所選擇權法人)。
+# 雲端工作階段連不到證交所 / 櫃買 / 期交所 → 在這裡實測,log 說了算。
+# 只讀:⛔ 不寫任何產物、不碰任何分支;⛔ 不用金鑰;⛔ 不偽裝瀏覽器(被擋就記下來)。
+# ⛔ 不加排程(不佔排程配額,V73.9.0);改了探針自己會重跑一次。
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/official_extra_probe.py'
+      - '.github/workflows/official_extra_probe.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  # ⛔ 不可跟別人共用 group(V73.7.9)
+  group: official-extra-probe
+  cancel-in-progress: true   # 探針 ~5 分 ≪ 手動觸發間隔
+
+jobs:
+  probe:
+    name: 🔭 新官方資料探路
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安裝套件
+        run: pip install -q requests
+
+      - name: 🧪 selftest(⛔ 沒過不開工)
+        run: python3 scripts/official_extra_probe.py --selftest
+
+      - name: 🔭 探路
+        run: |
+          set -o pipefail
+          python3 scripts/official_extra_probe.py 2>&1 | tee probe.log

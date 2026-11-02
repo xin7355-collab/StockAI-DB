@@ -455,16 +455,61 @@ def _chu_top_distribution_warning(rows):
     return None
 
 
+def _flag_sym_ok(sym):
+    """其他官方名單的代號:4 碼數字,或 00 開頭的 ETF(含 00400A 這種主動式 ETF 的字母尾巴)。"""
+    sym = str(sym or '').strip()
+    return (sym.isdigit() and len(sym) == 4) or (sym.startswith('00') and 5 <= len(sym) <= 6 and sym.isalnum())
+
+
+def _flag_rows(url, headers, roc_to_iso, key, title, flags):
+    """抓一個「其他官方名單」併進 flags → 回收了幾檔;抓不到回 -1(⛔ 不丟例外,不影響注意 / 處置名單)。
+    欄位(V80.1.9 探針實測):BFI84U / TWTBAU1 = Code Name StartDate EndDate Reason;
+    TWT85U = Code Name PeriodicCallAuctionTrading;BFZFZU_T = Number Code Name Date(沒有資料時回一列代號空白的佔位)。"""
+    try:
+        r = requests.get(url, headers=headers, timeout=10)
+        rows = r.json() if r.status_code == 200 else None
+    except Exception as e:  # noqa: BLE001
+        print(f"   ⚠️ {title} 抓取失敗:{type(e).__name__}")
+        return -1
+    if not isinstance(rows, list):
+        print(f"   ⚠️ {title}:HTTP {getattr(r, 'status_code', '?')} / 回應不是清單 → 這輪不收")
+        return -1
+    n = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        sym = str(row.get('Code') or '').strip()
+        if not _flag_sym_ok(sym):
+            continue   # 佔位列(代號空白)、權證、債券
+        rec = {'k': key, 't': title}
+        f, t = roc_to_iso(row.get('StartDate')), roc_to_iso(row.get('EndDate'))
+        if f:
+            rec['from'] = f
+        if t:
+            rec['to'] = t
+        why = str(row.get('Reason') or '').strip()
+        if why:
+            rec['why'] = why[:60]
+        d = roc_to_iso(row.get('Date'))
+        if d and not f:
+            rec['from'] = d
+        flags.setdefault(sym, []).append(rec)
+        n += 1
+    return n
+
+
 def fetch_attention_disposal_status():
     """🚨 處置神器爬蟲:抓 TWSE 注意股 + 處置股名單,寫 data/attention_status.json。
 
     斷崖防護:若兩個端點都失敗且舊檔存在,沿用昨日資料,絕不覆蓋成空檔。
     """
     print("\n🚨 啟動【處置神器】爬蟲偵蒐部隊...")
+    # ⛔ 不偽裝瀏覽器(V80.1.6 決策):V80.1.9 探針(official_extra_probe.py)用寫明身分的 UA、不帶 Referer
+    #    實測,這裡會打的 5 個 OpenAPI 全部 HTTP 200 → 以前那組瀏覽器 UA + 依網站換 Referer 拿掉。
+    #    哪天真的被擋(403 / 回 HTML),diag 會記 ok=false,而且全失敗時沿用昨天的名單(下面的斷崖防護)。
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (compatible; StockAI-DB radar_miner/1.0; +https://github.com/xin7355-collab/stockai-db)",
         "Accept-Language": "zh-TW,zh;q=0.9",
-        "Referer": "https://www.twse.com.tw/",
     }
 
     def _roc_to_iso(s):
@@ -491,10 +536,7 @@ def fetch_attention_disposal_status():
         """
         import re as _re
         try:
-            # Referer 依 host 動態(打 TPEx 就給 tpex referer,避免跨站被擋)
-            _h = dict(headers)
-            _h["Referer"] = "https://www.tpex.org.tw/" if "tpex.org.tw" in url else "https://www.twse.com.tw/"
-            r = requests.get(url, headers=_h, timeout=10)
+            r = requests.get(url, headers=headers, timeout=10)
             rows = r.json()
             if not isinstance(rows, list):
                 return (False, {})
@@ -515,6 +557,14 @@ def fetch_attention_disposal_status():
                                  (sym.startswith('00') and len(sym) == 5 and sym.isdigit()))):
                     continue
                 rec = {"status": status_label, "threshold": threshold_label}
+                # 🆕 V80.1.9 官方公告日 + 注意理由(TPEx 注意:TradingInformation;上市 notice:TradingInfoForAttention)
+                #   公告日用來分辨「今天的名單」跟「還沒更新、還是上一個交易日的名單」(下面累積歷史時用)
+                _d = _roc_to_iso(row.get('Date')) if row.get('Date') else None
+                if _d:
+                    rec['date'] = _d
+                _why = str(row.get('TradingInformation') or row.get('TradingInfoForAttention') or '').strip()
+                if _why and not parse_punish:
+                    rec['reason'] = _why[:160]
                 if parse_punish:
                     try:
                         # 把整列值串起來掃(欄名各版本不同:DispositionMeasures/處置內容/Remark…)
@@ -556,25 +606,40 @@ def fetch_attention_disposal_status():
 
     diag = {}
 
-    # ── 上市 TWSE ──(V67.9 diag 實證:notetrans 才是真注意端點,notice 回空;notetrans 排前)
-    attention, diag['tw_notice'] = _fetch_cat(
-        ["https://openapi.twse.com.tw/v1/announcement/notetrans",
-         "https://openapi.twse.com.tw/v1/announcement/notice"],
-        "⚠️ 注意股", "注意條款觸發")
-    print(f"   · 上市注意股:{len(attention)} 檔 (hit={diag['tw_notice']['hit']})")
+    # ── 上市 TWSE ──
+    # 🆕 V80.1.9 notice 跟 notetrans **兩個都抓、合在一起**(以前 _fetch_cat 只取第一個有資料的)。
+    #   V67.9 的 diag 量到 notice 是空的,就把 notetrans 排前面 —— 但 V80.1.9 探針在 13:12 實測:兩個名單
+    #   白天都只回一列「代號空白」的佔位,收盤後才有資料 → 當年很可能只是量的時間太早。
+    #   notetrans 一有資料就不會再看 notice = 當天公布的注意股可能漏掉(10/29 晚上只收到 2 檔)。
+    #   合在一起:不論哪個名單列了都算官方注意;同一檔以 notice(有當天理由)為準。
+    attention, _tw_tried, _tw_hit = {}, [], []
+    for _u in ("https://openapi.twse.com.tw/v1/announcement/notice",
+               "https://openapi.twse.com.tw/v1/announcement/notetrans"):
+        _ok, _out = _fetch_openapi(_u, "⚠️ 注意股", "注意條款觸發")
+        _short = _u.rsplit('/', 1)[-1]
+        _tw_tried.append({'u': _short, 'ok': bool(_ok), 'n': len(_out)})
+        if _ok and _out:
+            _tw_hit.append(_short)
+        for _s, _rec in _out.items():
+            attention.setdefault(_s, _rec)
+    diag['tw_notice'] = {'hit': '+'.join(_tw_hit) or None, 'n': len(attention), 'tried': _tw_tried}
+    print(f"   · 上市注意股:{len(attention)} 檔 (hit={diag['tw_notice']['hit']},各名單 {[(t['u'], t['n']) for t in _tw_tried]})")
 
     disposal, diag['tw_punish'] = _fetch_cat(
         ["https://openapi.twse.com.tw/v1/announcement/punish"],
         "🚨 處置中", "已關禁閉", parse_punish=True)
     print(f"   · 上市處置股:{len(disposal)} 檔 (hit={diag['tw_punish']['hit']})")
 
-    # ── 上櫃 TPEx 櫃買中心 ──(注意/處置各多候選;diag 會揭露哪個 slug 有效)
-    # ⛔ 上櫃注意股:V67.9/V67.10 diag 已實測 11 個候選 slug 全 ok=false(路徑不存在)→
-    #   結論:TPEx 未把「上櫃注意股」放進免費 OpenAPI(只開放處置 tpex_disposal_information)。
-    #   故不再打(免每次採礦白白多 ~110s 失敗請求);上櫃注意股由前端公式推估 + 誠實標「非官方」
-    #   + 官方公告連結涵蓋(index.html renderDispHeadline)。若日後 TPEx 新增注意 OpenAPI 再補。
-    otc_attention = {}
-    diag['otc_notice'] = {'hit': None, 'n': 0, 'note': 'TPEx 未開放上櫃注意 OpenAPI(V67.10 實測 11 slug 全 404),不再打'}
+    # ── 上櫃 TPEx 櫃買中心 ──
+    # 🆕 V80.1.9 上櫃注意股找到了:tpex_trading_warning_information(V67.10 試的 11 個 slug 裡沒有它;
+    #   網址出自 twjackysu/TWSEMCPServer〔MIT〕的 tools/otc/trading_halt.py)。
+    #   V80.1.9 探針在 GitHub Actions 實測:HTTP 200、10/30 那天 19 檔,欄位 Date / SecuritiesCompanyCode /
+    #   CompanyName / TradingInformation(注意理由)/ ClosePrice / PriceEarningRatio。
+    #   ⚠️ 白天還是上一個交易日的名單(Date 是公告日)→ 累積歷史時看 Date,不是今天的 ⛔ 算成今天。
+    otc_attention, diag['otc_notice'] = _fetch_cat(
+        ["https://www.tpex.org.tw/openapi/v1/tpex_trading_warning_information"],
+        "⚠️ 注意股", "注意條款觸發")
+    print(f"   · 上櫃注意股:{len(otc_attention)} 檔 (hit={diag['otc_notice']['hit']})")
 
     otc_disposal, diag['otc_punish'] = _fetch_cat(
         ["https://www.tpex.org.tw/openapi/v1/tpex_disposal_information",
@@ -583,9 +648,24 @@ def fetch_attention_disposal_status():
         "🚨 處置中", "已關禁閉", parse_punish=True)
     print(f"   · 上櫃處置股:{len(otc_disposal)} 檔 (hit={diag['otc_punish']['hit']})")
 
+    # 🆕 V80.1.9 上市其他官方風險名單(探針實測 4 個都 HTTP 200)→ 另放 flags,⛔ 不混進 stocks:
+    #   stocks 是「注意 / 處置」,前端拿它算「離被關還幾步」,混進來會算錯。
+    #   變更交易 = 全額交割(要先付錢才能買,常見於財務出問題的公司)・停資停券(股東會 / 除權息前後)・
+    #   暫停先賣後買當沖・理財節目異常推介(證交所點名「被節目異常推薦」的股票)
+    flags = {}
+    diag['flags'] = {}
+    for _k, _t, _u in (('change_trade', '變更交易(全額交割)', 'https://openapi.twse.com.tw/v1/exchangeReport/TWT85U'),
+                       ('tv_pump', '理財節目異常推介', 'https://openapi.twse.com.tw/v1/Announcement/BFZFZU_T'),
+                       ('stop_margin', '停資停券', 'https://openapi.twse.com.tw/v1/exchangeReport/BFI84U'),
+                       ('no_dt_sell_first', '暫停先賣後買當沖', 'https://openapi.twse.com.tw/v1/exchangeReport/TWTBAU1')):
+        diag['flags'][_k] = _flag_rows(_u, headers, _roc_to_iso, _k, _t, flags)
+    print(f"   · 上市其他官方名單:{diag['flags']}(-1 = 那個網址這輪沒抓到)")
+
     # 合併:注意先、處置後(處置蓋注意,同股以處置為準);上市/上櫃互不覆蓋(代號不重複)
     result = {**attention, **otc_attention, **disposal, **otc_disposal}
-    _any_ok = any(t['ok'] for c in diag.values() for t in c['tried'])
+    # 🐛 V80.1.9 只看有 tried 的那幾類(以前 otc_notice 沒有 tried 鍵:前面全部失敗時這行會 KeyError 整支炸掉;
+    #   flags 也沒有)→ 斷崖防護只依「注意 / 處置」名單判斷
+    _any_ok = any(t.get('ok') for c in diag.values() if isinstance(c, dict) for t in (c.get('tried') or []))
 
     # 斷崖防護:只在「所有端點都 fetch 失敗」時沿用昨日 cache。
     # 若至少一個成功但 result 空,代表當日該市場無事,合法寫入。
@@ -596,6 +676,7 @@ def fetch_attention_disposal_status():
     payload = {
         "updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "stocks": result,
+        "flags": flags,   # 🆕 V80.1.9 其他官方名單 {代號: [{k, t, from?, to?, why?}]}(個股頁「🚨 這檔離被關還有幾步」卡片裡)
         "diag": diag,   # V67.9 端點自我診斷(前端只讀 stocks,忽略此鍵)
     }
     try:
@@ -622,13 +703,25 @@ def fetch_attention_disposal_status():
         if "history" not in hist or not isinstance(hist["history"], dict):
             hist["history"] = {}
         # 今日資料(去除 threshold/interval/end_date,只留 sym → status 短字串)
-        today_data = {}
+        today_data, _late = {}, 0
         for sym, info in result.items():
             status = info.get("status", "")
             if status.startswith("🚨"):
                 today_data[sym] = "處置"
             elif "注意" in status:
+                # 🆕 V80.1.9 公告日早於今天 = 官方名單還沒換成今天的(白天 / 假日還掛著上一個交易日的)
+                #   → 記回它自己的公告日,⛔ 不記成今天(「近 30 天被列幾次」會多算一次);
+                #   那天那一輪如果剛好還沒更新到,這裡也順便補回去。
+                _d = info.get("date")
+                if _d and _d < today_iso:
+                    _past = hist["history"].setdefault(_d, {})
+                    if isinstance(_past, dict) and sym not in _past:
+                        _past[sym] = "注意"
+                        _late += 1
+                    continue
                 today_data[sym] = "注意"
+        if _late:
+            print(f"   · 注意股 {_late} 檔是之前公告的名單 → 記回公告那天(不算成今天)")
         hist["history"][today_iso] = today_data
         # 清掉 > 90 天前的資料(保留近 90 天)
         cutoff = datetime.now().timestamp() - 90 * 86400
