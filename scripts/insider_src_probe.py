@@ -18,7 +18,15 @@
   ③ 表單有 co_id / year / month 的 → 依它的欄位名組幾個查詢(2330、今年、10 年前)POST ajax_<代碼>
      → `mops_probe.verdict` 印「有資料 N 列 / 參數不對(MOPS 自己的提示)/ 一頁網頁」+ 前 3 列原文
 
---selftest:連結 / 代碼抽取、關鍵字挑選、表單欄位 → 查詢組合(不用網路)。
+🔁 第二輪(預設;MOPS_MODE=r1 跑回第一輪)——第一輪(2026-11-02 job 125024672671)找到的那幾頁直接問:
+  · t56sb12_q1 / q2「股權轉讓事前申報—上市 / 上櫃公司持股轉讓日報表」(表單 year / month / day,⛔ 沒帶 day 回「日期不可空白」)
+    → 問 5 個日期(最近 / 5 / 10 / 15 / 20 年前),看歷史有多深、一天幾筆
+  · t56sb21_q1「持股轉讓 / 未轉讓日報表」(年 + 起訖月)、query6_1「內部人持股異動事後申報表」(僅提供 86 年 11 月之後)
+  · stapap1「董監事持股餘額明細」→ 印表頭,看有沒有**設質**欄;再試「不指定公司」能不能一次拿全市場
+  ⭐ 第一輪 stapap1 有資料但 `mops_probe.table_rows` 認不得(第一欄不是代號)→ 這一輪一律用 `generic_rows` 印
+  ⛔ 欄位名一律用頁面表單裡真的有的(`r2_forms`),表單沒有那個欄位就不送
+
+--selftest:連結 / 代碼抽取、關鍵字挑選、表單欄位 → 查詢組合、第二輪的表單與通用表格解析(不用網路)。
 """
 import os
 import re
@@ -113,6 +121,93 @@ def build_queries(fields, sample, today):
     return out
 
 
+R2 = (
+    ('t56sb12_q1', 'day', '上市 持股轉讓事前申報日報表'),
+    ('t56sb12_q2', 'day', '上櫃 持股轉讓事前申報日報表'),
+    ('t56sb21_q1', 'range', '上市 持股轉讓 / 未轉讓日報表'),
+    ('query6_1', 'co_month', '內部人持股異動事後申報表'),
+    ('stapap1', 'co_month', '董監事持股餘額明細(看有沒有設質欄)'),
+)
+R2_DAYS = (date(2026, 10, 30), date(2021, 10, 29), date(2016, 10, 28), date(2011, 10, 28), date(2006, 10, 27))
+R2_MSG = ('不可空白', '僅提供', '查無', '無資料', '請輸入', '錯誤')
+
+
+def r2_forms(kind, fields, sample, days=R2_DAYS):
+    """第二輪:照表單**真的有的**欄位組查詢。回 [(標籤, form)];需要的欄位表單沒有 → 回 [](⛔ 憑空加欄位)。
+    day = 指定某一天(全市場);range = 年 + 起訖月;co_month = 公司 + 年 + 月(另加一組不指定公司)。"""
+    names = {n for _, n, _ in fields}
+    base = {n: v for t, n, v in fields if t == 'input' and v}
+    for k in ('encodeURIComponent', 'firstin', 'step'):
+        base.setdefault(k, '1')
+    roc = lambda d: str(d.year - 1911)
+    out = []
+    if kind == 'day':
+        if not {'year', 'month', 'day'} <= names:
+            return []
+        for d in days:
+            f = dict(base, year=roc(d), month=f'{d.month:02d}', day=f'{d.day:02d}')
+            if 'co_id' in names:
+                f['co_id'] = ''
+            out.append((f'{d.isoformat()}(全市場)', f))
+        return out
+    if kind == 'range':
+        sm = next((n for n in names if n.lower() in ('smonth', 'month1', 'mon1', 'b_month')), None)
+        em = next((n for n in names if n.lower() in ('emonth', 'month2', 'mon2', 'e_month')), None)
+        if 'year' not in names or not sm or not em:
+            return []
+        for d in (days[0], days[2]):
+            f = dict(base, year=roc(d), **{sm: f'{d.month:02d}', em: f'{d.month:02d}'})
+            if 'co_id' in names:
+                f['co_id'] = ''
+            out.append((f'{d.year}-{d.month:02d}(全市場)', f))
+        return out
+    if kind == 'co_month':
+        if not {'co_id', 'year', 'month'} <= names:
+            return []
+        for co, d in ((sample, date(2026, 9, 1)), (sample, date(2016, 6, 1)), ('', date(2026, 9, 1))):
+            f = dict(base, co_id=co, year=roc(d), month=f'{d.month:02d}')
+            out.append((f'{co or "不指定公司"} {d.year}-{d.month:02d}', f))
+        return out
+    return []
+
+
+def generic_rows(html, min_td=3):
+    """所有 ≥min_td 格的 <tr>(⛔ 不要求第一欄是代號 —— stapap1 第一欄是職稱)。"""
+    out = []
+    for tr in re.findall(r'<tr[^>]*>.*?</tr>', html or '', flags=re.S | re.I):
+        tds = re.findall(r'<td[^>]*>(.*?)</td>', tr, flags=re.S | re.I)
+        if len(tds) >= min_td:
+            out.append([mp.strip_tags(x) for x in tds])
+    return out
+
+
+def th_cells(html, n=40):
+    return [mp.strip_tags(x) for x in re.findall(r'<th[^>]*>(.*?)</th>', html or '', flags=re.S | re.I)][:n]
+
+
+def roc_span(rows):
+    """資料列裡出現的民國日期(115/10/30 或 1151030)最早 / 最晚(西元字串);沒有 → (None, None)。"""
+    ds = []
+    for r in rows:
+        for c in r:
+            for y, m, d in re.findall(r'(?<!\d)(\d{2,3})[/.](\d{1,2})[/.](\d{1,2})(?!\d)', c):
+                if 70 <= int(y) <= 130 and 1 <= int(m) <= 12 and 1 <= int(d) <= 31:
+                    ds.append(f'{int(y) + 1911}-{int(m):02d}-{int(d):02d}')
+            for y, m, d in re.findall(r'(?<!\d)(1[01]\d|9\d)(\d{2})(\d{2})(?!\d)', c):
+                if 1 <= int(m) <= 12 and 1 <= int(d) <= 31:
+                    ds.append(f'{int(y) + 1911}-{int(m):02d}-{int(d):02d}')
+    return (min(ds), max(ds)) if ds else (None, None)
+
+
+def r2_msg(text):
+    t = mp.strip_tags(text or '')
+    for k in R2_MSG:
+        i = t.find(k)
+        if i != -1:
+            return t[max(0, i - 40):i + 40]
+    return None
+
+
 # ───────────────────────── 網路 ─────────────────────────
 def get(session, url, form=None):
     if _N['req'] >= MAX_REQ:
@@ -190,6 +285,53 @@ def main():
     return 0
 
 
+def main_r2():
+    import requests
+    s = requests.Session()
+    print(f'🔁 MOPS 第二輪 ・主機 {HOST} ・樣本 {SAMPLE} ・最多 {MAX_REQ} 次請求', flush=True)
+    summary = []
+    for code, kind, label in R2:
+        rp = get(s, f'{HOST}/mops/web/{code}')
+        if rp is None:
+            summary.append((code, '頁面連不上'))
+            continue
+        t = rp.text or ''
+        info = mp.form_fields(t)
+        print(f'\n=== {code} {label}:HTTP {rp.status_code} ・{len(t)} 字 ・被擋={mp.is_blocked(t)} ・標題「{title_of(t)}」', flush=True)
+        print(f'   表單欄位 {info["fields"][:40]}', flush=True)
+        forms = r2_forms(kind, info['fields'], SAMPLE)
+        if not forms:
+            print(f'   ⛔ 表單沒有 {kind} 需要的欄位 → 不送(⛔ 憑空加欄位)', flush=True)
+            summary.append((code, f'表單沒有 {kind} 需要的欄位'))
+            continue
+        res = []
+        for tag, form in forms:
+            rq = get(s, f'{HOST}/mops/web/ajax_{code}', form)
+            if rq is None:
+                res.append(f'{tag}=連不上')
+                continue
+            tq = rq.text or ''
+            rows = generic_rows(tq)
+            lo, hi = roc_span(rows)
+            msg = r2_msg(tq) if not rows else None
+            print(f'   ↳ {tag}:HTTP {rq.status_code} ・{len(tq)} 字 ・被擋={mp.is_blocked(tq)} ・資料列 {len(rows)} ・日期 {lo}~{hi}'
+                  + (f' ・MOPS 說「{msg}」' if msg else ''), flush=True)
+            th = th_cells(tq)
+            if th:
+                print(f'      表頭 {th}', flush=True)
+            for row in rows[:4]:
+                print(f'      {row[:14]}', flush=True)
+            if not rows:
+                print(f'      開頭:{mp.strip_tags(tq[:700])[:300]}', flush=True)
+            res.append(f'{tag}={len(rows)} 列')
+        summary.append((code, ' / '.join(res)))
+    print('\n📋 第二輪結論(資料列 > 0 的日期 = 那一天查得到;最早有資料的那一天 ≈ 能回補多深):', flush=True)
+    for code, msg in summary:
+        print(f'   {code}:{msg}', flush=True)
+    print(f'   共 {_N["req"]} 次請求', flush=True)
+    return 0
+
+
 def selftest():
     bad = []
 
@@ -208,9 +350,29 @@ def selftest():
     ok('③ 有 co_id / year → 組 4 組(今年 / 10 年前 × 1 / 01 格式),民國年', len(q) == 4 and q[0][1]['year'] == '115' and q[2][1]['year'] == '105'
        and q[1][1]['month'] == '06' and q[0][1]['co_id'] == '2330', q)
     ok('③ 決定性對照:表單沒有 co_id / year → 不組(⛔ 憑空加欄位)', build_queries([('input', 'keyword', '')], '2330', date(2026, 11, 1)) == [])
+    fl = [('input', 'encodeURIComponent', '1'), ('input', 'step', '1'), ('input', 'TYPEK', 'sii'),
+          ('select', 'year', ''), ('select', 'month', ''), ('select', 'day', '')]
+    f2 = r2_forms('day', fl, '2330')
+    ok('④ 第二輪 day:5 個日期、民國年、兩位數月日、帶表單原本的 TYPEK',
+       len(f2) == 5 and f2[0][1]['year'] == '115' and f2[0][1]['month'] == '10' and f2[0][1]['day'] == '30'
+       and f2[2][1]['year'] == '105' and f2[0][1]['TYPEK'] == 'sii', f2[:2])
+    ok('④ 決定性對照:表單沒有 day 欄 → day 那一型不送(⛔ 憑空加欄位)',
+       r2_forms('day', fl[:-1], '2330') == [])
+    fr = r2_forms('range', [('select', 'year', ''), ('select', 'smonth', ''), ('select', 'emonth', '')], '2330')
+    ok('④ 第二輪 range:年 + 起訖月(用表單自己的欄位名)', len(fr) == 2 and fr[0][1]['smonth'] == '10' and fr[0][1]['emonth'] == '10', fr)
+    fc = r2_forms('co_month', [('input', 'co_id', ''), ('select', 'year', ''), ('select', 'month', '')], '2330')
+    ok('④ 第二輪 co_month:2330 兩個月份 + 不指定公司一組', [x[1]['co_id'] for x in fc] == ['2330', '2330', ''], fc)
+    tb = ('<table><tr><th>職稱</th><th>姓名</th><th>設質股數</th></tr>'
+          '<tr><td>董事長</td><td>魏○○</td><td>1,000</td></tr><tr><td>2330</td><td>台積電</td><td>115/10/30</td><td>x</td></tr></table>')
+    gr = generic_rows(tb)
+    ok('⑤ 通用表格:第一欄不是代號也收(stapap1 那種)', len(gr) == 2 and gr[0][0] == '董事長' and len(mp.table_rows(tb)) == 1, gr)
+    ok('⑤ 表頭', th_cells(tb) == ['職稱', '姓名', '設質股數'], th_cells(tb))
+    ok('⑤ 民國日期 → 西元(兩種寫法)', roc_span([['115/10/30'], ['申報日 1050628']]) == ('2016-06-28', '2026-10-30'), roc_span([['115/10/30'], ['1050628']]))
+    ok('⑤ 沒有日期 → (None, None)', roc_span([['董事長', '1,000']]) == (None, None))
+    ok('⑥ MOPS 提示「日期不可空白」認得出來', (r2_msg('<td>日期不可空白!</td>') or '').find('不可空白') != -1)
     print(('\n❌ selftest 失敗 ' + str(bad)) if bad else '\n✅ selftest 全過')
     return 1 if bad else 0
 
 
 if __name__ == '__main__':
-    sys.exit(selftest() if '--selftest' in sys.argv else main())
+    sys.exit(selftest() if '--selftest' in sys.argv else (main() if os.getenv('MOPS_MODE') == 'r1' else main_r2()))

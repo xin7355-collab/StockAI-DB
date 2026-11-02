@@ -12,7 +12,12 @@
 ⛔ 陷阱 #23:⛔ 猜 API 網址 —— 只從各家**首頁**出發,列出頁面上真的有的連結(連結文字或網址有關鍵字的),
    再往下點一層:列出檔案連結(pdf / xls / csv …)與「有納入 / 刪除字樣」的表格(印前幾列 + 最早年份)。
 
---selftest:連結抽取、關鍵字挑選、檔案連結、表格(不用網路)。
+🔁 第二輪(預設;REBAL_MODE=discover 跑回第一輪)——第一輪(2026-11-02 job 125024681464)找到兩個來源,直接拿:
+  · 維基百科「臺灣50指數」的調整表(日期 / 納入指數 / 剔除指數,72 列、2003 年起)→ **每一列整列印出來**
+    (`WIKI\t` 開頭一行一列,格子裡的換行換成「 | 」),拿回來當對答案用的歷史(⚠️ 群眾編輯,要另外對官方公告)
+  · 臺灣指數公司「技術通知」→ 列出標題有臺灣50 / 定審的通知(日期 + 標題 + 連結),往後翻頁看最早到哪一年
+
+--selftest:連結抽取、關鍵字挑選、檔案連結、表格、維基表格整列、通知清單(不用網路)。
 """
 import os
 import re
@@ -98,6 +103,105 @@ def title_of(html):
     return strip(m.group(1))[:60] if m else ''
 
 
+WIKI = 'https://zh.wikipedia.org/wiki/%E8%87%BA%E7%81%A350%E6%8C%87%E6%95%B8'
+TIP_NOTICE = 'https://taiwanindex.com.tw/downloads/technical_notice'
+TIP_PAGES = int(os.getenv('TIP_PAGES') or '12')
+TW50_KEYS = ('臺灣50', '台灣50', 'Taiwan 50', '定審', '定期審核')
+
+
+def cell_text(h):
+    """格子文字:換行 / <br> / <li> 換成「 | 」,其他標籤拿掉、註腳 [1] 拿掉。"""
+    t = re.sub(r'<br\s*/?>|</li>|</p>', ' | ', h or '', flags=re.I)
+    t = re.sub(r'<sup[^>]*>.*?</sup>', '', t, flags=re.S | re.I)
+    t = strip(t)
+    t = re.sub(r'(\s*\|\s*)+', ' | ', t).strip(' |')
+    return t
+
+
+def wiki_rows(html, keys=('納入', '剔除', '刪除')):
+    """維基的調整表:表頭有納入 / 剔除那幾張表,每一列整列回傳 [[格子…]](含表頭列)。"""
+    out = []
+    for tb in re.findall(r'<table\b.*?</table>', html or '', flags=re.S | re.I):
+        if not any(k in strip(tb[:4000]) for k in keys):
+            continue
+        for tr in re.findall(r'<tr\b.*?</tr>', tb, flags=re.S | re.I):
+            cells = [cell_text(c) for c in re.findall(r'<t[dh]\b[^>]*>(.*?)</t[dh]>', tr, flags=re.S | re.I)]
+            if cells:
+                out.append(cells)
+    return out
+
+
+def notice_items(html, base, keys=TW50_KEYS):
+    """通知清單:連結文字有臺灣50 / 定審的 → [(日期或 None, 文字, 網址)];日期抓連結前 300 字內最後一個 YYYY/MM/DD 或 YYYY-MM-DD。"""
+    out = []
+    for m in re.finditer(r'<a\b[^>]*href\s*=\s*["\']([^"\'#]+)["\'][^>]*>(.*?)</a>', html or '', flags=re.S | re.I):
+        txt = strip(m.group(2))
+        if not any(k in txt for k in keys):
+            continue
+        before = strip(html[max(0, m.start() - 300):m.start()])
+        ds = re.findall(r'(20\d{2})[/-](\d{1,2})[/-](\d{1,2})', before + ' ' + txt)
+        d = f'{ds[-1][0]}-{int(ds[-1][1]):02d}-{int(ds[-1][2]):02d}' if ds else None
+        out.append((d, txt[:90], urljoin(base, m.group(1).strip())))
+    return out
+
+
+def page_links(html, base):
+    """翻頁連結(網址有 page= 的),照頁碼排。"""
+    out = {}
+    for u, _ in links(html, base):
+        m = re.search(r'[?&]page=(\d+)', u)
+        if m:
+            out[int(m.group(1))] = u
+    return [out[k] for k in sorted(out)]
+
+
+def main_r2():
+    import requests
+    s = requests.Session()
+    r = fetch(s, WIKI)
+    if r is None:
+        print('❌ 維基連不上(⛔ 不等於沒有)', flush=True)
+    else:
+        rows = wiki_rows(r.text or '')
+        print(f'=== 維基 臺灣50指數 HTTP {r.status_code} ・調整表 {len(rows)} 列(含表頭)', flush=True)
+        for row in rows:
+            print('WIKI\t' + '\t'.join(row), flush=True)
+    seen, items, pages = set(), [], [TIP_NOTICE]
+    i = 0
+    while i < len(pages) and i < TIP_PAGES:
+        u = pages[i]
+        i += 1
+        r2 = fetch(s, u)
+        if r2 is None:
+            continue
+        h = r2.text or ''
+        its = notice_items(h, r2.url)
+        print(f'=== 技術通知 第 {i} 頁 {u} HTTP {r2.status_code} ・{len(h)} 字 ・臺灣50 / 定審 {len(its)} 則', flush=True)
+        for it in its:
+            if it[2] not in seen:
+                seen.add(it[2])
+                items.append(it)
+                print(f'TIP\t{it[0]}\t{it[1]}\t{it[2]}', flush=True)
+        for pu in page_links(h, r2.url):
+            if pu not in pages:
+                pages.append(pu)
+    ds = sorted(d for d, _, _ in items if d)
+    print(f'📋 技術通知 臺灣50 / 定審 共 {len(items)} 則 ・最早 {ds[0] if ds else None} ・最晚 {ds[-1] if ds else None} ・翻了 {i} 頁', flush=True)
+    # 最新兩則臺灣50 通知:往下點一層,印檔案連結與內文開頭(看公告日 / 生效日怎麼寫)
+    tw = [it for it in items if any(k in it[1] for k in ('臺灣50', '台灣50'))][:2]
+    for d, t, u in tw:
+        r3 = fetch(s, u)
+        if r3 is None:
+            continue
+        ct = r3.headers.get('Content-Type', '')
+        print(f'   ↳ {d} {t[:40]} HTTP {r3.status_code} ・{ct[:40]} ・{len(r3.content)} bytes', flush=True)
+        if 'html' in ct.lower():
+            print(f'      內文:{strip(r3.text)[:600]}', flush=True)
+            for fu, ft in file_links(links(r3.text, r3.url))[:6]:
+                print(f'      📄 {ft[:40]} → {fu}', flush=True)
+    return 0
+
+
 def main():
     import requests
     s = requests.Session()
@@ -155,9 +259,22 @@ def selftest():
     tb = tables_with('<table><tr><th>日期</th><th>納入</th><th>刪除</th></tr><tr><td>2011/06</td><td>1301</td><td>2002</td></tr></table>'
                      '<table><tr><td>股價</td><td>100</td></tr></table>')
     ok('④ 只收有納入 / 刪除字樣的表格,印最早年份', len(tb) == 1 and tb[0][0] == 2 and tb[0][2] == 2011, tb)
+    wk = ('<table class="wikitable"><tr><th>日期</th><th>納入指數</th><th>剔除指數</th></tr>'
+          '<tr><td>2003年1月</td><td>2603 長榮<br/>2888 新光金<sup>[1]</sup></td><td>2331 精英</td></tr></table>'
+          '<table><tr><td>股價</td><td>1</td></tr></table>')
+    wr = wiki_rows(wk)
+    ok('⑤ 維基調整表:整列、換行變「 | 」、註腳拿掉、別的表不收',
+       wr == [['日期', '納入指數', '剔除指數'], ['2003年1月', '2603 長榮 | 2888 新光金', '2331 精英']], wr)
+    nt = ('<li><span>2026/09/02</span><a href="/n/1">臺灣50指數定期審核結果</a></li>'
+          '<li><span>2026/09/01</span><a href="/n/2">高股息指數定審</a></li><li>2026/08/30<a href="/n/3">系統維護</a></li>'
+          '<a href="?page=3">3</a><a href="?page=2">2</a>')
+    ni = notice_items(nt, 'https://taiwanindex.com.tw/downloads/technical_notice')
+    ok('⑥ 通知清單:臺灣50 / 定審才收、日期取連結前面那個',
+       [(d, u.rsplit('/', 1)[-1]) for d, _, u in ni] == [('2026-09-02', '1'), ('2026-09-01', '2')], ni)
+    ok('⑥ 翻頁連結照頁碼排', [u[-1] for u in page_links(nt, 'https://taiwanindex.com.tw/downloads/technical_notice')] == ['2', '3'])
     print(('\n❌ selftest 失敗 ' + str(bad)) if bad else '\n✅ selftest 全過')
     return 1 if bad else 0
 
 
 if __name__ == '__main__':
-    sys.exit(selftest() if '--selftest' in sys.argv else main())
+    sys.exit(selftest() if '--selftest' in sys.argv else (main() if os.getenv('REBAL_MODE') == 'discover' else main_r2()))
