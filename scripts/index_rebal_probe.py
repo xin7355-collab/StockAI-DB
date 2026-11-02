@@ -13,7 +13,7 @@
 安慰劑:同一批股票、整個時間軸往後挪 6 個月(那時候沒有調整)—— 量的是這些股票自己的動能,⛔ 不是調整。
 
 資料:
-  TW50_TSV  維基「臺灣50指數」調整表(macro_probe.yml which=index_rebal 印出來的,2003 起 71 次;⚠️ 群眾編輯,
+  TW50_TSV  維基「臺灣50指數」調整表(預設 scripts/fixtures/tw50_wiki.tsv;macro_probe.yml which=index_rebal 印出來的,2003 起 71 次;⚠️ 群眾編輯,
             2026-09 那次對過新聞:藥華藥納入 / 世芯-KY 刪除、9/4 公告、9/18 收盤後生效)
   DATA_DIR  d16m_fi(含下市,K 線 2010 起;^TWII.json 當交易日曆;_div16.json 股利)
   SHARE_DIR stock_deep/share 解開的資料夾(NumberOfSharesIssued,2010 起)→ 市值 = 收盤 × 發行股數
@@ -308,7 +308,8 @@ def main():
     S = os.getenv
     data = Path(S('DATA_DIR') or 'd16m_fi')
     share_dir = Path(S('SHARE_DIR') or 'stock_deep/share')
-    tsv = Path(S('TW50_TSV') or 'tw50_wiki.tsv')
+    _fx = Path(__file__).resolve().parent / 'fixtures'
+    tsv = Path(S('TW50_TSV') or (_fx / 'tw50_wiki.tsv'))          # ⭐ 研究輸入存在 repo(2026-11-02 維基原文,群眾編輯)
     out_path = S('OUT') or ''
     ev = parse_wiki(tsv.read_text(encoding='utf-8'))
     calK = load_k(data / '^TWII.json')
@@ -364,7 +365,7 @@ def main():
                   f' ・前後半 {jb["h1"]:+.2f}/{jb["h2"]:+.2f} ・逐年 {jb["yr"][0]}/{jb["yr"][1]}'
                   f' ・安慰劑(挪 6 個月){js.get("m", float("nan")):+.2f}%(n={js.get("n", 0)})'
                   f' ・中位 {jb["med"]:+.2f} ・贏的比例 {jb["pos"] * 100:.0f}% ・去頭尾 5% {jb["trim"]:+.2f}', flush=True)
-    mem_path = S('TW50_MEMBERS') or ''
+    mem_path = S('TW50_MEMBERS') or str(_fx / 'tw50_members_2026q3.txt')   # 目前 50 檔(2026-09 調整後),往回推每一季成分用
     if mem_path:
         cur = re.findall(r'(?<!\d)(\d{4})(?!\d)', re.sub(r'#[^\n]*', '', Path(mem_path).read_text(encoding='utf-8')))
         mb, odd = members_before(cur, reviews)
