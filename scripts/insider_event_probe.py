@@ -22,7 +22,7 @@
 
 跑法:INSIDER_DIR=<insider_deep> DATA_DIR=<d16m_fi> SHARE_DIR=<stock_deep/share> OUT=ins.json python3 scripts/insider_event_probe.py
       python3 scripts/insider_event_probe.py --selftest
-      🧾 V80.1.9 EVENTS_OUT=<檔> [EV_M=mkt EV_T=0 EV_R=all]:不跑研究,只把那一組的 {代號:[進場日]} 寫出來
+      🧾 V80.2.0 EVENTS_OUT=<檔> [EV_M=mkt EV_T=0 EV_R=all]:不跑研究,只把那一組的 {代號:[進場日]} 寫出來
          (跟研究同一份去重 + 同一條分組;日期 = 申報隔天的交易日,⛔ 申報當天)→ 給回測引擎 CCWIN(CCWIN_PRE=0 CCWIN_POST=19
          = 進場那天起 20 個交易日先不買)或拿去跟 🔥 / 👑 實際買進的股票數重疊。
 """
