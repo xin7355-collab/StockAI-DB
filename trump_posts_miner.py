@@ -16,12 +16,14 @@
     recent 最近 4 天每一則 [t, 轉貼 0/1, '類別,類別'](App 自己算「上個台股收盤後到現在」)
     days   最近 30 個台北日期每天幾則 {n, rt, c:{類別: 則數}}
     src    兩個來源各自 ok / 則數 / 錯誤 / 對帳率;latest 最新一則的時間;updated(ISO …Z)
-  trump_deep/{YYYY-MM}.json.gz(研究存檔,workflow 推 orphan 分支 trump_deep):全部發文 {id, t, x, u, rt, m, zh?, ze?, zt?}
+  trump_deep/{YYYY-MM}.json.gz(研究存檔,workflow 推 orphan 分支 trump_deep):全部發文 {id, t, x, u, rt, m, zh?, ze?, zt?, zgv?}
     + trump_deep/_meta.json(上次的 Last-Modified / ETag)。⭐ 只增不減(id 聯集);讀不出來的月份 ⛔ 覆蓋。
 分類 / 對台股日 / 文字清理一律 lib_trump(全 repo 唯一一份)。
 
 翻譯:只翻「新的、有分類的原創發文」,每輪最多 TR_CAP(15)則;universal_radar._groq_json(模型 / 金鑰輪替都在裡面);
-  翻完 confcall_deck.num_gate(中文, 原文):有原文找不到的數字 → ⛔ 用這份翻譯(ze 寫原因,畫面顯示原文)。
+  翻完 unit_num_gate(中文, 原文):有原文找不到的數字 → ⛔ 用這份翻譯(ze 寫原因,畫面顯示原文)。
+  🔢 V80.2.2 數字核對懂單位換算:「3000 億 ↔ 300 BILLION」「2.7 億 ↔ 270 MILLION」算對得上(⛔ 放寬別的);
+     被擋時記 zgv(核對版本),舊版擋掉的(沒有 zgv)下一輪重翻一次。
   失敗會重試,同一則最多 3 次(zt)。沒有金鑰 / SKIP_AI=1 → 只放原文。
 
 跑法:OUT=data/trump_posts.json DEEP_DIR=trump_deep python3 trump_posts_miner.py
@@ -50,6 +52,7 @@ RSS_URL = 'https://www.trumpstruth.org/feed'
 NS = {'truth': 'https://truthsocial.com/ns'}
 POST_DAYS, RECENT_DAYS, COUNT_DAYS = 14, 4, 30
 TR_CAP, TR_TRIES, EN_MAX, TR_GAP = 15, 3, 600, 2.5
+GATE_V = 2   # 🔢 數字核對版本:2 = 懂「BILLION ↔ 億」(V80.2.2);被擋的記 zgv,換版本後舊版擋掉的會再翻一次
 _QUOTA = re.compile(r'上限|冷卻|429|quota|rate', re.I)
 csv.field_size_limit(10 ** 7)
 _PLACEHOLDER = re.compile(r'^(Video|Image|Photo|Quote|Link|Poll) post from ', re.I)
@@ -133,7 +136,7 @@ def merge(posts, rows):
                     old[k] = r[k]
             if r.get('x') and r['x'] != old.get('x'):
                 old['x'] = r['x']
-                for k in ('zh', 'ze', 'zt'):      # 內文改了 → 舊翻譯不算數
+                for k in ('zh', 'ze', 'zt', 'zgv'):      # 內文改了 → 舊翻譯不算數
                     old.pop(k, None)
     return add
 
@@ -191,9 +194,49 @@ def default_translate(text):
     return (zh, '') if zh else (None, err or '翻譯回空的')
 
 
+_EN_MAG = re.compile(r'(\d[\d,]*(?:\.\d+)?)\s*(thousand|million|billion|trillion)\b', re.I)
+_ZH_MAG = re.compile(r'(\d[\d,]*(?:\.\d+)?)\s*(千萬|百萬|萬億|兆|億|萬|千)')
+_EN_MUL = {'thousand': 1e3, 'million': 1e6, 'billion': 1e9, 'trillion': 1e12}
+_ZH_MUL = {'千萬': 1e7, '百萬': 1e6, '萬億': 1e12, '兆': 1e12, '億': 1e8, '萬': 1e4, '千': 1e3}
+
+
+def _mag_vals(text, pat, mul, lower):
+    """「數字 + 單位」→ [(數字原文, 實際數值)]"""
+    out = []
+    for m in pat.finditer(text or ''):
+        try:
+            v = float(m.group(1).replace(',', '')) * mul[m.group(2).lower() if lower else m.group(2)]
+        except (ValueError, KeyError):
+            continue
+        out.append((m.group(1), v))
+    return out
+
+
+def unit_num_gate(zh, en):
+    """🔢 V80.2.2 confcall_deck.num_gate(⛔ 改那支:法說會摘要共用)+ 單位換算:
+    原本對不上的數字,只有在「中文那個數字 × 千萬 / 百萬 / 萬億 / 兆 / 億 / 萬 / 千」剛好等於「英文某個數字 × thousand /
+    million / billion / trillion」時才算對得上(「3000 億 ↔ 300 BILLION」「2.7 億 ↔ 270 MILLION」)。
+    一個「數字 + 單位」只抵一次(⛔ 同一串數字在別處亂寫也被放過)。回還是對不上的那幾個(空 list = 過關)。"""
+    from collections import Counter
+    from confcall_deck import num_gate, _num_norm   # noqa: E402
+    miss = num_gate(zh, en)
+    if not miss:
+        return miss
+    env = [v for _, v in _mag_vals(en, _EN_MAG, _EN_MUL, True)]
+    ok = Counter(_num_norm(s) for s, v in _mag_vals(zh, _ZH_MAG, _ZH_MUL, False)
+                 if any(abs(v - e) <= 1e-9 * max(abs(e), 1.0) for e in env))
+    left = []
+    for n in miss:
+        k = _num_norm(n)
+        if ok[k] > 0:
+            ok[k] -= 1
+        else:
+            left.append(n)
+    return left
+
+
 def default_num_gate(zh, en):
-    from confcall_deck import num_gate   # noqa: E402
-    return num_gate(zh, en)
+    return unit_num_gate(zh, en)
 
 
 def build_app(posts, now, src):
@@ -281,7 +324,8 @@ def run(out, deep_dir, now=None, gate=None, translate=None, numgate=None, full=F
     # ③ 翻譯(新的、有分類、原創、最近 14 天;新的先)
     cut = iso_z(now - timedelta(days=POST_DAYS))
     todo = [p for p in posts.values() if p['t'] >= cut and not p.get('rt') and p.get('x') and classify(p['x'])
-            and not p.get('zh') and (p.get('zt') or 0) < TR_TRIES and not str(p.get('ze') or '').startswith('數字對不上')]
+            and not p.get('zh') and (p.get('zt') or 0) < TR_TRIES
+            and not (str(p.get('ze') or '').startswith('數字對不上') and p.get('zgv') == GATE_V)]   # 🔢 舊版核對擋掉的再翻一次
     todo.sort(key=lambda p: p['t'], reverse=True)
     tr = {'done': 0, 'fail': 0, 'gate': 0, 'quota': 0, 'left': max(0, len(todo) - TR_CAP)}
     for k, p in enumerate(todo[:TR_CAP]):
@@ -298,11 +342,13 @@ def run(out, deep_dir, now=None, gate=None, translate=None, numgate=None, full=F
             miss = numgate(zh, p['x'])
             if miss:
                 p['ze'] = f'數字對不上({",".join(miss[:3])})→ 顯示原文'
+                p['zgv'] = GATE_V
                 p.pop('zh', None)
                 tr['gate'] += 1
             else:
                 p['zh'] = zh[:1200]
                 p.pop('ze', None)
+                p.pop('zgv', None)
                 tr['done'] += 1
         else:
             p['ze'] = (err or '翻譯失敗')[:80]
@@ -392,8 +438,7 @@ def selftest():
         return '翻好的:' + text[:20] + (' 25%' if '25%' in text else ''), ''
 
     def ng(zh, en):
-        from confcall_deck import num_gate
-        return num_gate(zh, en)
+        return unit_num_gate(zh, en)
 
     with tempfile.TemporaryDirectory() as td:
         out, deep = Path(td) / 'data' / 'trump_posts.json', Path(td) / 'trump_deep'
@@ -489,6 +534,50 @@ def selftest():
     d1 = {'1': {'id': '1', 't': '2026-11-01T00:00:00Z', 'x': 'a'}}
     merge(d1, [{'id': '2', 't': '2026-11-02T00:00:00Z', 'x': 'b', 'u': '', 'rt': 0, 'm': 0}])
     ok('⑩ 決定性對照:聯集 → 2 則(換成整份覆蓋就只剩 1 則)', len(d1) == 2)
+    # ⑪ 🔢 V80.2.2 數字核對懂單位換算(⛔ 放寬別的)
+    from confcall_deck import num_gate as _ng0
+    EN1 = 'invested 300 BILLION DOLLARS'
+    ok('⑪ ⭐ 決定性對照:舊核對把「3000 億 ↔ 300 BILLION」擋掉', _ng0('投資 3000 億美元', EN1) == ['3000'], _ng0('投資 3000 億美元', EN1))
+    ok('⑪ 新核對:3000 億 ↔ 300 BILLION 過', unit_num_gate('投資 3000 億美元', EN1) == [], unit_num_gate('投資 3000 億美元', EN1))
+    ok('⑪ 新核對:2.7 億 ↔ 270 MILLION 過', unit_num_gate('投資 2.7 億美元', 'investing 270 MILLION DOLLARS') == [])
+    ok('⑪ 新核對:3,000 億(有千分位)也過', unit_num_gate('投資 3,000 億美元', EN1) == [])
+    ok('⑪ 新核對:1000 萬桶 / 1 千萬桶 ↔ 10 million barrels 過', unit_num_gate('1000 萬桶', '10 million barrels') == [] and unit_num_gate('1 千萬桶', '10 million barrels') == [])
+    ok('⑪ 照樣擋:500 億 ↔ 300 BILLION(換算不對)', unit_num_gate('投資 500 億美元', EN1) == ['500'])
+    ok('⑪ 照樣擋:3000 億 ↔ 30 BILLION(差 10 倍)', unit_num_gate('投資 3000 億美元', 'invested 30 BILLION') == ['3000'])
+    ok('⑪ 照樣擋:原文沒有的數字(成長 20%)', unit_num_gate('成長 20%', 'growth was strong') == ['20'])
+    ok('⑪ 一個「數字 + 單位」只抵一次:3000 億 + 另外寫 3000 人 → 3000 人照樣擋', unit_num_gate('3000 億美元,另外 3000 人', EN1) == ['3000'])
+    # ⑫ 被舊核對擋掉的(沒有 zgv)下一輪重翻一次;新核對擋掉的(zgv = 現在版本)⛔ 再翻
+    with tempfile.TemporaryDirectory() as td:
+        out, deep = Path(td) / 'p.json', Path(td) / 'd'
+        rows12 = [['2001', '2026-11-02T10:00:00.000Z', 'China will invest 300 BILLION DOLLARS, a great tariffs deal', '', '', 0, 0, 0],
+                  ['2002', '2026-11-02T11:00:00.000Z', 'China pays 50 BILLION in tariffs', '', '', 0, 0, 0]]
+        tr12 = {'2001': '中國將投資 3000 億美元,很棒的關稅協議', '2002': '中國付了 900 億關稅'}
+        seen = []
+
+        def ftr(t):
+            k = '2001' if '300 BILLION' in t else '2002'
+            seen.append(k)
+            return tr12[k], ''
+        run(out, deep, now=NOW, gate=FakeGate([R(200, csv_of(rows12), LM), 'HTTP 503']), translate=ftr, numgate=default_num_gate,
+            log=lambda *_: None, sleep=lambda *_: None)
+        z = {p['id']: p for p in json.loads(out.read_text())['posts']}
+        ok('⑫ 第一輪:3000 億那則用中文、900 億(50 BILLION = 500 億)那則顯示原文', z['2001'].get('zh') and not z['2002'].get('zh')
+           and '數字對不上' in (z['2002'].get('ze') or ''), (z['2001'], z['2002']))
+        # 模擬舊資料:2001 是舊版核對擋掉的(沒有 zgv);2002 是這一版擋掉的(zgv = GATE_V)
+        mf = deep / '2026-11.json.gz'
+        blob = json.loads(gzip.open(mf, 'rt', encoding='utf-8').read())
+        for q in blob['posts']:
+            if q['id'] == '2001':
+                q.pop('zh', None); q['ze'] = '數字對不上(3000)→ 顯示原文'; q['zt'] = 1; q.pop('zgv', None)
+        ok('⑫ 這一版擋掉的有記 zgv', any(q['id'] == '2002' and q.get('zgv') == GATE_V for q in blob['posts']), blob['posts'])
+        with gzip.open(mf, 'wt', encoding='utf-8') as fh:
+            fh.write(json.dumps(blob, ensure_ascii=False))
+        seen.clear()
+        run(out, deep, now=NOW, gate=FakeGate(['HTTP 304', 'HTTP 503']), translate=ftr, numgate=default_num_gate,
+            log=lambda *_: None, sleep=lambda *_: None)
+        z = {p['id']: p for p in json.loads(out.read_text())['posts']}
+        ok('⑫ ⭐ 舊版擋掉的(沒有 zgv)重翻一次 → 這次用中文;這一版擋掉的 ⛔ 再翻', seen == ['2001'] and z['2001'].get('zh') and not z['2001'].get('ze'),
+           (seen, z['2001']))
     print(f'\n{"✅ 全部通過" if not fails else "❌ " + str(len(fails)) + " 條沒過"}')
     return 0 if not fails else 1
 
