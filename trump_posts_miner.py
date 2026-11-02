@@ -49,7 +49,8 @@ CNN_URL = 'https://ix.cnn.io/data/truth-social/truth_archive.csv'
 RSS_URL = 'https://www.trumpstruth.org/feed'
 NS = {'truth': 'https://truthsocial.com/ns'}
 POST_DAYS, RECENT_DAYS, COUNT_DAYS = 14, 4, 30
-TR_CAP, TR_TRIES, EN_MAX = 15, 3, 600
+TR_CAP, TR_TRIES, EN_MAX, TR_GAP = 15, 3, 600, 2.5
+_QUOTA = re.compile(r'上限|冷卻|429|quota|rate', re.I)
 csv.field_size_limit(10 ** 7)
 _PLACEHOLDER = re.compile(r'^(Video|Image|Photo|Quote|Link|Poll) post from ', re.I)
 
@@ -225,11 +226,12 @@ def build_app(posts, now, src):
             'posts': out_posts, 'recent': recent, 'days': dict(sorted(days.items(), reverse=True))}
 
 
-def run(out, deep_dir, now=None, gate=None, translate=None, numgate=None, full=False, log=print):
+def run(out, deep_dir, now=None, gate=None, translate=None, numgate=None, full=False, log=print, sleep=None):
     """→ (結束碼, {push_app, push_deep, ...})。網路 / 時間 / 翻譯全部可以換成假的(selftest)"""
     now = now or datetime.now(timezone.utc)
     translate = translate or default_translate
     numgate = numgate or default_num_gate
+    sleep = sleep if sleep is not None else time.sleep
     if gate is None:
         from lib_http import Gate   # noqa: E402
         gate = Gate(gaps={'ix.cnn.io': 3.0, 'www.trumpstruth.org': 3.0}, timeout=180)
@@ -281,9 +283,16 @@ def run(out, deep_dir, now=None, gate=None, translate=None, numgate=None, full=F
     todo = [p for p in posts.values() if p['t'] >= cut and not p.get('rt') and p.get('x') and classify(p['x'])
             and not p.get('zh') and (p.get('zt') or 0) < TR_TRIES and not str(p.get('ze') or '').startswith('數字對不上')]
     todo.sort(key=lambda p: p['t'], reverse=True)
-    tr = {'done': 0, 'fail': 0, 'gate': 0, 'left': max(0, len(todo) - TR_CAP)}
-    for p in todo[:TR_CAP]:
+    tr = {'done': 0, 'fail': 0, 'gate': 0, 'quota': 0, 'left': max(0, len(todo) - TR_CAP)}
+    for k, p in enumerate(todo[:TR_CAP]):
+        if k:
+            sleep(TR_GAP)                                   # 同 universal_radar:每則隔 2.5 秒(⛔ 一口氣打 → 撞每分鐘上限)
         zh, err = translate(p['x'])
+        if not zh and _QUOTA.search(err or ''):
+            # 🧯 額度用完 / 金鑰冷卻:這輪不再叫、這一則 ⛔ 算失敗次數(下一輪再翻)
+            tr['quota'] = len(todo[:TR_CAP]) - k
+            p['ze'] = (err or '')[:80]
+            break
         p['zt'] = (p.get('zt') or 0) + 1
         if zh:
             miss = numgate(zh, p['x'])
@@ -389,7 +398,7 @@ def selftest():
     with tempfile.TemporaryDirectory() as td:
         out, deep = Path(td) / 'data' / 'trump_posts.json', Path(td) / 'trump_deep'
         g = FakeGate([R(200, CSV1, LM), R(200, RSS1)])
-        rc, flags = run(out, deep, now=NOW, gate=g, translate=fake_tr, numgate=ng, log=lambda *_: None)
+        rc, flags = run(out, deep, now=NOW, gate=g, translate=fake_tr, numgate=ng, log=lambda *_: None, sleep=lambda *_: None)
         app = json.loads(out.read_text(encoding='utf-8'))
         ok('① 第一次跑:⛔ 帶 304 條件(研究存檔是空的)', g.calls[0][1] == {}, g.calls[0])
         ok('① 結束碼 0、兩邊都要推', rc == 0 and flags == {'push_app': 1, 'push_deep': 1}, (rc, flags))
@@ -416,7 +425,7 @@ def selftest():
         st0 = {p.name: p.stat().st_mtime_ns for p in deep.glob('*.json.gz')}
         time.sleep(0.01)
         g2 = FakeGate(['HTTP 304', R(200, RSS1)])
-        rc2, _ = run(out, deep, now=NOW + timedelta(hours=1), gate=g2, translate=fake_tr, numgate=ng, log=lambda *_: None)
+        rc2, _ = run(out, deep, now=NOW + timedelta(hours=1), gate=g2, translate=fake_tr, numgate=ng, log=lambda *_: None, sleep=lambda *_: None)
         app2 = json.loads(out.read_text(encoding='utf-8'))
         ok('⑤ 第二次帶 If-Modified-Since + If-None-Match', g2.calls[0][1] == {'If-Modified-Since': LM['Last-Modified'], 'If-None-Match': '"e1"'},
            g2.calls[0])
@@ -426,7 +435,7 @@ def selftest():
         ok('⑤ 沒變的月份 ⛔ 重寫', {p.name: p.stat().st_mtime_ns for p in deep.glob('*.json.gz')} == st0)
         # ⑥ CNN 這輪只回最新 2 列(被截斷)→ 研究存檔 ⛔ 少(id 聯集)
         g3 = FakeGate([R(200, csv_of(rows[:2]), {'Last-Modified': 'x2', 'ETag': '"e2"'}), 'HTTP 503'])
-        rc3, _ = run(out, deep, now=NOW, gate=g3, translate=fake_tr, numgate=ng, full=True, log=lambda *_: None)
+        rc3, _ = run(out, deep, now=NOW, gate=g3, translate=fake_tr, numgate=ng, full=True, log=lambda *_: None, sleep=lambda *_: None)
         posts3, _, _ = load_deep(deep, log=lambda *_: None)
         ok('⑥ CNN 被截斷 → 研究存檔照樣 9 則(⛔ 少)', rc3 == 0 and len(posts3) == 9, len(posts3))
         ok('⑥ FULL → ⛔ 帶條件', g3.calls[0][1] == {})
@@ -434,7 +443,7 @@ def selftest():
         # ⑦ 壞掉的月份 ⛔ 覆蓋
         (deep / '2026-10.json.gz').write_bytes(b'not gzip')
         g4 = FakeGate([R(200, CSV1, LM), R(200, RSS1)])
-        run(out, deep, now=NOW, gate=g4, translate=fake_tr, numgate=ng, log=lambda *_: None)
+        run(out, deep, now=NOW, gate=g4, translate=fake_tr, numgate=ng, log=lambda *_: None, sleep=lambda *_: None)
         ok('⑦ 讀不出來的月份 ⛔ 覆蓋(留著等人修)', (deep / '2026-10.json.gz').read_bytes() == b'not gzip')
         ok('⑦ 有壞月份 → ⛔ 帶 304 條件(要整份重拿)', g4.calls[0][1] == {}, g4.calls[0])
     # ⑧ 兩個都失敗、研究存檔空的 → 1、⛔ 寫檔(保留上一份)
@@ -442,7 +451,7 @@ def selftest():
         out = Path(td) / 'trump_posts.json'
         out.write_text('{"old":1}', encoding='utf-8')
         g5 = FakeGate(['斷路:HTTP 403', '斷路:HTTP 403'])
-        rc5, fl5 = run(out, Path(td) / 'deep', now=NOW, gate=g5, translate=fake_tr, numgate=ng, log=lambda *_: None)
+        rc5, fl5 = run(out, Path(td) / 'deep', now=NOW, gate=g5, translate=fake_tr, numgate=ng, log=lambda *_: None, sleep=lambda *_: None)
         ok('⑧ 兩個都失敗而且沒有存檔 → 1、⛔ 推、舊檔不動', rc5 == 1 and fl5['push_app'] == 0 and out.read_text() == '{"old":1}', (rc5, fl5))
     # ⑨ 翻譯上限:20 則有分類的新發文 → 只翻 15 則,下一輪接著翻
     with tempfile.TemporaryDirectory() as td:
@@ -450,13 +459,29 @@ def selftest():
         many = [[str(1000 + i), f'2026-11-02T{10 + i // 6:02d}:{(i % 6) * 9:02d}:00.000Z', f'China tariffs note {i}', '', '', 0, 0, 0] for i in range(20)]
         cnt = []
         run(out, deep, now=NOW, gate=FakeGate([R(200, csv_of(many), LM), 'HTTP 503']),
-            translate=lambda t: (cnt.append(t), ('中國關稅 ' + t.split()[-1], ''))[1], numgate=ng, log=lambda *_: None)
+            translate=lambda t: (cnt.append(t), ('中國關稅 ' + t.split()[-1], ''))[1], numgate=ng, log=lambda *_: None, sleep=lambda *_: None)
         a = json.loads(out.read_text())
         ok('⑨ 每輪最多 15 則', len(cnt) == 15 and a['src']['tr']['left'] == 5, (len(cnt), a['src']['tr']))
         cnt.clear()
         run(out, deep, now=NOW, gate=FakeGate(['HTTP 304', 'HTTP 503']),
-            translate=lambda t: (cnt.append(t), ('中國關稅 ' + t.split()[-1], ''))[1], numgate=ng, log=lambda *_: None)
+            translate=lambda t: (cnt.append(t), ('中國關稅 ' + t.split()[-1], ''))[1], numgate=ng, log=lambda *_: None, sleep=lambda *_: None)
         ok('⑨ 下一輪把剩下 5 則翻完', len(cnt) == 5, len(cnt))
+    # ⑨b 額度用完:第 3 則撞到 → 這輪停、撞到的那則 ⛔ 算失敗次數、每則之間有隔
+    with tempfile.TemporaryDirectory() as td:
+        out, deep = Path(td) / 'p.json', Path(td) / 'd'
+        many = [[str(2000 + i), f'2026-11-02T1{i}:00:00.000Z', f'China tariffs note {i}', '', '', 0, 0, 0] for i in range(6)]
+        calls, naps = [], []
+        def tr_q(t):
+            calls.append(t)
+            return (None, 'AI 用量到上限(全部 1 把金鑰冷卻中)') if len(calls) == 3 else ('中國關稅 ' + t.split()[-1], '')
+        run(out, deep, now=NOW, gate=FakeGate([R(200, csv_of(many), LM), 'HTTP 503']), translate=tr_q, numgate=ng,
+            log=lambda *_: None, sleep=lambda s: naps.append(s))
+        a = json.loads(out.read_text())
+        posts9, _, _ = load_deep(deep, log=lambda *_: None)
+        hit = [p for p in posts9.values() if '冷卻' in str(p.get('ze') or '')]
+        ok('⑨b 撞到額度 → 這輪停(只叫了 3 次)、剩下的 4 則記在 quota', len(calls) == 3 and a['src']['tr']['quota'] == 4, (len(calls), a['src']['tr']))
+        ok('⑨b 撞到的那則 ⛔ 算失敗次數(zt 沒加)', len(hit) == 1 and not hit[0].get('zt'), hit)
+        ok('⑨b 每則之間隔 2.5 秒', naps == [2.5, 2.5], naps)
     # ⑩ 決定性對照:分類 / 時區 / 只增不減 各拿掉一個 → 結果一定不一樣
     p_tw = parse_ts('2026-11-02T23:50:00Z').astimezone(TW).strftime('%Y-%m-%d')
     p_naive = parse_ts('2026-11-02T23:50:00Z').strftime('%Y-%m-%d')
