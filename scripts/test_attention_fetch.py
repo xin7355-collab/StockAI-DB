@@ -58,7 +58,10 @@ BASE = {
         {'Date': '1151102', 'SecuritiesCompanyCode': '6488', 'CompanyName': '環球晶',
          'TradingInformation': '當日週轉率達 21%', 'ClosePrice': '400', 'PriceEarningRatio': '20'},
         {'Date': '1151102', 'SecuritiesCompanyCode': '3324', 'CompanyName': '雙鴻',
-         'TradingInformation': '當沖比率 63%', 'ClosePrice': '1330', 'PriceEarningRatio': '30'}],
+         'TradingInformation': '當沖比率 63%', 'ClosePrice': '1330', 'PriceEarningRatio': '30'},
+        # V80.1.9 傍晚探針:這份一次給兩個交易日 → 6488 在 10/30 也有一列,而且排在 11/02 那列後面
+        {'Date': '1151030', 'SecuritiesCompanyCode': '6488', 'CompanyName': '環球晶',
+         'TradingInformation': '舊的那天的理由', 'ClosePrice': '390', 'PriceEarningRatio': '20'}],
     TP + 'tpex_disposal_information': [
         {'Date': '1151030', 'SecuritiesCompanyCode': '3324', 'CompanyName': '雙鴻',
          'DispositionPeriod': '115/10/31~115/11/13', 'DispositionReasons': '連續三次', 'DisposalCondition': '每20分鐘撮合'}],
@@ -108,9 +111,13 @@ def load(name):
 run(BASE)
 st = load('attention_status.json')
 S, F, D = st['stocks'], st.get('flags', {}), st['diag']
-ok('① 上櫃注意股接上:1569 / 6488 是官方注意,而且帶理由與公告日',
-   S.get('1569', {}).get('status', '').startswith('⚠️') and S['1569'].get('date') == '2026-10-30'
-   and '週轉率' in S['1569'].get('reason', '') and S.get('6488', {}).get('status', '').startswith('⚠️'), S.get('1569'))
+ok('① 上櫃注意股接上:6488 是官方注意,帶理由與公告日(11/02 那列)',
+   S.get('6488', {}).get('status', '').startswith('⚠️') and S['6488'].get('date') == '2026-11-02'
+   and '週轉率' in S['6488'].get('reason', ''), S.get('6488'))
+ok('①c 名單一次給兩天:只在比較舊那天(10/30)的 1569 ⛔ 算「現在的注意股」',
+   '1569' not in S and D['otc_notice'].get('older') == 1, (sorted(S), D['otc_notice']))
+ok('①d 同一檔兩天都有、舊那天那列排在後面 → 留最新那天(⛔ 被蓋成 10/30)',
+   S.get('6488', {}).get('date') == '2026-11-02' and '舊的' not in S['6488'].get('reason', ''), S.get('6488'))
 ok('①b 決定性對照:同一檔又在上櫃處置 → 以處置為準(3324 🚨、20 分盤、出關 11/13)',
    S.get('3324', {}).get('status', '').startswith('🚨') and S['3324'].get('interval') == 20
    and S['3324'].get('end_date') == '2026-11-13', S.get('3324'))
@@ -146,7 +153,7 @@ ok('⑥ 同一天重跑:10/30 那天只有原本那幾檔(⛔ 重複加)、今�
 run(BASE, fail=tuple(u for u in BASE if 'exchangeReport' in u or 'BFZFZU' in u))
 st3 = load('attention_status.json')
 ok('⑦ 其他官方名單全掛 → flags 空、diag 記 -1,注意 / 處置照寫(⛔ 被拖垮)',
-   st3['flags'] == {} and set(st3['diag']['flags'].values()) == {-1} and '1569' in st3['stocks'], st3['diag']['flags'])
+   st3['flags'] == {} and set(st3['diag']['flags'].values()) == {-1} and '6488' in st3['stocks'], st3['diag']['flags'])
 
 # ── 第四輪:全部端點都連不上 → ⛔ 炸、⛔ 覆蓋昨天的名單 ──
 before = open(os.path.join('data', 'attention_status.json'), encoding='utf-8').read()
@@ -164,5 +171,5 @@ src = open(os.path.join(ROOT, 'radar_miner.py'), encoding='utf-8').read()
 ok('⑨ 決定性對照:採礦程式裡真的有打 tpex_trading_warning_information(拿掉 = 上櫃注意股又變空)',
    src.count('tpex_trading_warning_information') >= 1 and 'otc_attention = {}' not in src)
 
-print(f'\n{"✅ 全過" if not FAILS else "❌ 失敗 " + str(len(FAILS)) + " 條"}(共 13 條)')
+print(f'\n{"✅ 全過" if not FAILS else "❌ 失敗 " + str(len(FAILS)) + " 條"}(共 15 條)')
 sys.exit(1 if FAILS else 0)

@@ -581,6 +581,11 @@ def fetch_attention_disposal_status():
                             rec['end_date'] = dates[-1]
                     except Exception:
                         pass   # 任何解析失敗退回基本欄位
+                # 🆕 名單一次給好幾個交易日(V80.1.9 傍晚探針:TPEx 注意 10/30 19 列 + 11/02 19 列)
+                #   → 同一檔留公告日最新的那一列(⛔ 被比較舊的那天蓋掉)
+                _prev = out.get(sym)
+                if _prev and (_prev.get('date') or '') > (rec.get('date') or ''):
+                    continue
                 out[sym] = rec
             return (True, out)
         except Exception as e:
@@ -639,7 +644,14 @@ def fetch_attention_disposal_status():
     otc_attention, diag['otc_notice'] = _fetch_cat(
         ["https://www.tpex.org.tw/openapi/v1/tpex_trading_warning_information"],
         "⚠️ 注意股", "注意條款觸發")
-    print(f"   · 上櫃注意股:{len(otc_attention)} 檔 (hit={diag['otc_notice']['hit']})")
+    # 🆕 TPEx 這份一次給最近兩個交易日 → 「現在的名單」只留最新那天;只出現在舊那天的另外記進歷史
+    #   (⛔ 留在 stocks:週一還在、但週一已經沒被列的股票,會被畫面當成「官方注意股」)
+    _otc_dmax = max((r.get('date') or '' for r in otc_attention.values()), default='')
+    otc_older = {s: r for s, r in otc_attention.items() if r.get('date') and r['date'] < _otc_dmax}
+    otc_attention = {s: r for s, r in otc_attention.items() if s not in otc_older}
+    diag['otc_notice']['older'] = len(otc_older)
+    print(f"   · 上櫃注意股:{len(otc_attention)} 檔 (hit={diag['otc_notice']['hit']},"
+          f"最新公告日 {_otc_dmax or '—'};比較舊那天才有的 {len(otc_older)} 檔只記歷史)")
 
     otc_disposal, diag['otc_punish'] = _fetch_cat(
         ["https://www.tpex.org.tw/openapi/v1/tpex_disposal_information",
@@ -704,7 +716,8 @@ def fetch_attention_disposal_status():
             hist["history"] = {}
         # 今日資料(去除 threshold/interval/end_date,只留 sym → status 短字串)
         today_data, _late = {}, 0
-        for sym, info in result.items():
+        # 舊那天的上櫃注意(otc_older)只記歷史:公告日早於今天 → 下面那條會記回它自己的公告日
+        for sym, info in list(result.items()) + [(k, v) for k, v in otc_older.items() if k not in result]:
             status = info.get("status", "")
             if status.startswith("🚨"):
                 today_data[sym] = "處置"
