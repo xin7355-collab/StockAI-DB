@@ -1,0 +1,142 @@
+name: 🗽 川普發文採礦 (trump_posts)
+
+# 🗽 V80.2.1 川普本人在 Truth Social 的發文 → 散戶 App「消息面 › 🗽 川普」那一格(評估紀錄 53)
+#   ① CNN 存檔 CSV(主)+ trumpstruth RSS(補最新 + 對帳)→ trump_posts_miner.py(格式 2026-11-02 macro_probe which=trump_src 實測過)
+#   ② data/trump_posts.json → gh-pages + data(兩邊都推:data 分支有 → daily_miner 的撿回會保住,陷阱 #41)
+#   ③ 研究存檔 trump_deep/{YYYY-MM}.json.gz → orphan 分支 trump_deep(只增不減;研究 trump_post_probe / trump_intraday_probe 用)
+# ⏰ 什麼時候跑:⛔ 不吃排程配額(V75.2.0)—— 跟在「每天早上真的跑得到」的兩支後面:
+#   總經採礦(Cloudflare worker 台北 08:00 用 repository_dispatch 叫醒那輪)、盤前新聞晨採(排程那輪);cron 一行只當備援。
+#   川普大多在美國白天發文 = 台北晚上到清晨 → 開盤前那一輪就收得到「昨晚到今早」的。
+# ⛔ 只描述:這支不產生任何買賣訊號、⛔ 推播(LAB trump-post:方向量不到,只有隔天開盤跳空比較大)。
+
+on:
+  workflow_run:
+    workflows:
+      - "🌍 總經採礦定時同步 (macro 4hr cron)"
+      - "🗞️ 盤前新聞晨採 (news_premarket)"
+    types: [completed]
+  schedule:
+    - cron: '40 23 * * 0-4'   # 台北 07:40(週一~五)備援;⛔ 不靠它(這個 repo 的排程常被丟掉)
+  workflow_dispatch:
+    inputs:
+      full:
+        description: '1 = 不管 CNN 有沒有更新都整份重抓重併(研究存檔掉了才用)'
+        required: false
+        default: '0'
+
+permissions:
+  contents: write
+
+concurrency:
+  # ⛔ 不進共用 gh-pages-push(V73.7.9:會把排隊中的明日清單擠掉);推送靠下面的 5 次重試
+  group: trump-posts
+  cancel-in-progress: false
+
+jobs:
+  posts:
+    name: 🗽 川普發文 → trump_posts.json + trump_deep
+    runs-on: ubuntu-latest
+    # ⛔ 只跟 host 的排程 / worker 叫醒那一輪(host 被手動 dispatch / push / 別支 workflow_run 帶起來時不跟)
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.event == 'schedule' ||
+      github.event.workflow_run.event == 'repository_dispatch'
+    timeout-minutes: 10
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests --quiet
+
+      - name: 📚 還原研究存檔(trump_deep 分支)
+        run: |
+          mkdir -p trump_deep
+          if git fetch --depth=1 origin trump_deep 2>/dev/null; then
+            git archive FETCH_HEAD trump_deep | tar -x || true
+          fi
+          echo "已有:$(find trump_deep -name '*.json.gz' | wc -l) 個月"
+
+      - name: 🗽 抓川普發文 + 翻譯
+        id: run
+        env:
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY:  ${{ secrets.GROQ_API_KEY }}
+          FULL: ${{ github.event.inputs.full }}
+          OUT: data/trump_posts.json
+          DEEP_DIR: trump_deep
+        run: |
+          python3 lib_trump.py --selftest
+          python3 trump_posts_miner.py --selftest
+          python3 trump_posts_miner.py
+
+      - name: 🚀 部署 trump_posts.json 到 gh-pages + data
+        if: steps.run.outputs.push_app == '1'
+        run: |
+          set -e
+          F=data/trump_posts.json
+          [ -s "$F" ] || { echo "❌ 沒有產出,跳過"; exit 0; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/trump && cp "$F" /tmp/trump/ && cp -a trump_deep /tmp/trump/deep
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+            git fetch origin "$BR" 2>/dev/null || true
+            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
+            git reset --hard -q "origin/$BR" 2>/dev/null || true
+            mkdir -p data && cp /tmp/trump/trump_posts.json data/trump_posts.json && git add -f data/trump_posts.json
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "🗽 川普發文 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/trump_posts.json
+            # ⛔ 這個 retry 迴圈不可拿掉(沒有共用部署鎖,撞到別支就靠它)
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              sleep $((i*5)); git fetch origin "$BR" 2>/dev/null || true; git reset --hard -q "origin/$BR" 2>/dev/null || true
+              cp /tmp/trump/trump_posts.json data/trump_posts.json && git add -f data/trump_posts.json
+              git commit -q -m "🗽 川普發文 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/trump_posts.json 2>/dev/null || true
+            done
+          }
+          deploy_branch gh-pages
+          deploy_branch data
+
+      # ⚠️ 順序:研究存檔先在上一步搬到 /tmp/trump/deep(切分支會蓋掉工作區)
+      - name: 📚 推研究存檔到 trump_deep 分支
+        if: steps.run.outputs.push_deep == '1'
+        run: |
+          set -e
+          n=$(find /tmp/trump/deep -name '*.json.gz' 2>/dev/null | wc -l)
+          echo "要推 $n 個月"
+          [ "$n" -gt 0 ] || { echo "一個月都沒有 → 不推"; exit 0; }
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git reset --hard -q && git clean -fdq
+          if git fetch --depth=1 origin trump_deep 2>/dev/null; then
+            git checkout -f -B trump_deep FETCH_HEAD
+            old=$(find trump_deep -name '*.json.gz' | wc -l)
+          else
+            git checkout -q --orphan trump_deep
+            git rm -rq --cached . 2>/dev/null || true
+            git clean -fdq
+            old=0
+          fi
+          # 🚧 只增不減:這一輪的月份數比分支上少 → 有東西不對,⛔ 不推
+          if [ "$n" -lt "$old" ]; then echo "::error::這一輪 $n 個月 < 分支上 $old 個月 → 不推"; exit 1; fi
+          rm -rf trump_deep && mkdir -p trump_deep && cp -a /tmp/trump/deep/. trump_deep/
+          git add -f trump_deep
+          if git diff --cached --quiet; then echo "✅ 沒有新東西 → 不 commit"; exit 0; fi
+          git commit -q -m "🗽 川普發文存檔 $n 個月 $(date -u +%Y-%m-%d)"
+          pushed=0
+          # ⛔ 這個 retry 迴圈不可拿掉
+          for i in 1 2 3 4 5; do
+            git push origin trump_deep && { pushed=1; echo "✅ 已推上 trump_deep(第 $i 次)"; break; }
+            sleep $((i * 3))
+            git pull --rebase origin trump_deep 2>/dev/null || true
+          done
+          [ "$pushed" -eq 1 ] || { echo "::error::push 連 5 次失敗"; exit 1; }
