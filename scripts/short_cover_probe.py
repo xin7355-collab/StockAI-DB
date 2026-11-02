@@ -53,6 +53,17 @@ def parse_ssusp(j):
     return sorted(set(out))
 
 
+def reason_cls(why):
+    """停券原因 → 'agm'(股東會:開會日、停止過戶日幾個月前就公告 → 前 10 天一定知道)/
+    'div'(除權 / 除息:除權息日通常前一兩個月公告,⚠️ 沒逐筆驗公告日)/ 'other'(現金增資、減資…)。"""
+    w = why or ''
+    if '股東' in w:
+        return 'agm'
+    if '息' in w or '權' in w:
+        return 'div'
+    return 'other'
+
+
 def event_index(cal, d):
     """事件日 = d 那天或之後第一個交易日;日曆外 → None。"""
     lo, hi = 0, len(cal)
@@ -187,10 +198,12 @@ def study(stocks, cal, events_by_sym, windows=WINDOWS, top=TOP):
                     ca, chi, cut = c
                     y = cal[base][:4]
                     grp = ['all'] + (['hi'] if (q is not None and cut is not None and q >= cut) else [])
-                    for g in grp:
-                        res.setdefault((w, g, 'all_' + tag), []).append((y, x - ca))
-                        if chi is not None:
-                            res.setdefault((w, g, 'hi_' + tag), []).append((y, x - chi))
+                    rc = reason_cls(why)
+                    for g0 in grp:
+                        for g in (g0, g0 + '@' + rc):           # 再照停券原因分一次(股東會 / 除權息 / 其他)
+                            res.setdefault((w, g, 'all_' + tag), []).append((y, x - ca))
+                            if chi is not None:
+                                res.setdefault((w, g, 'hi_' + tag), []).append((y, x - chi))
     return res
 
 
@@ -251,14 +264,16 @@ def main():
     res = study(stocks, cal, events)
     summary = {}
     for w in WINDOWS:
-        for g, lab in (('hi', f'融券前 {int(TOP * 100)}%'), ('all', '全部停券股')):
+        for g, lab in (('hi', f'融券前 {int(TOP * 100)}%'), ('all', '全部停券股'),
+                       ('hi@agm', f'融券前 {int(TOP * 100)}%・股東會'), ('hi@div', f'融券前 {int(TOP * 100)}%・除權息'),
+                       ('all@agm', '全部・股東會'), ('all@div', '全部・除權息')):
             line = []
             for c, clab in (('all_real', '比全部'), ('hi_real', '比同樣融券多、沒停券'), ('all_sham', '安慰劑(挪 60 天)')):
                 j = judge(res.get((w, g, c), []))
                 summary[f'{w}_{g}_{c}'] = j
                 if j.get('n'):
                     line.append(f'{clab} {j["m"]:+.2f}%(n={j["n"]},t={j["t"]:.1f})')
-            jm = summary[f'{w}_{g}_hi_real']
+            jm = summary.get(f'{w}_{g}_hi_real') or {}
             extra = (f' ・前後半 {jm["h1"]:+.2f}/{jm["h2"]:+.2f} ・逐年 {jm["yr"][0]}/{jm["yr"][1]} ・中位 {jm["med"]:+.2f} ・贏的比例 {jm["pos"] * 100:.0f}%'
                      if jm.get('n') else '')
             print(f'{w:<8} {lab}:' + ' ・'.join(line) + extra, flush=True)
@@ -310,7 +325,12 @@ def selftest():
             if evs:
                 events[sym] = [(cal_[i], cal_[i + 5], '股東常會') for i in evs]
         return study(stocks, cal_, events, top=0.15)            # 32 檔融券多的沒有停券 → 前 15% 的門檻剛好落在融券多那一群
+    ok('② 停券原因分類:股東常會 / 除息・除權息・除權、息・現增除權 / 現金增資・減資',
+       [reason_cls(x) for x in ('股東常會', '股東臨時會', '除息', '除權息', '除權、息', '現增除權', '現金增資', '減資', '')]
+       == ['agm', 'agm', 'div', 'div', 'div', 'div', 'other', 'other', 'other'])
     r = synth(True, False)
+    ok('② 照原因分組:事件全是股東常會 → 「股東會」那組 == 全部那組(逐筆相同)、除權息那組沒有',
+       r[('pre10', 'hi@agm', 'hi_real')] == r[('pre10', 'hi', 'hi_real')] and ('pre10', 'hi@div', 'hi_real') not in r)
     m = mean([x for _, x in r[('pre10', 'hi', 'hi_real')]])
     ms = mean([x for _, x in r[('pre10', 'hi', 'hi_sham')]])
     ok('③ 注入「停券前 10 天融券多的有回補買盤」→ 量得到(≈ +4%)、安慰劑 ≈ 0', 2.5 < m < 5.5 and abs(ms) < 1.5, (m, ms))
