@@ -22,6 +22,9 @@
 
 跑法:INSIDER_DIR=<insider_deep> DATA_DIR=<d16m_fi> SHARE_DIR=<stock_deep/share> OUT=ins.json python3 scripts/insider_event_probe.py
       python3 scripts/insider_event_probe.py --selftest
+      🧾 V80.1.9 EVENTS_OUT=<檔> [EV_M=mkt EV_T=0 EV_R=all]:不跑研究,只把那一組的 {代號:[進場日]} 寫出來
+         (跟研究同一份去重 + 同一條分組;日期 = 申報隔天的交易日,⛔ 申報當天)→ 給回測引擎 CCWIN(CCWIN_PRE=0 CCWIN_POST=19
+         = 進場那天起 20 個交易日先不買)或拿去跟 🔥 / 👑 實際買進的股票數重疊。
 """
 import bisect
 import gzip
@@ -112,6 +115,32 @@ def dedup_events(ev_sym, cal, gap=DEDUP):
     return out
 
 
+METHODS = ('all', 'mkt', 'gift', 'spec')
+ROLES = ('all', 'big', 'dir', 'mgr')
+
+
+def in_group(ev, pct, m='mkt', t=0.0, r='all'):
+    """這一件屬不屬於 (方式 m, 申報股數 ÷ 發行股數 ≥ t%, 身分 r) 那一組 —— 跟 study 的分組同一條(selftest ⑦ 逐筆比對)。"""
+    return ((m == 'all' or m in ev['m']) and (t == 0.0 or (pct is not None and pct >= t))
+            and (r == 'all' or r in ev['r']))
+
+
+def group_events(stocks, cal, events, m='mkt', t=0.0, r='all'):
+    """→ {代號: [進場日]}:跟 study 同一份去重(dedup_events,同一檔 20 個交易日內只算第一件)與同一條分組(in_group)。
+    日期 = 進場那天(申報隔天的交易日),⛔ 申報當天 —— 申報當天什麼時候公開不確定,拿它擋當天收盤的買進 = 偷看。"""
+    out = {}
+    for s, v in events.items():
+        if s not in stocks:
+            continue
+        sh = stocks[s][2]
+        for e, d, ev in dedup_events(v, cal):
+            n_sh = shares_on(sh, d) if sh else None
+            pct = ev['sh'] / n_sh * 100 if n_sh else None
+            if in_group(ev, pct, m, t, r):
+                out.setdefault(s, []).append(cal[e])
+    return out
+
+
 def judge(xs, cost=COST):
     v = [x for _, x in xs]
     if not v:
@@ -131,9 +160,10 @@ def judge(xs, cost=COST):
             'pos': sum(1 for x in v if x > 0) / len(v), 'trim': mean(trim), 'after_cost': m - cost}
 
 
-def study(stocks, cal, events, holds=HOLD):
+def study(stocks, cal, events, holds=HOLD, track=None):
     """stocks = {代號: (K, 日期→位置, 發行股數, 股利)};events = {代號: {日期: 事件}}。
-    回 res[(H, 方式, 級距, 身分, 對照)] = [(年, 異常報酬)];對照 ∈ all_real / mom_real / mom_sham。"""
+    回 res[(H, 方式, 級距, 身分, 對照)] = [(年, 異常報酬)];對照 ∈ all_real / mom_real / mom_sham。
+    track(dict,selftest 用)= 每組實際算進 all_real 的 (代號, 進場日),拿來跟 group_events 逐筆比。"""
     evl = {s: dedup_events(v, cal) for s, v in events.items() if s in stocks}
     ev_pos = {s: [e for e, _, _ in lst] for s, lst in evl.items()}   # 每檔的進場位置(已排序)
     cache = {}
@@ -224,6 +254,8 @@ def study(stocks, cal, events, holds=HOLD):
                             for r in roles:
                                 if tag == 'real':
                                     res.setdefault((h, m, t, r, 'all_real'), []).append((y, x - allm))
+                                    if track is not None:
+                                        track.setdefault((h, m, t, r), []).append((s, cal[base]))
                                 if momc is not None:
                                     res.setdefault((h, m, t, r, 'mom_' + tag), []).append((y, x - momc))
     return res
@@ -270,6 +302,23 @@ def main():
         stocks[p.stem] = (K, {d: i for i, d in enumerate(K['d'])}, load_shares(share_dir, p.stem),
                           [(r[0], r[3], r[4]) for r in (divj.get(p.stem) or {}).get('h', []) if len(r) >= 5])
     print(f'📦 個股 {len(stocks)} 檔(K 線 {cal[0]} ~ {cal[-1]})', flush=True)
+    ev_out = S('EVENTS_OUT') or ''
+    if ev_out:                                       # 只輸出那一組的進場日(給引擎 CCWIN / 重疊計數),不跑研究
+        gm, gr = (S('EV_M') or 'mkt').strip(), (S('EV_R') or 'all').strip()
+        try:
+            gt = float(S('EV_T') or 0)
+        except ValueError:
+            gt = -1.0
+        if gm not in METHODS or gr not in ROLES or gt < 0:
+            print(f'❌ EV_M 要是 {METHODS}、EV_R 要是 {ROLES}、EV_T 要是 ≥0 的數字(拿到 {gm} / {gr} / {S("EV_T")})')
+            return 1
+        ge = group_events(stocks, cal, events, gm, gt, gr)
+        Path(ev_out).write_text(json.dumps(ge, ensure_ascii=False), encoding='utf-8')
+        n = sum(len(v) for v in ge.values())
+        allv = sorted(x for v in ge.values() for x in v)
+        print(f'📝 EVENTS_OUT:{gm}・≥{gt}%・{gr} → {n} 件 / {len(ge)} 檔'
+              f'{f"({allv[0]} ~ {allv[-1]})" if allv else ""} → {ev_out}')
+        return 0 if n else 1
     res = study(stocks, cal, events)
     summary = {'months': [months[0], months[-1]] if months else None, 'events': n_ev, 'rows': {}}
     names = {'all': '全部', 'mkt': '市場賣出', 'gift': '信託・贈與', 'spec': '洽特定人・私募'}
@@ -413,6 +462,42 @@ def selftest():
     jm = judge(res.get((10, 'all', 0.0, 'all', 'mom_real'), []))
     ok('⑥ ⭐ 決定性對照:事件都挑漲最多的、漲多了本來就會回 −2% → 比全部股票是負的、比動能配對 ≈ 0',
        ja.get('n', 0) > 60 and ja['m'] < -1.0 and abs(jm.get('m', 9)) < 0.5, (ja, jm))
+
+    # ⑦ EVENTS_OUT 給引擎的清單 == 研究裡同一組實際算進去的那幾件(同一份去重 + 同一條分組)
+    st, cal, evs = mk(seed=3)
+    k = 0
+    for s in sorted(evs):
+        for d in sorted(evs[s]):
+            v = evs[s][d]
+            if k % 3 == 0:
+                v['m'] = {'gift'}                          # 信託・贈與
+            elif k % 3 == 2:
+                v['sh'] = 5_000                            # 0.05%(⛔ 進 ≥0.1%)
+            v['r'] = {'big'} if k % 2 else {'dir'}
+            k += 1
+    dup = []                                               # 同一檔 5 天後又申報一次(市場賣出)→ 去重要擋掉
+    for s in sorted(evs)[:6]:
+        i0 = cal.index(min(evs[s])) + 5
+        evs[s][cal[i0]] = {'sh': 50_000, 'm': {'mkt'}, 'r': {'dir'}, 'n': 1}
+        dup.append((s, cal[i0 + 1]))
+    trk = {}
+    study(st, cal, evs, holds=(10,), track=trk)
+    same = True
+    for g in (('mkt', 0.0, 'all'), ('mkt', 0.1, 'all'), ('gift', 0.0, 'all'), ('mkt', 0.0, 'big'), ('all', 0.3, 'dir')):
+        ge = group_events(st, cal, evs, *g)
+        a = {(s, d) for s, ds in ge.items() for d in ds}
+        b = set(trk.get((10,) + g, []))
+        if a != b or not a:
+            same = False
+            print('   ⑦ 對不上', g, len(a), len(b))
+    ok('⑦ 給引擎的清單 == 研究那一組實際算進去的 (代號, 進場日),五組逐筆相同', same)
+    g0 = {(s, d) for s, ds in group_events(st, cal, evs, 'mkt', 0.0, 'all').items() for d in ds}
+    g1 = {(s, d) for s, ds in group_events(st, cal, evs, 'mkt', 0.1, 'all').items() for d in ds}
+    gg = {(s, d) for s, ds in group_events(st, cal, evs, 'gift', 0.0, 'all').items() for d in ds}
+    ok('⑦ ⭐ 決定性對照:≥0.1% 那組比全部少(0.05% 的被擋)、贈與跟市場賣出不重疊', g1 and g1 < g0 and not (gg & g0), (len(g0), len(g1), len(gg & g0)))
+    late = all(any(f < d for f in evs[s]) and d not in evs[s] for s, d in g0)
+    ok('⑦ 清單日期是進場那天(申報隔天的交易日),⛔ 申報當天', late)
+    ok('⑦ ⭐ 決定性對照:同一檔 20 個交易日內的第二件 ⛔ 進清單(跟研究同一份去重)', not (set(dup) & g0), sorted(set(dup) & g0)[:3])
 
     print('\n' + ('✅ selftest 全過' if not bad else f'❌ {len(bad)} 條沒過'))
     return 1 if bad else 0
