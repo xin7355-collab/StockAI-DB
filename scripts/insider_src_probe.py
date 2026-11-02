@@ -26,10 +26,13 @@
   ⭐ 第一輪 stapap1 有資料但 `mops_probe.table_rows` 認不得(第一欄不是代號)→ 這一輪一律用 `generic_rows` 印
   ⛔ 欄位名一律用頁面表單裡真的有的(`r2_forms`),表單沒有那個欄位就不送
 
-🔁 第三輪(預設):第二輪那兩支日報表(t56sb12_q1 / q2)回的是一頁有「詳細資料」按鈕的網頁、5 個日期一樣長(2962 字)
+🔁 第三輪(MOPS_MODE=r3):第二輪那兩支日報表(t56sb12_q1 / q2)回的是一頁有「詳細資料」按鈕的網頁、5 個日期一樣長(2962 字)
   → 印原文 + 照按鈕 onclick 自己寫的欄位再問一次(⛔ 猜欄位)
 
---selftest:連結 / 代碼抽取、關鍵字挑選、表單欄位 → 查詢組合、第二輪的表單與通用表格解析、按鈕欄位(不用網路)。
+🔁 第四輪(預設):第三輪看到第一層回的是自動送出的表單(action=/mops/web/ajax_t56sb12、step=2、report=SY 上市 / OY 上櫃)
+  → 照它自己的欄位送第二層(`auto_form`),5 個日期看歷史多深
+
+--selftest:連結 / 代碼抽取、關鍵字挑選、表單欄位 → 查詢組合、第二輪的表單與通用表格解析、按鈕欄位、自動表單(不用網路)。
 """
 import os
 import re
@@ -385,6 +388,75 @@ def main_r3():
     return 0
 
 
+def auto_form(html):
+    """回應裡自動送出的表單(name='autoForm')→ (action, {欄位: 值});沒有 → (None, {})。⛔ 不猜:action 與欄位全部照原文。"""
+    m = re.search(r"<form[^>]*name\s*=\s*['\"]autoForm['\"][^>]*>(.*?)</form>", html or '', flags=re.S | re.I)
+    if not m:
+        m = re.search(r"<form[^>]*name\s*=\s*['\"]autoForm['\"][^>]*>(.*?)(?:</div>|$)", html or '', flags=re.S | re.I)
+    if not m:
+        return None, {}
+    head = re.search(r"<form[^>]*>", m.group(0), flags=re.I).group(0)
+    act = re.search(r"action\s*=\s*['\"]([^'\"]+)", head, flags=re.I)
+    kv = {}
+    for inp in re.findall(r"<input\b[^>]*>", m.group(1), flags=re.I):
+        t = re.search(r"type\s*=\s*['\"]?(\w+)", inp, flags=re.I)
+        if t and t.group(1).lower() == 'button':
+            continue
+        n = re.search(r"name\s*=\s*['\"]?([\w\-]+)", inp, flags=re.I)
+        v = re.search(r"value\s*=\s*['\"]([^'\"]*)", inp, flags=re.I)
+        if n:
+            kv[n.group(1)] = v.group(1) if v else ''
+    return (act.group(1) if act else None), kv
+
+
+def main_r4():
+    """第四輪(預設):日報表第一層回的是自動送出的表單(action=/mops/web/ajax_t56sb12、step=2、report=SY/OY)
+    → 照它自己的欄位送第二層,5 個日期看歷史多深、一天幾筆。"""
+    import requests
+    s = requests.Session()
+    print(f'🔁 MOPS 第四輪 ・照日報表自己的自動表單送第二層 ・{[d.isoformat() for d in R2_DAYS]}', flush=True)
+    summ = []
+    for code in ('t56sb12_q1', 't56sb12_q2'):
+        rp = get(s, f'{HOST}/mops/web/{code}')
+        if rp is None:
+            continue
+        info = mp.form_fields(rp.text or '')
+        for tag, form in r2_forms('day', info['fields'], SAMPLE):
+            r1 = get(s, f'{HOST}/mops/web/ajax_{code}', form)
+            if r1 is None:
+                summ.append((code, tag, '第一層連不上'))
+                continue
+            act, kv = auto_form(r1.text or '')
+            if not act:
+                summ.append((code, tag, '第一層沒有自動表單'))
+                print(f'   {code} {tag}:第一層沒有自動表單 ・開頭 {mp.strip_tags((r1.text or "")[:300])[:160]}', flush=True)
+                continue
+            url = act if act.startswith('http') else HOST + act
+            r2_ = get(s, url, kv)
+            if r2_ is None:
+                summ.append((code, tag, '第二層連不上'))
+                continue
+            t = r2_.text or ''
+            rows = generic_rows(t)
+            lo, hi = roc_span(rows)
+            msg = r2_msg(t) if not rows else None
+            print(f'\n=== {code} {tag} → {act} {kv}:HTTP {r2_.status_code} ・{len(t)} 字 ・被擋={mp.is_blocked(t)} ・資料列 {len(rows)} ・日期 {lo}~{hi}'
+                  + (f' ・MOPS 說「{msg}」' if msg else ''), flush=True)
+            th = th_cells(t, 30)
+            if th:
+                print(f'   表頭 {th}', flush=True)
+            for row in rows[:5]:
+                print(f'   {row[:16]}', flush=True)
+            if not rows:
+                print('RAW2\t' + re.sub(r'\s+', ' ', t)[:1500], flush=True)
+            summ.append((code, tag, f'{len(rows)} 列'))
+    print('\n📋 第四輪結論:', flush=True)
+    for c, t, m in summ:
+        print(f'   {c} {t}:{m}', flush=True)
+    print(f'   共 {_N["req"]} 次請求', flush=True)
+    return 0
+
+
 def selftest():
     bad = []
 
@@ -425,10 +497,15 @@ def selftest():
     ok('⑥ MOPS 提示「日期不可空白」認得出來', (r2_msg('<td>日期不可空白!</td>') or '').find('不可空白') != -1)
     oc = onclick_forms('<input type=\'button\' value=\'詳細資料\' onclick="document.fm.co_id.value=\'2330\';document.fm.action.value=\'t56sb12_q1_d\';go();">')
     ok('⑦ 「詳細資料」按鈕的欄位照原文抄出來', oc == [{'co_id': '2330', 'action': 't56sb12_q1_d'}], oc)
+    act, kv = auto_form("<div id='div01'><form name='autoForm' action='/mops/web/ajax_t56sb12' method='post'>"
+                        "<input type='hidden' name='step' value='2' /><input type='hidden' name='report' value='SY' />"
+                        "<input type='hidden' name='run' value='' /><input type='button' value='詳細資料' onclick=\"x()\" /></form></div>")
+    ok('⑧ 自動表單:action 與欄位照原文(按鈕不算、空值也帶)', act == '/mops/web/ajax_t56sb12' and kv == {'step': '2', 'report': 'SY', 'run': ''}, (act, kv))
+    ok('⑧ 沒有自動表單 → (None, {})', auto_form('<html>查無資料</html>') == (None, {}))
     print(('\n❌ selftest 失敗 ' + str(bad)) if bad else '\n✅ selftest 全過')
     return 1 if bad else 0
 
 
 if __name__ == '__main__':
-    _m = os.getenv('MOPS_MODE') or 'r3'
-    sys.exit(selftest() if '--selftest' in sys.argv else {'r1': main, 'r2': main_r2}.get(_m, main_r3)())
+    _m = os.getenv('MOPS_MODE') or 'r4'
+    sys.exit(selftest() if '--selftest' in sys.argv else {'r1': main, 'r2': main_r2, 'r3': main_r3}.get(_m, main_r4)())

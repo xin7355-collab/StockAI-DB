@@ -172,7 +172,7 @@ console.log('── ② 引擎 LIST_DUMP / LIST_TRIG ──');
 
     // ── ④ ALLFIRE:每天觸發都當候選(成績照舊只算一筆接一筆)──
     console.log('── ④ ALLFIRE ──');
-    ok('④0 ALLFIRE(含 🧬 門檻)進 CACHE_KEY(交易清單不一樣 → ⛔ 不可共用舊快取)', /\.\.\._ckAllFire[,\s}]/.test(ck) && /const _ckAllFire = ALLFIRE \? \{ ALLFIRE: 1, AF_RANK: RANK_MIN, AF_VOL: VOLAT_MIN \} : \{\};/.test(CODE), ck);
+    ok('④0 ALLFIRE(含 🧬 門檻)進 CACHE_KEY(交易清單不一樣 → ⛔ 不可共用舊快取)', /\.\.\._ckAllFire[,\s}]/.test(ck) && /const _ckAllFire = ALLFIRE \? \{ ALLFIRE: 1, AF_RANK, AF_VOL \} : \{\};/.test(CODE) && /const AF_RANK = \+\(process\.env\.AF_RANK \|\| RANK_MIN\);/.test(CODE) && /const AF_VOL = \+\(process\.env\.AF_VOL \|\| VOLAT_MIN\);/.test(CODE), ck);   /* 🧪 V80.1.7 快取門檻可以另外指定(AF_RANK / AF_VOL,只能比模擬門檻鬆,test_afrank),不設 = RANK_MIN / VOLAT_MIN 一樣進 key */
     const AF = run('af', { ALLFIRE: '1', TRADES_CACHE: path.join(tmp, 'caf.json') });
     let C0 = null, C1 = null; try { C0 = JSON.parse(fs.readFileSync(path.join(tmp, 'c.json'), 'utf8')).trades; C1 = JSON.parse(fs.readFileSync(path.join(tmp, 'caf.json'), 'utf8')).trades; } catch (_) {}
     ok('④1 ALLFIRE 跑得起來、cfg 記下、每一筆都標 seq', AF.r.status === 0 && AF.s && AF.s.cfg.allFire === 1 && C1 && C1.length > 0 && C1.every(t => t.seq === 0 || t.seq === 1), `${AF.r.status} ${(AF.r.stderr || '').slice(-200)}`);

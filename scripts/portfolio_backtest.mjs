@@ -321,6 +321,14 @@ const EQUITY_OUT = process.env.EQUITY_OUT || '';
 // ⚠️ 門檻做成可調 —— 防過度配適的關鍵檢定:如果只有某個數字才有效,那就是配適出來的
 const RANK_MIN = +(process.env.RANK_MIN || 80);
 const VOLAT_MIN = +(process.env.VOLAT_MIN || 60);
+// 🧪 V80.1.7 低波動門檻(SELF 含 lovolat 時才用;不設 = 35,一個字都不變)—— next-gene-lowvol 要看門檻左右挪(高原)
+const VOLAT_MAX = +(process.env.VOLAT_MAX || 35);
+// 🧪 V80.1.7 ALLFIRE 快取「建的時候」用的位階 / 波動門檻(不設 = 跟 RANK_MIN / VOLAT_MIN 一樣,一個字都不變)
+//   快取只留「訊號日 位階 ≥ AF_RANK 且 波動 ≥ AF_VOL」那幾天多出來的觸發 → 模擬時門檻**更嚴**(RANK_MIN ≥ AF_RANK、VOLAT_MIN ≥ AF_VOL)
+//   用的是同一份快取的子集合 → 可以重用(⛔ 不用為了「創一年新高 = 位階 100」再花一小時重建)
+//   ⛔ 模擬門檻比快取鬆 → 快取裡根本沒有那些天 → exit 1(⛔ 不可安靜地少算)
+const AF_RANK = +(process.env.AF_RANK || RANK_MIN);
+const AF_VOL = +(process.env.AF_VOL || VOLAT_MIN);
 const FILTER = (process.env.FILTER || '').split('+').filter(Boolean);
 const LIQ = +(process.env.LIQ || 1);       // 億元
 const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾招同時觸發
@@ -355,6 +363,7 @@ if (ALLFIRE && REENTRY > 0) { console.error('🚨 ALLFIRE 不可跟 REENTRY 一�
 //   ⚠️ 全市場 16 年「每天觸發都留」約 3 倍筆數(記憶體裝不下)→ 多出來的那幾筆(seq=0)只留「訊號日是 🧬」的(候選本來就要過 🧬)
 //      → 只能配 SELF 含 high + hivolat;門檻(RANK_MIN / VOLAT_MIN)進 CACHE_KEY(換門檻要重建)
 if (ALLFIRE && !(SELF.includes('high') && SELF.includes('hivolat'))) { console.error('🚨 ALLFIRE 要配 SELF 含 high + hivolat(多出來的觸發只留 🧬 那幾天)'); process.exit(1); }
+if (ALLFIRE && (RANK_MIN < AF_RANK || VOLAT_MIN < AF_VOL)) { console.error(`🚨 ALLFIRE 快取只留 位階 ≥${AF_RANK}・波動 ≥${AF_VOL} 那幾天 → 模擬門檻(${RANK_MIN} / ${VOLAT_MIN})只能更嚴、⛔ 不可更鬆`); process.exit(1); }
 // 🎯 V74.9.3 增量檢定(穩定度探針說「哪一招」不會延續 → 那排序到底有沒有在做事?)
 //   RANKBY = self(預設,這檔自己在這招的期望值)| rand(候選裡**隨機**排序,固定種子)| mkt(全市場該型態平均 = V1 舊法)
 //   GATE   = pat(預設:這檔在**這招**扣成本後為正)| stock(這檔在**任何一招**扣成本後為正 → 不看是哪一招)
@@ -591,7 +600,7 @@ const _ckStopFill = STOPFILL !== 'stop' ? { STOPFILL } : {};
 // 🐻🚨 V77.6.8 兩個強制出場一定進 key(沒設就是空物件 → key 字串跟舊版一模一樣)
 const _ckForce = { ...(BEAR_EXIT ? { BEAR_EXIT } : {}), ...(FORCE_EXIT ? { FORCE_EXIT: FORCE_HASH } : {}), ...(LUDEFER ? { LUDEFER: 1 } : {}), ...(HALFSIG ? { HALFSIG } : {}) };
 // 🔥 ALLFIRE 的交易清單不一樣(多出來的只留 🧬 那幾天 → 門檻也要進)⛔ 寫成一個變數,CACHE_KEY 那一行不可有巢狀大括號(十幾支測試用 [^}]* 抽它)
-const _ckAllFire = ALLFIRE ? { ALLFIRE: 1, AF_RANK: RANK_MIN, AF_VOL: VOLAT_MIN } : {};
+const _ckAllFire = ALLFIRE ? { ALLFIRE: 1, AF_RANK, AF_VOL } : {};
 // 📈 V79.8.2 PSRC=ext:候選清單換了 → 交易整份不一樣 → 進 key(內容雜湊,⛔ 只放檔名;同樣寫成一個變數)
 const _ckPsrc = PSRC ? { PSRC: (() => { const b = fs.readFileSync(PSRC.slice(4)); let h = 2166136261; for (let k = 0; k < b.length; k++) { h ^= b[k]; h = Math.imul(h, 16777619) >>> 0; } return `${b.length}:${h}`; })() } : {};
 const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill, ..._ckForce, ..._ckAllFire, ..._ckPsrc });
@@ -971,7 +980,7 @@ for (const sym of SCAN_SYMS) {
     for (const t of tr) {
         if (t.__g != null) { graceBlocked += t.__g; continue; } if (t.__hs) { hsDaysAll += t.__hs[0]; hsHitsAll += t.__hs[1]; continue; }
         if (t.__pre != null) { preHitAll += t.__pre; continue; }
-        if (_af && t.seq === 0) { const f = _af.get(t.inD); if (!(f && f.rank >= RANK_MIN && f.vol >= VOLAT_MIN)) { afDrop++; continue; } }
+        if (_af && t.seq === 0) { const f = _af.get(t.inD); if (!(f && f.rank >= AF_RANK && f.vol >= AF_VOL)) { afDrop++; continue; } }
         allTrades.push({ ...t, sym });
     }
     if (++done % 50 === 0) {
@@ -1490,7 +1499,7 @@ const selfOk = t => {
         if (c === 'high' && !(f.rank >= RANK_MIN)) return false;
         if (c === 'low' && !(f.rank < 40)) return false;
         if (c === 'hivolat' && !(f.vol >= VOLAT_MIN)) return false;
-        if (c === 'lovolat' && !(f.vol < 35)) return false;
+        if (c === 'lovolat' && !(f.vol < VOLAT_MAX)) return false;
         if (c === 'volup' && !(f.volr != null && f.volr >= 2)) return false;
         if (c === 'novolshrink' && !(f.volr != null && f.volr >= 1)) return false;
         // 📐 乖離年線太大就不做(⛔ 這是**排除**條件,測的是它會不會保護到「追高」策略)
