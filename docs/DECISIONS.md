@@ -20,6 +20,7 @@
 - `trump_posts_miner.unit_num_gate(zh, en)`:先跑原本的 `confcall_deck.num_gate`(⛔ 一行沒改,法說會摘要共用);對不上的數字只有在「中文數字 × 萬 / 億 / 兆」剛好等於「英文數字 × thousand / million / billion / trillion」才放行,一個「數字 + 單位」只抵一次。
 - 被擋的記 `zgv = GATE_V`(2);排除條件改成「數字對不上而且是這一版擋的」→ 舊版擋掉的(沒有 zgv)下一輪重翻一次(每則最多 3 次照舊)。
 - selftest ⑪⑫ 走正式入口:3000 億 ↔ 300 BILLION、2.7 億 ↔ 270 MILLION、1 千萬桶 ↔ 10 million barrels 過;500 億 ↔ 300 BILLION、3000 億 ↔ 30 BILLION、原文沒有的 20% 照樣擋;⭐ 決定性對照:換回舊核對 → 前兩則被擋。
+- ✅ 上線後實跑(手動派 `trump_posts.yml` #5,2026-11-02 23:30 UTC):這一輪翻了 2 則、被擋 0 則(`src.tr` done 2 / gate 0)—— 就是原本顯示英文的那兩則:10/26「300 BILLION」→「3000 億美元」、10/23「270 MILLION」→「2.7 億美元」;gh-pages 與 data 兩邊的 `data/trump_posts.json` 6 則都有中文。
 
 ### 👆 個股頁頂端那排 + 觀察抽屜 🗡️ ≥44×44(只在 `pointer: coarse`)
 - ← 🤖 ☆ 🔔 與 🗡️ 直接 min 44×44(☆ 🔔 中間只有 4px,⛔ 用 ::after 往外擴會互相蓋到);🔍 股名那一塊只撐高度。修前(rwd_audit 👆):← 48×41、🤖 33×21、🔍 78×39、☆ 18×20、🔔 30×33、🗡️ 21×20。
