@@ -9185,7 +9185,6 @@ ${list}
         { v: 'V79.4.1', d: [
             '📚 產業作戰室:注意股、處置股那兩條改用 2010 年起(含後來下市的股票)的資料重新整理(散戶 App 的用法不變)',
         ], dt: '2026-10-20' },
-        { v: 'V79.4.0', d: ['📚 產業作戰室:注意股那一條的資料拉長到 2010 年重新整理(散戶 App 的用法不變)'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
