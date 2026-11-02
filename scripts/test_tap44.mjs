@@ -4,6 +4,8 @@
  *   手機(390×844、觸控 = pointer: coarse):每一顆的中心往上下左右各 21px 點下去,一定點到它自己
  *   (= 點擊範圍夠大,而且跟隔壁那顆沒有重疊)
  *     頂端 🔍 🤖 產 ⚙️ 🔔 ・消息面三顆分頁鈕 ・大盤五顆子分頁 ・個股頁子分頁
+ *     🆕 V80.2.2 個股頁頂端那排(← 🤖 🔍股名 ☆ 🔔)・觀察抽屜 🗡️(打開抽屜量)
+ *   ①b 個股置頂:觸控比滑鼠最多高 6px(那一列 41 → 44)、股名那一格寬 ≥ 100px(⛔ 為了按鈕把股名擠掉)
  *   ① 頂端列高度跟滑鼠版(pointer: fine)一模一樣(⛔ 為了放大按鈕把頂端撐高)
  *   ② ⭐ 決定性對照:同一頁換成滑鼠(pointer: fine)→ 頂端那幾顆一定有點不到的(證明是那段 CSS 讓它過的)
  *   ③ 空過守門:觸控那一輪 matchMedia('(pointer: coarse)') 一定要成立;每一組至少量到一顆
@@ -64,6 +66,16 @@ async function probe(touch) {
         app.switchAppTab('diag');
         await new Promise(r => setTimeout(r, 400));
         take('個股子分頁', [...document.querySelectorAll('.sub-tab-btn')]);
+        // 🆕 V80.2.2 個股頁頂端那排 + 觀察抽屜(先捲回最上面:個股子分頁那排可能把頁面捲走)
+        window.scrollTo(0, 0);
+        take('個股頂端', [...document.querySelectorAll('#quoteRowName > button, #quoteRowName [title="點此搜尋股票"], #favStarIcon, #priceAlertIcon')]);
+        const qh = document.getElementById('quoteHeadBox'), nm = document.querySelector('#quoteRowName > .flex-1');
+        out.qh = qh ? Math.round(qh.getBoundingClientRect().height) : 0;
+        out.nameW = nm ? Math.round(nm.getBoundingClientRect().width) : 0;
+        try { app.openHuntPanel(); } catch (_) {}
+        await new Promise(r => setTimeout(r, 500));
+        take('觀察抽屜', [document.getElementById('monitorHuntIcon')].filter(Boolean));
+        try { app.closeHuntPanel(); } catch (_) {}
         return out;
     });
     await ctx.close();
@@ -72,7 +84,7 @@ async function probe(touch) {
 const T = await probe(true), M = await probe(false);
 ok('③ 觸控那一輪真的是觸控(pointer: coarse);滑鼠那一輪不是', T.coarse && !M.coarse, `${T.coarse}/${M.coarse}`);
 ok('③ 版面 shim 全部生效(⛔ 量到假的幾何)', !T.shimBad.length && !M.shimBad.length, [...T.shimBad, ...M.shimBad].join('・'));
-for (const g of ['頂端', '消息面分頁', '大盤子分頁', '個股子分頁']) {
+for (const g of ['頂端', '消息面分頁', '大盤子分頁', '個股子分頁', '個股頂端', '觀察抽屜']) {
     const L = T.groups[g] || [];
     ok(`③ ${g}:至少量到一顆`, L.length > 0, JSON.stringify(L));
     const bad = L.filter(x => x.miss.length);
@@ -83,6 +95,9 @@ ok('ⓐ 頂端含「產」那顆(有自己的框,用 ::after 擴)', (T.groups['�
 //   → 改釘兩件:觸控 ≤ 滑鼠(⛔ 撐高),而且每顆按鈕佔的高度(含 −4px 外距)≤ 36px = 正式環境頂端內容高(🔍 28px 圖示 + p-1 上下 4px)
 ok('① 頂端列:觸控 ≤ 滑鼠(⛔ 為了放大按鈕把頂端撐高)', T.headH > 0 && T.headH <= M.headH && T.headH2 <= M.headH2, `觸控 ${T.headH}/${T.headH2} ・滑鼠 ${M.headH}/${M.headH2}`);
 ok('① 頂端每顆按鈕佔的高度(含 −4px 外距)≤ 36px(= 正式環境頂端內容高,所以頂端不會變高)', (T.groups['頂端'] || []).filter(x => x.t !== 'hdrProBtn').every(x => x.mbox <= 36), JSON.stringify((T.groups['頂端'] || []).map(x => [x.t, x.mbox])));
+ok('①b 個股置頂:觸控比滑鼠最多高 6px(那一列 41 → 44)', T.qh > 0 && M.qh > 0 && T.qh - M.qh <= 6, `觸控 ${T.qh} ・滑鼠 ${M.qh}`);
+ok('①b 個股置頂:股名那一格寬 ≥ 100px(⛔ 為了按鈕把股名擠掉)', T.nameW >= 100, `股名那格 ${T.nameW}px`);
+ok('② ⭐ 決定性對照:滑鼠模式個股頂端一定有點不到的(☆ 18×20、🤖 33×21)', (M.groups['個股頂端'] || []).some(x => x.miss.length), JSON.stringify(M.groups['個股頂端']));
 {
     const mb = (M.groups['頂端'] || []).filter(x => x.miss.length);
     ok('② ⭐ 決定性對照:滑鼠(pointer: fine)頂端一定有點不到的(是那段 CSS 讓觸控過的)', mb.length > 0, JSON.stringify(M.groups['頂端']));
