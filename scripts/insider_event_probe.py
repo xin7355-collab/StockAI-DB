@@ -249,9 +249,12 @@ def main():
     n_ev = sum(len(v) for v in events.values())
     print(f'📦 申報轉讓 {len(months)} 個月({months[0] if months else "-"} ~ {months[-1] if months else "-"})・{len(rows)} 列 ・'
           f'合成 {n_ev} 件(同檔同日一件)・{len(events)} 檔', flush=True)
-    if n_ev < 300:
-        print('❌ 事件太少(< 300)→ ⛔ 不判(回補還沒完成?)')
+    min_ev = int(S('MIN_EV') or 300)            # ⛔ 正式判讀一律 300;只有拿部分資料試跑正式入口時才調低
+    if n_ev < min_ev:
+        print(f'❌ 事件太少(< {min_ev})→ ⛔ 不判(回補還沒完成?)')
         return 1
+    if min_ev < 300:
+        print(f'⚠️ MIN_EV={min_ev}:試跑(資料還沒補完),⛔ 數字不可當結論')
     cal = (load_kx(data / '^TWII.json') or {}).get('d')
     if not cal:
         print('❌ 讀不到交易日曆')
