@@ -24,6 +24,7 @@ const QCORE = (() => {
         chg: ['N 日漲跌 %', 'n', 'k'], gap: ['今天開盤跳空 %(比昨收)', '', 'k'],
         hhv: ['前 N 日最高價(⛔ 不含今天)', 'n', 'k'], llv: ['前 N 日最低價(⛔ 不含今天)', 'n', 'k'],
         hhc: ['前 N 日最高收盤(⛔ 不含今天)', 'n', 'k'],
+        dhh: ['收盤距前 N 日最高價 %(⛔ 不含今天)', 'n', 'k'], ebias: ['乖離率 %(收盤比 N 日指數均線)', 'n', 'k'],
         volr: ['成交量 ÷ 前 N 日均量(⛔ 不含今天)', 'n', 'k'],
         fstreak: ['外資連續買超天數', '', 'inst'], tstreak: ['投信連續買超天數', '', 'inst'],
         finst: ['三大法人 N 日買超 ÷ 成交量 %', 'n', 'inst'],
@@ -97,6 +98,9 @@ const QCORE = (() => {
                     for (let i = p; i < n; i++) { let x = f === 'llv' ? Infinity : -Infinity; for (let j = i - p; j < i; j++) x = f === 'llv' ? Math.min(x, src[j]) : Math.max(x, src[j]); out[i] = Number.isFinite(x) ? x : null; }
                     return out;
                 });
+                // 📐 V80.2.1 us-stock-scanner 三種買點(評估紀錄 53,只借條件)用:距一年高點幾 %、收盤比 EMA 幾 %
+                case 'dhh': { const hh = get({ f: 'hhv', n: needN() }); return memo('dhh' + p, () => C.map((c, i) => hh[i] > 0 && c > 0 ? (c / hh[i] - 1) * 100 : null)); }
+                case 'ebias': { const e = get({ f: 'ema', n: needN() }); return memo('ebias' + p, () => C.map((c, i) => e[i] > 0 ? (c - e[i]) / e[i] * 100 : null)); }
                 case 'volr': return memo('volr' + needN(), () => { const out = new Array(n).fill(null); for (let i = p; i < n; i++) { let s = 0; for (let j = i - p; j < i; j++) s += V[j]; out[i] = s > 0 ? V[i] / (s / p) : null; } return out; });
                 case 'fstreak': return streak('foreign_net');
                 case 'tstreak': return streak('trust_net');
@@ -179,6 +183,12 @@ function selftest() {
     const nh = bars.findIndex((r, i) => i >= 40 && bars.slice(i - 20, i).every(x => x.close < r.close));
     ok('① 創 20 日新高那天:前 20 日最高收盤 < 今天收盤(含今天的話會相等 = 永遠不會「突破」)', nh > 0 && hh[nh] < bars[nh].close, nh);
     const vr = S.get({ f: 'volr', n: 20 }); ok('① 量比基準⛔ 含今天(第 150 根爆 6 倍 → 量比 > 3)', vr[150] > 3 && vr[150] === (bars[150].volume / 1000) / (bars.slice(130, 150).reduce((a, r) => a + r.volume / 1000, 0) / 20));
+    // ①b V80.2.1 距前 N 日最高價 % / 收盤比 EMA %(手算)
+    const dh = S.get({ f: 'dhh', n: 60 }), hv60 = Math.max(...bars.slice(140, 200).map(r => r.high));
+    ok('①b dhh60 = 收盤 ÷ 前 60 日最高價(⛔ 含今天)− 1', Math.abs(dh[200] - (bars[200].close / hv60 - 1) * 100) < 1e-9 && dh[59] === null, dh[200]);
+    const eb = S.get({ f: 'ebias', n: 20 }), e20 = S.get({ f: 'ema', n: 20 });
+    ok('①b ebias20 = (收盤 − EMA20)÷ EMA20、EMA 還沒有值那幾根 = null', Math.abs(eb[120] - (bars[120].close - e20[120]) / e20[120] * 100) < 1e-9 && eb[18] === null, eb[120]);
+    ok('①b 白話描述帶天數', describe({ all: [{ a: { f: 'dhh', n: 250 }, op: '>=', b: -8 }] }) === '收盤距前 250 日最高價 %(⛔ 不含今天) ≥ -8', describe({ all: [{ a: { f: 'dhh', n: 250 }, op: '>=', b: -8 }] }));
     // ② 外資連買天數
     const fs = S.get({ f: 'fstreak' }); ok('② 外資連買 7 天(100~106)→ 第 106 根 = 7、第 107 根 = 0', fs[106] === 7 && fs[107] === 0 && fs[99] === 0);
     // ③ 交叉 / 去重
@@ -189,13 +199,13 @@ function selftest() {
     ok('③ K 由下往上穿過 D:每一個訊號日前一天 K ≤ D、當天 K > D', xs.length > 5 && xs.every(i => K[i] > Dd[i] && K[i - 1] <= Dd[i - 1]), xs.length);
     // ④ ⛔ 前視:第 i 根之後換成亂數,每個積木第 i 根的值不變
     let bad = [];
-    const keys = [{ f: 'ma', n: 20 }, { f: 'ema', n: 12 }, { f: 'rsi', n: 14 }, { f: 'k' }, { f: 'd' }, { f: 'bias', n: 20 }, { f: 'chg', n: 5 }, { f: 'gap' }, { f: 'hhv', n: 20 }, { f: 'llv', n: 20 }, { f: 'hhc', n: 60 }, { f: 'volr', n: 20 }, { f: 'fstreak' }, { f: 'finst', n: 5 }, { f: 'mgchg', n: 5 }];
+    const keys = [{ f: 'ma', n: 20 }, { f: 'ema', n: 12 }, { f: 'rsi', n: 14 }, { f: 'k' }, { f: 'd' }, { f: 'bias', n: 20 }, { f: 'chg', n: 5 }, { f: 'gap' }, { f: 'hhv', n: 20 }, { f: 'llv', n: 20 }, { f: 'hhc', n: 60 }, { f: 'volr', n: 20 }, { f: 'fstreak' }, { f: 'finst', n: 5 }, { f: 'mgchg', n: 5 }, { f: 'dhh', n: 60 }, { f: 'ebias', n: 20 }];
     for (const i of [60, 120, 200, 260]) {
         const cut = bars.slice(0, i + 1).concat(Array.from({ length: 20 }, (_, j) => ({ ...bars[i], date: D[Math.min(299, i + 1 + j)], open: 1, high: 999, low: 0.5, close: 3, volume: 9e9, foreign_net: -9e9 })));
         const S2 = series(cut);
         for (const k of keys) { const a = S.get(k)[i], b = S2.get(k)[i]; if (!(a === b || (Number.isNaN(a) && Number.isNaN(b)))) bad.push(`${k.f}${k.n || ''}@${i}`); }
     }
-    ok('④ ⛔ 前視:第 i 根之後換成亂數,15 種積木第 i 根的值都不變', !bad.length, bad.slice(0, 5).join(','));
+    ok('④ ⛔ 前視:第 i 根之後換成亂數,17 種積木第 i 根的值都不變', !bad.length, bad.slice(0, 5).join(','));
     // ⑤ 月營收:10 號之後第一個交易日才算公布
     const rev = [{ ym: '2019-12', v: 10 }, { ym: '2020-01', v: 9 }, { ym: '2020-02', v: 11 }, { ym: '2020-03', v: 12 }];
     const S3 = series(bars, { rev }), rh = S3.get({ f: 'revhi', n: 3 });

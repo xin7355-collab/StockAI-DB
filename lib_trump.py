@@ -6,8 +6,13 @@
   scripts/trump_src_probe.py(雲端探路)・trump_posts_miner.py(每天採礦 → 🗽 川普那一格)
 ⛔ 別處不准再寫一份關鍵字或「幾點以後算隔天」(陷阱 #37:同一條規則兩份 → 研究跟畫面講的不是同一件事)。
 
-規則(評估紀錄㊵ 2026-09-27 定的,這裡只是搬家,一個字都沒改):
+規則(評估紀錄㊵ 2026-09-27 定的;V80.2.1 評估紀錄 53 修掉三種量得到的誤判,其餘一個字沒改):
   ① 分類 = 小寫後的關鍵字:關稅 / 台灣 / 晶片 / 中國 / 協議(KW)
+     V80.2.1 拿 2022-02 起 22,533 則原創發文量過才改(⛔ 憑印象):
+       晶片 30 則有 7 則不是晶片(議員 Chip Roy 5 則・「談判籌碼 negotiating / bargaining chip」3 則)→ 排掉
+       協議 404 則有 24 則是「to deal with 處理」「a great deal of 很多」→ 排掉
+       關稅 407 則有 2 則只靠「duties」命中,兩則都是「總統的職責」→ duties 拿掉
+       中國靠「Xi」命中的 8 則全部是習近平 → 不動
   ② 對到台股:台北時間 13:30 以後 → 隔天;09:00 以前 → 當天;09:00~13:30(含)而且當天有開盤 → 盤中(研究剔除)
   ③ 去重:同一分鐘 + 內文前 80 個字一樣 = 同一則
 文字清理的想法參考 sstklen/trump-code(MIT License, Copyright (c) 2025-2026 Washin Mura Contributors)
@@ -23,8 +28,9 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
 TW = timezone(timedelta(hours=8))
-KW = {'tariff': r'\btariffs?\b|\bduties\b', 'taiwan': r'\btaiwan\b', 'chip': r'\bchips?\b|semiconductor|\btsmc\b',
-      'china': r'\bchina\b|\bxi\b', 'deal': r'\bdeal\b'}
+KW = {'tariff': r'\btariffs?\b', 'taiwan': r'\btaiwan\b',
+      'chip': r'(?<!negotiating )(?<!bargaining )\bchips?\b(?! roy\b)|semiconductor|\btsmc\b',
+      'china': r'\bchina\b|\bxi\b', 'deal': r'(?<!\bto )\bdeal\b(?! of\b)'}
 CLS = tuple(KW)
 CLS_ZH = {'tariff': '關稅', 'taiwan': '台灣', 'chip': '晶片', 'china': '中國', 'deal': '協議'}
 OPEN_MIN, CLOSE_MIN = 9 * 60, 13 * 60 + 30
@@ -123,7 +129,12 @@ def selftest():
 
     # ① 分類:跟㊵ 那支的正規式一字不差(搬家前後同一份)
     ok('① 關稅 + 中國', classify('China must pay TARIFFS now') == ['tariff', 'china'], classify('China must pay TARIFFS now'))
-    ok('① duties 也算關稅', classify('new duties on steel') == ['tariff'])
+    ok('① duties 不再算關稅(量到的兩則都是「總統的職責」)', classify('assume the duties of the President') == [] and classify('new TARIFFS on steel') == ['tariff'])
+    ok('① 晶片:議員 Chip Roy ⛔ 算', classify('Congressman Chip Roy is a fighter') == [], classify('Congressman Chip Roy is a fighter'))
+    ok('① 晶片:談判籌碼 ⛔ 算', classify('used it as a "negotiating chip"') == [] and classify('a bargaining chip') == [])
+    ok('① 晶片:chips in America 照算', classify('build CHIPS in America') == ['chip'], classify('build CHIPS in America'))
+    ok('① 協議:to deal with / great deal of ⛔ 算', classify("This is what I've had to deal with") == [] and classify('a great deal of money') == [])
+    ok('① 協議:a deal with China 照算(決定性對照)', classify('a FAST DEAL with China') == ['china', 'deal'], classify('a FAST DEAL with China'))
     ok('① chips / TSMC / semiconductor', classify('TSMC builds chips') == ['chip'] and classify('Semiconductor plants') == ['chip'])
     ok('① Xi 要整個字', classify('President Xi') == ['china'] and classify('taxi drivers') == [], classify('taxi drivers'))
     ok('① deal 要整個字(dealer ⛔)', classify('Great DEAL') == ['deal'] and classify('dealer') == [])

@@ -70,6 +70,15 @@ for (const strat of STRATS) {
     for (const t of ['inv', 'fav', 'market', 'radar', 'etf', 'potential', 'hunt']) await grab(t, t => app.switchAppTab(t), t);
     // ⭐ 每一頁的子分頁也要走過(只掃預設那一格 = 其他格的文字永遠看不到)
     for (const t of ['global', 'tw', 'idx', 'rot', 'advice', 'eve']) await grab('mkt_' + t, async t => { app.switchAppTab('market'); app.switchMarketSubTab(t); }, t, 2500);
+    // 🗽 V80.2.1 消息面第三格(藏在分頁鈕後面 → 上一行掃不到):餵一份窗口裡有分類發文的資料,發生率 / 每則 / 新聞三段都畫出來
+    await grab('mkt_global_trump', async () => {
+        const W = app._trumpWin(Date.now()), t = new Date(W.from + 60e3).toISOString();
+        app._trumpCache = { at: Date.now(), err: '', news: [{ title: 'Trump tariffs', title_zh: '川普關稅新聞', url: 'https://news.example.com/a', published: t }],
+            d: { v: 1, updated: new Date().toISOString(), latest: t, cls: ['tariff', 'taiwan', 'chip', 'china', 'deal'], src: {}, days: {},
+                 posts: [{ id: '1', t, cls: ['china', 'tariff'], en: 'China TARIFFS', zh: '對中國課關稅', url: 'https://truthsocial.com/@realDonaldTrump/1' }, { id: '2', t, cls: ['chip'], en: 'TSMC chips', url: '' }],
+                 recent: [[t, 0, 'china,tariff'], [t, 0, 'chip'], [t, 1, '']] } };
+        app.switchAppTab('market'); app.switchMarketSubTab('global'); app.switchNewsPane('trump');
+    }, null, 1500);
     for (const t of ['strategy', 'etf', 'custom']) await grab('radarmode_' + t, async t => { app.switchAppTab('radar'); app.switchRadarMode(t); }, t, 2500);
     // 🗑️ V79.0.0 券商頁整頁移除(分點付費資料停了)→ 不再掃 bcat_* / brank_*
     // 🧪 條件式卡片:畫面巡邏不一定觸發得到 → 直接餵條件(大盤風險偏高)

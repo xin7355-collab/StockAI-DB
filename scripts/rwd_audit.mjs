@@ -28,7 +28,8 @@ const browser = await chromium.launch({
 });
 
 const SCAN = async (w, h, font, opener) => {
-    const page = await browser.newPage({ viewport: { width: w, height: h } });
+    // 👆 V80.2.1 手機那一輪模擬觸控螢幕(pointer: coarse)—— 「點擊範圍 ≥44×44」的 CSS 只在觸控螢幕生效,滑鼠模式量不到
+    const page = await (await browser.newContext({ viewport: { width: w, height: h }, ...(w < 500 ? { isMobile: true, hasTouch: true } : {}) })).newPage();
     await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!(window.app || typeof app !== 'undefined'), null, { timeout: 30000 });
     await page.waitForTimeout(1200);
@@ -149,6 +150,29 @@ const SCAN = async (w, h, font, opener) => {
         const key = o => o.t + '|' + (o.over ?? o.extra);
         const dedupe = a => [...new Map(a.map(o => [key(o), o])).values()].sort((x, y) => (y.over ?? y.extra) - (x.over ?? x.extra)).slice(0, 8);
         out.esc = dedupe(out.esc); out.cut = dedupe(out.cut); out.clip = dedupe(out.clip); out.wide = dedupe(out.wide);
+        // 👆 V80.2.1 可以點的東西小於 44×44(手指點的最小建議尺寸)—— 照「標籤 + 前兩個 class」分組,只印最多的幾種
+        //   ⛔ 不是紅燈:只修每天都會點的固定按鈕(test_tap44.mjs 釘住),其他的列出來給下次挑
+        //   ::after 往外擴的(position:absolute + 負的 left/right/top/bottom)也算進點擊範圍
+        out.tap = (() => {
+            const coarse = matchMedia('(pointer: coarse)').matches, g = new Map();
+            for (const el of document.querySelectorAll('button,a[href],[onclick],select,input[type=checkbox],input[type=radio],[role=button]')) {
+                if (!vis(el)) continue;
+                const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) continue;
+                let tw = r.width, th = r.height;
+                const af = getComputedStyle(el, '::after');
+                if (af && af.content && af.content !== 'none' && af.position === 'absolute') {
+                    tw = Math.max(tw, r.width - (parseFloat(af.left) || 0) - (parseFloat(af.right) || 0));
+                    th = Math.max(th, r.height - (parseFloat(af.top) || 0) - (parseFloat(af.bottom) || 0));
+                }
+                if (tw >= 44 && th >= 44) continue;
+                const cls = typeof el.className === 'string' ? el.className.trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.') : '';
+                const key = el.tagName.toLowerCase() + (cls ? '.' + cls : '');
+                const x = g.get(key) || { key, n: 0, w: Math.round(tw), h: Math.round(th), ex: (el.id || el.getAttribute('title') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 14) };
+                x.n++; g.set(key, x);
+            }
+            const L = [...g.values()].sort((a, b) => b.n - a.n);
+            return { coarse, total: L.reduce((a, x) => a + x.n, 0), kinds: L.length, top: L.slice(0, 8) };
+        })();
         return out;
         };
         // ⭐ 個股頁:**一次載入、逐頁切換**(⛔ 不每頁重載一次瀏覽器,那會慢 9 倍)
@@ -194,7 +218,7 @@ const SCAN = async (w, h, font, opener) => {
         res.forEach(r => { r.shimBad = shimBad; });
         return res;
     }, [font, opener, SUBTABS, SUBID]);
-    await page.close();
+    await page.context().close();   // V80.2.1 每一輪自己開一個 context(手機那輪要觸控)
     return r;
 };
 
@@ -263,6 +287,10 @@ for (const [w, h, label] of [[390, 844, '📱 手機 390'], [1440, 900, '🖥️
                 if (r.wide.length) {
                     console.log('  📏 內容裝不下自己的框(橫向;`grid-cols-[1fr_auto]` 這類的典型症頭):');
                     r.wide.forEach(o => console.log(`     超出 ${o.over}px  框寬=${o.w}  ${o.t}`));
+                }
+                if (r.tap) {
+                    console.log(`  👆 小於 44×44 的可點元素:${r.tap.total} 個 / ${r.tap.kinds} 種(${r.tap.coarse ? '觸控模式' : '滑鼠模式 —— 觸控才生效的放大規則沒算進去'}${r.tap.total ? ';最多的幾種' : ''})`);
+                    r.tap.top.forEach(o => console.log(`     ×${o.n}  ${o.w}×${o.h}  ${o.key.slice(0, 44)}  「${o.ex}」`));
                 }
                 if (r.clip.length) { console.log('  ✂️ 固定高度裝不下:'); r.clip.forEach(o => console.log(`     溢出 ${o.extra}px  ${o.t}`)); }
                 else if (!r.wide.length) console.log('  ✅ 沒有框被撐爆');

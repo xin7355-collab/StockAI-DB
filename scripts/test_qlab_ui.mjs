@@ -85,7 +85,7 @@ try {
         if (okx) {
             okx.port = { to: '2026-09-24', paths: 17, ai: { fin: 3333e4, mdd: -11.1, worst: 1 }, long: { fin: 4444e4, mdd: -22.2, worst: 1 } }; PRO.renderQlab();
             o.portRow = ref('port:' + okx.id); o.portSay = (document.querySelector('[data-qlref-box]') || {}).innerText || '';
-            delete okx.port; PRO.renderQlab(); o.noPort = !document.querySelector('[data-qlref^="port:"]');
+            delete okx.port; PRO.renderQlab(); o.noPort = !document.querySelector(`[data-qlref="port:${okx.id}"]`);   // ⚠️ V80.2.1 起好幾組都有真的整套資金結果 → 只看被拿掉的那一組
         }
         PRO.QLAB = JSON.parse(keepQ); PRO.renderQlab();
         return o;

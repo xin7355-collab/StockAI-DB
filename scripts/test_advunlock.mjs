@@ -213,6 +213,17 @@ const T = await page.evaluate(() => {
     R.ff = ids(run({ fifut: { level: 'danger', chg5: -10481, net: -93675 } }));
     R.ffNo = ids(run({ fifut: { level: 'warn', chg5: -2000, net: -93675 } }));
     R.ffNull = ids(run({ fifut: null }));
+    // 🏧 V80.2.1 外資提款機:現貨賣超 / 台幣一天貶超過 _FI_OUT → fi_out;沒超過 / 資料比大盤最新收盤舊 / null(⛔ 當 0)→ 沒有
+    { const FO = app._FI_OUT || {}, s0 = +FO.spot, t0 = +FO.twd;
+      R.foOk = Number.isFinite(s0) && s0 < 0 && Number.isFinite(t0) && t0 > 0;
+      R.fo = ids(run({ fiout: { spot: s0 - 100, spotD: '20261016', twd: 0, twdD: '2026-10-16' } }));
+      R.foT = ids(run({ fiout: { spot: s0 + 400, spotD: '20261016', twd: t0 + 0.3, twdD: '2026-10-16' } }));
+      R.foNo = ids(run({ fiout: { spot: s0 + 100, spotD: '20261016', twd: t0 - 0.1, twdD: '2026-10-16' } }));
+      R.foOld = ids(run({ fiout: { spot: s0 - 100, spotD: '20261015', twd: t0 + 0.3, twdD: '2026-10-15' } }));
+      R.foNull = ids(run({ fiout: { spot: null, spotD: '20261016', twd: null, twdD: '2026-10-16' } }));
+      R.foNone = ids(run({ fiout: null }));
+      const h = run({ fiout: { spot: s0 - 100, spotD: '20261016', twd: t0 + 0.3, twdD: '2026-10-16' } }).find(x => x.id === 'fi_out');
+      R.foWhy = h ? h.why : ''; }
     // 📰 V79.3.3 再接 6 篇專欄
     { const H = new Map([['2330', { cost: 0 }]]);
       const drop = mkK(80, '2026-10-16', k => { k[k.length - 1].close = 95; });
@@ -292,6 +303,9 @@ ok('③j 休市 5 天後第一天 → holiday_post;一般週末後 → 沒有', 
 ok('③l 盤前分數 ≤20 → premkt_low;21 分 / 沒算過 / 週末 → 沒有', has(T.pm, 'premkt_low') && !has(T.pmNo, 'premkt_low') && !has(T.pmNull, 'premkt_low') && !has(T.pmWk, 'premkt_low'), JSON.stringify([T.pm, T.pmNo, T.pmNull, T.pmWk]));
 ok('③m 加權最新收盤跌 3.5% → idx_drop3;跌 2% → 沒有', has(T.d3, 'idx_drop3') && !has(T.d3No, 'idx_drop3'), JSON.stringify([T.d3, T.d3No]));
 ok('③m2 外資台指期急遽加空 → fifut_cut;空單近期最重 / 沒資料 → 沒有', has(T.ff, 'fifut_cut') && !has(T.ffNo, 'fifut_cut') && !has(T.ffNull, 'fifut_cut'), JSON.stringify([T.ff, T.ffNo, T.ffNull]));
+ok('③m3 🏧 外資現貨賣超超過門檻 / 台幣貶超過門檻 → fi_out;沒超過 / 資料舊 / null / 沒資料 → 沒有', T.foOk && has(T.fo, 'fi_out') && has(T.foT, 'fi_out') && !has(T.foNo, 'fi_out') && !has(T.foOld, 'fi_out') && !has(T.foNull, 'fi_out') && !has(T.foNone, 'fi_out'),
+    JSON.stringify([T.foOk, T.fo, T.foT, T.foNo, T.foOld, T.foNull, T.foNone]));
+ok('③m4 🏧 fi_out 那一行寫實際數字 + 日期(兩個都超過就兩個都寫)', /10\/16\(五\) 外資現貨賣超 [\d,]+ 億、台幣一天貶 [\d.]+%/.test(T.foWhy || ''), T.foWhy);
 ok('③n 手上的跌破 5 日線 → ma5_break;沒跌破 / 自選 → 沒有', has(T.ma5, 'ma5_break') && !has(T.ma5No, 'ma5_break') && !has(T.ma5Fav, 'ma5_break'), JSON.stringify([T.ma5, T.ma5No, T.ma5Fav]));
 ok('③o 手上的收盤創 60 日新高 → nh60_held;平盤 → 沒有', has(T.nh, 'nh60_held') && !has(T.nhNo, 'nh60_held'), JSON.stringify([T.nh, T.nhNo]));
 ok('③p 外資連買 5 天(最後一根 0 = 沒公布,從前一根算)→ fi_streak5;4 天 → 沒有', has(T.fi, 'fi_streak5') && !has(T.fiNo, 'fi_streak5'), JSON.stringify([T.fi, T.fiNo]));
