@@ -1,0 +1,16 @@
+{
+ "updated": "2026-11-02T06:52:50Z",
+ "start": "2009-01",
+ "months_total": 215,
+ "months_complete": 51,
+ "days_with_data": 1054,
+ "fetched_this_run": 1126,
+ "last_day": "20130425",
+ "stopped": "20130426 斷路:要 JSON 卻回 HTML(擋頁)",
+ "more": 0,
+ "gate": {
+  "sent": 1127,
+  "retried": 0,
+  "tripped": 1
+ }
+}
