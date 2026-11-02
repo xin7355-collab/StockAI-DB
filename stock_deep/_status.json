@@ -251,5 +251,20 @@
    0
   ],
   "done": true
+ },
+ "ssusp": {
+  "probe_first": "2015-04-01",
+  "cols": [
+   "end_date",
+   "reason"
+  ],
+  "have": 30,
+  "of": 2548,
+  "chk": [
+   0,
+   0
+  ],
+  "at": "2026-11-02",
+  "done": false
  }
 }
