@@ -125,20 +125,36 @@ def short_ratio(K, j, sh):
     return K['sb'][j] * 1000 / n * 100 if n else None
 
 
+MIN_CTRL = 10           # 對照組少於 10 檔 ⛔ 不算(V80.1.8:股東會停券擠在同幾天,「沒停券又融券多」只剩 2~3 檔 → 被一兩檔暴漲股拉走)
+
+
 def study(stocks, cal, events_by_sym, windows=WINDOWS, top=TOP):
     """stocks = {代號: (K, 日期→位置, 發行股數, 股利)};events_by_sym = {代號: [(開始日, 結束日, 原因)]}。
-    回 res[(窗口, 組別, 對照)] = [(年, 異常報酬)]。組別:hi(事件股融券前 top%)/ all(全部事件股)。"""
-    # 每一天:誰在 ±QUIET 內有停券(對照 ② 要排掉)
-    ev_days = {}
+    回 res[(窗口, 組別, 對照)] = [(年, 異常報酬)]。組別:hi(事件股裡、當天融券比例在全部股票前 top% 的)/ all(全部事件股),
+    再照停券原因分一次(hi@agm …)。對照(⭐ 都是同一天、同一個窗口):
+      all = 全部股票平均
+      hi  = 前後 QUIET 天沒有停券、融券同樣在前 top% 的股票(⚠️ 少於 MIN_CTRL 檔不算)
+      lo  = ⭐ 同一天也被停券、但融券比例在中位數以下的股票(⚠️ 少於 MIN_CTRL 檔不算)—— 分開「被逼著回補」跟「停券那個季節本身」;
+            配安慰劑(整段挪 SHIFT 天,同一批股票)扣掉「融券多的本來就比融券少的會漲」:效果 = lo_real − lo_sham。"""
+    ev_days = {}                         # 代號 → [事件位置](對照 hi 要排掉)
+    ev_at = {'real': {}, 'sham': {}}     # 事件位置 → [代號](對照 lo 用)
     for s, evs in events_by_sym.items():
+        seen = set()
         for d, _, _ in evs:
             i = event_index(cal, d)
-            if i is not None:
-                ev_days.setdefault(s, []).append(i)
+            if i is None:
+                continue
+            ev_days.setdefault(s, []).append(i)
+            if i in seen or s not in stocks:
+                continue
+            seen.add(i)
+            ev_at['real'].setdefault(i, []).append(s)
+            ev_at['sham'].setdefault(i + SHIFT, []).append(s)
     res = {}
     cache = {}
 
-    def ctrl(base, w):
+    def day(base, w):
+        """同一天同一窗口 → (全部平均, 融券門檻 cut, 對照 hi, {tag: 對照 lo});算不出 → None。"""
         key = (base, w)
         if key in cache:
             return cache[key]
@@ -146,7 +162,7 @@ def study(stocks, cal, events_by_sym, windows=WINDOWS, top=TOP):
         if ra is None or a < 1 or b >= len(cal):
             cache[key] = None
             return None
-        all_x, srt = [], []
+        all_x, qx = [], {}
         for s, (K, ki, sh, dv) in stocks.items():
             ia, ib, jr = ki.get(cal[a]), ki.get(cal[b]), ki.get(ra)
             if ia is None or ib is None:
@@ -156,17 +172,20 @@ def study(stocks, cal, events_by_sym, windows=WINDOWS, top=TOP):
                 continue
             all_x.append(x)
             q = short_ratio(K, jr, sh)
-            quiet = all(abs(i - base) > QUIET for i in ev_days.get(s, []))
-            if q is not None and quiet:
-                srt.append((q, x))
-        if len(all_x) < 30:
+            if q is not None:
+                qx[s] = (q, x)
+        if len(all_x) < 30 or len(qx) < 30:
             cache[key] = None
             return None
-        srt.sort(reverse=True)
-        k = max(1, int(len(srt) * top))
-        hi_ctrl = mean([x for _, x in srt[:k]]) if srt else None
-        cut = srt[k - 1][0] if srt else None
-        cache[key] = (mean(all_x), hi_ctrl, cut)
+        qs = sorted((q for q, _ in qx.values()), reverse=True)
+        cut = qs[max(1, int(len(qs) * top)) - 1]
+        med = qs[len(qs) // 2]
+        hi_x = [x for s, (q, x) in qx.items() if q >= cut and all(abs(i - base) > QUIET for i in ev_days.get(s, []))]
+        lo = {}
+        for tag in ('real', 'sham'):
+            lx = [qx[s][1] for s in ev_at[tag].get(base, []) if s in qx and qx[s][0] <= med]
+            lo[tag] = mean(lx) if len(lx) >= MIN_CTRL else None
+        cache[key] = (mean(all_x), cut, mean(hi_x) if len(hi_x) >= MIN_CTRL else None, lo)
         return cache[key]
 
     for s, evs in events_by_sym.items():
@@ -179,13 +198,14 @@ def study(stocks, cal, events_by_sym, windows=WINDOWS, top=TOP):
             if ie is None or ie in seen:
                 continue
             seen.add(ie)
+            rc = reason_cls(why)
             for tag, base in (('real', ie), ('sham', ie + SHIFT)):
                 if base + RANK_AT < 0:
                     continue
                 jr = ki.get(cal[base + RANK_AT])
                 q = short_ratio(K, jr, sh)
                 for w, wd in windows.items():
-                    c = ctrl(base, wd)
+                    c = day(base, wd)
                     a, b = base + wd[0], base + wd[1]
                     if c is None or a < 1 or b >= len(cal):
                         continue
@@ -195,15 +215,16 @@ def study(stocks, cal, events_by_sym, windows=WINDOWS, top=TOP):
                     x = win_ret(K, ia, ib, dv)
                     if x is None:
                         continue
-                    ca, chi, cut = c
+                    ca, cut, chi, lo = c
                     y = cal[base][:4]
-                    grp = ['all'] + (['hi'] if (q is not None and cut is not None and q >= cut) else [])
-                    rc = reason_cls(why)
+                    grp = ['all'] + (['hi'] if (q is not None and q >= cut) else [])
                     for g0 in grp:
                         for g in (g0, g0 + '@' + rc):           # 再照停券原因分一次(股東會 / 除權息 / 其他)
                             res.setdefault((w, g, 'all_' + tag), []).append((y, x - ca))
                             if chi is not None:
                                 res.setdefault((w, g, 'hi_' + tag), []).append((y, x - chi))
+                            if lo.get(tag) is not None:
+                                res.setdefault((w, g, 'lo_' + tag), []).append((y, x - lo[tag]))
     return res
 
 
@@ -268,14 +289,16 @@ def main():
                        ('hi@agm', f'融券前 {int(TOP * 100)}%・股東會'), ('hi@div', f'融券前 {int(TOP * 100)}%・除權息'),
                        ('all@agm', '全部・股東會'), ('all@div', '全部・除權息')):
             line = []
-            for c, clab in (('all_real', '比全部'), ('hi_real', '比同樣融券多、沒停券'), ('all_sham', '安慰劑(挪 60 天)')):
+            for c, clab in (('lo_real', '⭐比同一天融券少的停券股'), ('lo_sham', '安慰劑(挪 60 天)'),
+                            ('all_real', '比全部'), ('all_sham', '安慰劑'), ('hi_real', '比同樣融券多、沒停券')):
                 j = judge(res.get((w, g, c), []))
                 summary[f'{w}_{g}_{c}'] = j
                 if j.get('n'):
                     line.append(f'{clab} {j["m"]:+.2f}%(n={j["n"]},t={j["t"]:.1f})')
-            jm = summary.get(f'{w}_{g}_hi_real') or {}
-            extra = (f' ・前後半 {jm["h1"]:+.2f}/{jm["h2"]:+.2f} ・逐年 {jm["yr"][0]}/{jm["yr"][1]} ・中位 {jm["med"]:+.2f} ・贏的比例 {jm["pos"] * 100:.0f}%'
-                     if jm.get('n') else '')
+            jm = summary.get(f'{w}_{g}_lo_real') or {}
+            js = summary.get(f'{w}_{g}_lo_sham') or {}
+            extra = (f' ・扣安慰劑 {jm["m"] - js.get("m", 0):+.2f} ・前後半 {jm["h1"]:+.2f}/{jm["h2"]:+.2f} ・逐年 {jm["yr"][0]}/{jm["yr"][1]}'
+                     f' ・中位 {jm["med"]:+.2f} ・贏的比例 {jm["pos"] * 100:.0f}%' if jm.get('n') else '')
             print(f'{w:<8} {lab}:' + ' ・'.join(line) + extra, flush=True)
     if out_path:
         Path(out_path).write_text(json.dumps(summary, ensure_ascii=False, indent=1, default=float), encoding='utf-8')
@@ -298,7 +321,7 @@ def selftest():
     cal = ['2015-03-30', '2015-03-31', '2015-04-01', '2015-04-02', '2015-04-07']
     ok('② 事件日 = 那天或之後第一個交易日(4/4 → 4/7)', event_index(cal, '2015-04-04') == 4 and event_index(cal, '2015-04-01') == 2 and event_index(cal, '2015-05-01') is None)
 
-    def synth(ev_boost, hi_boost, seed=5):
+    def synth(ev_boost, hi_boost, seed=5, crowd=False):
         rnd = random.Random(seed)
         n_day = 1600
         cal_ = [(date(2016, 1, 4) + timedelta(days=k)).isoformat() for k in range(n_day)]
@@ -308,6 +331,8 @@ def selftest():
             sym = str(1000 + k)
             hi = k < 40                                    # 前 40 檔融券多(比例 5%)、其他 0.5%
             evs = [i for i in ev_at if (k % 5 == 0)] if k < 120 else []   # 每 5 檔有一檔有停券事件
+            if crowd:                                       # 股東會那種擠在同一天:融券多的 40 檔裡 35 檔都在停券 → 沒停券的只剩 5 檔
+                evs = list(ev_at) if (k < 35 or (k < 120 and k % 5 == 0)) else []
             c, cs, os_ = 50.0, [], []
             for t in range(n_day):
                 r = rnd.gauss(0, 0.005)
@@ -338,6 +363,14 @@ def selftest():
     m_all = mean([x for _, x in r2[('pre10', 'hi', 'all_real')]])
     m_hi = mean([x for _, x in r2[('pre10', 'hi', 'hi_real')]])
     ok('④ 決定性對照:融券多本身就會漲、跟停券無關 → 比全部 > 0、比同樣融券多 ≈ 0', m_all > 1.0 and abs(m_hi) < 1.0, (m_all, m_hi))
+    ml, mls = mean([x for _, x in r[('pre10', 'hi', 'lo_real')]]), mean([x for _, x in r[('pre10', 'hi', 'lo_sham')]])
+    ok('⑤ ⭐ 新對照「同一天也停券、融券少的」:注入回補買盤 → 量得到(≈ +4%)、安慰劑 ≈ 0', 2.5 < ml < 5.5 and abs(mls) < 1.5, (ml, mls))
+    l2, l2s = mean([x for _, x in r2[('pre10', 'hi', 'lo_real')]]), mean([x for _, x in r2[('pre10', 'hi', 'lo_sham')]])
+    ok('⑤ ⭐ 決定性對照:融券多本身就會漲 → 比融券少的停券股是正的(≈ +2%),但挪 60 天的安慰劑一樣多 → 扣掉 ≈ 0',
+       l2 > 1.0 and abs(l2 - l2s) < 1.0, (l2, l2s))
+    r3 = synth(True, False, crowd=True)
+    ok('⑥ 對照組少於 10 檔 ⛔ 不算(股東會那種擠在同一天:沒停券、融券又多的只剩 5 檔 → 「比同樣融券多、沒停券」整組不出現)',
+       ('pre10', 'hi', 'hi_real') not in r3 and ('pre10', 'hi', 'lo_real') in r3, sorted(k for k in r3 if k[0] == 'pre10' and k[1] == 'hi'))
     print(('\n❌ selftest 失敗 ' + str(bad)) if bad else '\n✅ selftest 全過')
     return 1 if bad else 0
 
