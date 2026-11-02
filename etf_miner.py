@@ -638,6 +638,61 @@ def diff_holdings(prev, curr):
     return {"added": added, "removed": removed, "weight_up": up, "weight_down": down}
 
 
+# ── 🏷️ V80.1.7 被動 ETF 成分進出(計畫 B3)────────────────────────────────────
+#   想量「高股息 / 市值型 ETF 換成分股那幾天,被換進 / 換出的股票會不會被買上去 / 賣下來」。
+#   ⛔ 規則模擬不了(高股息的選股規則每家不同)、持股歷史也補不回來(PCF 只給當天)→ 從今天起存。
+#   ⭐ 只記「進 / 出」(⛔ 不記權重:市值型的權重每天跟著股價動,記了每天都是雜訊)。
+#   ⭐ 基準跟主動式同一條規則:「前一個交易日最後那份」(⛔ 拿今天前一輪比 = 一定是空的,V79.5.2 的坑)。
+PASSIVE_TRACK = [s for s in CONC_WATCH if s not in ("00757", "00830")]   # 那兩檔的成分是美股 / 期貨,⛔ 不收
+PCHG_KEEP = 3000          # 一年全部加起來才幾十筆,留很久也很小
+PASSIVE_WSUM_MIN = 90     # 權重合計低於這個 = 這次只抓到一部分 → 當成抓不到(⛔ 誤判成一堆剔除)
+_STOCK_RE = re.compile(r"^\d{4}[A-Z]?$")    # 台股股票代號(⛔ 期貨 202612F、現金那種列)
+
+
+def _passive_syms(holds):
+    """一檔被動 ETF 今天的成分股代號(排好序);抓不到 / 抓不全 → None。"""
+    if not holds:
+        return None
+    if sum((h.get("weight") or 0) for h in holds) < PASSIVE_WSUM_MIN:
+        return None
+    s = sorted({str(h.get("sym")) for h in holds if h.get("sym") and _STOCK_RE.match(str(h.get("sym")))})
+    return s or None
+
+
+def _passive_step(pb, today, syms):
+    """一檔被動 ETF 這一輪的成分進出(純函式,`scripts/test_etf_chg.py` ⑨ 直接驅動)。
+
+    pb = 上一份 {d: 那份是哪天抓的, s: 成分, bd: 基準日, bs: 基準成分};syms = 今天的成分(None = 抓不到)。
+    回 (新的 pb, 進出 {a, r});沒有基準 → 進出回 None。
+      ・抓不到 → 什麼都不動(基準不可斷)
+      ・第一次 → 只建基準
+      ・上一份是別天的 → 它就是基準;上一份是今天的(同一天第二輪)→ 沿用它存的基準
+    """
+    if not syms:
+        return pb, None
+    if not pb or not pb.get("s"):
+        return {"d": today, "s": syms, "bd": None, "bs": None}, None
+    if pb.get("d") == today:
+        bd, bs = pb.get("bd"), pb.get("bs")
+    else:
+        bd, bs = pb.get("d"), pb.get("s")
+    npb = {"d": today, "s": syms, "bd": bd, "bs": bs}
+    if not bs:
+        return npb, None
+    return npb, {"a": sorted(set(syms) - set(bs)), "r": sorted(set(bs) - set(syms))}
+
+
+def _push_pchg(hist, day, etf, bd, ch, n):
+    """今天這檔的進出寫進累積清單 pchg(同一天同一檔只留一筆;⛔ 有進出的那筆不可被同一天後面那輪的空結果蓋掉)。"""
+    out = [x for x in (hist or []) if isinstance(x, dict)]
+    if not ch or not (ch.get("a") or ch.get("r")):
+        return out[-PCHG_KEEP:]
+    out = [x for x in out if not (x.get("d") == day and x.get("e") == etf)]
+    out.append({"d": day, "e": etf, "bd": bd, "a": ch["a"], "r": ch["r"], "n": n})
+    out.sort(key=lambda x: (x.get("d") or "", x.get("e") or ""))
+    return out[-PCHG_KEEP:]
+
+
 def load_prev_tracking():
     """上一份 etf_tracking.json(換股紀錄 / 換股頻率是一天一天累積的,⛔ 重建不回來)。
     🩺 10/24 巡邏:舊寫法讀壞了回 None → main 當成 {} → 這一輪把每一檔的換股歷史蓋成空的(10/20 那次就是手動救回來的)。
@@ -965,6 +1020,10 @@ def main():
     # 🆕 缺口7(12-3):市值型 ETF 單一持股集中度對照(0050 集中 vs 00922/00923 等權重分散)。
     #   用既有 fetch_etf_detail(CI 有網路),抓不到就略過該檔(不誤判)。
     concentration = []
+    # 🏷️ V80.1.7 被動 ETF 成分進出(累積):這一輪抓不到的那幾檔照留上一份的基準(⛔ 不可斷)
+    _prev_pb = prev.get("pbase") if isinstance(prev.get("pbase"), dict) else {}
+    pbase = dict(_prev_pb)
+    pchg = [x for x in (prev.get("pchg") or []) if isinstance(x, dict)]
     # ⭐ 核心清單 + 自動發現的主動式 ETF(⛔ 去重、⛔ 保持順序讓 log 好讀)
     _act = _discover_active_etfs()
     _watch = list(dict.fromkeys(list(CONC_WATCH) + _act))
@@ -996,6 +1055,16 @@ def main():
                     by_stock.setdefault(h["sym"], []).append(cs)
                     _w_ref.setdefault(h["sym"], {})[cs] = h.get("weight")
             print(f"  ✓ [集中度] {cs}: top1={t1.get('sym')} {t1.get('weight')}% / top5={top5w}% ・成分股 {len(c_holds)} 檔")
+            if cs in PASSIVE_TRACK:
+                _ps = _passive_syms(c_holds)
+                _npb, _ch = _passive_step(_prev_pb.get(cs), today, _ps)
+                if _npb:
+                    pbase[cs] = _npb
+                pchg = _push_pchg(pchg, today, cs, (_npb or {}).get("bd"), _ch, len(_ps or []))
+                if _ps is None:
+                    print(f"  ⚠️ [成分進出] {cs}: 這次抓到的權重合計 < {PASSIVE_WSUM_MIN}% → 當成沒抓到(基準照留)")
+                elif _ch and (_ch["a"] or _ch["r"]):
+                    print(f"  🏷️ [成分進出] {cs}: 進 {_ch['a']} ・出 {_ch['r']}(跟 {_npb.get('bd')} 比)")
         except Exception as _ce:
             print(f"  ⚠️ [集中度] {cs}: {type(_ce).__name__}: {str(_ce)[:80]}")
 
@@ -1020,6 +1089,10 @@ def main():
         "consensus_stocks": consensus_stocks[:200],   # V17.15 — 前 200 檔給前端
         # 🕵️ V72.9.8 經理人動向歷史(滾動 250 個交易日)——⛔ 給未來的回測用,前端目前不讀
         "mgr_hist": out_mgr_hist,
+        # 🏷️ V80.1.7 被動 ETF 成分進出:pbase = 每檔「現在 / 前一個交易日最後那份」成分(明天的基準);
+        #   pchg = 有進出的那幾天(累積,⛔ 回補不了)—— ⛔ 前端目前不讀,滿一年給研究用
+        "pbase": pbase,
+        "pchg": pchg,
         "benchmarks": [
             {"symbol": b, "name": etf_name(b), "perf": perf_with_tr(b, load_prices(b)),
              "fill": dividend_fill_metrics(b),   # 🆕 缺口3:填息力(高息 ETF 硬指標)

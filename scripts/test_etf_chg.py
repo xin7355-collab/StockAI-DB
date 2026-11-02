@@ -148,6 +148,86 @@ for k in ('"hold_d": _st["hold_d"]', '"base_all": _st["base_all"]', '"base_d": _
     ok(f'⑧b 存起來:{k}', k in _src)
 ok('⑧c ⛔ 不可再拿「上一輪持股」直接當基準(舊的 prev_hold 那條路)', 'prev_hold' not in _src and 'diff_holdings(prev_h' not in _src)
 
+# ── ⑨ 🏷️ V80.1.7 被動 ETF 成分進出(pbase / pchg)────────────────────────
+P0 = H(('2330', 57.0), ('2317', 10.0), ('3661', 3.0), ('202612F', 0.5), ('2454', 29.5))   # 有一列期貨
+P1 = H(('2330', 57.0), ('2317', 10.0), ('6446', 3.0), ('202612F', 0.5), ('2454', 29.5))   # 6446 換進、3661 換出
+ok('⑨ 成分只收股票代號(⛔ 期貨那列)、照代號排好', em._passive_syms(P0) == ['2317', '2330', '2454', '3661'], em._passive_syms(P0))
+ok('⑨b 權重合計 < 90% = 只抓到一部分 → 當成沒抓到(⛔ 誤判成一堆剔除)', em._passive_syms(P0[:2]) is None)
+pb0, c0 = em._passive_step(None, D0, em._passive_syms(P0))
+ok('⑨c 第一次:只建基準、不算進出', c0 is None and pb0 == {'d': D0, 's': ['2317', '2330', '2454', '3661'], 'bd': None, 'bs': None}, [pb0, c0])
+pb1, c1 = em._passive_step(pb0, D1, em._passive_syms(P1))
+ok('⑨d 隔天:跟前一天那份比 → 進 6446、出 3661', c1 == {'a': ['6446'], 'r': ['3661']} and pb1['bd'] == D0, [pb1, c1])
+pb1b, c1b = em._passive_step(pb1, D1, em._passive_syms(P1))
+ok('⑨e ⭐ 同一天第二輪:還是跟前一天比(⛔ 拿今天比今天 → 空的)', c1b == c1 and pb1b['bd'] == D0 and pb1b['bs'] == pb0['s'], [pb1b, c1b])
+_old_p = sorted(set(pb1['s']) ^ set(em._passive_syms(P1)))
+ok('⑨f 決定性對照:舊寫法(拿今天前一輪當基準)→ 空的', _old_p == [], _old_p)
+pb1c, c1c = em._passive_step(pb1, D1, None)
+ok('⑨g 抓不到 → 基準與日期都不動', pb1c == pb1 and c1c is None)
+pb2, c2 = em._passive_step(pb1b, D2, em._passive_syms(P1))
+ok('⑨h 再隔天沒變 → 進出是空的、基準換成 10/21', c2 == {'a': [], 'r': []} and pb2['bd'] == D1, [pb2, c2])
+_pc = em._push_pchg([], D1, '0050', D0, c1, 4)
+ok('⑨i 有進出 → 記一筆(日期 / 哪一檔 / 基準日 / 進 / 出 / 檔數)',
+   _pc == [{'d': D1, 'e': '0050', 'bd': D0, 'a': ['6446'], 'r': ['3661'], 'n': 4}], _pc)
+ok('⑨j 同一天後面那輪空的 ⛔ 不可蓋掉', em._push_pchg(_pc, D1, '0050', D0, {'a': [], 'r': []}, 4) == _pc)
+ok('⑨k 同一天同一檔只留一筆', len(em._push_pchg(_pc, D1, '0050', D0, c1, 4)) == 1)
+ok('⑨l 別檔 / 別天照加', len(em._push_pchg(_pc, D1, '0056', D0, c1, 4)) == 2 and len(em._push_pchg(_pc, D2, '0050', D1, c1, 4)) == 2)
+ok('⑨m 只追被動式(⛔ 美股那兩檔 / 主動式)', '0050' in em.PASSIVE_TRACK and '00878' in em.PASSIVE_TRACK
+   and '00757' not in em.PASSIVE_TRACK and not any(s.endswith('A') for s in em.PASSIVE_TRACK))
+for k in ('_passive_step(_prev_pb.get(cs), today, _ps)', '"pbase": pbase', '"pchg": pchg', 'pbase = dict(_prev_pb)'):
+    ok(f'⑨n 接線:{k}', k in _src)
+
+# ── ⑨o ⭐ 走正式入口 main()(假網路、暫存資料夾、假時鐘)三天 ────────────────
+import json
+import tempfile
+from datetime import datetime as _RealDT
+
+
+class _FakeDT(_RealDT):
+    _now = None
+
+    @classmethod
+    def now(cls, tz=None):
+        return cls._now
+
+
+_tmp = Path(tempfile.mkdtemp(prefix='etfp-'))
+_saved = {k: getattr(em, k) for k in ('OUT', 'DATA_DIR', 'datetime', 'list_active_etfs', '_discover_active_etfs',
+                                      'fetch_etf_detail', 'load_prices', 'perf_with_tr', 'dividend_fill_metrics',
+                                      'fetch_etf_premium', 'PIN_ETFS')}
+_feed = {}
+try:
+    em.OUT, em.DATA_DIR, em.datetime = _tmp / 'etf_tracking.json', str(_tmp), _FakeDT
+    em.list_active_etfs = lambda: []
+    em._discover_active_etfs = lambda: []
+    em.PIN_ETFS = []
+    em.load_prices = lambda s: []
+    em.perf_with_tr = lambda s, r: None
+    em.dividend_fill_metrics = lambda *a, **k: None
+    em.fetch_etf_premium = lambda: {}
+    em.fetch_etf_detail = lambda s: ('元大台灣50', [dict(h) for h in _feed.get(s, [])], None, None)
+
+    def _day(d, holds):
+        _FakeDT._now = _RealDT.fromisoformat(d + 'T18:00:00')
+        _feed.clear()
+        _feed['0050'] = holds
+        rc = em.main()
+        return rc, json.loads((_tmp / 'etf_tracking.json').read_text(encoding='utf-8'))
+
+    rc0, j0 = _day(D0, P0)
+    ok('⑨o 第一天跑得起來、建好基準、還沒有進出', rc0 in (0, None) and j0['pbase']['0050']['s'] == ['2317', '2330', '2454', '3661']
+       and j0['pchg'] == [], [rc0, j0.get('pbase'), j0.get('pchg')])
+    rc1, j1 = _day(D1, P1)
+    ok('⑨o2 隔天換成分 → pchg 記到 0050 進 6446、出 3661(跟 10/20 比)',
+       j1['pchg'] == [{'d': D1, 'e': '0050', 'bd': D0, 'a': ['6446'], 'r': ['3661'], 'n': 4}], j1.get('pchg'))
+    rc1b, j1b = _day(D1, P1)
+    ok('⑨o3 ⭐ 同一天再跑一輪 → 那一筆還在、沒有重複', j1b['pchg'] == j1['pchg'], j1b.get('pchg'))
+    rc2, j2 = _day(D2, P1[:2])
+    ok('⑨o4 抓不全那天 → 基準照留 10/21、紀錄不動', j2['pbase']['0050']['d'] == D1 and j2['pchg'] == j1['pchg'],
+       [j2['pbase'].get('0050'), j2.get('pchg')])
+finally:
+    for k, v in _saved.items():
+        setattr(em, k, v)
+
 print()
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ ETF_CHG_PASS(全部通過)')
 sys.exit(1 if fails else 0)
