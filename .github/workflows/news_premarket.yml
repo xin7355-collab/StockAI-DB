@@ -64,9 +64,10 @@ jobs:
             local BR="$1"
             git reset --hard -q 2>/dev/null || true
             git clean -fdq 2>/dev/null || true
-            git fetch origin "$BR" 2>/dev/null || true
-            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
-            git reset --hard -q "origin/$BR" 2>/dev/null || true
+            # ⛔ 不可寫成 git checkout -f "$BR":在 gh-pages 的工作區裡有 data/ 資料夾,「data」會被當成檔名
+            #    → fatal: could be both a local file and a tracking branch → 以前被當成「無分支」默默跳過(data 分支從來沒推上去)
+            git fetch --depth=1 origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || { echo "::warning::抓不到 $BR 分支,跳過"; return 0; }
+            git checkout -f -B "$BR" "origin/$BR" || { echo "::warning::切不到 $BR 分支,跳過"; return 0; }
             mkdir -p data
             for f in $HAVE; do cp "/tmp/news/$(basename $f)" "data/$(basename $f)"; git add -f "data/$(basename $f)"; done
             if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
@@ -74,7 +75,7 @@ jobs:
             for i in 1 2 3 4 5; do
               if git push origin "$BR"; then echo "✅ $BR push 成功"; return 0; fi
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
-              sleep $((i*5)); git fetch origin "$BR" 2>/dev/null || true; git reset --hard -q "origin/$BR" 2>/dev/null || true
+              sleep $((i*5)); git fetch --depth=1 origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || true; git reset --hard -q "origin/$BR" 2>/dev/null || true
               for f in $HAVE; do cp "/tmp/news/$(basename $f)" "data/$(basename $f)"; git add -f "data/$(basename $f)"; done
               git commit -q -m "🗞️ 盤前新聞晨採 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $(for f in $HAVE; do echo "data/$(basename $f)"; done) 2>/dev/null || true
             done
