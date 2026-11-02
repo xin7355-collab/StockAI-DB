@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       queue:
-        description: '要挖的資料集(逗號分隔,依序):price10,div10,margin,rev,per,share,dt,sbl,fis10,fbs10,fcf10'
+        description: '要挖的資料集(逗號分隔,依序):price10,div10,margin,rev,per,share,dt,sbl,fis10,fbs10,fcf10,ssusp(暫停融券,不在預設排隊)'
         required: false
         default: 'price10,div10,margin,rev,per,share,dt,sbl,fis10,fbs10,fcf10'
       limit:

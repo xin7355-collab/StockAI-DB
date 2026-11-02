@@ -16,6 +16,8 @@ on:
           - overseas # 🌏 台股 vs 美股/日股/韓股 大盤層級對照(~1 分,只讀 Yahoo/stooq)
           - both
           - twse_margin # 💳 V79.6.6 上市融資融券(證交所帶日期那份)真實格式 + 新解析收不收(~1 分,只讀證交所)
+          - index_rebal # 🔎 V80.1.7 臺灣 50 / MSCI 成分股調整的歷史公告去哪裡拿(~2 分,只讀官方首頁往下一層)
+          - mops_insider # 🔎 V80.1.7 公開資訊觀測站 申報轉讓 / 董監質押 有沒有歷史(~3 分,只讀 MOPS)
 
 permissions:
   contents: read
@@ -56,6 +58,20 @@ jobs:
       - name: 💳 上市融資融券(證交所帶日期那份)格式探針
         if: ${{ inputs.which == 'twse_margin' }}
         run: python3 scripts/twse_margin_probe.py
+
+      # 🔎 V80.1.7 「早知道先機」研究的資料探路(計畫 B3 / B4)—— 沙箱連不到這些網站,只能在這裡跑。
+      #   ⛔ 只讀、只印:不寫檔、不碰任何分支、不需要任何機密;⛔ 猜 API 網址(陷阱 #23:只從官方首頁往下列出真的有的連結)
+      - name: 🔎 臺灣 50 / MSCI 成分調整公告來源探路
+        if: ${{ inputs.which == 'index_rebal' }}
+        run: |
+          python3 scripts/index_rebal_src_probe.py --selftest
+          python3 scripts/index_rebal_src_probe.py
+
+      - name: 🔎 公開資訊觀測站 申報轉讓 / 董監質押 探路
+        if: ${{ inputs.which == 'mops_insider' }}
+        run: |
+          python3 scripts/insider_src_probe.py --selftest
+          python3 scripts/insider_src_probe.py
 
       - name: 🌐 執行總經採礦
         if: ${{ inputs.which == 'macro' || inputs.which == 'both' }}

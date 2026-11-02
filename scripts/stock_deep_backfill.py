@@ -16,6 +16,7 @@
   share    TaiwanStockShareholding       2010-01-01 ~ 今天
   dt       TaiwanStockDayTrading         2014-01-01 ~ 今天
   sbl      TaiwanDailyShortSaleBalances  2010-01-01 ~ 今天
+  ssusp    TaiwanStockMarginShortSaleSuspension 2010-01-01 ~ 今天 → 暫停融券賣出起訖 + 原因(融券強制回補研究,V80.1.7)
   fis10 / fbs10 / fcf10  綜合損益表 / 資產負債表 / 現金流量表 2010-01-01 ~ 2018-06-30
            → 只留 fin_backfill.WANT 那幾個科目(⛔ 不抄第二份);跟 fin_deep.json 重疊的 2018 前兩季逐欄對表
            (fin_deep 只到 2018 起 → 基本面變因只有 8 年;補完變 16 年,含 2011 / 2015 / 2018 三段跌勢)
@@ -71,6 +72,8 @@ DATASETS = {
     'share':   {'ds': 'TaiwanStockShareholding', 'start': '2010-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.5},
     'dt':      {'ds': 'TaiwanStockDayTrading', 'start': '2014-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.3},
     'sbl':     {'ds': 'TaiwanDailyShortSaleBalances', 'start': '2010-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.1},
+    # 📅 V80.1.7 事件型:欄位是起訖日期 + 原因(字串)→ pack_generic 會把它們當字串欄丟掉 → 用 pack_events 整列留
+    'ssusp':   {'ds': 'TaiwanStockMarginShortSaleSuspension', 'start': '2010-01-01', 'end': TODAY, 'kind': 'events', 'check': None, 'min_nonempty': 0.2},
     # 季報三表:end 刻意壓到 2018-06-30 → 跟 fin_deep.json(2018 起)重疊兩季拿來對表
     'fis10':   {'ds': 'TaiwanStockFinancialStatements', 'start': '2010-01-01', 'end': '2018-06-30', 'kind': 'long', 'check': 'fin', 'min_nonempty': 0.5},
     'fbs10':   {'ds': 'TaiwanStockBalanceSheet', 'start': '2010-01-01', 'end': '2018-06-30', 'kind': 'long', 'check': 'fin', 'min_nonempty': 0.5},
@@ -307,6 +310,48 @@ def pack_generic(rows):
         cols.append(k)
     v = [[(lambda x: (int(x) if isinstance(x, float) and x.is_integer() and abs(x) < 9e15 else x))(_num(by[d].get(k))) for k in cols] for d in ds]
     return {'d': ds, 'c': cols, 'v': v}
+
+
+def pack_events(rows):
+    """事件型資料集(V80.1.7 ssusp:暫停融券賣出)→ {d:[日期], c:[欄名], v:[[字串值…]]}。
+    ⭐ 跟 pack_generic 不一樣:① 字串欄**照留**(起訖日、原因就是重點)② 同一天可以有好幾列(⛔ 不留最後一列)
+    ③ 完全一樣的列只留一筆。欄名從資料本身讀(⛔ 不猜);日期欄一律正規化成 YYYY-MM-DD。"""
+    keys, rec = [], []
+    for r in rows or []:
+        d = _d(r.get('date'))
+        if not d:
+            continue
+        for k in r:
+            if k not in keys and k not in ('date', 'stock_id', 'stock_name'):
+                keys.append(k)
+        rec.append((d, r))
+    if not rec:
+        return {'d': [], 'c': [], 'v': []}
+
+    def cell(k, x):
+        if x is None:
+            return None
+        if 'date' in k.lower():
+            return _d(x) or str(x)
+        return x if isinstance(x, (int, float)) else str(x).strip()
+    seen, out = set(), []
+    for d, r in sorted(rec, key=lambda t: t[0]):
+        row = [cell(k, r.get(k)) for k in keys]
+        key = (d, json.dumps(row, ensure_ascii=False))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append((d, row))
+    return {'d': [d for d, _ in out], 'c': keys, 'v': [row for _, row in out]}
+
+
+def pack_for(spec, rows, sym, delisted=False, want=None):
+    """依資料集種類打包(探路與逐檔共用這一支,⛔ 兩處各寫一份)。"""
+    if spec['kind'] == 'price':
+        return pack_price(rows, sym, delisted=delisted)
+    if spec['kind'] == 'events':
+        return pack_events(rows)
+    return pack_long(rows, want) if want is not None else pack_generic(rows)
 
 
 def pack_price(rows, sym, delisted=False):
@@ -580,7 +625,7 @@ def main():
             st.update({'probe_err': (err or 'empty')[:120], 'at': TODAY})
             continue
         want = fin_want(spec['ds']) if spec['kind'] == 'long' else None
-        pk = pack_price(rows, '2330') if spec['kind'] == 'price' else (pack_long(rows, want) if want is not None else pack_generic(rows))
+        pk = pack_for(spec, rows, '2330', want=want)
         first = (pk['k'][0][0] if spec['kind'] == 'price' else pk['d'][0]) if not is_empty(pk) else '?'
         cols = ['o', 'h', 'l', 'c', 'v', 'money'] if spec['kind'] == 'price' else pk['c']
         print(f'🔎 {key} 探路 2330:{len(rows)} 列 ・最早 {first} ・欄位 {cols} ・樣本 {json.dumps(rows[0], ensure_ascii=False)[:160]}', flush=True)
@@ -621,7 +666,7 @@ def main():
             if data is None:
                 IB._rec(f'{key}_' + (err or '?')[:14])
                 continue
-            obj = pack_price(data, s, delisted=(s in dl)) if spec['kind'] == 'price' else (pack_long(data, want) if want is not None else pack_generic(data))
+            obj = pack_for(spec, data, s, delisted=(s in dl), want=want)
             if is_empty(obj):
                 empty_now += 1
             with gzip.open(dd / f'{s}.json.gz', 'wt', encoding='utf-8') as f:
@@ -732,6 +777,20 @@ def selftest():
     ok('① 日期排序、斜線日期、同一天留最後一列', pk['d'] == ['2015-03-02', '2015-03-03'] and pk['v'][1][pk['c'].index('PER')] == 12.6, pk)
     ok('① 字串欄不存、整段一樣的欄不存、千分位數字照讀', 'note' not in pk['c'] and 'lim' not in pk['c'] and pk['v'][0][pk['c'].index('PBR')] == 3050, pk)
     ok('① 空的 → 空包', pack_generic([]) == {'d': [], 'c': [], 'v': []} and is_empty(pack_generic([])))
+    # ⑫ V80.1.7 事件型(暫停融券賣出):字串欄照留、同一天多列都留、完全一樣的只留一筆;pack_generic 會把它們丟掉(決定性對照)
+    ev = [{'date': '2015-06-01', 'stock_id': '2330', 'end_date': '2015/06/09', 'reason': '股東常會'},
+          {'date': '2015/03/02', 'stock_id': '2330', 'end_date': '2015-03-06', 'reason': '除權'},
+          {'date': '2015-06-01', 'stock_id': '2330', 'end_date': '2015-06-09', 'reason': '股東常會'},
+          {'date': '2015-06-01', 'stock_id': '2330', 'end_date': '2015-06-12', 'reason': '現金增資'}]
+    pe = pack_events(ev)
+    ok('⑫a 事件型:照日期排、日期欄正規化、同一天兩個原因都留、重複那筆去掉',
+       pe['d'] == ['2015-03-02', '2015-06-01', '2015-06-01'] and pe['c'] == ['end_date', 'reason']
+       and pe['v'][1] == ['2015-06-09', '股東常會'] and pe['v'][2] == ['2015-06-12', '現金增資'], pe)
+    ok('⑫b 決定性對照:同一份用 pack_generic → 起訖日與原因全被當字串欄丟掉(所以才要 events)',
+       pack_generic(ev)['c'] == [] and pack_events([]) == {'d': [], 'c': [], 'v': []} and is_empty(pack_events([])))
+    ok('⑫c ssusp 登記成 events、pack_for 照種類分流(探路與逐檔同一支)',
+       DATASETS['ssusp']['kind'] == 'events' and pack_for(DATASETS['ssusp'], ev, '2330') == pe
+       and pack_for(DATASETS['per'], rows, '2330') == pack_generic(rows))
     # ② price:格式跟 klines_deep 一樣 + 分割回調(1:2 → 舊的價格減半)
     pr = []
     c = 100.0
