@@ -18,8 +18,13 @@
  ④ 鉅額 BFIAUU、借券 TWT93U:最近一個交易日 + 歷史抽樣(最早到哪年、欄位哪天變)
  ⑤ 外資持股 MI_QFIIS(上市)/ insti/qfii(上櫃):最近一天 + 一個舊日期(只確認格式;研究用歷史 FinMind 已有)
  ⑥ 期交所三大法人選擇權(TXO):optContractsDateDown、callsAndPutsDateDown —— 最近、1 / 3 / 5 年前(參考專案說約保留 3 年)
+ ⑦ 期交所官方查詢頁的表單欄位
+ ⑧ 上市注意股:OpenAPI notice / notetrans 連續 4 次都 0 檔(11/02 13:12、17:51、18:48,11/03 03:08;同時上櫃有 13 檔)
+    → OpenAPI 的網址清單(swagger.json)有沒有改名 + 跟證交所官網同一份名單(rwd announcement/notice)比;
+    處置 punish 當對照(OpenAPI 那份有資料)。官網只問 4~5 次。
 
 跑法:python3 scripts/official_extra_probe.py [--selftest]
+      WHICH=notice python3 scripts/official_extra_probe.py   ← 只跑 ⑧(⛔ 打到鉅額 / 借券 / 期交所那些)
 """
 import csv
 import io
@@ -254,9 +259,100 @@ def probe_taifex(sec, page, start, end, commodity='TXO'):
     return parsed
 
 
+def rwd_by_date(obj):
+    """證交所官網公告表 {fields, data} → ([(日期, 列數)], 有代號的列數)。
+    日期欄 = 欄位名有「日期」的第一欄;代號欄 = 欄位名有「代號」的第一欄(⛔ 寫死第幾欄:官網改版會換位置)。"""
+    fields = [str(f) for f in (obj.get('fields') or [])] if isinstance(obj, dict) else []
+    data = (obj.get('data') or []) if isinstance(obj, dict) else []
+    di = next((i for i, f in enumerate(fields) if '日期' in f), None)
+    ci = next((i for i, f in enumerate(fields) if '代號' in f), None)
+    cnt, coded = {}, 0
+    for r in data:
+        if not isinstance(r, list):
+            continue
+        if di is not None and len(r) > di:
+            k = str(r[di]).strip()
+            cnt[k] = cnt.get(k, 0) + 1
+        if ci is not None and len(r) > ci and otc_sym_ok(r[ci]):
+            coded += 1
+    return sorted(cnt.items()), coded
+
+
+def probe_notice(tw_today):
+    """⑧ 上市注意股:OpenAPI vs 官網(見檔頭)。官網最多問 4 次、間隔照 GAP(3 秒)。"""
+    say('\n## ⑧ 上市注意股:OpenAPI vs 證交所官網')
+    res, dt, _ = fetch('https://openapi.twse.com.tw/v1/swagger.json')
+    verdict, why = classify(res)
+    sw = None
+    if verdict == 'ok':
+        try:
+            sw = res.json()
+        except ValueError:
+            verdict, why = 'format', '不是 JSON'
+    if isinstance(sw, dict):
+        paths = sw.get('paths') or {}
+        hits = []
+        for p, ops in paths.items():
+            summ = ' '.join(str(op.get('summary') or '') for op in (ops or {}).values() if isinstance(op, dict))
+            if 'announcement' in p.lower() or '注意' in summ or '處置' in summ:
+                hits.append((p, summ[:50]))
+        say(f'- **OpenAPI swagger.json**:{len(paths)} 個網址;跟公告 / 注意 / 處置有關的 {len(hits)} 個')
+        for p, s in hits[:40]:
+            say(f'  - `{p}` {s}')
+        TALLY.append(('⑧', 'swagger.json', 'ok', f'{len(hits)} 個相關網址'))
+    else:
+        say(f'- **OpenAPI swagger.json**:{verdict} {why}')
+        TALLY.append(('⑧', 'swagger.json', verdict, why))
+
+    for slug in ('notice', 'notetrans'):
+        obj, _v = probe_json('⑧', f'OpenAPI announcement/{slug}', f'https://openapi.twse.com.tw/v1/announcement/{slug}',
+                             show=False)
+        if isinstance(obj, list):
+            real = [r for r in obj if isinstance(r, dict) and otc_sym_ok(r.get('Code'))]
+            say(f'  - 有代號的 {len(real)} 列 / 全部 {len(obj)} 列;前 2 列原樣:'
+                f'{json.dumps(obj[:2], ensure_ascii=False)[:400]}')
+
+    # 官網:一次問最近 8 天(白天 / 凌晨問,當天的可能還沒公告 → 要看得到前一個交易日)
+    d0, d1 = (tw_today - timedelta(days=7)).strftime('%Y%m%d'), tw_today.strftime('%Y%m%d')
+    full = {'querytype': '1', 'stockNo': '', 'selectType': '', 'proceType': '', 'startDate': d0, 'endDate': d1,
+            'sortKind': 'STKNO', 'response': 'json'}
+    plain = {'startDate': d0, 'endDate': d1, 'response': 'json'}
+    for slug, what, variants in (('notice', '公布注意', (full, plain)),
+                                 ('punish', '公布處置(對照:OpenAPI 那份有資料)', (plain,)),
+                                 ('notetrans', '公布注意累計次數異常', (plain,))):
+        for params in variants:
+            obj, v = probe_json('⑧', f'官網 rwd announcement/{slug}({what})參數 {sorted(params)}',
+                                f'https://www.twse.com.tw/rwd/zh/announcement/{slug}', params=params)
+            if v == 'blocked':
+                say('  - 🚦 官網擋了 → 這段後面的 ⛔ 再問')
+                return
+            if isinstance(obj, dict):
+                by, coded = rwd_by_date(obj)
+                say(f'  - 有代號的 {coded} 列;依日期 {by[-6:]}')
+                if str(obj.get('stat', '')).upper() == 'OK' and obj.get('data'):
+                    break       # 這組參數有資料 → 不用再試下一組
+
+
+def finish():
+    say('\n## 📋 總表')
+    cnt = {}
+    for sec, name, verdict, why in TALLY:
+        cnt[verdict] = cnt.get(verdict, 0) + 1
+        say(f'- {sec} {name}:{verdict}{" — " + why if why else ""}')
+    say(f'\n合計:{cnt}(ok = 抓得到、empty = 通了但沒資料、blocked = 被擋、down = 連不上、format = 網址或格式不對)')
+    summ = os.environ.get('GITHUB_STEP_SUMMARY')
+    if summ:
+        with open(summ, 'a', encoding='utf-8') as f:
+            f.write('\n'.join(OUT) + '\n')
+    return 0
+
+
 def main():
     tw_today = datetime.now(timezone(timedelta(hours=8))).date()
     say(f'# 🔭 新官方資料探路({tw_today},UA 寫明身分,⛔ 不偽裝瀏覽器)')
+    if (os.environ.get('WHICH') or 'all').strip() == 'notice':
+        probe_notice(tw_today)
+        return finish()
 
     say('\n## ① 注意 / 處置名單')
     warn, v = probe_json('①', '上櫃注意 tpex_trading_warning_information',
@@ -357,17 +453,8 @@ def main():
             say(f'  - action={act.group(1) if act else "?"} 欄位={[(n, v[:20]) for n, v in fields][:20]}')
         TALLY.append(('⑦', page, 'ok', f'表單 {len(forms)} 個'))
 
-    say('\n## 📋 總表')
-    cnt = {}
-    for sec, name, verdict, why in TALLY:
-        cnt[verdict] = cnt.get(verdict, 0) + 1
-        say(f'- {sec} {name}:{verdict}{" — " + why if why else ""}')
-    say(f'\n合計:{cnt}(ok = 抓得到、empty = 通了但沒資料、blocked = 被擋、down = 連不上、format = 網址或格式不對)')
-    summ = os.environ.get('GITHUB_STEP_SUMMARY')
-    if summ:
-        with open(summ, 'a', encoding='utf-8') as f:
-            f.write('\n'.join(OUT) + '\n')
-    return 0
+    probe_notice(tw_today)
+    return finish()
 
 
 def selftest():
@@ -383,6 +470,9 @@ def selftest():
         def __init__(self, code, body=b'', ctype='application/json'):
             self.status_code, self.content, self.headers = code, body, {'content-type': ctype}
             self.text = body.decode('utf-8', errors='replace')
+
+        def json(self):
+            return json.loads(self.text)
 
     ok('① 連不上 → down', classify(ConnectionError('x'))[0] == 'down')
     ok('② 403 → blocked(⛔ 不可當成「網址不對」)', classify(R(403, b'<html>Forbidden</html>'))[0] == 'blocked')
@@ -412,7 +502,75 @@ def selftest():
        'StockAI-DB official_extra_probe' in UA and 'Chrome/' not in src.replace("'Chrome/'", '')
        and 'Safari/' not in src.replace("'Safari/'", ''))
     ok('⑭ 403 不重試(只有連線失敗 / 429 / 5xx 才退避)', 'res.status_code == 429 or res.status_code >= 500' in src)
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 14 條)')
+
+    # ⑮ 官網公告表:日期 / 代號欄用名字找
+    flds = ['編號', '證券代號', '證券名稱', '累計次數', '注意交易資訊', '日期', '收盤價', '本益比']
+    rows = [['1', '2330', '台積電', '1', 'x', '115/11/02', '1000', '20'],
+            ['2', '6488', '環球晶', '1', 'x', '115/11/02', '400', '15'],
+            ['3', '總計', '', '', '', '115/10/31', '', '']]
+    by, coded = rwd_by_date({'stat': 'OK', 'fields': flds, 'data': rows})
+    ok('⑮ 官網公告表 → 依日期計數 + 有代號的列數(「總計」不算)',
+       by == [('115/10/31', 1), ('115/11/02', 2)] and coded == 2, (by, coded))
+    perm = [5, 1, 0, 2, 3, 4, 6, 7]
+    by2, coded2 = rwd_by_date({'fields': [flds[i] for i in perm], 'data': [[r[i] for i in perm] for r in rows]})
+    ok('⑮b 決定性對照:欄位換位置(日期排第一)→ 結果一樣(⛔ 寫死第幾欄)', (by2, coded2) == (by, coded), (by2, coded2))
+
+    # ⑯~⑱ 只跑 ⑧ / 官網被擋就停 / 第一組參數有資料就不試第二組(假的 fetch,⛔ 連網)
+    real_fetch, saved_env = fetch, {k: os.environ.get(k) for k in ('WHICH', 'GITHUB_STEP_SUMMARY')}
+    notice_ok = json.dumps({'stat': 'OK', 'fields': flds, 'data': rows[:2]}).encode()
+
+    def run_with(which, www):
+        calls = []
+
+        def stub(url, method='GET', params=None, data=None, timeout=40):
+            calls.append(url)
+            if 'swagger.json' in url:
+                return R(200, json.dumps({'paths': {'/announcement/notice': {'get': {'summary': '集中市場當日公布注意股票'}},
+                                                    '/exchangeReport/X': {'get': {'summary': 'y'}}}}).encode()), 0.0, 1
+            if 'openapi.twse.com.tw/v1/announcement/' in url:
+                return R(200, b'[{"Code":"","Name":""}]'), 0.0, 1
+            if 'www.twse.com.tw/rwd/zh/announcement/' in url:
+                return www(url, params), 0.0, 1
+            return R(404), 0.0, 1
+        globals()['fetch'] = stub
+        os.environ.pop('GITHUB_STEP_SUMMARY', None)
+        if which is None:
+            os.environ.pop('WHICH', None)
+        else:
+            os.environ['WHICH'] = which
+        OUT.clear()
+        TALLY.clear()
+        try:
+            with __import__('contextlib').redirect_stdout(io.StringIO()):
+                main()
+        finally:
+            globals()['fetch'] = real_fetch
+            for k, v in saved_env.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+        www_calls = [u for u in calls if 'www.twse.com.tw/rwd/zh/announcement/' in u]
+        return calls, www_calls, list(OUT)
+
+    calls, www_calls, out = run_with('notice', lambda u, p: R(200, notice_ok))
+    heavy = [u for u in calls if any(w in u for w in ('BFIAUU', 'TWT93U', 'MI_QFIIS', 'taifex', 'tpex'))]
+    ok('⑯ WHICH=notice → 只跑 ⑧(⛔ 打到鉅額 / 借券 / 外資持股 / 期交所 / 櫃買),官網 3 次',
+       not heavy and len(www_calls) == 3 and any('有代號的 2 列' in s for s in out), (heavy, www_calls))
+    calls_all, www_all, _ = run_with(None, lambda u, p: R(200, notice_ok))
+    ok('⑯b 決定性對照:沒設 WHICH → 全部段落都跑(有 BFIAUU、期交所)而且最後也跑 ⑧',
+       any('BFIAUU' in u for u in calls_all) and any('taifex' in u for u in calls_all) and len(www_all) == 3,
+       (len(calls_all), www_all))
+    _, www_blk, out_blk = run_with('notice', lambda u, p: R(200, b'<html>blocked</html>', 'text/html'))
+    ok('⑰ 官網回擋頁 → 這段後面 ⛔ 再問(只問 1 次)', len(www_blk) == 1 and any('官網擋了' in s for s in out_blk),
+       www_blk)
+    _, www_2, _ = run_with('notice', lambda u, p: R(200, b'{"stat":"x"}') if 'notice' in u and 'querytype' in p
+                           else R(200, notice_ok))
+    ok('⑱ 第一組參數沒資料 → 試第二組;第二組有資料就停(notice 2 次 + punish + notetrans = 4)',
+       len(www_2) == 4 and sum('announcement/notice' in u for u in www_2) == 2, www_2)
+    OUT.clear()
+    TALLY.clear()
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 20 條)')
     return 1 if fails else 0
 
 

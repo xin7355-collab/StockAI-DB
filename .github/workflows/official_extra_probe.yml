@@ -4,13 +4,17 @@ name: 🔭 新官方資料探路 (official extra probe)
 # (上櫃注意股、上市風險名單、休市表、鉅額、借券、外資持股、期交所選擇權法人)。
 # 雲端工作階段連不到證交所 / 櫃買 / 期交所 → 在這裡實測,log 說了算。
 # 只讀:⛔ 不寫任何產物、不碰任何分支;⛔ 不用金鑰;⛔ 不偽裝瀏覽器(被擋就記下來)。
-# ⛔ 不加排程(不佔排程配額,V73.9.0);改了探針自己會重跑一次。
+# ⛔ 不加排程(不佔排程配額,V73.9.0)。
+# ⛔ 不掛 push 觸發(2026-11-03 拿掉):整套會問證交所 www 四十幾次,證交所對同一個 IP 問太多會擋(block_deep 第一輪
+#   問到第 1,127 次被擋)→ 改了探針不要自動跑,要量什麼就手動按、而且只跑那一段(which)。
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'scripts/official_extra_probe.py'
-      - '.github/workflows/official_extra_probe.yml'
+    inputs:
+      which:
+        description: 'all = 全部段落;notice = 只跑 ⑧ 上市注意股 OpenAPI vs 官網(官網只問 4 次)'
+        type: choice
+        options: [notice, all]
+        default: notice
 
 permissions:
   contents: read
@@ -41,6 +45,8 @@ jobs:
         run: python3 scripts/official_extra_probe.py --selftest
 
       - name: 🔭 探路
+        env:
+          WHICH: ${{ inputs.which || 'notice' }}
         run: |
           set -o pipefail
           python3 scripts/official_extra_probe.py 2>&1 | tee probe.log
