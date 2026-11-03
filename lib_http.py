@@ -21,6 +21,16 @@ GAPS = {'www.twse.com.tw': 3.0}
 BACKOFF = (2, 4, 8, 16)
 
 
+def page_text(res, n=200):
+    """擋頁 / 錯誤頁 → 去掉 script / style / 標籤、壓空白後的開頭 n 字(⛔ 整頁塞進紀錄)。"""
+    import re
+    raw = getattr(res, 'content', b'') or b''
+    t = raw.decode('utf-8', errors='replace') if isinstance(raw, (bytes, bytearray)) else str(raw)
+    t = re.sub(r'<script.*?</script>|<style.*?</style>', ' ', t, flags=re.S | re.I)
+    t = re.sub(r'<[^>]+>', ' ', t)
+    return re.sub(r'\s+', ' ', t).strip()[:n]
+
+
 def _requests_send(method, url, **kw):
     import requests   # 延後到真的要連網才 import(selftest / 純函式不需要 requests)
     return requests.request(method, url, **kw)
@@ -38,16 +48,19 @@ class Gate:
         self.fails = {}     # host → 連續失敗次數
         self.last = {}      # host → 上一次送出的時間
         self.stats = {'sent': 0, 'retried': 0, 'tripped': 0}
+        self.blocked_page = {}   # host → 斷路那一次的回應文字開頭(分得出「暫時封鎖」還是「系統忙碌 / 維護」)
 
     def _pace(self, host):
         wait = self.gaps.get(host, self.default_gap) - (self.clock() - self.last.get(host, -1e18))
         if wait > 0:
             self.sleep(wait)
 
-    def _trip(self, host, why):
+    def _trip(self, host, why, res=None):
         if host not in self.open:
             self.stats['tripped'] += 1
         self.open[host] = why
+        if res is not None and not isinstance(res, Exception):
+            self.blocked_page[host] = page_text(res)
         return None, f'斷路:{why}'
 
     @staticmethod
@@ -87,12 +100,12 @@ class Gate:
                 self.fails[host] = 0
                 return res, ''
             if verdict == 'block':
-                return self._trip(host, why)
+                return self._trip(host, why, res)
             if verdict == 'fail':
                 return None, why
             self.fails[host] = self.fails.get(host, 0) + 1
             if self.fails[host] >= self.trip_after:
-                return self._trip(host, f'連續 {self.fails[host]} 次失敗(最後一次:{why})')
+                return self._trip(host, f'連續 {self.fails[host]} 次失敗(最後一次:{why})', res)
             if i < len(self.backoff):
                 self.stats['retried'] += 1
                 self.sleep(self.backoff[i])
@@ -158,6 +171,16 @@ def selftest():
     g, calls, slept = make([R(200, b'  <!DOCTYPE html><p>blocked</p>')])
     r, why = g.get(TW)
     ok('④ 要 JSON 卻回 HTML → 當成擋頁、斷路', r is None and 'HTML' in why and g.open)
+    ok('④c 斷路那一次的擋頁文字記下來(去標籤 / script / style、壓空白)',
+       g.blocked_page.get('www.twse.com.tw') == 'blocked', g.blocked_page)
+    g, calls, slept = make([R(403, b'<html><head><style>p{}</style><script>x()</script></head>'
+                                  b'<body><h1>Access  Denied</h1>\n your IP</body></html>')])
+    g.get(TW)
+    g2 = make([R(200, b'{"stat":"OK"}')])[0]
+    g2.get(TW)
+    ok('④d 403 擋頁 → 文字「Access Denied your IP」;決定性對照:同一個網址回 JSON 的 Gate 什麼都沒記',
+       g.blocked_page.get('www.twse.com.tw') == 'Access Denied your IP' and g2.blocked_page == {},
+       (g.blocked_page, g2.blocked_page))
     g, calls, slept = make([R(200, b'<!DOCTYPE html>no data')])
     r, why = g.post('https://www.taifex.com.tw/cht/3/x', expect='any')
     ok('④b expect=any(期交所沒資料本來就回 HTML)→ 照常回', r is not None and why == '' and not g.open)
@@ -176,7 +199,7 @@ def selftest():
     g.get('https://www.tpex.org.tw/openapi/v1/x')
     ok('⑦ 同一個網站隔 3 秒(證交所 www)、不同網站不用等', slept == [3.0], slept)
 
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 10 條)')
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 12 條)')
     return 1 if fails else 0
 
 

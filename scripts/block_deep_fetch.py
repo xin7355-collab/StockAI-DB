@@ -15,9 +15,12 @@
 時間到(MAX_MIN 分)或這輪問滿 MAX_REQ 次就存檔收工(more=1),下一輪接著抓;已經 complete 的月份 ⛔ 重抓。
 🚦 2026-11-02 第一輪:隔 3 秒(實際平均 4.4 秒一次)問到第 1,127 次,證交所改回 HTML 擋頁 → 斷路停手(已抓的 52 個月照推)。
    → 這支改成間隔 5 秒、每輪最多 600 次,一天按一次 Run;⛔ 被擋就換一台機器馬上重抓(那等於繞過封鎖)。
+🚦 2026-11-03 第二輪(台北 10:24,盤中):隔 5 秒,問到第 100 次就被擋 → 不是單純「問太多次」(第一輪 1,127 次才擋)。
+   → 再減半、拉長:每輪 300 次、間隔 10 秒(GAP_SEC),改在收盤後的晚上按;被擋時把擋頁文字記進 _status.json 的
+   blocked_page(分得出「暫時封鎖」還是「系統忙碌 / 維護」)。
 
 跑法:python3 scripts/block_deep_fetch.py [--selftest]
-環境變數:OUT_DIR=block_deep  START=2009-01(最早抓到哪個月)  MAX_MIN=80  MAX_REQ=600(這輪最多問幾次)
+環境變數:OUT_DIR=block_deep  START=2009-01(最早抓到哪個月)  MAX_MIN=80  MAX_REQ=300(這輪最多問幾次)  GAP_SEC=10(間隔秒數)
 """
 import json
 import os
@@ -30,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib_http import Gate  # noqa: E402
 
 URL = 'https://www.twse.com.tw/rwd/zh/block/BFIAUU'
-GAP_SEC = 5.0     # 一次問十幾年 → 比 lib_http 預設的 3 秒再慢一點(第一輪 3 秒問到 1,127 次被擋)
+GAP_SEC = 10.0    # 預設間隔(環境變數 GAP_SEC 可改):第一輪 3 秒問到第 1,127 次被擋、第二輪 5 秒問到第 100 次被擋
 FIELDS = ('證券代號', '交易別', '成交價', '成交股數', '成交金額')
 
 
@@ -149,21 +152,36 @@ def run(out_dir, start_ym, today, max_min, gate, clock=time.time, log=print, max
           'months_total': len(months), 'months_complete': comp, 'days_with_data': ndays,
           'fetched_this_run': fetched, 'last_day': last_day, 'stopped': stopped, 'more': more,
           'gate': gate.stats}
+    if stopped:
+        # 擋頁長什麼樣(lib_http 斷路那一次記的)→ 下一輪要不要按、隔多久,看這個決定
+        st['blocked_page'] = (getattr(gate, 'blocked_page', None) or {}).get('www.twse.com.tw', '')
     (out / '_status.json').write_text(json.dumps(st, ensure_ascii=False, indent=1), encoding='utf-8')
     return st
+
+
+def gap_sec(raw):
+    """GAP_SEC 環境變數 → 間隔秒數:空 / 壞值 = 預設 GAP_SEC;⛔ 比 3 秒快(lib_http 給證交所 www 的下限)。"""
+    try:
+        v = float(raw) if str(raw or '').strip() else GAP_SEC
+    except ValueError:
+        v = GAP_SEC
+    return max(v, 3.0)
 
 
 def main():
     out_dir = os.environ.get('OUT_DIR') or 'block_deep'
     start = (os.environ.get('START') or '2009-01').strip()
     max_min = float(os.environ.get('MAX_MIN') or '80')
-    max_req = int(os.environ.get('MAX_REQ') or '600')
+    max_req = int(os.environ.get('MAX_REQ') or '300')
+    gap = gap_sec(os.environ.get('GAP_SEC'))
     today = datetime.now(timezone(timedelta(hours=8))).date()
-    print(f'🐘 鉅額交易歷史:{start} ~ {today}(只抓今天以前)、最多 {max_min:.0f} 分鐘 / {max_req} 次、間隔 {GAP_SEC:g} 秒 → {out_dir}/')
-    st = run(out_dir, start, today, max_min, Gate(gaps={'www.twse.com.tw': GAP_SEC}), max_req=max_req)
+    print(f'🐘 鉅額交易歷史:{start} ~ {today}(只抓今天以前)、最多 {max_min:.0f} 分鐘 / {max_req} 次、間隔 {gap:g} 秒 → {out_dir}/')
+    st = run(out_dir, start, today, max_min, Gate(gaps={'www.twse.com.tw': gap}), max_req=max_req)
     print(f'\n📋 完成 {st["months_complete"]}/{st["months_total"]} 個月、有資料 {st["days_with_data"]} 天、'
           f'這輪問了 {st["fetched_this_run"]} 天、最後 {st["last_day"] or "—"}、'
           f'{"⛔ 停手:" + st["stopped"] if st["stopped"] else ("時間到,下一輪接著抓" if st["more"] else "全部抓完")}')
+    if st.get('blocked_page'):
+        print(f'   擋頁文字:{st["blocked_page"]}')
     summ = os.environ.get('GITHUB_STEP_SUMMARY')
     if summ:
         with open(summ, 'a', encoding='utf-8') as f:
@@ -234,6 +252,11 @@ def selftest():
     ok('⑨ 被擋 → 整輪停手、已抓到的照存、標 stopped(⛔ 繼續打)',
        st3['stopped'].startswith('20260915') and len(sep3['days']) == 10 and not sep3['complete']
        and g3.asked[-1] == '20260915', (st3['stopped'], len(sep3['days'])))
+    g3b = FakeGate(lambda ds: '斷路:要 JSON 卻回 HTML(擋頁)' if ds >= '20260915' else new)
+    g3b.blocked_page = {'www.twse.com.tw': '您的 IP 暫時無法存取'}
+    st3b = run(tempfile.mkdtemp(), '2026-09', today, 999, g3b, log=lambda *a: None)
+    ok('⑨b 被擋 → _status.json 記下擋頁文字(blocked_page);決定性對照:沒被擋那輪沒有這個鍵',
+       st3b.get('blocked_page') == '您的 IP 暫時無法存取' and 'blocked_page' not in st, (st3b.get('blocked_page'), st))
     g4 = FakeGate(lambda ds: new)
     run(tmp2, '2026-09', today, 999, g4, log=lambda *a: None)
     ok('⑩ 下一輪從被擋那天接著抓(⛔ 從頭來)', g4.asked[0] == '20260915', g4.asked[:2])
@@ -256,10 +279,13 @@ def selftest():
     st6 = run(tmp4, '2026-09', today, 999, g6, log=lambda *a: None)
     ok('⑫ 單一天暫時失敗(不是斷路)→ 跳過那天、9 月 ⛔ 標 complete、more=1 下一輪補',
        not load_month(os.path.join(tmp4, '2026-09.json'))['complete'] and st6['more'] == 1 and not st6['stopped'], st6)
+    ok('⑫b 間隔:空 / 壞值 = 預設 10 秒、可以調慢、⛔ 比 3 秒快(填 1 → 3)',
+       [gap_sec(x) for x in (None, '', 'abc', '15', '1')] == [10.0, 10.0, 10.0, 15.0, 3.0],
+       [gap_sec(x) for x in (None, '', 'abc', '15', '1')])
     src = open(os.path.abspath(__file__), encoding='utf-8').read()
     ok('⑬ 走共用連線守門 lib_http.Gate(⛔ 自己寫 requests;⛔ 偽裝瀏覽器)',
        'from lib_http import Gate' in src and 'requests.get' not in src.replace("'requests.get'", ''))
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 14 條)')
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 16 條)')
     return 1 if fails else 0
 
 
