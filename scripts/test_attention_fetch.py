@@ -96,10 +96,52 @@ def make_get(table, fail=()):
     return get
 
 
+# 證交所官網「公布注意有價證券」(rwd announcement/notice)假回應 —— 照 2026-11-03 探針 ⑧(run 41588405425)
+#   實際長相:欄位 編號(數字)/ 證券代號 / 證券名稱 / 累計次數 / 注意交易資訊 / 日期(115.10.30,用點分隔)/ 收盤價 / 本益比;
+#   權證(6 碼,例 046401)跟股票混在一起;理由用全形括號﹝第一款﹞;一次給一整段日期,舊的排前面
+WWW_FIELDS = ['編號', '證券代號', '證券名稱', '累計次數', '注意交易資訊', '日期', '收盤價', '本益比']
+WWW_OK = {'stat': 'OK', 'title': '公布注意有價證券資訊 (115年10月23日 至 115年11月02日 全部上市', 'fields': WWW_FIELDS, 'data': [
+    [1, '046401', '世芯凱基5B購02', '1', '最近六個營業日累積收盤價跌幅達39.13%﹝第一款﹞。', '115.10.30', '0.27', '-----'],
+    [2, '2454', '聯發科', '1', '舊那天的理由', '115.10.30', '1500.00', '20.10'],
+    [3, '2317', '鴻海', '1', '舊那天也有', '115.10.30', '240.00', '15.00'],
+    [4, '2317', '鴻海', '2', '最近六個營業日累積收盤價漲幅達30.12%﹝第一款﹞。<br>當日週轉率5.01%', '115.11.02', '250.00', '15.20'],
+    [5, '2603', '長榮', '1', '當日成交量較最近六十個營業日日平均成交量放大5.12倍﹝第四款﹞。', '115.11.02', '200.00', '6.00'],
+    [6, '071804', '達發統一66購01', '1', 'x', '115.11.02', '1.00', '-----'],
+]}
+WWW = {'resp': WWW_OK, 'fail': None}
+WWW_CALLS = []
+
+
+class FakeGate:
+    """換掉 rm._www_gate():記下問了什麼,回 WWW 設定的假回應(⛔ 真的連網、⛔ 真的睡)。"""
+    def get(self, url, **kw):
+        WWW_CALLS.append((url, kw.get('params') or {}))
+        if WWW['fail']:
+            return None, WWW['fail']
+        return Resp(200, WWW['resp']), ''
+
+
+def _roc(x):
+    """民國日期 → ISO(跟 radar_miner 裡的 _roc_to_iso 同一條規則;那個是函式內的,拿不到)。"""
+    import re
+    m = re.search(r'(\d{2,3})[/\-.]?(\d{2})[/\-.]?(\d{2})', str(x or ''))
+    return f'{int(m.group(1)) + 1911:04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}' if m else None
+
+
+REAL_WWW_GATE = rm._www_gate
+rm._www_gate = FakeGate
+
+
 def run(table, fail=()):
     CALLS.clear()
+    WWW_CALLS.clear()
     rm.requests.get = make_get(table, fail)
-    rm.fetch_attention_disposal_status()
+    if fail == ('*',):
+        WWW['fail'] = '連不上 ConnectionError'
+    try:
+        rm.fetch_attention_disposal_status()
+    finally:
+        WWW['fail'] = None
 
 
 def load(name):
@@ -121,8 +163,8 @@ ok('①d 同一檔兩天都有、舊那天那列排在後面 → 留最新那天
 ok('①b 決定性對照:同一檔又在上櫃處置 → 以處置為準(3324 🚨、20 分盤、出關 11/13)',
    S.get('3324', {}).get('status', '').startswith('🚨') and S['3324'].get('interval') == 20
    and S['3324'].get('end_date') == '2026-11-13', S.get('3324'))
-ok('② 上市 notice + notetrans 合在一起(2330 來自 notice、2603 只在 notetrans)',
-   '2330' in S and '2603' in S and D['tw_notice']['hit'] == 'notice+notetrans', (sorted(S), D['tw_notice']))
+ok('② 上市 notice + notetrans + 官網合在一起(2330 來自 notice、2603 notetrans 跟官網都有)',
+   '2330' in S and '2603' in S and D['tw_notice']['hit'] == 'notice+notetrans+www_notice', (sorted(S), D['tw_notice']))
 ok('②b 兩個名單都有的那檔以 notice 為準(有當天理由)', '漲幅' in S['2330'].get('reason', ''), S['2330'])
 ok('②c 上市處置照舊(2466 5 分盤、出關 11/05)、權證 071804 ⛔ 收',
    S.get('2466', {}).get('interval') == 5 and S['2466'].get('end_date') == '2026-11-05' and '071804' not in S, S.get('2466'))
@@ -143,11 +185,77 @@ ok('⑤ ⛔ 不偽裝瀏覽器:每一次請求的 UA 都寫明 StockAI-DB、沒�
    CALLS and all('StockAI-DB' in h.get('User-Agent', '') and 'Referer' not in h for _, h in CALLS),
    [h for _, h in CALLS][:2])
 
+# ── 🆕 上市注意股官網版(rwd announcement/notice)──
+ok('⑩ 官網那份接上:2317 只在官網 → 官方注意、帶理由(<br> 換成空白)與公告日 11/02',
+   S.get('2317', {}).get('status', '').startswith('⚠️') and S['2317'].get('date') == '2026-11-02'
+   and S['2317'].get('reason', '').startswith('最近六個營業日') and '<br>' not in S['2317']['reason'], S.get('2317'))
+ok('⑩b notetrans 跟官網都有的 2603 → 用官網那列(有理由、有公告日);notice 有的 2330 照舊用 notice',
+   '放大5.12倍' in S.get('2603', {}).get('reason', '') and S['2603'].get('date') == '2026-11-02'
+   and '漲幅' in S['2330'].get('reason', ''), (S.get('2603'), S.get('2330')))
+ok('⑩c 只在比較舊那天(10/30)的 2454 ⛔ 算現在的注意股,記回 10/30;權證 071804 / 046401 ⛔ 收',
+   '2454' not in S and H.get('2026-10-30', {}).get('2454') == '注意' and '071804' not in S
+   and '046401' not in H.get('2026-10-30', {})
+   and '2454' not in H.get('2026-11-02', {}), (sorted(S), H.get('2026-10-30')))
+_ww = [t for t in D['tw_notice']['tried'] if t.get('u') == 'www_notice']
+ok('⑩d 官網一輪只問 1 次、最近 10 天(台北日期)、diag 記最新公告日 / 筆數',
+   len(WWW_CALLS) == 1 and WWW_CALLS[0][1].get('startDate') == '20261023' and WWW_CALLS[0][1].get('endDate') == '20261102'
+   and _ww and _ww[0].get('ok') is True and _ww[0].get('n') == 2 and _ww[0].get('date') == '2026-11-02',
+   (WWW_CALLS, _ww))
+_gate = REAL_WWW_GATE()
+ok('⑩e ⛔ 不偽裝瀏覽器:官網守門 UA 寫明 StockAI-DB、證交所 www 間隔 3 秒、逾時 20 秒',
+   'StockAI-DB' in _gate.ua and 'Chrome' not in _gate.ua and _gate.gaps.get('www.twse.com.tw') == 3.0
+   and _gate.timeout == 20, (_gate.ua, _gate.gaps, _gate.timeout))
+rows, why = rm.parse_twse_www_notice({'stat': 'OK', 'fields': [WWW_FIELDS[i] for i in (5, 1, 4, 0, 2, 3, 6, 7)],
+                                      'data': [[r[i] for i in (5, 1, 4, 0, 2, 3, 6, 7)] for r in WWW_OK['data']]},
+                                     _roc)
+ok('⑩f 決定性對照:官網欄位換位置(日期排第一)→ 解析結果一樣(欄位用名字找)',
+   rows is not None and sorted(rows) == sorted(rm.parse_twse_www_notice(WWW_OK, _roc)[0]), (rows, why))
+ok('⑩g 官網改版(找不到代號 / 日期欄)→ None + 說明(⛔ 默默當成 0 檔);stat 不是 OK = 這段日期沒有 → []',
+   rm.parse_twse_www_notice({'stat': 'OK', 'fields': ['a', 'b'], 'data': [['1', '2']]}, _roc)[0] is None
+   and rm.parse_twse_www_notice({'stat': '很抱歉,沒有符合條件的資料!'}, _roc) == ([], ''))
+
 # ── 第二輪:同一天重跑 → 歷史不重複累加 ──
 run(BASE)
 H2 = load('attention_history.json')['history']
 ok('⑥ 同一天重跑:10/30 那天只有原本那幾檔(⛔ 重複加)、今天照樣覆蓋',
-   H2.get('2026-10-30') == {'1569': '注意'} and H2.get('2026-11-02') == H.get('2026-11-02'), H2.get('2026-10-30'))
+   H2.get('2026-10-30') == {'1569': '注意', '2317': '注意', '2454': '注意'}
+   and H2.get('2026-11-02') == H.get('2026-11-02'), H2.get('2026-10-30'))
+
+# ── 官網被擋 → OpenAPI 那幾份照寫、diag 記下原因(⛔ 整支停) ──
+WWW['fail'] = '斷路:要 JSON 卻回 HTML(擋頁)'
+CALLS.clear()
+WWW_CALLS.clear()
+rm.requests.get = make_get(BASE)
+rm.fetch_attention_disposal_status()
+WWW['fail'] = None
+stb = load('attention_status.json')
+_wb = [t for t in stb['diag']['tw_notice']['tried'] if t.get('u') == 'www_notice']
+ok('⑪ 官網被擋 → 2317 沒了、2330 / 2603 / 上櫃照寫、diag 記「擋頁」(⛔ 整支停、⛔ 沿用昨天)',
+   '2317' not in stb['stocks'] and '2330' in stb['stocks'] and '6488' in stb['stocks']
+   and _wb and _wb[0].get('ok') is False and '擋頁' in _wb[0].get('why', ''), (sorted(stb['stocks']), _wb))
+WWW['resp'] = {'stat': 'OK', 'fields': ['x', 'y'], 'data': [['2317', '115/11/02']]}
+run(BASE)
+WWW['resp'] = WWW_OK
+stf = load('attention_status.json')
+_wf = [t for t in stf['diag']['tw_notice']['tried'] if t.get('u') == 'www_notice']
+ok('⑪b 官網改版 → ok=false、why 寫「欄位變了」(看 diag 就知道要修)、其他照寫',
+   _wf and _wf[0].get('ok') is False and '欄位變了' in _wf[0].get('why', '') and '2330' in stf['stocks'], _wf)
+_real_twn = rm._twse_www_notice
+
+
+def _boom(*a, **k):
+    raise RuntimeError('boom')
+
+
+rm._twse_www_notice = _boom
+try:
+    run(BASE)
+finally:
+    rm._twse_www_notice = _real_twn
+ste = load('attention_status.json')
+_we = [t for t in ste['diag']['tw_notice']['tried'] if t.get('u') == 'www_notice']
+ok('⑪c 官網那段自己丟例外 → 其他名單照寫(⛔ 整支這輪不寫檔)、diag 記 RuntimeError',
+   '2330' in ste['stocks'] and '6488' in ste['stocks'] and _we and _we[0].get('why') == 'RuntimeError', (_we, sorted(ste['stocks'])))
 
 # ── 第三輪:其他官方名單全部抓不到 → 注意 / 處置照寫 ──
 run(BASE, fail=tuple(u for u in BASE if 'exchangeReport' in u or 'BFZFZU' in u))
@@ -171,5 +279,5 @@ src = open(os.path.join(ROOT, 'radar_miner.py'), encoding='utf-8').read()
 ok('⑨ 決定性對照:採礦程式裡真的有打 tpex_trading_warning_information(拿掉 = 上櫃注意股又變空)',
    src.count('tpex_trading_warning_information') >= 1 and 'otc_attention = {}' not in src)
 
-print(f'\n{"✅ 全過" if not FAILS else "❌ 失敗 " + str(len(FAILS)) + " 條"}(共 15 條)')
+print(f'\n{"✅ 全過" if not FAILS else "❌ 失敗 " + str(len(FAILS)) + " 條"}(共 25 條)')
 sys.exit(1 if FAILS else 0)

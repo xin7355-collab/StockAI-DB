@@ -498,6 +498,82 @@ def _flag_rows(url, headers, roc_to_iso, key, title, flags):
     return n
 
 
+def parse_twse_www_notice(obj, roc_to_iso):
+    """證交所官網「公布注意有價證券」rwd JSON → (rows, 說明);rows = [(代號, 公告日 ISO, 理由)]。
+    欄位用名字找(⛔ 寫死第幾欄:官網改版會換位置);stat 不是 OK(「很抱歉,沒有符合條件的資料」)
+    = 這段日期沒有 → ([], '');找不到代號 / 日期欄 = 官網改版了 → (None, 說明)(⛔ 默默當成 0 檔)。"""
+    import re as _re
+    if not isinstance(obj, dict):
+        return None, '回應不是 JSON 物件'
+    if str(obj.get('stat', '')).upper() != 'OK':
+        return [], ''
+    fields = [str(f) for f in (obj.get('fields') or [])]
+
+    def col(*keys):
+        return next((i for i, f in enumerate(fields) if any(k in f for k in keys)), None)
+
+    ci, di, ri = col('代號'), col('日期'), col('注意交易資訊', '交易資訊', '原因')
+    if ci is None or di is None:
+        return None, f'欄位變了:{fields[:10]}'
+    rows = []
+    for r in obj.get('data') or []:
+        if not isinstance(r, list) or len(r) <= max(ci, di):
+            continue
+        sym = str(r[ci]).strip()
+        if not ((sym.isdigit() and len(sym) == 4) or (sym.startswith('00') and len(sym) == 5 and sym.isdigit())):
+            continue   # 跟 OpenAPI 那份同一條代號規則(權證、債券、總計列 ⛔ 收)
+        d = roc_to_iso(r[di])
+        if not d:
+            continue
+        why = _re.sub(r'<[^>]+>', ' ', str(r[ri])) if ri is not None and len(r) > ri else ''
+        rows.append((sym, d, _re.sub(r'\s+', ' ', why).strip()[:160]))
+    return rows, ''
+
+
+def _www_gate():
+    """證交所官網的連線守門(lib_http):間隔 3 秒、被擋就斷路、UA 寫明身分(⛔ 偽裝瀏覽器)。
+    一輪只問 1 次 → 逾時 20 秒、退避 2 / 4 秒就好(⛔ 網站掛了把整支採礦拖好幾分鐘)。
+    獨立成函式 = 測試換成假的(⛔ 真的連網、⛔ 真的睡)。"""
+    from lib_http import Gate
+    return Gate(gaps={'www.twse.com.tw': 3.0}, backoff=(2, 4), timeout=20,
+                ua='Mozilla/5.0 (compatible; StockAI-DB radar_miner/1.0; +https://github.com/xin7355-collab/stockai-db)')
+
+
+def _twse_www_notice(roc_to_iso, days=10):
+    """上市注意股官網版:一次問最近 days 天 → (ok, now{代號: rec}, past{公告日: {代號}}, diag)。
+    now = 最新公告日那天的名單;比較舊那幾天的另外回傳(只記歷史,⛔ 算成現在的注意股)。"""
+    from datetime import timedelta, timezone
+    today = datetime.now(timezone(timedelta(hours=8))).date()   # 台北日期(凌晨跑也問得到昨天的)
+    params = {'querytype': '1', 'stockNo': '', 'selectType': '', 'proceType': '',
+              'startDate': (today - timedelta(days=days)).strftime('%Y%m%d'), 'endDate': today.strftime('%Y%m%d'),
+              'sortKind': 'STKNO', 'response': 'json'}
+    diag = {'u': 'www_notice', 'ok': False, 'n': 0}
+    try:
+        res, why = _www_gate().get('https://www.twse.com.tw/rwd/zh/announcement/notice', params=params)
+        if res is None:
+            diag['why'] = why
+            return False, {}, {}, diag
+        rows, why = parse_twse_www_notice(res.json(), roc_to_iso)
+    except Exception as e:  # noqa: BLE001
+        diag['why'] = type(e).__name__
+        return False, {}, {}, diag
+    if rows is None:
+        diag['why'] = why
+        return False, {}, {}, diag
+    dmax = max((d for _, d, _ in rows), default='')
+    now, past = {}, {}
+    for sym, d, why in rows:
+        if d == dmax:
+            rec = {'status': '⚠️ 注意股', 'threshold': '注意條款觸發', 'date': d}
+            if why:
+                rec['reason'] = why
+            now[sym] = rec
+        else:
+            past.setdefault(d, set()).add(sym)
+    diag.update(ok=True, n=len(now), date=dmax or None, past_days=len(past))
+    return True, now, past, diag
+
+
 def fetch_attention_disposal_status():
     """🚨 處置神器爬蟲:抓 TWSE 注意股 + 處置股名單,寫 data/attention_status.json。
 
@@ -615,6 +691,7 @@ def fetch_attention_disposal_status():
     # 🆕 V80.1.9 notice 跟 notetrans **兩個都抓、合在一起**(以前 _fetch_cat 只取第一個有資料的)。
     #   V67.9 的 diag 量到 notice 是空的,就把 notetrans 排前面 —— 但 V80.1.9 探針在 13:12 實測:兩個名單
     #   白天都只回一列「代號空白」的佔位,收盤後才有資料 → 當年很可能只是量的時間太早。
+    #   ⚠️ 2026-11-03 更正:收盤後、半夜、隔天下午也都是空白佔位(連 5 次)→ notice 不是量太早,是沒在更新;見下面官網版。
     #   notetrans 一有資料就不會再看 notice = 當天公布的注意股可能漏掉(10/29 晚上只收到 2 檔)。
     #   合在一起:不論哪個名單列了都算官方注意;同一檔以 notice(有當天理由)為準。
     attention, _tw_tried, _tw_hit = {}, [], []
@@ -627,6 +704,24 @@ def fetch_attention_disposal_status():
             _tw_hit.append(_short)
         for _s, _rec in _out.items():
             attention.setdefault(_s, _rec)
+    # 🆕 上市注意股官網版(證交所 rwd announcement/notice,最近 10 天,一輪問 1 次)
+    #   為什麼:OpenAPI notice 從 V67.9 量起就一直只回一列代號空白的佔位(11/02 13:12 ~ 11/03 03:08 連 4 次都是),
+    #   以前 App 的「上市注意股」其實只有 notetrans(注意次數累計異常)那一小份 —— 8~10 月每天 0~7 檔,
+    #   同一時間上櫃注意股一天十幾檔。2026-11-03 14:12 探針 ⑧(run 41588405425):OpenAPI notice 還是空白佔位,
+    #   官網同一份名單 10/27~11/03 有 82 列(上市股票 / ETF 66 列,其餘是權證;11/02 那天 15 列),
+    #   欄位 編號 / 證券代號 / 證券名稱 / 累計次數 / 注意交易資訊 / 日期(115.10.30)/ 收盤價 / 本益比。
+    #   同一檔 notetrans 也有 → 用官網那列(有理由、有公告日)。比最新公告日舊的那幾天只記歷史。
+    try:
+        _www_ok, _www_now, tw_past, _www_diag = _twse_www_notice(_roc_to_iso)
+    except Exception as e:  # noqa: BLE001  官網這份出事 ⛔ 拖垮其他名單(整支丟例外 = 這輪不寫檔)
+        _www_ok, _www_now, tw_past = False, {}, {}
+        _www_diag = {'u': 'www_notice', 'ok': False, 'n': 0, 'why': type(e).__name__}
+    _tw_tried.append(_www_diag)
+    if _www_ok and _www_now:
+        _tw_hit.append('www_notice')
+    for _s, _rec in _www_now.items():
+        if _s not in attention or not attention[_s].get('reason'):
+            attention[_s] = _rec
     diag['tw_notice'] = {'hit': '+'.join(_tw_hit) or None, 'n': len(attention), 'tried': _tw_tried}
     print(f"   · 上市注意股:{len(attention)} 檔 (hit={diag['tw_notice']['hit']},各名單 {[(t['u'], t['n']) for t in _tw_tried]})")
 
@@ -733,6 +828,17 @@ def fetch_attention_disposal_status():
                         _late += 1
                     continue
                 today_data[sym] = "注意"
+        # 🆕 上市注意官網版:最近 10 天裡比最新公告日舊的那幾天 → 記回那天(那天那一輪漏掉的補上;已經有的 ⛔ 改)
+        for _d, _syms in sorted((tw_past or {}).items()):
+            if _d >= today_iso:
+                continue
+            _past = hist["history"].setdefault(_d, {})
+            if not isinstance(_past, dict):
+                continue
+            for _s in sorted(_syms):
+                if _s not in _past:
+                    _past[_s] = "注意"
+                    _late += 1
         if _late:
             print(f"   · 注意股 {_late} 檔是之前公告的名單 → 記回公告那天(不算成今天)")
         hist["history"][today_iso] = today_data
