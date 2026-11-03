@@ -23,6 +23,16 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(ROOT, 'scripts', 'portfolio_backtest.mjs');
 const GUARD = 'if (ROTATE || parkSh * _pps >= _need - 1e-6) {';
 let FILE = SRC, injFile = null;
+// 🧯 V81.0.0 逐年模式 + 停 0050:那一年最後一天就結清(INJECT=year 拿掉 → ⓒ 必紅)
+const YGUARD = 'if (YEAR && i > YR_TO && PARK && parkOf && parkSh > 0) {';
+if (process.env.INJECT === 'year') {
+    const s = fs.readFileSync(SRC, 'utf8');
+    if (!s.includes(YGUARD)) { console.error('❌ 注入點找不到'); process.exit(1); }
+    injFile = path.join(ROOT, 'scripts', `_pb_parkchurn_inject_${process.pid}.mjs`);
+    fs.writeFileSync(injFile, s.replace(YGUARD, 'if (false) {'));
+    FILE = injFile;
+    console.log('🧪 INJECT=year:拿掉「逐年模式那一年最後一天就結清 0050」');
+}
 if (process.env.INJECT === 'old') {
     const s = fs.readFileSync(SRC, 'utf8');
     if (!s.includes(GUARD)) { console.error('❌ 注入點找不到'); process.exit(1); }
@@ -72,6 +82,17 @@ try {
     // ⓑ 正常本金:照樣有買、照樣賣 0050 湊錢
     const B = run('b', {});
     ok(`ⓑ 正常本金照樣有買(${B.s && B.s.n} 筆)、照樣有賣 0050 湊錢(賣 ${B.sell} 次)`, B.r.status === 0 && B.s && B.s.n > 0 && B.sell > 1, B.tail);
+
+    // ⓒ 🧯 V81.0.0 逐年模式(YEAR)+ 停 0050:那一年最後一天收盤就把 0050 結清
+    //   以前留到整份資料最後一天才結 → 那一年的停泊損益把之後的 0050 漲跌也算進去(逐年表 🅿️ 那一列 2018 停泊 +138 萬 / 本金 100 萬)、
+    //   年底之後淨值少算 0050 → 中途最多賠錯成 −58~−88%
+    const Cy = run('c', { YEAR: '2024' });
+    let after = null, before = null, yTo = Cy.s && Cy.s.yTo;
+    try { const E = JSON.parse(fs.readFileSync(path.join(tmp, 'e_c.json'), 'utf8')).rows;
+          after = E.filter(r => yTo && r.d > yTo); before = E.filter(r => yTo && r.d <= yTo); } catch (_) {}
+    ok(`ⓒ0 逐年模式跑得完(${yTo || '?'} 收)、那一年裡真的有停在 0050`, Cy.r.status === 0 && before && before.some(r => r.park > 0), Cy.tail);
+    ok(`ⓒ1 ⭐ 那一年最後一天之後 0050 一股都不留(${after ? after.length : '?'} 天裡停泊市值 > 0 的有 ${after ? after.filter(r => r.park > 0).length : '?'} 天)`, after && after.every(r => r.park === 0), after && after.slice(0, 3).map(r => r.d + ':' + r.park).join(','));
+    ok(`ⓒ2 停泊損益(${Cy.s && Cy.s.park})沒有大到不可能(< 本金 100 萬的 60%)、中途最多賠(${Cy.s && Cy.s.dd}%)> −50%`, Cy.s && Math.abs(Cy.s.park) < 6e5 && Cy.s.dd > -50, JSON.stringify(Cy.s && { park: Cy.s.park, dd: Cy.s.dd }));
     fs.rmSync(tmp, { recursive: true, force: true });
 } finally {
     if (injFile) fs.rmSync(injFile, { force: true });

@@ -5,7 +5,8 @@
  *      `_floorTick` / `_tickOf` / `_marginCallState` / `_bear60Of`)原文,用同一段函式掃 16 年全市場(d16,含已下市)。
  *   個股類:每一條 → 一般股票發生幾次、之後那件事發生幾次、隨便一天的比例,以及「這檔自己過去的比例猜不猜得準下一次」
  *            (每一檔第 4 次起,用之前那幾次的比例猜 vs 用一般股票的比例猜,比 Brier;自己的比較差 → own:false)
- *   大盤類:加權 2010 年起 bear_on / bull_on / crash20 / idx_drop3 → 20 個交易日後加權上漲的比例 vs 隨便一天
+ *   大盤類:加權 2010 年起 bear_on / bull_on / crash20 / idx_drop3(+ V81.0.0 idx_drop2 / idx_up2)→ 20 個交易日後加權上漲的比例 vs 隨便一天
+ *   🔀 V81.0.0 交叉:m_dn2 / m_up2(大盤跌 / 漲 2% 以上那天,這一檔隔天收盤比那天高)另外照星期五 / 股性分組 → stk.<id>.by + trait(振幅三分位)
  *   跑法:DATA_DIR=$S/d16 NAMES=$S/stock_names.json node scripts/col_rate_base.mjs out.json
  *         node scripts/col_rate_base.mjs --selftest
  */
@@ -32,7 +33,7 @@ export function extractMember(src, name) {
     }
     throw new Error('大括號對不上:' + name);
 }
-export const NEED = ['_COL_OCC', '_QLAB_SIGS', '_colOccDef', '_colOccIds', '_qlabAt', '_colLim', '_colEvAt', '_colOutAt', '_colOcc', '_floorTick', '_tickOf', '_marginCallState', '_bear60Of', '_atrTR14'];
+export const NEED = ['_COL_OCC', '_QLAB_SIGS', '_colOccDef', '_colOccIds', '_qlabAt', '_colLim', '_colEvAt', '_colOutAt', '_colOcc', '_floorTick', '_tickOf', '_marginCallState', '_bear60Of', '_atrTR14', '_colMktChg', '_colTraitAt'];
 export function buildApp(src) {
     // 📐 V79.8.9 `ql_` 那幾條走 QCORE(index.html 檔案上層那一段,⛔ 另抄一份)
     const qi = src.indexOf('// ==QCORE BEGIN=='), qj = src.indexOf('// ==QCORE END==');
@@ -49,6 +50,9 @@ export const MKT = {
     bull_on: { ev: '剛脫離空頭', out: '20 個交易日後加權上漲' },
     crash20: { ev: '離一年最高點跌 20% 以上', out: '20 個交易日後加權上漲' },
     idx_drop3: { ev: '單日跌 3% 以上', out: '20 個交易日後加權上漲' },
+    // 🔀 V81.0.0 跌 2~3%(⛔ 跟 idx_drop3 重疊:跌 3% 以上那天只算 idx_drop3)/ 漲 2% 以上
+    idx_drop2: { ev: '單日跌 2~3%', out: '20 個交易日後加權上漲' },
+    idx_up2: { ev: '單日漲 2% 以上', out: '20 個交易日後加權上漲' },
 };
 /** 加權那四條每一天成立嗎:定義照 `_colTrigEval`(bear_on / bull_on 用同一支 `_bear60Of`,5 天內剛翻;crash20 含今天 252 根)
  *  ⭐ test_colocc 拿 App 真的 `_colTrigEval` 逐日比對這份(⛔ 兩份定義分叉) */
@@ -60,6 +64,8 @@ export function mktEvents(A, tw) {
         bull_on: i => bear[i] === false && [1, 2, 3, 4, 5].some(j => bear[i - j] === true),
         crash20: i => { if (i < 69) return false; let hi = 0; for (let j = Math.max(0, i - 251); j <= i; j++) hi = Math.max(hi, c[j]); return hi > 0 && c[i] <= hi * 0.8; },
         idx_drop3: i => i >= 1 && c[i - 1] > 0 && (c[i] / c[i - 1] - 1) * 100 <= -3,
+        idx_drop2: i => { if (i < 1 || !(c[i - 1] > 0)) return false; const x = (c[i] / c[i - 1] - 1) * 100; return x <= -2 && x > -3; },
+        idx_up2: i => i >= 1 && c[i - 1] > 0 && (c[i] / c[i - 1] - 1) * 100 >= 2,
     };
     return ev;
 }
@@ -77,6 +83,53 @@ export function mktOcc(A, tw) {
     }
     return out;
 }
+
+// 🔀 V81.0.0 交叉:大盤大跌 / 大漲那天,一般股票隔天怎麼走 —— 照「那天星期幾」與「股性」分組(使用者 11/03)
+//   股性一律呼叫 App 的 `_colTraitAt`(⛔ 第二份);20 日振幅分三組的兩條線 = 全部事件的三分位(寫進 _COL_BASE.trait,App 照同一條線分)。
+//   分組要「穩」才給 App 用(ok:true):樣本 ≥ 200 檔次 + ≥ 10 天、跟全部比的差 ≥ 3pp、前後半同向、有樣本的年份 ≥ 2/3 同向;
+//   ⛔ 不穩的一律退回「一般股票」那個比例(⛔ 挑好看的組)
+export const TRAIT_KEYS = ['wd5', 'wdx', 'a1', 'a2', 'a3', 'p_hi', 'p_lo', 'gene'];
+export const TRAIT_LBL = { wd5: '星期五', wdx: '星期一到四', a1: '平常不太會跳的', a2: '跳動普通的', a3: '平常很會跳的', p_hi: '在一年高檔(位階 85 以上)的', p_lo: '在一年低檔(位階 35 以下)的', gene: '高檔又很會跳的' };
+const wdOf = d => new Date(String(d).slice(0, 10) + 'T00:00:00Z').getUTCDay();
+/** 一檔:每一次大盤事件記一列 [日期, 星期, amp, pos, 隔天(0/1), 5 天後(0/1 或 null)] */
+export function mktStockRows(A, id, b, sym, M) {
+    const rows = [];
+    for (let i = 1; i + 1 < b.length; i++) {
+        if (!A._colEvAt(id, b, i, sym, M)) continue;
+        const y = A._colOutAt('up1', b, i, M); if (y == null) continue;
+        const t = A._colTraitAt(b, i); if (!t) continue;
+        let y5 = null; if (i + 5 < b.length) { let okc = true; for (let j = i + 1; j <= i + 5; j++) { const r = +b[j].close / +b[j - 1].close; if (!(r >= 0.67 && r <= 1.5)) okc = false; } if (okc) y5 = +b[i + 5].close > +b[i].close ? 1 : 0; }
+        const d = iso(b[i].date);
+        rows.push([d, wdOf(d), t.amp, t.pos, y, y5]);
+    }
+    return rows;
+}
+export function traitSummary(rows, thr) {
+    const r1 = x => Math.round(1000 * x) / 10;
+    const [t1, t2] = thr;
+    const tag = r => { const k = [r[1] === 5 ? 'wd5' : 'wdx', r[2] < t1 ? 'a1' : r[2] < t2 ? 'a2' : 'a3'];
+        if (r[3] != null) { if (r[3] >= 85) k.push('p_hi'); else if (r[3] <= 35) k.push('p_lo'); if (r[3] >= 85 && r[2] >= t2) k.push('gene'); } return k; };
+    const days = [...new Set(rows.map(r => r[0]))].sort(), mid = days[days.length >> 1];
+    const acc = { all: { n: 0, k: 0, k5: 0, n5: 0, h: [[0, 0], [0, 0]], y: {}, d: new Set() } };
+    for (const k of TRAIT_KEYS) acc[k] = { n: 0, k: 0, k5: 0, n5: 0, h: [[0, 0], [0, 0]], y: {}, d: new Set() };
+    for (const r of rows) {
+        for (const k of ['all', ...tag(r)]) { const a = acc[k]; a.n++; a.k += r[4]; if (r[5] != null) { a.n5++; a.k5 += r[5]; } const hh = r[0] < mid ? 0 : 1; a.h[hh][0]++; a.h[hh][1] += r[4];
+            const yr = r[0].slice(0, 4); const yy = a.y[yr] || (a.y[yr] = [0, 0]); yy[0]++; yy[1] += r[4]; a.d.add(r[0]); }
+    }
+    const A0 = acc.all, pAll = A0.k / A0.n, out = { n: A0.n, k: A0.k, p: r1(pAll), p5: A0.n5 ? r1(A0.k5 / A0.n5) : null, nd: A0.d.size, by: {} };
+    for (const k of TRAIT_KEYS) {
+        const a = acc[k]; if (!a.n) { out.by[k] = { n: 0 }; continue; }
+        const p = a.k / a.n, diff = p - pAll;
+        const hd = [0, 1].map(h => a.h[h][0] && A0.h[h][0] ? a.h[h][1] / a.h[h][0] - A0.h[h][1] / A0.h[h][0] : null);
+        let ys = 0, yn = 0;
+        for (const [yr, v] of Object.entries(a.y)) { const z = A0.y[yr]; if (v[0] >= 30 && z) { yn++; if (Math.sign(v[1] / v[0] - z[1] / z[0]) === Math.sign(diff)) ys++; } }
+        const ok = a.n >= 200 && a.d.size >= 10 && Math.abs(diff) >= 0.03 && hd.every(x => x != null && Math.sign(x) === Math.sign(diff)) && yn >= 3 && ys / yn >= 2 / 3;
+        out.by[k] = { n: a.n, k: a.k, p: r1(p), p5: a.n5 ? r1(a.k5 / a.n5) : null, nd: a.d.size, diff: r1(diff), h1: hd[0] == null ? null : r1(hd[0]), h2: hd[1] == null ? null : r1(hd[1]), ys, yn, ok };
+    }
+    return out;
+}
+const q3 = arr => { const a = arr.slice().sort((x, y) => x - y); return [a[Math.floor(a.length / 3)], a[Math.floor(a.length * 2 / 3)]].map(x => Math.round(x * 10) / 10); };
+export const MK_IDS = ['m_dn2', 'm_up2'];
 
 /** 全市場等權指數(價格,同一天所有股票平均;一天 < 100 檔不算)—— ql_ 的「比同一天所有股票好」用它當大盤(= 量化實驗室的比法) */
 export function ewIndex(load, files) {
@@ -147,19 +200,31 @@ function main() {
     const poolIds = ids.filter(id => (A._colOccDef(id) || {}).pool), stdIds = ids.filter(id => !poolIds.includes(id));
     const EW = poolIds.length ? ewIndex(load, files) : new Map();
     if (poolIds.length && EW.size < 1000) { console.error(`❌ 全市場等權指數只有 ${EW.size} 天`); process.exit(1); }
-    const per = []; let first = '9999', lastD = '0000', t0 = Date.now();
+    const per = [], mrows = Object.fromEntries(MK_IDS.filter(id => ids.includes(id)).map(id => [id, []])); let first = '9999', lastD = '0000', t0 = Date.now();
     for (const [i, sym] of files.entries()) {
         const b = load(sym); if (!b || b.length < 300) continue;
         A.allStockList = [{ stock_id: sym, type: typeOf[sym] || '' }];
         const r = {};
         for (const id of stdIds) r[id] = A._colOcc(id, b, sym, M);
         for (const id of poolIds) r[id] = poolOcc(A, id, b, sym, EW);
+        for (const id of Object.keys(mrows)) for (const x of mktStockRows(A, id, b, sym, M)) mrows[id].push(x);
         per.push(r);
         if (iso(b[0].date) < first) first = iso(b[0].date); if (iso(b[b.length - 1].date) > lastD) lastD = iso(b[b.length - 1].date);
         if (i % 300 === 0) console.log(`  ${i}/${files.length} ${sym} ${Math.round((Date.now() - t0) / 1000)}s`);
     }
     const stk = { ...aggregate(per, stdIds), ...aggregatePool(per, poolIds) };
-    const out = { built: new Date().toISOString().slice(0, 10), src: 'scripts/col_rate_base.mjs(d16,含已下市)', syms: per.length, win: [first, lastD], stk, mkt: mktOcc(A, tw) };
+    // 🔀 V81.0.0 交叉:振幅三分位(兩種事件的檔次合起來)→ 每一種事件照星期 / 股性分組
+    let trait = null;
+    if (Object.keys(mrows).length) {
+        const amps = []; for (const rs of Object.values(mrows)) for (const r of rs) amps.push(r[2]);
+        trait = { amp: q3(amps), lbl: TRAIT_LBL };
+        for (const [id, rs] of Object.entries(mrows)) {
+            const t = traitSummary(rs, trait.amp); stk[id].by = t.by; stk[id].nd = t.nd; stk[id].p5 = t.p5;
+            console.log(`🔀 ${id}:${t.n.toLocaleString()} 檔次 / ${t.nd} 天 → 隔天收盤比較高 ${t.p}%(5 天後 ${t.p5}%)`);
+            for (const k of TRAIT_KEYS) { const x = t.by[k]; if (x.n) console.log(`   ${TRAIT_LBL[k].padEnd(16)} ${String(x.n).padStart(7)} 檔次 ${String(x.nd).padStart(4)} 天 ${x.p}%(差 ${x.diff}・前半 ${x.h1} 後半 ${x.h2}・年份同向 ${x.ys}/${x.yn}・5 天 ${x.p5}%)${x.ok ? ' ✅ 穩' : ''}`); }
+        }
+    }
+    const out = { built: new Date().toISOString().slice(0, 10), src: 'scripts/col_rate_base.mjs(d16,含已下市)', syms: per.length, win: [first, lastD], stk, mkt: mktOcc(A, tw), ...(trait ? { trait } : {}) };
     const f = process.argv[2]; if (f) fs.writeFileSync(f, JSON.stringify(out, null, 1));
     console.log(JSON.stringify(out, null, 1));
 }
@@ -251,6 +316,25 @@ function selftest() {
     { const mk = (s, k) => D.slice(0, 70).map((d, i) => ({ date: d, close: i === 69 ? (s === 'a' ? 11 : 9) : 10 }));
       const E = ewIndex(s => mk(s), Array.from({ length: 120 }, (_, i) => i ? 'b' + i : 'a')), E2 = ewIndex(s => mk(s), Array.from({ length: 99 }, (_, i) => 'c' + i));
       ok('⑪ 等權指數:平均日報酬;一天不到 100 檔不算', Math.abs(E.get(D[69]) - (1 + (0.1 - 0.1 * 119) / 120)) < 1e-9 && E2.size === 0, JSON.stringify([E.get(D[69]), E2.size])); }
+    // ⑫ 🔀 V81.0.0 大盤事件 × 股性:條件看加權(M)、股性只看 ≤ i、分組要穩才 ok
+    { const DD = D.slice(0, 400), Mx = new Map(), cs = [];
+      let ix = 1000; DD.forEach((d, i) => { const ch = i % 23 === 7 ? -0.025 : i % 29 === 11 ? 0.022 : 0.0005; ix *= 1 + ch; Mx.set(d, ix); cs.push(ch); });
+      const bm = DD.map((d, i) => ({ date: d, open: 50, high: 50 * (1 + (i % 7) / 100), low: 50, close: 50 + (i % 5), volume: 1000 }));
+      const ev = []; for (let i = 1; i < bm.length; i++) if (A._colEvAt('m_dn2', bm, i, '9999', Mx)) ev.push(i);
+      const want = []; for (let i = 1; i < DD.length; i++) if (cs[i] <= -0.02) want.push(i);
+      ok('⑫ m_dn2 == 加權那天跌 ≥2%(一天一天比)', JSON.stringify(ev) === JSON.stringify(want) && ev.length > 10, JSON.stringify([ev.length, want.length]));
+      ok('⑫ 沒給加權(M)→ 一律不成立(⛔ 亂猜)', !A._colEvAt('m_dn2', bm, ev[0], '9999') && !A._colEvAt('m_dn2', bm, ev[0], '9999', new Map()));
+      const t0 = A._colTraitAt(bm, 300), t1 = A._colTraitAt(bm.slice(0, 301).concat(bm.slice(301).map(r => ({ ...r, high: 999, low: 1 }))), 300);
+      ok('⑫ 股性只看 ≤ i(後面改成亂數不變)', JSON.stringify(t0) === JSON.stringify(t1) && t0.pos != null);
+      // 分組:埋「很會跳的那組隔天 80% 漲、其他 40%」,年份與前後半都一樣 → a3 ok:true;沒埋 → 沒有一組 ok
+      const mk = (inj) => { const rows = []; let s7 = 3; const rnd = () => { s7 = (s7 * 16807) % 2147483647; return s7 / 2147483647; };
+          for (let y = 2011; y <= 2022; y++) for (let k = 0; k < 120; k++) { const amp = rnd() * 30, d = `${y}-0${1 + (k % 9)}-1${k % 10}`; const p = inj && amp >= 20 ? 0.8 : 0.4; rows.push([d, 1 + (k % 5), amp, rnd() * 100, rnd() < p ? 1 : 0, null]); } return rows; };
+      const T1 = traitSummary(mk(true), [10, 20]), T0 = traitSummary(mk(false), [10, 20]);
+      ok('⑫ 埋了 → 很會跳的那組 ok、差 > 20pp', T1.by.a3.ok === true && T1.by.a3.diff > 20, JSON.stringify(T1.by.a3));
+      ok('⑫ 決定性對照:沒埋 → 沒有一組 ok', TRAIT_KEYS.every(k => !T0.by[k].ok), JSON.stringify(Object.fromEntries(TRAIT_KEYS.map(k => [k, T0.by[k].ok]))));
+      const ev2 = mktEvents(A, DD.map(d => ({ date: d, close: Mx.get(d) })));
+      ok('⑫ 大盤 idx_drop2 / idx_up2 跟 idx_drop3 不重疊', [...Array(DD.length).keys()].every(i => !(ev2.idx_drop2(i) && ev2.idx_drop3(i))) && [...Array(DD.length).keys()].some(i => ev2.idx_up2(i)));
+    }
     console.log(fails.length ? `❌ ${fails.length} 條失敗` : '✅ SELFTEST_PASS');
     process.exit(fails.length ? 1 : 0);
 }

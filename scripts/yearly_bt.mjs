@@ -40,6 +40,8 @@ export const STRATS = [
     // 🔥 V79.4.9 現行換成「每一招照平均排(lib_hotrule 預設)+ 空頭也照買 + 閒錢停 0050」,照 App 實際買法(LISTK / LIST_TRIG 由外面的 env 給)
     //   SELF 多 nobear(這一檔自己破 20/60 日線不買 = App `_deckBuyOf`)、MIN_MKT_N=0(App 沒有全市場樣本門檻)—— A0 對齊檢查量到的兩個差
     { g: 'now',  id: 'now949',     t: '⭐ 決策台現行(V79.4.9 起):🧬 位階 ≥85 ・每一招照平均排 ・吊燈 ATR 2 倍出場 ・最長抱 20 天 ・空頭也照買 ・沒用到的錢停 0050', env: { EXIT: 'chand2', MAXD: '20', RANK_MIN: '85', PARK: 'idle', SELF: 'high+hivolat+nobear', MIN_MKT_N: '0' } },
+    // 💵 V81.0.0 同一套但錢放現金(⛔ 不停 0050)= 設定裡的 📈 符合進場;使用者 11/03 要看每一套每年賺多少
+    { g: 'now',  id: 'now949c',    t: '💵 決策台現行・錢放現金:同上一列,只差沒用到的錢⛔ 不停 0050(= 設定裡的 📈 符合進場)', env: { EXIT: 'chand2', MAXD: '20', RANK_MIN: '85', SELF: 'high+hivolat+nobear', MIN_MKT_N: '0' } },
     { g: 'prev', id: 'now807',     t: '⏮️ 上一任(V78.0.7~V79.4.8):🧬 位階 ≥85 ・吊燈 ATR 2 倍出場 ・最長抱 20 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'chand2', MAXD: '20', FILTER: 'bear60', RANK_MIN: '85' } },
     { g: 'prev', id: 'now765',     t: '⏮️ 上一任(V77.6.5~V77.7.5):🧬 ・唐奇安 40 日出場 ・最長抱 40 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'don40', MAXD: '40', FILTER: 'bear60' } },
     { g: 'prev', id: 'base',       t: '📤 舊預設(V77.6.5 以前):🧬 ・唐奇安 20 日出場 ・最長抱 20 天 —— 下面每一條都是在它上面只換一件事', env: {} },
@@ -184,9 +186,12 @@ if (ci > 0) {
             const rs = OFFSETS.map(o => { const f = path.join(OUT, `${s.id}_${y}_${o}.json`); try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (_) { return null; } });
             const r0 = rs[0];
             if (!r0) { miss.push(`${s.id}_${y}_0`); continue; }
-            const others = rs.filter(Boolean).map(r => r.pnl);
+            // 🅿️ V81.0.0 停 0050 的那幾列:賺賠 = 股票 + 停在 0050 那段(引擎的 pnl / ret 只算股票,⛔ 漏掉 0050 → 🅿️ 每年少算一大段);沒停 0050 的 park 欄不存在 = + 0
+            const pnlOf = r => r.pnl + (r.park || 0);
+            const others = rs.filter(Boolean).map(pnlOf);
+            const p0 = pnlOf(r0);
             row.y[y] = {
-                n: r0.n, win: r0.win ?? null, per: r0.per ?? null, pnl: r0.pnl, ret: r0.ret, end: r0.end ?? Math.round(1e6 + r0.pnl),
+                n: r0.n, win: r0.win ?? null, per: r0.per ?? null, pnl: p0, ret: r0.park ? +(p0 / 1e4).toFixed(2) : r0.ret, end: Math.round(1e6 + p0),
                 perAmt: r0.perAmt ?? null, worst: r0.worst ?? null, best: r0.best ?? null, dd: r0.dd ?? null,
                 from: r0.yFrom || r0.from, to: r0.yTo || r0.to, lastOut: r0.lastOut || null, cross: r0.crossYear ?? 0,
                 lo: Math.min(...others), hi: Math.max(...others), paths: others.length,
@@ -202,7 +207,7 @@ if (ci > 0) {
             if (cs.some(x => !x)) miss.push(`cont:${s.id}(${cs.filter(Boolean).length}/17)`);
             else {
                 const med = a => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
-                const cum = cs.map(x => x.cum), dd = cs.map(x => x.dd);
+                const cum = cs.map(x => x.cum + (x.park || 0)), dd = cs.map(x => x.dd);   // 🅿️ V81.0.0 一路滾也要加停在 0050 那段(⛔ 只算股票 → 🅿️ 16 年少算 1,600 多萬)
                 row.c = { med: med(cum), lo: Math.min(...cum), hi: Math.max(...cum), dd: med(dd), ddw: Math.min(...dd), win: med(cs.map(x => x.win)), n: med(cs.map(x => x.n)), paths: cs.length, from: cs[0].from, to: cs[0].to };
                 if (!res.benchCont && cs[0].etf0050tr != null) res.benchCont = { from: cs[0].from, to: cs[0].to, twii: cs[0].twii, e0050: cs[0].etf0050, e0050tr: cs[0].etf0050tr };
                 if (_ONLY && cs[0].etf0050tr != null) row.bc = { from: cs[0].from, to: cs[0].to, twii: cs[0].twii, e0050: cs[0].etf0050, e0050tr: cs[0].etf0050tr };

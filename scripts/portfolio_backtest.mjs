@@ -1849,6 +1849,12 @@ for (let i = 0; i < days.length; i++) {
     }
     if (i < YR_FROM) continue;
     // 📅 逐年模式:過了那一年就不再開新倉,只讓手上的部位照規則出場;全部出清就結束
+    // 🧯 V81.0.0 逐年模式 + 停 0050:那一年最後一天收盤就把 0050 結清(⛔ 以前留到整份資料最後一天才結 → 那一年的停泊損益把之後幾年 0050 的漲跌都算進去;
+    //   年底之後淨值也少算 0050 那一塊 → 中途最多賠錯成 −58~−88%)。沒停 0050 / 不是逐年模式一個字都不變
+    if (YEAR && i > YR_TO && PARK && parkOf && parkSh > 0) {
+        const _v = parkSh * (parkOf(YR_TO) || 0) * (1 - PARK_COST / 200);
+        parkPnL += _v - parkBasis; parkLog.push({ in: parkInD, out: days[YR_TO], basis: parkBasis, pnl: _v - parkBasis }); cash += _v; parkSh = 0; parkBasis = 0; parkSell++;
+    }
     if (YEAR && i > YR_TO) { if (!live.length) break; openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); pushEq(i, d); continue; }
     // (b) 今天觸發的候選,依「當下已知的期望值」排序
     //   ⭐ 兩層門檻(缺一不可):
@@ -1884,8 +1890,9 @@ for (let i = 0; i < days.length; i++) {
         }
     }
     // 📅 行事曆濾網:這一天不准開新倉(既有部位照原規則出場,⛔ 不受影響)
-    if (EQ_BLOCK && EQ_BLOCK.has(d)) { eqBlk++; openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); pushEq(i, d); continue; }
-    if (CAL.length && !calOk(d, i)) { openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); pushEq(i, d); continue; }
+    // 🧯 V81.0.0 擋掉不開新倉的日子,淨值也要算停在 0050 那一塊(同 L2118;沒停 0050 時 + 0 = 一個字都不變)
+    if (EQ_BLOCK && EQ_BLOCK.has(d)) { eqBlk++; openCnt.push(live.length); equity.push(cash + (PARK && parkOf ? parkSh * (parkOf(i) || 0) : 0) + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); pushEq(i, d); continue; }
+    if (CAL.length && !calOk(d, i)) { openCnt.push(live.length); equity.push(cash + (PARK && parkOf ? parkSh * (parkOf(i) || 0) : 0) + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); pushEq(i, d); continue; }
     const todays = (EXIT_SCHED ? (byInR.get(schedRuleOf(d)) || new Map()).get(d) : byIn.get(d)) || [];
     // 🤝 同一檔今天有幾招同時觸發(共振)
     const hitCnt = {};

@@ -13,12 +13,23 @@
 //  (C) 每月存 1 萬:平常定期定額 vs 「錢存著、大跌才買」(等太久 3/6 個月照買)vs 一半一半
 //      10 年窗口、起點每 3 個月一條(2011~2016),最後市值配對比較;現金利率 0% 與 1.5% 各跑一次
 //
+//  (D) 🗓️ V81.0.0 大跌 × 星期幾(使用者 11/03:「大盤大跌又剛好遇到禮拜幾,要先賣還是撿便宜?」)
+//      D0 平常日子:加權每一天依星期幾分組(收盤對收盤)平均 / 中位 / 上漲比例
+//      D1 大跌那天(跌 ≥2% / ≥3%)依星期幾分:尾盤買 0050 含息,之後 1/5/20/60 天
+//         vs **同一個星期幾的隨便一天**(⛔ 不跟全部日子比:星期一本來就比較顛);
+//         ⭐ 主檢定 = 「星期 W 的大跌」vs「其他星期的大跌」—— 打亂星期幾標籤 2,000 次(排列檢定);40 格一起做 BH
+//         先賣再買回:那天收盤賣、h 天後收盤買回 vs 一直抱 = −(之後 h 天報酬) − 來回成本(0050:賣 0.1425%×0.6 + 稅 0.1% + 買)
+//      D2 隔天開盤跳空(STOCK_DIR 給了才算):全部股票「隔天開盤 ÷ 大跌那天收盤」平均(±11% 以外不算)
+//         vs 同一個星期幾的平常日子 —— ⚠️ ⛔ 用 ^TWII 開盤(陷阱 #47:09:00 用昨收湊出來的)
+//      星期幾一律用日期字串的 UTC 星期(⛔ 不看執行環境的時區)
 //  ⛔ 描述與比較,不是選股訊號;⛔ 不改 App。
 //  ⚠️ 進場用**當天收盤**:真的要做是 13:25 看到大盤跌夠了掛收盤(同 V72.9.0 尾盤進場)。
 //
 // 跑法:
 //   DATA_DIR=$S/d10n DIV=data/dividends_hist.json node scripts/dipbuy_probe.mjs out.json
 //   (DATA_DIR 需要 _bench0050.json 與 ^TWII.json;DIV 不給就讀 DATA_DIR/_div0050.json)
+//   (D) 隔天開盤跳空另外要 STOCK_DIR=<d16>(全部股票的日 K;沒給就不算 D2)
+//   ONLY_D=1 只跑 (D)
 //   node scripts/dipbuy_probe.mjs --selftest
 import fs from 'fs';
 import path from 'path';
@@ -173,6 +184,95 @@ export function partC(S, X, YEARS = 10, cashR = 0) {
     return out;
 }
 
+// ---------- (D) 大跌 × 星期幾 ----------
+export const WD_NAME = ['日', '一', '二', '三', '四', '五', '六'];
+/** 星期幾(0=日…6=六):⛔ 不用 new Date(d).getDay() —— 那會吃執行環境的時區(紐約會把星期一算成星期日) */
+export const wdOf = d => new Date(String(d).slice(0, 10) + 'T00:00:00Z').getUTCDay();
+export const DHS = [1, 5, 20, 60];
+export const DXS = [2, 3];
+// 0050 來回成本(%):賣手續費 + 證交稅 0.1%(ETF)+ 買手續費(手續費 6 折)
+export const RT_COST_0050 = (0.001425 * 0.6 * 2 + 0.001) * 100;
+const med = a => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+/** Benjamini–Hochberg:回每一格的 q 值(同順序) */
+export function bh(ps) {
+    const ix = ps.map((p, i) => [p, i]).filter(x => x[0] != null).sort((a, b) => a[0] - b[0]);
+    const q = ps.map(() => null); let prev = 1;
+    for (let k = ix.length - 1; k >= 0; k--) { const [p, i] = ix[k]; prev = Math.min(prev, p * ix.length / (k + 1)); q[i] = +prev.toFixed(4); }
+    return q;
+}
+/** D0:每一天依星期幾(加權收盤對收盤) */
+export function partD0(S) {
+    const by = {}; for (let w = 1; w <= 5; w++) by[w] = [];
+    for (let i = 1; i < S.idx.length; i++) { const w = wdOf(S.d[i]); if (by[w]) by[w].push((S.idx[i] / S.idx[i - 1] - 1) * 100); }
+    const out = {};
+    for (let w = 1; w <= 5; w++) { const a = by[w]; const half = a.length >> 1;
+        out[w] = { n: a.length, m: r2(mean(a) * 100) / 100, med: r2(med(a) * 100) / 100, up: r2(a.filter(x => x > 0).length / a.length * 100),
+            sd: r2(Math.sqrt(mean(a.map(x => x * x)) - mean(a) ** 2)), bigDn: r2(a.filter(x => x <= -2).length / a.length * 100),
+            h1: r2(mean(a.slice(0, half)) * 100) / 100, h2: r2(mean(a.slice(half)) * 100) / 100 }; }
+    return out;
+}
+/** D1:大跌那天依星期幾 → 之後 h 天(0050 含息)。gapByDate(可省)= {date: 那天全部股票平均開盤跳空%} */
+export function partD1(S, X, seed = 31, gapByDate = null) {
+    const ev = dropDays(S.idx, X);
+    const R = rng(seed + Math.round(X * 10));
+    const pool = {}; for (let w = 1; w <= 5; w++) pool[w] = [];
+    for (let i = 1; i < S.tr.length; i++) { const w = wdOf(S.d[i]); if (pool[w]) pool[w].push(i); }
+    const out = { X, n: ev.length, ep: episodes(ev), w: {} };
+    const evW = {}; for (let w = 1; w <= 5; w++) evW[w] = ev.filter(i => wdOf(S.d[i]) === w);
+    for (let w = 1; w <= 5; w++) {
+        const e = evW[w], o = { n: e.length, ep: episodes(e, EP_GAP), h: {} };
+        for (const h of DHS) {
+            const ef = e.map(i => fwd(S.tr, i, h)).filter(f => f != null);
+            const pf = pool[w].map(i => fwd(S.tr, i, h)).filter(f => f != null);
+            if (ef.length < 3) { o.h[h] = { n: ef.length }; continue; }
+            // 其他星期的大跌(同一個 h)
+            const oth = ev.filter(i => wdOf(S.d[i]) !== w).map(i => fwd(S.tr, i, h)).filter(f => f != null);
+            const all = ev.map(i => fwd(S.tr, i, h)).filter(f => f != null);
+            const em = mean(ef), pm = mean(pf), om = mean(oth), obs = em - om;
+            // 排列檢定:打亂「這次大跌是星期幾」的標籤
+            let ge = 0; const SIMS = 2000; const k = ef.length;
+            for (let s = 0; s < SIMS; s++) {
+                const a = all.slice();
+                for (let j = 0; j < k; j++) { const r = j + Math.floor(R() * (a.length - j)); [a[j], a[r]] = [a[r], a[j]]; }
+                const m1 = mean(a.slice(0, k)), m2 = mean(a.slice(k));
+                if (Math.abs(m1 - m2) >= Math.abs(obs) - 1e-12) ge++;
+            }
+            const half = ef.length >> 1;
+            o.h[h] = { n: ef.length, ev: r2(em), base: r2(pm), diff: r2(em - pm), oth: r2(om), vsOth: r2(obs),
+                up: r2(ef.filter(x => x > 0).length / ef.length * 100), upBase: r2(pf.filter(x => x > 0).length / pf.length * 100),
+                p: +(ge / SIMS).toFixed(3), h1: r2(mean(ef.slice(0, half)) - pm), h2: r2(mean(ef.slice(half)) - pm),
+                // 先賣、h 天後買回 vs 一直抱:平均差多少 % / 幾次先賣比較好(扣完成本)
+                sellAdv: r2(-em - RT_COST_0050), sellWin: r2(ef.filter(x => -x - RT_COST_0050 > 0).length / ef.length * 100) };
+        }
+        if (gapByDate) {
+            const g = e.map(i => i + 1 < S.d.length ? gapByDate[S.d[i + 1]] : null).filter(x => x != null);
+            const gb = pool[w].filter(i => !e.includes(i)).map(i => i + 1 < S.d.length ? gapByDate[S.d[i + 1]] : null).filter(x => x != null);
+            const go = ev.filter(i => wdOf(S.d[i]) !== w).map(i => i + 1 < S.d.length ? gapByDate[S.d[i + 1]] : null).filter(x => x != null);
+            o.gap = g.length ? { n: g.length, ev: r2(mean(g)), base: r2(mean(gb)), oth: r2(mean(go)), up: r2(g.filter(x => x > 0).length / g.length * 100) } : { n: 0 };
+        }
+        out.w[w] = o;
+    }
+    return out;
+}
+/** D2 用:全部股票「今天開盤 ÷ 昨天收盤 −1」的當天平均(±11% 以外、量 0 不算) */
+export function gapIndex(dir, maxFiles = 0) {
+    const sum = new Map(), cnt = new Map();
+    let files = fs.readdirSync(dir).filter(f => /^\d{4,6}[A-Z]?\.json$/.test(f) && !f.startsWith('00'));
+    if (maxFiles) files = files.slice(0, maxFiles);
+    for (const f of files) {
+        let rows; try { rows = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { continue; }
+        if (!Array.isArray(rows)) continue;
+        let pc = null;
+        for (const r of rows) {
+            const c = num(r.close), o = num(r.open), v = num(r.volume), d = d10(r.date);
+            if (c > 0 && o > 0 && pc > 0 && v > 0) { const g = (o / pc - 1) * 100; if (Math.abs(g) <= 11) { sum.set(d, (sum.get(d) || 0) + g); cnt.set(d, (cnt.get(d) || 0) + 1); } }
+            if (c > 0) pc = c;
+        }
+    }
+    const out = {}; for (const [d, s] of sum) if (cnt.get(d) >= 200) out[d] = s / cnt.get(d);
+    return out;
+}
+
 // ---------- selftest ----------
 function selftest() {
     let ok = 0, bad = 0;
@@ -214,6 +314,40 @@ function selftest() {
     T(r0.v === r0.put, '⑫ 從不大跌、從不買 → 市值 = 存入現金');
     const r1 = monthly(Sup, 1, 500, 'dip:0', 2, 0.05);
     T(r1.v > r1.put, '⑬ 現金利率有算進去');
+    // ── (D) 大跌 × 星期幾 ──
+    // ⑭ 星期幾不受執行環境時區影響(決定性對照:同一個日期用 getDay() 在紐約會變成星期日)
+    const tz0 = process.env.TZ; process.env.TZ = 'America/New_York';
+    T(wdOf('2010-01-04') === 1 && wdOf('2026-11-06') === 5, '⑭ 2010-01-04 = 星期一、2026-11-06 = 星期五(UTC 星期)');
+    T(new Date('2010-01-04').getDay() === 0, '⑭b 對照:getDay() 在紐約時區算成星期日 → 一定要用 UTC');
+    if (tz0 == null) delete process.env.TZ; else process.env.TZ = tz0;
+    // 合成:只排平日;每 17 個交易日一次 −3%(輪流落在不同星期);inject = 星期五大跌後的下一個交易日 +2%
+    const mkW = (inject) => {
+        const d = [], idx = [], tr = []; let p = 100, t = Date.UTC(2005, 0, 3), k = 0, fri = false;
+        while (d.length < 4000) {
+            const dt = new Date(t).toISOString().slice(0, 10); t += 86400000;
+            const w = new Date(dt + 'T00:00:00Z').getUTCDay(); if (w === 0 || w === 6) continue;
+            let r = 0.0003 * (k % 3 === 0 ? 1 : -0.5);
+            if (fri && inject) r += 0.02;
+            fri = false;
+            if (k % 17 === 9) { r = -0.03; if (w === 5) fri = true; }
+            p *= 1 + r; d.push(dt); idx.push(p); tr.push(p); k++;
+        }
+        return { d, idx, tr };
+    };
+    const W1 = mkW(true), W0 = mkW(false);
+    const dw1 = partD1(W1, 2), dw0 = partD1(W0, 2);
+    T(dw1.w[5].n >= 40 && dw1.w[1].n >= 40, '⑮ 每個星期都有大跌(星期五 ' + dw1.w[5].n + '、星期一 ' + dw1.w[1].n + ')');
+    T(dw1.w[5].h[1].vsOth > 1.5 && dw1.w[5].h[1].p < 0.01, '⑯ 埋「星期五大跌 → 隔天 +2%」→ 星期五比其他星期多 >1.5pp・p<0.01(' + dw1.w[5].h[1].vsOth + ' / ' + dw1.w[5].h[1].p + ')');
+    T(Math.abs(dw1.w[3].h[1].vsOth) < 1 && dw1.w[3].h[1].vsOth < 0, '⑰ 星期三沒埋 → 只因為星期五被墊高而略負(' + dw1.w[3].h[1].vsOth + ')');
+    T([1, 2, 3, 4, 5].every(w => Math.abs(dw0.w[w].h[1].vsOth) < 0.3), '⑱ 沒埋 → 五天都 ≈0');
+    T(dw1.w[5].h[1].sellAdv < -1.5 && dw0.w[5].h[1].sellAdv < 0, '⑲ 星期五大跌後會反彈 → 先賣再買回比較差(' + dw1.w[5].h[1].sellAdv + ')');
+    const q = bh([0.01, 0.04, 0.03, 0.5]); T(q[0] === 0.04 && q[3] === 0.5, '⑳ BH:' + q.join(','));
+    const d0 = partD0(W1); T(d0[1].n > 700 && d0[5].n > 700, '㉑ D0 每個星期 >700 天');
+    // ㉒ 隔天開盤跳空:給一份「星期五大跌後隔天開盤 −1%」的表 → 星期五 gap 平均 ≈ −1、其他 ≈ 0
+    const gmap = {}; for (let i = 0; i + 1 < W1.d.length; i++) gmap[W1.d[i + 1]] = 0;
+    for (const i of dropDays(W1.idx, 2)) if (wdOf(W1.d[i]) === 5) gmap[W1.d[i + 1]] = -1;
+    const dg = partD1(W1, 2, 31, gmap);
+    T(dg.w[5].gap.ev === -1 && dg.w[1].gap.ev === 0 && dg.w[5].gap.base === 0, '㉒ 隔天開盤跳空照星期幾分得出來');
     console.log(`selftest ${ok} ok / ${bad} bad`);
     process.exit(bad ? 1 : 0);
 }
@@ -235,7 +369,8 @@ function main() {
     const S = align(twii, b, divs);
     if (S.d.length < 2000) { console.error('⛔ 對齊後只有', S.d.length, '天'); process.exit(1); }
     console.log(`資料 ${S.d[0]} ~ ${S.d[S.d.length - 1]}(${S.d.length} 天)・0050 含息 ${((S.tr.at(-1) - 1) * 100).toFixed(0)}%`);
-    const out = { from: S.d[0], to: S.d.at(-1), A: [], B: [], C: [] };
+    const out = { from: S.d[0], to: S.d.at(-1), A: [], B: [], C: [], D: null };
+    if (!process.env.ONLY_D) {
 
     console.log('\n(A) 加權當天跌 ≥X% → 尾盤買 0050(含息),之後 h 天 vs 隨便挑一天');
     for (const X of XS) {
@@ -257,6 +392,27 @@ function main() {
         console.log(`  跌 ≥${X}% 現金利率 ${cashR * 100}%(${c.starts.length} 條,${c.starts[0].from}~${c.starts.at(-1).from} 起)`);
         for (const m of CMODES) { const s = c.summary[m]; console.log(`    ${m.padEnd(7)} 中位 ${s.med}% ・最差 ${s.worst}% ・最好 ${s.best}%${s.beatDca == null ? '' : ` ・贏定期定額 ${s.beatDca}/${s.n}`}`); }
     }
+    }
+    // ---------- (D) 大跌 × 星期幾 ----------
+    let gap = null;
+    if (process.env.STOCK_DIR) { const t0 = Date.now(); gap = gapIndex(process.env.STOCK_DIR, +(process.env.MAX_SYMS || 0));
+        const ds = Object.keys(gap).sort(); console.log(`\n(D2 準備)全部股票開盤跳空:${ds.length} 天(${ds[0]}~${ds.at(-1)},每天 ≥200 檔)・${((Date.now() - t0) / 1000).toFixed(0)} 秒`); }
+    const D = { d0: partD0(S), d1: [] };
+    console.log('\n(D0) 平常日子:加權收盤對收盤,依星期幾');
+    for (let w = 1; w <= 5; w++) { const r = D.d0[w]; console.log(`  星期${WD_NAME[w]} ${r.n} 天 平均 ${r.m}% ・中位 ${r.med}% ・上漲 ${r.up}% ・標準差 ${r.sd} ・跌 ≥2% 的天 ${r.bigDn}% ・前半 ${r.h1}% / 後半 ${r.h2}%`); }
+    const cells = [];
+    for (const X of DXS) { const r = partD1(S, X, 31, gap); D.d1.push(r);
+        for (let w = 1; w <= 5; w++) for (const h of DHS) { const c = r.w[w].h[h]; if (c && c.p != null) cells.push(c); } }
+    const qs = bh(cells.map(c => c.p)); cells.forEach((c, k) => { c.q = qs[k]; });
+    for (const r of D.d1) {
+        console.log(`\n(D1) 加權跌 ≥${r.X}%:${r.n} 天・${r.ep} 段 —— 依星期幾(之後 h 天 0050 含息;「同星期」= 同一個星期幾的隨便一天;「vs 別天大跌」= 比其他星期的大跌,p = 打亂星期幾 2,000 次,q = 40 格 BH)`);
+        for (let w = 1; w <= 5; w++) { const o = r.w[w];
+            console.log(`  星期${WD_NAME[w]}:${o.n} 天・${o.ep} 段${o.ep < 10 ? ' ⚠️ 太少' : ''}` + (o.gap ? `・隔天開盤跳空(全部股票平均)${o.gap.ev}% vs 同星期平常 ${o.gap.base}% vs 別天大跌 ${o.gap.oth}%(n=${o.gap.n}・開高 ${o.gap.up}%)` : ''));
+            for (const h of DHS) { const c = o.h[h]; if (!c || c.p == null) { console.log(`    ${String(h).padStart(2)} 天 n=${c ? c.n : 0}`); continue; }
+                console.log(`    ${String(h).padStart(2)} 天 平均 ${c.ev}%(同星期 ${c.base}%・差 ${c.diff})・vs 別天大跌 ${c.oth}% 差 ${c.vsOth}pp p=${c.p} q=${c.q}・上漲 ${c.up}% vs ${c.upBase}%・前半 ${c.h1}/後半 ${c.h2}・先賣再買回 ${c.sellAdv}%(先賣比較好 ${c.sellWin}%)`); }
+        }
+    }
+    out.D = D;
     if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify(out, null, 1));
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();

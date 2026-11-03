@@ -54,13 +54,17 @@ for (const strat of STRATS) {
         await page.waitForTimeout(wait);
         if (skip) return;
         // ⭐ 滑鼠停上去才看得到的 title 也算畫面(使用者:「整份資料我都要查」)
+        // 📊 V81.0.0 例外(使用者 11/03 明示):「🔓 進階功能 › 📊 這套策略每年賺多少」[data-stratperf] 那一塊可以有研究數字 —— 只藏那一塊再掃(其他地方照舊);那一塊自己由 test_stratperf 驗
         const txt = await page.evaluate(() => { document.querySelectorAll('details').forEach(d => { d.open = true; });
+            const _sp = [...document.querySelectorAll('[data-stratperf]')]; _sp.forEach(e => { e.dataset.spd = e.style.display || ''; e.style.display = 'none'; });
+            try {
             const tt = [...document.querySelectorAll('[title]')].filter(e => e.offsetParent !== null).map(e => '[title] ' + e.getAttribute('title').replace(/\n/g, ' '));
             // ⭐ 按了才跳出來的說明(onclick 裡直接寫 alert / _helpBox 的文字)也算畫面
             const oc = [...document.querySelectorAll('[onclick]')].filter(e => e.offsetParent !== null)
                 .map(e => e.getAttribute('onclick')).filter(t => /alert\(|_helpBox\(|_showRichModal\(/.test(t))
                 .flatMap(t => t.split(/\\n|\n/)).map(t => '[onclick] ' + t.slice(0, 300));
-            return document.body.innerText + '\n' + tt.join('\n') + '\n' + oc.join('\n'); });
+            return document.body.innerText + '\n' + tt.join('\n') + '\n' + oc.join('\n');
+            } finally { _sp.forEach(e => { e.style.display = e.dataset.spd; }); } });
         const hits = [];
         for (const raw of txt.split('\n')) { const s = raw.trim(); if (!s || ALLOW_LINE.some(r => r.test(s))) continue; const b = badOf(s); if (b.length) hits.push({ line: s.slice(0, 200), bad: b }); }
         all[`${strat}:${key}`] = hits;

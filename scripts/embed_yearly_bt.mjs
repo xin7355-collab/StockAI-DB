@@ -96,6 +96,54 @@ if (process.argv[2] === '--merge-now') {
     console.log(`✅ 已併入 ${KEY}:現行 ${oldNow} → ${nr.id}(👑 ${leads.length} 列照舊,共 ${back.strats.length} 列)・交叉驗證通過`);
     process.exit(0);
 }
+// 🧯 V81.0.0 --replace-now <both.json> [leadcash.json]:用修好停 0050 守門(V80.2.2)的引擎重跑「⭐ 現行」那一列(同一個 id 換掉)
+//   + 加「💵 現行・錢放現金」那一列(= 設定裡的 📈 符合進場);可選加 👑「閒錢放現金」那一列(leader_probe park:false)
+//   ⭐ 使用者 11/03:「告訴我這個策略每年的報酬率」→ 散戶 App 進階區讀這兩列(scripts/embed_strat_yearly.mjs 抄過去)
+//   交叉驗證:每一年都有值、17 條一路滾、自帶 0050 對照;👑 那列的一路滾 == 💰 表 leadcash 16 年(差 ≤1,000 元);讀回來逐格相同
+//   📜 舊的現行那一列(每年重新放 100 萬那幾格)印出來 → 舊 → 新寫進 LAB park-churn
+if (process.argv[2] === '--replace-now') {
+    const [bothF, lcF] = process.argv.slice(3);
+    if (!bothF) die('用法:node scripts/embed_yearly_bt.mjs --replace-now <both.json> [leadcash.json]');
+    const N = JSON.parse(fs.readFileSync(bothF, 'utf8'));
+    const { ls, i: idx, v: Y } = readCur();
+    const YRS = Y.years;
+    const chk = r => {
+        for (const y of YRS) { const a = r.y[y]; if (a == null && !(r.na && y < r.na.from)) die(`${r.id} 缺 ${y}`); if (a && a.length !== cols.length) die(`${r.id} ${y} 欄位數不對`); }
+        if (!r.c || r.c.paths !== 17) die(`${r.id} 沒有一路滾 17 條`);
+        if (!r.yb || !r.bc) die(`${r.id} 沒有自己的 0050 對照(yb / bc)`);
+    };
+    const oldNow = Y.strats.find(s => s.id === Y.nowId); if (!oldNow) die('找不到現行那一列');
+    const nr0 = N.strats.find(s => s.id === Y.nowId), cr0 = N.strats.find(s => s.id === Y.nowId + 'c');
+    if (!nr0 || !cr0) die(`both.json 要有 ${Y.nowId} 與 ${Y.nowId}c 兩列(實際 ${N.strats.map(s => s.id).join(',')})`);
+    const nr = slimRow(nr0, { dv: 2 }), cr = slimRow(cr0, { dv: 2 });
+    chk(nr); chk(cr);
+    if (cr.c.med >= nr.c.med && YRS.length > 10) console.warn('⚠️ 錢放現金那一列一路滾 ≥ 停 0050 那一列(先確認不是跑反了)');
+    let lc = null;
+    if (lcF) {
+        const L = JSON.parse(fs.readFileSync(lcF, 'utf8'));
+        if (!L.rows || L.rows.length !== 1 || L.rows[0].g !== 'lead') die('leadcash.json 應該只有一列 g=lead');
+        lc = slimRow(L.rows[0], { dv: 2 }); chk(lc);
+        const pbLine = ls.find(l => /^\s*_PROFIT_BOARD: \{/.test(l)); if (!pbLine) die('pro.html 沒有 _PROFIT_BOARD');
+        const PB = JSON.parse(pbLine.replace(/^\s*_PROFIT_BOARD: /, '').replace(/,$/, '')), a = (PB.wins.long.rows || []).find(x => x.k === 'leadcash');
+        if (!a || Math.abs((a.fin - 1e6) - lc.c.med) > 1000) die(`👑 閒錢放現金一路滾 ${lc.c.med} ≠ 💰 表 leadcash 的 ${a && a.fin - 1e6}`);
+    }
+    const old = {}; for (const y of YRS) { const o = oldNow.y[y], n = nr.y[y]; old[y] = [o ? o[cols.indexOf('ret')] : null, n ? n[cols.indexOf('ret')] : null]; }
+    console.log(`📜 ${Y.nowId} 每年重新放 100 萬(舊 → 新,報酬 %):` + YRS.map(y => `${y} ${old[y][0]}→${old[y][1]}`).join(' ・'));
+    console.log(`📜 ${Y.nowId} 一路滾中位:${oldNow.c && oldNow.c.med} → ${nr.c.med}・筆數 ${oldNow.c && oldNow.c.n} → ${nr.c.n}・勝率 ${oldNow.c && oldNow.c.win} → ${nr.c.win}`);
+    const leads = Y.strats.filter(s => s.g === 'lead' && (!lc || s.id !== lc.id));
+    if (lc) { const at = leads.findIndex(s => s.id === 'lead'); leads.splice(at < 0 ? 0 : at + 1, 0, lc); }
+    const rest = Y.strats.filter(s => s.id !== nr.id && s.id !== cr.id && s.g !== 'lead');
+    Y.strats = [nr, cr, ...leads, ...rest];
+    const v2 = Y.v2 || {}, add = [nr.id, cr.id, ...(lc ? [lc.id] : [])];
+    Y.v2 = { ...v2, ids: [...new Set([...add, ...(v2.ids || [])])], d16: [...new Set([...add, ...(v2.d16 || [])])] };
+    ls[idx] = `  ${KEY}: ` + JSON.stringify(Y) + ',';
+    fs.writeFileSync(P, ls.join('\n'));
+    const back = readCur().v;
+    for (const r of [nr, cr, ...(lc ? [lc] : [])]) { const b = back.strats.find(x => x.id === r.id); if (!b || b.c.med !== r.c.med || JSON.stringify(b.y) !== JSON.stringify(r.y)) die(`讀回來對不上:${r.id}`); }
+    if (back.nowId !== nr.id || back.strats.length !== Y.strats.length || !back.strats.some(s => s.id === 'base')) die('讀回來列數 / 現行不對');
+    console.log(`✅ 已換 ${KEY}:${nr.id}(修好停 0050 守門後重跑)+ ${cr.id}${lc ? ' + ' + lc.id : ''}(共 ${back.strats.length} 列)・交叉驗證通過`);
+    process.exit(0);
+}
 if (process.argv[2] === '--merge') {
     const [nowF, leadF] = process.argv.slice(3);
     if (!nowF || !leadF) die('用法:node scripts/embed_yearly_bt.mjs --merge <now.json> <lead.json>');

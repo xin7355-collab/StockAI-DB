@@ -20,14 +20,14 @@ let SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const ORIG = SRC, INJ = process.env.INJECT || '';
 if (INJ === 'peek') SRC = SRC.replace("const op = +b[i + 1].open; if (!(op > 0)) return null;", "const op = +b[i].open; if (!(op > 0)) return null;");
 if (INJ === 'nobase') SRC = SRC.replace("return x ? `${x.s} ・${x.g.replace(/^🎲 /, '')}` : '';", "return x ? x.s : '';").replace("h.occS = x.s; h.occG = x.g;", "h.occS = x.s;");
-if (INJ === 'nodedup') SRC = SRC.replace("if (i - last < D.gap || !this._colEvAt(id, b, i, sym)) continue;", "if (!this._colEvAt(id, b, i, sym)) continue;");
+if (INJ === 'nodedup') SRC = SRC.replace("if (i - last < D.gap || !this._colEvAt(id, b, i, sym, M)) continue;", "if (!this._colEvAt(id, b, i, sym, M)) continue;");
 if (INJ && SRC === ORIG) { console.log('❌ 注入沒有注進去'); process.exit(1); }
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + String(e).slice(0, 300)}`); if (!c) fails.push(n); };
 
 const A = buildApp(SRC);
 A._COL_BASE = (0, eval)('({' + (SRC.match(/\n    (_COL_BASE: \{.*\}),\n/) || [, '_COL_BASE: {}'])[1] + '})')._COL_BASE;
-for (const k of ['_occPct', '_colOccParts', '_colOccTxt', '_colMktOccTxt']) {
+for (const k of ['_occPct', '_colOccParts', '_colOccTxt', '_colMktOccTxt', '_crossBucket']) {
     const m = new RegExp(`\\n    ${k}\\(`).exec(SRC); const s = SRC.indexOf('{', m.index); let d = 0, i = s;
     for (; i < SRC.length; i++) { if (SRC[i] === '{') d++; else if (SRC[i] === '}' && --d === 0) break; }
     A[k] = (0, eval)('({' + SRC.slice(m.index + 5, i + 1) + '})')[k];
@@ -96,9 +96,9 @@ const tm = A._colMktOccTxt('bear_on');
 ok('④ 大盤那一行:加權幾次 → 幾次 + 平常隨便一天', /加權剛轉成空頭 \d+ 次 → 20 個交易日後加權上漲 \d+ 次/.test(tm) && /平常隨便一天 [\d.]+%/.test(tm), tm);
 
 // ⑤ 大盤四條:App 真的 `_colTrigEval` == mktEvents
-const twR = (() => { let c = 10000; seed = 11; return days(700, 2015).map((d, i) => { const r = i > 300 && i < 360 ? -0.012 : i > 500 && i < 520 ? -0.035 * (i % 4 === 0) : (rnd() - 0.47) * 0.03; c = +(c * (1 + r)).toFixed(2); return { date: d, open: c, high: c, low: c, close: c }; }); })();
+const twR = (() => { let c = 10000; seed = 11; return days(700, 2015).map((d, i) => { const r = i > 300 && i < 360 ? -0.012 : i > 500 && i < 520 ? -0.035 * (i % 4 === 0) : i > 600 && i < 630 ? (i % 5 === 0 ? 0.025 : i % 7 === 0 ? -0.025 : 0.001) : (rnd() - 0.47) * 0.03; c = +(c * (1 + r)).toFixed(2); return { date: d, open: c, high: c, low: c, close: c }; }); })();
 const ev = mktEvents(A, twR);
-const evArr = {}; for (const id of ['bear_on', 'bull_on', 'crash20', 'idx_drop3']) evArr[id] = twR.map((_, i) => !!ev[id](i));
+const evArr = {}; for (const id of ['bear_on', 'bull_on', 'crash20', 'idx_drop3', 'idx_drop2', 'idx_up2']) evArr[id] = twR.map((_, i) => !!ev[id](i));
 let chromium; try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (_) { ({ chromium } = await import('playwright')); }
 const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const TMP = path.join(ROOT, '.test_colocc.html'); fs.writeFileSync(TMP, SRC);
@@ -129,8 +129,8 @@ try {
 } finally { await browser.close(); try { fs.unlinkSync(TMP); } catch (_) {} }
 const mis = W.mis || [], cnt = W.cnt || {}, tried = W.tried || 0;
 ok('pageerror 0', !errs.length, errs.slice(0, 3).join(' | '));
-ok('⑤ 大盤四條:App 真的 `_colTrigEval` 逐日 == mktEvents', tried > 500 && !mis.length, mis.slice(0, 5).join(' | ') || 'tried ' + tried);
-ok('⑤ 有鑑別力:合成加權上四條都成立過', Object.values(cnt).every(v => v > 0), JSON.stringify(cnt));
+ok('⑤ 大盤六條:App 真的 `_colTrigEval` 逐日 == mktEvents', tried > 500 && !mis.length, mis.slice(0, 5).join(' | ') || 'tried ' + tried);
+ok('⑤ 有鑑別力:合成加權上六條都成立過', Object.values(cnt).every(v => v > 0), JSON.stringify(cnt));
 
 // ⑥ 接線(原始碼)
 ok('⑥ 決策台 / 個股總覽同一支 `_deckColHtml`:個股 data-occ = stk / cc,大盤 = mkt', /data-occ="\$\{h\.occk \|\| 'stk'\}"/.test(SRC) && /data-occ="mkt"/.test(SRC) && /occk = 'cc'/.test(SRC));
@@ -138,7 +138,9 @@ const nOcc = (SRC.match(/occ\('(\w+)', b, sym\)/g) || []).length, nMocc = (SRC.m
 ok('⑥ 實跑:持有的這檔今天鎖漲停 → 決策台那一格 data-occ="stk" 有 🎲 三個比例', /一般股票收盤鎖漲停/.test(W.stk || '') && /這檔過去收盤鎖漲停/.test(W.luOcc || ''), JSON.stringify([W.luOcc, W.stk]).slice(0, 300));
 ok('⑥ 同一篇 3 檔:每檔一行「這檔」+「一般股票」那段只印一次', W.nS === 3 && W.nG === 1, JSON.stringify([W.nS, W.nG]));
 ok('⑥ 實跑:大盤條件有成立 → 那一行掛 data-occ="mkt"', (W.mktIds || []).length === 0 || W.mkt, JSON.stringify(W.mktIds));
-ok('⑥ 11 個個股條件 + 4 個大盤條件都接上 🎲', nOcc === Object.keys(A._COL_OCC).length && nMocc === 4, JSON.stringify([nOcc, nMocc]));
+// 🔀 V81.0.0 大盤那天的兩條(m_dn2 / m_up2,mk:1)用迴圈 `occ(mid, b, sym)` 接;大盤條件多 idx_drop2 / idx_up2
+const nMk = Object.keys(A._COL_OCC).filter(k => A._COL_OCC[k].mk).length;
+ok('⑥ 11 個個股條件 + 2 個大盤那天的 + 6 個大盤條件都接上 🎲', nOcc === Object.keys(A._COL_OCC).length - nMk && nMk === 2 && /for \(const mid of \['m_dn2', 'm_up2'\]\)[^\n]*occ\(mid, b, sym\)/.test(SRC) && nMocc === 6, JSON.stringify([nOcc, nMk, nMocc]));
 ok('⑥ 📐 量化實驗室的追高買點(ql_)也接上 🎲(occ(id, b, sym))', /add\('qlab_trap'[^\n]*occ\(id, b, sym\)/.test(SRC));
 
 // ⑦ 嵌入的 _COL_BASE

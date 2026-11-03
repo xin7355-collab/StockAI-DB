@@ -26,7 +26,7 @@ if (INJ === 'nounlock') SRC = SRC.replace('(c.unlock && !unl)', '(false)');
 if (INJ === 'stale') SRC = SRC.replace('iso(b[b.length - 1].date) < lastD) continue;', 'false) continue;');
 if (INJ === 'noetf') SRC = SRC.replace('if (etf || !Array.isArray(b)', 'if (!Array.isArray(b)');
 if (INJ === 'noview') SRC = SRC.replace('view: new Set([sym]), ', '');
-if (INJ === 'ovnogate') SRC = SRC.replace("if (!sym || !this._deckShow().col || (this._isIndexSym", "if (!sym || (this._isIndexSym").replace("if (String(this.currentSymbolId) !== sym || !this._deckShow().col) return", "if (String(this.currentSymbolId) !== sym) return");   // ⚠️ 兩道都要拿掉(只拿一道,另一道會救活)
+if (INJ === 'ovnogate') SRC = SRC.replace("if (!sym || !on() || (this._isIndexSym", "if (!sym || (this._isIndexSym").replace("if (String(this.currentSymbolId) !== sym || !on()) return", "if (String(this.currentSymbolId) !== sym) return").replace("const xh = S.cross ? this._crossHtml(", "const xh = true ? this._crossHtml(").replace("(S.col ? this._deckColHtml(G, { fold: F, attr: 'data-ovcol'", "(true ? this._deckColHtml(G, { fold: F, attr: 'data-ovcol'");   // ⚠️ 開關分三道(進門 / 回來 / 每一塊),全拿掉才算沒守門   // ⚠️ 兩道都要拿掉(只拿一道,另一道會救活)
 if (INJ && SRC === ORIG) { console.log('❌ 注入沒有注進去'); process.exit(1); }
 const TMP = path.join(ROOT, '.test_advunlock.html');
 fs.writeFileSync(TMP, SRC);
@@ -108,10 +108,10 @@ const page = await open(true);
         await app._renderOvCol('2454');
         o.none = [box.innerHTML, box.classList.contains('hidden')];
         // 設定裡把 col 關掉 → 空
-        setCache(); app.rawDailyData = kLock; app.settings.deckShow = Object.assign({}, app.settings.deckShow || {}, { col: false });
+        setCache(); app.rawDailyData = kLock; app.settings.deckShow = Object.assign({}, app.settings.deckShow || {}, { col: false, cross: false });   // 🔀 V81.0.0 交叉提醒也畫在這一格 → 兩個都關才空
         await app._renderOvCol('2454');
         o.off = [box.innerHTML, box.classList.contains('hidden')];
-        app.settings.deckShow.col = true;
+        app.settings.deckShow.col = true; app.settings.deckShow.cross = true;
         // 等資料時切到別檔 → ⛔ 不可把上一檔的寫上去
         box.innerHTML = ''; setCache();
         const pr = app._renderOvCol('2454'); app.currentSymbolId = '9999'; await pr;
@@ -126,7 +126,7 @@ const page = await open(true);
     ok('⑧c 大盤 / 日子收進摺疊(⛔ 不佔第一眼)', /data-colfold="1"/.test(O.view.html) && /calendar-filter/.test(O.view.html.split('data-colfold')[1] || ''), O.view.html.slice(-300));
     ok('⑧d 同一檔在庫存 → limitup-hold(👜 你的庫存)', /data-colhit="limitup-hold"[^>]*data-colsc="held"/.test(O.held) && !/lu-nextday/.test(O.held), O.held.slice(0, 300));
     ok('⑧e 什麼都沒碰到 → 整格藏起來', O.none[0] === '' && O.none[1] === true, JSON.stringify(O.none).slice(0, 200));
-    ok('⑧f 設定裡把專欄關掉 → 總覽那格也空', O.off[0] === '' && O.off[1] === true, JSON.stringify(O.off).slice(0, 200));
+    ok('⑧f 設定裡把專欄(與交叉提醒)關掉 → 總覽那格也空', O.off[0] === '' && O.off[1] === true, JSON.stringify(O.off).slice(0, 200));
     ok('⑧g 等資料時切到別檔 → ⛔ 不寫上一檔的', O.switched === '', O.switched.slice(0, 200));
     ok('⑧h 決策台(不傳 view)行為不變:自選鎖漲停仍是 lu_fav / fav', JSON.stringify(O.deck) === JSON.stringify(['lu_fav:fav']), JSON.stringify(O.deck));
 }
@@ -208,7 +208,12 @@ const T = await page.evaluate(() => {
     R.pmWk = ids(run({ premkt: { sPct: 5 }, today: { tdy: '2026-10-24', wk: 6, weekday: false } }));
     // 📉 V79.3.2 加權最新收盤跌 ≥3% → idx_drop3;跌 2% → 沒有
     { const mk = r => { const t = mkK(120, '2026-10-16'); const n = t.length; Object.assign(t[n - 1], { close: +(t[n - 2].close * (1 + r)).toFixed(2) }); return t; };
-      R.d3 = ids(run({ tw: mk(-0.035) })); R.d3No = ids(run({ tw: mk(-0.02) })); }
+      R.d3 = ids(run({ tw: mk(-0.035) })); R.d3No = ids(run({ tw: mk(-0.02) }));
+      // 🔀 V81.0.0 跌 2~3% → idx_drop2(3% 以上只算 idx_drop3)・星期五跌 ≥2% → fri_drop(10/16 是星期五;10/15 星期四 → 沒有)・漲 ≥2% → idx_up2
+      const mk2 = (r, end) => { const t = mkK(120, end); const n = t.length; Object.assign(t[n - 1], { close: +(t[n - 2].close * (1 + r)).toFixed(2) }); return t; };
+      R.d2 = ids(run({ tw: mk2(-0.025, '2026-10-15') })); R.d2No = ids(run({ tw: mk2(-0.015, '2026-10-15') }));
+      R.fri = ids(run({ tw: mk2(-0.025, '2026-10-16') })); R.friNo = ids(run({ tw: mk2(-0.025, '2026-10-15') }));
+      R.up2 = ids(run({ tw: mk2(0.025, '2026-10-15') })); R.up2No = ids(run({ tw: mk2(0.015, '2026-10-15') })); }
     // 🛑 V79.3.6 外資台指期「急遽加空」(_fiFutState danger)→ fifut_cut;「空單近期最重」(warn)/ 沒資料 → 沒有
     R.ff = ids(run({ fifut: { level: 'danger', chg5: -10481, net: -93675 } }));
     R.ffNo = ids(run({ fifut: { level: 'warn', chg5: -2000, net: -93675 } }));
@@ -302,6 +307,9 @@ ok('③i 休市前最後一個交易日 → holiday_pre;前兩天 → 沒有', h
 ok('③j 休市 5 天後第一天 → holiday_post;一般週末後 → 沒有', has(T.post, 'holiday_post') && !has(T.postNo, 'holiday_post'), JSON.stringify([T.post, T.postNo]));
 ok('③l 盤前分數 ≤20 → premkt_low;21 分 / 沒算過 / 週末 → 沒有', has(T.pm, 'premkt_low') && !has(T.pmNo, 'premkt_low') && !has(T.pmNull, 'premkt_low') && !has(T.pmWk, 'premkt_low'), JSON.stringify([T.pm, T.pmNo, T.pmNull, T.pmWk]));
 ok('③m 加權最新收盤跌 3.5% → idx_drop3;跌 2% → 沒有', has(T.d3, 'idx_drop3') && !has(T.d3No, 'idx_drop3'), JSON.stringify([T.d3, T.d3No]));
+ok('③m2 🔀 跌 2.5% → idx_drop2(⛔ idx_drop3);跌 1.5% → 沒有;跌 3.5% → 只有 idx_drop3', has(T.d2, 'idx_drop2') && !has(T.d2, 'idx_drop3') && !has(T.d2No, 'idx_drop2') && !has(T.d3, 'idx_drop2'), JSON.stringify([T.d2, T.d2No]));
+ok('③m3 🗓️ 星期五跌 2.5% → fri_drop;同一份放在星期四 → 沒有', has(T.fri, 'fri_drop') && !has(T.friNo, 'fri_drop'), JSON.stringify([T.fri, T.friNo]));
+ok('③m4 🔀 漲 2.5% → idx_up2;漲 1.5% → 沒有', has(T.up2, 'idx_up2') && !has(T.up2No, 'idx_up2'), JSON.stringify([T.up2, T.up2No]));
 ok('③m2 外資台指期急遽加空 → fifut_cut;空單近期最重 / 沒資料 → 沒有', has(T.ff, 'fifut_cut') && !has(T.ffNo, 'fifut_cut') && !has(T.ffNull, 'fifut_cut'), JSON.stringify([T.ff, T.ffNo, T.ffNull]));
 ok('③m3 🏧 外資現貨賣超超過門檻 / 台幣貶超過門檻 → fi_out;沒超過 / 資料舊 / null / 沒資料 → 沒有', T.foOk && has(T.fo, 'fi_out') && has(T.foT, 'fi_out') && !has(T.foNo, 'fi_out') && !has(T.foOld, 'fi_out') && !has(T.foNull, 'fi_out') && !has(T.foNone, 'fi_out'),
     JSON.stringify([T.foOk, T.fo, T.foT, T.foNo, T.foOld, T.foNull, T.foNone]));

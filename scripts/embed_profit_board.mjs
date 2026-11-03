@@ -53,6 +53,53 @@ if (geneArg && !bf) {
   console.log('✅ 🧬 列已嵌入:' + Object.entries(cur.wins).map(([k, W]) => `${k} ${W.rows.filter(r => r.grp === 'gene').map(r => r.k + ' ' + Math.round(r.fin / 1e4) + '萬').join(' / ')}`).join(' | '));
   process.exit(0);
 }
+// 📊 V81.0.0 每一列補「每筆」三個數:勝率 tWin(%)・每筆平均 tPer(%,已扣手續費和稅)・筆數 tN(使用者 11/03:「有用的策略都有勝率了嗎」)
+//   node scripts/embed_profit_board.mjs --stats <leader_board2.json> <leader_leadcash.json> <bst 資料夾>
+//   👑 那幾列 = leader_probe 同一份產物的 trades / win / avg(17 條起點的中間值);交叉驗證 cap.fin == 看板 fin(差 ≤ 1,000 元)
+//   🔥 / 🅿️ = portfolio_backtest 同看板設定 17 條的 TAKEN_OUT,只算看板截止日(B.to)以前賣掉的那幾筆,取 17 條的中間值;
+//       交叉驗證:不截日時每一條的筆數 / 勝率 / 每筆平均 == 它自己的 SUMMARY_OUT(⛔ 自己另算一份對不上就 exit 1)
+const statsArg = process.argv.includes('--stats');
+if (statsArg) {
+  const [lf, cf, bdir] = process.argv.slice(process.argv.indexOf('--stats') + 1);
+  const die = m => { console.error('❌ ' + m); process.exit(1); };
+  if (!lf || !cf || !bdir) die('用法:--stats <board2.json> <leadcash.json> <bst 資料夾>');
+  const P0 = 'pro.html', h0 = fs.readFileSync(P0, 'utf8'), m0 = h0.match(RE_LINE); if (!m0) die('pro.html 沒有 _PROFIT_BOARD 那一行');
+  const cur = JSON.parse(m0[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
+  const med = a => { const b = a.slice().sort((x, y) => x - y); const k = b.length >> 1; return b.length % 2 ? b[k] : (b[k - 1] + b[k]) / 2; };
+  const r1 = x => Math.round(x * 10) / 10, r2 = x => Math.round(x * 100) / 100;
+  const LS = [...JSON.parse(fs.readFileSync(lf, 'utf8')).sets, ...JSON.parse(fs.readFileSync(cf, 'utf8')).sets];
+  const COST = 0.44, net = t => t.ret + (t.dv || 0) - COST;
+  const stat = T => ({ tN: T.length, tWin: T.length ? 100 * T.filter(t => net(t) > 0).length / T.length : null, tPer: T.length ? T.reduce((a, t) => a + net(t), 0) / T.length : null });
+  let nL = 0, nG = 0;
+  for (const [wk, W] of Object.entries(cur.wins)) {
+    for (const r of W.rows) {
+      if (r.grp === 'lead') {
+        const s = LS.find(x => x.name === r.n && x.from === W.from); if (!s) die(`${wk} ${r.k} 在 leader 產物找不到(名稱 / 起點對不上)`);
+        const fin = s.cap && typeof s.cap === 'object' ? s.cap.fin : s.cap; if (Math.abs(fin - r.fin) > 1000) die(`${wk} ${r.k} leader 產物 ${fin} ≠ 看板 ${r.fin}(不是同一份)`);
+        Object.assign(r, { tN: Math.round(s.trades), tWin: r1(s.win), tPer: r2(s.avg) }); nL++;
+      } else if (r.grp === 'gene' && !r.old) {
+        const fs2 = fs.readdirSync(`${bdir}/tk`).filter(f => f.startsWith(`${r.k}_${wk}_`) && f.endsWith('.json'));
+        if (fs2.length !== cur.paths) die(`${wk} ${r.k} TAKEN_OUT 應該 ${cur.paths} 條,實際 ${fs2.length}`);
+        const per = [];
+        for (const f of fs2) {
+          const T = JSON.parse(fs.readFileSync(`${bdir}/tk/${f}`, 'utf8')), S = JSON.parse(fs.readFileSync(`${bdir}/sum/${f}`, 'utf8'));
+          const all = stat(T);
+          if (all.tN !== S.n || Math.abs(r1(all.tWin) - S.win) > 0.11 || Math.abs(r2(all.tPer) - S.per) > 0.011) die(`${wk} ${r.k} ${f}:自己算的 ${JSON.stringify(all)} ≠ SUMMARY ${JSON.stringify({ n: S.n, win: S.win, per: S.per })}`);
+          per.push(stat(T.filter(t => String(t.outD || '') <= cur.to)));
+        }
+        Object.assign(r, { tN: Math.round(med(per.map(x => x.tN))), tWin: r1(med(per.map(x => x.tWin))), tPer: r2(med(per.map(x => x.tPer))) }); nG++;
+      }
+    }
+  }
+  cur.statSrc = `👑 leader_probe trades/win/avg ・🔥🅿️ portfolio_backtest TAKEN_OUT(${cur.to} 以前賣掉的)・17 條中間值`;
+  const ln = '  _PROFIT_BOARD: ' + JSON.stringify(cur) + ',';
+  fs.writeFileSync(P0, h0.replace(RE_LINE, () => ln));
+  const back = JSON.parse(fs.readFileSync(P0, 'utf8').match(RE_LINE)[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
+  if (JSON.stringify(back) !== JSON.stringify(cur)) die('讀回來不一樣');
+  console.log(`✅ 每筆三個數已嵌入:👑 ${nL} 列・🔥🅿️ ${nG} 列`);
+  for (const [wk, W] of Object.entries(cur.wins)) console.log('  ' + wk + ' ' + W.rows.filter(r => r.tN != null).map(r => `${r.k} ${r.tWin}%/${r.tPer >= 0 ? '+' : ''}${r.tPer}%/${r.tN}筆`).join(' ・'));
+  process.exit(0);
+}
 // 💵 V78.1.9 只加「👑 領頭羊・閒錢放現金」那一列(使用者:「領頭羊+停車 0050 跟 🅿️ 哪個強」→ 要有 👑 不停車的對照)
 //   node scripts/embed_profit_board.mjs --leadcash lead_park_cap.json
 //   ⭐ 交叉驗證:同一份產物裡的「👑 全攻」== 看板的 lead(±0.5%)、0050 == 看板 0050 → 起點一致才嵌(⛔ 不嵌半套)

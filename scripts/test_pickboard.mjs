@@ -153,7 +153,7 @@ const lateL = r => { const l = f(lgRows, r.k); return !l || l.late; };
 const below2 = G.rows.slice(idx50 + 1).filter(r => !lateL(r));
 ok('③b 預設照 16 年排:線上面的都比 0050 多、線下面的都變淡', above.every(r => !lateL(r) && f(lgRows, r.k).fin > e50l.fin && !r.lose) && below2.every(r => r.lose && f(lgRows, r.k).fin <= e50l.fin), JSON.stringify(G.rows.map(r => r.k + (r.lose ? '·輸' : ''))));
 ok('③c 每一套都寫 ✅/⚠️/⛔ 跟 0050 比的結論', G.rows.filter(r => !['0050', '0052', '0056'].includes(r.k)).every(r => /[✅⚠️⛔].*0050/u.test(r.t)), JSON.stringify(G.rows));
-ok('③d 表頭每一欄可排序(做法 / 16 年 / 最近 4 年 / 中途最多賠 / 贏 0050)、再點反向', JSON.stringify(G.hdr) === '["n","l","a","mdd","beat"]' && G.s1 !== G.s2, JSON.stringify(G.hdr) + G.s1 + G.s2);
+ok('③d 表頭每一欄可排序(做法 / 16 年 / 最近 4 年 / 中途最多賠 / 🎯 V81.0.0 勝率;贏 0050 次數移進判定標籤)、再點反向', JSON.stringify(G.hdr) === '["n","l","a","mdd","win"]' && G.s1 !== G.s2, JSON.stringify(G.hdr) + G.s1 + G.s2);
 ok('③e ⛔ 中途最多賠那一欄在', /中途\s*最多賠/.test(G.txt));
 ok('③f 點開一列:三行怎麼做(選股 / 賣 / 錢)+ 看證據', /選股/.test(G.det) && /賣/.test(G.det) && /錢/.test(G.det) && /看這一套的實測證據/.test(G.det), G.det);
 ok('③g 三種人怎麼選:想賺最多 / 怕大跌 / 不想每天看盤(0050)', /想賺最多/.test(G.whoTxt) && /不想每天看盤/.test(G.whoTxt), G.whoTxt);

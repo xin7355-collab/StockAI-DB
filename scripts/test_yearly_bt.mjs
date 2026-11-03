@@ -39,7 +39,7 @@ if (Y && Y.strats) {
     ok(`②b 🧬 那些列的數量 == yearly_bt.mjs 的 STRATS+COMBOS(${WANT})`, NL.length === WANT, NL.length);
     // 👑 V78.0.8 領頭羊四列(leader_probe YEARLY_OUT → embed --merge)
     const LD = Y.strats.filter(s => s.g === 'lead');
-    ok('②j 👑 領頭羊有四列(全攻 / 穩定版 / 先衝再穩 / 尾盤成交),每列都是修好日 K 之後跑的、帶自己的 0050 含息對照', LD.length === 4 && LD.every(s => s.dv === 2 && s.yb && s.bc && s.bc.e0050tr > 0 && (Y.v2 && Y.v2.ids.includes(s.id))), LD.map(s => s.id).join(','));
+    ok('②j 👑 領頭羊有五列(全攻 / 🆕 V81.0.0 閒錢放現金 / 穩定版 / 先衝再穩 / 尾盤成交),每列都是修好日 K 之後跑的、帶自己的 0050 含息對照', LD.length === 5 && LD.some(s => s.id === 'lead_cash') && LD.every(s => s.dv === 2 && s.yb && s.bc && s.bc.e0050tr > 0 && (Y.v2 && Y.v2.ids.includes(s.id))), LD.map(s => s.id).join(','));
     const pbLine = PRO.split('\n').find(l => /^\s*_PROFIT_BOARD: \{/.test(l)) || '';
     let PBv = null; try { PBv = JSON.parse(pbLine.replace(/^\s*_PROFIT_BOARD: /, '').replace(/,$/, '')); } catch (_) {}
     const pbLead = PBv && PBv.wins.long.rows.find(r => r.k === 'lead'), yLead = LD.find(s => s.id === 'lead');
@@ -128,7 +128,7 @@ const R = await page.evaluate(async () => {
     // 📦 舊情境庫表頭可排序
     // 🔒 V78.0.8 🧬(預設)看不到 👑;解鎖選 👑 之後才出現,而且 🆕 那幾列跟 0050 含息比
     PRO._ybGrp = 'all'; PRO._ybSort = null; PRO.renderYearly();
-    o.gLeadShown = /👑/.test(box().innerText) && rowIds().filter(id => /^lead/.test(id)).length === 4;   // 🔬 V79.1.8 沒解鎖也看得到
+    o.gLeadShown = /👑/.test(box().innerText) && rowIds().filter(id => /^lead/.test(id)).length === 5;   // 🔬 V79.1.8 沒解鎖也看得到
     localStorage.setItem('proTerminalSettings', JSON.stringify({ strategy: 'lead', stratUnlock: true }));
     PRO._ybGrp = 'all'; PRO._ybSort = null; PRO.renderYearly();
     o.leadRows = rowIds().filter(id => /^lead/.test(id)).length; o.leadTag = box().querySelectorAll('[data-ybv2]').length;
@@ -150,7 +150,7 @@ const R = await page.evaluate(async () => {
 await browser.close();
 ok('③ 沒有 pageerror', !errs.length, errs.join(' | '));
 ok('③b 總表列數 = 全部策略數(V79.1.8 含 👑)+ 3 列對照(0050 不含息 / 含息 / 加權)', Y && R.rows === Y.strats.length + 3, `${R.rows}`);
-ok('③m 🔬 沒解鎖也看得到 👑 4 列(V79.1.8);選 👑 之後一樣 4 列、都標 🆕、細節跟同一份資料的 0050 含息比', R.gLeadShown && R.leadRows === 4 && R.leadTag >= 5 && R.leadBeat, JSON.stringify({ h: R.gLeadHidden, n: R.leadRows, t: R.leadTag, b: R.leadBeat }));
+ok('③m 🔬 沒解鎖也看得到 👑 5 列(V79.1.8;V81.0.0 多閒錢放現金那列);選 👑 之後一樣 5 列、都標 🆕、細節跟同一份資料的 0050 含息比', R.gLeadShown && R.leadRows === 5 && R.leadTag >= 6 && R.leadBeat, JSON.stringify({ h: R.gLeadHidden, n: R.leadRows, t: R.leadTag, b: R.leadBeat }));
 ok('③c 決定性對照:改常數,畫面要跟著變(⛔ 不寫死)', R.inj);
 ok('③c2 決定性對照:改「一路滾」中位,畫面要跟著變', R.injC);
 ok('③d 每一欄都可排序(名稱 + 一路滾 3 欄 + 每一年 + 加起來 + 🤖 AI 前/AI 時代兩段 + 贏幾年),點了排對、有箭頭、再點反向', Y && R.headers === 1 + 3 + Y.years.length + 2 + 2 && R.headClick && R.sortOk && R.sortArrow && R.sortRev && R.sortLo && R.sortName, JSON.stringify({ h: R.headers, s: R.sortOk, r: R.sortRev, lo: R.sortLo }));
