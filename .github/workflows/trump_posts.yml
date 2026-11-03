@@ -6,6 +6,7 @@ name: 🗽 川普發文採礦 (trump_posts)
 #   ③ 研究存檔 trump_deep/{YYYY-MM}.json.gz → orphan 分支 trump_deep(只增不減;研究 trump_post_probe / trump_intraday_probe 用)
 # ⏰ 什麼時候跑:⛔ 不吃排程配額(V75.2.0)—— 跟在「每天早上真的跑得到」的兩支後面:
 #   總經採礦(Cloudflare worker 台北 08:00 用 repository_dispatch 叫醒那輪)、盤前新聞晨採(排程那輪);cron 一行只當備援。
+#   ⏰ 2026-11-03 起也跟總經採礦「跟在 Telegram / 當沖熱度排程後面」那幾輪(台北清晨 04:00~05:00 常有;見下方 job 的 if)。
 #   川普大多在美國白天發文 = 台北晚上到清晨 → 開盤前那一輪就收得到「昨晚到今早」的。
 # ⛔ 只描述:這支不產生任何買賣訊號、⛔ 推播(LAB trump-post:方向量不到,只有隔天開盤跳空比較大)。
 
@@ -36,11 +37,18 @@ jobs:
   posts:
     name: 🗽 川普發文 → trump_posts.json + trump_deep
     runs-on: ubuntu-latest
-    # ⛔ 只跟 host 的排程 / worker 叫醒那一輪(host 被手動 dispatch / push / 別支 workflow_run 帶起來時不跟)
+    # ⛔ 只跟 host 的排程 / worker 叫醒那一輪(host 被手動 dispatch / push 帶起來時不跟)
+    # ⏰ 2026-11-03 加第三種:總經採礦「跟在 Telegram / 當沖熱度排程後面」那一輪(event = workflow_run)。
+    #   那天開盤前 macro_cron 跑了兩輪(台北 04:11 / 05:00)都是這一種,舊守門把兩輪都 skip 掉;
+    #   worker 08:00 又因為總經已經是美股收盤後的資料而不叫醒、盤前新聞排程拖到 11:00 才進來
+    #   → 開盤前沒有任何一輪自動抓川普發文(那天的資料是手動派的)。
+    #   看 conclusion ⛔ skipped:總經採礦自己只跟 host 的排程,host 是 push / 手動時那輪整個 skipped → 照樣不跟。
+    #   盤前新聞沒有 workflow_run 觸發 → 這一條只會對到總經採礦。測試 scripts/test_trump_trigger.py。
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.event == 'schedule' ||
-      github.event.workflow_run.event == 'repository_dispatch'
+      github.event.workflow_run.event == 'repository_dispatch' ||
+      (github.event.workflow_run.event == 'workflow_run' && github.event.workflow_run.conclusion != 'skipped')
     timeout-minutes: 10
     steps:
       - name: 📥 下載程式碼 (main)

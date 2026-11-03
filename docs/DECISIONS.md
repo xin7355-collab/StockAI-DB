@@ -4,6 +4,16 @@
 
 
 
+## ⏰ 川普發文採礦開盤前沒有一輪自動跑 → 也跟總經採礦「跟車那輪」(2026-11-03,排程驗證)
+排程驗證(trig_01PjGdee,台北 11:00)查到:`data/trump_posts.json` 兩邊 updated 台北 07:30、cnn ok、RSS 對帳 100%、翻譯 done 2 / gate 0 / quota 0 —— 檔案沒問題,**但那一份是 V80.2.2 收尾時手動派的**,⛔ 不是自動帶起來的:
+- trump_posts 自己的備援 cron(台北 07:40)沒進來(排程配額)。
+- worker 台北 08:00 沒叫醒總經採礦:它台北 05:00 那輪(21:00 UTC 開始)已經在美股收盤之後 → macroKick 判 `fresh`(設計如此,⛔ 改 worker)。
+- 總經採礦開盤前真的跑了兩輪(台北 04:11 / 05:00),但都是**跟在 Telegram / 當沖熱度排程後面**(event = `workflow_run`)→ trump_posts 的守門只放行 host 的 `schedule` / `repository_dispatch` → 兩輪都 skipped(run #2 / #3)。
+- 盤前新聞排程原訂台北 05:30,這天 **11:00** 才進來(前 5 天 08:40~09:16)→ 11:05 它跑完才自動帶起 trump_posts #6(success,cnn +23、rss 100%、翻譯 1 則)。盤前新聞那輪兩邊都 `✅ push 成功`、沒有「無 data 分支,跳過」,radar_news 兩邊 updated 台北 11:03。
+→ 要是沒有手動那一輪,開盤前 🗽 那一格會停在前一天。
+**修法**:`trump_posts.yml` 守門多放行「host 是總經採礦、而且它是跟車那輪」(`workflow_run.event == 'workflow_run' && conclusion != 'skipped'`)。總經採礦自己只跟 host 的排程 → host 是 push / 手動時那輪整個 skipped → 照樣不跟;盤前新聞沒有 workflow_run 觸發 → 這條只對得到總經採礦。一天多 2~4 輪,每輪約 1 分鐘、CNN 多半 304。
+**測試** `scripts/test_trump_trigger.py`:從 yaml 讀守門換成 Python 實際算 10 種情境 + 決定性對照(舊守門遇到「總經採礦跟車那輪」= 不跑)+ host 名字 / cron 備援 / 自己的鎖;`INJECT=old` 必紅。⏳ 沒驗到:下一個平日清晨那兩輪是不是真的跟上(看 trump_posts run 的 event = workflow_run、conclusion = success)。
+
 ## 🗓️ V81.0.0 星期幾 × 大跌・🔀 交叉提醒(股性 × 今天碰到的事)・🎯 每一套的勝率 / 每筆平均・📊 散戶進階區每年報酬・🧯 逐年模式停 0050 沒結清(陷阱 #66)(2026-11-03)
 使用者 11/03:①「週一到週五有沒有容易漲跌的日子?大盤大跌又剛好是星期幾,要先賣還是撿便宜?」②「專欄都是單一研究,我要照每一檔的股性 + 遇到的事(大盤大跌 / 大漲 / 專欄條件)交叉起來直接告訴我怎麼做」③「有用的策略都有勝率、回撤了嗎?」→ 問卷:交叉提醒放進階區、都跳通知;勝率兩邊都放,散戶放進階設定、要每年的報酬率。
 
