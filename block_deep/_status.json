@@ -1,16 +1,16 @@
 {
- "updated": "2026-11-03T02:35:08Z",
+ "updated": "2026-11-04T14:38:06Z",
  "start": "2009-01",
  "months_total": 215,
- "months_complete": 56,
- "days_with_data": 1150,
- "fetched_this_run": 99,
- "last_day": "20130911",
- "stopped": "20130912 斷路:要 JSON 卻回 HTML(擋頁)",
- "more": 0,
+ "months_complete": 70,
+ "days_with_data": 1433,
+ "fetched_this_run": 300,
+ "last_day": "20141105",
+ "stopped": "",
+ "more": 1,
  "gate": {
-  "sent": 100,
+  "sent": 300,
   "retried": 0,
-  "tripped": 1
+  "tripped": 0
  }
 }
