@@ -36,6 +36,7 @@
  *   IDX_LONG=$S/cw_idx_long.json IDX_EARLY=$S/cw_idx_long_early.json TWII_NOW=$S/cw_^TWII.json \
  *   DATA_DIR=$S/d10n NAMES=$S/sn_now.json TAIFEX=$S/cw_taifex_hist.json US_HIST=$S/cw_us_hist.json \
  *     node --max-old-space-size=4000 scripts/crash_warn_probe.mjs out.json
+ *   RECENT=2026-09-01 另外列出每一種徵兆在那天以後哪幾天亮著(這一波重播;不設 = 輸出一模一樣)
  *   node scripts/crash_warn_probe.mjs --selftest
  */
 import fs from 'fs';
@@ -533,6 +534,19 @@ export function run(env, log = console.log) {
     res.forEach((r, i) => { r.q = q[i] == null ? null : +q[i].toFixed(4); r.gates['⑥安慰劑'] = r.descOnly ? null : (r.q != null && r.q <= 0.05 && r.lift > 0);
         r.pass = !r.descOnly && Object.values(r.gates).every(Boolean); r.nPass = Object.values(r.gates).filter(Boolean).length; });
     const baseAll = liftOf(new Int8Array(n).fill(0), labs.dn60);
+    // 🔁 2026-11-04 RECENT=YYYY-MM-DD:列出每一種徵兆在那天以後哪幾天亮著(這一波重播;⛔ 不設 = 輸出一個字都不多)
+    let recent = null;
+    if (env.RECENT) {
+        const from = d10(env.RECENT), i0 = dates.findIndex(d => d >= from);
+        if (i0 < 0) throw new Error('RECENT 晚於資料最後一天');
+        recent = { from: dates[i0], to: dates[n - 1], dd: [], signals: [] };
+        let hi = 0; for (let i = 0; i < n; i++) { if (F.C[i] > hi) hi = F.C[i]; if (i >= i0) recent.dd.push({ d: dates[i], c: r2(F.C[i]), dd252: pct(F.dd252[i]), ret: pct(F.ret[i]) }); }
+        for (const d of defs) {
+            const sig = d.build(d.def), runs = []; let a = -1;
+            for (let i = i0; i <= n; i++) { const on = i < n && sig[i] === 1; if (on && a < 0) a = i; if (!on && a >= 0) { runs.push([dates[a], dates[i - 1], i - a]); a = -1; } }
+            recent.signals.push({ key: d.key, name: d.name, th: d.def ?? null, descOnly: !!d.descOnly, onDays: runs.reduce((s, r) => s + r[2], 0), runs, lastKnown: (() => { for (let i = n - 1; i >= i0; i--) if (sig[i] >= 0) return dates[i]; return null; })() });
+        }
+    }
     const epsOut = eps.L10.map(e => ({ peak: e.peakD, trig: e.trigD, bot: e.botD, depth: e.depth, daysToBot: e.daysToBot, done: e.done }));
     const nowF = (() => { const i = n - 1; return { d: dates[i], bias240: pct(F.bias240[i]), biasPct: r2(F.biasPct[i]), volPct: r2(F.volPct[i]), ret126: pct(F.ret126[i]), dd252: pct(F.dd252[i]), amtR: r2(F.amtR[i]), dist: F.dist[i],
         pctAbove200: B ? (() => { for (let j = n - 1; j >= 0; j--) if (B.N[j] >= BREADTH_MIN_N) return { d: dates[j], v: r2(B.above[j] / B.N[j] * 100) }; return null; })() : null }; })();
@@ -541,7 +555,7 @@ export function run(env, log = console.log) {
                 base_dn60: pct(baseAll.base), label: `未來 ${H_MAIN} 個交易日內最低收盤比今天低 ≥${X_MAIN}%`,
                 gates: '①全期 ②分段(2000–09/2010–17/2018–26)③逐年 ④拿掉最好那段 ⑤高原 ⑥平移安慰劑 BH≤0.05' },
         episodes: { L10: epsOut, L15: eps.L15.length, L20: eps.L20.length, fast: fast.map(f => ({ peak: dates[f.peakI], trig: dates[f.trigI] })) },
-        signals: res, now: nowF,
+        signals: res, now: nowF, ...(recent ? { recent } : {}),
         untestable: [
             { name: '風險指數(六因子合成)', why: 'VIX/外資期貨/美元/標普/日圓/黃金沒有同一段長歷史,而且權重是憑空訂的(陷阱 #38)' },
             { name: '外資台指期「急遽加空 / 空單最重」', why: 'V79.3.6 已補資料(fi_mkt_hist.json,2018 起)→ 改在 hightop_sell_probe.mjs 測:急遽加空 +6.2pp 4/6、空單最重 +0.4pp;照著讓 👑 停手兩段都少賺' },
@@ -574,6 +588,12 @@ function printReport(R, log = console.log) {
     }
     log(`\n📍 現在(${R.now.d}):年線乖離 ${R.now.bias240}%(位階 ${R.now.biasPct})・波動位階 ${R.now.volPct} ・半年 ${R.now.ret126}% ・離一年高 ${R.now.dd252}% ・成交金額比 ${R.now.amtR} ・出貨日 ${R.now.dist}` + (R.now.pctAbove200 ? ` ・站上 200 日線 ${R.now.pctAbove200.v}%(${R.now.pctAbove200.d})` : ''));
     log('   亮著的:' + (R.signals.filter(r => r.now && r.now.on).map(r => r.key).join('、') || '(沒有)'));
+    if (R.recent) {
+        const rc = R.recent;
+        log(`\n🔁 這一波重播(${rc.from} ~ ${rc.to};每一種徵兆亮過的日子)`);
+        log('   加權收盤 / 離一年高:' + rc.dd.filter((x, k) => k % 5 === 0 || k === rc.dd.length - 1).map(x => `${x.d.slice(5)} ${Math.round(x.c)}(${x.dd252}%)`).join(' ・'));
+        for (const s2 of rc.signals) log(`   ${s2.key.padEnd(12)} ${s2.onDays ? `亮 ${s2.onDays} 天:` + s2.runs.map(r => r[0] === r[1] ? r[0].slice(5) : `${r[0].slice(5)}~${r[1].slice(5)}`).join('、') : '沒亮'}${s2.lastKnown && s2.lastKnown < rc.to ? `(資料只到 ${s2.lastKnown})` : ''}`);
+    }
 }
 
 // ── selftest ─────────────────────────────────────────────────────────────────
