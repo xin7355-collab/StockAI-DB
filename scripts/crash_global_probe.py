@@ -200,20 +200,33 @@ def bucket(dl):
 
 
 BUCKETS = ('當天就是', '5 天內', '6~20 天', '21~60 天', '61~120 天', '121~250 天')
+BUCKETS2 = BUCKETS + ('251 天以上',)      # 「這一段的底」可以晚於 250 天(2000~2003 那種長空頭)
+
+
+def bucket2(dl):
+    return bucket(dl) if dl <= 250 else '251 天以上'
 
 
 def summarize(rows):
     """一組急跌(ep_metrics + fwd)→ 分佈。"""
     done = [r for r in rows if r['dLowFull']]      # 之後還有 250 天資料才算得出「250 天內最低」
     if not done:
-        return {'n': len(rows), 'nDone': 0}
+        legd = [r for r in rows if r.get('open') is False and r.get('dLegLow') is not None]
+        return {'n': len(rows), 'nDone': 0, 'nLeg': len(legd),
+                'legBuckets': {b: sum(1 for r in legd if bucket2(r['dLegLow']) == b) for b in BUCKETS2}}
     bk = {b: sum(1 for r in done if bucket(r['dLow']) == b) for b in BUCKETS}
     lows = [r['low250'] for r in done]
     reb = [r['reb10'] for r in done if r['reb10'] is not None]
     back = [r['back'] for r in rows if r['back'] is not None]
     nb = len([r for r in rows if r['backKnown']])
     q = lambda a, p: sorted(a)[min(len(a) - 1, int(p * len(a)))] if a else None
-    return {'n': len(rows), 'nDone': len(done), 'buckets': bk,
+    # 「這一段的底」= 那段修正(距一年高 ≥10%)結束之前的最低收盤 —— 那段還沒結束的不算(⛔ 用現在的低點冒充)
+    legd = [r for r in rows if r.get('open') is False and r.get('dLegLow') is not None]
+    lgl = [r['legLow'] for r in legd]
+    leg = {'nLeg': len(legd), 'legBuckets': {b: sum(1 for r in legd if bucket2(r['dLegLow']) == b) for b in BUCKETS2},
+           'legLowMed': _med(lgl), 'legLowQ1': q(lgl, 0.25), 'legLowWorst': min(lgl) if lgl else None,
+           'dLegLowMed': _med([r['dLegLow'] for r in legd])}
+    return {**leg, 'n': len(rows), 'nDone': len(done), 'buckets': bk,
             'low250Med': _med(lows), 'low250Q1': q(lows, 0.25), 'low250Worst': min(lows),
             'dLowMed': _med([r['dLow'] for r in done]),
             'reb10Med': _med(reb), 'backMed': _med(back),
@@ -400,6 +413,9 @@ def report_market(name, d, c, log, extra=None):
                     f" ・回到前高第 {z['back'] if z['back'] is not None else '—'} 天"
                     f" ・20/60/250 天 {_f(z['fw'][20])}/{_f(z['fw'][60])}/{_f(z['fw'][250])}%"
                     f" ・前一年 {_f(z['ret250'], 0)}% ・{'年線上' if z['above200'] else '年線下' if z['above200'] is not None else '—'}")
+        if s.get('nLeg'):
+            log(f"   這一段的底(那段修正結束前的最低點,{s['nLeg']} 次):" + ' ・'.join(f'{b} {s["legBuckets"][b]}' for b in BUCKETS2)
+                + f" ・還再跌中位 {_f(s.get('legLowMed'))}% ・最慘 25% {_f(s.get('legLowQ1'))}% ・最慘 {_f(s.get('legLowWorst'))}%")
         if s.get('nDone'):
             log(f"   見底時間(250 天內最低是第幾天,{s['nDone']} 次):" + ' ・'.join(f'{b} {s["buckets"][b]}' for b in BUCKETS))
             log(f"   還再跌 中位 {_f(s['low250Med'])}% ・最慘 25% {_f(s['low250Q1'])}% ・最慘 {_f(s['low250Worst'])}%"
@@ -427,6 +443,11 @@ def pooled(markets, log, tag='15/25'):
             rows.append({**z, 'mk': m['name'], 'base': {h: (f['vs'].get(h) or {}).get('base') for h in HS}})
     s = summarize(rows)
     log(f'\n════ 全部市場合計(急跌 {tag},每段第一次):{len(rows)} 次 ════')
+    if s.get('nLeg'):
+        log(f"   這一段的底({s['nLeg']} 次):" + ' ・'.join(f'{b} {s["legBuckets"][b]}({s["legBuckets"][b] / s["nLeg"] * 100:.0f}%)'
+                                                  for b in BUCKETS2)
+            + f" ・還再跌中位 {_f(s.get('legLowMed'))}% ・最慘 25% {_f(s.get('legLowQ1'))}% ・最慘 {_f(s.get('legLowWorst'))}%"
+            + f" ・第幾天中位 {_f(s.get('dLegLowMed'), 0)}")
     if s.get('nDone'):
         log('   見底時間:' + ' ・'.join(f'{b} {s["buckets"][b]}({s["buckets"][b] / s["nDone"] * 100:.0f}%)' for b in BUCKETS))
         log(f"   還再跌 中位 {_f(s['low250Med'])}% ・最慘 25% {_f(s['low250Q1'])}% ・最慘 {_f(s['low250Worst'])}%"
@@ -463,9 +484,17 @@ def like_now(rows, now, log):
             continue
         w60 = [z['fw'][60] for z in g if z['fw'][60] is not None]
         w250 = [z['fw'][250] for z in g if z['fw'][250] is not None]
+        lb = s.get('legBuckets') or {}
         log(f"   {nm}:{len(g)} 次 ・5 天內見底 {(s['buckets']['當天就是'] + s['buckets']['5 天內'])}/{s['nDone']}"
             f" ・半年以上 {s['buckets']['121~250 天']}/{s['nDone']} ・還再跌中位 {_f(s['low250Med'])}%"
             f" ・60 天內再跌 ≥5% {_f(s['redrop60'], 0)}% ・60 天中位 {_f(_med(w60))}% ・250 天中位 {_f(_med(w250))}%")
+        if s.get('nLeg'):
+            log(f"      這一段的底 5 天內 {lb.get('當天就是', 0) + lb.get('5 天內', 0)}/{s['nLeg']}"
+                f" ・21~120 天 {lb.get('21~60 天', 0) + lb.get('61~120 天', 0)}/{s['nLeg']}"
+                f" ・121 天以上 {lb.get('121~250 天', 0) + lb.get('251 天以上', 0)}/{s['nLeg']}"
+                f" ・還再跌中位 {_f(s.get('legLowMed'))}%")
+        if len(g) <= 30:
+            log('      └ ' + ' ・'.join(f"{z['mk'][:2]} {z['d'][:7]}" for z in sorted(g, key=lambda z: z['d'])))
     return out
 
 
@@ -583,6 +612,12 @@ def selftest():
     t(s['nDone'] == 2 and s['buckets']['當天就是'] == 1 and s['buckets']['5 天內'] == 1 and s['back250'] == 50.0
       and s['redrop60'] == 50.0, f'⑩ 分佈:之後資料不夠的不算見底時間、回到前高只算看得到結果的({s})')
 
+    rows2 = [dict(r, open=o, dLegLow=dl, legLow=ll) for r, o, dl, ll in
+             zip(rows, (False, False, True), (2, 300, 1), (-3.0, -40.0, -1.0))]
+    s2 = summarize(rows2)
+    t(s2['nLeg'] == 2 and s2['legBuckets']['5 天內'] == 1 and s2['legBuckets']['251 天以上'] == 1
+      and s2['legLowWorst'] == -40.0, f'⑪ 這一段的底:那段還沒結束的不算、超過 250 天另一格({s2})')
+
     print(f"\n{'❌ ' + str(len(fails)) + ' 條沒過' if fails else '✅ crash_global_probe selftest 全部通過'}")
     return 1 if fails else 0
 
@@ -651,6 +686,22 @@ def main():
             f"{(' ' + early[0][0] + ' ~ ' + early[-1][0]) if early else ''}")
         if early and tw and early[-1][0] < tw[0][0]:
             tw = early + tw
+    tw_name = '台股(本站官方)'
+    if tw and tw[0][0] >= '2000' and not no_yahoo:
+        # 證交所 1990 年代那份拿不到 → 退而求其次:Yahoo ^TWII 1997-07 起只補官方那份之前(同 mergeIdx:官方優先)
+        try:
+            yt = [r for r in yahoo('^TWII') if r[0] < tw[0][0]]
+            if len(yt) > 200:
+                gap = (tw[0][1] / yt[-1][1] - 1) * 100
+                log(f"🇹🇼 Yahoo ^TWII 補 {len(yt)} 天({yt[0][0]} ~ {yt[-1][0]})・接縫 {yt[-1][0]} {yt[-1][1]:,.0f} → "
+                    f"{tw[0][0]} {tw[0][1]:,.0f}({gap:+.1f}%)")
+                if abs(gap) < 7:
+                    tw = yt + tw
+                    tw_name = '台股(Yahoo 1997~1999 + 本站官方)'
+                else:
+                    log('⚠️ 接縫跳太多(≥7%)→ 不接')
+        except Exception as e:  # noqa: BLE001
+            log(f'⚠️ ^TWII 抓不到:{type(e).__name__} {str(e)[:80]}')
     if tw:
         d, c = [r[0] for r in tw], [r[1] for r in tw]
         i = len(c) - 1
@@ -659,7 +710,7 @@ def main():
                'above200': c[i] > ma200, 'spDD': sp_at(d[i])}
         log(f"🇹🇼 現在:{now['d']} 收 {now['c']:,.0f} ・前一年 {_f(now['ret250'], 0)}% ・200 日線 {ma200:,.0f}"
             f"({'之上' if now['above200'] else '之下'})・標普距一年高 {_f(now['spDD'], 1)}%")
-        markets.append(report_market('台股(本站官方)', d, c, log, lambda i: {'spDD': sp_at(d[i])}))
+        markets.append(report_market(tw_name, d, c, log, lambda i: {'spDD': sp_at(d[i])}))
     for tk, nm in YAHOO:
         if (tk == '^TWII' and tw) or no_yahoo:
             continue
