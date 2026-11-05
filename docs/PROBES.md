@@ -3,6 +3,16 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 📉 V81.0.2(2026-11-06)大盤殺到 41,575 的 7 個問題 —— 評估紀錄 55
+- `scripts/volsurge_probe.mjs`(新):`DATA_DIR=$S/d16 node --max-old-space-size=8000 scripts/volsurge_probe.mjs out.json`。App「剛爆量啟動」的規則照著買有沒有用(K = 2 / 2.5 / 3 / 5 / 10、收盤 / 隔天開盤、流動性、大盤大跌日)。⏭️ 只有 App 換規則才重跑。
+- `scripts/nsf_probe.mjs`(新):`IDX_LONG IDX_EARLY TWII_NOW US_HIST` → 國安基金 9 次進場前後 + 一樣深沒進場的修正段。⏭️ 國安基金再進場一次就加一筆重跑。
+- `scripts/crash_cycle_probe.mjs`(新):`IDX_LONG=… IDX_EARLY=… TWII_NOW=… node scripts/crash_cycle_probe.mjs out.json` → 往例表(原因標籤)、週期檢定(變異係數 vs 隨機 2,000 次、2.5~3.5 年比例、距上一段幾年)、急跌、川普往例。
+- `scripts/us_cycle_probe.py`(新):只在 Actions 跑(`macro_probe.yml` which=`us_cycle`,yfinance ^GSPC 1928 起,只印 log);`--selftest` 本機可跑。
+- `scripts/stopfall_probe.mjs`(新):`VIX_GRID=1 IDX_LONG IDX_EARLY TWII_NOW US_HIST FI_MKT RISK_HIST BREADTH16 BREADTH_NOW` → 29 種止跌徵兆 × 每段第一次 / 隔 10 天 / 價格版 + 11/05 亮了哪些 + VIX 回落 3×3 門檻高原。⚠️ 對照組一律 `covFrom()` 對齊那個徵兆有資料的年份(陷阱 #50)。
+- `floorcount_probe.py` ④ 段首版:`DATA_DIR=$S/d16 BREADTH_NOW=$S/breadth.json python3 floorcount_probe.py`(EP_GAP 20、每千檔門檻、同一年對照、之後 60 天又再跌 ≥5%)。⏭️ 改 App `_FLOOR_OCC` 前一定重跑。
+- `scripts/crash_stock_probe.mjs`(新):`DATA_DIR=$S/d16 DIV=$S/d16/_div16.json node --max-old-space-size=8000 scripts/crash_stock_probe.mjs out.json` → 大盤第一次跌 10/15/20% 那天,哪種股票(三四折 / 季線上下 / 跌最深 / 最抗跌)之後比較好。
+- 👑 回撤史:leader_probe `EQ_DIR=$S/eq16`(16 年)與 `EQ_DIR=$S/eq4`(近 4 年)**分開兩個目錄**跑(同一個目錄會互蓋),再數每條淨值的 ≥15/20/30/40% 回撤。
+
 ### 🗞️ V81.0.1(2026-11-04)郭哲榮文章逐條驗 —— 評估紀錄 54
 - `scripts/dipbuy_probe.mjs` (E)~(H):`git show origin/data:data/idx_long.json > $S/k_idx_long.json`(`idx_long_early.json`、`^TWII.json` 同樣)→ `IDX_LONG=$S/k_idx_long.json IDX_EARLY=$S/k_idx_long_early.json TWII_NOW=$S/k_twii.json node scripts/dipbuy_probe.mjs out.json`(幾秒;沒給 DATA_DIR 只跑 E~H)。(E) 從高點跌 X% 第一天 / (E2) 整數關卡 / (F) 大盤破底翻 / (G) 月份 / (H) 期中選舉。⭐ (F) 等 11/04 之後的資料重跑一次;⛔ 結論已定的別再測:整數關卡、第四季。
 - `scripts/ldtouch_red_probe.mjs`(新):`DATA_DIR=$S/d16 node --max-old-space-size=8000 scripts/ldtouch_red_probe.mjs out.json`(約 70 秒;`LD_SLACK=1.5 / 3` 高原)。盤中碰跌停 × 收盤翻紅 / 收回一半 / 收在跌停附近,大盤分三種日子;⭐ d16 更新到 11 月後重跑一次(11/04 那天)。

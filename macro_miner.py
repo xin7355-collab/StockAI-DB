@@ -3032,7 +3032,7 @@ _LAST_BACK_LEGS = {}       # V71.8.0 價差的兩條腿(期貨收盤/日期、�
 #   一旦 `{key}_error` 有值就代表「今天這個數字不可信」,⛔ 斷崖防護不可把舊值填回去
 #   (否則會出現「error 說不算、值卻還在」的自相矛盾,而且是**昨天的數字配今天的日期**)。
 #   ⚠️ 新增任何「有守門會把值設成 None」的當日快照欄位,記得加進來。
-_NO_CARRY_ON_ERROR = {'taifex_backwardation'}
+_NO_CARRY_ON_ERROR = {'taifex_backwardation', 'fi_complex_conclusion'}   # 🔁 V81.0.2 期現結論是當日快照,缺腿 / 跨日 ⛔ 沿用昨天那句
 
 
 def fetch_taifex_backwardation():
@@ -3219,7 +3219,7 @@ def judge_fi_complex(net_futures, net_spot, hist_vals=None):
     ⛔ 只描述外資部位,不是賣出訊號(crash_warn_probe:沒有一種大盤警示能穩定預告大跌)
     """
     if net_futures is None or net_spot is None:
-        return "資料整編中（待對接）"
+        return None   # 🔁 V81.0.2 缺一條腿 → 不給結論(原因寫在 fi_complex_error,見 _fi_complex_pick);⛔ 舊的佔位字串會被前端當成結論印出來
     level, _, _ = fi_fut_state(net_futures, hist_vals)
     if level == 'unknown':
         return "外資期貨基準累積中"
@@ -3231,6 +3231,92 @@ def judge_fi_complex(net_futures, net_spot, hist_vals=None):
     if heavy and -100 <= net_spot <= 0:
         return "外資期貨偏空、現貨持平"
     return "外資動向中性"
+
+
+def _ymd(d):
+    """'20261105' / '2026-11-05' / '2026/11/05' → '2026-11-05';讀不出來回 None。"""
+    t = re.sub(r"[^0-9]", "", str(d or ""))
+    return f"{t[:4]}-{t[4:6]}-{t[6:8]}" if len(t) >= 8 else None
+
+
+def _futures_cache_fallback(get=None, local_path=None, today=None, max_age_days=7):
+    """🏦 V81.0.2 外資台指期淨口數備援:TAIFEX 那條(fetch_foreign_futures_net)抓不到時,改讀每日採礦 miner.py
+    抓好的 futures_cache.json(同一個 job 的本機檔 → 沒有就讀已發佈的 gh-pages)。
+    背景:11/05~11/06 那幾輪 TAIFEX 回「表格結構未匹配」→ fi_futures_net 被斷崖防護一路沿用 11/04 的 −91,812,
+          而 miner.py 同一天抓到 11/05 −95,651 → risk_history 的「5 日增減」用的是舊數字。
+    ⛔ 日期超過 max_age_days 天不收(陷阱 #16:別拿舊快照當今天)。回 (net, 'YYYY-MM-DD', src, why)。"""
+    why = []
+    today = today or datetime.now(timezone(timedelta(hours=8))).date()
+
+    def _take(j, src):
+        if not isinstance(j, dict):
+            why.append(f"{src} 不是物件")
+            return None
+        net, d = j.get("fi_net"), _ymd(j.get("date"))
+        if not isinstance(net, (int, float)) or isinstance(net, bool) or d is None:
+            why.append(f"{src} 欄位不齊")
+            return None
+        try:
+            age = (today - datetime.strptime(d, "%Y-%m-%d").date()).days
+        except Exception:
+            why.append(f"{src} 日期讀不出來")
+            return None
+        if age < 0 or age > max_age_days:
+            why.append(f"{src} 日期 {d} 不在 {max_age_days} 天內")
+            return None
+        return (int(net), d, src, None)
+
+    lp = Path(local_path) if local_path else Path("futures_cache.json")
+    try:
+        r = _take(json.loads(lp.read_text(encoding="utf-8")), "本機 futures_cache.json")
+        if r:
+            return r
+    except Exception as e:
+        why.append(f"本機 {str(e)[:40]}")
+    get = get or http.get
+    try:
+        res = get("https://xin7355-collab.github.io/StockAI-DB/futures_cache.json", timeout=12)
+        if getattr(res, "status_code", 0) == 200:
+            r = _take(res.json(), "gh-pages futures_cache.json")
+            if r:
+                return r
+        else:
+            why.append(f"gh-pages HTTP {getattr(res, 'status_code', '?')}")
+    except Exception as e:
+        why.append(f"gh-pages {str(e)[:40]}")
+    return (None, None, None, ";".join(why) or "沒有備援")
+
+
+def _fi_futures_pick(fetched, fallback):
+    """🏦 V81.0.2 外資台指期淨口數要用哪一份(run() 只呼叫這一支)。
+    fetched = fetch_foreign_futures_net() 的 (net, err);fallback = 沒抓到時才呼叫的備援(_futures_cache_fallback)。
+    ・TAIFEX 抓到 → src='taifex'(那條沒有日期 → date=None)
+    ・抓不到 → 讀 futures_cache.json(日期 7 天內);拿到就用,⛔ 不寫 error(值是可信的,來源寫在 src)
+    ・兩邊都沒有 → None + error(斷崖防護照舊沿用昨天,_from_cache_yesterday 會標)"""
+    fut, ferr = fetched
+    out = {"fi_futures_net": None, "fi_futures_error": None, "fi_futures_src": None, "fi_futures_date": None}
+    if fut is not None:
+        out.update(fi_futures_net=fut, fi_futures_src="taifex")
+        return out
+    net, d, src, why = fallback()
+    if net is not None:
+        out.update(fi_futures_net=net, fi_futures_src=src, fi_futures_date=d)
+        print(f"   🏦 TAIFEX 外資期貨沒抓到({ferr})→ 改用 {src}({d}):{net:,} 口")
+    else:
+        out["fi_futures_error"] = f"{ferr};備援也沒有:{why}" if ferr else why
+    return out
+
+
+def _fi_complex_pick(fut, fut_date, spot, spot_date, hist_vals):
+    """🏦 V81.0.2 期現一句話(run() 只呼叫這一支)→ (結論, 原因)。
+    缺一條腿 / 兩條腿日期對不上 → (None, 原因)(⛔ 不拿兩天的數字湊一句話,陷阱 #34);其他交給 judge_fi_complex。"""
+    fd, sd = _ymd(fut_date), _ymd(spot_date)
+    if fut is None or spot is None:
+        miss = [n for n, v in (("外資期貨", fut), ("外資現貨", spot)) if v is None]
+        return None, f"{'、'.join(miss)}這一輪沒抓到"
+    if fd and sd and fd != sd:
+        return None, f"外資期貨({fd[5:]})跟現貨({sd[5:]})不是同一天,不湊一句話"
+    return judge_fi_complex(fut, spot, hist_vals), None
 
 
 
@@ -3325,7 +3411,10 @@ def main():
         "fi_spot_error":   None,
         "fi_futures_net":  None,   # 口數（淨）
         "fi_futures_error":None,
+        "fi_futures_src":  None,   # 🔁 V81.0.2 taifex / 本機 futures_cache.json / gh-pages futures_cache.json
+        "fi_futures_date": None,   # 備援那條才有日期(TAIFEX 那條沒有)
         "fi_complex_conclusion": None,
+        "fi_complex_error": None,  # 🔁 V81.0.2 結論給不出來的原因(⛔ 舊版寫「資料整編中」當成結論)
         # ── 頂部戰略指揮部新增六大宏觀指標 ──
         "us2y_yield":   None,
         "us2y_error":   None,
@@ -3410,9 +3499,10 @@ def main():
     out["fi_three_date"], out["fi_three_error"] = idate, ierr
 
     print("[4/8] 抓取 TAIFEX 外資臺指期淨口數…")
-    fut, ferr = fetch_foreign_futures_net()
-    out["fi_futures_net"], out["fi_futures_error"] = fut, ferr
-    print(f"     → {fut} 口（err={ferr}）")
+    #   🔁 V81.0.2 TAIFEX 抓不到 → 改讀 miner.py 的 futures_cache.json(見 _fi_futures_pick)
+    out.update(_fi_futures_pick(fetch_foreign_futures_net(), _futures_cache_fallback))
+    fut, ferr = out["fi_futures_net"], out["fi_futures_error"]
+    print(f"     → {fut} 口（來源={out['fi_futures_src']} 日期={out['fi_futures_date']} err={ferr}）")
 
     # 🌅 V79.5.2 上一份(給下面匯率 / 全球指標的「日期不可倒退」守門比較;本機沒有就讀已發佈那份)
     _prev_json, _prev_src = _load_prev_macro()
@@ -3613,8 +3703,9 @@ def main():
         _rh = _rh if isinstance(_rh, list) else (_rh.get('data') or [])
         _today = (out.get('updated') or '')[:10]
         _fi_hist = [h.get('fi_futures_net') for h in _rh if isinstance(h, dict) and h.get('date') != _today]
-    out["fi_complex_conclusion"] = judge_fi_complex(fut, spot, _fi_hist)
-    print(f"\n🎯 複合判定：{out['fi_complex_conclusion']}")
+    out["fi_complex_conclusion"], out["fi_complex_error"] = _fi_complex_pick(
+        fut, out.get("fi_futures_date"), spot, out.get("fi_spot_date"), _fi_hist)
+    print(f"\n🎯 複合判定：{out['fi_complex_conclusion']}(err={out['fi_complex_error']})")
 
     # 🛡️ 斷崖防護：對每個 None 欄位，用「上一次的 macro_risk.json」補值，
     # 並標記 _from_cache_yesterday=True；避免單日 API 抽風(如 TWSE 307)就讓使用者看到大片「採集中」。

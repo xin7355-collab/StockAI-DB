@@ -16,6 +16,10 @@
  *
  * ⚠️ 測試**不綁死真實資料狀態**(同 V72.1.8 的教訓)—— 一律注入 `_breadthHist`,
  *    每種情境各驗一次,⛔ 別假設今天剛好落在哪個分支。
+ *
+ * 🔁 V81.0.2 改釘「只描述」:floorcount_probe.py ④ 每一波只算第一天重驗 → ≥300 檔沒有優勢、
+ *    一半之後 60 天內又再跌 ≥5% → ⛔ 不可再說「可以開始分批撿 / 短線低點 / 抄底」;
+ *    改成「⛔ 不是低點訊號」+ 一行發生率(data-occ,⑪ 決定性對照:改 _FLOOR_OCC 畫面跟著變)。
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
@@ -62,8 +66,11 @@ ok('② n=520 → hot=true', x.s && x.s.hot === true, JSON.stringify(x.s));
 ok('② 家數/爆量數都要顯示', /520/.test(x.html) && /60/.test(x.html), x.html.slice(0, 500));
 // 🧹 V78.3.6 散戶 App 不印實測數字(+1.55/+1.44/+1.45、51 天)→ 改釘:講「怎麼用」(分批撿的參考),⛔ 不可出現研究字樣
 const RES = /實測|回測|探針|勝率|期望值|對照組|樣本|\+1\.\d\d|\d+ 天|pp\b|未扣交易成本/;
-ok('② 極端時要講「大盤跌到可以開始分批撿」的參考(🧹 V78.3.6)', /可以開始分批撿/.test(x.html), x.html);
-ok('② ⛔ 不可印實測數字 / 樣本天數 / 研究字樣(🧹 V78.3.6)', !RES.test(x.html.replace(/<[^>]+>/g, '')), x.html);
+// 🎲 發生率那一行(data-occ)是 V79.8.6 准印的格式,⛔ 其他地方仍不可有研究字樣 → 掃之前先拿掉那一行
+const noOcc = h => h.replace(/<div data-occ[\s\S]*?<\/div>/g, '');
+ok('② 🔁 V81.0.2 ⛔ 不可再說「可以開始分批撿 / 短線低點 / 抄底」', !/分批撿|短線低點|抄底|可以撿/.test(x.html), x.html);
+ok('② 🔁 V81.0.2 要寫「⛔ 不是低點訊號」', /不是低點訊號/.test(x.html), x.html);
+ok('② ⛔ 不可印實測數字 / 樣本天數 / 研究字樣(發生率那一行除外)', !RES.test(noOcc(x.html).replace(/<[^>]+>/g, '')), noOcc(x.html));
 const hotHtml = x.html;
 
 // ── ③ ⛔ 不可下進場指令(單一劇本原則 + 接刀實測輸大盤)────────────
@@ -72,7 +79,7 @@ const hotHtml = x.html;
 const strip = s => s.replace(/⛔[^。<]*/g, '').replace(/不是[^。<]*/g, '').replace(/別[^。<]*/g, '')
                     .replace(/不代表[^。<]*/g, '').replace(/還不能[^。<]*/g, '');
 ok('③ ⛔ 極端時不可出現買進指令', !/(買進|進場|加碼|可以追|all in)/i.test(strip(hotHtml)), strip(hotHtml).slice(0, 600));
-ok('③ 但「分批撿指數型」這種降級說法要在', /分批/.test(hotHtml) && /(0050|006208)/.test(hotHtml), hotHtml);
+ok('③ 🔁 V81.0.2 要講「手上的照出場規則走、要不要買照決策台」', /手上的照你的出場規則走/.test(hotHtml) && /要不要買照決策台/.test(hotHtml), hotHtml);
 
 // ── ④ ⛔ 燈號鐵則:不可用 🔴🟢(這講的是風險不是漲跌方向)──────────
 // ⚠️ ⛔ 別寫成字元類 `[🔴🟢]` —— emoji 是**代理對**,放進字元類會被拆成 4 個代理碼元,
@@ -87,7 +94,8 @@ x = await run(hist(120, 250, 20));
 ok('⑤ n=250 → hot=false', x.s && x.s.hot === false, JSON.stringify(x.s));
 ok('⑤ 要明說「還沒到一起被殺的程度(300 檔以上)」(🧹 V78.3.6 拿掉「實測有邊際」研究字樣)', /還沒到「一起被殺」的程度/.test(x.html) && /300 檔以上/.test(x.html) && !RES.test(x.html.replace(/<[^>]+>/g, '')), x.html.slice(0, 600));
 ok('⑤ ⛔ 中間段不可宣稱有優勢', !/\+1\.55/.test(x.html), x.html.slice(0, 600));
-ok('⑤ ⭐ 不熱時也要提醒「不代表可以放心做多」', /放心做多/.test(x.html), x.html.slice(0, 900));
+ok('⑤ ⭐ 不熱時也要寫「⛔ 不是低點訊號」(⛔ 不可讀成「還沒到所以還不能撿」)', /不是低點訊號/.test(x.html) && !/還不能|抄底|分批撿/.test(x.html), x.html.slice(0, 900));
+ok('⑤ 不熱時⛔ 不印發生率那一行', !/data-occ/.test(x.html), x.html.slice(0, 900));
 
 // ── ⑥ 非單調的警語必須留著(⛔ 別為了好看拿掉)──────────────────
 for (const [nm, h] of [['極端', hist(120, 520, 60)], ['中間', hist(120, 250, 20)]]) {
@@ -95,7 +103,7 @@ for (const [nm, h] of [['極端', hist(120, 520, 60)], ['中間', hist(120, 250,
     // 🧹 V78.3.6 警語改白話(⛔ 別當成「越大越好」的連續指標 + 只有 300 檔以上才有參考意義);「未扣交易成本」是回測口徑 → 改釘⛔ 不出現研究字樣
     ok(`⑥ ${nm}段都要有「非連續指標」警語(🧹 V78.3.6 白話版)`,
         /連續指標/.test(r.html) && /數字越大越好/.test(r.html) && /300 檔以上/.test(r.html), r.html.slice(-400));
-    ok(`⑥ ${nm}段⛔ 不可出現回測研究字樣(🧹 V78.3.6)`, !RES.test(r.html.replace(/<[^>]+>/g, '')), r.html.slice(-300));
+    ok(`⑥ ${nm}段⛔ 不可出現回測研究字樣(發生率那一行除外)`, !RES.test(noOcc(r.html).replace(/<[^>]+>/g, '')), noOcc(r.html).slice(-300));
 }
 
 // ── ⑦ 位階要用「自己的歷史」算,⛔ 不是寫死門檻 ────────────────
@@ -116,7 +124,7 @@ const help = await page.evaluate(() => {
 });
 // 🧹 V78.3.6 教學只留「怎麼看 / 怎麼用」:門檻來源(100→300)、11 天、51 個樣本、多頭窗口、接刀輸大盤的實測都搬去產業作戰室
 ok('⑧ 教學要講地板股怎麼定義(跟自己比、最慘的 5%)', /跟自己比/.test(help) && /5%/.test(help), help.slice(0, 300));
-ok('⑧ 教學要講「極端才有意義,⛔ 不是越多越好的連續指標」', /極端/.test(help) && /連續指標/.test(help), help);
+ok('⑧ 🔁 V81.0.2 教學要講「⛔ 不是低點訊號」+「⛔ 不是越多越該買的連續指標」', /不是低點訊號/.test(help) && /連續指標/.test(help) && !/短線低點的樣子|分批撿/.test(help), help);
 ok('⑧ 教學要區分大盤層級 vs 個股(⛔ 不是叫你買某一檔,接刀看個股頁)', /大盤層級/.test(help) && /接刀/.test(help) && /不是叫你去買某一檔/.test(help), help);
 ok('⑧ 教學要寫歷史規律不是保證', /不是保證/.test(help), help);
 ok('⑧ 教學⛔ 不可出現實測研究字樣(11 天 / 51 個獨立樣本 / 回測窗口 / 輸大盤)(🧹 V78.3.6)', !/11 天|獨立樣本|回測|實測|輸大盤|樣本/.test(help), help);
@@ -132,6 +140,37 @@ if (fs.existsSync(bd)) {
 } else {
     ok('⑨ breadth.json 不存在(本地未跑採礦,跳過)', true);
 }
+
+// ── ⑪ 🎲 V81.0.2 發生率那一行:照「今天的檔數換算成每千檔」挑那一級,三個數字讀 _FLOOR_OCC ──
+const occOf = (flr, total) => page.evaluate(([f, t]) => {
+    const a = Array.from({ length: 120 }, (_, i) => ({ d: `2026-0${1 + (i % 7)}-${String((i % 28) + 1).padStart(2, '0')}`, flr: 80, flrv: 10, total: t }));
+    a[a.length - 1] = { ...a[a.length - 1], d: '2026-11-05', flr: f, flrv: 50 };
+    app._breadthHist = a;
+    const html = app._floorCountHtml();
+    const m = html.match(/<div data-occ="floor"[\s\S]*?<\/div>/);
+    return m ? m[0].replace(/<[^>]+>/g, '') : '';
+}, [flr, total]);
+let o = await occOf(520, 2300);        // 226‰ → ≥136 那一級
+ok('⑪ 520/2,300 → 第一級(36 波 → 19 波・同一年 42%)', /36 波/.test(o) && /19 波/.test(o) && /53%/.test(o) && /42%/.test(o), o);
+ok('⑪ 寫明「過去發生過的比例,⛔ 不是會漲或會跌」', /過去發生過的比例/.test(o) && /⛔ 不是會漲或會跌/.test(o), o);
+ok('⑪ 門檻照今天檔數換算(136‰ × 2,300 → 313 檔以上)', /313 檔以上/.test(o), o);
+o = await occOf(901, 2300);            // 391.7‰ → ≥273 那一級(11/05 實際的那天)
+ok('⑪ 901/2,300(11/05)→ 第二級(20 波 → 11 波・同一年 51.1%)', /20 波/.test(o) && /11 波/.test(o) && /51\.1%|51%/.test(o), o);
+o = await occOf(1000, 2300);           // 434.8‰ → ≥409 那一級
+ok('⑪ 1,000/2,300 → 第三級(10 波 → 5 波)+ 標「次數不多」', /10 波/.test(o) && /5 波/.test(o) && /次數不多/.test(o), o);
+o = await occOf(310, 2400);            // hot(≥300)但 129‰ < 136 → 沒有那一級 → 不印
+ok('⑪ hot 但換算後不到第一級 → 不印(⛔ 不硬套)', o === '', o);
+const occ2 = await page.evaluate(() => {   // ⭐ 決定性對照:改常數畫面跟著變
+    const keep = JSON.stringify(app._FLOOR_OCC);
+    app._FLOOR_OCC.rows[2].k = 7;
+    const a = Array.from({ length: 120 }, (_, i) => ({ d: `2026-0${1 + (i % 7)}-${String((i % 28) + 1).padStart(2, '0')}`, flr: 80, flrv: 10, total: 2300 }));
+    a[a.length - 1] = { ...a[a.length - 1], d: '2026-11-05', flr: 520, flrv: 50 };
+    app._breadthHist = a;
+    const html = app._floorCountHtml();
+    app._FLOOR_OCC = JSON.parse(keep);
+    return (html.match(/<div data-occ="floor"[\s\S]*?<\/div>/) || [''])[0].replace(/<[^>]+>/g, '');
+});
+ok('⑪ ⭐ 決定性對照:_FLOOR_OCC 那一級改成 7 波 → 畫面跟著寫 7 波(19%)', /7 波/.test(occ2) && /19%/.test(occ2) && !/19 波/.test(occ2), occ2);
 
 // ── ⑩ 整體:不可有 pageerror ────────────────────────────────
 ok('⑩ 無 pageerror', errs.length === 0, errs.join(' | '));
