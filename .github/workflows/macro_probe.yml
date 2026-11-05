@@ -20,6 +20,7 @@ on:
           - mops_insider # 🔎 V80.1.7 公開資訊觀測站 申報轉讓 / 董監質押 有沒有歷史(~3 分,只讀 MOPS)
           - trump_src # 🗽 V80.2.1 川普發文來源:CNN 存檔 CSV + trumpstruth RSS 的真實格式 / 大小 / 時區 / 304(~2 分,只讀)
           - us_cycle # 🇺🇸 V81.0.2 標普 500 1928 起:大跌是不是幾年一次(研究,~1 分,只讀 Yahoo、只印 log)
+          - crash_global # 🌏 V81.0.3 急跌之後多久見底:台股 1990 起 + 美日港韓德英(研究,~20 分,只讀 Yahoo / 證交所、只印 log)
 
 permissions:
   contents: read
@@ -92,6 +93,19 @@ jobs:
         run: |
           python3 scripts/us_cycle_probe.py --selftest
           python3 scripts/us_cycle_probe.py
+
+      # 🌏 V81.0.3 研究:「何時反攻」= 急跌之後多久見底 / 還再跌多少 / 多久回到前高(台股 1990 起 + 各國指數 + VIX 回落樣本外)
+      #   台股用本站官方那份(data 分支)+ 證交所 FMTQIK 補 1990~1999;⛔ 只讀、只印 log、不寫檔、不碰任何分支
+      - name: 🌏 急跌之後多久見底(台股 1990 起 + 各國指數)
+        if: ${{ inputs.which == 'crash_global' }}
+        run: |
+          git fetch --depth=1 origin "+refs/heads/data:refs/remotes/origin/data" || echo "::warning::data 分支抓不到 → 台股只用 Yahoo 1997 起"
+          mkdir -p /tmp/tw
+          git show origin/data:data/idx_long.json > /tmp/tw/long.json || rm -f /tmp/tw/long.json
+          git show origin/data:data/idx_long_early.json > /tmp/tw/early.json || rm -f /tmp/tw/early.json
+          git show 'origin/data:data/^TWII.json' > /tmp/tw/now.json || rm -f /tmp/tw/now.json
+          python3 scripts/crash_global_probe.py --selftest
+          TW_LONG=/tmp/tw/long.json TW_EARLY=/tmp/tw/early.json TW_NOW=/tmp/tw/now.json TWSE_EARLY=1 python3 scripts/crash_global_probe.py
 
       - name: 🌐 執行總經採礦
         if: ${{ inputs.which == 'macro' || inputs.which == 'both' }}
