@@ -16,6 +16,9 @@
  *   美股(2009 起):VIX 收盤 ≥30(前 20 天都 <30)· VIX 從近 10 天高點(≥30)回落 20%
  *   廣度(2010 起,breadth16_build):下跌家數 ≥85 / 90%(Lowry)· 90% 下跌日之後 5 天內出現 80% 上漲日 · Zweig 寬度衝刺 · 跌停家數 ≥3% / 6%
  *   國安基金:9 次進場日(nsf_probe 同一份日期)
+ *   期交所(V81.0.3,TAIFEX_HIST=data/taifex_hist.json):選擇權 P/C 未平倉比 / 成交量比衝進一年最高 10% 或掉到最低 10%(2010 起);
+ *         散戶多空比(小台,正 = 散戶淨多)極空 / 極多(2018-06 起)—— 以前只測過「隔天」,這裡看 20 / 60 / 120 天
+ *         「一年最高 10%」= 跟前 250 個交易日(⛔ 不含當天,陷阱 #43)比,至少 120 天有資料才算;當天剛跨進去那天才算一次
  * 最後印「這一段(還沒走完)」哪些已經亮過。
  *
  * 跑法:IDX_LONG=$S/k_idx_long.json IDX_EARLY=$S/k_idx_long_early.json TWII_NOW=$S/k6/twii_now.json \
@@ -70,8 +73,25 @@ export function signals(S, X = {}) {
         if (X.zw && X.zw[i] != null && X.zw[i - 1] != null && X.zw[i] > 0.615 && X.zw[i - 1] <= 0.615) { let lo = 1; for (let k = Math.max(0, i - 10); k < i; k++) if (X.zw[k] != null) lo = Math.min(lo, X.zw[k]); if (lo < 0.40) add('Zweig寬度衝刺', i); }
         if (X.vixTw && X.vixTw[i]) for (const k of X.vixTw[i]) add(k, i);
         if (X.nsf && X.nsf.has(i)) add('國安基金進場', i);
+        // 期交所:P/C 比、散戶多空比衝到一年的兩端(剛跨進去那天)
+        for (const [nm, arr, side] of [['P/C未平倉比衝進一年最高10%', X.pcOi, 1], ['P/C未平倉比掉進一年最低10%', X.pcOi, -1],
+            ['P/C成交量比衝進一年最高10%', X.pcVol, 1], ['散戶多空比極空(一年最低10%)', X.rl, -1], ['散戶多空比極多(一年最高10%)', X.rl, 1]]) {
+            if (!arr) continue;
+            const a = pctRank(arr, i), b = pctRank(arr, i - 1);
+            if (a == null) continue;
+            const inNow = side > 0 ? a >= 0.9 : a <= 0.1, inPrev = b != null && (side > 0 ? b >= 0.9 : b <= 0.1);
+            if (inNow && !inPrev) add(nm, i);
+        }
     }
     return out;
+}
+
+/** 第 i 天的值在「前 250 個交易日」裡排第幾(0~1;⛔ 不含當天);少於 120 天有資料 → null */
+export function pctRank(arr, i, W = 250, MIN = 120) {
+    if (i < 1 || arr[i] == null) return null;
+    let n = 0, le = 0;
+    for (let k = Math.max(0, i - W); k < i; k++) if (arr[k] != null) { n++; if (arr[k] < arr[i]) le++; else if (arr[k] === arr[i]) le += 0.5; }
+    return n >= MIN ? le / n : null;
 }
 
 /** 廣度 EMA10(Zweig 用;up / (up+dn)) */
@@ -147,6 +167,13 @@ export function buildExtras(S, env = process.env) {
     X.vixFrom = us && us.days && us.days.length > 10 ? Math.max(0, usToTw(S.d)(us.days[9])) : 0;
     X.vixSrc = us && us.days ? `VIX ${us.days[0]} ~ ${us.days.at(-1)}(之後用 risk_history 補)` : '';
     X.nsf = new Set(NSF.map(d => S.d.findIndex(x => x >= d)).filter(i => i >= 0));
+    const tf = rd(env.TAIFEX_HIST);
+    if (tf) {
+        const pick = (o, j) => new Map(Object.entries(o || {}).map(([d, v]) => [d10(d), Array.isArray(v) && v[j] != null ? +v[j] : null]).filter(([, v]) => v != null && Number.isFinite(v)));
+        const pv = pick(tf.pc, 0), po = pick(tf.pc, 1), rl = pick(tf.rl, 3);
+        X.pcVol = onCal(S.d, pv); X.pcOi = onCal(S.d, po); X.rl = onCal(S.d, rl);
+        X.tfSrc = `P/C ${[...po.keys()].sort()[0]} ~ ${[...po.keys()].sort().at(-1)} ・散戶多空比 ${[...rl.keys()].sort()[0]} ~ ${[...rl.keys()].sort().at(-1)}`;
+    }
     return X;
 }
 
@@ -158,6 +185,9 @@ export function covFrom(k, S, X) {
     if (/家數|Zweig/.test(k)) return first(X.br, 10);
     if (/^VIX/.test(k)) return X.vixFrom || 0;
     if (/爆量/.test(k)) return first(S.a, 20);
+    if (/^P\/C未平倉/.test(k)) return first(X.pcOi, 120);
+    if (/^P\/C成交量/.test(k)) return first(X.pcVol, 120);
+    if (/^散戶多空比/.test(k)) return first(X.rl, 120);
     return 0;
 }
 
@@ -188,7 +218,7 @@ export function run(S, X, log = console.log) {
         for (const k of ks) log(`  ${now[k] ? '✔' : '·'} ${k}${now[k] ? ':' + now[k].join(' ') : ''}`);
     }
     return { res, now, legs: CL.legs.map(L => ({ peak: S.d[L.peakI], s: S.d[L.s], low: S.d[L.lowI], depth: r2(L.depth), end: L.open ? null : S.d[L.e] })),
-        src: { mg: X.mgSrc, fi: X.fiSrc, br: X.brSrc, vix: X.vixSrc } };
+        src: { mg: X.mgSrc, fi: X.fiSrc, br: X.brSrc, vix: X.vixSrc, tf: X.tfSrc } };
 }
 
 function selftest() {
@@ -245,6 +275,17 @@ function selftest() {
     const Sc = { a: [null, 1, 1] };
     t(covFrom('融資10天減≥5%', Sc, Xc) === 12 && covFrom('外資連賣8天後首買', Sc, Xc) === 2 && covFrom('跌停家數≥3%', Sc, Xc) === 3
         && covFrom('VIX從30以上回落20%', Sc, Xc) === 7 && covFrom('站回5日線', Sc, Xc) === 0, '⑩ 對照組起點 = 那個徵兆的資料起點(+ 回看天數),價格類從頭算');
+    // ⑪ 期交所兩端:前 250 天(⛔ 不含當天)排名;剛跨進最高 10% 那天才算一次;改掉之後的值,前面判斷不變(⛔ 前視)
+    const arr = d.map((_, i) => (i < 100 ? null : 50 + (i % 7)));
+    arr[400] = 99; arr[401] = 99; arr[402] = 40;
+    t(pctRank(arr, 219) === null && pctRank(arr, 400) === 1 && pctRank(arr, 402) === 0, `⑪ 排名只看前 250 天、少於 120 天不給(${pctRank(arr, 219)} / ${pctRank(arr, 400)} / ${pctRank(arr, 402)})`);
+    const arr2 = arr.slice(); for (let k = 401; k < arr2.length; k++) arr2[k] = 0;
+    t(pctRank(arr2, 400) === pctRank(arr, 400), '⑪ 改掉之後的值,當天的排名不變(⛔ 前視)');
+    const Xt = { CL, pcOi: arr, pcVol: null, rl: null };
+    const sig = signals({ ...S, c: S.c }, Xt);
+    const hits = (sig['P/C未平倉比衝進一年最高10%'] || []);
+    t(hits.includes(400) && !hits.includes(401), `⑪ 連兩天在最高 10% 只算第一天(${hits.filter(i => i >= 395 && i <= 405)})`);
+    t(covFrom('P/C未平倉比衝進一年最高10%', S, Xt) === 220, '⑪ 對照組起點 = 資料起點 + 120 天');
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
