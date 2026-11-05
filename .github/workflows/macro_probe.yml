@@ -19,6 +19,7 @@ on:
           - index_rebal # 🔎 V80.1.7 臺灣 50 / MSCI 成分股調整的歷史公告去哪裡拿(~2 分,只讀官方首頁往下一層)
           - mops_insider # 🔎 V80.1.7 公開資訊觀測站 申報轉讓 / 董監質押 有沒有歷史(~3 分,只讀 MOPS)
           - trump_src # 🗽 V80.2.1 川普發文來源:CNN 存檔 CSV + trumpstruth RSS 的真實格式 / 大小 / 時區 / 304(~2 分,只讀)
+          - us_cycle # 🇺🇸 V81.0.2 標普 500 1928 起:大跌是不是幾年一次(研究,~1 分,只讀 Yahoo、只印 log)
 
 permissions:
   contents: read
@@ -83,6 +84,14 @@ jobs:
           python3 lib_trump.py --selftest
           python3 scripts/trump_src_probe.py --selftest
           python3 scripts/trump_src_probe.py
+
+      # 🇺🇸 V81.0.2 研究:台股只有 26 年 → 拿美股近百年同一套切段方法再驗「大跌有沒有週期」
+      #   ⛔ 只讀 Yahoo、只印 log、不寫檔、不碰任何分支;抓不到 → 紅燈(= 沒驗到)
+      - name: 🇺🇸 標普 500 大跌週期(1928 起)
+        if: ${{ inputs.which == 'us_cycle' }}
+        run: |
+          python3 scripts/us_cycle_probe.py --selftest
+          python3 scripts/us_cycle_probe.py
 
       - name: 🌐 執行總經採礦
         if: ${{ inputs.which == 'macro' || inputs.which == 'both' }}
