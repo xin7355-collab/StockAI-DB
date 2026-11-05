@@ -3,6 +3,13 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🌪️ V81.0.3(2026-11-06)何時反攻 + 大跌的神級操作
+- `scripts/crash_global_probe.py`(新):只在 Actions 跑(`macro_probe.yml` which=`crash_global`;Yahoo 8 個指數 + 證交所 FMTQIK 1990~1999 + data 分支 idx_long,只印 log);`--selftest` 本機可跑;`--events c.json` 給 `test_crash_global.mjs`。→ 每個市場急跌 15/25・10/10・20/40(每段第一次):那一段的底 / 250 天內最低 / 離底反彈 10% / 回到前高 / 事件 vs 修正段隨便一天 + 8 個市場合計 + 像現在分組 + VIX 回落拿標普 1990 起當樣本外。⏭️ 台股這一段走完就重跑,`index.html _CRASH_OCC` 跟著改。
+- `scripts/crash_playbook_probe.mjs`(新):`IDX_LONG IDX_EARLY TWII_NOW D16 node scripts/crash_playbook_probe.mjs out.json`(D16 給真 0050 含息)→ 一筆錢 / 每月存錢 / 神 / 等跌 / 分批 / 再平衡 / 年線 / 大跌換正 2(費用 1/4/6%)/ 搶反彈;安慰劑 = 同一張時間表搬到別的起點(⛔ 窗口裡隨便挑日子 —— 現金拖累讓安慰劑天生很差)。
+- `scripts/crash_stock_probe.mjs` 擴充:`EQ_DIR=$S/eq16` 加 👑 大跌後跟 0050 含息比;β(前 250 天)扣掉後的超額、挪 120 天安慰劑、跟同期合成正 2 比、124 格 BH。
+- `scripts/stopfall_probe.mjs` `TAIFEX_HIST=$S/taifex_hist.json`:P/C 未平倉 / 成交量比、散戶多空比兩端(一年最高 / 最低 10%,跟前 250 天比)→ 20 / 60 / 120 天 vs 修正段隨便一天(對照組照資料起點對齊,陷阱 #50)。
+- 測試:`scripts/test_crash_global.mjs`(Python ↔ JS 逐筆)・`scripts/test_crash_occ.mjs`(App 反攻雷達那一行)。
+
 ### 📉 V81.0.2(2026-11-06)大盤殺到 41,575 的 7 個問題 —— 評估紀錄 55
 - `scripts/volsurge_probe.mjs`(新):`DATA_DIR=$S/d16 node --max-old-space-size=8000 scripts/volsurge_probe.mjs out.json`。App「剛爆量啟動」的規則照著買有沒有用(K = 2 / 2.5 / 3 / 5 / 10、收盤 / 隔天開盤、流動性、大盤大跌日)。⏭️ 只有 App 換規則才重跑。
 - `scripts/nsf_probe.mjs`(新):`IDX_LONG IDX_EARLY TWII_NOW US_HIST` → 國安基金 9 次進場前後 + 一樣深沒進場的修正段。⏭️ 國安基金再進場一次就加一筆重跑。

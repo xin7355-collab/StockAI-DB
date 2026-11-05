@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V81.0.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V81.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V81.0.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V81.0.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8909,10 +8909,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V81.0.2',
+    _APP_VERSION: 'V81.0.3',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V81.0.3', d: [
+            '🧭 大盤頁的反攻雷達:這一段修正裡出現「25 天內跌 15% 以上」時,多一行過去發生過的比例 —— 台股 1990 年起那 20 次,那一段的最低點一週內就到 8 次、一週到半年 7 次、半年以上 5 次;之後 60 天內又再低 5% 以上的比例,跟平常修正中隨便一天差不多。⛔ 不是會漲或會跌',
+        ] },
         { v: 'V81.0.2', d: [
             '🤖 頂端那個「剛爆量啟動」泡泡拿掉了:它的量比是「今天到現在 ÷ 昨天整天」(以前說明寫錯成跟 5 天平均比),只收今天漲 1.5~6% 的,不是全部爆量的股票;照著買過去沒有比較好,所以不再出現',
             '🏚️ 大盤頁「全市場跌到地板的有幾檔」改成只描述今天殺得多兇,⛔ 不再說「可以開始分批撿」;多一行過去發生過的比例',
@@ -9231,11 +9234,6 @@ ${list}
             '🎯 明日作戰清單修好了:上個月中起觸發價一直算不出來 —— 名單只剩「不是靠價位」的那幾檔,自動下單也因此一檔都不會買。今晚的清單恢復正常',
             '🧯 選股掃描以後只要算到一半出錯,就會停下來、保留昨天的清單,⛔ 不再默默少掉股票',
             '🧬 自動下單與尾盤買點提醒改成跟決策台同一條:只買「股價在高檔、最近又很會動」而且自己沒有轉弱的股票(以前不夠兩檔時會補上別的)',
-        ], dt: '2026-10-21' },
-        { v: 'V79.4.6', d: [
-            '📚 產業作戰室:領頭羊那幾條補上 2010~2020 的股利和後來下市、上櫃的股票重新整理(規則一條都沒換,散戶 App 的用法不變)',
-            '📚 產業作戰室:高檔飆股那幾列先標「舊資料」,下一版用全市場重新整理(散戶 App 的用法不變)',
-            '📚 產業作戰室:補上選股條件、重大訊息、領頭羊各種做法這幾條(散戶 App 的用法不變)',
         ], dt: '2026-10-21' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -16985,6 +16983,64 @@ const marginByDate = {};
     //   它叫你「第 1 批 3 成在 46,000」,跟本站自己的研究相反(大跌那天買 ≈ 隨便一天買、一次買比分批多賺、
     //   存錢等大跌一條都沒贏;dipbuy 那條),而且同一張卡上面還寫「幾條才進場」= 自己打架(使用者 10/30:不敢換股)。
     //   ⛔ 別加回來;想買 0050 的那一行在雷達底下(`data-dip0050`)。test_dipladder ①~⑥。
+    // 🌪️ V81.0.3 「這一段修正裡有沒有出現 25 天內跌 ≥15%」(使用者 11/06:「把何時台股反攻給找出來」)
+    //   定義跟 scripts/lib_crash.mjs corrLegs(近 250 天高點、跌 ≥10% 進修正段、回到 5% 以內才結束)
+    //   + crash_cycle_probe.fastEvents(收盤 ≤ 前 25 天最高收盤 × 0.85,⛔ 不含當天)+ firstPerLeg 一字不差 —— test_crash_occ ① 逐日比
+    //   ⛔ 只描述(反攻雷達底下那一行發生率用),⛔ 不是買賣訊號;今天那根在台北 13:30 前還沒收盤 → 先不算
+    _crashFastState(rows) {
+        try {
+            let R = Array.isArray(rows) ? rows : [];
+            if (R.length && this._lastBarIsToday(R) && this._tpeMinutes().min <= 13 * 60 + 30) R = R.slice(0, -1);
+            const c = [], d = [];
+            for (const r of R) { const v = +((r && (r.close ?? r.c)) || 0); if (v > 0) { c.push(v); d.push(String(r.date || r.d || '').replace(/\//g, '-').slice(0, 10)); } }
+            const n = c.length, W = 250, FW = 25;
+            if (n < W + FW) return null;
+            const hi = new Array(n), q = [];
+            for (let i = 0; i < n; i++) { while (q.length && c[q[q.length - 1]] <= c[i]) q.pop(); q.push(i); if (q[0] <= i - W) q.shift(); hi[i] = c[q[0]]; }
+            let cur = null, legNo = 0;
+            const corr = new Array(n).fill(-1);
+            for (let i = 0; i < n; i++) {
+                const x = c[i] / hi[i] - 1;
+                if (!cur) { if (x <= -0.10) { let pk = i; while (pk > 0 && pk > i - W && c[pk] < hi[i]) pk--; cur = { peak: hi[i], peakI: pk }; } }
+                else if (x > -0.05) { cur = null; legNo++; continue; }
+                if (cur) corr[i] = legNo;
+            }
+            const k = n - 1;
+            if (corr[k] < 0) return { on: false, d: d[k] };
+            let first = -1;
+            for (let i = FW; i <= k; i++) {
+                if (corr[i] !== corr[k]) continue;
+                let mx = -Infinity; for (let j = i - FW; j < i; j++) if (c[j] > mx) mx = c[j];
+                if (c[i] <= mx * 0.85) { first = i; break; }
+            }
+            if (first < 0) return { on: false, d: d[k] };
+            return { on: true, d: d[first], last: d[k], peak: cur ? cur.peak : null, peakD: cur ? d[cur.peakI] : null, dd: cur ? (c[k] / cur.peak - 1) * 100 : null };
+        } catch (_) { return null; }
+    },
+    // 🎲 V81.0.3 發生率(crash_global_probe.py,Actions macro_probe which=crash_global run 42123397465):
+    //   台股 = 證交所 1990~1999 + 本站官方 2000 起;8 個市場 = 台股・標普 1928・那斯達克 1971・日經 1965・恆生 1987・韓股 1997・德股 1988・英股 1984
+    //   leg = 那一段修正已經走完的次數(還沒走完的不算);wk / mo / half = 那一段的最低收盤在急跌那天之後 0~5 / 6~120 / 121 個交易日以上
+    //   re / reN = 之後 60 個交易日內收盤又比那天低 ≥5% 的次數 / 之後有一年資料的次數;base = 台股修正中隨便一天(每 3 天抽一天)同一件事的比例
+    //   ⛔ 手改數字 —— 重跑探針再抄
+    _CRASH_OCC: { from: 1990, to: '2026-11-05', run: 42123397465,
+        tw: { n: 21, leg: 20, wk: 8, mo: 7, half: 5, re: 12, reN: 19 },
+        all: { mk: 8, n: 127, leg: 125, wk: 40, mo: 49, half: 36, re: 68, reN: 122 },
+        base: 57 },
+    _crashOccHtml() {
+        const O = this._CRASH_OCC;
+        const rows = this._twiiKlineCache && this._twiiKlineCache.rows;
+        if (!Array.isArray(rows) || rows.length < 300) {
+            // 加權日 K 還沒載好:補發一次、載好後重畫一次(⛔ 失敗不重試 —— 不可變成迴圈)
+            if (!this._crashOccWait && this._getTwiiRows) { this._crashOccWait = 1; try { this._getTwiiRows().then(r => { if (Array.isArray(r) && r.length >= 300) { try { this._renderReboundRadar(); } catch (_) {} } }).catch(() => {}); } catch (_) {} }
+            return '';
+        }
+        const s = this._crashFastState(rows);
+        if (!O || !s || !s.on) return '';
+        const T = O.tw, A = O.all, P = v => this._occPct(v);
+        const dW = v => (this._dW ? this._dW(v) : v);
+        return `<div data-occ="crash" class="text-[10px] text-amber-200/80 leading-snug mt-1.5">🎲 這一段修正裡已經出現「25 天內跌 15% 以上」(第一次是 ${dW(s.d)})。台股 ${O.from} 年起有 ${T.n} 次(每一段只算第一次),已經走完的 ${T.leg} 次裡,那一段的最低收盤:一週內就到 ${T.wk} 次 ・一週到半年 ${T.mo} 次 ・半年以上 ${T.half} 次(${A.mk} 個市場合計 ${A.leg} 次:${P(100 * A.wk / A.leg)} / ${P(100 * A.mo / A.leg)} / ${P(100 * A.half / A.leg)})`
+            + `<br>🎲 之後 60 個交易日內收盤又再低 5% 以上:台股 ${T.re}/${T.reN} 次(${P(100 * T.re / T.reN)})・台股修正中隨便一天 ${P(O.base)} ・${A.mk} 個市場合計 ${A.re}/${A.reN} 次(${P(100 * A.re / A.reN)})—— 過去發生過的比例,⛔ 不是會漲或會跌</div>`;
+    },
     _renderReboundRadar() {
         const box = document.getElementById('reboundRadarCard');
         if (!box) return;
@@ -17237,6 +17293,7 @@ const marginByDate = {};
             <div class="bg-[#0d1117] border-l-4 ${heroCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1 mt-2">${C.map(row).join('')}</div>
             ${_bearLine}
+            ${(() => { try { return this._crashOccHtml(); } catch (_) { return ''; } })()}
             <div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-dip0050="1">🪙 想買 0050 照你的計畫買,⛔ 不用等跌到某個價位、也不用硬分好幾批(那樣通常比較少賺)。</div>
             <div class="text-[9px] text-gray-500 mt-1.5 leading-snug">🧮 純公式・${this._dW(mr.updated ? String(mr.updated).slice(0, 10) : new Date(), { rel: 1 })}・只描述外面的狀況(⛔ 不是買賣訊號)・外面壓力很大時只記在 🔔 鈴鐺、不跳通知。非投資建議。</div>`;
         box.classList.remove('hidden');
