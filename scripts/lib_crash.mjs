@@ -62,10 +62,12 @@ export function after(S, A, legs, corr, i, h) {
 }
 
 /** 事件 vs 修正段隨便一天:h 天平均差、從修正段日子抽一樣多次 SIMS 次的 p 值;另附離底多遠 / 再跌 5% 比例(事件 vs 修正段)
- *  ⚠️ 事件的那一段還沒走完時(最後一段),near 與 more 只算到今天 → 印出 open 筆數 */
-export function evVsCorr(S, A, CL, ev, hs, seed = 7, SIMS = 2000) {
-    const { corr, legs } = CL, R = rng(seed), out = { n: ev.length, legs: new Set(ev.map(i => corr[i])).size, h: {} };
-    const pool = []; for (let i = 0; i < S.c.length; i++) if (corr[i] >= 0) pool.push(i);
+ *  ⚠️ 事件的那一段還沒走完時(最後一段),near 與 more 只算到今天 → 印出 open 筆數
+ *  🚨 from:對照組只收第 from 天以後的修正段日子 —— 徵兆的資料起點比指數晚(VIX 2009 / 廣度 2010 / 融資 2004)時一定要給,
+ *     不然對照組含資料起點之前的空頭(2008)、平均被拉低 → 差距灌水(陷阱 #50:事件窗口跟對照組期間對不上) */
+export function evVsCorr(S, A, CL, ev, hs, seed = 7, SIMS = 2000, from = 0) {
+    const { corr, legs } = CL, R = rng(seed), out = { n: ev.length, legs: new Set(ev.map(i => corr[i])).size, h: {}, from: S.d[from] };
+    const pool = []; for (let i = from; i < S.c.length; i++) if (corr[i] >= 0) pool.push(i);
     for (const h of hs) {
         const f = i => after(S, A, legs, corr, i, h).x;
         const base = pool.map(f).filter(v => v != null), e = ev.map(i => [i, f(i)]).filter(z => z[1] != null);

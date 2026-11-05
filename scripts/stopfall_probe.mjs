@@ -97,6 +97,25 @@ export function vixEvents(us, twDates) {
     return m;
 }
 
+/** VIX 回落那條的門檻高原:近 10 天高點 ≥T、從高點回落 ≥F% → 下一個台股交易日;每段第一次 vs 修正段隨便一天(含息)
+ *  ⭐ 門檻左右各挪一格仍成立才算一片高原(T 25/30/35 × F 15/20/25)。VIX_GRID=1 才跑 */
+export function vixGrid(S, us, CL, log = console.log, Ts = [25, 30, 35], Fs = [15, 20, 25]) {
+    if (!us || !us.syms || !us.syms['^VIX']) { log('⚠️ 沒有 VIX 資料 → 不跑門檻高原'); return null; }
+    const nx = usToTw(S.d), vc = us.syms['^VIX'].c, A = S.tr && S.tr.some(x => x != null) ? S.tr : S.c, out = [];
+    log('\nVIX 回落門檻高原(每段第一次 vs 修正段隨便一天,含息;差 = 百分點)');
+    log('高點≥  回落≥  段數 |  20天 差(p)        60天 差(p)        120天 差(p)       | 60天內再跌≥5%');
+    for (const T of Ts) for (const F of Fs) {
+        const ev = new Set();
+        for (let i = 9; i < vc.length; i++) { let mx = 0; for (let j = i - 9; j <= i; j++) if (vc[j] > mx) mx = vc[j];
+            if (mx >= T && vc[i] <= (1 - F / 100) * mx) { const k = nx(us.days[i]); if (k >= 0) ev.add(k); } }
+        const first = firstPerLeg([...ev].sort((a, b) => a - b), CL.corr), r = evVsCorr(S, A, CL, first, [20, 60, 120], 17, 2000, Math.max(0, nx(us.days[9])));
+        const c = h => r.h[h] && r.h[h].diff != null ? `${String(r.h[h].diff).padStart(6)}(${r.h[h].p})` : '     —      ';
+        out.push({ T, F, n: first.length, r });
+        log(`${String(T).padStart(5)} ${String(F).padStart(5)}% ${String(first.length).padStart(5)} | ${c(20)}  ${c(60)}  ${c(120)} | ${r.deeper}%(${r.deeperBase}%)`);
+    }
+    return out;
+}
+
 export function buildExtras(S, env = process.env) {
     const idx = new Map(S.d.map((d, i) => [d, i])), X = {};
     const fm = rd(env.FI_MKT), rh = rd(env.RISK_HIST) || [];
@@ -125,9 +144,21 @@ export function buildExtras(S, env = process.env) {
             if (v >= 30 && prev.every(x => x < 30)) tags.push('VIX衝上30'); const mx = Math.max(...prev.slice(-9), v); if (mx >= 30 && v <= 0.8 * mx) tags.push('VIX從30以上回落20%');
             if (tags.length) vix.set(i, [...(vix.get(i) || []), ...tags]); allV.push(v); } }
     X.vixTw = new Array(S.d.length).fill(null); for (const [k, t] of vix) X.vixTw[k] = t;
+    X.vixFrom = us && us.days && us.days.length > 10 ? Math.max(0, usToTw(S.d)(us.days[9])) : 0;
     X.vixSrc = us && us.days ? `VIX ${us.days[0]} ~ ${us.days.at(-1)}(之後用 risk_history 補)` : '';
     X.nsf = new Set(NSF.map(d => S.d.findIndex(x => x >= d)).filter(i => i >= 0));
     return X;
+}
+
+/** 這個徵兆的資料從第幾天起才有(對照組要從同一天起算,陷阱 #50)—— 只用資料本身的起點,⛔ 不看事件 */
+export function covFrom(k, S, X) {
+    const first = (arr, lag = 0) => { if (!arr) return 0; const j = arr.findIndex(v => v != null && v !== 0); return j < 0 ? 0 : Math.min(arr.length - 1, j + lag); };
+    if (/^融資/.test(k)) return first(X.mg, 10);
+    if (/^外資/.test(k)) return first(X.fi, 8);
+    if (/家數|Zweig/.test(k)) return first(X.br, 10);
+    if (/^VIX/.test(k)) return X.vixFrom || 0;
+    if (/爆量/.test(k)) return first(S.a, 20);
+    return 0;
 }
 
 export function run(S, X, log = console.log) {
@@ -138,8 +169,8 @@ export function run(S, X, log = console.log) {
     log(`加權 ${S.d[0]} ~ ${S.d.at(-1)}(${S.d.length} 天)・修正段 ${legsN} 段・修正段裡的日子 ${corrDays} 天(含息 2003 起)`);
     for (const L of CL.legs) log(`  段 ${S.d[L.peakI]} 高 ${Math.round(L.peak)} → 第一天 ${S.d[L.s]} → 最低 ${S.d[L.lowI]} ${Math.round(L.low)}(${r2(L.depth)}%)→ ${L.open ? '還沒結束' : '結束 ' + S.d[L.e]}`);
     for (const [k, ev] of Object.entries(raw)) {
-        const fp = firstPerLeg(ev, CL.corr), gp = gapDedup(ev, CL.corr, 10);
-        res[k] = { first: evVsCorr(S, T, CL, fp, HS, 7), gap: evVsCorr(S, T, CL, gp, HS, 9), firstP: evVsCorr(S, P, CL, fp, HS, 11) };
+        const fp = firstPerLeg(ev, CL.corr), gp = gapDedup(ev, CL.corr, 10), f0 = covFrom(k, S, X);
+        res[k] = { first: evVsCorr(S, T, CL, fp, HS, 7, 2000, f0), gap: evVsCorr(S, T, CL, gp, HS, 9, 2000, f0), firstP: evVsCorr(S, P, CL, fp, HS, 11, 2000, f0), from: S.d[f0] };
     }
     // BH:每段第一次 × 含息 × 60 天(主規格)
     const ks = Object.keys(res), ps = ks.map(k => (res[k].first.h[60] || {}).p ?? null), qs = bh(ps);
@@ -200,6 +231,20 @@ function selftest() {
     const lastUs = us2.days.at(-1), k2 = d.findIndex(x => x > lastUs);
     t(vm.has(k2) && vm.get(k2).includes('VIX衝上30') && !vm.has(d.indexOf(lastUs)), '⑧ VIX 美股那天衝上 30 → 算在下一個台股交易日(⛔ 同一天)');
     void us;
+    // ⑨ 對照組期間要跟徵兆的資料起點對齊(陷阱 #50):前一半一路跌(修正段裡之後都賠)、後一半隨機;
+    //    事件只在後一半、而且就是隨便挑的修正段日子 → from=0(對照組含前一半)差距灌水;from=後一半第一天 → ≈0
+    let s9 = 11; const R9 = () => { s9 = (s9 * 16807) % 2147483647; return s9 / 2147483647; };
+    const N9 = 4000, d9 = Array.from({ length: N9 }, (_, i) => new Date(Date.UTC(2003, 0, 1 + i)).toISOString().slice(0, 10)), c9 = [100];
+    for (let i = 1; i < N9; i++) c9.push(c9[i - 1] * (1 + (i < 2000 ? -0.003 : 0) + (R9() - 0.5) * 0.03));
+    const S9 = { d: d9, c: c9, tr: c9 }, CL9 = corrLegs(c9), ev9 = [];
+    for (let i = 2100; i < N9 - 30; i += 23) if (CL9.corr[i] >= 0) ev9.push(i);
+    const w0 = evVsCorr(S9, c9, CL9, ev9, [20], 3, 400, 0).h[20], w1 = evVsCorr(S9, c9, CL9, ev9, [20], 3, 400, 2000).h[20];
+    t(w0 && w1 && w0.diff > 3 && Math.abs(w1.diff) < 2.5, `⑨ 對照組期間:含前一段空頭 → 差 ${w0 && w0.diff}pp(灌水)・從資料起點算 → ${w1 && w1.diff}pp(≈0),事件 ${ev9.length} 次`);
+    // ⑩ covFrom:徵兆的資料從哪天起,對照組就從哪天起(只看資料本身)
+    const Xc = { mg: [null, null, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], fi: [null, 1, 2], br: [null, null, null, { up: 1 }], vixFrom: 7 };
+    const Sc = { a: [null, 1, 1] };
+    t(covFrom('融資10天減≥5%', Sc, Xc) === 12 && covFrom('外資連賣8天後首買', Sc, Xc) === 2 && covFrom('跌停家數≥3%', Sc, Xc) === 3
+        && covFrom('VIX從30以上回落20%', Sc, Xc) === 7 && covFrom('站回5日線', Sc, Xc) === 0, '⑩ 對照組起點 = 那個徵兆的資料起點(+ 回看天數),價格類從頭算');
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
@@ -208,5 +253,6 @@ if (process.argv[1] && process.argv[1].endsWith('stopfall_probe.mjs')) {
     if (process.argv.includes('--selftest')) process.exit(selftest());
     const S = loadIndex(), X = buildExtras(S);
     const out = run(S, X);
+    if (process.env.VIX_GRID) out.vixGrid = vixGrid(S, rd(process.env.US_HIST), X.CL);
     if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify(out, null, 1));
 }

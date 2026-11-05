@@ -261,6 +261,88 @@ def _rng(lo, hi):
     return f'{">0" if lo == ZERO else f"{lo:.1f}"}~{hi:.1f}‰'
 
 
+EP_GAP = int(os.environ.get('EP_GAP') or 20)   # 🔁 V81.0.2 段首:前面 EP_GAP 個交易日都沒到門檻,才算新的一波
+EP_HS = (5, 20, 60)
+
+
+def episode_starts(counts, scanned, days, thr, gap=EP_GAP):
+    """🔁 V81.0.2 每一波只算第一天:那天千分比 ≥ thr,而且上一次 ≥ thr 是 gap 個交易日以前(⛔ 連著幾天算很多次)"""
+    out, last = [], -10 ** 9
+    for k, d in enumerate(days):
+        if rate(counts, scanned, d) >= thr:
+            if k - last > gap:
+                out.append(d)
+            last = k
+    return out
+
+
+def low_after(tw_dates, tw_idx, tw, d0, h=60):
+    """d0 收盤之後 h 個交易日內最低收盤 vs d0 收盤(%)—— 事後量的,⛔ 不是訊號"""
+    i = tw_idx.get(d0)
+    if i is None or i + 1 >= len(tw_dates):
+        return None
+    seg = [tw[x] for x in tw_dates[i + 1:i + 1 + h]]
+    return (min(seg) / tw[d0] - 1) * 100 if seg else None
+
+
+def report_episodes(counts, scanned, days, tw, fwd, now_rows=None):
+    """🔁 V81.0.2 ④ 段首版(使用者 11/06:10/30 起天天 ≥300 檔、之後又跌 8%)—— 每一波第一天 → 5 / 20 / 60 天 vs 同年份;
+    另列今天(breadth.json 那幾天,d16 之後)在 16 年裡排第幾。千分比門檻 = 今天 REF_N 檔時的 300 / 600 / 900 檔"""
+    tw_dates = sorted(tw)
+    tw_idx = {d: i for i, d in enumerate(tw_dates)}
+    base_y = {hz: {} for hz in EP_HS}
+    for d in days:
+        for hz in EP_HS:
+            r = fwd(d, hz)
+            if r is not None:
+                base_y[hz].setdefault(d[:4], []).append(r)
+    print(f'\n{"═" * 68}\n④ 段首版(🔁 V81.0.2):前面 {EP_GAP} 個交易日都沒到門檻才算新的一波,每一波只算第一天\n{"═" * 68}')
+    out = {}
+    for n0 in (300, 600, 900):
+        thr = per_k(n0)
+        ev = episode_starts(counts, scanned, days, thr)
+        print(f'\n  ■ ≥{n0} 檔(今天換算,≥{thr:.0f}‰):{len(ev)} 波')
+        rows = []
+        for d in ev:
+            f = {hz: fwd(d, hz) for hz in EP_HS}
+            lo = low_after(tw_dates, tw_idx, tw, d)
+            rows.append((d, rate(counts, scanned, d), f, lo))
+            print(f'     {d} {rate(counts, scanned, d):6.1f}‰ ・' + ' ・'.join(
+                f'{hz}天 {f[hz]:+6.2f}%' if f[hz] is not None else f'{hz}天 —' for hz in EP_HS)
+                + (f' ・之後 60 天內最低 {lo:+6.2f}%' if lo is not None else ''))
+        for hz in EP_HS:
+            e, cmed, cwin, drop = matched(ev, fwd, hz, base_y[hz])
+            if len(e) < 3 or cmed is None:
+                print(f'     {hz:>3} 天:n={len(e)},太少不算')
+                continue
+            w = sum(1 for x in e if x > 0) / len(e) * 100
+            print(f'     {hz:>3} 天:中位 {statistics.median(e):+6.2f}%(同年份隨便一天中位 {cmed:+.2f}%,差 {statistics.median(e) - cmed:+.2f}pp)'
+                  f'・漲的比例 {w:4.1f}%(同年份 {cwin:4.1f}%)・n={len(e)}' + (f'(丟掉 {drop} 筆)' if drop else ''))
+        los = [r[3] for r in rows if r[3] is not None]
+        if los:
+            # 對照:同年份隨便一天「之後 60 天內再跌 ≥5%」的比例(照事件在各年的波數加權)
+            ky = Counter(r[0][:4] for r in rows if r[3] is not None)
+            num = den = 0.0
+            for y, k in ky.items():
+                ys = [x for x in (low_after(tw_dates, tw_idx, tw, d) for d in days if d[:4] == y) if x is not None]
+                if ys:
+                    num += k * sum(1 for x in ys if x <= -5) / len(ys)
+                    den += k
+            base5 = num / den * 100 if den else None
+            print(f'     之後 60 天內還再跌:中位 {statistics.median(los):+.2f}% ・再跌 ≥5% 的 {sum(1 for x in los if x <= -5)}/{len(los)} 波'
+                  + (f'(同年份隨便一天 {base5:.1f}%)' if base5 is not None else ''))
+        out[n0] = rows
+    if now_rows:
+        allr = sorted((rate(counts, scanned, d), d) for d in days)
+        print('\n  📍 d16 之後那幾天(breadth.json;分母是 App 的 total,⚠️ 跟上面「能判斷的檔數」差 3~5%)')
+        for d, r in now_rows:
+            above = sum(1 for x, _ in allr if x >= r)
+            print(f'     {d} {r:6.1f}‰ → 16 年 {len(allr):,} 天裡只有 {above} 天比它多(前 {above / len(allr) * 100:.2f}%)')
+        top = sorted(allr, reverse=True)[:12]
+        print('     16 年最多的 12 天:' + ' ・'.join(f'{d} {x:.0f}‰' for x, d in top))
+    return out
+
+
 def report(title, counts, scanned, days, buckets, fwd, base_y):
     print(f'\n{"═" * 68}\n{title}\n{"═" * 68}')
     vals = [counts.get(d, 0) for d in days]
@@ -332,6 +414,17 @@ def main():
             continue
         print(f'\n  ■ {name}  (n={len(sel)} 個交易日)')
         _bucket_line(sel, fwd, base_y)
+
+    now_rows = None
+    bn = os.environ.get('BREADTH_NOW')
+    if bn and Path(bn).exists():
+        try:
+            hist = json.loads(Path(bn).read_text()).get('history') or []
+            now_rows = [(str(h['d']).replace('/', '-'), h['flr'] * 1000.0 / h['total']) for h in hist
+                        if h.get('total') and isinstance(h.get('flr'), (int, float)) and str(h['d']).replace('/', '-') > days[-1]]
+        except Exception as e:
+            print(f'⚠️ BREADTH_NOW 讀不出來:{e!r}')
+    report_episodes(floor_any, scanned, days, tw, fwd, now_rows)
 
     print('\n⚠️ 判讀限制(⛔ 別過度解讀):')
     print('  ・窗口受 ^TWII 長度限制(V74.2.8 起約 5 年、已含 2022 空頭;d16 從 2011 起),但大跌樣本本來就少')
@@ -448,6 +541,15 @@ def selftest():
         ok('③ 剔除筆數 = 20 天(第 700~719 根)', ib['n_cliff'] == 20, ib['n_cliff'])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+    # ④ 🔁 V81.0.2 段首:連著 10 天都 ≥ 門檻只算第一天;隔超過 EP_GAP 天再來才算新的一波
+    dd = _weekdays(2020, 2020)[:200]
+    cc = {d: (500 if 30 <= k < 40 or 45 <= k < 48 or 120 <= k < 125 else 10) for k, d in enumerate(dd)}
+    sc = {d: 1000 for d in dd}
+    eps = episode_starts(cc, sc, dd, 300, gap=20)
+    ok('④ 段首:第 30~39 天、第 45~47 天(隔 5 天,同一波)只算第 30 天;第 120 天(隔 72 天)是新的一波',
+       eps == [dd[30], dd[120]], eps)
+    ok('④ 決定性對照:不分段(每一天都算)→ 18 天', sum(1 for d in dd if rate(cc, sc, d) >= 300) == 18)
 
     print(f"\n{'❌ 失敗:' + ', '.join(bad) if bad else '✅ selftest 全過'}")
     return 1 if bad else 0
