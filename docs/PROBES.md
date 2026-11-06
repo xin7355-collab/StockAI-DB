@@ -3,6 +3,9 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🌏 V82.0.1(2026-11-06)何時開始進場:自創 8 招 × 33 國
+- `scripts/rebound_lab_probe.mjs`(新):`WORLD=<world_hist.json.gz> IDX_LONG IDX_EARLY TWII_NOW [D16=$S/d16] [BREADTH16=$S/breadth16.json] node --max-old-space-size=3072 scripts/rebound_lab_probe.mjs out.json`(約 4 分)。WORLD 從 `world_hist` 分支取(`git fetch origin world_hist` → `git show origin/world_hist:world_hist.json.gz`)。回答「一筆錢在跌 10% 那天就買,還是等某個訊號」(資金版 H=500)+ 訊號隔天買 vs 修正中隨便一天(事件研究)+ 指數單日 2.5σ 搶反彈。⛔ 中心參數寫在檔頭 PRE,改了要重新事先登記。⏭️ 再跑時機:各國指數多一次大空頭走完,或有新的「等待訊號」想法(加進 PRE 再跑,⛔ 只挑贏的那格)。`--selftest` 15 條。
+
 ### 📉 V82.0.0(2026-11-06)大跌撿便宜:資金版補驗 + 每晚清單 + 大跌事件 + 各國指數
 - `scripts/dipleader_probe.mjs` 新模式 `DL_MONEY=1`:`DATA_DIR=$S/d16 DIV=$S/d16/_div16.json DL_MONEY=1 DL_GROUPS=RSlo,U100 DL_HS=20,30,40,50,60 DL_KEYS='RSlo|o|20,RSlo|o|40,U100|o|40' node --max-old-space-size=8000 scripts/dipleader_probe.mjs out.json` → 0050 為主 × 一次一批 / 每次一批(1 成、最多 3 批)/ 每段第一次 × 門檻 2.5~4% × 抱 h 天:逐年、前後半、拿掉 2026 / 最好那年、成本 ×2、同樣多天隨便挑 300 次;`moneyGate` = 事先登記的主判準(抱 20 天・一次一批)。⏭️ 每多一次 ≥3% 大跌可重跑;台股 2004~2009 到了再跑一次(2008)。
 - `scripts/dip_pick.mjs`(App 用的唯一算法,⛔ 研究):`node --max-old-space-size=4096 scripts/dip_pick.mjs data data/dip_pick.json`(playbook_scan 每晚);`--selftest`。⛔ 改規則前先用上面那支重跑資金版。
