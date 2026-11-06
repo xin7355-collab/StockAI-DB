@@ -1,0 +1,1473 @@
+{
+  "updated": "2026-11-07 00:35 +0800",
+  "us10y_yield": 4.851,
+  "us10y_error": null,
+  "fi_spot_net": -911.88,
+  "fi_spot_mtd": -5243.76,
+  "fi_spot_mtd_month": "202611",
+  "fi_spot_mtd_days": 10,
+  "fi_spot_mtd_src": "twse-month:monthDate",
+  "fi_spot_mtd_error": null,
+  "fi_spot_date": "20261106",
+  "fi_spot_error": null,
+  "fi_futures_net": -95651,
+  "fi_futures_error": null,
+  "fi_futures_src": "taifex",
+  "fi_futures_date": null,
+  "fi_complex_conclusion": "外資期現同步偏空：期貨偏空、現貨也賣超",
+  "fi_complex_error": null,
+  "us2y_yield": 4.235,
+  "us2y_error": "FRED 失敗，yfinance 內插（IRX+FVX）",
+  "usdtwd": 32.746,
+  "usdtwd_error": null,
+  "usdtwd_chg_pct": -0.23,
+  "usdtwd_chg_5d": 0.55,
+  "krw": 1362.18,
+  "krw_chg_pct": 1.65,
+  "krw_chg_5d": 1.81,
+  "krw_error": null,
+  "cny": 6.664,
+  "cny_chg_pct": -0.13,
+  "cny_chg_5d": 0.05,
+  "cny_error": null,
+  "fear_greed": 23.8,
+  "fear_greed_label": "極度恐懼",
+  "fear_greed_error": null,
+  "retail_ls_pct": 69.5,
+  "retail_ls_error": null,
+  "taifex_backwardation": 340.0,
+  "taifex_backwardation_error": null,
+  "taifex_near": 41915.0,
+  "taifex_fut_date": "2026-11-05",
+  "taiex_close": 41574.72,
+  "taiex_date": "2026-11-05",
+  "m1b_pct": 86.0,
+  "m1b_label": "M1B年增 6.23% · 熱度 86% (過熱⚠️)",
+  "m1b_note": "由 FRED M1SL 年增率換算流動性熱度;FRED 失敗時為 null",
+  "gold_usd": 4071.0,
+  "gold_chg_pct": -1.03,
+  "gold_error": null,
+  "wti_oil": 90.74,
+  "wti_chg_pct": 0.24,
+  "wti_error": null,
+  "dxy": 102.2,
+  "dxy_chg_pct": 0.64,
+  "dxy_error": null,
+  "btc_usd": 75798.45,
+  "btc_chg_pct": -0.19,
+  "btc_error": null,
+  "vix": 25.09,
+  "vix_chg_pct": -10.97,
+  "vix_error": null,
+  "nikkei": 57434.77,
+  "nikkei_chg_pct": -5.96,
+  "nikkei_error": "來源回舊資料(2026-11-05),已保留 2026-11-06 的值",
+  "hsi": 24481.86,
+  "hsi_chg_pct": -1.27,
+  "hsi_error": "來源回舊資料(2026-11-05),已保留 2026-11-06 的值",
+  "kospi": 5059.69,
+  "kospi_chg_pct": -6.02,
+  "kospi_error": "來源回舊資料(2026-11-05),已保留 2026-11-06 的值",
+  "sp500": 7427.55,
+  "sp500_chg_pct": 1.0,
+  "sp500_error": null,
+  "nasdaq": 24741.92,
+  "nasdaq_chg_pct": 1.76,
+  "nasdaq_error": null,
+  "dji": 51581.74,
+  "dji_chg_pct": 0.11,
+  "dji_error": null,
+  "sox": 9428.69,
+  "sox_chg_pct": 4.63,
+  "sox_error": null,
+  "tsm": 376.35,
+  "tsm_chg_pct": 6.58,
+  "tsm_error": null,
+  "asx": 31.92,
+  "asx_chg_pct": 7.4,
+  "asx_error": null,
+  "umc": 13.9,
+  "umc_chg_pct": 3.89,
+  "umc_error": null,
+  "es_fut": 7447.25,
+  "es_fut_chg_pct": null,
+  "es_fut_error": "盤中現價可信但拿不到「上一個結算」基準,刻意不給漲跌%(寧可不給方向也不給反的):盤中 7447.25 vs 日線末根 7446.25(2026-11-06),差 1.3 個基點 < 10 → 判定那根日線就是「還在跑的這一盤」",
+  "ym_fut": 51641.0,
+  "ym_fut_chg_pct": null,
+  "ym_fut_error": "盤中現價可信但拿不到「上一個結算」基準,刻意不給漲跌%(寧可不給方向也不給反的):盤中 51641.0 vs 日線末根 51641.0(2026-11-06),差 0.0 個基點 < 10 → 判定那根日線就是「還在跑的這一盤」",
+  "nq_fut": 27265.5,
+  "nq_fut_chg_pct": null,
+  "nq_fut_error": "盤中現價可信但拿不到「上一個結算」基準,刻意不給漲跌%(寧可不給方向也不給反的):盤中 27265.5 vs 日線末根 27265.5(2026-11-06),差 0.0 個基點 < 10 → 判定那根日線就是「還在跑的這一盤」",
+  "ust10y": 4.85,
+  "ust10y_chg_pct": 0.29,
+  "ust10y_error": null,
+  "business_signal": {
+    "light": "red",
+    "score": 41,
+    "month": "2026-08",
+    "source": "ndc-stale",
+    "stale": true,
+    "last_error": "Expecting value: line 1 column 1 (char 0) | 拿到的不是JSON(content-type=text/html; charset=UTF-8) | 開頭=<!DOCTYPE html> <html ng-app=\"NDCapp\" lang=\"zh_tw\"> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" con || 官方頁面沒撈到 /json/ 或 /api/ 路徑(可能是前端動態組出來的) || 開放資料 6099:http://www.ndc.gov.tw/Content_List.aspx?n=A9DCC80FC8CC7601 HTTP 403 ;ZIP https://ws.ndc.gov.tw/Download.ashx?u=LzAwMS9hZG1pbmlzdHJhdG9yLzEwL3JlbGZpbGUvNTc4MS82Mzky(不是 CSV / JSON,跳過) || FinMind TaiwanBusinessIndicator 也回空(token 4 把全試過)"
+  },
+  "sector_etfs": {
+    "server": {
+      "etf": "SMH",
+      "name": "美半導體",
+      "desc": "AI 伺服器(SMH + NVDA + SMCI 黃金比例,廣達/緯創/鴻海主旋律)",
+      "price": 465.64,
+      "chg_pct": 4.38,
+      "components": [
+        {
+          "ticker": "SMH",
+          "name": "美半導體",
+          "price": 465.64,
+          "chg": 4.0,
+          "weight": 0.4,
+          "ok": true,
+          "err": null
+        },
+        {
+          "ticker": "NVDA",
+          "name": "輝達(晶片供貨體感)",
+          "price": 189.06,
+          "chg": 4.11,
+          "weight": 0.4,
+          "ok": true,
+          "err": null
+        },
+        {
+          "ticker": "SMCI",
+          "name": "美超微(財報供應鏈指引)",
+          "price": 28.62,
+          "chg": 5.69,
+          "weight": 0.2,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 4.0
+    },
+    "power": {
+      "etf": "GRID",
+      "name": "美智慧電網",
+      "desc": "重電基建對標 (GEV/POWL/ETN)",
+      "price": 155.02,
+      "chg_pct": 1.98,
+      "components": [
+        {
+          "ticker": "GRID",
+          "name": "美智慧電網",
+          "price": 155.02,
+          "chg": 1.98,
+          "weight": 1.0,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 1.98
+    },
+    "packaging": {
+      "etf": "SOXX",
+      "name": "半導體 SOXX",
+      "desc": "先進封裝(SOXX + TSM + ASML 黃金比例,CoWoS 弘塑/辛耘/萬潤)",
+      "price": 136.83,
+      "chg_pct": 5.2,
+      "components": [
+        {
+          "ticker": "SOXX",
+          "name": "半導體 SOXX",
+          "price": 136.83,
+          "chg": 3.74,
+          "weight": 0.4,
+          "ok": true,
+          "err": null
+        },
+        {
+          "ticker": "TSM",
+          "name": "台積電 ADR(資本支出)",
+          "price": 376.44,
+          "chg": 6.61,
+          "weight": 0.4,
+          "ok": true,
+          "err": null
+        },
+        {
+          "ticker": "ASML",
+          "name": "艾司摩爾(設備拉貨)",
+          "price": 1428.61,
+          "chg": 5.3,
+          "weight": 0.2,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 3.74
+    },
+    "cpo": {
+      "etf": "MRVL",
+      "name": "邁威爾(光通訊主導)",
+      "desc": "CPO 光通訊(MRVL + AVGO,V23.1 糾正:原 IGV 軟體 ETF 對錯方向)",
+      "price": 139.33,
+      "chg_pct": 3.19,
+      "components": [
+        {
+          "ticker": "MRVL",
+          "name": "邁威爾(光通訊主導)",
+          "price": 139.33,
+          "chg": 4.33,
+          "weight": 0.5,
+          "ok": true,
+          "err": null
+        },
+        {
+          "ticker": "AVGO",
+          "name": "博通(光通訊主導)",
+          "price": 297.51,
+          "chg": 2.05,
+          "weight": 0.5,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 4.33
+    },
+    "cooling": {
+      "etf": "XLI",
+      "name": "美工業",
+      "desc": "散熱液冷供應鏈對標 (VRT/TT)",
+      "price": 163.28,
+      "chg_pct": 0.5,
+      "components": [
+        {
+          "ticker": "XLI",
+          "name": "美工業",
+          "price": 163.28,
+          "chg": 0.5,
+          "weight": 1.0,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 0.5
+    },
+    "robot": {
+      "etf": "BOTZ",
+      "name": "美機器人 BOTZ",
+      "desc": "機器人(BOTZ + TSLA Optimus 題材外溢,所羅門/台灣精銳)",
+      "price": 31.17,
+      "chg_pct": 3.36,
+      "components": [
+        {
+          "ticker": "BOTZ",
+          "name": "美機器人 BOTZ",
+          "price": 31.17,
+          "chg": 1.73,
+          "weight": 0.5,
+          "ok": true,
+          "err": null
+        },
+        {
+          "ticker": "TSLA",
+          "name": "特斯拉(Optimus 人形機器人題材)",
+          "price": 360.85,
+          "chg": 4.99,
+          "weight": 0.5,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 1.73
+    },
+    "finance": {
+      "etf": "XLF",
+      "name": "美金融",
+      "desc": "金融避風港對標 (JPM/BAC)",
+      "price": 57.51,
+      "chg_pct": 0.03,
+      "components": [
+        {
+          "ticker": "XLF",
+          "name": "美金融",
+          "price": 57.51,
+          "chg": 0.03,
+          "weight": 1.0,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 0.03
+    },
+    "leo": {
+      "etf": "ITA",
+      "name": "美航太",
+      "desc": "低軌衛星 / 航太對標 (IRDM/RKLB)",
+      "price": 68.68,
+      "chg_pct": 0.84,
+      "components": [
+        {
+          "ticker": "ITA",
+          "name": "美航太",
+          "price": 68.68,
+          "chg": 0.84,
+          "weight": 1.0,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 0.84
+    },
+    "dram": {
+      "etf": "MU",
+      "name": "美光",
+      "desc": "DRAM 記憶體(MU + 三星 + SK海力士;HBM 現貨報價待付費源)",
+      "price": 697.68,
+      "chg_pct": -2.59,
+      "components": [
+        {
+          "ticker": "MU",
+          "name": "美光",
+          "price": 697.68,
+          "chg": 6.29,
+          "weight": 0.4,
+          "ok": true,
+          "err": null
+        },
+        {
+          "ticker": "005930.KS",
+          "name": "三星(HBM 霸主之一)",
+          "price": 201500.0,
+          "chg": -7.57,
+          "weight": 0.3,
+          "ok": true,
+          "err": null
+        },
+        {
+          "ticker": "000660.KS",
+          "name": "SK海力士(HBM 龍頭)",
+          "price": 1264000.0,
+          "chg": -9.46,
+          "weight": 0.3,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 6.29
+    },
+    "defense": {
+      "etf": "PPA",
+      "name": "美航太國防 ETF",
+      "desc": "軍工國防對標(PPA;台股 漢翔/雷虎/龍德造船)",
+      "price": 152.38,
+      "chg_pct": 0.99,
+      "components": [
+        {
+          "ticker": "PPA",
+          "name": "美航太國防 ETF",
+          "price": 152.38,
+          "chg": 0.99,
+          "weight": 1.0,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 0.99
+    },
+    "wafer": {
+      "etf": "SOXX",
+      "name": "半導體 SOXX",
+      "desc": "矽晶圓(SOXX+TSM 近似 proxy,無純美股晶圓 ETF;台股 環球晶/中美晶/合晶)",
+      "price": 136.83,
+      "chg_pct": 4.89,
+      "components": [
+        {
+          "ticker": "SOXX",
+          "name": "半導體 SOXX",
+          "price": 136.83,
+          "chg": 3.74,
+          "weight": 0.6,
+          "ok": true,
+          "err": null
+        },
+        {
+          "ticker": "TSM",
+          "name": "台積電 ADR(晶圓需求)",
+          "price": 376.44,
+          "chg": 6.61,
+          "weight": 0.4,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 3.74
+    },
+    "pcb": {
+      "etf": "SOXX",
+      "name": "半導體 SOXX",
+      "desc": "PCB/載板(SOXX 近似 proxy,載板隨半導體資本支出;台股 欣興/南電/景碩)",
+      "price": 136.83,
+      "chg_pct": 3.74,
+      "components": [
+        {
+          "ticker": "SOXX",
+          "name": "半導體 SOXX",
+          "price": 136.83,
+          "chg": 3.74,
+          "weight": 1.0,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 3.74
+    },
+    "asic": {
+      "etf": "AVGO",
+      "name": "博通(客製晶片)",
+      "desc": "ASIC 矽智財(AVGO+MRVL 客製晶片需求;台股 世芯/創意/晶心科)",
+      "price": 297.51,
+      "chg_pct": 2.96,
+      "components": [
+        {
+          "ticker": "AVGO",
+          "name": "博通(客製晶片)",
+          "price": 297.51,
+          "chg": 2.05,
+          "weight": 0.6,
+          "ok": true,
+          "err": null
+        },
+        {
+          "ticker": "MRVL",
+          "name": "邁威爾(客製晶片)",
+          "price": 139.33,
+          "chg": 4.33,
+          "weight": 0.4,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 2.05
+    },
+    "security": {
+      "etf": "CIBR",
+      "name": "美網路資安 ETF",
+      "desc": "資安(CIBR;台股 安碁資訊/零壹/精誠)",
+      "price": 92.39,
+      "chg_pct": 1.52,
+      "components": [
+        {
+          "ticker": "CIBR",
+          "name": "美網路資安 ETF",
+          "price": 92.39,
+          "chg": 1.52,
+          "weight": 1.0,
+          "ok": true,
+          "err": null
+        }
+      ],
+      "primary_only_chg": 1.52
+    }
+  },
+  "upcoming_macro_events": [
+    {
+      "date": "2026-11-06",
+      "event": "📞 偉全(1465) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 華新(1605) 法說會 16:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 國慶科技(1721) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 威盛(2388) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 創見(2451) 法說會 15:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 可成(2474) 法說會 16:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 聯詠(3034) 法說會 15:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 敦泰(3545) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 達邁(3645) 法說會 16:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 世芯-KY(3661) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 富采(3714) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 材料*-KY(4763) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 洋基工程(6691) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 力智(6719) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 AES-KY(6781) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 尖點(8021) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 致新(8081) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 勤誠(8210) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 威剛(3260) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 德微(3675) 法說會 12:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 榮昌(3684) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 湯石照明(4972) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 世界(5347) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 橘子(6180) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 M31(6643) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 汎瑋材料(6967) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-06",
+      "event": "📞 群聯(8299) 法說會 17:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 南亞(1303) 法說會 12:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 再生-KY(1337) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 佳世達(2352) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 富邦金(2881) 法說會 09:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 欣陸(3703) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 定穎投控(3715) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 廣越(4438) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 智伸科(4551) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 居易(6216) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 GIS-KY(6456) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 來頡(6799) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 大武山(6952) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 富邦媒(8454) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 瓦城(2729) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 亞電(4939) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 緯致(4953) 法說會 15:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 新普(6121) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-09",
+      "event": "📞 旅天下(6961) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "🇺🇸 美國 CPI 通膨數據公布 (Fed 政策風向球)",
+      "severity": "high",
+      "direction": "bearish"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 儒鴻(1476) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 東元(1504) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 中砂(1560) 法說會 15:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 亞德客-KY(1590) 法說會 09:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 上銀(2049) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 國巨*(2327) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 百容(2483) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 元大金(2885) 法說會 09:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 奇鋐(3017) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 奇鋐(3017) 法說會 16:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 禾伸堂(3026) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 日電貿(3090) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 天鈺(4961) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 祥碩(5269) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 邁達特(6112) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 愛普*(6531) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 台特化(4772) 法說會 10:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 立衛(5344) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 中美晶(5483) 法說會 10:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 環球晶(6488) 法說會 10:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 衛司特(6894) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-10",
+      "event": "📞 巨漢(6903) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "🇺🇸 美國 PPI 生產者物價指數",
+      "severity": "mid",
+      "direction": "neutral"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 台橡(2103) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 廣達(2382) 法說會 15:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 友通(2397) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 大毅(2478) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 玉山金(2884) 法說會 09:00"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 大量(3167) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 大銀微系統(4576) 法說會 16:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 樺漢(6414) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 藥華藥(6446) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 奕力-KY(6962) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 聯友金屬-創(7610) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 信義(9940) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 漢達(6620) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-11",
+      "event": "📞 騰雲(6870) 法說會 15:40"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 東元(1504) 法說會 16:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 興農(1712) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 豐興(2015) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 鴻海(2317) 法說會 15:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 華碩(2357) 法說會 16:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 群光(2385) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 飛宏(2457) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 台灣大(3045) 法說會 16:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 振大環球(4441) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 和碩(4938) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 光鋐(4956) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 誠美材(4960) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 中租-KY(5871) 法說會 17:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 中租-KY(5871) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 中華資安(7765) 法說會 15:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 勤誠(8210) 法說會 09:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 世德(2066) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 笙泉(3122) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 原相(3227) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 東浦(3290) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 IET-KY(4971) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 宜鼎(5289) 法說會 09:00"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 百徽(6259) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 韋僑(6417) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 大中(6435) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 明達醫(6527) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-12",
+      "event": "📞 元太(8069) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 美時(1795) 法說會 16:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 建準(2421) 法說會 09:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 台驊控股(2636) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 神基(3005) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 嘉澤(3533) 法說會 16:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 貿聯-KY(3665) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 燦星網(4930) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 矽力*-KY(6415) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 藥華藥(6446) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 保瑞(6472) 法說會 16:30"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 晶心科(6533) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 騰輝電子-KY(6672) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 新代(7750) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 羅昇(8374) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 聯亞(3081) 法說會 09:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 力旺(3529) 法說會 16:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 宜鼎(5289) 法說會 09:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 建榮(5340) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 合邦(6103) 法說會 16:00"
+    },
+    {
+      "date": "2026-11-13",
+      "event": "📞 順藥(6535) 法說會 15:00"
+    },
+    {
+      "date": "2026-11-14",
+      "event": "📈 Q3 季報法定截止日 (未繳交=注意股風險)",
+      "severity": "mid",
+      "direction": "bearish"
+    },
+    {
+      "date": "2026-11-16",
+      "event": "📞 亞泥(1102) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-16",
+      "event": "📞 華紙(1905) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-16",
+      "event": "📞 永豐餘(1907) 法說會 15:00"
+    },
+    {
+      "date": "2026-11-16",
+      "event": "📞 敦吉(2459) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-16",
+      "event": "📞 王道銀行(2897) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-16",
+      "event": "📞 達興材料(5234) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-16",
+      "event": "📞 穩懋(3105) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-16",
+      "event": "📞 茂達(6138) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-16",
+      "event": "📞 東捷資訊(6697) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-16",
+      "event": "📞 常廣(6730) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-17",
+      "event": "📞 花仙子(1730) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-17",
+      "event": "📞 玉山金(2884) 法說會 15:30"
+    },
+    {
+      "date": "2026-11-17",
+      "event": "📞 大聯大(3702) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-17",
+      "event": "📞 山林水(8473) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-17",
+      "event": "📞 倉和(6538) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-17",
+      "event": "📊 輝達(NVDA) 財報 — 看 AI 伺服器鏈(廣達2382・緯創3231・鴻海2317・台積電2330)",
+      "severity": "high",
+      "us_earn": true
+    },
+    {
+      "date": "2026-11-18",
+      "event": "🇹🇼 台指期貨大結算 (提防外資結算洗盤)",
+      "severity": "high",
+      "direction": "bearish"
+    },
+    {
+      "date": "2026-11-18",
+      "event": "📞 世界健身-KY(2762) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-18",
+      "event": "📞 雙鴻(3324) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-18",
+      "event": "📞 友輝(4933) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-18",
+      "event": "📞 博弘(6997) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-18",
+      "event": "📞 國統(8936) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-19",
+      "event": "📊 MSCI 季度權重調整 (被動資金流向,大型股波動激增)",
+      "severity": "high",
+      "direction": "bullish"
+    },
+    {
+      "date": "2026-11-19",
+      "event": "📞 長興(1717) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-19",
+      "event": "📞 廣宇(2328) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-19",
+      "event": "📞 鉅祥(2476) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-19",
+      "event": "📞 鈺創(5351) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-19",
+      "event": "📞 威力德生醫(7713) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-20",
+      "event": "📞 亞德客-KY(1590) 法說會 15:20"
+    },
+    {
+      "date": "2026-11-20",
+      "event": "📞 勝一(1773) 法說會 14:00"
+    },
+    {
+      "date": "2026-11-20",
+      "event": "📞 山隆(2616) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-20",
+      "event": "📞 今國光(6209) 法說會 14:30"
+    },
+    {
+      "date": "2026-11-24",
+      "event": "📊 戴爾(DELL) 財報 — 看 AI 伺服器出貨指標",
+      "severity": "mid",
+      "us_earn": true
+    }
+  ],
+  "macro_events_ai": {
+    "updated": "2026-11-07 00:36",
+    "model": "qwen/qwen3.8-27b",
+    "summary": "現在市場情緒偏恐懼(指數24)，日韓股市大跌加上外資台指期未平倉負值，代表外資在空頭部位，這兩週波動會很大。最關鍵是看美國CPI和輝達財報有沒有讓AI鏈撐住，以及月底結算和MSCI調整會不會引發被動資金的大幅震盪。",
+    "focus": [
+      {
+        "date": "2026-11-10",
+        "event": "美國CPI",
+        "impact": "決定Fed下一步動作，若通膨降溫有利全球風險資產，若高於預期可能引發美股回調進而拖累台股。",
+        "action": "盯CPI年增率數字是否低於市場預期(注意：不確定具體預期值，僅看相對前值變化)，以及Fed官員後續言論。",
+        "level": "⚠️"
+      },
+      {
+        "date": "2026-11-17",
+        "event": "輝達財報",
+        "impact": "AI伺服器鏈(廣達、緯創、鴻海、台積電)的風向球，財報若強可支撐族群，若弱則可能引發AI股修正。",
+        "action": "盯輝達下季度營收指引(Guidance)是否高於市場預期，以及對AI需求的展望說明。",
+        "level": "⚠️"
+      },
+      {
+        "date": "2026-11-18",
+        "event": "台指期貨大結算",
+        "impact": "外資未平倉-95,651口，結算日可能出現大幅洗盤或震盪，特別是外資部位調整時波動會放大。",
+        "action": "盯結算日當天的台指期貨未平倉變化，以及外資現股買賣超是否出現異常大幅賣出。",
+        "level": "⚠️"
+      },
+      {
+        "date": "2026-11-19",
+        "event": "MSCI調整",
+        "impact": "被動資金必須在生效日前後調整持股，大型股(如台積電、鴻海)可能因資金進出出現劇烈波動。",
+        "action": "盯MSCI官方公布的新權重名單，以及生效日前後大型股的成交量是否異常放大。",
+        "level": "⚠️"
+      },
+      {
+        "date": "2026-11-14",
+        "event": "Q3季報截止",
+        "impact": "未繳交財報的個股面臨除牌風險，可能引發個股恐慌性賣壓，影響整體市場信心。",
+        "action": "盯證交所公告的未申報公司名單，以及這些個股在截止日前後的股價異常波動。",
+        "level": "⚠️"
+      }
+    ]
+  },
+  "fi_trust_net": 266.91,
+  "fi_dealer_net": -494.76,
+  "fi_total_net": -1139.73,
+  "fi_three_date": "20261106",
+  "fi_three_error": null,
+  "usdtwd_date": "2026-11-06",
+  "krw_date": "2026-11-06",
+  "cny_date": "2026-11-06",
+  "tw_vix": null,
+  "tw_vix_chg_5d": null,
+  "tw_vix_error": "免費源:TAIFEX:OpenAPI 全失敗 → TaiwanIndexOptionsVolatilityIndex:Expecting value: line 1 column 1 (char 0 | OptionsVolatilityIndex:Expect;⭐官方端點清單:['StandaloneLayout']｜tok1/tok2/tok3/tok4 金鑰有效但帳號等級不足(免費層無此資料集)—— 需升級或改用付費金鑰,改程式無效 ｜ 原文:tok1/TaiwanOptionVix:400/Your level is register. Please update your user level. Detai | tok1/TaiwanOptionVIX:None/ | tok1/TaiwanVIX:None/ | tok1/TaiwanFuturesVIX:None/ | tok",
+  "gold_date": "2026-11-06",
+  "wti_date": "2026-11-06",
+  "dxy_date": "2026-11-06",
+  "btc_date": "2026-11-06",
+  "vix_date": "2026-11-06",
+  "nikkei_date": "2026-11-06",
+  "hsi_date": "2026-11-06",
+  "kospi_date": "2026-11-06",
+  "sp500_date": "2026-11-06",
+  "nasdaq_date": "2026-11-06",
+  "dji_date": "2026-11-06",
+  "sox_date": "2026-11-06",
+  "tsm_date": "2026-11-06",
+  "asx_date": "2026-11-06",
+  "umc_date": "2026-11-06",
+  "es_fut_date": "2026-11-06",
+  "ym_fut_date": "2026-11-06",
+  "nq_fut_date": "2026-11-06",
+  "ust10y_date": "2026-11-06",
+  "twii_pos": 0.0,
+  "twii_pos_detail": {
+    "price": 39701.64,
+    "pos_60d": 0.0,
+    "hi_60d": 49822.55,
+    "lo_60d": 39701.64,
+    "date": "2026-11-06",
+    "src": "本機 ^TWII.json"
+  },
+  "taifex_tx_now": {
+    "price": 41915.0,
+    "chg": -2.98,
+    "est": false,
+    "date": "2026-11-05",
+    "src": "TAIFEX OpenAPI",
+    "sess": "day",
+    "error": null
+  },
+  "jpy": 158.38,
+  "jpy_chg_pct": 0.02,
+  "jpy_error": null,
+  "jpy_chg_3d": 0.3,
+  "gold_chg_3d": 3.34,
+  "wti_chg_3d": -5.48,
+  "blackswan": {
+    "jpy_surge": false,
+    "metal_oil_spike": false,
+    "kospi_dump": true,
+    "us_market_dump": false,
+    "nikkei_dump": true
+  },
+  "m1b_yoy": 6.23,
+  "fed_assets_chg_pct": -0.17,
+  "fi_ratio_alert": "⚠️ 期現比 8.3 — 期貨空單比現貨賣超重很多(可能是避險,只描述)",
+  "_from_cache_yesterday": [
+    "fi_spot_mtd_days",
+    "m1b_yoy",
+    "fed_assets_chg_pct",
+    "fi_ratio_alert",
+    "macro_events_ai"
+  ],
+  "twii_close": 39701.64,
+  "premkt_recent": [
+    {
+      "d": "2026-10-30",
+      "at": "08:53",
+      "x": {
+        "dji_chg_pct": -0.25,
+        "nasdaq_chg_pct": -1.38,
+        "sp500_chg_pct": -0.3,
+        "sox_chg_pct": -1.42,
+        "tsm_chg_pct": -1.89,
+        "asx_chg_pct": 1.45,
+        "umc_chg_pct": -4.22,
+        "tsm_date": "2026-10-29",
+        "asx_date": "2026-10-29",
+        "umc_date": "2026-10-29",
+        "sp500_date": "2026-10-29",
+        "nasdaq_date": "2026-10-29",
+        "vix": 17.2,
+        "nq_fut_chg_pct": null,
+        "ust10y_chg_pct": -1.11,
+        "taifex_tx_now": {
+          "price": 46577.0,
+          "chg": -1.42,
+          "est": false,
+          "date": "2026-10-29",
+          "src": "TAIFEX OpenAPI",
+          "sess": "day",
+          "error": null
+        },
+        "fear_greed": 34.6,
+        "usdtwd_chg_pct": 0.47,
+        "usdtwd_chg_5d": -0.19,
+        "krw_chg_5d": 1.01,
+        "cny_chg_5d": -0.26,
+        "nikkei_chg_pct": -0.23,
+        "kospi_chg_pct": -4.86,
+        "hsi_chg_pct": -0.59,
+        "nikkei_date": "2026-10-30",
+        "kospi_date": "2026-10-30",
+        "hsi_date": "2026-10-29",
+        "taiex_date": "2026-10-29",
+        "fi_three_date": "20261029"
+      }
+    },
+    {
+      "d": "2026-11-03",
+      "at": "05:03",
+      "x": {
+        "dji_chg_pct": 0.42,
+        "nasdaq_chg_pct": -1.07,
+        "sp500_chg_pct": -0.51,
+        "sox_chg_pct": -3.37,
+        "tsm_chg_pct": -1.87,
+        "asx_chg_pct": -0.74,
+        "umc_chg_pct": -1.68,
+        "tsm_date": "2026-11-02",
+        "asx_date": "2026-11-02",
+        "umc_date": "2026-11-02",
+        "sp500_date": "2026-11-02",
+        "nasdaq_date": "2026-11-02",
+        "vix": 21.23,
+        "nq_fut_chg_pct": null,
+        "ust10y_chg_pct": -0.71,
+        "taifex_tx_now": {
+          "price": 45301.0,
+          "chg": -2.72,
+          "est": false,
+          "date": "2026-10-30",
+          "src": "TAIFEX OpenAPI",
+          "sess": "day",
+          "error": null
+        },
+        "fear_greed": 22.4,
+        "usdtwd_chg_pct": 0.09,
+        "usdtwd_chg_5d": 0.08,
+        "krw_chg_5d": 1.77,
+        "cny_chg_5d": -0.46,
+        "nikkei_chg_pct": -0.33,
+        "kospi_chg_pct": 2.24,
+        "hsi_chg_pct": 0.42,
+        "nikkei_date": "2026-11-02",
+        "kospi_date": "2026-11-02",
+        "hsi_date": "2026-11-02",
+        "taiex_date": "2026-10-30",
+        "fi_three_date": "20261102"
+      }
+    },
+    {
+      "d": "2026-11-04",
+      "at": "08:03",
+      "x": {
+        "dji_chg_pct": -0.38,
+        "nasdaq_chg_pct": 0.83,
+        "sp500_chg_pct": 0.36,
+        "sox_chg_pct": 2.63,
+        "tsm_chg_pct": 1.55,
+        "asx_chg_pct": -0.31,
+        "umc_chg_pct": 0.06,
+        "tsm_date": "2026-11-03",
+        "asx_date": "2026-11-03",
+        "umc_date": "2026-11-03",
+        "sp500_date": "2026-11-03",
+        "nasdaq_date": "2026-11-03",
+        "vix": 20.83,
+        "nq_fut_chg_pct": null,
+        "ust10y_chg_pct": 1.19,
+        "taifex_tx_now": {
+          "price": 45256.0,
+          "chg": -0.1,
+          "est": false,
+          "date": "2026-11-02",
+          "src": "TAIFEX OpenAPI",
+          "sess": "day",
+          "error": null
+        },
+        "fear_greed": 19.1,
+        "usdtwd_chg_pct": 0.39,
+        "usdtwd_chg_5d": 0.61,
+        "krw_chg_5d": 1.37,
+        "cny_chg_5d": -0.16,
+        "nikkei_chg_pct": -0.33,
+        "kospi_chg_pct": -3.59,
+        "hsi_chg_pct": 0.57,
+        "nikkei_date": "2026-11-02",
+        "kospi_date": "2026-11-03",
+        "hsi_date": "2026-11-03",
+        "taiex_date": "2026-11-02",
+        "fi_three_date": "20261103"
+      }
+    },
+    {
+      "d": "2026-11-05",
+      "at": "08:03",
+      "x": {
+        "dji_chg_pct": 3.03,
+        "nasdaq_chg_pct": 1.44,
+        "sp500_chg_pct": 1.58,
+        "sox_chg_pct": -3.13,
+        "tsm_chg_pct": -2.24,
+        "asx_chg_pct": -3.94,
+        "umc_chg_pct": -2.07,
+        "tsm_date": "2026-11-04",
+        "asx_date": "2026-11-04",
+        "umc_date": "2026-11-04",
+        "sp500_date": "2026-11-04",
+        "nasdaq_date": "2026-11-04",
+        "vix": 16.61,
+        "nq_fut_chg_pct": null,
+        "ust10y_chg_pct": -1.17,
+        "taifex_tx_now": {
+          "price": 43376.0,
+          "chg": -4.09,
+          "est": false,
+          "date": "2026-11-03",
+          "src": "TAIFEX OpenAPI",
+          "sess": "day",
+          "error": null
+        },
+        "fear_greed": 27.3,
+        "usdtwd_chg_pct": 0.83,
+        "usdtwd_chg_5d": 1.32,
+        "krw_chg_5d": 1.08,
+        "cny_chg_5d": -0.06,
+        "nikkei_chg_pct": -1.42,
+        "kospi_chg_pct": 0.62,
+        "hsi_chg_pct": 1.67,
+        "nikkei_date": "2026-11-04",
+        "kospi_date": "2026-11-04",
+        "hsi_date": "2026-11-04",
+        "taiex_date": "2026-11-03",
+        "fi_three_date": "20261104"
+      }
+    },
+    {
+      "d": "2026-11-06",
+      "at": "06:19",
+      "x": {
+        "dji_chg_pct": -3.44,
+        "nasdaq_chg_pct": -5.52,
+        "sp500_chg_pct": -4.36,
+        "sox_chg_pct": -12.25,
+        "tsm_chg_pct": -10.78,
+        "asx_chg_pct": -20.77,
+        "umc_chg_pct": -16.69,
+        "tsm_date": "2026-11-05",
+        "asx_date": "2026-11-05",
+        "umc_date": "2026-11-05",
+        "sp500_date": "2026-11-05",
+        "nasdaq_date": "2026-11-05",
+        "vix": 28.18,
+        "nq_fut_chg_pct": null,
+        "ust10y_chg_pct": -1.16,
+        "taifex_tx_now": {
+          "price": 43204.0,
+          "chg": -0.34,
+          "est": false,
+          "date": "2026-11-04",
+          "src": "TAIFEX OpenAPI",
+          "sess": "day",
+          "error": null
+        },
+        "fear_greed": 19.9,
+        "usdtwd_chg_pct": 1.04,
+        "usdtwd_chg_5d": 2.13,
+        "krw_chg_5d": 1.31,
+        "cny_chg_5d": 0.03,
+        "nikkei_chg_pct": -1.79,
+        "kospi_chg_pct": -5.28,
+        "hsi_chg_pct": 3.67,
+        "nikkei_date": "2026-11-05",
+        "kospi_date": "2026-11-05",
+        "hsi_date": "2026-11-05",
+        "taiex_date": "2026-11-04",
+        "fi_three_date": "20261105"
+      }
+    }
+  ]
+}

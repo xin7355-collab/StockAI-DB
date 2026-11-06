@@ -1,0 +1,218 @@
+{
+  "updated": "2026-11-06 16:36 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "自由財經",
+      "title": "鴻勁上市後首度祭出庫藏股 擬斥資百億買回2000張",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5632244",
+      "published_time": "Fri, 06 Nov 2026 21:59:42 +0800",
+      "matched_keywords": [
+        "庫藏股"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "斥資百億買回庫藏股，彰顯公司對股價信心",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "沛亨布局光通訊產業 斥資3億元收購建毅科技股權",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5632219",
+      "published_time": "Fri, 06 Nov 2026 21:57:08 +0800",
+      "matched_keywords": [
+        "收購"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "沛亨收購建毅科技，跨足光通訊領域",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "自我了斷！上市櫃融資暴減565億創單日新高 熱門ETF融資降低",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5632234",
+      "published_time": "Fri, 06 Nov 2026 21:46:38 +0800",
+      "matched_keywords": [
+        "新高"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利空",
+      "ai_reason": "融資暴減創新高，反映市場恐慌與資金撤離",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "散戶自斷手腳了！今日上市融資大減423.56億元",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5632211",
+      "published_time": "Fri, 06 Nov 2026 21:19:13 +0800",
+      "matched_keywords": [
+        "禁令"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "融資大減且AI禁令致大盤重挫",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "富采第3季本業虧損收斂　每股盈餘1.99元",
+      "link": "https://www.cna.com.tw/news/afe/202611060336.aspx",
+      "published_time": "Fri, 06 Nov 2026 21:06:27 +0800",
+      "matched_keywords": [
+        "合併",
+        "營收",
+        "每股盈餘"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "營收季增5.7%年增19.3%，本業虧損收斂",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "富采 Q3 業外挹注轉盈，預期 Q4 營收受 AI 產業鏈排擠下滑",
+      "link": "https://finance.technews.tw/2026/11/06/ennostar-q3/",
+      "published_time": "Fri, 06 Nov 2026 13:03:05 +0000",
+      "matched_keywords": [
+        "法說",
+        "合併",
+        "營收",
+        "毛利率"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "預期Q4營收受AI產業鏈排擠而下滑",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "強攻 AI 與企業級市場，潘健成：群聯擺脫依賴低價庫存邁入 AI 營運收割期",
+      "link": "https://finance.technews.tw/2026/11/06/phison-breaks-free-from-reliance-on-low-priced-inventory-and-enters-a-period-of-reaping-the-benefits-of-ai-driven-operations/",
+      "published_time": "Fri, 06 Nov 2026 12:50:00 +0000",
+      "matched_keywords": [
+        "庫存"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "群聯轉型AI市場，擺脫低價庫存依賴",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "叡揚：預期第4季維持旺季表現　估資安商機持續擴大",
+      "link": "https://www.cna.com.tw/news/afe/202611060318.aspx",
+      "published_time": "Fri, 06 Nov 2026 20:25:48 +0800",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "資安需求剛性，預期第4季旺季表現持續成長",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "元太砸27.8億元買觀音廠  攜台虹布局AI高速傳輸材料",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5632141",
+      "published_time": "Fri, 06 Nov 2026 20:14:03 +0800",
+      "matched_keywords": [
+        "試產"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "擴產AI高速傳輸材料，強化供應鏈布局",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "宜鼎10月營收月減11.1%",
+      "link": "https://finance.technews.tw/2026/11/06/innodisk-5289-202610-financial-report/",
+      "published_time": "Fri, 06 Nov 2026 12:10:04 +0000",
+      "matched_keywords": [
+        "合併",
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "10月營收月減11.1%，顯示短期動能轉弱",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "緯穎前3季每股賺94.04元　超越去年全年",
+      "link": "https://www.cna.com.tw/news/afe/202611060314.aspx",
+      "published_time": "Fri, 06 Nov 2026 20:01:39 +0800",
+      "matched_keywords": [
+        "合併",
+        "營收",
+        "毛利率",
+        "每股盈餘",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "單季營收獲利創新高，前3季EPS超去年全年",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "雄獅前三季賺進一個股本   ITF出現百萬刷手",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5632106",
+      "published_time": "Fri, 06 Nov 2026 19:58:40 +0800",
+      "matched_keywords": [
+        "合併",
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "前三季獲利豐厚，賺進一個股本",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "群聯第三季營收創歷史新高，潘健成宣佈強攻 AI 生態系與自研平台",
+      "link": "https://finance.technews.tw/2026/11/06/phisons-third-quarter-revenue-hit-a-record-high/",
+      "published_time": "Fri, 06 Nov 2026 11:50:33 +0000",
+      "matched_keywords": [
+        "財報",
+        "營收",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "營收創新高且強攻AI生態系",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "華航前3季營收、淨利創同期新高　每股賺1.8元",
+      "link": "https://www.cna.com.tw/news/afe/202611060306.aspx",
+      "published_time": "Fri, 06 Nov 2026 19:29:20 +0800",
+      "matched_keywords": [
+        "營收",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "前三季營收淨利創新高，貨運需求穩健成長",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "華航第三季EPS創歷年同期新高  高星潢：Q4要「狠狠往上拚」",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5632076",
+      "published_time": "Fri, 06 Nov 2026 19:13:16 +0800",
+      "matched_keywords": [
+        "合併",
+        "營收",
+        "EPS",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "華航Q3 EPS創新高，Q4展望強勁",
+      "important": true
+    }
+  ]
+}
