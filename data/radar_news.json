@@ -1,7 +1,20 @@
 {
-  "updated": "2026-11-06 16:36 UTC",
+  "updated": "2026-11-06 17:23 UTC",
   "count": 15,
   "data": [
+    {
+      "source_name": "中央社財經",
+      "title": "美國10月大增16萬5000名就業人口　添聯準會升息壓力",
+      "link": "https://www.cna.com.tw/news/aopl/202611060360.aspx",
+      "published_time": "Fri, 06 Nov 2026 23:29:25 +0800",
+      "matched_keywords": [
+        "優於預期"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "美就業強勁增升息壓力，壓抑台股估值",
+      "important": true
+    },
     {
       "source_name": "自由財經",
       "title": "鴻勁上市後首度祭出庫藏股 擬斥資百億買回2000張",
@@ -12,7 +25,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "斥資百億買回庫藏股，彰顯公司對股價信心",
+      "ai_reason": "庫藏股轉讓員工，強化留才與市場信心",
       "important": true
     },
     {
@@ -25,7 +38,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "沛亨收購建毅科技，跨足光通訊領域",
+      "ai_reason": "跨足光通訊領域，強化產業佈局",
       "important": true
     },
     {
@@ -51,7 +64,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "融資大減且AI禁令致大盤重挫",
+      "ai_reason": "AI禁令致費半崩跌，台股重挫創紀錄",
       "important": true
     },
     {
@@ -66,7 +79,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "營收季增5.7%年增19.3%，本業虧損收斂",
+      "ai_reason": "Q3營收季增5.7%，本業虧損收斂",
       "important": true
     },
     {
@@ -82,7 +95,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利空",
-      "ai_reason": "預期Q4營收受AI產業鏈排擠而下滑",
+      "ai_reason": "Q4營收預期受AI產業鏈排擠而下滑",
       "important": true
     },
     {
@@ -95,7 +108,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "群聯轉型AI市場，擺脫低價庫存依賴",
+      "ai_reason": "群聯轉向AI市場，擺脫低價庫存依賴",
       "important": true
     },
     {
@@ -108,7 +121,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "資安需求剛性，預期第4季旺季表現持續成長",
+      "ai_reason": "資安需求剛性，預期Q4旺季表現佳",
       "important": true
     },
     {
@@ -121,7 +134,7 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "擴產AI高速傳輸材料，強化供應鏈布局",
+      "ai_reason": "擴產電子紙並布局AI傳輸材料",
       "important": true
     },
     {
@@ -135,7 +148,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利空",
-      "ai_reason": "10月營收月減11.1%，顯示短期動能轉弱",
+      "ai_reason": "10月營收月減11.1%，短線動能轉弱",
       "important": true
     },
     {
@@ -152,7 +165,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "單季營收獲利創新高，前3季EPS超去年全年",
+      "ai_reason": "單季營收獲利創新高，EPS超越去年全年",
       "important": true
     },
     {
@@ -195,23 +208,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "前三季營收淨利創新高，貨運需求穩健成長",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "華航第三季EPS創歷年同期新高  高星潢：Q4要「狠狠往上拚」",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5632076",
-      "published_time": "Fri, 06 Nov 2026 19:13:16 +0800",
-      "matched_keywords": [
-        "合併",
-        "營收",
-        "EPS",
-        "新高"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "華航Q3 EPS創新高，Q4展望強勁",
+      "ai_reason": "前3季營收淨利創新高，貨運量價齊揚",
       "important": true
     }
   ]
