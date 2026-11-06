@@ -127,7 +127,7 @@ ok(iHist > 0 && iHist < iGate, '⑥b 記通知歷史必須排在守門**之前**
 const ui = await pg.evaluate(() => {
   app._renderAlertCatList();
   const el = document.getElementById('alertCatList');
-  return { rows: el.querySelectorAll('label').length, lock: el.querySelectorAll('input[disabled]').length, n: app._ALERT_CATS.filter(c => !c.lead || app._isLead()).length };   // 👑 V79.1.5 換倉日那類只在選 👑 時列出
+  return { rows: el.querySelectorAll('label').length, lock: el.querySelectorAll('input[disabled]').length, n: app._ALERT_CATS.filter(c => (!c.lead || app._isLead()) && (!c.adv || !!(app.settings && app.settings.stratUnlock))).length };   // 👑 V79.1.5 換倉日那類只在選 👑 時列出;🔀 V81.0.0 交叉提醒(adv)只在解鎖後列出(V82.0.0 補:那一版漏改這裡 → 長期紅燈)
 });
 ok(ui.rows === ui.n, '⑦ 設定清單列數 == 總表筆數(⛔ 不可寫死第二份)', `${ui.rows}/${ui.n}`);
 ok(ui.lock === 2, '⑦b 鎖住的剛好兩類(部位 / 到價)', `${ui.lock} 個`);

@@ -67,6 +67,8 @@ CADENCE_H = {
     'paper_trades.json': None,   # 紙上交易,有訊號才寫
     'premkt_log.json': 96,       # 🌅 V79.5.5 盤前紀錄:只有晚上 daily_miner 那輪寫(平日一天一次;週末 + 一天假 ≤96h)
     'trump_posts.json': 80,      # 🗽 V80.2.1 川普發文:跟在平日早上的總經採礦 / 盤前新聞後面(週一早上接週五 ≈ 72h)
+    'dip_pick.json': 80,         # 📉 V82.0.0 大跌撿便宜清單:playbook_scan 每個平日晚上產(週一晚上接週五 ≈ 72h)
+    'crash_events.json': 80,     # 📉 V82.0.0 大跌事件:同上,跟 dip_pick 同一步
 }
 
 # 🌅 V79.5.5 index.html 沒有 fetch、但也要體檢的檔(只有產業作戰室讀)

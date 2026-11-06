@@ -92,7 +92,7 @@ async function fire(cron, iso) {
   } finally { console.log = origLog; console.error = origErr; console.warn = origWarn; }
   return ps.length;
 }
-const EXPECT = { eve: 2, open: 2, pre: 4, scan: 2, last: 2 };
+const EXPECT = { eve: 2, open: 2, pre: 5, scan: 2, last: 2 };   // 📉 V82.0.0 pre 多一件:大跌事件 / 大跌撿便宜(runCrashDipPush)
 const FRI = { pre: '2026-10-23T00:00:00Z', open: '2026-10-23T01:00:00Z', scan: '2026-10-23T02:15:00Z', last: '2026-10-23T05:15:00Z', eve: '2026-10-23T09:00:00Z' };
 for (const k of Object.keys(EXPECT)) {
   const n = await fire(CRON[k], FRI[k]);

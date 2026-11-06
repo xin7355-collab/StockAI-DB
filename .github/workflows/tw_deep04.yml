@@ -1,0 +1,137 @@
+name: 🇹🇼 台股 2004~2009 全市場日 K(證交所 MI_INDEX,研究用)
+
+# 為什麼(V82.0.0,使用者 11/06「需要比對別的國家要挖礦就挖礦」+ 計畫 B1):
+#   決策台「📉 大跌撿便宜」只測過 2011 以後;2008 那種一路跌一整年的空頭不在資料裡。
+#   證交所 MI_INDEX(每日收盤行情・全部不含權證)2004-02-11 起每天一個網址,含後來下市的 → 驗 2008(最重要的樣本外)。
+# 推到獨立 orphan 分支 tw_deep04(⛔ 不進 data / gh-pages,陷阱 #41);回測在本機讀那個分支。
+# ⛔ 不加排程(研究用,不佔排程配額 V73.9.0)・⛔ 不用金鑰・⛔ 不偽裝瀏覽器(lib_http.Gate:隔 10 秒、被擋就停)。
+# ⛔ 不掛 push 觸發(改了共用的 lib_http.py 不可以自動去打證交所 —— block_deep V80.1.9 的教訓)。
+# 🚦 證交所 www 實測(block_deep):隔 3 秒第 1,127 次被擋、盤中隔 5 秒第 100 次被擋、晚上隔 10 秒 300 次沒被擋
+#    → 一輪最多 300 次、間隔 10 秒(約 50 分鐘),⛔ 盤中按;跟 block_deep(台北晚上 21:40)錯開時段。
+#    被擋就先別再按,隔天再試(⛔ 換一台機器馬上重抓 = 繞過封鎖)。
+# 第一次先跑 probe=1(只問 8 次、⛔ 寫檔)看新舊網址哪個有資料、欄位叫什麼,再正式抓。
+on:
+  workflow_dispatch:
+    inputs:
+      probe:
+        description: '1 = 只探路(新舊網址各問 3 天 + 除權息一年,⛔ 寫檔)'
+        default: '0'
+      start:
+        description: '從哪個月開始(YYYY-MM)'
+        default: '2004-02'
+      end:
+        description: '抓到哪個月(YYYY-MM)'
+        default: '2009-12'
+      max_min:
+        description: '這一輪最多抓幾分鐘'
+        default: '80'
+      max_req:
+        description: '這一輪最多問幾次'
+        default: '300'
+      gap:
+        description: '每次間隔幾秒(最少 3)'
+        default: '10'
+      mi_url:
+        description: '收盤行情網址(探路量到哪個有資料;空白 = 新網址 rwd)'
+        default: ''
+      div_url:
+        description: '除權息網址(空白 = 新網址 rwd)'
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  # ⛔ 不可跟別人共用 group(V73.7.9)
+  group: tw-deep04
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests
+
+      - name: 🧪 selftest(⛔ 沒過不開工)
+        run: |
+          python3 lib_http.py --selftest
+          python3 scripts/tw_deep04_fetch.py --selftest
+
+      # ⚠️ V49.4 教訓:還原用 git archive,⛔ 不要 git checkout origin/x -- dir(會弄髒 index)
+      - name: 📂 還原上一輪的(已經抓完的月份 ⛔ 重抓)
+        if: inputs.probe != '1'
+        run: |
+          mkdir -p tw_deep04
+          if git fetch --depth=1 origin tw_deep04 2>/dev/null; then
+            git archive FETCH_HEAD tw_deep04 | tar -x || true
+          fi
+          echo "上一輪:$(find tw_deep04 -name '*.json.gz' | wc -l) 個月份檔"
+
+      - name: 🇹🇼 抓
+        id: run
+        env:
+          OUT_DIR: tw_deep04
+          PROBE: ${{ inputs.probe }}
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+          MAX_MIN: ${{ inputs.max_min }}
+          MAX_REQ: ${{ inputs.max_req }}
+          GAP_SEC: ${{ inputs.gap }}
+          MI_URL: ${{ inputs.mi_url }}
+          DIV_URL: ${{ inputs.div_url }}
+        run: |
+          set -o pipefail
+          rc=0
+          python3 scripts/tw_deep04_fetch.py 2>&1 | tee tw_fetch.log || rc=$?
+          if [ -d tw_deep04 ]; then cp tw_fetch.log tw_deep04/_last_run.log; fi
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+
+      # ⚠️ 順序:先把 tw_deep04/ 搬到 /tmp,切完分支再搬回來(⛔ 不然 checkout 會蓋掉整輪的結果)
+      # ⭐ 被擋(rc=3)也要推:已經抓到的照存,下一輪接著抓
+      - name: 🚀 推到 tw_deep04 分支
+        if: inputs.probe != '1'
+        run: |
+          set -e
+          n=$(find tw_deep04 -name '[0-9]*.json.gz' 2>/dev/null | wc -l)
+          d=$(find tw_deep04/div -name '[0-9]*.json' 2>/dev/null | wc -l)
+          echo "要推 $n 個月份檔、$d 年除權息"
+          [ "$((n + d))" -gt 0 ] || { echo "::error::一個檔都沒有 → 不推"; exit 1; }
+          rm -rf /tmp/twdeep && mkdir -p /tmp/twdeep && cp -a tw_deep04/. /tmp/twdeep/
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git reset --hard -q && git clean -fdq
+          if git fetch --depth=1 origin tw_deep04 2>/dev/null; then
+            git checkout -f -B tw_deep04 FETCH_HEAD
+          else
+            git checkout -q --orphan tw_deep04
+            git rm -rq --cached . 2>/dev/null || true
+            git clean -fdq
+          fi
+          rm -rf tw_deep04 && mkdir -p tw_deep04 && cp -a /tmp/twdeep/. tw_deep04/
+          git add -f tw_deep04
+          if git diff --cached --quiet; then echo "✅ 沒有新東西 → 不 commit"; exit 0; fi
+          git commit -q -m "🇹🇼 台股 2004~2009 日 K $n 個月 $(date -u +%Y-%m-%d)"
+          pushed=0
+          # ⛔ 這個 retry 迴圈不可拿掉
+          for i in 1 2 3 4 5; do
+            git push origin tw_deep04 && { pushed=1; echo "✅ 已推上 tw_deep04(第 $i 次)"; break; }
+            sleep $((i * 3))
+            git pull --rebase origin tw_deep04 2>/dev/null || true
+          done
+          [ "$pushed" -eq 1 ] || { echo "::error::push 連 5 次失敗"; exit 1; }
+
+      - name: 🚦 被擋 / 格式變了 → 紅燈(時間到沒抓完 = 正常,隔天再按一次 Run)
+        if: steps.run.outputs.rc != '0'
+        run: |
+          echo "::error::台股 2004~2009 下載停手(rc=${{ steps.run.outputs.rc }}):看 log / _status.json 的 stopped —— 被證交所擋就先別再按,隔天再試"
+          exit 1

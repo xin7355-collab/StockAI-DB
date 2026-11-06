@@ -80,6 +80,17 @@ jobs:
           echo "還原 data/*.json:$N 檔"
           [ "$N" -lt 500 ] && { echo "❌ 只有 $N 檔,資料不完整 → 不掃(免得產出殘缺清單)"; exit 1; } || true
 
+      # 📉 V82.0.0 大跌撿便宜清單 + 大跌事件(scripts/dip_pick.mjs → data/dip_pick.json、scripts/crash_events.mjs → data/crash_events.json)
+      #   ⭐ 排在掃描之前、⛔ 不掛 scan_rc 閘門(陷阱 #44:掃描失敗那天這兩份照樣要更新)。
+      #   ⭐ dip_pick 只增不改:上一步已把舊的 data/dip_pick.json 從 data 分支還原回來(名單第一次寫進去就凍結,⛔ 每天重排)。
+      #   App 決策台「📉 大跌撿便宜」、App 提醒、Telegram 08:00 都只讀這兩份(⛔ 前端 / worker 自己再算一份)。
+      - name: 📉 大跌撿便宜清單 + 大跌事件
+        continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單
+        timeout-minutes: 8
+        run: |
+          node --max-old-space-size=4096 scripts/dip_pick.mjs data data/dip_pick.json || echo "::warning::大跌撿便宜清單沒產出(線上留舊的)"
+          node scripts/crash_events.mjs data data/crash_events.json || echo "::warning::大跌事件沒產出(線上留舊的)"
+
       # 🎤 V77.2.7 法說會快照(MOPS mopsov ajax_t100sb02_1 → data/confcall.json)
       #   ⭐ 刻意排在掃描**之前**、而且不掛 scan_rc 閘門:掃描失敗那天法說會照樣更新(陷阱 #44)。
       #   ⭐ 累積型(hist)→ 上一步已把舊的 data/confcall.json 從 data 分支還原回來,miner 會合併。
@@ -205,8 +216,10 @@ jobs:
           [ -s data/pick_history.json ] && cp data/pick_history.json /tmp/pick_history.json || true
           [ -s data/screener.json ] && cp data/screener.json /tmp/screener.json || echo "⚠️ 沒有 screener.json → 自訂選股這輪不更新(前端會顯示既有日期)"
           [ -s data/confcall.json ] && cp data/confcall.json /tmp/confcall.json || echo "⚠️ 沒有 confcall.json → 法說會這輪不更新(前端會顯示既有日期)"
-          ls -s /tmp/playbook_edge.json /tmp/pick_history.json /tmp/screener.json /tmp/confcall.json 2>/dev/null || true
-          [ -s /tmp/playbook_edge.json ] || [ -s /tmp/confcall.json ] || [ -s /tmp/pick_history.json ] || { echo "❌ 沒有任何產物可推,跳過部署"; exit 0; }
+          [ -s data/dip_pick.json ] && cp data/dip_pick.json /tmp/dip_pick.json || echo "⚠️ 沒有 dip_pick.json → 大跌撿便宜這輪不更新"
+          [ -s data/crash_events.json ] && cp data/crash_events.json /tmp/crash_events.json || echo "⚠️ 沒有 crash_events.json → 大跌事件這輪不更新"
+          ls -s /tmp/playbook_edge.json /tmp/pick_history.json /tmp/screener.json /tmp/confcall.json /tmp/dip_pick.json /tmp/crash_events.json 2>/dev/null || true
+          [ -s /tmp/playbook_edge.json ] || [ -s /tmp/confcall.json ] || [ -s /tmp/pick_history.json ] || [ -s /tmp/dip_pick.json ] || [ -s /tmp/crash_events.json ] || { echo "❌ 沒有任何產物可推,跳過部署"; exit 0; }
 
           # ⭐ 三個產物一次放回,⛔ 別在 retry 分支只放回其中一個(那正是以前漏掉快照的原因)
           restore_files () {
@@ -214,7 +227,13 @@ jobs:
             [ -s /tmp/pick_history.json ] && cp /tmp/pick_history.json data/pick_history.json || true
             [ -s /tmp/screener.json ] && cp /tmp/screener.json data/screener.json || true
             [ -s /tmp/confcall.json ] && cp /tmp/confcall.json data/confcall.json || true
+            [ -s /tmp/dip_pick.json ] && cp /tmp/dip_pick.json data/dip_pick.json || true
+            [ -s /tmp/crash_events.json ] && cp /tmp/crash_events.json data/crash_events.json || true
           }
+
+          # 📉 V82.0.0 只 add / commit 真的在的檔 —— ⛔ 寫死清單:新檔(dip_pick / crash_events)哪天沒產出,
+          #   `git add -f a b c` 整行失敗 → 一個都沒加 →「無變更」→ 連明日作戰清單也沒推(陷阱 #44 的另一種形式)
+          present () { for f in data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json data/dip_pick.json data/crash_events.json; do [ -e "$f" ] && printf '%s ' "$f"; done; return 0; }
 
           deploy_branch () {
             local BR="$1"
@@ -225,9 +244,11 @@ jobs:
             git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
             mkdir -p data
             restore_files
-            git add -f data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json 2>/dev/null || git add -f data/playbook_edge.json data/confcall.json 2>/dev/null || true
+            P=$(present)
+            [ -n "$P" ] || { echo "ℹ️ $BR 沒有任何產物"; return 0; }
+            git add -f $P
             if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
-            git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 + 法說會 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json
+            git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 + 法說會 + 大跌清單 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $P
             for i in 1 2 3 4 5; do
               if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
@@ -236,8 +257,9 @@ jobs:
               git reset --hard -q "origin/$BR" 2>/dev/null || true
               mkdir -p data
               restore_files
-              git add -f data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json 2>/dev/null || git add -f data/playbook_edge.json data/confcall.json 2>/dev/null || true
-              git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 + 法說會 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json 2>/dev/null || true
+              P=$(present)
+              [ -n "$P" ] && git add -f $P 2>/dev/null || true
+              git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 + 法說會 + 大跌清單 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $P 2>/dev/null || true
             done
           }
 

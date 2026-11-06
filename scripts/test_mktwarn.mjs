@@ -184,5 +184,15 @@ ok('③d2 多頭但破月季線 → 保守、手上的照出場規則走(⛔ 不
 ok('③e 泡沫破裂卡:只描述、兩格都「照你的出場規則走」', /照你的出場規則走/.test(R.bubble) && !BAD.test(R.bubble) && /VIX/.test(R.bubble), R.bubble + (R.err3 || ''));
 ok('③ 全程無 pageerror', errs.length === 0, errs.join(' | '));
 
+// ⑦ V82.0.0 例外(使用者 11/06 選「App 跳通知 + Telegram」):「已經發生的跌幅」(📉 大跌事件)可以跳通知 ——
+//   ⛔ 只限 _crashEvText 那四種事實(離一年最高點 10% / 25 天 15% / 20% / 這一段結束);預測型的大盤警示(上面 ① 那三支)照舊只進鈴鐺
+//   ⭐ 內容一樣只描述:發生率 +「⛔ 不是會漲或會跌」+ 照你的出場規則走,⛔ 減碼 / 空手 / 現金為王 / 全出清
+{
+    const fEv = body(SRC, '    _crashEvText(');
+    const fSw = body(SRC, '    async _crashEvAlertSweep(');
+    ok('⑦ 大跌事件:只有 _crashEvAlertSweep 用 _fireAlert,而且只發 _crashEvText 那四種事實', /this\._fireAlert\(tx\[0\], tx\[1\]/.test(fSw) && ['leg10', 'fast15', 'bear20', 'end'].every(k => fEv.includes(`'${k}'`)), fSw.slice(0, 200));
+    ok('⑦ 大跌事件文字:⛔ 不是會漲或會跌 + 照你的出場規則走,⛔ 減碼 / 空手 / 現金為王 / 全出清', /⛔ 不是會漲或會跌/.test(fEv) && /手上的照你的出場規則走/.test(fEv) && !BAD.test(fEv), fEv.slice(0, 200));
+}
+
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ MKTWARN_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

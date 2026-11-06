@@ -344,7 +344,7 @@ async function macroKick(env, now = Date.now(), fetchFn = fetch, dispatchFn = gh
     return { sent: !!(r && r.ok), why: r && r.why, upd, close };
 }
 
-const WORKER_VER = 'V22.8 (2026-10-31)';   // 🔕 盤中推播只描述(⛔ 進場 / 目標價 / 低接 / 鎖利);V22.7 排程星期欄 1-5 → MON-FRI
+const WORKER_VER = 'V22.9 (2026-11-06)';   // 📉 08:00 大跌事件 / 大跌撿便宜;V22.8 盤中推播只描述(⛔ 進場 / 目標價 / 低接 / 鎖利);V22.7 排程星期欄 1-5 → MON-FRI
 const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
 
 // 🗓️ V22.7 排程(⛔ 要跟 wrangler.toml 的 crons 一字不差 —— Cloudflare 傳進來的 event.cron 就是那串原文)
@@ -361,7 +361,7 @@ const CRON = {
 // 台北的星期幾(0 = 週日);排程時間點優先用 Cloudflare 給的 scheduledTime
 function _twWeekday(ms) { return new Date((Number(ms) || Date.now()) + 8 * 3600e3).getUTCDay(); }
 
-export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs, CRON, _twWeekday, buildWeekBlock };
+export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs, CRON, _twWeekday, buildWeekBlock };   // crashDipLines / crashEvLine 在定義處 export
 export default {
     async fetch(request, env, ctx) {
         if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -413,6 +413,7 @@ export default {
         } else if (event.cron === CRON.pre) {
             ctx.waitUntil(runPreMarket(env));      // V21.4 盤前簡報(台北 08:00)
             ctx.waitUntil(runLeaderRebalPush(env));   // 👑 V77.9.6 選 👑 的人:換倉日「今天開盤買 / 賣哪幾檔」
+            ctx.waitUntil(runCrashDipPush(env));      // 📉 V82.0.0 大跌事件 / 大跌撿便宜(只在有事的日子發一則)
             ctx.waitUntil(macroKick(env));   // 🌅 V79.3.4 總經資料還停在美股收盤前 → 叫醒 macro_cron(盤前體檢)
             // 🚀 順便把盤中快照的主迴圈叫起來(GitHub 排程實測整天不進來,見上面那段)。
             //    ⭐ 08:00 發沒問題 —— `intraday_window.py` 會自己 SLEEP 到 08:45 那一拍。
@@ -902,6 +903,67 @@ export function leadBear(twiiRows) {   // 大盤嚴格空頭:收盤 < 60 日線 
     const avg = n => c.slice(-n).reduce((a, b) => a + b, 0) / n, m20 = avg(20), m60 = avg(60);
     return c[c.length - 1] < m60 && m20 < m60;
 }
+// 📉 V82.0.0 台北 08:00 大跌事件 / 大跌撿便宜(使用者 11/06:「未來如果遇到這種事情我要你自動提醒」;選「App 跳通知 + Telegram」)
+//   ⛔ worker 一個數字都不算:只讀 data/crash_events.json、data/dip_pick.json(scripts/crash_events.mjs、dip_pick.mjs 每晚產)
+//   一天最多一則、只在有事的日子發(⛔ 天天發「今天沒事」):
+//     ① 大跌事件 = 事件日是資料最後那天、而且今天就是它的下一個開盤日(ce.nx,官方休市表算的 —— ⛔ 放假那天早上講舊事)
+//     ② 大跌撿便宜 = 今天 09:00 要開盤買的那一批(b = 今天;選 👑 不發 —— 👑 沒有停 0050 的錢;空頭守門開著 + 那天嚴格空頭 → 不發)
+//     ③ 你按了「我有買這一批」的那一批今天抱滿 40 天(s = 今天)
+//   ⛔ 只描述 + 發生率(⛔ 不是會漲或會跌);⛔ 叫人減碼 / 出清(V79.3.5 大盤警示只描述那條的例外 = 只限「已經發生的跌幅」)
+export function crashEvLine(e, L, occ) {
+    const O = occ || {}, f = v => (+v).toFixed(1), md = d => String(d || '').slice(5).replace('-', '/');
+    const pk = L && L.peak ? `一年最高 ${md(L.peak.d)} ${Math.round(L.peak.c).toLocaleString('en-US')}` : '一年最高';
+    const tail = '過去發生過的比例,⛔ 不是會漲或會跌';
+    const c = Math.round(e.c).toLocaleString('en-US');
+    if (e.k === 'leg10') { const o = O.leg10 || {}; return `📉 *加權離一年最高點跌 ${f(-e.dd)}%*(這一段第一次跌到 10%)\n${md(e.d)} 收盤 ${c}(${pk})\n🎲 ${O.from || 2000} 年起走完的 ${o.n} 段裡:最後跌到 20% 以上 ${o.d20} 段・20 個交易日內就結束 ${o.end20} 段 —— ${tail}`; }
+    if (e.k === 'fast15') { const o = O.fast15 || {}; return `📉 *25 天內跌了 15% 以上*(這一段第一次)\n${md(e.d)} 收盤 ${c}(離${pk} ${f(-e.dd)}%)\n🎲 台股 ${o.from || 1990} 年起 ${o.n} 次:那一段的最低收盤一週內就到 ${o.wk} 次・一週到半年 ${o.mo} 次・半年以上 ${o.half} 次;之後 60 天內又再低 5% 以上 ${o.re}/${o.reN} 次(修正中隨便一天 ${o.base}%)—— ${tail}`; }
+    if (e.k === 'bear20') { const o = O.bear20 || {}; return `📉 *加權離一年最高點跌了 20% 以上*\n${md(e.d)} 收盤 ${c}(${pk})\n🎲 ${O.from || 2000} 年起跌到 20% 的 ${o.n} 段:之後最低又比那天低 10% 以上 ${o.more10} 段・250 個交易日內這一段就結束 ${o.end250} 段 —— ${tail}`; }
+    if (e.k === 'end') { const o = O.end || {}; return `📉 *這一段修正結束了*(收盤回到離一年最高點 5% 以內)\n${md(e.d)} 收盤 ${c}\n🎲 ${O.from || 2000} 年起 ${o.n} 次結束之後,60 個交易日內又跌回 10% 以上 ${o.again60} 次 —— ${tail}`; }
+    return '';
+}
+export function crashDipLines(ce, dp, s, today) {
+    s = s || {};
+    const md = d => String(d || '').slice(5).replace('-', '/'), out = [];
+    if (s.crashTg !== false && ce && Array.isArray(ce.legs) && ce.nx === today)
+        for (const L of ce.legs) for (const e of (L.ev || [])) if (e.d === ce.through) { const t = crashEvLine(e, L, ce.occ); if (t) out.push(t); }
+    const B = dp && Array.isArray(dp.batches) ? dp.batches.filter(b => !b.gone) : [];
+    if (s.dipTg !== false && s.strategy !== 'lead')
+        for (const b of B) if (b.st === 'wait' && b.b === today && !(s.bearGate && b.bear))
+            out.push(`📉 *大跌撿便宜:今天 09:00 開盤買 ${(b.L || []).length} 檔*\n加權 ${md(b.t)} 收盤跌 ${(+b.ix).toFixed(1)}% → 熱門股裡那天跌最多的那幾檔;名單與限價在決策台。這一批用總資金的 1 成、抱 40 個交易日;開盤比限價高就不買、⛔ 追`);
+    const mine = new Set((s.dipMine || []).map(String));
+    for (const b of B) if (mine.has(String(b.t)) && b.st !== 'skip' && b.s === today)
+        out.push(`👜 *你有買的 ${md(b.t)} 那一批今天抱滿 40 天*:收盤前賣掉,錢再停回 0050`);
+    if (out.length) out.push('👉 手上的照你的出場規則走;要買照決策台');
+    return out;
+}
+async function runCrashDipPush(env) {
+    const t = Date.now(), today = new Date(t + 8 * 3600e3).toISOString().slice(0, 10);
+    const [cR, dR] = await Promise.all([
+        fetch(`${GH_PAGES_BASE}/data/crash_events.json?t=${t}`).catch(() => null),
+        fetch(`${GH_PAGES_BASE}/data/dip_pick.json?t=${t}`).catch(() => null),
+    ]);
+    const ce = cR?.ok ? await cR.json().catch(() => null) : null;
+    const dp = dR?.ok ? await dR.json().catch(() => null) : null;
+    if (!ce && !dp) return;
+    let cursor;
+    while (true) {
+        const list = await env.KV.list({ prefix: 'user:', cursor });
+        for (const key of list.keys) {
+            try {
+                const u = JSON.parse((await env.KV.get(key.name)) || '{}');
+                if (!u.chat_id || (u.muted_until && u.muted_until > Date.now())) continue;
+                const sentKey = `cdpush:${u.chat_id}:${today}`;
+                if (await env.KV.get(sentKey)) continue;
+                const lines = crashDipLines(ce, dp, u.settings || {}, today);
+                if (!lines.length) continue;
+                await tg(env, u.chat_id, [`📉 *大跌提醒* _${today} 台北08:00_`, SEP, lines.join('\n\n'), `📱 [決策台](${GH_PAGES_BASE}/)`].join('\n'));
+                await env.KV.put(sentKey, '1', { expirationTtl: 2 * 86400 });
+            } catch (_) {}
+        }
+        if (list.list_complete) break;
+        cursor = list.cursor;
+    }
+}
 async function runLeaderRebalPush(env) {
     const t = Date.now();
     const [sR, tR] = await Promise.all([
@@ -1094,6 +1156,11 @@ function sanitizePayload(payload) {
             leadTiming: payload.settings.leadTiming === 'open' ? 'open' : 'split',
             // 📚 V79.2.6 預設一本帳;App 🔓 進階功能打開甲帳・乙帳 → 2
             leadBooks: payload.settings.leadBooks === 2 ? 2 : 1,
+            // 📉 V82.0.0 08:00 大跌事件 / 大跌撿便宜(預設開;App 那兩類提醒關掉 → 這裡也關)+ 你按了「我有買這一批」的那幾批(只收日期)
+            crashTg: payload.settings.crashTg !== false,
+            dipTg: payload.settings.dipTg !== false,
+            bearGate: payload.settings.bearGate === true,
+            dipMine: Array.isArray(payload.settings.dipMine) ? payload.settings.dipMine.map(String).filter(t => /^\d{4}-\d{2}-\d{2}$/.test(t)).slice(-12) : [],
         };
         const ft = String(payload.settings.fugleToken1 || '').trim();
         if (ft && ft.length >= 8 && ft.length <= 100) out.settings.fugleToken1 = ft;

@@ -29,6 +29,10 @@ on:
         description: '從哪一天抓起(YYYY-MM-DD;有填就不看 years。變因研究用 2009-01-01)'
         required: false
         default: ''
+      group:
+        description: '留空 = 美股日線(data/us_hist.json);world = 各國指數 + 債券 ETF 全部歷史 → world_hist 分支(V82.0.0,大跌研究的樣本外用)'
+        required: false
+        default: ''
 
 # ⛔ 它推 data 分支(不是 gh-pages)→ 不跟 gh-pages-push 共用鎖;但要防自己疊在一起(手動 + workflow_run 同時來)。
 #    執行 3~5 分 ≪ 觸發間隔(一天 1~2 次)→ cancel-in-progress: true 安全(CLAUDE.md 鐵則)。
@@ -64,7 +68,38 @@ jobs:
         run: pip install --quiet yfinance
 
       # ⚠️ selftest 跟正式跑寫在同一個 step:selftest 沒過就⛔ 不該去動 data 分支
+      # 🌏 V82.0.0 各國指數(⛔ 排程,只能手動派 group=world;⛔ 進 gh-pages —— App 用不到,獨立分支 world_hist)
+      - name: 🌏 各國指數 + 債券 ETF 全部歷史(group=world)
+        if: github.event.inputs.group == 'world'
+        env:
+          OUT: /tmp/world_hist.json.gz
+        run: |
+          set -e
+          python3 scripts/world_hist_miner.py --selftest
+          python3 scripts/world_hist_miner.py || { echo "⛔ 守門沒過 → 這輪不推(上一份保留)"; exit 0; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          if git fetch --depth=1 origin "+refs/heads/world_hist:refs/remotes/origin/world_hist" 2>/dev/null; then
+            git checkout -f -B world_hist origin/world_hist
+          else
+            git checkout -q --orphan world_hist
+            git rm -rqf . 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+          fi
+          cp /tmp/world_hist.json.gz world_hist.json.gz
+          git add -f world_hist.json.gz
+          if git diff --cached --quiet; then echo "ℹ️ 跟分支上一樣"; exit 0; fi
+          git commit -q -m "🌏 各國指數全部歷史 $(date -u '+%Y-%m-%d %H:%M UTC')" -- world_hist.json.gz
+          for i in 1 2 3 4 5; do
+            git push origin world_hist && { echo "✅ world_hist 分支已更新(第 $i 次)"; exit 0; }
+            sleep $((i * 3))
+          done
+          echo "❌ push 連 5 次失敗"; exit 1
+
       - name: 🇺🇸 selftest → 抓 5 年日線
+        if: github.event.inputs.group != 'world'
         env:
           # 🔧 排程/workflow_run 觸發時 inputs.* 是**空字串**不是不存在 → Python 端一律 `or 預設`(check_env_default.py)
           YEARS: ${{ github.event.inputs.years }}
@@ -76,7 +111,7 @@ jobs:
           [ -s /tmp/us_hist.json ] || { echo "⛔ 守門沒過或抓不到 → 這輪不推(舊檔保留)"; echo "SKIP=1" >> "$GITHUB_ENV"; }
 
       - name: 🚀 推到 data 分支(data/us_hist.json)
-        if: env.SKIP != '1'
+        if: env.SKIP != '1' && github.event.inputs.group != 'world'
         run: |
           set -e
           python3 - <<'PY'

@@ -3,6 +3,13 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 📉 V82.0.0(2026-11-06)大跌撿便宜:資金版補驗 + 每晚清單 + 大跌事件 + 各國指數
+- `scripts/dipleader_probe.mjs` 新模式 `DL_MONEY=1`:`DATA_DIR=$S/d16 DIV=$S/d16/_div16.json DL_MONEY=1 DL_GROUPS=RSlo,U100 DL_HS=20,30,40,50,60 DL_KEYS='RSlo|o|20,RSlo|o|40,U100|o|40' node --max-old-space-size=8000 scripts/dipleader_probe.mjs out.json` → 0050 為主 × 一次一批 / 每次一批(1 成、最多 3 批)/ 每段第一次 × 門檻 2.5~4% × 抱 h 天:逐年、前後半、拿掉 2026 / 最好那年、成本 ×2、同樣多天隨便挑 300 次;`moneyGate` = 事先登記的主判準(抱 20 天・一次一批)。⏭️ 每多一次 ≥3% 大跌可重跑;台股 2004~2009 到了再跑一次(2008)。
+- `scripts/dip_pick.mjs`(App 用的唯一算法,⛔ 研究):`node --max-old-space-size=4096 scripts/dip_pick.mjs data data/dip_pick.json`(playbook_scan 每晚);`--selftest`。⛔ 改規則前先用上面那支重跑資金版。
+- `scripts/crash_events.mjs`:`node scripts/crash_events.mjs data data/crash_events.json`(playbook_scan 每晚);`IDX_LONG IDX_EARLY TWII_NOW node scripts/crash_events.mjs --occ` 重算發生率 `OCC`(fast15 要跟 index `_CRASH_OCC` 一樣);`--selftest`。
+- `scripts/world_hist_miner.py`(採礦,⛔ 探針):只在 Actions 跑(`us_hist.yml` 手動派 `group=world` → `world_hist` 分支 `world_hist.json.gz`);`--selftest` 本機可跑。給 B2 `rebound_lab_probe` 各國樣本外用。
+- `scripts/tw_deep04_fetch.py`(採礦,⛔ 探針):只在 Actions 跑(`tw_deep04.yml` 手動派;先 `probe=1` 探路)→ `tw_deep04` 分支;`--selftest` 本機可跑。給「大跌撿便宜」驗 2008(含下市)。
+
 ### 🌪️ V81.0.3(2026-11-06)何時反攻 + 大跌的神級操作
 - `scripts/crash_global_probe.py`(新):只在 Actions 跑(`macro_probe.yml` which=`crash_global`;Yahoo 8 個指數 + 證交所 FMTQIK 1990~1999 + data 分支 idx_long,只印 log);`--selftest` 本機可跑;`--events c.json` 給 `test_crash_global.mjs`。→ 每個市場急跌 15/25・10/10・20/40(每段第一次):那一段的底 / 250 天內最低 / 離底反彈 10% / 回到前高 / 事件 vs 修正段隨便一天 + 8 個市場合計 + 像現在分組 + VIX 回落拿標普 1990 起當樣本外。⏭️ 台股這一段走完就重跑,`index.html _CRASH_OCC` 跟著改。
 - `scripts/crash_playbook_probe.mjs`(新):`IDX_LONG IDX_EARLY TWII_NOW D16 node scripts/crash_playbook_probe.mjs out.json`(D16 給真 0050 含息)→ 一筆錢 / 每月存錢 / 神 / 等跌 / 分批 / 再平衡 / 年線 / 大跌換正 2(費用 1/4/6%)/ 搶反彈;安慰劑 = 同一張時間表搬到別的起點(⛔ 窗口裡隨便挑日子 —— 現金拖累讓安慰劑天生很差)。

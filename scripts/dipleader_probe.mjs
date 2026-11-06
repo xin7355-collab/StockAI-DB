@@ -137,18 +137,21 @@ export function lists(ctx, i, cache) {
     };
 }
 
-/** 每一天 × 每一組 × h × 進場 的報酬表(平常日子也要,做雙重差分) */
+/** 每一天 × 每一組 × h × 進場 的報酬表(平常日子也要,做雙重差分)
+ *  DL_GROUPS=RSlo,U100 / DL_HS=20,40 只算那幾組那幾天(資金版補驗用;⛔ 不設 = 原本全部,輸出逐位相同) */
 export function table(ctx, s0) {
     const n = ctx.cal.length, cache = new Map(), rows = [];
+    const GS = process.env.DL_GROUPS ? process.env.DL_GROUPS.split(',') : GROUPS;
+    const HH = process.env.DL_HS ? process.env.DL_HS.split(',').map(Number) : HS;
     for (let i = s0; i < n - 1; i++) {
         const Lz = lists(ctx, i, cache);
         if (Lz.L10.length < 10) continue;
         const row = { i, d: ctx.cal[i], g: {} };
-        for (const g of GROUPS) for (const e of ['c', 'o']) {
+        for (const g of GS) for (const e of ['c', 'o']) {
             if (g === 'L5t' && e === 'c') continue;                  // 當天收盤才排得出 → 只能隔天開盤
-            for (const h of HS) row.g[`${g}|${e}|${h}`] = Lz[g].length ? grp(ctx, Lz[g], i, h, e) : NaN;
+            for (const h of HH) row.g[`${g}|${e}|${h}`] = Lz[g].length ? grp(ctx, Lz[g], i, h, e) : NaN;
         }
-        for (const e of ['c', 'o']) for (const h of HS) row.g[`0050|${e}|${h}`] = bench(ctx, i, h, e);
+        for (const e of ['c', 'o']) for (const h of HH) row.g[`0050|${e}|${h}`] = bench(ctx, i, h, e);
         if (cache.size > 6) for (const k of [...cache.keys()]) if (k < i - 2) cache.delete(k);
         rows.push(row);
     }
@@ -217,6 +220,64 @@ export function overlay(rows, evSet, key, W = 0.3, seed = 3) {
     return { extra: r3((real.v - 1) * 100), trades: real.k, shamMed: r3((sims[150] - 1) * 100), pct: r3(sims.filter(x => x < real.v).length / sims.length * 100) };
 }
 
+// ───────── (D) 資金版補驗(V82):照 App 真的會怎麼做 ─────────
+/** 0050 為主,觸發日拿 W 換成候選、隔天開盤買、第 h 天收盤賣;回 {v, k, trades}
+ *  policy:'one'   = 同時只抱一批(抱著時再觸發不買 = overlay;⭐ 事先登記的主判準 = 現行規則)
+ *          'each'  = 每次觸發都開一批,每批 W/maxB,同時最多 maxB 批(三批合計 = W)
+ *          'first' = 每一段只做第一次(dropEvents 的段起點那天)
+ *  x = 候選 − 0050 − 0050 來回 0.24% − xc(成本 ×2 用)
+ *  批次佔用照「日曆索引」:第 i 天觸發那批在 i+h 收盤賣完 → 第 t 天再觸發要 i+h ≤ t(跟 overlay 一樣) */
+export function money(rows, evSet, key, opt = {}) {
+    const W = opt.W ?? 0.3, policy = opt.policy || 'one', maxB = opt.maxB ?? 3, xc = opt.xc ?? 0, ep = opt.ep || null;
+    const h = +key.split('|')[2], bk = key.replace(/^[^|]+/, '0050');
+    let v = 1, open = []; const trades = [];
+    for (const r of rows) {
+        if (!evSet.has(r.i)) continue;
+        if (policy === 'first' && ep && ep.get(r.i) !== r.i) continue;
+        open = open.filter(end => end > r.i);
+        if (policy === 'each' ? open.length >= maxB : open.length > 0) continue;
+        const a = r.g[key], b = r.g[bk]; if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+        const w = policy === 'each' ? W / maxB : W, x = a - b - 0.0024 - xc;
+        v *= 1 + w * x; open.push(r.i + h); trades.push({ d: r.d, x, w });
+    }
+    return { v, k: trades.length, trades };
+}
+/** 資金版矩陣:候選 × 門檻 × 重疊規則 → 16 年多幾 %、逐年、拿掉 2026 / 最好那年、成本 ×2、同次數隨便挑日子(安慰劑) */
+export function moneyReport(rows, ir, s0, cal, opt = {}) {
+    const out = [], pool = rows.map(r => r.i);
+    for (const key of opt.keys || ['RSlo|o|20', 'RSlo|o|40', 'U100|o|20']) for (const X of opt.xs || [2.5, 3, 3.5, 4]) {
+        if (!rows.some(r => Number.isFinite(r.g[key]))) continue;
+        const D = dropEvents(ir, X), set = new Set([...D.set].filter(i => i >= s0));
+        for (const policy of ['one', 'each', 'first']) {
+            const run = (S, o = {}) => money(rows, S, key, { policy, ep: D.ep, ...o });
+            const base = run(set);
+            if (!base.k) { out.push({ key, X, policy, k: 0 }); continue; }
+            const yr = {}; for (const t of base.trades) { const y = t.d.slice(0, 4); yr[y] = (yr[y] ?? 1) * (1 + t.w * t.x); }
+            const ys = Object.entries(yr).map(([y, f]) => [y, f - 1]);
+            const best = ys.slice().sort((a, b) => b[1] - a[1])[0][0];
+            const sub = f => run(new Set([...set].filter(i => f(cal[i]))));
+            const no26 = sub(d => d < '2026'), noBest = sub(d => !d.startsWith(best)), c2 = run(set, { xc: COST + 0.0024 });
+            // 安慰劑:同樣多次的觸發日從全部日子隨便挑(first = 段數)
+            const nTrig = policy === 'first' ? [...set].filter(i => D.ep.get(i) === i).length : set.size;
+            const R = rng(7 + Math.round(X * 10)), sims = [];
+            for (let s = 0; s < 300; s++) { const S = new Set(); while (S.size < Math.min(nTrig, pool.length)) S.add(pool[Math.floor(R() * pool.length)]); sims.push(money(rows, S, key, { policy: policy === 'first' ? 'one' : policy }).v); }
+            sims.sort((a, b) => a - b);
+            const half = base.trades.length >> 1, prod = a => a.reduce((v, t) => v * (1 + t.w * t.x), 1) - 1;
+            out.push({ key, X, policy, k: base.k, extra: r3((base.v - 1) * 100), h1: r3(prod(base.trades.slice(0, half)) * 100), h2: r3(prod(base.trades.slice(half)) * 100), yrPos: `${ys.filter(y => y[1] > 0).length}/${ys.length}`, yrN: ys.length, yrUp: ys.filter(y => y[1] > 0).length,
+                yrs: ys.map(([y, v]) => [y, r3(v * 100)]), no2026: r3((no26.v - 1) * 100), noBest: r3((noBest.v - 1) * 100), best, cost2: r3((c2.v - 1) * 100),
+                shamMed: r3((sims[150] - 1) * 100), pct: r3(sims.filter(x => x < base.v).length / sims.length * 100), trades: base.trades.map(t => [t.d, r3(t.x * 100)]) });
+        }
+    }
+    return out;
+}
+/** 事先登記的過關條件(計畫 A1):主判準 key=RSlo|o|20、policy=one;中心 3% 與左右一格(2.5 / 3.5)都贏一直放 0050、逐年 ≥6 成 */
+export function moneyGate(rep, key = 'RSlo|o|20', policy = 'one') {
+    const at = X => rep.find(r => r.key === key && r.policy === policy && r.X === X);
+    const a = at(2.5), b = at(3), c = at(3.5);
+    const g = { '2.5%贏0050': !!a && a.extra > 0, '3%贏0050': !!b && b.extra > 0, '3.5%贏0050': !!c && c.extra > 0, '逐年六成': !!b && b.yrN > 0 && b.yrUp >= 0.6 * b.yrN };
+    return { key, policy, gates: g, pass: Object.values(g).every(Boolean) };
+}
+
 // ───────── selftest ─────────
 function synth(opt = {}) {
     const nDay = 400, cal = []; for (let k = 0; k < nDay; k++) cal.push(new Date(Date.UTC(2023, 0, 2) + k * 864e5).toISOString().slice(0, 10));
@@ -265,6 +326,22 @@ function selftest() {
     ok(Number.isFinite(jL.inc) && Number.isFinite(jL0.inc), `⑨ 分組也算得出來(最抗跌組 ${jL.inc} / ${jL0.inc})`);
     // ⑪ BH
     const b = bh([0.001, 0.2, 0.04, 0.5], 0.1); ok(b[0] && !b[1] && b[2] && !b[3], '⑪ BH 校正');
+    // ⑫ 資金版:同時只抱一批 == overlay(決定性對照:兩份寫法同一個數字)
+    { const ov = overlay(t1, new Set(DR), 'ALL|c|20'), m1 = money(t1, new Set(DR), 'ALL|c|20', { policy: 'one' });
+      ok(r3((m1.v - 1) * 100) === ov.extra && m1.k === ov.trades, `⑫ 同時只抱一批 == overlay(${r3((m1.v - 1) * 100)} / ${ov.extra},${m1.k} / ${ov.trades} 次)`); }
+    // ⑬ 重疊規則:200 / 205 / 210 / 230 觸發、抱 20 天
+    { const S = new Set([200, 205, 210, 230]), epM = new Map([[200, 200], [205, 200], [210, 200], [230, 230]]);
+      const one = money(t1, S, 'ALL|c|20', { policy: 'one' }), each = money(t1, S, 'ALL|c|20', { policy: 'each' }), first = money(t1, S, 'ALL|c|20', { policy: 'first', ep: epM });
+      ok(one.k === 2 && one.trades.map(t => t.d).join() === [t1.find(r => r.i === 200).d, t1.find(r => r.i === 230).d].join(), `⑬a 只抱一批:200 買、205 / 210 抱著不買、230(200+20)可以再買(${one.k} 次)`);
+      ok(each.k === 4 && each.trades.every(t => Math.abs(t.w - 0.1) < 1e-12), `⑬b 每次一批:三批同時 + 230 那批(上一批 220 已賣)、每批 1 成(${each.k} 次)`);
+      ok(first.k === 2, `⑬c 每段第一次:200 與 230(${first.k} 次)`);
+      const cap = money(t1, new Set([200, 201, 202, 203]), 'ALL|c|20', { policy: 'each' }); ok(cap.k === 3, `⑬d 同時最多 3 批(第 4 次不買;${cap.k})`); }
+    // ⑭ 注入 → 資金版多賺;沒注入 → 差不多(決定性對照)
+    { const v1 = money(t1, new Set(DR), 'ALL|c|5').v, v0 = money(t0, new Set(DR), 'ALL|c|5').v, dv = (v1 - v0) * 100;
+      ok(dv > 2 && dv < 6, `⑭ 注入(1/4 股票大跌後 5 天每天 +1%)→ 0050 為主 + 3 成換過去多 ≈3.75%(${dv.toFixed(2)})`); }
+    // ⑮ 過關條件:合成報告剛好一格是負的 → 不過
+    { const fake = [2.5, 3, 3.5].map(X => ({ key: 'RSlo|o|20', policy: 'one', X, extra: X === 2.5 ? -1 : 2, yrN: 10, yrUp: 7 }));
+      ok(!moneyGate(fake).pass && moneyGate(fake.map(r => ({ ...r, extra: 2 }))).pass, '⑮ 過關條件:2.5% 那格是負的就不過;三格都正 + 逐年 7/10 才過'); }
     console.log(fail ? `❌ ${fail} 條沒過` : '✅ 全部通過'); return fail ? 1 : 0;
 }
 
@@ -287,6 +364,18 @@ function main() {
     console.log(`📂 ${ctx.stocks.length} 檔 ・${ctx.cal[s0]} ~ ${ctx.cal.at(-1)} ・事件 ${Object.entries(E).map(([k, v]) => `${k} ${v.filter(i => i >= s0).length}`).join(' ・')}`);
     const rows = table(ctx, s0);
     console.log(`⏱️ 報酬表 ${rows.length} 天(${((Date.now() - t0) / 1000).toFixed(0)} 秒)`);
+    if (process.env.DL_MONEY === '1') {                       // (D) 資金版補驗:跑完就結束(⛔ 不跑後面的全表)
+        const rep = moneyReport(rows, ir, s0, ctx.cal, process.env.DL_KEYS ? { keys: process.env.DL_KEYS.split(',') } : {});
+        console.log('\n━━ (D) 資金版:0050 為主、加權收盤跌 ≥X% 那天拿 3 成換過去(隔天開盤買、抱 h 天)vs 一直放 0050 ━━');
+        for (const r of rep) console.log(r.k ? `  ${r.key.padEnd(10)} ≥${String(r.X).padEnd(3)}% ${r.policy.padEnd(5)} 多 ${String(r.extra).padStart(7)}%(${String(r.k).padStart(2)} 次)・前/後半 ${r.h1}/${r.h2}% ・逐年 ${r.yrPos} ・拿掉2026 ${r.no2026}% ・拿掉最好年(${r.best}) ${r.noBest}% ・成本×2 ${r.cost2}% ・隨便挑日子中位 ${r.shamMed}% 贏 ${r.pct}%` : `  ${r.key} ≥${r.X}% ${r.policy} 0 次`);
+        const c = rep.find(r => r.key === 'RSlo|o|20' && r.X === 3 && r.policy === 'one');
+        if (c && c.k) { console.log('\n  主判準那一格(≥3%・只抱一批・抱 20 天)每一筆(超額 %):'); for (const [d, x] of c.trades) console.log(`    ${d} ${x}`); console.log('  逐年:' + c.yrs.map(([y, v]) => `${y} ${v}%`).join(' ・')); }
+        const gate = moneyGate(rep);
+        console.log(`\n${gate.pass ? '✅ 資金版過關' : '⛔ 資金版沒過'}(事先登記:RSlo・隔天開盤・抱 20 天・只抱一批;2.5 / 3 / 3.5% 都贏一直放 0050 + 逐年 ≥6 成):${Object.entries(gate.gates).map(([k, v]) => `${k} ${v ? '✓' : '✗'}`).join(' ・')}`);
+        if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify({ from: ctx.cal[s0], to: ctx.cal.at(-1), money: rep, gate }, null, 1));
+        console.log(`⏱️ ${((Date.now() - t0) / 1000).toFixed(0)} 秒`);
+        return;
+    }
     const res = [];
     for (const [ek, ev] of Object.entries(E)) {
         const set = new Set(ev.filter(i => i >= s0));
