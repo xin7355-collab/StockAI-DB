@@ -3,6 +3,10 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🔄 V82.0.2(2026-11-06)大跌時放空 / 買反一 + 股債背離
+- `scripts/short_inverse_probe.mjs`(新):`WORLD=<world_hist.json.gz> IDX_LONG IDX_EARLY TWII_NOW INV=<00632R.json> B50=<0050.json> DIV50=<d16/_div0050.json> CUT=YYYY-MM-DD PARTS=ABCDE node --max-old-space-size=4000 scripts/short_inverse_probe.mjs out.json`(約 1 分);`PARTS=F D16=<d16> DIV=<d16/_div16.json>`(約 30 秒,8 GB)。回答「大跌之後放空 / 買反一賺不賺」(A 真反一校正・B 五種大跌事件 × 33 個股市・C 星期五大跌隔天 31 國樣本外・D 空頭時抱反一 vs 放現金・E 股債背離三種講法・F 放空個股含平盤以下限制)。⛔ 別再測「大跌後放空」(0 格過關);E 的 C3 走完下一次美國信用事件後重跑;`--selftest` 10 條。
+- `scripts/dipleader_probe.mjs`:V82.0.2 修 `bench()` 隔天開盤買 0050 的倍數(selftest ⑯、`DL_INJECT=benchinv`)→ V82.0.0 以前的「比 0050 多多少」全部作廢,以 V82.0.2 重跑為準。
+
 ### 🌏 V82.0.1(2026-11-06)何時開始進場:自創 8 招 × 33 國
 - `scripts/rebound_lab_probe.mjs`(新):`WORLD=<world_hist.json.gz> IDX_LONG IDX_EARLY TWII_NOW [D16=$S/d16] [BREADTH16=$S/breadth16.json] node --max-old-space-size=3072 scripts/rebound_lab_probe.mjs out.json`(約 4 分)。WORLD 從 `world_hist` 分支取(`git fetch origin world_hist` → `git show origin/world_hist:world_hist.json.gz`)。回答「一筆錢在跌 10% 那天就買,還是等某個訊號」(資金版 H=500)+ 訊號隔天買 vs 修正中隨便一天(事件研究)+ 指數單日 2.5σ 搶反彈。⛔ 中心參數寫在檔頭 PRE,改了要重新事先登記。⏭️ 再跑時機:各國指數多一次大空頭走完,或有新的「等待訊號」想法(加進 PRE 再跑,⛔ 只挑贏的那格)。`--selftest` 15 條。
 

@@ -114,11 +114,15 @@ export function retOf(ctx, S, i, h, entry) {
     return S.C[b] * f / px - 1 - COST;
 }
 function grp(ctx, list, i, h, entry) { const v = []; for (const S of list) { const r = retOf(ctx, S, i, h, entry); if (typeof r === 'number') v.push(r); } return v.length ? mean(v) : NaN; }
-function bench(ctx, i, h, entry) {
+/** 0050 含息:entry 'c' = 第 i 天收盤買、'o' = 第 i+1 天開盤買;第 i+h 天收盤賣(⛔ 扣成本,資金版另外扣 0.24%)
+ *  ⚠️ V82.0.2 修:b50o = 隔天開盤 ÷ 隔天收盤 → 隔天開盤買 = (隔天收盤 ÷ 隔天開盤)× tr[b] / tr[i+1] = tr 比值 ÷ b50o。
+ *     以前寫成「× b50o」(倍數反了):隔天從開盤一路漲的日子 0050 被算少、跌的被算多 → 「比 0050 多」那幾格都受影響(DL_INJECT=benchinv 重現舊版) */
+export function bench(ctx, i, h, entry) {
     const tr = ctx.etf.tr, b = i + h; if (b >= tr.length) return NaN;
     if (entry === 'c') return tr[b] / tr[i] - 1;
     const o = ctx.b50o ? ctx.b50o[i + 1] : NaN;            // 0050 隔天開盤 / 隔天收盤
-    return (Number.isFinite(o) ? o : 1) * tr[b] / tr[i + 1] - 1;
+    const k = Number.isFinite(o) && o > 0 ? (INJ === 'benchinv' ? o : 1 / o) : 1;
+    return k * tr[b] / tr[i + 1] - 1;
 }
 
 export const GROUPS = ['L5', 'L10', 'L5t', 'L10dn', 'POOL', 'U100', 'RShi', 'RSlo', 'UPDAY', 'ALL'];
@@ -342,6 +346,10 @@ function selftest() {
     // ⑮ 過關條件:合成報告剛好一格是負的 → 不過
     { const fake = [2.5, 3, 3.5].map(X => ({ key: 'RSlo|o|20', policy: 'one', X, extra: X === 2.5 ? -1 : 2, yrN: 10, yrUp: 7 }));
       ok(!moneyGate(fake).pass && moneyGate(fake.map(r => ({ ...r, extra: 2 }))).pass, '⑮ 過關條件:2.5% 那格是負的就不過;三格都正 + 逐年 7/10 才過'); }
+    // ⑯ 0050 隔天開盤買:開 100、收 102、之後不動 → 開盤買到第 2 天收盤賣 = +2%(V82.0.2:以前倍數反了,算成 −2%)
+    { const cx = { etf: { tr: Float64Array.from([1, 1, 1, 1]) }, b50o: Float64Array.from([NaN, 100 / 102, NaN, NaN]) };
+      const v = bench(cx, 0, 2, 'o'), vc = bench(cx, 0, 2, 'c');
+      ok(Math.abs(v - 0.02) < 1e-12 && Math.abs(vc) < 1e-12, `⑯ 0050 隔天開盤 100、收盤 102 → 開盤買抱到第 2 天 = +2%(${(v * 100).toFixed(3)}%)・收盤買 = 0`); }
     console.log(fail ? `❌ ${fail} 條沒過` : '✅ 全部通過'); return fail ? 1 : 0;
 }
 
