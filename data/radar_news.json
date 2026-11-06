@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-06 17:23 UTC",
+  "updated": "2026-11-06 18:43 UTC",
   "count": 15,
   "data": [
     {
@@ -12,7 +12,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利空",
-      "ai_reason": "美就業強勁增升息壓力，壓抑台股估值",
+      "ai_reason": "美就業數據強勁，增加聯準會升息壓力",
       "important": true
     },
     {
@@ -25,7 +25,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "庫藏股轉讓員工，強化留才與市場信心",
+      "ai_reason": "斥資百億買回庫藏股，強化員工持股與股價支撐",
       "important": true
     },
     {
@@ -38,7 +38,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "跨足光通訊領域，強化產業佈局",
+      "ai_reason": "跨足光通訊領域，拓展營收來源",
       "important": true
     },
     {
@@ -51,7 +51,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利空",
-      "ai_reason": "融資暴減創新高，反映市場恐慌與資金撤離",
+      "ai_reason": "融資大減顯示市場資金撤離",
       "important": true
     },
     {
@@ -64,7 +64,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "AI禁令致費半崩跌，台股重挫創紀錄",
+      "ai_reason": "AI禁令致費半崩跌，台股重挫",
       "important": true
     },
     {
@@ -79,7 +79,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "Q3營收季增5.7%，本業虧損收斂",
+      "ai_reason": "營收季增5.7%且年增19.3%，本業虧損收斂",
       "important": true
     },
     {
@@ -95,7 +95,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利空",
-      "ai_reason": "Q4營收預期受AI產業鏈排擠而下滑",
+      "ai_reason": "預期Q4營收受AI產業鏈排擠下滑",
       "important": true
     },
     {
@@ -108,7 +108,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "群聯轉向AI市場，擺脫低價庫存依賴",
+      "ai_reason": "群聯轉型AI與企業級市場，擺脫低價庫存依賴",
       "important": true
     },
     {
@@ -121,7 +121,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "資安需求剛性，預期Q4旺季表現佳",
+      "ai_reason": "資安需求剛性，Q4旺季營收成長",
       "important": true
     },
     {
@@ -133,8 +133,8 @@
         "試產"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "利多",
-      "ai_reason": "擴產電子紙並布局AI傳輸材料",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
       "important": true
     },
     {
@@ -147,8 +147,8 @@
         "營收"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "利空",
-      "ai_reason": "10月營收月減11.1%，短線動能轉弱",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
       "important": true
     },
     {
@@ -164,8 +164,8 @@
         "新高"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "單季營收獲利創新高，EPS超越去年全年",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
       "important": true
     },
     {
@@ -178,8 +178,8 @@
         "營收"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "前三季獲利豐厚，賺進一個股本",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
       "important": true
     },
     {
@@ -193,8 +193,8 @@
         "新高"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "營收創新高且強攻AI生態系",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
       "important": true
     },
     {
@@ -207,8 +207,8 @@
         "新高"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "前3季營收淨利創新高，貨運量價齊揚",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
       "important": true
     }
   ]
