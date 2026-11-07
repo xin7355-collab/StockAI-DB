@@ -904,7 +904,7 @@ export function leadBookSets(hist, clk) {
     return { kOwn: rowsOf(clk.isRebal ? clk.prev : clk.reb), oOwn: rowsOf(clk.other && clk.other.reb) };
 }
 /** 📚 V79.2.5 換倉那天要賣 / 續抱 / 買什麼(= App `_leadActs` 的兩本帳版;kOwn = null → 一本帳舊做法)。top = 前 2N 名、buyL = 買進名單 */
-export function leadActs(mine, top, buyL, bear, kOwn, oOwn) {
+export function leadActs(mine, top, buyL, bear, kOwn, oOwn, ddMode) {
     const T = new Set(top), two = Array.isArray(kOwn), K = new Set(kOwn || []), O = new Set(oOwn || []);
     const inK = s => !two || K.has(s);
     const sell = mine.filter(s => !T.has(s) && inK(s)), waitOther = two ? mine.filter(s => !T.has(s) && !inK(s)) : [];
@@ -913,7 +913,55 @@ export function leadActs(mine, top, buyL, bear, kOwn, oOwn) {
     const kHeld = two ? mine.filter(s => inK(s) && T.has(s)) : keep;
     const has = s => two ? (kHeld.includes(s) || (mine.includes(s) && !O.has(s))) : mine.includes(s);
     const buy = bear ? [] : buyL.filter(s => !has(s)).slice(0, Math.max(0, LEAD_RULE.N - kHeld.length));
-    return { sell, keep, buy, half, waitOther, addOne: two ? buy.filter(s => mine.includes(s)) : [] };
+    // ✂️ V82.0.7 跌 20% 收一半(= App `_leadActs` 的 trim / topup):這本帳留著的那幾檔賣一半 / 補回;空頭那次不補
+    const trim = ddMode === 'trim' ? kHeld.slice() : [], topup = ddMode === 'top' && !bear ? kHeld.slice() : [];
+    return { sell, keep, buy, half, waitOther, addOne: two ? buy.filter(s => mine.includes(s)) : [], trim, topup };
+}
+// ═══ ✂️ V82.0.7 👑「跌 20% 收一半」(使用者 11/07 選「做成開關並幫我打開」)═══
+//   規則只有一份 scripts/lib_leaddd.mjs;這裡只讀每晚的 data/lead_dd.json 的 rot(每次換倉想要幾成 + 那天是不是嚴格空頭)
+//   = App `_ddWaChain` / `_leadDdPlan` 的抄本(test_leaddd 跨檔比對)。⛔ Telegram 不印「離最高點幾 %」
+export const LEAD_DD_LIVE = '2026-11-12';
+export function leadDdChain(rots, top, live) {
+    let cur = 1;
+    return rots.map(r => {
+        let wa = cur;
+        if (!(r.d >= live)) wa = 1;
+        else if (r.W < wa) wa = r.W;
+        else if (r.W > wa && (!top || !r.bear)) wa = r.W;
+        cur = wa;
+        return { ...r, wa };
+    });
+}
+/** 換倉日(date = 名單那天)這一本帳用幾成:{on, W, WP, mode 'trim'|'top'|'', block 'bear', err 'nodata'|'stale'|'norot'};s = 使用者設定(leadDdHalf / leadDdAt) */
+export function leadDdPlan(J, book, date, s) {
+    s = s || {};
+    if (s.leadDdHalf === false) return { on: false, W: 1, WP: 1, mode: '' };
+    if (!J || !Array.isArray(J.rot)) return { on: true, W: 1, WP: 1, mode: '', err: 'nodata' };
+    const R = J.rule || {}, lo = (+R.lo > 0 && +R.lo < 1) ? +R.lo : 0.5, top = (R.top === 0 || R.top === '0') ? 0 : 1;
+    const at = /^\d{4}-\d{2}-\d{2}$/.test(String(s.leadDdAt || '')) ? String(s.leadDdAt) : '';
+    const live = [String(R.live || LEAD_DD_LIVE), at].sort().pop();
+    const bk = book === 'B' ? 'B' : 'A', fileD = String(J.data_date || '');
+    const rots = J.rot.filter(r => r && r.b === bk && /^\d{4}-\d{2}-\d{2}$/.test(String(r.d)) && (+r.W === 1 || +r.W === lo))
+        .map(r => ({ d: String(r.d), W: +r.W, bear: r.bear ? 1 : 0 })).sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+    const ch = leadDdChain(rots, top, live);
+    let wp = 1; for (const r of ch) if (r.d < date) wp = r.wa;
+    const cur = ch.find(r => r.d === date);
+    if (!cur) return { on: true, W: wp, WP: wp, mode: '', err: fileD && fileD < date ? 'stale' : 'norot' };
+    const block = (top && cur.W > wp && cur.wa === wp && cur.bear) ? 'bear' : null;
+    return { on: true, W: cur.wa, WP: wp, mode: cur.wa < wp ? 'trim' : (cur.wa > wp ? 'top' : ''), block };
+}
+/** 換倉那一則 / 開盤那一則多的那幾行(⛔ 研究數字;nm = 代號 → 股名)。kept = 這本帳留著的(trim / topup 本身就是) */
+export function leadDdLines(D, A, nm, split) {
+    if (!D || !D.on) return [];
+    const L = [], sellT = split ? '09:00 開盤賣一半;開盤就跌 3% 以上 → 等到 09:30~10:00 再賣' : '09:00 開盤賣一半';
+    const buyT = split ? '下午 13:25 補回;開盤就跌 3% 以上 → 開盤就補;漲停不追' : '09:00 開盤補回;漲停不追';
+    if (D.err === 'nodata') L.push('✂️ 跌 20% 收一半的狀態讀不到 → 這則照全額講(開 App 決策台再確認)');
+    else if (D.err === 'stale') L.push('✂️ 跌 20% 收一半的狀態還沒更新 → 開 App 決策台看要不要賣一半');
+    else if (D.mode === 'trim') L.push(`✂️ *跌 20% 收一半*:👑 這一套從最高點跌了 2 成以上 → 這次換倉起每檔只放平常的一半${A.trim.length ? `\n✂️ 賣一半:${A.trim.map(nm).join('、')}・${sellT}` : ''}${A.buy.length ? '\n🛒 新買的每檔只買一半' : ''}`);
+    else if (D.mode === 'top') L.push(`✂️ *回到最高點*:這次換倉起恢復全額${A.topup.length ? `\n✂️ 補回到每檔一份:${A.topup.map(nm).join('、')}・${buyT}` : ''}`);
+    else if (D.block === 'bear') L.push('✂️ 回到最高點了,但大盤嚴格空頭 → 這次先不補回(新買的也照一半),等下一次換倉');
+    else if (D.W < 1 && A.buy.length) L.push('✂️ 收一半中:新買的每檔只買平常的一半');
+    return L;
 }
 /** 📸 V79.1.5 哪幾檔歸 👑(同 App `_leadOwns`):上次換倉那天 pick_history 名單上有的;換倉日當天再加上上上次那份
  *  (手上的是上一次名單買的)。讀不到快照 → null(呼叫端照舊全部當 👑,⛔ 不猜)。 */
@@ -928,9 +976,11 @@ export function leadOwnedFrom(hist, clk) {
 }
 /** ⏰ V79.1.5 換倉後那一天的提醒內容(純函式,方便測):st = KV 的 leadstate;mine = 歸 👑 的持股;q = Map(sym → {z 現價, y 昨收, o 開盤})。
  *  slot 'open' = 開盤後那一則(要賣的 / 開盤跌 ≥3% 的買)、'buy' = 13:15 那一則(13:25 要買的)。回字串陣列(空 = 不用推) */
-export function leadDayLines(st, mine, split, q, slot, posOff, nm = s => s) {
-    const A = leadActs(mine, posOff ? st.topOld : st.top, posOff ? st.buyOld : st.buy, st.bear, st.kOwn || null, st.oOwn || null);   // 📚 V79.2.5
-    const sell = A.sell, buy = A.buy;
+export function leadDayLines(st, mine, split, q, slot, posOff, nm = s => s, ddS = null) {
+    // ✂️ V82.0.7 跌 20% 收一半:st.dd = 前一晚的 lead_dd.json(runLeaderRebalPush 存進 KV);ddS = 使用者設定(⛔ 沒傳 = 舊行為)
+    const D = ddS ? leadDdPlan(st.dd || null, st.book || 'A', st.date, ddS) : null;
+    const A = leadActs(mine, posOff ? st.topOld : st.top, posOff ? st.buyOld : st.buy, st.bear, st.kOwn || null, st.oOwn || null, D ? D.mode : '');   // 📚 V79.2.5
+    const sell = A.sell, buy = A.buy, T = A.trim, U = A.topup, halfBuy = !!(D && D.on && D.W > 0 && D.W < 1);
     const gap = s => { const x = q && q.get(s); return x && x.o > 0 && x.y > 0 ? (x.o / x.y - 1) * 100 : null; };
     const g = s => { const v = gap(s); return v == null ? '' : `(開 ${v >= 0 ? '+' : ''}${v.toFixed(1)}%)`; };
     const d3 = s => { const v = gap(s); return v != null && v <= -3; }, lu = s => { const v = gap(s); return v != null && v >= 9.5; };
@@ -941,13 +991,30 @@ export function leadDayLines(st, mine, split, q, slot, posOff, nm = s => s) {
         if (st.book && st.kOwn) L.push(`📚 這次換的是${LEAD_BOOK_NAME[st.book === 'B' ? 'B' : 'A']}(錢的一半)`);
         if (now.length) L.push(`🚪 現在開盤賣:${now.map(s => nm(s) + hf(s) + g(s)).join('、')}`);
         if (wait.length) L.push(`🚪 開盤就跌 3% 以上 → 等到 09:30~10:00 再賣:${wait.map(s => nm(s) + g(s)).join('、')}`);
+        // ✂️ 賣一半跟賣出同一個時段
+        if (T.length) {
+            L.push('✂️ 跌 20% 收一半:這次換倉起每檔只放平常的一半');
+            const tn = T.filter(s => !(split && d3(s))), tw = T.filter(s => split && d3(s));
+            if (tn.length) L.push(`✂️ 現在開盤賣一半:${tn.map(s => nm(s) + g(s)).join('、')}`);
+            if (tw.length) L.push(`✂️ 開盤就跌 3% 以上 → 等到 09:30~10:00 再賣一半:${tw.map(s => nm(s) + g(s)).join('、')}`);
+        }
+        const hb = halfBuy ? '(每檔只買一半)' : '';
         const nowB = buy.filter(s => (!split || d3(s)) && !lu(s)), laterB = buy.filter(s => split && !d3(s) && !lu(s)), noB = buy.filter(lu);
-        if (nowB.length) L.push(`🛒 ${split ? '開盤就跌 3% 以上 → ' : ''}現在買:${nowB.map(s => nm(s) + g(s)).join('、')}`);
-        if (laterB.length) L.push(`🛒 下午 13:25 再買:${laterB.map(nm).join('、')}`);
+        if (nowB.length) L.push(`🛒 ${split ? '開盤就跌 3% 以上 → ' : ''}現在買${hb}:${nowB.map(s => nm(s) + g(s)).join('、')}`);
+        if (laterB.length) L.push(`🛒 下午 13:25 再買${hb}:${laterB.map(nm).join('、')}`);
         if (noB.length) L.push(`⛔ 開盤就漲停 → 不追:${noB.map(nm).join('、')}`);
+        // ✂️ 補回跟買進同一個時段
+        if (U.length) {
+            const un = U.filter(s => (!split || d3(s)) && !lu(s)), ul = U.filter(s => split && !d3(s) && !lu(s));
+            L.push('✂️ 回到最高點:這次換倉起恢復全額');
+            if (un.length) L.push(`✂️ ${split ? '開盤就跌 3% 以上 → ' : ''}現在補回:${un.map(s => nm(s) + g(s)).join('、')}`);
+            if (ul.length) L.push(`✂️ 下午 13:25 再補回:${ul.map(nm).join('、')}`);
+        }
     } else if (slot === 'buy' && split) {
-        const left = buy.filter(s => !d3(s) && !lu(s));
-        if (left.length) L.push(`🛒 13:25 買:${left.map(s => { const x = q && q.get(s); return nm(s) + (x && x.z > 0 ? ` 現價 ${x.z}` : ''); }).join('、')}(每檔一樣多錢)`);
+        const left = buy.filter(s => !d3(s) && !lu(s)), leftU = U.filter(s => !d3(s) && !lu(s));
+        const px = s => { const x = q && q.get(s); return nm(s) + (x && x.z > 0 ? ` 現價 ${x.z}` : ''); };
+        if (left.length) L.push(`🛒 13:25 買:${left.map(px).join('、')}(每檔一樣多錢${halfBuy ? ',✂️ 收一半中:每檔只買平常的一半' : ''})`);
+        if (leftU.length) L.push(`✂️ 13:25 補回(回到最高點):${leftU.map(px).join('、')}`);
     }
     return L;
 }
@@ -1034,13 +1101,16 @@ async function runLeaderRebalPush(env) {
     const bear = leadBear(tw.filter(r => String(r.date || '').replace(/\//g, '-').slice(0, 10) <= date));
     const H = LEAD_RULE.N * LEAD_RULE.hyst;
     // 📸 V79.1.5 哪幾檔歸 👑 + 今天的名單 → 存 KV 一天(盤中 15 分鐘那幾輪只讀這個小檔,⛔ 不每輪重抓大檔)
+    // ✂️ V82.0.7 跌 20% 收一半的狀態(每晚 playbook_scan 寫;讀不到 → 每位使用者那則寫「讀不到」,⛔ 當成沒在收)
+    let ddJ = null;
+    try { const dR = await fetch(`${GH_PAGES_BASE}/data/lead_dd.json?t=${t}`).catch(() => null); const j = dR?.ok ? await dR.json().catch(() => null) : null; ddJ = j && Array.isArray(j.rot) ? { data_date: j.data_date, def: j.def, since: j.since, rule: j.rule, rot: j.rot } : null; } catch (_) {}
     let owned = null, owned1 = null, sets = { kOwn: null, oOwn: null };
     try { const hR = await fetch(`${GH_PAGES_BASE}/data/pick_history.json?t=${t}`).catch(() => null); const hist = hR?.ok ? await hR.json().catch(() => null) : null; owned = leadOwnedFrom(hist, clk); owned1 = leadOwnedFrom(hist, clk1); sets = leadBookSets(hist, clk); } catch (_) {}
     const ymd = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
     const st = { ymd, date, isRebal: !!clk.isRebal, act: !!clk.isRebal && ymd > date, bear: !!bear, book: clk.book, kOwn: sets.kOwn, oOwn: sets.oOwn,
                  isRebal1: !!clk1.isRebal, act1: !!clk1.isRebal && ymd > date, owned1: owned1 ? [...owned1] : null,
                  top: L.ranked.map(r => r.sym), topOld: Lold.ranked.map(r => r.sym), buy: L.buy.map(r => r.sym), buyOld: Lold.buy.map(r => r.sym),
-                 owned: owned ? [...owned] : null };
+                 owned: owned ? [...owned] : null, dd: ddJ };
     try { await env.KV.put('leadstate', JSON.stringify(st), { expirationTtl: 2 * 86400 }); } catch (_) {}
     if (!clk.isRebal && !clk1.isRebal) return;
     let cursor;
@@ -1060,20 +1130,24 @@ async function runLeaderRebalPush(env) {
                 _LEAD_OWNED = ownU;
                 const mine = (u.inventory || []).map(i => String(i.sym)).filter(s => _leadStock('lead', s));   // 📸 V79.1.5 名單外的持股照 🔥(同 App)
                 const fire = ownU ? (u.inventory || []).map(i => String(i.sym)).filter(s => /^\d{4}$/.test(s) && !s.startsWith('00') && !ownU.has(s)) : [];
-                const A = leadActs(mine, L.ranked.map(r => r.sym), L.buy.map(r => r.sym), bear, b1 ? null : sets.kOwn, b1 ? null : sets.oOwn);
+                const DD = leadDdPlan(ddJ, b1 ? 'A' : clk.book, date, u.settings || {});   // ✂️ V82.0.7
+                const A = leadActs(mine, L.ranked.map(r => r.sym), L.buy.map(r => r.sym), bear, b1 ? null : sets.kOwn, b1 ? null : sets.oOwn, DD.mode);
                 const sell = A.sell, keep = A.keep, buy = A.buy;
                 const lab = async a => (await Promise.all(a.map(s => stockLabel(env, s)))).join('、');
                 const split = u.settings?.leadTiming !== 'open';   // ⏱️ V78.4.4 換倉那天幾點買賣(App 設定 leadTiming;預設 split)
+                const labMap = new Map(); for (const s of [...A.trim, ...A.topup]) labMap.set(s, (await stockLabel(env, s).catch(() => null)) || s);
+                const ddL = leadDdLines(DD, A, s => labMap.get(s) || s, split);
                 const text = [
                     `👑 *換倉日* _${date} 收盤的名單 → 今天照做_`, SEP,
                     (!b1 && sets.kOwn) ? `📚 這次換的是${LEAD_BOOK_NAME[clk.book === 'B' ? 'B' : 'A']}(錢的一半,每檔 = 總資金 ÷ ${LEAD_RULE.N * 2})` : '',
                     sell.length ? `🔻 賣:${await lab(sell)}(掉出前 ${H} 名)・${split ? '09:00 開盤賣;開盤就跌 3% 以上 → 等到 09:30~10:00 再賣' : '09:00 開盤賣'}` : '🔻 賣:沒有',
                     buy.length ? `🛒 買:${await lab(buy)}(${u.settings?.leadPosOff ? '' : `一年位置 ≥ ${LEAD_RULE.pos}% 的`}前 ${LEAD_RULE.N} 名,等權)・${split ? '下午 13:25 買;開盤就跌 3% 以上 → 開盤就買;漲停不追' : '09:00 開盤買;漲停不追'}` : (bear ? '🐻 大盤嚴格空頭 → 今天不開新倉' : '🛒 買:沒有(要買的你都有了)'),
-                    keep.length ? `✅ 續抱:${await lab(keep)}` : '',
+                    keep.length ? `✅ 續抱:${await lab(keep)}${A.trim.length ? '(賣一半的那幾檔,留下的一半照抱)' : ''}` : '',
+                    ...ddL,
                     A.half.length ? `✂️ 兩本帳都有的:${await lab(A.half)} → 只賣${LEAD_BOOK_NAME[clk.book === 'B' ? 'B' : 'A']}那一份(約一半)` : '',
                     A.waitOther.length ? `⏳ ${LEAD_BOOK_NAME[clk.book === 'B' ? 'A' : 'B']}的:${await lab(A.waitOther)} → 這次不動,等它自己的換倉日` : '',
                     fire.length ? `🔥 不在上次換倉名單上的:${await lab(fire)} → 照 🔥 三條出場(硬停損 / 出場線 / 抱滿天數),⛔ 不照換倉賣` : '',
-                    '💰 沒用到的錢放 0050 ・⛔ 沒有停損線',
+                    `💰 沒用到的錢放 0050${A.trim.length ? '(賣一半拿回來的也是)' : ''} ・⛔ 沒有停損線`,
                     `📱 [決策台](${GH_PAGES_BASE}/)`,
                 ].filter(Boolean).join('\n');
                 await tg(env, u.chat_id, text);
@@ -1113,7 +1187,7 @@ async function runLeaderDayPing(env, st) {
             const posOff = !!u.settings?.leadPosOff;
             const need = [...new Set([...mine, ...(posOff ? st.buyOld : st.buy)])];
             const labs = new Map(); for (const s of need) labs.set(s, (await stockLabel(env, s).catch(() => null)) || s);
-            const lines = leadDayLines(stU, mine, split, q, slot, posOff, s => labs.get(s) || s);
+            const lines = leadDayLines({ ...stU, book: b1 ? 'A' : st.book }, mine, split, q, slot, posOff, s => labs.get(s) || s, u.settings || {});   // ✂️ V82.0.7 收一半照你的設定
             if (!lines.length) { await env.KV.put(sentKey, '1', { expirationTtl: 2 * 86400 }); continue; }
             const body = lines.join('\n');
             await tg(env, u.chat_id, [`👑 *換倉日・${slot === 'open' ? '開盤要做的事' : '13:25 要買'}* _${st.date} 收盤的名單_`, SEP, body, '⛔ 這是提醒不是自動下單 ・沒用到的錢放 0050', `📱 [決策台](${GH_PAGES_BASE}/)`].join('\n'));
@@ -1210,6 +1284,9 @@ function sanitizePayload(payload) {
             leadTiming: payload.settings.leadTiming === 'open' ? 'open' : 'split',
             // 📚 V79.2.6 預設一本帳;App 🔓 進階功能打開甲帳・乙帳 → 2
             leadBooks: payload.settings.leadBooks === 2 ? 2 : 1,
+            // ✂️ V82.0.7 跌 20% 收一半(預設開;App 🔓 進階功能關掉 → false)+ 你打開那天(那天之前的換倉一律當全額;只收日期格式)
+            leadDdHalf: payload.settings.leadDdHalf !== false,
+            leadDdAt: /^\d{4}-\d{2}-\d{2}$/.test(String(payload.settings.leadDdAt || '')) ? String(payload.settings.leadDdAt) : '',
             // 📉 V82.0.0 08:00 大跌事件 / 大跌撿便宜(預設開;App 那兩類提醒關掉 → 這裡也關)+ 你按了「我有買這一批」的那幾批(只收日期)
             crashTg: payload.settings.crashTg !== false,
             dipTg: payload.settings.dipTg !== false,

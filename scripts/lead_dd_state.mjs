@@ -11,7 +11,7 @@
  *
  * 輸出(⛔ 改格式要一起改 App _loadLeadDd / auto_trade _lead_dd_target / worker leadDdPlan):
  *   {v:1, updated, data_date, partial, rule, model, peak{d,v}, now{d,v,dd}, def, since, w,
- *    rot:[{d, b:'A'|'B', W 想要的, wa 實際用的, bear}](每本帳最近 6 次換倉), s:[[d, 淨值, def]](最近 120 個交易日)}
+ *    rot:[{d, b:'A'|'B', W 想要的, wa 實際用的, bear}](每本帳:開始照做那天的前 2 次起全部,至少 6 次、最多 80 次), s:[[d, 淨值, def]](最近 120 個交易日)}
  *
  * 守門(exit 1,⛔ 寫檔 —— 線上留舊的):個股檔 < 500 / 引擎讀到 < 1000 檔 / 讀不到 lib_leader.py / 引擎預設跟 LEADER_RULE 對不上 /
  *   錨點不在日曆裡 / 暖身不夠 / 淨值有壞值 / 最後一天有成交的不到 500 檔
@@ -22,7 +22,7 @@ import fs from 'fs';
 import path from 'path';
 import { LEAD_DD, LEAD_DD_MODEL, ddSeries, waChain } from './lib_leaddd.mjs';
 
-const KEEP_ROT = 6, KEEP_S = 120, WARM = 252, MIN_STOCKS = 500;
+const KEEP_ROT = 6, KEEP_ROT_MAX = 80, KEEP_S = 120, WARM = 252, MIN_STOCKS = 500;
 
 /** 讀 lib_leader.py 的 LEADER_RULE / 兩個錨點(⛔ 這裡不再抄一份錨點) */
 export function readLeaderPy(src) {
@@ -84,7 +84,13 @@ export function buildState(ctx, opt) {
     rots.sort((x, y) => (x.d < y.d ? -1 : x.d > y.d ? 1 : 0));
     rots = waChain(rots, rule, rule.live);
     const keep = [];
-    for (const b of ['A', 'B']) keep.push(...rots.filter(x => x.b === b).slice(-KEEP_ROT));
+    // 每本帳:開始照做那天(live)的前 2 次起全部列(App 要從頭接「上一次用幾成」—— 只列最近幾次會在空頭擋住補回時接錯),
+    //   至少最近 KEEP_ROT 次、最多 KEEP_ROT_MAX 次(≈ 3 年)
+    for (const b of ['A', 'B']) {
+        const rb = rots.filter(x => x.b === b);
+        let i0 = rb.findIndex(x => x.d >= rule.live); if (i0 < 0) i0 = rb.length;
+        keep.push(...rb.slice(Math.max(0, Math.min(i0 - 2, rb.length - KEEP_ROT), rb.length - KEEP_ROT_MAX)));
+    }
     keep.sort((x, y) => (x.d < y.d ? -1 : x.d > y.d ? 1 : 0));
     // 最高點那天 / 這一段一半從哪天開始
     let pkI = t; while (pkI > 0 && r.eq[pkI] !== ser.pk[t]) pkI--;

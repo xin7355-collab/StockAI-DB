@@ -44,6 +44,12 @@ const expect = {
   leadBear: /_leadBearOn\(\)\s*\{\s*return true;\s*\}/.test(IDX) ? true : undefined,
   leadBooks: /_leadBooks\(\)\s*\{\s*const s = this\.settings \|\| \{\};\s*return \(s\.leadBooks === 2[^;]*\) \? 2 : 1;\s*\}/.test(IDX) ? 1 : undefined,
   leadTiming: /_leadTiming\(\)\s*\{\s*return \(this\.settings && this\.settings\.leadTiming === 'open'\) \? 'open' : 'split';/.test(IDX) ? 'split' : undefined,
+  // ✂️ V82.0.7 👑 跌 20% 收一半:App(沒存設定 = 開)與自動下單(LEADER_DD_HALF 沒設 = '1')兩邊預設要一致才算數
+  leadDdHalf: (() => {
+    const app = /_leadDdOn\(\)\s*\{\s*const s = this\.settings \|\| \{\};\s*return s\.leadDdHalf !== false;\s*\}/.test(IDX);
+    const atm = (AT.match(/^LEADER_DD_HALF\s*=\s*\(os\.getenv\('LEADER_DD_HALF'\)\s*or\s*'([01])'\)\s*==\s*'1'/m) || [])[1];
+    return app && atm === '1' ? true : (!app && atm === '0' ? false : undefined);
+  })(),
   exitRule: (IDX.match(/_exitRuleKey\(\)\s*\{\s*const k = String\(\(this\.settings && this\.settings\.exitRule\) \|\| '(\w+)'\)/) || [])[1],
   lot: +((SRC.match(/_CAP_RULE:\s*\{\s*lot:\s*(\d+)/) || [])[1]),
 };
