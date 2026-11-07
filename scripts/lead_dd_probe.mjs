@@ -26,6 +26,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { ddStep } from './lib_leaddd.mjs';
 
 const FEE = 0.001425, TAX = 0.003, ETF_TAX = 0.001, STEP = 3, PATHS = 17;
 const median = a => { const b = a.filter(Number.isFinite).sort((x, y) => x - y); if (!b.length) return NaN; const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
@@ -39,6 +40,8 @@ export function wantAt(rule, eq, tr, t, st) {
         case 'full': return 1;
         case 'fix': return t % 10 === 0 ? rule.w : null;
         case 'dd': {
+            // ✂️ V82.0.7 'hi'(回到最高點)走全站唯一那一份(lib_leaddd.ddStep,一字不差);ma20 / ma60 只在這支研究用
+            if (rule.rec === 'hi') return ddStep(st, eq[t], { th: rule.X, lo: rule.lo });
             st.pk = Math.max(st.pk ?? -Infinity, eq[t]);
             if (!st.def) { if (eq[t] / st.pk - 1 <= -rule.X / 100) st.def = true; }
             else {

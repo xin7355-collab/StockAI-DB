@@ -33,6 +33,7 @@ import { accrualSeries, accrualMonthCut, accrualHiAt } from './lib_accrual.mjs';
 import { gates } from './maxim_kbar5_probe.mjs';
 import { parseThemes } from './lib_themes.mjs';
 import { limitOf } from './lib_limit.mjs';
+import { ddRule, ddSeries, shiftSched as ddShift } from './lib_leaddd.mjs';
 
 const COST_X = +(process.env.COST_X || 1);            // 成本壓力(×2 = 手續費與稅都加倍)
 const FEE = 0.001425 * COST_X, TAX = 0.003 * COST_X, ETF_TAX = 0.001 * COST_X;
@@ -171,7 +172,15 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     // 🏭 V82.0.6 同產業上限重測(外部健檢 11/07)⛔ 不設時逐位相同(selftest ㊿j):
     //   indUnk = 'cap'(舊做法:對照表沒有的全部算同一組 '?')/ 'free'(沒有的各算各的 = 不受上限;16 年有下市股,對照表只有現在的公司)
     //   indSham = k(>0):安慰劑 —— 每次換倉把「手上留著的 + 這次候選」的產業標籤打亂重發(每一組檔數不變,另一顆亂數;k = 第幾組)
-    indUnk: 'cap', indSham: 0 };
+    indUnk: 'cap', indSham: 0,
+    // ✂️ V82.0.7 跌 20% 收一半(使用者 11/07 選「做成開關並幫我打開」)⛔ 不設時逐位相同(selftest ㊿k):
+    //   ddHalf = {th, lo, rec, at, top, shift, src}(lib_leaddd.ddRule 檢查;打錯字 throw)
+    //     內部兩趟:① 全攻(ddHalf: null)跑出這條路徑的淨值 → lib_leaddd.ddSeries 算每一天「想要」的比例(跌 th% → lo、回到最高點 → 1)
+    //              ② 再跑一次:at 'reb' = 換倉日收盤看狀態,隔天成交點「留著的每檔賣 1 − lo」、新買的每檔 × lo;回到最高點那次換倉
+    //                 top 1 = 手上的補回一份(空頭那天不補、等下一次),top 0 = 只有新買的恢復全額;at 'next' = 不等換倉,狀態一變隔天就做(對照用)
+    //     shift = k(1~6):安慰劑 —— 狀態整段平移 len×k/7 天(收一半的天數一樣、時機不對)・src 'park' = 狀態一律看「停 0050」那條帳(現金版用)
+    //     _w = 直接給每一天的比例(對齊 s0;給了就不跑第一趟 —— 過關腳本用來省時間)
+    ddHalf: null };
 // 🟥 V79.1.6 換倉日收盤就漲停 / 跌停的候選(使用者:「如果換倉日漲跌停,隔天還要買嗎?還是就都買 0050」)⛔ 不設時逐位相同(selftest ㊴):
 //   判定(同 luExit / dt_daily_probe.lockUp):換倉日收盤 ≥ 前收 ×(1+漲跌幅−1%)且收在最高 = 漲停;≤ 前收 ×(1−漲跌幅+1%)且收在最低 = 跌停;除權息日不判
 //   rkLu / rkLd = 'park':本來會買的那一檔不買,那一份錢留在 0050 到下一次換倉 ・'next':改買名單上的下一名
@@ -305,6 +314,19 @@ function simulateBooks(ctx, s0, cfg, seed) {
         bestAmt: (() => { const a = subs.map(r => r.bestAmt).filter(v => v != null); return a.length ? Math.max(...a) : null; })(),
         held: sum(r => r.held), openPnl: sum(r => r.openPnl), books: subs };
 }
+/** ✂️ V82.0.7 跌 20% 收一半:第一趟全攻(同一條路徑、同一顆種子)→ 每一天「想要」的比例 → 第二趟照它做。⛔ 不消耗任何亂數 */
+function ddTwoPass(ctx, s0, cfg, seed) {
+    const dd = ddRule(cfg.ddHalf);
+    if ((cfg.glide || 0) > 0) throw new Error('ddHalf 不可跟 glide 一起用(沒驗過)');
+    // ⚠️ 第一趟 ⛔ 寫進呼叫端的 log / trace(不然兩趟的成交會疊在同一個陣列)
+    const base = simulate(ctx, s0, { ...cfg, ddHalf: null, log: null, trace: null, ...(dd.src === 'park' ? { park: true } : {}) }, seed);
+    let w = ddSeries(base.eq, dd).w;
+    if (dd.shift) w = ddShift(w, Math.floor(w.length * dd.shift / 7));
+    const r = simulate(ctx, s0, { ...cfg, ddHalf: { ...dd, _w: w } }, seed);
+    let days = 0; for (const x of w) if (x < 1) days++;
+    r.st.ddDays = days; r.st.ddLen = w.length; r.baseFin = base.eq.at(-1);
+    return r;
+}
 /** 🛑 V79.3.6 停手陣列(對齊 ctx.cal):P.pause 直接用;P.pauseFile 讀訊號日 → 訊號當天起 pauseK 個交易日;pauseShift 循環平移(安慰劑)。
  *  ⛔ 都沒設回 null;結果快取在 ctx(同一個檔 + K + 平移只建一次);訊號日不是交易日 → 下一個交易日 */
 export function pauseArr(ctx, P) {
@@ -343,6 +365,7 @@ export function xsMap(ctx, file) {
 }
 
 export function simulate(ctx, s0, cfg, seed = 1) {
+    if (cfg && cfg.ddHalf && !cfg.ddHalf._w) return ddTwoPass(ctx, s0, cfg, seed);   // ✂️ V82.0.7 先跑全攻拿狀態,再照狀態跑一次
     if (cfg && cfg.books > 1) return simulateBooks(ctx, s0, cfg, seed);
     const { cal, stocks, etf } = ctx;
     const P = { ...DEF, ...cfg };
@@ -419,6 +442,12 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         if (!(px <= ld * 1.003)) return false;                           // 成交價不在跌停附近 → 賣得掉
         return LD === 2 || S.H[i] <= ld * 1.003;                         // 1:最高也在跌停 = 一整天鎖死
     };
+    // ✂️ V82.0.7 跌 20% 收一半(⛔ 不設 → DDH = null,下面每一段都不會碰)
+    const DDH = P.ddHalf ? ddRule(P.ddHalf) : null;
+    if (DDH && (!DDH._w || DDH._w.length < nEnd - s0)) throw new Error(`ddHalf._w 長度 ${DDH._w ? DDH._w.length : 0} < 這一段 ${nEnd - s0} 天`);
+    if (DDH && P.glide > 0) throw new Error('ddHalf 不可跟 glide 一起用(沒驗過)');
+    let ddW = 1, ddTgt = 1;                                   // ddW = 現在手上 / 新買用的比例;ddTgt = 'next' 模式已經決定好的比例
+    const ddRe = new Map();                                   // 賣一半那天跌停賣不掉 / 沒有價格 → 下一個成交點再賣(sym → 要賣幾成)
     // 🅿️ V79.1.6 parkGate(⛔ 不設 → 一律回 true;sham 一天只抽一次)
     const rand6 = rng(seed * 2147483 + 29), gateMemo = new Map();
     let deferPark = false;                                    // 閘門擋過一次 → 之後每天收盤看閘門開了沒(⛔ 沒擋過就不提早停 → p=1 跟沒閘門逐位相同)
@@ -540,8 +569,51 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 const gf = P.glideCore ?? 0.5, shS = CAP ? Math.floor(p.sh * gf) : p.sh * gf; if (!(shS > 0)) continue;   // 🌱 V79.9.1 glideCore:換成幾成放 0050(預設 0.5 = 原樣)
                 const amt = shS * o; cash += CAP ? amt - feeOf(amt) - amt * TAX : amt * (1 - FEE - TAX); turnover += amt; p.paid *= (p.sh - shS) / p.sh; p.sh -= shS;
             }
+            // ✂️ V82.0.7 跌 20% 收一半:留著的每檔賣 1 − 新比例 ÷ 舊比例(掉出名單的上面已經賣完;跌停賣不掉的照 ldLock 下一個成交點再賣)
+            if (DDH && (pending.dd || pending.ddRe)) {
+                const jobs = new Map();
+                if (pending.dd && pending.dd.to < ddW) { const f = 1 - pending.dd.to / ddW; for (const p of pos.values()) if (!pending.sell.includes(p.S.sym)) jobs.set(p.S.sym, f); }
+                if (pending.ddRe) for (const [sym, f] of pending.ddRe) if (pos.has(sym) && !jobs.has(sym)) jobs.set(sym, f);
+                for (const [sym, f] of jobs) {
+                    const p = pos.get(sym), o = PX(p.S, i);
+                    if (!(o > 0)) { ddRe.set(sym, f); st.ddTrimMiss = (st.ddTrimMiss || 0) + 1; continue; }
+                    if (LD && ldStuck(p.S, i, o)) { ddRe.set(sym, f); st.ddTrimLd = (st.ddTrimLd || 0) + 1; continue; }
+                    const shS = CAP ? Math.floor(p.sh * f) : p.sh * f; if (!(shS > 0)) continue;
+                    const amt = shS * o; cash += CAP ? amt - feeOf(amt) - amt * TAX : amt * (1 - FEE - TAX); turnover += amt; p.paid *= (p.sh - shS) / p.sh; p.sh -= shS;
+                    st.ddTrim = (st.ddTrim || 0) + 1;
+                    if (LOG) LOG.push({ s: sym, side: 'S', d: cal[i], dd: cal[i - 1], px: o, why: 'ddtrim', sh: shS, e: cal[Math.floor(p.entry)], cost: p.cost });
+                }
+                if (pending.dd) ddW = pending.dd.to;
+            }
             const eqNow = value(ti);
             const slot = eqNow * (1 - P.core) / P.N;
+            // ✂️ V82.0.7 回到最高點(top 1):手上留著的補到一份(⛔ 接近漲停不追;錢不夠先賣 0050,跟新買同一套)
+            if (DDH && pending.dd && pending.dd.top) {
+                for (const p of pos.values()) {
+                    const S = p.S; if (pending.sell.includes(S.sym)) continue;
+                    const o = PX(S, i), pc = lastC(S, i - 1);
+                    if (!(o > 0 && pc > 0)) continue;
+                    if (o / pc - 1 > limitOf(cal[i]) - 0.003) { st.ddTopLu = (st.ddTopLu || 0) + 1; continue; }
+                    let need = slot * ddW - p.sh * o;
+                    if (need < slot * 0.2) continue;
+                    if (cash < need && P.park && park > 0) {
+                        const units = Math.min(park, (CAP ? need - cash + P.minFee : need - cash) / (etf.tr[ti] * (1 - FEE - ETF_TAX)));
+                        const amt0 = units * etf.tr[ti];
+                        cash += CAP ? amt0 - feeOf(amt0) - amt0 * ETF_TAX : units * etf.tr[ti] * (1 - FEE - ETF_TAX); park -= units; turnover += amt0;
+                    }
+                    need = Math.min(need, cash); if (need < slot * 0.2) continue;
+                    let sh, paid;
+                    if (CAP) {
+                        sh = Math.floor(need / (o * (1 + FEE)));
+                        while (sh > 0 && sh * o + feeOf(sh * o) > need) sh--;
+                        if (sh < 1) continue;
+                        paid = sh * o + feeOf(sh * o); cash -= paid; turnover += sh * o;
+                    } else { sh = need / (o * (1 + FEE)); cash -= need; turnover += need; paid = need; }
+                    p.cost = (p.cost * p.sh + o * sh) / (p.sh + sh); p.sh += sh; p.paid += paid;
+                    st.ddTop = (st.ddTop || 0) + 1;
+                    if (LOG) LOG.push({ s: S.sym, side: 'B', d: cal[i], dd: cal[i - 1], px: o, why: 'ddtop', sh });
+                }
+            }
             const queue = pending.buy.slice(), alt = (pending.alt || []).slice();
             for (let qi = 0; qi < queue.length; qi++) {
                 const S = queue[qi];
@@ -556,6 +628,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                     continue;
                 }
                 let need = pending.w ? slot * (pending.w.get(S.sym) ?? 1) : slot;
+                if (DDH) need *= ddW;                                                       // ✂️ 收一半中:新買的每檔只買一半
                 if (cash < need && P.park && park > 0) {                                   // 賣 0050 補現金
                     const units = Math.min(park, (CAP ? need - cash + P.minFee : need - cash) / (etf.tr[ti] * (1 - FEE - ETF_TAX)));
                     const amt0 = units * etf.tr[ti];
@@ -640,6 +713,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             for (const x of ord.slice(P.bearN)) { if (!dailySell.has(x.s)) { dailySell.add(x.s); st.bearCut = (st.bearCut || 0) + 1; } }
         }
         if (dailySell.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; for (const sym of dailySell) if (!pending.sell.includes(sym)) pending.sell.push(sym); dailySell.clear(); }
+        if (ddRe.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; pending.ddRe = new Map([...(pending.ddRe || []), ...ddRe]); ddRe.clear(); }   // ✂️ 賣一半沒賣掉的明天再賣
         // 🔄 V78.6.3 refill:不是換倉日 → 今天收盤就照當下名次補滿空位(換倉日交給 ③)
         const isReb = !DIP && ((i - s0 + P.phase) % P.R === 0 || (P.join === 'now' && i === s0));
         if (P.refill && !isReb && pending && pending.sell.length && i + 1 < n && !noBuy(i)) {
@@ -688,6 +762,16 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             const keepSet = new Set(ranked.slice(0, P.pick === 'all' ? ranked.length : P.N * P.hyst).map(S => S.sym));
             const sellL = [...pos.keys()].filter(s => !keepSet.has(s));
             const bearNow = noBuy(i) || skipPark;
+            // ✂️ V82.0.7 換倉日收盤看「跌 20% 收一半」的狀態(⛔ 只看今天收盤以前):要收 → 明天留著的賣一半;回到最高點 → top 1 補回(空頭那天不補,等下一次)
+            let ddChange = null;
+            if (DDH && DDH.at === 'reb') {
+                const to = DDH._w[i - s0];
+                if (to !== ddW) {
+                    const up = to > ddW;
+                    if (up && DDH.top && bearNow) st.ddTopBlk = (st.ddTopBlk || 0) + 1;
+                    else ddChange = { to, top: up && !!DDH.top };
+                }
+            }
             if (PZ && PZ[i] === 1 && !(P.bear && bearAt(i))) st.pauseReb = (st.pauseReb || 0) + 1;   // 🛑 換倉日因為停手才沒買(空頭本來就不買的不算)
             const N = P.pick === 'all' ? Math.max(1, ranked.length) : P.N;
             let cand = ranked;
@@ -741,9 +825,23 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 });
             }
             const altL = (P.limitRepl && !bearNow) ? (P.pickFrom > 0 ? cand.slice(P.pickFrom) : cand).filter(S => !pos.has(S.sym) && !buyL.includes(S)).slice(0, 10) : null;
-            if (sellL.length || buyL.length || (P.park && cash > 0) || pending || trimNow) pending = { sell: [...new Set([...(pending ? pending.sell : []), ...sellL])], buy: buyL, trim: trimNow, alt: altL };
+            if (sellL.length || buyL.length || (P.park && cash > 0) || pending || trimNow || ddChange) {
+                const keepRe = pending ? pending.ddRe : undefined;
+                pending = { sell: [...new Set([...(pending ? pending.sell : []), ...sellL])], buy: buyL, trim: trimNow, alt: altL };
+                if (ddChange) pending.dd = ddChange;
+                if (keepRe) pending.ddRe = keepRe;
+            }
             if (P.wRank && pending) { pending.w = new Map(); for (const S of buyL) { const k = ranked.indexOf(S); pending.w.set(S.sym, P.wRank[Math.min(k, P.wRank.length - 1)] ?? 1); } }
             if (P.pick === 'all') P.N = N;
+        }
+        // ✂️ V82.0.7 'next'(對照用):不等換倉,狀態一變隔天成交點就做
+        if (DDH && DDH.at === 'next' && i + 1 < n) {
+            const to = DDH._w[i - s0];
+            if (to !== ddTgt) {
+                const up = to > ddTgt;
+                if (up && DDH.top && noBuy(i)) st.ddTopBlk = (st.ddTopBlk || 0) + 1;
+                else { ddTgt = to; pending = pending || { sell: [], buy: [] }; pending.dd = { to, top: up && !!DDH.top }; }
+            }
         }
         // ④ V78.0.5 被擋住的(處置前賣掉的)要不要買回:收盤決定、隔天開盤成交;⛔ 只用今天以前看得到的公告
         if (blocked.size && i + 1 < n) {
@@ -1529,6 +1627,48 @@ function selftest() {
         t(eqSame(jE, j0) && eqSame(s1, s0) && (s1.st.indShamN || 0) > 0 && !eqSame(eCap, none) && eqSame(eFree, none) && (eCap.st.indCut || 0) > 0
             && asReal > 0 && asNone > 0 && asReal + asNone === 10 && /indUnk/.test(thJ),
             `㊿j 同產業上限:不設 == cap / sham 0、全部同產業打亂不變(打亂 ${s1.st.indShamN} 次)、對照表空:cap 只買 1 檔、free == 不設上限、[A,A,B] 打亂 10 組:像真產業 ${asReal}・像不擋 ${asNone}、打錯字 throw`);
+    }
+    {   // ㊿k ✂️ V82.0.7 ddHalf(跌 20% 收一半):① 不設 == null == th 99(逐位相同;sham 的亂數也不動)
+        //   ② 換倉日才收:只賣一次、賣掉的 ≈ 一半 ③ 回到最高點:top 1 補回、top 0 不補 ④ 收一半那天一字跌停 → ldLock 1 隔天才賣
+        //   ⑤ 回到最高點那次換倉碰到空頭 → 不補、下一次換倉才補 ⑥ 安慰劑平移:收一半天數一樣、淨值不同 ⑦ 'next' 不等換倉、隔天就收
+        //   ⑧ 兩本帳各自在自己的換倉日收 ⑨ 打錯字 / 跟 glide 一起用 throw
+        const nK = 320, calK = Array.from({ length: nK }, (_, i) => new Date(Date.UTC(2023, 0, 2 + i)).toISOString().slice(0, 10));
+        const px = i => i < 100 ? 100 : i <= 150 ? 100 + (i - 100) : i <= 190 ? 150 - (i - 150) * 1.125 : i <= 260 ? 105 + (i - 190) * (65 / 70) : 170;
+        const mkK = (sym, f) => prepStock(sym, calK.map((d, i) => { const b = f(i); return typeof b === 'number' ? { d, o: b, h: b * 1.005, l: b * 0.995, c: b, v: 1e7 } : { d, ...b, v: 1e7 }; }), calK, []);
+        const X = mkK('7471', px);
+        const XL = mkK('7472', i => i < 181 ? px(i) : i === 181 ? (() => { const c = px(180) * 0.9; return { o: c, h: c, l: c, c }; })() : px(i) * 0.9);
+        const cfgK = { U: 1, N: 1, R: 10, L: 20, chand: 0, park: true, trend: false, pick: 'all', bear: false, capital: 1e6 };
+        const ctxK = (S, bear) => ({ cal: calK, stocks: [S], etf: { tr: new Float64Array(nK).fill(1) }, bear: bear || new Uint8Array(nK) });
+        const runK = (S, extra = {}, bear) => { const lg = []; const r = simulate(ctxK(S, bear), 100, { ...cfgK, ...extra, log: lg }, 7); return { r, lg, tr: lg.filter(x => x.why === 'ddtrim'), tp: lg.filter(x => x.why === 'ddtop') }; };
+        const eqSame = (a, b) => a.eq.length === b.eq.length && a.eq.every((v, k) => v === b.eq[k]);
+        const u0 = runK(X), uN = runK(X, { ddHalf: null }), u99 = runK(X, { ddHalf: { th: 99 } });
+        const sA = simulate(ctx5, 100, { U: 20, N: 3, R: 5, L: 20, chand: 0, park: false, trend: false, pick: 'sham' }, 7);
+        const sB = simulate(ctx5, 100, { U: 20, N: 3, R: 5, L: 20, chand: 0, park: false, trend: false, pick: 'sham', ddHalf: { th: 99 } }, 7);
+        const W = ddSeries(u0.r.eq, { th: 20, lo: 0.5 }).w, dDay = 100 + Array.from(W).findIndex(x => x < 1), uDay = 100 + Array.from(W).findIndex((x, k) => k > dDay - 100 && x === 1);
+        const rebAt = d => { let k = d; while ((k - 100) % 10 !== 0) k++; return k; };
+        const h1 = runK(X, { ddHalf: {} }), h0 = runK(X, { ddHalf: { top: 0 } });
+        const trimFrac = h1.tr.length ? h1.tr[0].sh * h1.tr[0].px / u0.r.eq[rebAt(dDay) - 100] : 0;
+        const l0 = runK(XL, { ddHalf: {} }), l1 = runK(XL, { ddHalf: {}, ldLock: 1 });
+        const bearK = new Uint8Array(nK); bearK[rebAt(uDay)] = 1;
+        const hb = runK(X, { ddHalf: {}, bear: true }, bearK);
+        const hs = runK(X, { ddHalf: { shift: 3 } }), hn = runK(X, { ddHalf: { at: 'next' } });
+        const bk = simulate(ctxK(X), 100, { ...cfgK, books: 2, bookOff: 5, ddHalf: {} }, 7);
+        let thrown = 0;
+        for (const b of [{ rec: 'ma60' }, { at: 'x' }, { top: 2 }, { th: 0 }, { lo: 1.2 }, { thr: 20 }]) { try { runK(X, { ddHalf: b }); } catch (_) { thrown++; } }
+        try { runK(X, { ddHalf: {}, glide: 2 }); } catch (_) { thrown++; }
+        t(eqSame(uN.r, u0.r) && eqSame(u99.r, u0.r) && JSON.stringify(u99.lg) === JSON.stringify(u0.lg) && eqSame(sA, sB)
+            && dDay > 150 && dDay < 190 && uDay > 200 && uDay < 260
+            && h1.tr.length === 1 && h1.tr[0].d === calK[rebAt(dDay) + 1] && Math.abs(trimFrac - 0.5) < 0.03 && h1.r.st.ddTrim === 1
+            && h1.tp.length === 1 && h1.tp[0].d === calK[rebAt(uDay) + 1] && h0.tp.length === 0 && h1.r.eq.at(-1) > h0.r.eq.at(-1)
+            && l0.tr[0].d === calK[181] && l1.tr.length === 1 && l1.tr[0].d === calK[182] && l1.r.st.ddTrimLd === 1
+            && hb.tp.length === 1 && hb.tp[0].d === calK[rebAt(uDay) + 11] && hb.r.st.ddTopBlk === 1
+            && Math.abs(hs.r.st.ddDays - h1.r.st.ddDays) <= 1 && !eqSame(hs.r, h1.r)   // 平移後第 0 天固定 = 全部 → 最多差 1 天
+            && hn.tr.length === 1 && hn.tr[0].d === calK[dDay + 1] && rebAt(dDay) > dDay
+            && bk.books[0].st.ddTrim === 1 && bk.books[1].st.ddTrim === 1
+            && thrown === 7,
+            `㊿k 跌 20% 收一半:不設 == null == th 99(逐位相同、sham 不動)、第 ${dDay - 100} 天跌破 → 換倉日才收(賣掉 ${(trimFrac * 100).toFixed(1)}%)、`
+            + `回到最高點 top 1 補回 / top 0 不補(${Math.round(h1.r.eq.at(-1))} > ${Math.round(h0.r.eq.at(-1))})、一字跌停 → 隔天才賣、空頭那次不補下一次補、`
+            + `安慰劑天數一樣(${hs.r.st.ddDays})、'next' 隔天就收、兩本帳各收一次、打錯字 throw ${thrown}/7`);
     }
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
