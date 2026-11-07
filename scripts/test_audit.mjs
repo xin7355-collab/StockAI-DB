@@ -8,7 +8,7 @@
 //     ④ 匯出:11 節都在、⛔ HTML 標籤、精簡 < 完整、完整附整份實測總表、複製失敗一定 toast、下載檔名 .md;實測總表的下載也走同一支 _dlText
 //     ⑤ 這一波:_raceLoad 換成假的 → 數字照出來、起算日 = 這一段高點那天(太早就從名單快照第一天);讀不到 / 算不出來要明講(⛔ 空白);
 //        ⛔ 動成績單自己的 _race
-//     ⑥ _AUDIT_FACTS 跟 index.html / auto_trade.py / 本檔常數逐項比對(改 App 預設 / 門檻要一起改這裡)
+//     ⑥ _AUDIT_FACTS 跟 index.html / auto_trade.py / 本檔常數逐項比對(改 App 預設 / 門檻要一起改這裡;V82.0.4 加收工對帳時間 / 虧損安全鎖預設)
 //     ⑦ 390 / 844 寬不橫捲、表格在框裡自己捲;⛔ 🔴🟢(只准講漲跌);有勝率就要有「勝率低不代表不賺」
 import fs from 'fs';
 import path from 'path';
@@ -30,6 +30,8 @@ const catN = (catsBlk.match(/\{\s*k:\s*'/g) || []).length, lockN = (catsBlk.matc
 const lots = (AT.match(/MAX_LOTS_PER_TRADE\s*=\s*int\(os\.getenv\('MAX_LOTS_PER_TRADE',\s*'(\d+)'\)\)/) || [])[1];
 const amt = (AT.match(/MAX_AMT_PER_TRADE\s*=\s*int\(os\.getenv\('MAX_AMT_PER_TRADE',\s*'(\d+)'\)\)/) || [])[1];
 const egene = IDX.match(/gene:\s*\{\s*pos:\s*(\d+),\s*amp:\s*([\d.]+)\s*\}/);
+const recon = AT.match(/RECON_FROM\s*=\s*(\d+)\s*\*\s*60\s*\+\s*(\d+)/);
+const llock = (AT.match(/LOSS_LOCK_PCT\s*=\s*float\(os\.getenv\('LOSS_LOCK_PCT'\)\s*or\s*([\d.]+)\)/) || [])[1];
 const expect = {
   strategy: sv('strategy'), hotRule: sv('hotRule'), bearGate: sv('bearGate'), alertStrict: sv('alertStrict'), watchlistAlert: sv('watchlistAlert'),
   // 沒寫在預設物件裡 = 關(index 那邊一律 `=== true` 才算開)
@@ -41,7 +43,7 @@ const expect = {
   exitRule: (IDX.match(/_exitRuleKey\(\)\s*\{\s*const k = String\(\(this\.settings && this\.settings\.exitRule\) \|\| '(\w+)'\)/) || [])[1],
   lot: +((SRC.match(/_CAP_RULE:\s*\{\s*lot:\s*(\d+)/) || [])[1]),
 };
-ok('⑥0 讀得到 index.html / auto_trade.py 的預設(⛔ 空過)', !!setBlk && brk && trl && catN > 5 && lots && amt && egene && Object.values(expect).every(v => v !== undefined && !Number.isNaN(v)),
+ok('⑥0 讀得到 index.html / auto_trade.py 的預設(⛔ 空過)', !!setBlk && brk && trl && catN > 5 && lots && amt && egene && recon && llock !== undefined && Object.values(expect).every(v => v !== undefined && !Number.isNaN(v)),
   JSON.stringify({ setBlk: !!setBlk, brk: !!brk, trl: !!trl, catN, lots, amt, egene: !!egene, expect }));
 
 let chromium; try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (_) { ({ chromium } = await import('playwright')); }
@@ -197,6 +199,8 @@ const FIX = () => {
   ok('⑥ 帳戶熔斷 / 總風險門檻 == index.html', allTxt.includes(`今天虧到帳戶 ${brk[1]}%、本週 ${brk[2]}%、本月 ${brk[3]}%`) && allTxt.includes(`超過帳戶 ${trl[1]}%`), JSON.stringify([brk && brk.slice(1), trl && trl[1]]));
   ok('⑥ 通知分幾類 / 幾類不能關 == index.html _ALERT_CATS', allTxt.includes(`分 ${catN} 類,其中 ${lockN} 類不能關`), JSON.stringify([catN, lockN]));
   ok('⑥ 自動下單每筆上限 == auto_trade.py 預設', allTxt.includes(`每筆最多 ${lots} 張或 ${+amt / 1e4} 萬元`) && allTxt.includes(`每筆預設最多 ${lots} 張或 ${+amt / 1e4} 萬元`), JSON.stringify([lots, amt]));
+  ok('⑥ 🧾 自動下單收工對帳時間 / 虧損安全鎖預設 == auto_trade.py(V82.0.4)', allTxt.includes(`收工 ${recon[1]}:${String(recon[2]).padStart(2, '0')}`)
+    && (+llock === 0 ? allTxt.includes('虧損安全鎖預設關') : allTxt.includes(`虧損安全鎖預設 ${llock}%`)), JSON.stringify([recon && recon.slice(1), llock]));
   ok('⑥ 📈 符合進場那把尺 == index.html _EDGE_RULES.gene', allTxt.includes(`位階 ${egene[1]} + 20 日振幅 ${egene[2]}%`), JSON.stringify(egene && egene.slice(1)));
   ok('⑦ 這一頁自己寫的字 ⛔ 🔴🟢(只准講漲跌)', R.redGreen === 0, R.redGreen);
   await page.close();

@@ -84,6 +84,7 @@ import math
 import os
 import sys
 import time
+import traceback
 import urllib.request
 from datetime import datetime, timezone, timedelta
 from lib_hotrule import hot_rule, rule_rows, rule_key   # 🔥 V79.4.9 每檔挑哪一招的規則(= scripts/lib_hotrule.mjs)
@@ -158,6 +159,23 @@ _FILLS_ENV = (os.getenv('FILLS_LOG') or '').strip()
 FILLS_LOG = None if _FILLS_ENV == '0' else (_FILLS_ENV or (STATE_PATH[:-5] if STATE_PATH.endswith('.json') else STATE_PATH) + '.fills.jsonl')
 FILLS_WAIT_TO = 13 * 60 + 31   # 13:25 以後掛的單 13:30 收盤競價才成交、收盤價也是那時才定 → 平日還沒到 13:31 就等到 13:31 再問(最多 10 分鐘)
 _SENT_IDS = set()              # 這一次程式送出去的委託編號(只放記憶體,⛔ 不進狀態檔)→ 成交紀錄標 own
+#   🧾 V82.0.4 起重開機時會從狀態檔的委託紀錄(st['ord'])把今天送過的編號補回來(_sent_ids_restore)
+
+# 🧾 V82.0.4 委託紀錄 + 出錯先查委託再重送 + 收工對帳(外部健檢 11/07;使用者:真實帳戶在跑、四個安全機制都要)
+#   以前三個真缺口:① 送單時連線出錯、但永豐其實已經收單 → 下一輪又送一次(重複買 / 賣)
+#   ② 🔥 / 👑 部位記的是「送出股數」,從來不跟實際成交 / 永豐庫存對帳(只有 0050 有)
+#   ③ 賣單一送出就從紀錄刪掉 → 限價賣單沒成交(跌停鎖死、送出後價格再往下)→ 那檔變成沒人管(陷阱 #68)
+#   ⛔ 這一段只「少做事、多檢查」:⛔ 改每筆上限、⛔ 改賣出價格、⛔ 改選股 / 換倉 / 出場規則。
+ORD_KEEP_DAYS = 14                 # 委託紀錄留幾天
+GATE_WAIT_SEC = 55                 # 送單出錯之後至少等這麼久才去問永豐(單子可能還在路上)
+GATE_MATCH_SEC = 300               # 永豐那邊的委託時間要在我們送出的前 1 分鐘 ~ 後 5 分鐘內,才認成同一筆
+RECON_FROM = 13 * 60 + 36          # 13:36 以後才對帳下結論(13:30 收盤競價的成交回報要幾分鐘才齊)
+RECON_GAP_SEC = 60                 # 對帳讀兩次、中間隔幾秒;兩次一樣才算數
+RECON_APPLY = (os.getenv('RECON_APPLY') or '1') != '0'      # 逃生門:RECON_APPLY=0 = 全部只報告、⛔ 改狀態檔
+LOSS_LOCK_PCT = float(os.getenv('LOSS_LOCK_PCT') or 0)      # 🔒 本月已實現虧損 ≥ 本金 X% → 不再開新的 🔥 / 👑(預設 0 = 關)
+_RECON_ST = ('Submitted', 'PartFilled', 'Filled', 'Cancelled', 'Failed')   # 這幾種狀態 13:36 以後才算「今天已經定案」
+_now_ts = time.time                # 測試可以換成假時鐘
+_ONCE = set()                      # 同一件事只講一次(⛔ 每 60 秒洗版)
 
 
 def _log_file(line):
@@ -281,6 +299,15 @@ def reset_day(st, today):
     out['done'] = []
     for k in ('pos', 'lead', 'lead2', 'lead_defer'):
         out.setdefault(k, {})
+    # 🧾 V82.0.4 委託紀錄只留 ORD_KEEP_DAYS 天、已實現損益只留 24 個月(⛔ 狀態檔一直長大)
+    if isinstance(out.get('ord'), list):
+        try:
+            cut = (datetime.strptime(today, '%Y-%m-%d') - timedelta(days=ORD_KEEP_DAYS)).strftime('%Y-%m-%d')
+            out['ord'] = [e for e in out['ord'] if isinstance(e, dict) and str(e.get('d') or '') >= cut]
+        except ValueError:
+            pass
+    if isinstance(out.get('pnl'), dict) and len(out['pnl']) > 24:
+        out['pnl'] = {k: out['pnl'][k] for k in sorted(out['pnl'])[-24:]}
     return out
 
 
@@ -325,10 +352,19 @@ def leader_clock(dates, data_date, anchor=None):
 
 
 class SendError(Exception):
-    """整張 + 零股拆兩筆送,其中一筆出錯:`sent_sh` = 出錯前**已經送出去**的股數(呼叫端 ⛔ 不可把那一段再送一次)"""
+    """整張 + 零股拆兩筆送,其中一筆出錯:`sent_sh` = 出錯前**已經送出去**的股數(呼叫端 ⛔ 不可把那一段再送一次)
+    `err` = 原本的錯誤(🧾 V82.0.4:被送單守門擋下來的是 GateHold)"""
     def __init__(self, sent_sh, err):
         super().__init__(f"{err}(出錯前已送出 {sent_sh} 股)")
         self.sent_sh = sent_sh
+        self.err = err
+
+
+class GateHold(Exception):
+    """🧾 V82.0.4 送單守門擋下來(⛔ 不是送單失敗):kind = 'wait'(等一下再問永豐)/ 'stop'(今天這一段先不送)"""
+    def __init__(self, kind, why):
+        super().__init__(why)
+        self.kind = kind
 
 
 def _send(api, sj, contract, px, shares, buy):
@@ -359,6 +395,188 @@ def _note_sent(tr):
             _SENT_IDS.add(oid)
     except Exception:
         pass
+
+
+# ─── 🧾 V82.0.4 委託紀錄 + 出錯先查委託再重送 ───────────────────────────────────────────
+def _log_once(key, *a):
+    """同一件事只講一次(送單守門每 60 秒會被問一次 → ⛔ 洗版)"""
+    if key in _ONCE:
+        return
+    _ONCE.add(key)
+    log(*a)
+
+
+def _fail_log(e, line):
+    """送單沒成:真的送單出錯照舊每次都講;被守門擋下來的 —— 'stop' 那句 _send_j 已經講過(🚨)、'wait' 同一句只講一次"""
+    g = e if isinstance(e, GateHold) else getattr(e, 'err', None)
+    if isinstance(g, GateHold):
+        if g.kind != 'stop':
+            _log_once(('fail', line), line)
+        return
+    log(line)
+
+
+def _day_of(st):
+    return str((st or {}).get('d') or tpe_now()[2])
+
+
+def _oid_of(tr):
+    try:
+        return str(getattr(getattr(tr, 'order', None), 'id', '') or '')
+    except Exception:
+        return ''
+
+
+def _ord_today(st, day):
+    return [e for e in ((st or {}).get('ord') or []) if isinstance(e, dict) and e.get('d') == day]
+
+
+def _ord_add(st, day, sym, side, lot, q, px, book, p=None):
+    """送單之前先記一筆(狀態「?」);呼叫端接著 save_state 才送。p = 賣出時原本的部位(沒賣掉時收回來用)"""
+    st['ord_n'] = int(st.get('ord_n') or 0) + 1
+    ts = float(_now_ts())
+    e = {'k': st['ord_n'], 'd': day, 'ts': ts, 't': datetime.fromtimestamp(ts, TW).strftime('%H:%M:%S'),
+         'sym': str(sym), 'side': side, 'lot': lot, 'q': int(q), 'px': float(px), 'book': book,
+         'st': '?', 'oid': '', 'm': _mode()}
+    if p:
+        e['p'] = {k: v for k, v in dict(p).items() if k != 'rs'}
+    st.setdefault('ord', []).append(e)
+    return e
+
+
+def _sent_ids_restore(st, day):
+    """重開機:今天稍早那一次送過的委託編號補回來(收工時才認得出哪幾筆是程式送的)"""
+    n = 0
+    for e in _ord_today(st, day):
+        if e.get('oid') and e['oid'] not in _SENT_IDS:
+            _SENT_IDS.add(e['oid'])
+            n += 1
+    if n:
+        log(f"🧾 今天稍早程式已經送過 {n} 筆委託(重開機前)→ 收工時照樣算成程式的單")
+    return n
+
+
+def _strong(r, e, use_time=True):
+    """永豐那筆委託跟我們這一筆是不是「完全對得上」:代號 / 買賣 / 整張或零股 / 股數 / 價格都一樣,
+    委託時間在我們送出前 1 分鐘 ~ 後 GATE_MATCH_SEC 秒(永豐沒給時間就不比)。
+    use_time=False 只給收工對帳「只報告」那一段用(時間對不上也講出來,⛔ 拿來改紀錄或下單)"""
+    if r.get('sym') != e.get('sym') or r.get('side') != e.get('side') or r.get('lot') != e.get('lot'):
+        return False
+    if int(r.get('q') or 0) != int(e.get('q') or 0) or abs(float(r.get('px') or 0) - float(e.get('px') or 0)) > 1e-6:
+        return False
+    ot, ts = r.get('ot'), e.get('ts')
+    if use_time and ot is not None and ts is not None and not (float(ts) - 60 <= float(ot) <= float(ts) + GATE_MATCH_SEC):
+        return False
+    return True
+
+
+def _claim_rows(st, day, rows):
+    """永豐今天的委託裡,哪幾筆(位置)是我們已經認得的:有委託編號的直接對;沒有編號的照「完全對得上」認最早那一筆"""
+    ents = [e for e in _ord_today(st, day) if e.get('st') in ('ok', 'adopt')]
+    known = {e['oid'] for e in ents if e.get('oid')}
+    used = {i for i, r in enumerate(rows) if r.get('oid') and r['oid'] in known}
+    for e in ents:
+        if e.get('oid'):
+            continue
+        for i, r in enumerate(rows):
+            if i not in used and _strong(r, e):
+                used.add(i)
+                break
+    return used
+
+
+def _send_gate(api, sj, st, sym, side, lot, q, px, book, day):
+    """→ ('go' | 'wait' | 'sent' | 'stop', 原因)。平常(今天這一段沒出錯過)直接 'go',⛔ 多問永豐一次。
+    今天這一段出錯過(紀錄是「?」或 err)才去問永豐:
+      ・離上次送不到 GATE_WAIT_SEC 秒 → 'wait'(單子可能還在路上)
+      ・問不到 → 'stop'(⛔ 不送:可能其實已經收到了)
+      ・找到「完全對得上」、還沒被別筆認走的委託 → 認成程式的單('sent'),⛔ 不再送(已取消的也算 —— ⛔ 把你取消的單再送一次)
+      ・有同一檔、同方向但對不上的(可能是你手動下的)→ 'stop',⛔ 不認、⛔ 不送
+      ・查到確定沒有 → 只准重送一次('go');重送過還是沒成 → 'stop'
+    另外:今天這一本帳這一段已經有成功送出的紀錄 → 'stop'(⛔ 重複送)"""
+    mine = [e for e in _ord_today(st, day) if e.get('book') == book and e.get('sym') == str(sym)
+            and e.get('side') == side and e.get('lot') == lot]
+    if any(e.get('st') in ('ok', 'adopt') for e in mine):
+        return 'stop', '今天這一段已經送出過(委託紀錄有成功的那一筆)→ ⛔ 再送一次'
+    bad = [e for e in mine if e.get('st') in ('?', 'err')]
+    if not bad:
+        return 'go', ''
+    ago = float(_now_ts()) - max(float(e.get('ts') or 0) for e in bad)
+    if ago < GATE_WAIT_SEC:
+        return 'wait', f'上一次送單出錯才 {int(ago)} 秒,先等永豐那邊確定收到沒有({GATE_WAIT_SEC} 秒後再問)'
+    rows = _fill_rows(api, sj, day, quiet=True)
+    if rows is None:
+        return 'stop', '問不到永豐今天的委託 → ⛔ 不敢再送(可能其實已經收到了);請打開永豐 App「委託查詢」看一下'
+    used = _claim_rows(st, day, rows)
+    free = [i for i, r in enumerate(rows) if i not in used and r.get('sym') == str(sym) and r.get('side') == side]
+    adopted, taken = [], set()
+    for e in sorted(bad, key=lambda x: float(x.get('ts') or 0)):
+        for i in free:
+            if i not in taken and _strong(rows[i], e):
+                taken.add(i)
+                e['st'], e['oid'] = 'adopt', rows[i].get('oid') or ''
+                if e['oid']:
+                    _SENT_IDS.add(e['oid'])
+                adopted.append((e, rows[i]))
+                break
+    if adopted:
+        for o in bad:
+            if o.get('st') in ('?', 'err'):
+                o['st'] = 'gone'
+        e, r = adopted[0]
+        msg = f"永豐其實有收到(委託 {e['oid'] or '?'}・{r.get('st') or '狀態不明'})→ 認成程式的單,⛔ 不再送"
+        if len(adopted) > 1:
+            msg += f";🚨 而且永豐有 {len(adopted)} 筆一模一樣的委託(可能重複了)→ 請打開永豐 App 看一下"
+        return 'sent', msg
+    if free:
+        return 'stop', (f"永豐有 {len(free)} 筆同一檔、同方向但對不上的委託(可能是你手動下的)→ ⛔ 不認、⛔ 不送;"
+                        "請打開永豐 App「委託查詢」看一下")
+    if any(e.get('st') == 'gone' for e in mine):
+        return 'stop', '今天這一段已經重送過一次還是沒成 → ⛔ 不再送;請打開永豐 App 看一下'
+    for e in bad:
+        e['st'] = 'gone'
+    return 'go', '查過永豐:確定沒有收到 → 重送一次(今天這一段只會重送這一次)'
+
+
+def _send_j(api, sj, st, contract, px, shares, buy, book, sym, day, p=None):
+    """🧾 V82.0.4 送單一律走這一支(⛔ 直接叫 `_send`):行為同 `_send`,多三件事 ——
+    ① 整張 / 零股各記一筆委託紀錄,**先寫「?」存檔才送**,回來填委託編號(送出後、存檔前當掉 → 下次開機查得到這一筆)
+    ② 這一段今天出錯過 → 先過 `_send_gate`(問永豐有沒有收到)才決定要不要再送
+    ③ 任何一段沒送成 → 丟 SendError(帶已送出的股數,同 `_send`;被守門擋下來的 err 是 GateHold)
+    book = 記在狀態檔哪一格(pos / lead / lead2 / park);p = 賣出時原本的部位"""
+    lots, odd = divmod(int(shares), 1000)
+    side = 'B' if buy else 'S'
+    out, done_sh = [], 0
+    for q, lot in ((lots * 1000, 'C'), (odd, 'O')):
+        if q <= 0:
+            continue
+        g, why = _send_gate(api, sj, st, sym, side, lot, q, px, book, day)
+        if g == 'sent':
+            done_sh += q
+            save_state(st)
+            log(f"   🧾 {sym} {why}")
+            continue
+        if g in ('wait', 'stop'):
+            if g == 'stop':
+                _log_once(('gate', day, book, str(sym), side, lot, why), f"   🧾 🚨 {sym} {'買' if buy else '賣'}單先不送:{why}")
+            save_state(st)
+            raise SendError(done_sh, GateHold(g, why))
+        if why:
+            log(f"   🧾 {sym} {why}")
+        e = _ord_add(st, day, sym, side, lot, q, px, book, p)
+        save_state(st)   # ⚠️ 先存「?」再送
+        try:
+            sent = _send(api, sj, contract, px, q, buy)
+        except Exception as err:
+            orig = getattr(err, 'err', None) or err
+            e['st'], e['err'] = 'err', f'{type(orig).__name__}: {orig}'[:160]
+            save_state(st)
+            raise SendError(done_sh, orig)
+        e['st'] = 'ok'
+        e['oid'] = _oid_of(sent[0]) if sent else ''
+        out += sent
+        done_sh += q
+    return out
 
 
 def _sold_part(book, sym, pos, sh, e):
@@ -415,7 +633,7 @@ def leader_step(api, sj, st, meta, today):
         st['lead_day'] = today; save_state(st); return
     keep = {r['sym'] for r in L['ranked']}
     SPLIT = LEADER_WINDOW == 'split'
-    defer = {'d': today, 'sell': [], 'buy': [], 'book': book}
+    defer = {'d': today, 'sell': [], 'buy': [], 'book': book, 'ld': dd}
     log(f"👑 換倉!{bname}名單日 {dd}(第 {day} 天)・池子 {L['n']} 檔・過趨勢 {L['passed']} 檔・前 {R['N']}:"
         + ' '.join(f"{r['sym']}({r['chg10']:+.1f}%{'・注意' if r['att'] == 1 else '・處置' if r['att'] == 2 else ''})" for r in L['buy']))
     _skip = [r for r in L['ranked'][:R['N']] if not r.get('posOk', True)]
@@ -425,17 +643,20 @@ def leader_step(api, sj, st, meta, today):
     for sym, pos in list(held.items()):
         if pos.get('m') and pos.get('m') != _mode():
             log(f"   👑 ⏭️ {sym} 是{'模擬' if pos.get('m') == 'sim' else '真實'}帳戶的紀錄 → 這次⛔ 不賣"); continue
+        if pos.get('rs'):
+            log(f"   👑 🧾 {sym} 是 {pos.get('rs')} 沒賣掉、收回來的那筆 → 交給補賣(leader_retry_step),這裡⛔ 另外再賣"); continue
         if sym in keep:
             log(f"   👑 🛡️ {sym} 還在前 {R['N'] * R['hyst']} 名(第 {L['all'][sym]['rank']} 名)→ 續抱"); continue
         try:
             contract = api.Contracts.Stocks[sym]
-            px = float(getattr(api.snapshots([contract])[0], 'close', 0) or 0) if contract is not None else 0
+            snap = api.snapshots([contract])[0] if contract is not None else None
+            px = float(getattr(snap, 'close', 0) or 0) if snap is not None else 0
         except Exception as e:
             log(f"   👑 ❌ {sym} 報價失敗:{e}"); continue
         if px <= 0:
             continue
         if SPLIT:
-            g = _snap_gap(api.snapshots([contract])[0])
+            g = _snap_gap(snap)   # 🧾 V82.0.4 用上面已經抓到的報價(以前在 try 外面再抓一次,出錯會讓整支停下來)
             if g is not None and g <= LEADER_GAPDN:
                 defer['sell'].append(sym)
                 log(f"   👑 ⏱️ {sym} 掉出前 {R['N'] * R['hyst']} 名,但開盤跌 {g * 100:.1f}% → 等到 09:30~10:00 再賣(回測平均多拿約 1.5%)"); continue
@@ -444,8 +665,8 @@ def leader_step(api, sj, st, meta, today):
         if DRY_RUN:
             log("      🧪 DRY_RUN:不送單"); continue
         try:
-            log(f"      ✅ 賣單 {_send(api, sj, contract, px, sh, False)}")
-            held.pop(sym, None); save_state(st)      # ⚠️ 送出後立刻移除(寧可漏一次,⛔ 不可重複送)
+            log(f"      ✅ 賣單 {_send_j(api, sj, st, contract, px, sh, False, book, sym, today, p=pos)}")
+            held.pop(sym, None); save_state(st)      # ⚠️ 送出後立刻移除(寧可漏一次,⛔ 不可重複送;沒成交的收工對帳會收回來)
         except Exception as e:
             got = _sold_part(held, sym, pos, sh, e)
             if got:
@@ -456,11 +677,16 @@ def leader_step(api, sj, st, meta, today):
                     + ("(09:30~10:00 或尾盤)" if SPLIT else "(尾盤)")
                     + "再賣,⛔ 已送出的不會重送;⛔ 請不要自己手動賣剩下那段(不然會多賣),到永豐 App 確認就好")
             else:
-                log(f"      ❌ 賣出失敗:{e}")
+                # 🧾 V82.0.4 一股都沒送出 → 也放進今天稍後要賣的(以前要等到下次換倉 = 10 個交易日沒人管);再送之前會先問永豐有沒有收到
+                defer['sell'].append(sym)
+                _fail_log(e, f"      ❌ 賣出失敗:{e} → 今天稍後" + ("(09:30~10:00 或尾盤)" if SPLIT else "(尾盤)")
+                          + "再試(會先問永豐有沒有收到,⛔ 重複賣)")
     # ② 買:大盤嚴格空頭不買(讀作戰清單的 mkt.bear60,⛔ 這裡不另算)
     _mkt = (meta or {}).get('mkt') or {}
     if LEADER_BEAR_GATE and _mkt.get('bear60') is True:
         log("   👑 🐻 大盤嚴格空頭 → 今天不買新的(賣出已處理)")
+    elif _loss_locked(st, today):
+        log("   👑 🔒 虧損安全鎖鎖著 → 今天不買新的(賣出已處理)")
     elif LEADER_ACCOUNT <= 0:
         log("   👑 ⚠️ 沒設 LEADER_ACCOUNT(分給這套的錢)→ 不買。要買請設 LEADER_ACCOUNT=<金額>")
     else:
@@ -490,7 +716,7 @@ def leader_step(api, sj, st, meta, today):
                     defer['buy'].append({'sym': sym, 'rank': r['rank'], 'chg10': r['chg10'], 'att': r['att']})
                     log(f"   👑 ⏱️ {sym} 第 {r['rank']} 名 → 開盤{'' if g is None else f'{g * 100:+.1f}%'}先不買,13:25 再買(回測平均便宜 0.4~1.0%)"); continue
                 log(f"   👑 ⏱️ {sym} 開盤跌 {g * 100:.1f}% → 開盤就買(這種情況等到尾盤反而比較貴)")
-            if _buy_one(api, sj, st, held, r, px, slot, today) == 'stop':
+            if _buy_one(api, sj, st, held, r, px, slot, today, book=book, extra=_lead_tag(book, dd)) == 'stop':
                 break
     if defer['sell'] or defer['buy']:   # 買的只有 split 會延後;賣的 split 開盤跌 ≥3% + 任何時段賣單只送出一部分剩下的
         st['lead_defer'] = defer
@@ -498,7 +724,15 @@ def leader_step(api, sj, st, meta, today):
     st['lead_day'] = today; save_state(st)
 
 
-def _buy_one(api, sj, st, held, r, px, slot, today):
+def _lead_tag(book, dd):
+    """🧾 V82.0.4 👑 每筆買進記下「照哪一版規則買的」(⛔ 只記錄、⛔ 拿來判斷):錨點 / 哪本帳 / 規則 / 名單日期"""
+    R = LEADER_RULE
+    return {'an': LEADER_ANCHOR if book == 'lead' else LEADER_ANCHOR2, 'bk': book,
+            'lr': f"U{R.get('U')}N{R.get('N')}R{R.get('R')}L{R.get('L')}h{R.get('hyst')}p{R.get('pos') if LEADER_POS is None else LEADER_POS}",
+            'ld': str(dd or '')}
+
+
+def _buy_one(api, sj, st, held, r, px, slot, today, book='lead', extra=None):
     """👑 買一檔(開盤那次與 13:25 那次共用,⛔ 不寫兩份):張數 = 每檔金額 ÷ 價,再被硬煞車壓"""
     sym = r['sym']
     shares = min(int(slot // px), MAX_LOTS_PER_TRADE * 1000, int(MAX_AMT_PER_TRADE // px))
@@ -511,15 +745,15 @@ def _buy_one(api, sj, st, held, r, px, slot, today):
     if DRY_RUN:
         log("      🧪 DRY_RUN:不送單"); return 'dry'
     try:
-        log(f"      ✅ 買單 {_send(api, sj, api.Contracts.Stocks[sym], px, shares, True)}")
+        log(f"      ✅ 買單 {_send_j(api, sj, st, api.Contracts.Stocks[sym], px, shares, True, book, sym, today)}")
         got = shares
     except Exception as e:
         got = int(getattr(e, 'sent_sh', 0) or 0)
         if got <= 0:
-            log(f"      ❌ 下單失敗:{e}")
+            _fail_log(e, f"      ❌ 下單失敗:{e}")
             return 'fail'
         log(f"      🚨 {sym} 整張送出了、零股那筆出錯({e})→ 只記已送出的 {got} 股(⛔ 不會再送);請到永豐 App 確認")
-    held[sym] = {'e': px, 'd': today, 'sh': got, 'm': _mode()}
+    held[sym] = {'e': px, 'd': today, 'sh': got, 'm': _mode(), **(extra or {})}
     st['lead_buy_amt'] = float(st.get('lead_buy_amt') or 0) + got * px   # 🅿️ 今天花掉的現金(買 0050 前要扣)
     save_state(st)   # ⚠️ 先記再說(⛔ 不可重複下單)
     return 'ok'
@@ -548,7 +782,7 @@ def leader_defer_step(api, sj, st, today, phase):
             if DRY_RUN:
                 log("      🧪 DRY_RUN:不送單"); df['sell'].remove(sym); continue
             try:
-                log(f"      ✅ 賣單 {_send(api, sj, contract, px, sh, False)}")
+                log(f"      ✅ 賣單 {_send_j(api, sj, st, contract, px, sh, False, df.get('book') or 'lead', sym, today, p=pos)}")
                 held.pop(sym, None); df['sell'].remove(sym); save_state(st)
             except Exception as e:
                 got = _sold_part(held, sym, pos, sh, e)
@@ -558,7 +792,7 @@ def leader_defer_step(api, sj, st, today, phase):
                     save_state(st)
                     log(f"      🚨 {sym} 賣單只送出 {got} 股就出錯({e})→ 剩下的下一輪再賣(⛔ 已送出的不會重送);請到永豐 App 確認")
                 else:
-                    log(f"      ❌ 賣出失敗:{e}")
+                    _fail_log(e, f"      ❌ 賣出失敗:{e}(下一輪再試,會先問永豐有沒有收到)")
     elif phase == 'buy':
         if df.get('d') != today:
             if df.get('buy'):
@@ -566,6 +800,9 @@ def leader_defer_step(api, sj, st, today, phase):
             df['buy'] = []
         R = LEADER_RULE
         slot = LEADER_ACCOUNT / (R['N'] * LEADER_BOOKS) if LEADER_ACCOUNT > 0 else 0
+        if df.get('buy') and _loss_locked(st, today):
+            log(f"   👑 🔒 虧損安全鎖鎖著 → 13:25 延後要買的 {[x.get('sym') for x in df['buy']]} 今天不買")
+            df['buy'] = []
         for r in list(df.get('buy') or []):
             sym = r['sym']
             df['buy'].remove(r)
@@ -581,7 +818,8 @@ def leader_defer_step(api, sj, st, today, phase):
                 continue
             if chg >= 9.7:
                 log(f"   👑 ⏭️ {sym} 13:25 已接近漲停({chg:.1f}%)→ 買不到,不追"); continue
-            _buy_one(api, sj, st, held, r, px, slot, today)
+            _bk = df.get('book') or 'lead'
+            _buy_one(api, sj, st, held, r, px, slot, today, book=_bk, extra=_lead_tag(_bk, df.get('ld')))
     st['lead_defer'] = df; save_state(st)
 
 
@@ -604,6 +842,7 @@ def leader_open_window(api, sj, st, now_fn=None, sleep_fn=None, picks_fn=None):
             meta, _ = picks_fn()
         except Exception:
             meta = {}
+        leader_retry_step(api, sj, st, day)   # 🧾 V82.0.4 之前沒賣掉、收回來的(rs)先賣掉,換倉那邊才算得對還剩幾檔
         leader_step(api, sj, st, meta, day)
         if st.get('lead_day') == day:
             return True
@@ -624,6 +863,46 @@ def leader_defer_sell_window(api, sj, st, now_fn=None, sleep_fn=None):
         if (st.get('lead_defer') or {}).get('sell'):
             sleep_fn(POLL_SEC)
     return True
+
+
+def _has_rs(st, books):
+    return any((p or {}).get('rs') and (not p.get('m') or p.get('m') == _mode())
+               for k in books for p in (st.get(k) or {}).values())
+
+
+def leader_retry_step(api, sj, st, day):
+    """🧾 V82.0.4 👑 補賣:收工對帳發現「賣單送了但沒成交」(跌停鎖死、送出後價格再往下)→ 那筆收回來標 rs →
+    這裡把它賣掉(換不換倉日都賣:那天已經決定要賣了)。⛔ 不碰 leader_step 的換倉邏輯(它只跳過 rs 那幾筆)。
+    真實帳戶送之前再看一次永豐庫存夠不夠(不夠 → 🚨 不送);再送之前一樣先問永豐有沒有收到(_send_j)。"""
+    for book in ('lead', 'lead2'):
+        held = st.get(book) or {}
+        for sym, pos in list(held.items()):
+            if not pos.get('rs') or (pos.get('m') and pos.get('m') != _mode()):
+                continue
+            try:
+                contract = api.Contracts.Stocks[sym]
+                snap = api.snapshots([contract])[0] if contract is not None else None
+                px = float(getattr(snap, 'close', 0) or 0) if snap is not None else 0
+            except Exception as e:
+                log(f"   👑 ❌ {sym} 報價失敗:{e}"); continue
+            if px <= 0:
+                continue
+            if LIVE and not _inv_enough(api, sj, st, sym):
+                continue
+            sh = int(pos.get('sh') or 0)
+            log(f"👑 🧾 {sym} {pos.get('rs')} 那筆賣單沒成交(收工對帳收回來的)→ 補賣 {sh} 股 @ {px}")
+            if DRY_RUN:
+                log("      🧪 DRY_RUN:不送單"); continue
+            try:
+                log(f"      ✅ 賣單 {_send_j(api, sj, st, contract, px, sh, False, book, sym, day, p=pos)}")
+                held.pop(sym, None); save_state(st)      # ⚠️ 送出後立刻移除(沒成交的今天收工對帳會再收回來)
+            except Exception as e:
+                got = _sold_part(held, sym, pos, sh, e)
+                if got:
+                    save_state(st)
+                    log(f"      🚨 {sym} 補賣只送出 {got} 股就出錯({e})→ 剩下的下一輪再賣(⛔ 已送出的不會重送);請到永豐 App 確認")
+                else:
+                    _fail_log(e, f"      ❌ {sym} 補賣沒送出:{e}(下一輪再試,會先問永豐有沒有收到)")
 
 
 def gene_hq(p):
@@ -786,31 +1065,38 @@ def exit_step(api, sj, st):
             px = float(getattr(api.snapshots([contract])[0], 'close', 0) or 0)
             if px <= 0:
                 continue
-            rows = fetch_klines(sym)
-            # ⚠️ 把「現在這個價」當今天的收盤接上歷史 → 才跟回測的「收盤跌破」同一個定義
-            if rows:
-                rows = rows[:-1] + [dict(rows[-1], close=px)]
-            rule = pos.get('k') or EXIT_RULE
-            line = exit_line(rows, rule, pos.get('d')) if rows else None
-            held = held_trading_days(rows, pos.get('d')) if rows else None
-            why = None
-            if px <= float(pos.get('sl') or 0):
-                why = f"停損 {pos['sl']}"
-            elif line is not None and px < line:
-                why = f"跌破{rule} 出場線 {line:.2f}"
-            elif held is not None and held >= int(pos.get('mh') or max_hold(rule)):
-                why = f"抱滿 {held} 個交易日(上限 {int(pos.get('mh') or max_hold(rule))})"
-            if not why:
-                log(f"   🛡️ {sym} {px} 續抱(出場線 {line and round(line, 2)}"
-                    f"・停損 {pos.get('sl')}・已抱 {held} 天)")
-                continue
+            if pos.get('rs'):
+                # 🧾 V82.0.4 之前那筆賣單送了但沒成交(收工對帳收回來的)→ 今天補賣(⛔ 再看出場線:那天已經決定要賣了)
+                #    真實帳戶送之前再看一次永豐庫存夠不夠(你可能已經手動賣了)
+                if LIVE and not _inv_enough(api, sj, st, sym):
+                    continue
+                why = f"補賣:{pos.get('rs')} 那筆賣單沒成交(收工對帳收回來的)"
+            else:
+                rows = fetch_klines(sym)
+                # ⚠️ 把「現在這個價」當今天的收盤接上歷史 → 才跟回測的「收盤跌破」同一個定義
+                if rows:
+                    rows = rows[:-1] + [dict(rows[-1], close=px)]
+                rule = pos.get('k') or EXIT_RULE
+                line = exit_line(rows, rule, pos.get('d')) if rows else None
+                held = held_trading_days(rows, pos.get('d')) if rows else None
+                why = None
+                if px <= float(pos.get('sl') or 0):
+                    why = f"停損 {pos['sl']}"
+                elif line is not None and px < line:
+                    why = f"跌破{rule} 出場線 {line:.2f}"
+                elif held is not None and held >= int(pos.get('mh') or max_hold(rule)):
+                    why = f"抱滿 {held} 個交易日(上限 {int(pos.get('mh') or max_hold(rule))})"
+                if not why:
+                    log(f"   🛡️ {sym} {px} 續抱(出場線 {line and round(line, 2)}"
+                        f"・停損 {pos.get('sl')}・已抱 {held} 天)")
+                    continue
             sh = int(pos.get('sh') or 0)
             pl = (px - float(pos.get('e') or px)) * sh
             log(f"🚪 {sym} 出場!{why} ・賣 {sh} 股 ・帳面 {pl:+,.0f} 元")
             if DRY_RUN:
                 log("   🧪 DRY_RUN:不送單"); continue
             try:
-                sent = _send(api, sj, contract, px, sh, False)
+                sent = _send_j(api, sj, st, contract, px, sh, False, 'pos', sym, _day_of(st), p=pos)
             except Exception as e:
                 # 🐛 V79.4.9 整張送出、零股出錯 → 已送出的那段從紀錄扣掉(⛔ 下一輪不再賣那一段),沒送出的下一輪再賣
                 got = _sold_part(st['pos'], sym, pos, sh, e)
@@ -818,7 +1104,7 @@ def exit_step(api, sj, st):
                     save_state(st)
                     log(f"   🚨 {sym} 賣單只送出 {got} 股就出錯({e})→ 剩下的下一輪再賣(⛔ 已送出的不會重送);請到永豐 App 確認")
                 else:
-                    log(f"   ❌ {sym} 賣單沒送出:{e}(下一輪再試)")
+                    _fail_log(e, f"   ❌ {sym} 賣單沒送出:{e}(下一輪再試,會先問永豐有沒有收到)")
                 continue
             log(f"   ✅ 賣單已送出 {len(sent)} 筆:{sent}")
             # ⚠️ 送出後立刻移除(寧可漏一次,⛔ 不可重複送賣單)
@@ -842,6 +1128,8 @@ def hot_step(api, sj, st, meta, picks, day):
     if BEAR_GATE and 'bear60' not in _mkt and not st.get('mkt_warned'):
         log("⚠️ 作戰清單裡沒有大盤空頭判斷(清單是舊版)→ 今天照常買;下一輪採礦後就會有")
         st['mkt_warned'] = 1
+    if _loss_locked(st, day):
+        return   # 🔒 V82.0.4 虧損安全鎖(預設關;原因 _loss_locked 已經講了):⛔ 開新倉,賣出照常
     if st.get('park_day') == day and (PARK or _park_has_own(st)):
         # 🅿️ 今天的 0050 已經處理過(湊交割款也做完了)→ ⛔ 不再買:再買就沒有人湊交割款(10/22 檢查代理:程式中途重開才會走到這裡)
         if not st.get('hot_after_park_logged'):
@@ -880,8 +1168,15 @@ def hot_step(api, sj, st, meta, picks, day):
         if px < float(trig):
             log(f"   {sym} {px} < 觸發 {trig} → 還沒到")
             continue
+        try:
+            stop = float(stop)
+        except (TypeError, ValueError):
+            # 🧾 V82.0.4 名單上的停損價讀不懂 → 跳過這檔(以前 float(None) 會讓整支程式停下來;⛔ 沒有停損就不買)
+            log(f"⏭️ {sym} 名單上的停損價讀不懂({stop!r})→ 今天不買這檔")
+            st['done'].append(sym)
+            continue
 
-        shares, risk_pct = shares_for_playbook(px, float(stop))
+        shares, risk_pct = shares_for_playbook(px, stop)
         if shares <= 0:
             log(f"⏭️ {sym} 算出來 0 股(本金太小或超過單筆金額上限)→ 跳過")
             continue
@@ -898,19 +1193,22 @@ def hot_step(api, sj, st, meta, picks, day):
         # 🧩 零股與整張是**不同的委託類別**,⛔ 不可混:整張 → 張 + StockOrderLot.Common;零股 → 股 + IntradayOdd(盤中零股)
         #    ⚠️ 有零股尾數時拆兩筆送(`_send`);🐛 V79.4.9 整張送出、零股出錯 → 只記已送出的那段、⛔ 不再送(以前下一輪會把整張再送一次)
         try:
-            sent = _send(api, sj, contract, px, shares, True)
+            sent = _send_j(api, sj, st, contract, px, shares, True, 'pos', sym, day)
             got = shares
             log(f"   ✅ 已送出 {len(sent)} 筆:{sent}")
         except Exception as e:
             got = int(getattr(e, 'sent_sh', 0) or 0)
             if got <= 0:
-                log(f"   ❌ 下單失敗:{e}"); continue   # 一股都沒送出 → 下一輪可以再試(同以前)
+                # 一股都沒送出 → 下一輪可以再試(同以前);🧾 V82.0.4 再送之前會先問永豐有沒有收到
+                _fail_log(e, f"   ❌ 下單失敗:{e}"); continue
             log(f"   🚨 {sym} 整張送出了、零股那筆出錯({e})→ 只記已送出的 {got} 股(⛔ 不會再送);請到永豐 App 確認")
         # ⚠️ 先記再說 —— 寧可漏一次,也⛔ 不可重複下單
         st['done'].append(sym)
         # 🚪 記下部位,出場那段才知道「這是我買的」(⛔ 只賣自己買的,不碰手動庫存)
+        #    🧾 V82.0.4 多記「照哪一版規則買的」(⛔ 只記錄、⛔ 拿來判斷):hr 排法 / dd 名單日期 / gr 位階門檻 / bg 空頭守門
         st.setdefault('pos', {})[sym] = {'e': px, 'sl': float(stop), 'd': day,
-                                         'sh': got, 'k': EXIT_RULE, 'mh': max_hold(EXIT_RULE), 'm': _mode()}
+                                         'sh': got, 'k': EXIT_RULE, 'mh': max_hold(EXIT_RULE), 'm': _mode(),
+                                         'hr': HOT_RULE, 'dd': str((meta or {}).get('data_date') or ''), 'gr': GENE_RANK, 'bg': int(BEAR_GATE)}
         st['hot_buy_amt'] = float(st.get('hot_buy_amt') or 0) + got * px   # 🅿️ 今天要付的錢(收盤前賣 0050 湊交割款)
         save_state(st)
 
@@ -1005,6 +1303,70 @@ def _broker_qty(api, sj, code):
                    if str(getattr(x, 'code', '')) == code)
     except Exception:
         return None
+
+
+def _broker_inv(api, sj):
+    """🧾 永豐庫存全部 {代號: (現在股數, 昨天股數)};查不到回 None(⛔ 不猜)"""
+    try:
+        out = {}
+        for x in api.list_positions(api.stock_account, unit=sj.constant.Unit.Share):
+            c = str(getattr(x, 'code', '') or '')
+            q, yq = int(getattr(x, 'quantity', 0) or 0), int(getattr(x, 'yd_quantity', 0) or 0)
+            a, b = out.get(c, (0, 0))
+            out[c] = (a + q, b + yq)
+        return out
+    except Exception:
+        return None
+
+
+def _book_total(st, sym):
+    """🧾 程式自己記著的這一檔一共幾股(這個模式的 🔥 + 👑 兩本帳;0050 再加它自己買的)"""
+    n = 0
+    for k in ('pos', 'lead', 'lead2'):
+        p = (st.get(k) or {}).get(sym)
+        if p and (not p.get('m') or p.get('m') == _mode()):
+            n += int(p.get('sh') or 0)
+    if str(sym) == PARK_SYM:
+        pk = st.get('park') or {}
+        if not pk.get('m') or pk.get('m') == _mode():
+            n += int(pk.get('sh') or 0)
+    return n
+
+
+def _inv_enough(api, sj, st, sym):
+    """🧾 真實帳戶補賣之前:永豐庫存要 ≥ 程式記著的這一檔股數(⛔ 不夠 = 你可能已經手動賣了 → ⛔ 不送,🚨 講出來)"""
+    real = _broker_qty(api, sj, sym)
+    need = _book_total(st, sym)
+    if real is None:
+        _log_once(('inv?', _day_of(st), sym), f"   🧾 ⚠️ {sym} 查不到永豐庫存 → 這一輪先不補賣(⛔ 不知道你手上還有沒有)")
+        return False
+    if real < need:
+        _log_once(('inv<', _day_of(st), sym), f"   🧾 🚨 {sym} 永豐庫存只有 {real} 股,程式記著 {need} 股 → ⛔ 不補賣(可能你已經手動賣了);"
+                  "請打開永豐 App 確認,真的賣掉了就把這段 log 傳給 Claude 清掉那筆紀錄")
+        return False
+    return True
+
+
+def _loss_base():
+    """🔒 虧損安全鎖的本金 = 帳戶總資金(🔥)+ 分給 👑 的錢(有開才算)"""
+    return int(ACCOUNT_SIZE or 0) + (int(LEADER_ACCOUNT or 0) if LEADER else 0)
+
+
+def _loss_locked(st, day):
+    """🔒 V82.0.4 虧損安全鎖(LOSS_LOCK_PCT,預設 0 = 關):本月已實現虧損(收工對帳算的,只算程式自己的 🔥 / 👑 賣單)
+    ≥ 本金 × 設定% → 這個月剩下的日子 ⛔ 開新的 🔥 / 👑;賣出、補賣、0050 照常;下個月自動解開。"""
+    if LOSS_LOCK_PCT <= 0:
+        return False
+    base = _loss_base()
+    if base <= 0:
+        _log_once(('lockbase', day), "🔒 ⚠️ 設了 LOSS_LOCK_PCT 但沒設 ACCOUNT_SIZE / LEADER_ACCOUNT(本金)→ 虧損安全鎖沒作用(⛔ 猜你的本金)")
+        return False
+    pnl = float((st.get('pnl') or {}).get(str(day)[:7]) or 0)
+    if pnl <= -LOSS_LOCK_PCT / 100.0 * base:
+        _log_once(('lock', day), f"🔒 本月已實現虧損 {pnl:+,.0f} 元 ≥ 本金 {base:,} 的 {LOSS_LOCK_PCT:g}% → 這個月剩下的日子 ⛔ 開新的 🔥 / 👑"
+                  "(賣出、補賣、0050 照常);下個月自動解開。要提早解開:把 LOSS_LOCK_PCT 拿掉或調大")
+        return True
+    return False
 
 
 def _legacy_check(st):
@@ -1198,7 +1560,7 @@ def park_step(api, sj, st, day, sleep_fn=None):
             st['park_day'] = day; save_state(st); return 'late'
         c0 = api.Contracts.Stocks[PARK_SYM]
         try:
-            log(f"   ✅ 賣單 {_send(api, sj, c0, sell_px, sell_sh, False)}")
+            log(f"   ✅ 賣單 {_send_j(api, sj, st, c0, sell_px, sell_sh, False, 'park', PARK_SYM, day)}")
             got = sell_sh
         except Exception as e:
             got = int(getattr(e, 'sent_sh', 0) or 0)
@@ -1242,7 +1604,7 @@ def park_step(api, sj, st, day, sleep_fn=None):
         log("🅿️ ⚠️ 查不到永豐 0050 庫存 → 今天⛔ 不買(買了之後沒辦法對帳哪些是自己的)")
         st['park_day'] = day; save_state(st); return 'nocash'
     try:
-        log(f"   ✅ 買單 {_send(api, sj, c0, buy_px, sh, True)}")
+        log(f"   ✅ 買單 {_send_j(api, sj, st, c0, buy_px, sh, True, 'park', PARK_SYM, day)}")
         got = sh
     except Exception as e:
         got = int(getattr(e, 'sent_sh', 0) or 0)
@@ -1259,9 +1621,23 @@ def park_step(api, sj, st, day, sleep_fn=None):
 _FILL_PENDING = ('PendingSubmit', 'PreSubmitted', 'Submitted', 'PartFilled')
 
 
-def _fill_rows(api, sj, today):
+def _order_ts(odt):
+    """永豐委託時間 → 秒數(永豐給的是台北時間、沒帶時區);讀不懂回 None(⛔ 猜)"""
+    try:
+        if odt is None:
+            return None
+        if isinstance(odt, (int, float)):
+            return float(odt)
+        return (odt if getattr(odt, 'tzinfo', None) else odt.replace(tzinfo=TW)).timestamp()
+    except Exception:
+        return None
+
+
+def _fill_rows(api, sj, today, quiet=False):
     """📒 問永豐今天每一筆委託的成交回報 → list[dict];查不到 → None(⛔ 不猜)。⛔ 只讀:update_status / list_trades。
-    單位:整張那筆的數量是「張」、零股那筆是「股」(永豐文件);成交回報自己的總成交量(deal_quantity)跟逐筆加總對不上 → 印出來。"""
+    單位:整張那筆的數量是「張」、零股那筆是「股」(永豐文件);成交回報自己的總成交量(deal_quantity)跟逐筆加總對不上 → 印出來。
+    🧾 V82.0.4 送單守門 / 收工對帳也用這一支(quiet = 查不到時不印「成交回報」那句,呼叫端自己講);
+    多帶 ot(委託時間,秒)與 dqx(總成交量跟逐筆加總對不上 → 收工對帳只報告、⛔ 改紀錄)"""
     try:
         try:
             api.update_status(api.stock_account)
@@ -1269,7 +1645,8 @@ def _fill_rows(api, sj, today):
             api.update_status()
         trades = list(api.list_trades() or [])
     except Exception as e:
-        log(f"📒 ⚠️ 查不到今天的成交回報({type(e).__name__}: {e})→ 這次沒記到實際成交價")
+        if not quiet:
+            log(f"📒 ⚠️ 查不到今天的成交回報({type(e).__name__}: {e})→ 這次沒記到實際成交價")
         return None
     C = sj.constant
     rows = []
@@ -1291,6 +1668,8 @@ def _fill_rows(api, sj, today):
                 'px': float(getattr(o, 'price', 0) or 0), 'q': int(round(float(getattr(o, 'quantity', 0) or 0) * unit)),
                 'fq': int(round(dq * unit)), 'avg': round(amt / dq, 4) if dq > 0 else None,
                 'st': str(getattr(s, 'status', '') or '').split('.')[-1], 'n': len(deals), 'm': _mode(),
+                'ot': _order_ts(getattr(s, 'order_datetime', None)),
+                'dqx': bool(api_dq is not None and abs(float(api_dq) - dq) > 1e-9),
             })
         except Exception as e:
             log(f"📒 ⚠️ 有一筆成交回報讀不懂({type(e).__name__}: {e}),略過")
@@ -1382,6 +1761,321 @@ def fills_report(api, sj, today, now_fn=None, sleep_fn=None):
     return len(new)
 
 
+# ═══════ 🧾 V82.0.4 收工對帳(外部健檢 11/07;使用者選「收工對帳 + 跌停沒賣掉收回」)═══════
+_FEE_RATE = 0.001425
+_BOOK_NAME = {'pos': '🔥', 'lead': '👑', 'lead2': '👑 乙帳', 'park': '🅿️'}
+
+
+def _sell_tax(sym):
+    return 0.001 if str(sym).startswith('00') else 0.003   # ETF 0.1%、股票 0.3%
+
+
+def _realized(e, fq, avg):
+    """程式自己的賣單成交 fq 股 @ avg → 已實現損益(元)= (成交均價 − 進場價)× 股數 − 買賣手續費(0.1425%,⛔ 算折扣 = 保守)− 證交稅。
+    進場價讀委託紀錄裡那筆部位(p.e);讀不到回 None(⛔ 猜)"""
+    entry = float(((e or {}).get('p') or {}).get('e') or 0)
+    if entry <= 0 or fq <= 0 or not avg:
+        return None
+    return round((avg - entry) * fq - (entry + avg) * fq * _FEE_RATE - avg * fq * _sell_tax(e.get('sym')))
+
+
+def _recon_scan_old(st, today):
+    """第一次跑新版:往回掃 30 天的成交紀錄(FILLS_LOG),程式自己送的單沒成交完的列出來。⛔ 只報告、⛔ 改狀態檔;只做一次(recon_v)。"""
+    if st.get('recon_v'):
+        return 0
+    st['recon_v'] = 1
+    if not FILLS_LOG or not os.path.exists(FILLS_LOG):
+        return 0
+    try:
+        cut = (datetime.strptime(today, '%Y-%m-%d') - timedelta(days=30)).strftime('%Y-%m-%d')
+        last = {}
+        with open(FILLS_LOG, encoding='utf-8') as f:
+            for line in f.readlines()[-20000:]:
+                try:
+                    j = json.loads(line)
+                except Exception:
+                    continue
+                if not isinstance(j, dict) or not j.get('own') or j.get('m') not in (None, _mode()):
+                    continue
+                d = str(j.get('d') or '')
+                if cut <= d < today:
+                    last[(d, str(j.get('oid')), j.get('lot'))] = j     # 同一筆後來成交更多會多一行 → 留最後那行
+    except Exception as e:
+        log(f"🧾 ⚠️ 讀不到以前的成交紀錄({type(e).__name__}: {e})→ 這次不掃以前的")
+        return 0
+    n = 0
+    for (d, _o, _l), j in sorted(last.items()):
+        q, fq = int(j.get('q') or 0), int(j.get('fq') or 0)
+        if fq >= q:
+            continue
+        n += 1
+        if j.get('side') == 'S':
+            log(f"🧾 🔎 以前程式送的賣單沒賣完:{d} {j.get('sym')} 賣 {q:,} 股只成交 {fq:,} 股 → 剩下 {q - fq:,} 股那時程式就不管了;"
+                "請打開永豐 App 看還在不在、要不要自己處理(⛔ 程式不會自己補賣以前的)")
+        else:
+            log(f"🧾 🔎 以前程式送的買單沒買滿:{d} {j.get('sym')} 買 {q:,} 股只成交 {fq:,} 股 → 程式記的是送出的股數;"
+                "請打開永豐 App 對一下(之後賣的時候可能賣不到那麼多)")
+    if n:
+        log(f"🧾 以前 30 天有 {n} 筆程式送的單沒成交完(上面那幾行)—— 這只列一次,⛔ 不會自動改紀錄")
+    return n
+
+
+def _recon_prev_days(st, today):
+    """🧾 以前那幾天(委託紀錄留 ORD_KEEP_DAYS 天)程式送了、卻沒對到帳的單 → 開工時列出來。
+    會沒對到:那天電腦在 13:36 之前就關了、對帳時出錯、或程式中途停下來。
+    ⛔ 只報告、⛔ 改部位紀錄(永豐只查得到「今天」的委託,以前的沒辦法自動對);每一筆只列一次(rc='p')。"""
+    try:
+        old = [e for e in (st.get('ord') or []) if isinstance(e, dict) and str(e.get('d') or '') < str(today)
+               and e.get('m', _mode()) == _mode() and not e.get('rc') and e.get('st') in ('ok', 'adopt', '?', 'err')]
+        if not old:
+            return 0
+        for e in sorted(old, key=lambda x: (str(x.get('d') or ''), float(x.get('ts') or 0))):
+            side = '買' if e.get('side') == 'B' else '賣'
+            what = ('送出了(委託 ' + (e.get('oid') or '?') + '),但那天沒對到帳 → 不知道有沒有成交、成交幾股'
+                    if e.get('st') in ('ok', 'adopt') else '那天送單時出錯、也沒對到帳 → 不知道永豐有沒有收到')
+            tail = ('程式當時已經把這筆從紀錄移除,沒賣掉的話那幾股現在沒人管' if side == '賣' and e.get('st') in ('ok', 'adopt')
+                    else '程式記的股數可能跟永豐不一樣')
+            log(f"🧾 🔎 {e.get('d')} {_BOOK_NAME.get(e.get('book'), e.get('book') or '')} {e.get('sym')} {side} {int(e.get('q') or 0):,} 股:{what};"
+                f"{tail} → 請打開永豐 App「成交回報 / 庫存」對一下(⛔ 程式不會自己改)")
+            e['rc'] = 'p'
+        log(f"🧾 以前有 {len(old)} 筆程式送的單沒對到帳(上面那幾行;多半是那天電腦在 {RECON_FROM // 60}:{RECON_FROM % 60:02d} 之前就關了)—— 只列這一次")
+        save_state(st)
+        return len(old)
+    except Exception as e:
+        log(f"🧾 ⚠️ 檢查以前沒對到帳的單時出錯({type(e).__name__}: {e})—— ⛔ 不影響今天下單")
+        return 0
+
+
+def _row_of(rows, e, used):
+    """這一筆委託紀錄對到永豐的哪一筆(位置):有委託編號照編號;沒有(舊的 / 測試)照「完全對得上」挑還沒被用的第一筆"""
+    if e.get('oid'):
+        for i, r in enumerate(rows):
+            if i not in used and r.get('oid') == e['oid']:
+                return i
+        return None
+    for i, r in enumerate(rows):
+        if i not in used and _strong(r, e):
+            return i
+    return None
+
+
+def reconcile_day(api, sj, st, today, now_fn=None, sleep_fn=None):
+    """🧾 V82.0.4 收工對帳(接在 fills_report 後面、登出前面):今天程式自己送的每一筆委託 vs 永豐的成交回報 + 庫存。
+    ① 13:36 以後才下結論,隔 RECON_GAP_SEC 秒讀兩次、兩次一樣才算數;狀態沒定案 / 成交回報自己對不上 → 只報告
+    ② 要改紀錄,真實帳戶兩邊(成交回報 + 永豐庫存)都要對得上:
+       買單只成交一部分 → 紀錄改成實際股數(0 股 → 移除);賣單沒賣掉 → 收回來、標 rs(下一個交易日補賣);
+       改完之後程式記的這一檔股數 ⛔ 可以比永豐庫存多 —— 多了就只報告(🚨),⛔ 改
+    ③ 模擬帳戶 / RECON_APPLY=0 → 只報告;🅿️ 0050 那筆沒賣掉 → 🚨 提醒(⛔ 改紀錄,隔天 park_step 會跟永豐庫存對)
+    ④ 同一天跑兩次結果一樣(對過的那筆標 rc,⛔ 再做)
+    ⑤ 順便把程式自己 🔥 / 👑 的賣單算成已實現損益,累加到 st['pnl'][月份](🔒 LOSS_LOCK_PCT 用)
+    ⛔ 只讀永豐(update_status / list_trades / list_positions)、⛔ 送 / 刪 / 改任何單。回傳報告(dict,給測試)。"""
+    now_fn, sleep_fn = now_fn or tpe_now, sleep_fn or time.sleep
+    rep = {'applied': [], 'reported': [], 'pnl': 0, 'final': False}
+    if DRY_RUN:
+        log("🧾 🧪 DRY_RUN:沒有送單,不對帳"); return rep
+    _recon_scan_old(st, today)
+    ents = [e for e in _ord_today(st, today) if e.get('m', _mode()) == _mode()]
+    todo = [e for e in ents if e.get('st') in ('ok', 'adopt') and e.get('rc') not in ('a', 'r')]
+    loose = [e for e in ents if e.get('st') in ('?', 'err') and not e.get('rc')]
+    rs_left = [f"{_BOOK_NAME.get(k, k)} {s}" for k in ('pos', 'lead', 'lead2')
+               for s, p in (st.get(k) or {}).items() if (p or {}).get('rs')]
+    if not todo and not loose:
+        log("🧾 收工對帳:" + ("今天程式送的單都對過了" if ents else "今天程式沒有送任何單 → 不用對帳")
+            + (f";還有 {len(rs_left)} 筆等下一個交易日補賣:{'、'.join(rs_left)}" if rs_left else ''))
+        save_state(st)
+        return rep
+    now, mins, _ = now_fn()
+    if now.weekday() < 5 and mins < RECON_FROM:
+        gap = RECON_FROM - mins
+        if gap <= 15:      # 正常收工(13:28~13:31 結束主迴圈)→ 等一下就到
+            log(f"🧾 等到 {RECON_FROM // 60}:{RECON_FROM % 60:02d}(約 {gap} 分鐘)再對帳 —— 收盤競價的成交回報要幾分鐘才齊;⛔ 這段時間不會送任何單")
+            sleep_fn(gap * 60)
+            now, mins, _ = now_fn()
+        else:              # 中途出錯 / 提早結束 → ⛔ 乾等幾個小時;今天只報告,明天開工再列出來
+            log(f"🧾 現在才 {now.strftime('%H:%M')},收盤競價的成交回報要 {RECON_FROM // 60}:{RECON_FROM % 60:02d} 以後才齊 → 今天只先報告、⛔ 改紀錄;"
+                "下一次開工會把今天沒對到的單列出來")
+    final = now.weekday() < 5 and mins >= RECON_FROM   # 週末 / 還沒到 13:36 → 只報告(⛔ 改紀錄)
+    rep['final'] = final
+    rows1 = _fill_rows(api, sj, today, quiet=True)
+    sleep_fn(RECON_GAP_SEC)
+    rows2 = _fill_rows(api, sj, today, quiet=True)
+    if rows1 is None or rows2 is None:
+        log("🧾 ⚠️ 收工對帳:問不到永豐今天的委託 → 今天沒辦法對帳;程式今天送的單:"
+            + '、'.join(f"{e['sym']} {'買' if e['side'] == 'B' else '賣'} {e['q']:,} 股" for e in todo + loose)
+            + " → 請打開永豐 App「委託查詢 / 成交回報」對一下(⛔ 程式不會自己改紀錄)")
+        rep['reported'] += [e['sym'] for e in todo + loose]
+        save_state(st)
+        return rep
+    used1, used2 = set(), set()
+    groups = {}          # sym → {book: {'B': 沒買到的, 'S': 沒賣掉的, 'ents': [...], 'p': 原本的部位}}
+    unsure = set()       # 今天有任何一筆對不上的那幾檔 → 整檔只報告(⛔ 拿一半的資訊改紀錄)
+    for e in sorted(todo, key=lambda x: float(x.get('ts') or 0)):
+        sym, side = e['sym'], e['side']
+        i2, i1 = _row_of(rows2, e, used2), _row_of(rows1, e, used1)
+        if i2 is None:
+            log(f"🧾 ⚠️ {sym} {'買' if side == 'B' else '賣'} {e['q']:,} 股(委託 {e.get('oid') or '?'}):永豐查不到這筆 → 只報告,請打開永豐 App 對一下")
+            rep['reported'].append(sym)
+            unsure.add(sym)
+            if final:
+                e['rc'] = 'r'
+            continue
+        used2.add(i2)
+        if i1 is not None:
+            used1.add(i1)
+        r = rows2[i2]
+        r1 = rows1[i1] if i1 is not None else None
+        why = None
+        if not final:
+            why = f'還沒到 {RECON_FROM // 60}:{RECON_FROM % 60:02d}(收盤競價的成交回報可能還沒齊)'
+        elif r1 is None or (r1.get('fq'), r1.get('st'), r1.get('q')) != (r.get('fq'), r.get('st'), r.get('q')):
+            why = f'隔 {RECON_GAP_SEC} 秒查兩次結果不一樣(永豐還在更新)'
+        elif r.get('st') not in _RECON_ST:
+            why = f"永豐的狀態是「{r.get('st') or '不明'}」(還沒定案)"
+        elif int(r.get('q') or 0) != int(e.get('q') or 0):
+            why = f"股數對不上(程式記 {e['q']:,}、永豐 {int(r.get('q') or 0):,})"
+        elif r.get('dqx') or (r.get('st') == 'Filled' and int(r.get('fq') or 0) < int(r.get('q') or 0)):
+            why = '永豐的成交回報自己對不上(狀態 / 總成交量 / 逐筆成交兜不起來)'
+        if why:
+            log(f"🧾 ⚠️ {sym} {'買' if side == 'B' else '賣'} {e['q']:,} 股:{why} → 只報告,⛔ 改紀錄")
+            rep['reported'].append(sym)
+            unsure.add(sym)
+            if final and '還沒' not in why and '不一樣' not in why:
+                e['rc'] = 'r'
+            continue
+        fq = int(r.get('fq') or 0)
+        e['fq'], e['avg'] = fq, r.get('avg')
+        if side == 'S' and e.get('book') in ('pos', 'lead', 'lead2') and fq > 0:
+            pl = _realized(e, fq, r.get('avg'))
+            if pl is not None:
+                delta = pl - float(e.get('pl') or 0)
+                e['pl'] = pl
+                mo = str(today)[:7]
+                pm = st.setdefault('pnl', {})
+                pm[mo] = round(float(pm.get(mo) or 0) + delta)
+                rep['pnl'] += delta
+        g = groups.setdefault(sym, {}).setdefault(e.get('book') or 'pos', {'B': 0, 'S': 0, 'ents': [], 'p': None, 'cx': False})
+        g[side] += max(0, int(e['q']) - fq)
+        if side == 'S' and fq < int(e['q']) and r.get('st') == 'Cancelled':
+            g['cx'] = True    # 程式自己從來不取消單 → 多半是你在永豐 App 取消的 → 收回來但 ⛔ 硬賣(見下面)
+        g['ents'].append(e)
+        if side == 'S' and g['p'] is None and e.get('p'):
+            g['p'] = e['p']
+    inv = _broker_inv(api, sj) if LIVE else None
+    apply_ok = LIVE and RECON_APPLY
+    for sym, books in sorted(groups.items()):
+        plan, notes, bad = {}, [], None
+        if sym in unsure:
+            log(f"🧾 ⚠️ {sym} 今天有別筆委託對不上(上面那幾行)→ 這一檔整檔只報告、⛔ 改紀錄;請打開永豐 App 對一下")
+            for g in books.values():
+                for e in g['ents']:
+                    e['rc'] = 'r' if final else e.get('rc')
+            continue
+        for book, g in books.items():
+            if book == 'park':
+                if g['S'] > 0:
+                    log(f"🧾 🚨 🅿️ 今天賣 0050 有 {g['S']:,} 股沒成交 → 交割款可能不夠:請確認交割戶 T+2 早上 9 點前的錢夠;"
+                        "不夠的話今天 14:00~14:30 可以用盤後定價手動賣 0050(⛔ 程式不會自己改 0050 的紀錄,隔天會跟永豐庫存對)")
+                    rep['reported'].append(sym)
+                if g['B'] > 0:
+                    log(f"🧾 🅿️ 今天買 0050 有 {g['B']:,} 股沒成交 → 真實帳戶隔天會用永豐庫存差算真的買到幾股(⛔ 現在不改)")
+                for e in g['ents']:
+                    e['rc'] = 'r'
+                continue
+            if g['B'] <= 0 and g['S'] <= 0:
+                for e in g['ents']:
+                    e['rc'] = 'a'      # 全部成交 = 紀錄本來就對
+                continue
+            held = st.get(book) or {}
+            cur = dict(held[sym]) if sym in held else None
+            sh0 = int((cur or {}).get('sh') or 0)
+            sh1 = sh0
+            if g['B'] > 0:
+                if cur is None:
+                    bad = f"{_BOOK_NAME.get(book, book)} 買單沒買滿 {g['B']:,} 股,但程式已經沒有這筆紀錄(可能今天又賣掉了)"
+                    break
+                sh1 -= g['B']
+                notes.append(f"{_BOOK_NAME.get(book, book)} 買單只成交 {sh0 - g['B']:,} / {sh0:,} 股 → 紀錄改成實際股數"
+                             + ("(0 股 → 移除)" if sh1 <= 0 else ''))
+            if g['S'] > 0:
+                if cur is None:
+                    if not g['p']:
+                        bad = f"{_BOOK_NAME.get(book, book)} 賣單有 {g['S']:,} 股沒成交,但委託紀錄裡沒有原本的部位 → 收不回來"
+                        break
+                    cur = dict(g['p'])
+                sh1 += g['S']
+                if g.get('cx'):
+                    # 🧾 永豐那筆是「已取消」→ 你自己取消的機會最大 → 收回來(⛔ 變成沒人管),但 ⛔ 標補賣、⛔ 隔天硬賣;
+                    #    照原本的規則走:🔥 下一個交易日尾盤出場條件還在才賣、👑 等下一次換倉
+                    cur.pop('rs', None)
+                    notes.append(f"{_BOOK_NAME.get(book, book)} 賣單有 {g['S']:,} 股在永豐是「已取消」(程式不會自己取消單 → 多半是你在永豐 App 取消的)"
+                                 "→ 收回來,照原本的出場規則走(⛔ 隔天硬賣;不想讓程式管這檔請告訴 Claude)")
+                else:
+                    cur['rs'] = today
+                    notes.append(f"{_BOOK_NAME.get(book, book)} 賣單有 {g['S']:,} 股沒成交(跌停鎖死或價格一路往下)→ 收回來,下一個交易日補賣")
+            plan[book] = (cur, max(0, sh1), sh0)
+        if bad:
+            log(f"🧾 🚨 {sym}:{bad} → 只報告,⛔ 改紀錄;請打開永豐 App 對一下")
+            rep['reported'].append(sym)
+            for g in books.values():
+                for e in g['ents']:
+                    e['rc'] = 'r'
+            continue
+        if not plan:
+            continue
+        msg = f"🧾 {sym}:" + ';'.join(notes)
+        if LIVE:
+            if inv is None:
+                bad = '查不到永豐庫存(⛔ 兩邊都對得上才改)'
+            else:
+                after = _book_total(st, sym) + sum(n - o for _c, n, o in plan.values())
+                real = inv.get(sym, (0, 0))[0]
+                if real < after:
+                    bad = f"永豐庫存只有 {real:,} 股,照成交回報改完程式會記 {after:,} 股 → 兩邊對不上"
+        if bad or not apply_ok:
+            why = bad or ('模擬帳戶:只報告(還沒驗證模擬帳戶的成交回報)' if not LIVE else 'RECON_APPLY=0:只報告')
+            log(f"{msg} → ⛔ 改紀錄({why})" + (";請打開永豐 App 對一下" if bad else ''))
+            rep['reported'].append(sym)
+            for g in books.values():
+                for e in g['ents']:
+                    e['rc'] = 'r'
+            continue
+        for book, (cur, sh1, sh0) in plan.items():
+            held = st.setdefault(book, {})
+            if sh1 <= 0:
+                held.pop(sym, None)
+            else:
+                held[sym] = dict(cur, sh=sh1)
+        log(f"{msg} → ✅ 已改(成交回報跟永豐庫存兩邊都對得上)")
+        rep['applied'].append(sym)
+        for g in books.values():
+            for e in g['ents']:
+                e['rc'] = 'a'
+    for e in loose:
+        i = _row_of(rows2, dict(e, oid=''), used2)
+        if i is None:   # 委託時間對不上也講出來(永豐的時間格式萬一跟我們想的不一樣)—— 只報告
+            i = next((j for j, r in enumerate(rows2) if j not in used2 and _strong(r, e, use_time=False)), None)
+        if i is not None:
+            used2.add(i)
+            r = rows2[i]
+            log(f"🧾 🚨 {e['sym']} {'買' if e['side'] == 'B' else '賣'} {e['q']:,} 股:程式當成沒送出,但永豐其實有這筆"
+                f"(委託 {r.get('oid') or '?'},成交 {int(r.get('fq') or 0):,} 股)→ 程式沒有記到;請打開永豐 App 自己處理,並把這段 log 傳給 Claude")
+            rep['reported'].append(e['sym'])
+        if final:
+            e['rc'] = 'r'
+    if LIVE and inv is not None:
+        for sym in sorted({s for k in ('pos', 'lead', 'lead2') for s in (st.get(k) or {})}):
+            need, real = _book_total(st, sym), inv.get(sym, (0, 0))[0]
+            if real < need:
+                log(f"🧾 🚨 {sym} 程式記著 {need:,} 股,永豐庫存只有 {real:,} 股 → ⛔ 照程式的紀錄下單前請先對一下(可能你手動賣過)")
+    mo = str(today)[:7]
+    pnl_txt = f";本月程式自己已實現 {float((st.get('pnl') or {}).get(mo) or 0):+,.0f} 元" if (st.get('pnl') or {}).get(mo) is not None else ''
+    rs_now = [f"{_BOOK_NAME.get(k, k)} {s}" for k in ('pos', 'lead', 'lead2') for s, p in (st.get(k) or {}).items() if (p or {}).get('rs')]
+    log(f"🧾 收工對帳完成:改了 {len(rep['applied'])} 檔・只報告 {len(rep['reported'])} 檔{pnl_txt}"
+        + (f";下一個交易日要補賣:{'、'.join(rs_now)}" if rs_now else ''))
+    save_state(st)
+    return rep
+
+
 def main():
     if not LIVE:
         log("🧪 模擬模式(simulation=True)—— ⛔ 不會有真的成交。要真下單請設 LIVE=1")
@@ -1413,6 +2107,18 @@ def main():
             + (" ・👀 真實帳戶目前只預覽、⛔ 不送 0050 買單(等交割款正負號確認,見 PARK_LIVE_OK)" if LIVE and not PARK_LIVE_OK else ""))
     else:
         log("🅿️ 沒用到的錢停 0050:關(PARK=0)")
+    # 🧾 V82.0.4 安全機制(只「少做事、多檢查」,⛔ 改上限 / 賣價 / 規則)
+    log("🧾 送單安全:每一筆先記委託紀錄再送;送單出錯 → 先問永豐有沒有收到才決定要不要重送(只重送一次)")
+    log(f"🧾 收工對帳:{RECON_FROM // 60}:{RECON_FROM % 60:02d} 以後跟永豐成交回報 + 庫存對一次(電腦請開到 13:40)"
+        + ("・真實帳戶兩邊對得上才改紀錄(買不滿改股數、賣不掉收回來隔天補賣)" if LIVE and RECON_APPLY else
+           "・只報告、⛔ 改紀錄(RECON_APPLY=0)" if LIVE else "・模擬帳戶只報告"))
+    if LOSS_LOCK_PCT > 0:
+        _b = _loss_base()
+        log(f"🔒 虧損安全鎖:開(LOSS_LOCK_PCT={LOSS_LOCK_PCT:g})→ 本月已實現虧損 ≥ "
+            + (f"{LOSS_LOCK_PCT / 100 * _b:,.0f} 元(本金 {_b:,} 的 {LOSS_LOCK_PCT:g}%)" if _b > 0 else "本金的設定%(⚠️ 但沒設 ACCOUNT_SIZE / LEADER_ACCOUNT → 沒作用)")
+            + " 就不再開新倉(賣出照常)")
+    else:
+        log("🔒 虧損安全鎖:關(預設;要開設 LOSS_LOCK_PCT=3 之類 = 本月已實現虧損 ≥ 本金 3% 就不再開新倉)")
 
     try:
         import shioaji as sj
@@ -1448,76 +2154,97 @@ def main():
     # ⚠️ `done`(今天買過誰)每天重置,但部位(`pos` / `lead` / `lead2` / `park`)與延後要賣的(`lead_defer`)⛔ 絕不可跟著清掉
     st = reset_day(st, today)
     _legacy_check(st)   # 🔐 真實帳戶第一次跑新版:沒標模式的舊部位一律當成模擬留下的(⛔ 不自動賣)
-    log(f"📒 今天已下過:{st['done'] or '(無)'}")
-    _, _m0, _ = tpe_now()
-    if _m0 >= 13 * 60 + 30 and st.get('park_day') != today and _today_buy(st) > 0 and _park_has_own(st):
-        _park_manual_alert(st)   # 🅿️ 程式太晚啟動(或中途掛掉):今天買的還沒賣 0050 湊交割款 → 🚨 講清楚
+    _sent_ids_restore(st, today)   # 🧾 V82.0.4 重開機:今天稍早送過的委託編號補回來(收工時才認得出哪幾筆是程式送的)
+    _recon_prev_days(st, today)    # 🧾 V82.0.4 以前那幾天沒對到帳的單(電腦提早關機)→ 先列出來(⛔ 只報告)
+    crash = None
+    # 🧾 V82.0.4 外層 try:沒預料到的錯 → 🚨 + 錯誤訊息進 log、⛔ 不再送新單,但照樣收工記成交 + 對帳 + 登出、回傳 1
+    #   (以前一出錯整支停下來 → 收工的成交紀錄沒寫、永豐沒登出,你也不知道它停在哪裡)
+    try:
+        log(f"📒 今天已下過:{st['done'] or '(無)'}")
+        _, _m0, _ = tpe_now()
+        if _m0 >= 13 * 60 + 30 and st.get('park_day') != today and _today_buy(st) > 0 and _park_has_own(st):
+            _park_manual_alert(st)   # 🅿️ 程式太晚啟動(或中途掛掉):今天買的還沒賣 0050 湊交割款 → 🚨 講清楚
 
-    # 👑 開盤時段(LEADER_WINDOW=open / split):09:01~09:10 做一次,之後照常等尾盤
-    if LEADER and LEADER_WINDOW in ('open', 'split'):
-        leader_open_window(api, sj, st)
-    # ⏱️ split:開盤跌 ≥3% 延後要賣的 → 09:30~10:00 賣(過了 10:00 還沒賣成 → 尾盤那段補賣)
-    if LEADER and LEADER_WINDOW == 'split':
-        leader_defer_sell_window(api, sj, st)
+        # 👑 開盤時段(LEADER_WINDOW=open / split):09:01~09:10 做一次,之後照常等尾盤
+        if LEADER and LEADER_WINDOW in ('open', 'split'):
+            leader_open_window(api, sj, st)
+        # ⏱️ split:開盤跌 ≥3% 延後要賣的 → 09:30~10:00 賣(過了 10:00 還沒賣成 → 尾盤那段補賣)
+        if LEADER and LEADER_WINDOW == 'split':
+            leader_defer_sell_window(api, sj, st)
 
-    while True:
-        now, mins, day = tpe_now()
-        if now.weekday() >= 5:
-            log("週末不開盤,結束"); break
-        if mins > EOD_TO:
-            # 🅿️ 上一輪拖太久、錯過 13:27 那一拍 → 收盤競價(13:30)前補做一次(⛔ 不可整天沒停 0050 卻也沒賣 0050 湊交割款)
-            #    PARK=0 但手上還有它買的 0050 也要做(湊交割款);還是做不到 → 🚨 講清楚要你手動做什麼
-            if (PARK or _park_has_own(st)) and st.get('park_day') != day:
-                r = park_step(api, sj, st, day) if mins < 13 * 60 + 30 else 'retry'
-                if r == 'retry' and _today_buy(st) > 0 and _park_has_own(st):
-                    _park_manual_alert(st)
-            log(f"⏰ 已過 {EOD_TO // 60}:{EOD_TO % 60:02d},今天結束"); break
-        if mins < EOD_FROM:
-            log(f"⏳ 還沒到 {EOD_FROM // 60}:{EOD_FROM % 60:02d}(現在 {now.strftime('%H:%M')}),等待…")
-            time.sleep(min(POLL_SEC * 5, max(30, (EOD_FROM - mins) * 60)))
-            continue
+        while True:
+            now, mins, day = tpe_now()
+            if now.weekday() >= 5:
+                log("週末不開盤,結束"); break
+            if mins > EOD_TO:
+                # 🅿️ 上一輪拖太久、錯過 13:27 那一拍 → 收盤競價(13:30)前補做一次(⛔ 不可整天沒停 0050 卻也沒賣 0050 湊交割款)
+                #    PARK=0 但手上還有它買的 0050 也要做(湊交割款);還是做不到 → 🚨 講清楚要你手動做什麼
+                if (PARK or _park_has_own(st)) and st.get('park_day') != day:
+                    r = park_step(api, sj, st, day) if mins < 13 * 60 + 30 else 'retry'
+                    if r == 'retry' and _today_buy(st) > 0 and _park_has_own(st):
+                        _park_manual_alert(st)
+                log(f"⏰ 已過 {EOD_TO // 60}:{EOD_TO % 60:02d},今天結束"); break
+            if mins < EOD_FROM:
+                log(f"⏳ 還沒到 {EOD_FROM // 60}:{EOD_FROM % 60:02d}(現在 {now.strftime('%H:%M')}),等待…")
+                time.sleep(min(POLL_SEC * 5, max(30, (EOD_FROM - mins) * 60)))
+                continue
 
-        try:
-            meta, picks = fetch_picks()
-        except Exception as e:
-            log(f"⚠️ 清單抓取失敗({e}),{POLL_SEC}s 後重試"); time.sleep(POLL_SEC); continue
+            try:
+                meta, picks = fetch_picks()
+            except Exception as e:
+                log(f"⚠️ 清單抓取失敗({e}),{POLL_SEC}s 後重試"); time.sleep(POLL_SEC); continue
 
-        # ═══ 🚪 先處理出場(⛔ 排在買進之前:錢先回來,才買得起下一檔)═══
-        if SELL_ENABLE and st.get('pos'):
-            exit_step(api, sj, st)
+            # ═══ 🚪 先處理出場(⛔ 排在買進之前:錢先回來,才買得起下一檔)═══
+            if SELL_ENABLE and st.get('pos'):
+                exit_step(api, sj, st)
 
-        # 👑 領頭羊(尾盤時段):一天一次,⛔ 不受上面那套的空頭 continue 影響(它自己只擋買)
-        if LEADER and LEADER_WINDOW == 'eod':
-            leader_step(api, sj, st, meta, day)
-        # ⏱️ 補賣延後要賣的(split 開盤跌 ≥3% 延後的・任何時段賣單只送出一部分剩下的)+ split 13:25 買進延後的(買只買今天那一份)
-        if LEADER:
-            _df = st.get('lead_defer') or {}
-            if _df.get('sell'):
-                log("👑 ⏱️ 延後要賣的還沒賣成 → 尾盤補賣"); leader_defer_step(api, sj, st, day, 'sell')
-            if LEADER_WINDOW == 'split' and _df.get('buy') and mins >= LEADER_DEFER_BUY_FROM:
-                leader_defer_step(api, sj, st, day, 'buy')
+            # 🧾 V82.0.4 👑 之前沒賣掉的(收工對帳收回來、標 rs)→ 補賣(開盤那次沒賣成 / 程式晚開 → 尾盤這裡補)
+            if LEADER and _has_rs(st, ('lead', 'lead2')):
+                leader_retry_step(api, sj, st, day)
+            # 👑 領頭羊(尾盤時段):一天一次,⛔ 不受上面那套的空頭 continue 影響(它自己只擋買)
+            if LEADER and LEADER_WINDOW == 'eod':
+                leader_step(api, sj, st, meta, day)
+            # ⏱️ 補賣延後要賣的(split 開盤跌 ≥3% 延後的・任何時段賣單只送出一部分剩下的)+ split 13:25 買進延後的(買只買今天那一份)
+            if LEADER:
+                _df = st.get('lead_defer') or {}
+                if _df.get('sell'):
+                    log("👑 ⏱️ 延後要賣的還沒賣成 → 尾盤補賣"); leader_defer_step(api, sj, st, day, 'sell')
+                if LEADER_WINDOW == 'split' and _df.get('buy') and mins >= LEADER_DEFER_BUY_FROM:
+                    leader_defer_step(api, sj, st, day, 'buy')
 
-        # 🔥 買進(V79.4.9 搬進 hot_step 才測得到;⛔ 行為不變,只多「已經持有就不再買」)
-        hot_step(api, sj, st, meta, picks, day)
-        # 🅿️ V79.4.9 沒用到的錢停 0050:一天一次、排在所有買進之後(要知道今天花了多少);跑完就收工(⛔ 之後不再買 🔥,免得錢不夠交割)
-        if (PARK or _park_has_own(st)) and mins >= PARK_AT:
-            if park_step(api, sj, st, day) != 'retry':   # 0050 沒報價 → 下一輪再試(⛔ 不收工,收盤前還不行會跳 🚨)
-                log("🅿️ 0050 已處理 → 今天的買進到此為止"); break
+            # 🔥 買進(V79.4.9 搬進 hot_step 才測得到;⛔ 行為不變,只多「已經持有就不再買」)
+            hot_step(api, sj, st, meta, picks, day)
+            # 🅿️ V79.4.9 沒用到的錢停 0050:一天一次、排在所有買進之後(要知道今天花了多少);跑完就收工(⛔ 之後不再買 🔥,免得錢不夠交割)
+            if (PARK or _park_has_own(st)) and mins >= PARK_AT:
+                if park_step(api, sj, st, day) != 'retry':   # 0050 沒報價 → 下一輪再試(⛔ 不收工,收盤前還不行會跳 🚨)
+                    log("🅿️ 0050 已處理 → 今天的買進到此為止"); break
 
-        time.sleep(POLL_SEC)
+            time.sleep(POLL_SEC)
+    except Exception as e:
+        crash = e
+        log(f"🚨🚨 程式出錯停下來了({type(e).__name__}: {e})→ ⛔ 今天不再送新的單;照樣收工記成交 + 對帳 + 登出")
+        for _ln in traceback.format_exc().strip().splitlines()[-6:]:
+            log(f"   {_ln}")
+        log("   👉 請把這段 log 傳給 Claude;今天手上的部位請打開永豐 App 看一下")
+        save_state(st)
 
     # 📒 V80.1.3 收工前把今天的實際成交價記下來(⛔ 只讀;出任何錯都只印一行,⛔ 不影響已經做完的買賣)
     try:
         fills_report(api, sj, today)
     except Exception as e:
         log(f"📒 ⚠️ 記成交回報時出錯({type(e).__name__}: {e})—— ⛔ 不影響任何下單")
+    # 🧾 V82.0.4 收工對帳(⛔ 只讀永豐;出任何錯都只印一行,⛔ 不影響已經做完的買賣)
+    try:
+        reconcile_day(api, sj, st, today)
+    except Exception as e:
+        log(f"🧾 ⚠️ 收工對帳時出錯({type(e).__name__}: {e})—— ⛔ 不影響已經做完的買賣;今天的單請打開永豐 App 對一下")
     try:
         api.logout()
     except Exception:
         pass
     log("👋 結束。" + (f"📒 今天的實際成交價已記在 {FILLS_LOG};" if FILLS_LOG and not DRY_RUN else "")
         + "App 的「📌 追蹤中」還是要你自己填實際成交價(手機跟這台電腦不同步)—— 沒有那個數字,永遠不知道滑價吃掉多少。")
-    return 0
+    return 1 if crash is not None else 0
 
 
 # ⚠️ 進入點一律放檔案最後面(陷阱 #9:放中段會讓後面定義的名字還不存在)

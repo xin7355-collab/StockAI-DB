@@ -49,7 +49,15 @@ class FakeApi:
         if self.fail_lot and order['order_lot'] == self.fail_lot and self.fail_n > 0:
             self.fail_n -= 1
             raise RuntimeError('委託失敗(假)')
-        self.orders.append((contract, order)); return f'#{len(self.orders)}'
+        self.orders.append((contract, order))
+        return types.SimpleNamespace(order=types.SimpleNamespace(id=f'#{len(self.orders)}'))
+    # 🧾 V82.0.4 送單出錯之後,程式會先問永豐「有沒有收到」才重送 → 假永豐要能回今天收到的委託(⛔ 斷言一條都沒放寬)
+    def update_status(self, acc=None): pass
+    def list_trades(self):
+        NS = types.SimpleNamespace
+        return [NS(order=NS(id=f'#{i + 1}', action=o['action'], price=o['price'], quantity=o['quantity'], order_lot=o['order_lot']),
+                   status=NS(status='Status.Submitted', deals=[], deal_quantity=0), contract=NS(code=c))
+                for i, (c, o) in enumerate(self.orders)]
 C = types.SimpleNamespace(Action=types.SimpleNamespace(Buy='B', Sell='S'), StockPriceType=types.SimpleNamespace(LMT='LMT'),
                           OrderType=types.SimpleNamespace(ROD='ROD'), StockOrderLot=types.SimpleNamespace(Common='C', IntradayOdd='O'),
                           Unit=types.SimpleNamespace(Share='Share'))
@@ -57,6 +65,10 @@ sj = types.SimpleNamespace(constant=C)
 DEF = dict(DRY_RUN=A.DRY_RUN, LIVE=A.LIVE, PARK=A.PARK, ACCOUNT_SIZE=A.ACCOUNT_SIZE, POS_PCT=A.POS_PCT, MAX_LOTS_PER_TRADE=A.MAX_LOTS_PER_TRADE,
            MAX_AMT_PER_TRADE=A.MAX_AMT_PER_TRADE, MAX_PICKS=A.MAX_PICKS, BEAR_GATE=A.BEAR_GATE, LEADER_ACCOUNT=A.LEADER_ACCOUNT, fetch_klines=A.fetch_klines)
 A.save_state = lambda s: None
+CLK = [1_790_000_000.0]
+A._now_ts = lambda: CLK[0]
+def nxt():   # 🧾 下一輪(主迴圈每輪隔 60 秒;送單守門出錯後至少等 55 秒才問永豐)
+    CLK[0] += 60
 LOGS = []
 A.log = lambda *a, **k: LOGS.append(' '.join(str(x) for x in a))
 def setv(**kw):
@@ -96,7 +108,7 @@ ok('②b 🔬 下一輪 ⛔ 不再送(舊寫法:例外 → continue、沒記 don
 api = FakeApi({'2330': 101.0}, fail_lot='C', fail_n=1); st = {'done': [], 'pos': {}}
 A.hot_step(api, sj, st, BULL, PICKS, D)
 ok('②c 一股都沒送出 → ⛔ 不記部位、⛔ 不記做過(下一輪可以再試)', not api.orders and st['pos'] == {} and '2330' not in st['done'], st)
-A.hot_step(api, sj, st, BULL, PICKS, D)
+nxt(); A.hot_step(api, sj, st, BULL, PICKS, D)
 ok('②d 下一輪再試 → 整筆買到(1485 股)', shares(api, 'B') == 1485 and st['pos']['2330']['sh'] == 1485, (api.orders, st))
 
 # ③ 👑 _buy_one:零股出錯
@@ -118,7 +130,7 @@ LOGS.clear(); A.exit_step(api, sj, st)
 ok('④ 跌破停損、賣 1500 股時零股出錯 → 已賣的 1000 股從紀錄扣掉、剩 500 股、🚨',
    shares(api, 'S') == 1000 and st['pos'].get('2330', {}).get('sh') == 500 and any('🚨' in x and '1000' in x for x in LOGS), (api.orders, st))
 api.fail_lot = None
-A.exit_step(api, sj, st)
+nxt(); A.exit_step(api, sj, st)
 ok('④b 🔬 下一輪只賣剩下的 500 股(舊寫法:紀錄沒動 → 再賣 1500 = 多賣 1000 股),賣完紀錄移除',
    shares(api, 'S') == 1500 and '2330' not in st['pos'], (api.orders, st))
 api = FakeApi({'2330': 90.0}, fail_lot='C'); st = {'pos': {'2330': dict(POS)}}
@@ -142,7 +154,7 @@ A.leader_defer_step(api, sj, st, D, 'sell')
 ok('⑤ 👑 延後的賣單 2500 股、零股出錯 → 已賣 2000 股扣掉、剩 500 股還在「要賣」清單',
    shares(api, 'S') == 2000 and st['lead']['2001']['sh'] == 500 and st['lead_defer']['sell'] == ['2001'], (api.orders, st))
 api.fail_lot = None
-A.leader_defer_step(api, sj, st, D, 'sell')
+nxt(); A.leader_defer_step(api, sj, st, D, 'sell')
 ok('⑤b 🔬 下一輪只賣剩下的 500 股(兩輪合計 = 原本的 2500 股),賣完從紀錄與清單移除', shares(api, 'S') == 2500 and st['lead'] == {} and st['lead_defer']['sell'] == [], (api.orders, st))
 
 # ⑥ 🅿️ 今天的 0050 已經處理過 → 不再買 🔥
@@ -295,7 +307,7 @@ for w in ('split', 'open'):
        shares(api, 'S') == 1000 and st['lead'].get('2003', {}).get('sh') == 500 and (st.get('lead_defer') or {}).get('sell') == ['2003']
        and '2000' in st['lead'] and any('🚨' in x and '請不要自己手動賣' in x for x in LOGS), (w, api.orders, st, LOGS[-2:]))
     api.fail_lot = None
-    A.leader_defer_step(api, sj, st, '2026-10-09', 'sell')
+    nxt(); A.leader_defer_step(api, sj, st, '2026-10-09', 'sell')
     ok(f'⑨b {w}:延後那段只賣剩下的 500 股(兩次合計 = 原本 1500 股)、賣完從紀錄與清單移除',
        shares(api, 'S') == 1500 and '2003' not in st['lead'] and (st.get('lead_defer') or {}).get('sell') == [], (w, api.orders, st))
 st, api = lead9('split', fail_lot=None)
