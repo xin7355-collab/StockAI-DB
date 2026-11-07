@@ -15,7 +15,8 @@
    ㉑ 委託紀錄只留 14 天  ㉒ 每筆記規則版本  ㉓ 兩個以前會讓整支停下來的呼叫  ㉔ 👑 換倉日一股都沒送出 → 今天稍後再試
    ㉕ 靜態:對帳 ⛔ 下單 / 刪單;每筆上限 / PARK_LIVE_OK 沒變;8 個送單點都走 _send_j
    ㉖ 以前那幾天沒對到帳的單 → 開工時列出來(只報告、只列一次)
-   INJECT=nogate / noinv / nors / nolock / nocrash / nowait / nosave / notimefb / noprev → 各自必紅(注入驗證)
+   ㉗ ✂️ V82.0.7 收一半那筆沒成交 → 只收回那幾股、標 rt(⛔ 標 rs 隔天整檔賣)・隔天只補賣那幾股・你取消的 ⛔ 補賣・只成交一部分只收回剩下的
+   INJECT=nogate / noinv / nors / nolock / nocrash / nowait / nosave / notimefb / noprev / notr / nort → 各自必紅(注入驗證)
 """
 import ast, copy, json, os, sys, tempfile, types
 from datetime import datetime
@@ -35,6 +36,8 @@ if INJ:
         'nosave': ("        save_state(st)   # ⚠️ 先存「?」再送\n", "        pass\n"),
         'noprev': ("        if not old:\n            return 0\n        for e in sorted(old,", "        if True:\n            return 0\n        for e in sorted(old,"),
         'notimefb': ("            i = next((j for j, r in enumerate(rows2) if j not in used2 and _strong(r, e, use_time=False)), None)\n", "            pass\n"),
+        'notr': ("        kind = 'T' if side == 'S' and e.get('tr') else side", "        kind = side"),
+        'nort': ("    tsh = min(rt, sh)\n", "    tsh = sh\n"),
     }[INJ]
     assert _src.count(_P[0]) == 1, f'注入點找不到:{INJ}'
     _tmp = tempfile.mkdtemp()
@@ -659,6 +662,71 @@ n = A._recon_prev_days(st2, D2)
 ok('㉖e 隔天開工:前一天沒對到帳的那 2 筆(整張 + 零股)列出來', n == 2 and has('沒對到帳') >= 2, (n, LOGS[-3:]))
 
 
+
+# ㉗ ✂️ V82.0.7 收一半那筆沒成交:只收回那幾股、標 rt(⛔ 標 rs —— 那會隔天整檔賣光)
+LPOS = {'e': 100.0, 'd': '2026-10-01', 'sh': 2000, 'm': 'live'}
+def trimmed(inv, fill=None, st_=None):
+    fresh(LIVE=True, LEADER=True)
+    b = Broker({'2001': 90.0})
+    st = {'pos': {}, 'lead': {'2001': dict(LPOS, sh=1000)}, 'd': D}
+    A._send_j(b, sj, st, '2001', 90.0, 1000, False, 'lead', '2001', D, p=dict(LPOS), tr=1)   # 收一半:賣 1,000 股(紀錄已先扣成 1,000)
+    if fill:
+        b.fill(0, *fill)
+    if st_:
+        b.trades[0]['st'] = st_
+    b.inv = {'2001': inv}
+    rep = A.reconcile_day(b, sj, st, D, now_fn=clk(13, 40), sleep_fn=NOSLEEP)
+    return st, rep
+st, rep = trimmed((2000, 2000))
+ok('㉗a 收一半那 1,000 股沒成交(跌停)、永豐庫存 2,000 → 收回來(2,000 股)、標 rt=1,000、⛔ 標 rs(⛔ 隔天整檔賣)',
+   st['lead']['2001']['sh'] == 2000 and st['lead']['2001'].get('rt') == 1000 and not st['lead']['2001'].get('rs')
+   and '2001' in rep['applied'] and has('只補賣這 1,000 股') == 1, (st['lead'], rep, LOGS[-3:]))
+ok('㉗a2 收工對帳那一行也列出「收一半 1,000 股」要補賣', has('收一半 1,000 股') >= 1, LOGS[-2:])
+fresh(LIVE=True, LEADER=True)
+b = Broker({'2001': 90.0})
+st = {'pos': {}, 'lead': {'2001': dict(LPOS, sh=1000)}, 'd': D}
+A._send_j(b, sj, st, '2001', 90.0, 1000, False, 'lead', '2001', D, p=dict(LPOS))          # 🔬 對照:同一筆不標 tr
+b.inv = {'2001': (2000, 2000)}
+A.reconcile_day(b, sj, st, D, now_fn=clk(13, 40), sleep_fn=NOSLEEP)
+ok('㉗b 🔬 對照:同一筆不標 tr → 舊規則(標 rs = 隔天整檔賣)—— 證明是 tr 在決定', st['lead']['2001'].get('rs') == D and not st['lead']['2001'].get('rt'), st['lead'])
+st, rep = trimmed((2000, 2000))
+st = A.reset_day(st, D2)
+b2 = Broker({'2001': 88.0}, inv={'2001': (2000, 2000)})
+ok('㉗c0 隔天:有要補賣的 rt(⛔ 算成 rs)', A._has_rs(st, ('lead',), 'rt') and not A._has_rs(st, ('lead',), 'rs'))
+A.leader_retry_step(b2, sj, st, D2, 'rs')
+n_rs = len(b2.trades)
+A.leader_retry_step(b2, sj, st, D2, 'rt')
+ok('㉗c 隔天補賣:只賣那 1,000 股(⛔ 整檔 2,000)、留 1,000 股、rt 拿掉、委託標 tr',
+   n_rs == 0 and sum(t['q'] for t in b2.trades) == 1 and b2.trades[0]['lot'] == 'C' and st['lead']['2001']['sh'] == 1000
+   and 'rt' not in st['lead']['2001'] and [e.get('tr') for e in A._ord_today(st, D2)] == [1], (b2.trades, st['lead']))
+st, rep = trimmed((2000, 2000))
+st = A.reset_day(st, D2)
+b3 = Broker({'2001': 88.0}, inv={'2001': (1500, 2000)})
+A.leader_retry_step(b3, sj, st, D2, 'rt')
+ok('㉗c2 補賣前永豐庫存只有 1,500 股(程式記 2,000)→ ⛔ 送、紀錄不動', b3.n() == 0 and st['lead']['2001']['sh'] == 2000 and st['lead']['2001'].get('rt') == 1000, b3.trades)
+fresh(LIVE=True, LEADER=True)
+b = Broker({'2001': 90.0})
+st = {'pos': {}, 'lead': {'2001': dict(LPOS, sh=600)}, 'd': D}
+A._send_j(b, sj, st, '2001', 90.0, 600, False, 'lead', '2001', D, p=dict(LPOS, sh=1200), tr=1)   # 收一半:1,200 股賣 600 股(零股)
+b.fill(0, 400, 90.0, 'PartFilled')
+b.inv = {'2001': (800, 1200)}
+rep = A.reconcile_day(b, sj, st, D, now_fn=clk(13, 40), sleep_fn=NOSLEEP)
+ok('㉗d 收一半 600 股只成交 400 股 → 只收回沒賣掉的 200 股(800 股)、rt=200', st['lead']['2001']['sh'] == 800 and st['lead']['2001'].get('rt') == 200,
+   (st['lead'], rep))
+st, rep = trimmed((2000, 2000), st_='Cancelled')
+ok('㉗e 收一半那筆在永豐是「已取消」(多半是你取消的)→ 收回來、⛔ 標補賣(⛔ 硬賣)', st['lead']['2001']['sh'] == 2000 and not st['lead']['2001'].get('rt')
+   and not st['lead']['2001'].get('rs') and has('已取消') >= 1, (st['lead'], LOGS[-3:]))
+fresh(LIVE=True, LEADER=True)
+b = Broker({'2001': 90.0})
+st = {'pos': {}, 'lead': {}, 'd': D}
+A._send_j(b, sj, st, '2001', 90.0, 1000, False, 'lead', '2001', D, p=dict(LPOS), tr=1)
+b.inv = {'2001': (2000, 2000)}
+rep = A.reconcile_day(b, sj, st, D, now_fn=clk(13, 40), sleep_fn=NOSLEEP)
+ok('㉗f 收一半沒成交、但程式已經沒有這一檔的紀錄 → ⛔ 改紀錄、只報告', st['lead'] == {} and '2001' in rep['reported'] and not rep['applied'], (st['lead'], rep))
+st, rep = trimmed((2000, 2000))
+ok('㉗g 已實現損益:收一半那筆沒成交 → 0 元(⛔ 算成賠或賺)', (st.get('pnl') or {}).get('2026-11') in (None, 0), st.get('pnl'))
+
+
 # ㉕ 靜態
 src = open(A.__file__, encoding='utf-8').read()
 tree = ast.parse(src)
@@ -676,10 +744,11 @@ ok('㉕ 收工對帳 / 送單守門那幾支 ⛔ 下單 / 刪單 / 改單(只讀
 ok('㉕b 每筆上限 1 張 / 10 萬、真實帳戶 0050 只預覽(PARK_LIVE_OK)一個字都沒改',
    "MAX_LOTS_PER_TRADE = int(os.getenv('MAX_LOTS_PER_TRADE', '1'))" in src and "MAX_AMT_PER_TRADE = int(os.getenv('MAX_AMT_PER_TRADE', '100000'))" in src
    and '\nPARK_LIVE_OK = False\n' in src)
-senders = [k for k in ('leader_step', '_buy_one', 'leader_defer_step', 'exit_step', 'hot_step', 'park_step', 'leader_retry_step')
+senders = [k for k in ('leader_step', '_buy_one', 'leader_defer_step', 'exit_step', 'hot_step', 'park_step', 'leader_retry_step', '_trim_one')
            if '_send_j' in calls_of(fn[k])]
 direct = [k for k, n in fn.items() if k != '_send_j' and '_send' in calls_of(n)]
-ok('㉕c 8 個送單點都走 _send_j(先記紀錄、出錯先問永豐);直接叫 _send 的只剩 _send_j 自己', len(senders) == 7 and direct == [], (senders, direct))
+ok('㉕c 8 個送單點(含 ✂️ 收一半 _trim_one)都走 _send_j(先記紀錄、出錯先問永豐);直接叫 _send 的只剩 _send_j 自己', len(senders) == 8 and direct == [], (senders, direct))
+ok('㉕e ✂️ 收一半補賣(_retry_trim)只透過 _trim_one 送單(⛔ 自己另寫一份)', '_trim_one' in calls_of(fn['_retry_trim']) and '_send_j' not in calls_of(fn['_retry_trim']))
 ok('㉕d park_step 買賣兩處都走 _send_j', ast.get_source_segment(src, fn['park_step']).count('_send_j(') == 2)
 
 for k, v in DEF.items():

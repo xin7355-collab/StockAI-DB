@@ -6,8 +6,26 @@
    ⑤ 名單不是「今天之前最近的交易日」→ 一單都不送 ⑥ 接近漲停不追、⛔ 不往下補(同回測) ⑦ LEADER_ACCOUNT=0 不買
    ⑧ 一天只做一次 ⑨ DRY_RUN 一單都不送 ⑩ 張數 = (LEADER_ACCOUNT ÷ N) ÷ 價,再被硬煞車壓
 """
-import copy, os, sys, types
+import copy, os, sys, tempfile, types
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+# ✂️ V82.0.7 INJECT=halfcap / notrim / nolw / nobeartop / norev → ⑱ 各自必紅(注入驗證:測試真的叫得出來)
+INJ = os.environ.get('INJECT', '')
+if INJ:
+    _r = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+    _s0 = open(os.path.join(_r, 'auto_trade.py'), encoding='utf-8').read()
+    _P = {
+        'halfcap': ("    full = min(int(slot // px), MAX_LOTS_PER_TRADE * 1000, int(MAX_AMT_PER_TRADE // px))\n    w = _wnum(w, 1.0)\n    want = full if w >= 1 else int(full * w + 1e-9)\n",
+                    "    w = _wnum(w, 1.0)\n    full = min(int(slot * w // px), MAX_LOTS_PER_TRADE * 1000, int(MAX_AMT_PER_TRADE // px))\n    want = full\n"),
+        'notrim': ("    if mode_dd == 'trim':\n        f = 1 - W / WP\n", "    if False:\n        f = 1 - W / WP\n"),
+        'nolw': ("        st.setdefault('lead_w', {})[book] = W   #", "        pass   #"),
+        'nobeartop': ("    if W > WP and ddtop and (_bear or _lock or LEADER_ACCOUNT <= 0):\n", "    if False:\n"),
+        'norev': ("    st.setdefault('lead_w', {})[bk] = wp\n", "    pass\n"),
+    }[INJ]
+    assert _s0.count(_P[0]) == 1, f'注入點找不到:{INJ}'
+    _tmp = tempfile.mkdtemp()
+    with open(os.path.join(_tmp, 'auto_trade.py'), 'w', encoding='utf-8') as f:
+        f.write(_s0.replace(*_P))
+    sys.path.insert(0, _tmp)
 import auto_trade as A
 # ⏱️ V78.4.4 預設改 split;①~⑮ 測的是「全部開盤」那個模式(換回舊的 LEADER_WINDOW=open 仍要能用)→ 先固定成 open,split 在 ⑯ 另測
 A.LEADER_WINDOW = 'open'
@@ -243,5 +261,170 @@ ok('⑰d 延後要賣的記得是哪一本帳(lead2)→ 只賣那 1,000 股',
 ok('⑰e 每天重置狀態時 lead2 ⛔ 不可被清掉(V79.4.9 改走 reset_day:只清當天的鍵)', A.reset_day({'d': '2026-10-01', 'lead2': {'2003': {'sh': 1}}}, '2026-10-02').get('lead2') == {'2003': {'sh': 1}} and 'st = reset_day(st, today)' in _src)
 A.LEADER_BOOKS = 1
 A.LEADER_WINDOW = 'open'
-print(f"\n{'❌' if bad_n else '✅'} AUTO_LEADER {ok_n}/{ok_n + bad_n}")
+
+# ⑱ ✂️ V82.0.7「跌 20% 收一半」(會動真錢):收一半中 → 留著的每檔賣一半、新買一半;回到最高點 → 補回;讀不到 → 照上一次的比例
+import re as _re
+_ldd = open(os.path.join(_root, 'scripts', 'lib_leaddd.mjs'), encoding='utf-8').read()
+_mlv = _re.search(r"export const LEAD_DD = Object\.freeze\(\{[^}]*live: '(\d{4}-\d{2}-\d{2})'", _ldd)
+ok('⑱a 開始照這條規則做的那天:auto_trade.LEADER_DD_LIVE == lib_leaddd.mjs LEAD_DD.live(跨檔比對)',
+   _mlv is not None and A.LEADER_DD_LIVE == _mlv.group(1), (_mlv and _mlv.group(1), A.LEADER_DD_LIVE))
+_e0 = {k: v for k, v in os.environ.items() if k != 'LEADER_DD_HALF'}
+_dh = lambda env: subprocess.run([sys.executable, '-c', 'import auto_trade as A; print(A.LEADER_DD_HALF)'], cwd=_root, env=env, capture_output=True, text=True).stdout.strip()
+ok('⑱a2 沒設 LEADER_DD_HALF → 預設開(使用者選的);LEADER_DD_HALF=0 → 關', _dh(_e0) == 'True' and _dh(dict(_e0, LEADER_DD_HALF='0')) == 'False', _dh(_e0))
+_LIVE0, _DDH0, _LBG0 = A.LEADER_DD_LIVE, A.LEADER_DD_HALF, A.LEADER_BEAR_GATE
+A.LEADER_DD_LIVE = '2026-09-01'      # 這支測試的日期都在 9~10 月
+def mkDD(rows, lo=0.5, top=1):
+    last = rows[-1]
+    return {'v': 1, 'data_date': last[0], 'rule': {'th': 20, 'lo': lo, 'rec': 'hi', 'top': top, 'live': '2026-09-01'},
+            'now': {'d': last[0], 'v': last[1], 'dd': -30.0 if last[2] else -5.0}, 'peak': {'d': '2026-07-03', 'v': 3949000},
+            'def': last[2], 'since': '2026-09-15' if last[2] else None, 'w': lo if last[2] else 1, 'rot': [], 's': rows}
+DD_ON = mkDD([['2026-09-30', 2100000, 1], ['2026-10-01', 2090000, 1], ['2026-10-07', 2080000, 1], ['2026-10-08', 2070000, 1]])
+DD_OFF = mkDD([['2026-09-30', 2100000, 0], ['2026-10-01', 2090000, 0], ['2026-10-07', 2080000, 0], ['2026-10-08', 2070000, 0]])
+DD_OLD = mkDD([['2026-10-07', 2080000, 1]])     # 檔案只到 10/07(名單日 10/08 查不到)
+def sh_of(api, side):
+    out = {}
+    for c, o in api.orders:
+        if o['action'] == side:
+            out[c] = out.get(c, 0) + (o['quantity'] * 1000 if o['order_lot'] == 'C' else o['quantity'])
+    return out
+def ddrun(dd, st=None, bear=False, acct=1_000_000, lots=99, dry=False, half=True, ddfail=False, scr=None,
+          px=None, op=None, chp=None, today='2026-10-09', date='2026-10-08'):
+    A.LEADER_ACCOUNT, A.DRY_RUN, A.MAX_LOTS_PER_TRADE, A.MAX_AMT_PER_TRADE, A.LEADER_DD_HALF = acct, dry, lots, 10**9, half
+    A.save_state = lambda s: None
+    def fj(rel):
+        if 'screener' in rel:
+            return (scr or mkD2)(date)
+        if 'lead_dd' in rel:
+            if ddfail:
+                raise IOError('404(假)')
+            return copy.deepcopy(dd)
+        return TW
+    A.fetch_json = fj
+    api = FakeApi(px, None, op, chp)
+    st = st if st is not None else {'pos': {}, 'lead': copy.deepcopy(held)}
+    A.leader_step(api, sj, st, {'mkt': {'bear60': bear}}, today)
+    return st, api
+A.LEADER_WINDOW = 'open'
+# ⑱b 收一半中(第一次跑新版:之前買的都當全額)
+stB, apiB = ddrun(DD_ON)
+ok('⑱b 收一半中的換倉:掉出前 10 的 2003/2004 整檔賣(2,000 股)、留著的 2000/2001/2002 每檔賣一半(1,000 股)、新買 2005/2006 每檔只買一半(1,000 股)',
+   sh_of(apiB, 'S') == {'2003': 2000, '2004': 2000, '2000': 1000, '2001': 1000, '2002': 1000} and sh_of(apiB, 'B') == {'2005': 1000, '2006': 1000}
+   and all(stB['lead'][k]['sh'] == 1000 for k in ('2000', '2001', '2002', '2005', '2006')) and stB.get('lead_w') == {'lead': 0.5},
+   (sh_of(apiB, 'S'), sh_of(apiB, 'B'), stB.get('lead_w')))
+_tr = sorted(e['sym'] for e in stB.get('ord') or [] if e.get('tr'))
+ok('⑱b2 委託紀錄:只有收一半那三筆標 tr(收工對帳沒成交只收回那幾股);整檔賣的 ⛔ 標', _tr == ['2000', '2001', '2002']
+   and all(not e.get('tr') for e in stB['ord'] if e['sym'] in ('2003', '2004')), _tr)
+# ⑱c 決定性對照:關掉 / 沒在收一半 → 跟以前一模一樣
+st0, api0 = ddrun(DD_ON, half=False)
+stF, apiF = ddrun(DD_OFF)
+ok('⑱c 🔬 對照:LEADER_DD_HALF=0 → 只賣掉出名單的、新買全額(2,000 股),⛔ 賣一半', sh_of(api0, 'S') == {'2003': 2000, '2004': 2000}
+   and sh_of(api0, 'B') == {'2005': 2000, '2006': 2000} and st0['lead']['2000']['sh'] == 2000, (sh_of(api0, 'S'), sh_of(api0, 'B')))
+ok('⑱c2 🔬 對照:模型帳沒有在收一半 → 送的單跟關掉時一模一樣(逐筆)', apiF.orders == api0.orders and stF.get('lead_w') == {'lead': 1.0}, (apiF.orders, api0.orders))
+# ⑱d 讀不到 / 名單那天查不到 → 照上一次的比例(⛔ 不收也不補)
+stU, apiU = ddrun(DD_ON, ddfail=True)
+stO, apiO = ddrun(DD_OLD)
+ok('⑱d 讀不到 data/lead_dd.json / 檔案沒有名單那天 → 照上一次(沒記過 = 全額):送的單跟關掉時一模一樣',
+   apiU.orders == api0.orders and apiO.orders == api0.orders and stU.get('lead_w') == {'lead': 1.0}, (sh_of(apiU, 'S'), sh_of(apiO, 'S')))
+stU2, apiU2 = ddrun(DD_ON, ddfail=True, st={'pos': {}, 'lead': {k: dict(v, sh=1000) for k, v in held.items()}, 'lead_w': {'lead': 0.5}})
+ok('⑱d2 讀不到、上一次是一半 → 新買照一半、⛔ 再賣一半、⛔ 補回、比例維持一半', sh_of(apiU2, 'S') == {'2003': 1000, '2004': 1000}
+   and sh_of(apiU2, 'B') == {'2005': 1000, '2006': 1000} and stU2['lead']['2000']['sh'] == 1000 and stU2['lead_w'] == {'lead': 0.5},
+   (sh_of(apiU2, 'S'), sh_of(apiU2, 'B')))
+# ⑱e 硬煞車壓住時:一半乘在「壓過上限之後」的股數上
+stE, apiE = ddrun(DD_ON, lots=1)
+ok('⑱e 每筆最多 1 張:全額被壓成 1,000 股 → 一半 = 500 股(零股);⛔ 先乘一半再壓(那樣還是 1,000 股 = 沒收)',
+   sh_of(apiE, 'B') == {'2005': 500, '2006': 500} and stE['lead']['2005']['sh'] == 500
+   and all(o['order_lot'] == 'O' for c, o in apiE.orders if o['action'] == 'B'), sh_of(apiE, 'B'))
+# ⑱f 回到最高點:留著的補回、新買全額、成本照股數加權
+halfheld = {k: dict(v, sh=1000) for k, v in held.items()}
+stT, apiT = ddrun(DD_OFF, st={'pos': {}, 'lead': copy.deepcopy(halfheld), 'lead_w': {'lead': 0.5}}, px={'2000': 110.0})
+_e2000 = round((100 * 1000 + 110.0 * 818) / 1818, 4)
+ok('⑱f 回到最高點:掉出的 2003/2004 賣、留著的補到全額(2000 價 110 → 該有 1,818 股、補 818;2001/2002 補 1,000)、新買全額、比例記回全額',
+   sh_of(apiT, 'S') == {'2003': 1000, '2004': 1000} and sh_of(apiT, 'B') == {'2000': 818, '2001': 1000, '2002': 1000, '2005': 2000, '2006': 2000}
+   and stT['lead']['2000']['sh'] == 1818 and stT['lead']['2000']['e'] == _e2000 and stT['lead']['2000']['d'] == '2026-09-25'
+   and stT['lead_w'] == {'lead': 1.0}, (sh_of(apiT, 'B'), stT['lead'].get('2000'), stT.get('lead_w')))
+# ⑱g 回到最高點但大盤嚴格空頭 → ⛔ 補、比例維持一半(等下一次換倉);決定性對照:LEADER_BEAR_GATE=0 → 照補
+stG2, apiG2 = ddrun(DD_OFF, st={'pos': {}, 'lead': copy.deepcopy(halfheld), 'lead_w': {'lead': 0.5}}, bear=True)
+ok('⑱g 空頭那次:照賣掉出名單的、⛔ 補回、⛔ 新買、比例維持一半', sh_of(apiG2, 'S') == {'2003': 1000, '2004': 1000} and not sh_of(apiG2, 'B')
+   and stG2['lead_w'] == {'lead': 0.5} and stG2['lead']['2000']['sh'] == 1000, (sh_of(apiG2, 'B'), stG2.get('lead_w')))
+A.LEADER_BEAR_GATE = False
+stG3, apiG3 = ddrun(DD_OFF, st={'pos': {}, 'lead': copy.deepcopy(halfheld), 'lead_w': {'lead': 0.5}}, bear=True)
+A.LEADER_BEAR_GATE = _LBG0
+ok('⑱g2 🔬 對照:LEADER_BEAR_GATE=0 → 空頭也補回、比例記回全額', sh_of(apiG3, 'B').get('2001') == 1000 and stG3['lead_w'] == {'lead': 1.0}, sh_of(apiG3, 'B'))
+# ⑱h 空頭也照收一半(只擋買)
+stH2, apiH2 = ddrun(DD_ON, bear=True)
+ok('⑱h 空頭那次換倉:賣一半照做(賣不擋)、⛔ 新買、比例記成一半', sh_of(apiH2, 'S') == {'2003': 2000, '2004': 2000, '2000': 1000, '2001': 1000, '2002': 1000}
+   and not sh_of(apiH2, 'B') and stH2['lead_w'] == {'lead': 0.5}, (sh_of(apiH2, 'S'), sh_of(apiH2, 'B')))
+# ⑱i split:收一半開盤跌 ≥3% → 09:30 只賣那幾股;新買 / 補回 13:25 照同一個比例
+A.LEADER_WINDOW = 'split'
+stI2, apiI2 = ddrun(DD_ON, px={'2000': 95.0}, op={'2000': 95.0}, chp={'2000': -5.0})
+ok('⑱i split:2000 開盤跌 5% → 收一半的 1,000 股延到 09:30(⛔ 整檔);2001/2002 開盤就賣一半;新買延到 13:25、記比例一半',
+   sh_of(apiI2, 'S') == {'2003': 2000, '2004': 2000, '2001': 1000, '2002': 1000} and stI2['lead_defer']['trim'] == [{'sym': '2000', 'sh': 1000}]
+   and [x['sym'] for x in stI2['lead_defer']['buy']] == ['2005', '2006'] and stI2['lead_defer']['w'] == 0.5 and stI2['lead']['2000']['sh'] == 2000,
+   (sh_of(apiI2, 'S'), stI2.get('lead_defer')))
+apiI3 = FakeApi()
+A.leader_defer_step(apiI3, sj, stI2, '2026-10-09', 'sell')
+ok('⑱i2 09:30 那段:只賣 2000 的 1,000 股(留 1,000 股)、清單清空', sh_of(apiI3, 'S') == {'2000': 1000} and stI2['lead']['2000']['sh'] == 1000
+   and not stI2['lead_defer']['trim'] and not A._lead_defer_sells(stI2), (sh_of(apiI3, 'S'), stI2['lead_defer']))
+apiI4 = FakeApi()
+A.leader_defer_step(apiI4, sj, stI2, '2026-10-09', 'buy')
+ok('⑱i3 13:25 那段:新買照一半(1,000 股)', sh_of(apiI4, 'B') == {'2005': 1000, '2006': 1000}, sh_of(apiI4, 'B'))
+stI5, apiI5 = ddrun(DD_OFF, st={'pos': {}, 'lead': copy.deepcopy(halfheld), 'lead_w': {'lead': 0.5}})
+_top0 = [x['sym'] for x in stI5['lead_defer']['top']]
+apiI6 = FakeApi()
+A.leader_defer_step(apiI6, sj, stI5, '2026-10-09', 'buy')
+ok('⑱i4 split 回到最高點:開盤不補、13:25 補回留著的(各補 1,000 股)+ 新買全額、清單清空',
+   not sh_of(apiI5, 'B') and _top0 == ['2000', '2001', '2002'] and not stI5['lead_defer']['top']
+   and sh_of(apiI6, 'B') == {'2000': 1000, '2001': 1000, '2002': 1000, '2005': 2000, '2006': 2000}, (sh_of(apiI6, 'B'), _top0))
+A.LEADER_WINDOW = 'open'
+# ⑱j DRY_RUN:一單都不送、比例 ⛔ 寫
+stJ, apiJ = ddrun(DD_ON, dry=True)
+ok('⑱j DRY_RUN → 一單都不送、部位不動、比例 ⛔ 記', not apiJ.orders and 'lead_w' not in stJ and stJ['lead']['2000']['sh'] == 2000, (apiJ.orders, stJ.get('lead_w')))
+# ⑱k 兩本帳各記各的比例
+A.LEADER_BOOKS, A.LEADER_ANCHOR2 = 2, '2026-10-01'
+stK, apiK = ddrun(DD_ON, st={'pos': {}, 'lead': {'2000': {'e': 100, 'sh': 2000}}, 'lead2': {'2001': {'e': 100, 'sh': 1000}}, 'lead_w': {'lead': 1.0}},
+                  scr=mkD, today='2026-10-02', date='2026-10-01')
+ok('⑱k 兩本帳:乙帳換倉只收乙帳的(2001 賣 500 股)、新買一半(每檔 500 股)、只改乙帳的比例;甲帳一股都不動',
+   sh_of(apiK, 'S') == {'2001': 500} and set(sh_of(apiK, 'B').values()) == {500} and stK['lead'] == {'2000': {'e': 100, 'sh': 2000}}
+   and stK['lead_w'] == {'lead': 1.0, 'lead2': 0.5}, (sh_of(apiK, 'S'), sh_of(apiK, 'B'), stK.get('lead_w')))
+A.LEADER_BOOKS = 1
+# ⑱l 上次收一半沒賣掉的(rt):這次 ⛔ 再收一次;整檔賣掉 / 回到最高點 → rt 拿掉
+rtheld = copy.deepcopy(held); rtheld['2000'] = {'e': 100, 'd': '2026-09-25', 'sh': 1500, 'rt': 500}; rtheld['2003'] = {'e': 100, 'd': '2026-09-25', 'sh': 1500, 'rt': 500}
+stL, apiL = ddrun(DD_ON, st={'pos': {}, 'lead': copy.deepcopy(rtheld), 'lead_w': {'lead': 1.0}})
+ok('⑱l 收一半中、2000 上次還有 500 股沒賣掉(rt)→ 這次 ⛔ 再收一半(交給補賣);掉出名單的 2003 整檔賣 1,500 股(含那 500)',
+   '2000' not in sh_of(apiL, 'S') and sh_of(apiL, 'S').get('2003') == 1500 and '2003' not in stL['lead'] and stL['lead']['2000'].get('rt') == 500,
+   (sh_of(apiL, 'S'), stL['lead'].get('2000')))
+rth2 = {k: dict(v, sh=1000) for k, v in held.items()}; rth2['2000'] = {'e': 100, 'd': '2026-09-25', 'sh': 1500, 'rt': 500}
+stL2, apiL2 = ddrun(DD_OFF, st={'pos': {}, 'lead': rth2, 'lead_w': {'lead': 0.5}})
+ok('⑱l2 回到最高點:2000 還沒賣掉的那 500 股 ⛔ 再賣、算進要補的(只補 500)、rt 拿掉', sh_of(apiL2, 'B').get('2000') == 500
+   and 'rt' not in stL2['lead']['2000'] and stL2['lead']['2000']['sh'] == 2000, (sh_of(apiL2, 'B'), stL2['lead'].get('2000')))
+# ⑱m 補賣 rt:只賣那幾股
+stM = {'pos': {}, 'lead': {'2000': {'e': 100, 'sh': 1500, 'rt': 500, 'm': 'sim'}}}
+A.LIVE = False
+apiM = FakeApi(); A.leader_retry_step(apiM, sj, stM, '2026-10-12', 'rs')
+ok('⑱m0 只補賣整檔的(rs)那段 ⛔ 碰收一半的(rt)', not apiM.orders and A._has_rs(stM, ('lead',), 'rt') and not A._has_rs(stM, ('lead',), 'rs'), apiM.orders)
+apiM2 = FakeApi(); A.leader_retry_step(apiM2, sj, stM, '2026-10-12', 'rt')
+ok('⑱m 補賣 rt:只賣 500 股(⛔ 整檔 1,500)、留 1,000 股、rt 拿掉', sh_of(apiM2, 'S') == {'2000': 500} and stM['lead']['2000']['sh'] == 1000
+   and 'rt' not in stM['lead']['2000'] and not A._has_rs(stM, ('lead',), 'all'), (sh_of(apiM2, 'S'), stM['lead']))
+# ⑱n 補回沒做成(虧損安全鎖 / 隔天才跑到)→ 比例記回換倉前那個
+_LL0, _AS0 = A.LOSS_LOCK_PCT, A.ACCOUNT_SIZE
+A.LOSS_LOCK_PCT, A.ACCOUNT_SIZE, A.DRY_RUN, A.LEADER_ACCOUNT = 3.0, 1_000_000, False, 1_000_000
+stN = {'pos': {}, 'lead': copy.deepcopy(halfheld), 'lead_w': {'lead': 1.0}, 'pnl': {'2026-10': -9_999_999},
+       'lead_defer': {'d': '2026-10-09', 'sell': [], 'buy': [], 'trim': [], 'top': [{'sym': '2000', 'rank': 1, 'chg10': 30, 'att': 0}], 'book': 'lead', 'w': 1.0, 'wp': 0.5}}
+apiN = FakeApi(); A.leader_defer_step(apiN, sj, stN, '2026-10-09', 'buy')
+A.LOSS_LOCK_PCT, A.ACCOUNT_SIZE = _LL0, _AS0
+ok('⑱n 13:25 虧損安全鎖鎖著 → ⛔ 補回、比例記回一半(下一次換倉再補)', not apiN.orders and stN['lead_w'] == {'lead': 0.5}, (apiN.orders, stN.get('lead_w')))
+stN2 = {'pos': {}, 'lead': copy.deepcopy(halfheld), 'lead_w': {'lead': 1.0},
+        'lead_defer': {'d': '2026-10-09', 'sell': [], 'buy': [], 'trim': [], 'top': [{'sym': '2000', 'rank': 1, 'chg10': 30, 'att': 0}], 'book': 'lead', 'w': 1.0, 'wp': 0.5}}
+apiN2 = FakeApi(); A.leader_defer_step(apiN2, sj, stN2, '2026-10-12', 'buy')
+ok('⑱n2 補回那份隔天才跑到 → ⛔ 用舊名單補、比例記回一半', not apiN2.orders and stN2['lead_w'] == {'lead': 0.5}, (apiN2.orders, stN2.get('lead_w')))
+# ⑱o 規則 top=0(⛔ 上線的是 1):回到最高點 → 新買恢復全額、留著的 ⛔ 補
+stO2, apiO2 = ddrun(mkDD(DD_OFF['s'], top=0), st={'pos': {}, 'lead': copy.deepcopy(halfheld), 'lead_w': {'lead': 0.5}})
+ok('⑱o 規則 top=0:回到最高點 → 新買全額(2,000 股)、留著的 ⛔ 補、比例記回全額', sh_of(apiO2, 'B') == {'2005': 2000, '2006': 2000}
+   and stO2['lead_w'] == {'lead': 1.0}, sh_of(apiO2, 'B'))
+# ⑱p 名單日在開始那天之前 → 一律全額(那時候還沒有這個開關)
+A.LEADER_DD_LIVE = '2026-12-01'
+stP, apiP = ddrun(DD_ON)
+ok('⑱p 名單日在開始照規則做的那天之前 → 跟關掉一模一樣', apiP.orders == api0.orders, sh_of(apiP, 'S'))
+A.LEADER_DD_LIVE, A.LEADER_DD_HALF = _LIVE0, _DDH0
+print(f"\n{'❌' if bad_n else '✅'} AUTO_LEADER {ok_n}/{ok_n + bad_n}" + (f"(INJECT={INJ})" if INJ else ''))
 sys.exit(1 if bad_n else 0)

@@ -312,9 +312,9 @@ for w in ('split', 'open'):
        shares(api, 'S') == 1500 and '2003' not in st['lead'] and (st.get('lead_defer') or {}).get('sell') == [], (w, api.orders, st))
 st, api = lead9('split', fail_lot=None)
 ok('⑨c 🔬 對照:整筆賣成功 → 不留延後要賣的', shares(api, 'S') == 1500 and '2003' not in st['lead'] and not (st.get('lead_defer') or {}).get('sell'), st)
-ok('⑨d 尾盤那段不分時段都會補賣延後要賣的(延後買只有 split)',
-   re.search(r"if LEADER:\n\s+_df = st\.get\('lead_defer'\) or \{\}\n\s+if _df\.get\('sell'\):", _ms) is not None
-   and "if LEADER_WINDOW == 'split' and _df.get('buy') and mins >= LEADER_DEFER_BUY_FROM:" in _ms)
+ok('⑨d 尾盤那段不分時段都會補賣延後要賣的(含 ✂️ V82.0.7 收一半延後的那幾股;延後買 / 補回只有 split)',
+   re.search(r"if LEADER:\n\s+_df = st\.get\('lead_defer'\) or \{\}\n\s+if _df\.get\('sell'\) or _df\.get\('trim'\):", _ms) is not None
+   and "if LEADER_WINDOW == 'split' and (_df.get('buy') or _df.get('top')) and mins >= LEADER_DEFER_BUY_FROM:" in _ms)
 
 # ⑩ 🅿️ 只有 👑 有買的日子也要提醒湊交割款
 setv()

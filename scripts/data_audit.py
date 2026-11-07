@@ -69,6 +69,7 @@ CADENCE_H = {
     'trump_posts.json': 80,      # 🗽 V80.2.1 川普發文:跟在平日早上的總經採礦 / 盤前新聞後面(週一早上接週五 ≈ 72h)
     'dip_pick.json': 80,         # 📉 V82.0.0 大跌撿便宜清單:playbook_scan 每個平日晚上產(週一晚上接週五 ≈ 72h)
     'crash_events.json': 80,     # 📉 V82.0.0 大跌事件:同上,跟 dip_pick 同一步
+    'lead_dd.json': 80,          # ✂️ V82.0.7 👑 跌 20% 收一半的狀態:playbook_scan 每個平日晚上產(自動下單 / App / Telegram 都讀它)
 }
 
 # 🌅 V79.5.5 index.html 沒有 fetch、但也要體檢的檔(只有產業作戰室讀)
