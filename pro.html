@@ -99,6 +99,22 @@ html.app-fish .brandbar{display:none!important}
 .hm-row:last-child{border-bottom:0}
 .hm-row .v{margin-left:auto;font-family:var(--mono);font-weight:900;white-space:nowrap}
 .hm-sub{font-size:11px;color:var(--dim2);line-height:1.6}
+/* 🩺 V82.0.3 App 體檢:無框(標題 + 分隔線);表格沿用 .tblwrap(自己橫捲,⛔ 撐寬整頁);⛔ 紅綠 —— 這一頁講做法與取捨,不是漲跌 */
+.aud-ex{padding:6px 0 10px;border-bottom:1px solid var(--line)}
+.aud-btns{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.aud-sec{padding:10px 0 12px;border-bottom:1px solid var(--line);min-width:0}
+.aud-h{font-size:14px;font-weight:800;color:var(--txt);margin-bottom:4px}
+.aud-ul{margin:4px 0 0;padding-left:18px;font-size:12px;line-height:1.75;color:var(--sub)}
+.aud-ul li{margin:2px 0}
+.aud-kv,.aud-it{font-size:12px;line-height:1.7;color:var(--sub)}
+.aud-kv>div,.aud-it>div{padding:4px 0;border-bottom:1px dashed var(--line)}
+.aud-kv b,.aud-it b{color:var(--txt)}
+.aud-def{display:inline-block;margin-left:6px;font-size:11px;color:var(--dim2)}
+.aud-gap{font-size:11.5px;color:var(--amber)}
+.aud-fix{font-size:11.5px;color:var(--cyan)}
+.aud-fold>summary{cursor:pointer;font-size:12px;color:var(--cyan);min-height:44px;display:flex;align-items:center}
+table.aud-tbl td:last-child{white-space:normal;min-width:150px;max-width:260px;font-family:inherit;text-align:left}
+table.aud-tbl td.aud-n{white-space:normal;min-width:118px;max-width:170px;font-family:inherit}
 .golnk{color:var(--cyan);font-weight:700;cursor:pointer;white-space:nowrap;text-decoration:underline;text-underline-offset:3px}
 /* 📰 V79.8.0 專欄收起時一行(問題 + 數字章 + 日期 + NEW);封面與內文打開才出現(以前每篇一整張封面 ≈ 350px × 128 篇) */
 .colline{display:flex;flex-direction:column;gap:3px;padding:9px 2px}
@@ -1052,6 +1068,7 @@ details.colart:not([open]){margin-bottom:6px}
     <button class="sub-btn hidden" id="tabBtnFish" data-g="reco" data-sub="fish" onclick="PRO.navGo('fish')">📒 成績單</button>
     <button class="sub-btn hidden" id="tabBtnPoli" data-g="reco" data-sub="poli" onclick="PRO.navGo('poli')" title="政治人物申報的持股,照著抱的話報酬多少(跟 0050 比)">🏛️ 政治人物持股</button>
     <button class="sub-btn hidden" id="tabBtnPick" data-g="res" data-sub="pick" onclick="PRO.navGo('pick')">🏆 選哪一套</button>
+    <button class="sub-btn hidden" id="tabBtnAudit" data-g="res" data-sub="audit" onclick="PRO.navGo('audit')" title="整個 App 的重點、各套怎麼選怎麼賣、驗證過的結論、風控與提醒、已知缺陷 —— 可以匯出給別的 AI 複查">🩺 App 體檢</button>
     <button class="sub-btn hidden" id="tabBtnQlab" data-g="res" data-sub="qlab" onclick="PRO.navGo('qlab')" title="台股常見買點用同一套規則 16 年全市場實測:哪些有用、哪些比亂買還差">📐 量化實驗室</button>
     <button class="sub-btn hidden" id="tabBtnCol" data-g="res" data-sub="col" onclick="PRO.navGo('col')" title="把實測總表裡有價值的結論寫成白話文章">📰 專欄</button>
     <button class="sub-btn hidden" id="tabBtnLab" data-g="res" data-sub="lab" onclick="PRO.navGo('lab')">🔬 實測總表</button>
@@ -1413,6 +1430,14 @@ details.colart:not([open]){margin-bottom:6px}
         ⛔ <b>這不是他真實的報酬</b>(不含中間的買賣、不含未上市股票、不含手續費與稅),只是「如果照他申報的持股抱著」會怎樣。⛔ 也不是叫你跟著買。
       </div>
     </details>
+  </div>
+</div>
+<!-- 🩺 V82.0.3 App 體檢(使用者 11/07:「把核心重點、各選股邏輯、缺陷、驗證過的資訊做一個分頁,要能匯出給別的 AI 複查」)
+     ⛔ 一份資料兩個出口:畫面 renderAudit 與匯出 auditText 都只讀 _auditModel(⛔ 各寫一份)。數字一律讀既有常數(_PROFIT_BOARD / LAB / _RISK_MENU),⛔ 手抄。 -->
+<div id="tabAudit" class="hidden">
+  <div class="panel">
+    <h2>🩺 App 體檢 <span class="sub">核心重點・各套怎麼做・驗證過的・風控・提醒・缺陷 —— 可匯出給別的 AI 複查</span></h2>
+    <div id="auditBody"></div>
   </div>
 </div>
 <div id="tabQlab" class="hidden">
@@ -2774,12 +2799,13 @@ const PRO = {
     if (this._tab === 'log') await this.renderLog();
     if (this._tab === 'col') this.renderCol();
     if (this._tab === 'qlab') this.renderQlab();
+    if (this._tab === 'audit') { this._auditReset(); await this.renderAudit(); }
     if (this._tab === 'home') { this._recoReset(); this._confReset(); await this.renderHome(true); }
     if (this._valRows && this._valRows.length) await this.runValuation(true);
     this.toast('✅ 已更新');
   },
 
-  TABS: [['home', 'Home'], ['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['conf', 'Conf'], ['poli', 'Poli'], ['lab', 'Lab'], ['qlab', 'Qlab'], ['col', 'Col'], ['log', 'Log']],
+  TABS: [['home', 'Home'], ['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['conf', 'Conf'], ['poli', 'Poli'], ['lab', 'Lab'], ['audit', 'Audit'], ['qlab', 'Qlab'], ['col', 'Col'], ['log', 'Log']],
   // 🧭 V79.8.0 五大類(使用者 10/25 選的)—— ⛔ 作戰室新增頁面一律登記在這裡,⛔ 再平鋪按鈕
   //   (以前 10 顆排 3 行 = 手機直立 192px、橫拿 39% 螢幕)。第三欄 = 子頁(分頁代號);
   //   pick = 實測總表的「🏆 選哪一套」(跟 lab 共用 #tabLab,靠 _labSel 分)。
@@ -2788,7 +2814,7 @@ const PRO = {
     ['ind', '🏭 產業', ['rot', 'chain', 'star', 'val']],
     ['conf', '📞 法說會', ['conf']],
     ['reco', '📒 成績單', ['fish', 'poli']],
-    ['res', '🔬 研究', ['pick', 'qlab', 'col', 'lab', 'log']],
+    ['res', '🔬 研究', ['pick', 'audit', 'qlab', 'col', 'lab', 'log']],
   ],
   // 舊書籤 / 深連結 / 別頁的按鈕 → 住在實測總表裡的那幾個(⛔ 不可整個失效)
   NAV_ALIAS: { pick: ['lab', 'pick'], calc: ['lab', 'bt'], noise: ['lab', 'trap'], quant: ['qlab', null] },
@@ -2847,6 +2873,7 @@ const PRO = {
     if (t === 'poli') this.renderPoli();
     if (t === 'col') this.renderCol();
     if (t === 'qlab') this.renderQlab();
+    if (t === 'audit') this.renderAudit();
     if (t === 'log') this.renderLog();
     // 🧮 V79.8.0 產業估值第一次打開就用輸入框裡的預設組合跑一次(以前是空白頁,要先按鈕)
     if (t === 'val' && !this._valAuto) { this._valAuto = 1; if (!(this._valRows && this._valRows.length)) this.runValuation(true); }
@@ -6890,8 +6917,9 @@ const PRO = {
     const eq = days.map(d => { if (at.has(d)) g = at.get(d); return { d, v: cap * (1 - h) * g * (1 - h) }; });
     return { eq, buyD: bars[0].d, buyP: bars[0].c };
   },
-  async _raceLoad() {
-    const S = this._recoStart(), cap = this._CAP_RULE.cap, h = this._RACE_PCOST / 200;
+  /** 🩺 V82.0.3 可以另外傳起算日(App 體檢「這一波」用這一段的高點那天);⛔ 不傳 = 照舊用成績單選的那天 */
+  async _raceLoad(S0) {
+    const S = S0 || this._recoStart(), cap = this._CAP_RULE.cap, h = this._RACE_PCOST / 200;
     await this._twiiLoad();
     const T = this._twii;
     const out = { S, days: 0, last: null, rows: [], err: null, listN: 0, hot: null };
@@ -9992,15 +10020,378 @@ const PRO = {
       this.toast(ok ? `📋 已複製 ${txt.length.toLocaleString()} 字,貼到 AI 對話框` : '⚠️ 這台裝置不給複製 —— 請改用「下載 .md 檔」');
       return;
     }
+    const d = (() => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { return 'export'; } })();
+    this._dlText(txt, `實測總表_${d}.md`);
+  },
+  /** ⬇️ 共用下載(實測總表 / 🩺 App 體檢都走這支;V82.0.3 從 labExportDo 抽出來,行為不變)。失敗一定跳 toast,⛔ 靜默 */
+  _dlText(txt, name) {
     try {
-      const d = (() => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { return 'export'; } })();
       const blob = new Blob([txt], { type: 'text/markdown;charset=utf-8' });
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = `實測總表_${d}.md`;
+      a.href = URL.createObjectURL(blob); a.download = name;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       this.toast('⬇️ 已送出下載(iPhone 會出現在「檔案」App 的下載項目;沒看到就改用 📋 複製)');
-    } catch (e) { this.toast('⚠️ 下載失敗:' + (e && e.message || e) + ' —— 請改用 📋 複製'); }
+      return true;
+    } catch (e) { this.toast('⚠️ 下載失敗:' + (e && e.message || e) + ' —— 請改用 📋 複製'); return false; }
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🩺 V82.0.3 App 體檢(使用者 11/07:「把核心重點、各選股邏輯、缺陷、驗證過的資訊做一個分頁,要能匯出提示詞,
+  //    太多就匯出檔案,讓別的 AI 複查;還有風控、黑天鵝、呈現方式、提醒告警…務必讓我賺多賠少」;
+  //    「賺最多 vs 賠最少」他選「折衷:先讓我看兩邊數字」→ 這一頁⛔ 不換任何預設,只把數字並排)
+  //   ⭐ 一份資料兩個出口:_auditModel() → 畫面 renderAudit() / 匯出 auditText()(⛔ 各寫一份 —— 改一邊會忘另一邊)
+  //   ⛔ 數字一律讀既有常數(_PROFIT_BOARD / LAB / _RISK_MENU / crash_events.json / 100 萬同一天起跑 _raceLoad),⛔ 在這裡另算
+  //   ⛔ 這一頁不下任何買賣指令、不推薦個股;匯出的提問也明講「⛔ 不推薦個股、⛔ 不保證報酬、⛔ 自己編數字」
+  // ═══════════════════════════════════════════════════════════════════════
+  /** 🛡️ 少賠的做法(數字照抄 LAB 條目原文 —— test_audit ③ 逐字比對 `src` 那一條;⛔ 改數字要先改 LAB 再改這裡)。
+   *  ⚠️ 兩張表單位不同:👑 = 100 萬含本金變多少萬(到 2026-09-24);🅿️ = 100 萬賺多少萬(不含本金、到 2026-10-08)→ ⛔ 不可互相比。
+   *  a / l = [近 4 年, 16 年] 的 [100 萬 → 萬, 中途最多賠 %](17 個起跑日的中間值)。 */
+  _RISK_MENU: {
+    u: '2026-11-07',
+    lead: { src: 'lead-drawdown', to: '2026-09-24', unit: '100 萬變多少(含本金)', rows: [
+      { n: '👑 現行(全攻)', app: '預設', a: [1019, 44.2], l: [9544, 58.4] },
+      { n: '📚 兩本帳(錢分兩半、換倉日錯開 4 天)', app: '已有:🔓 進階功能 › 📚(預設關)', a: [1174, 42.3], l: [10955, 53.8],
+        note: '最差那條:近 4 年 888 萬、16 年 5,476 萬(現行 749 / 3,214 萬);但 17 個起跑日裡,比現行多賺的只有 6 個(兩段都是)—— 它讓起跑日的運氣平均一點,⛔ 不是大部分時候都多賺' },
+      { n: '🛑 跌 20% 收一半(回到最高點再全部做)', app: 'App 還沒有(你選了才做)', a: [1112, 37.1], l: [7197, 46.1],
+        note: '贏安慰劑(907 | 5,931 萬)= 抓時機是真的;代價是 16 年 17 條全少賺' },
+      { n: '📚 + 🛑 兩個一起', app: 'App 還沒有', a: [1204, 35.7], l: [7532, 44.3] },
+    ], board: ['glide', 'stable'] },
+    park: { src: 'bear-season', to: '2026-10-08', unit: '100 萬賺多少(不含本金)', rows: [
+      { n: '🅿️ 現行(空頭照買、閒錢停 0050)', app: '預設', a: [536, 27.7], l: [1991, 37.2] },
+      { n: '🐻 空頭不買新股', app: '已有:設定「空頭不開新倉」(預設關)', a: [545, 24.4], l: [1814, 36.0] },
+      { n: '🐻💵 空頭不買 + 0050 也換現金', app: '已有:設定「空頭時 0050 也賣掉放現金」(預設關)', a: [443, 19.6], l: [1421, 22.9],
+        note: '16 年中途最多賠 37.2% → 22.9%,少賺約 29%;自動下單不跟這一格' },
+    ] },
+  },
+  /** 📋 App 現況(⛔ 不寫研究數字 —— 那些讀 LAB / 看板;這裡只寫「現在怎麼做 + 預設 + 缺口」)。
+   *  defaults 的 key / val 由 test_audit ⑥ 跟 index.html 的設定預設逐項比對(改 App 預設要一起改這裡)。 */
+  _AUDIT_FACTS: {
+    u: '2026-11-07',
+    about: [
+      '📱 散戶救星(手機 App):決策台告訴你今天要做什麼(先賣哪幾檔、再買哪幾檔)、個股頁、庫存、提醒。預設策略是 🅿️ 高檔飆股+停車 0050;👑 領頭羊要在設定的「🔓 進階功能」打開才看得到。',
+      '🏭 產業作戰室(這一頁):研究用 —— 選哪一套、實測總表、專欄、成績單(模擬帳)、法說會、產業輪動、量化實驗室。研究數字只放這裡,散戶 App 的畫面只講怎麼做。',
+      '🤖 自動下單(auto_trade.py,永豐證券 API):在你自己的電腦上跑;預設是模擬帳戶,要另外設定才會送真的單。',
+      '📨 Telegram 機器人 + 手機推播(Cloudflare Worker):盤前、盤中每 15 分鐘、收盤後;關掉 App 也收得到。',
+      '🗃️ 資料:GitHub 每個交易日自動抓證交所、櫃買中心、期交所的官方資料;App 的日 K 最多 1,200 根(約 5 年)。研究另外用 2010 年起、含已下市股票的 16 年資料。',
+      '🧪 回測方法:同一套規則從 17 個不同起跑日各跑一次、取中間值(近 4 年 2022-09-16 起、16 年 2011-01-03 起);收盤價成交、成本含手續費和證交稅、含股利。要「兩段都成立」+ 六道關卡(全期有賺 / 前後半同方向 / 逐年同方向 / 拿掉最好那年還成立 / 扣成本還賺 / 比現行多賺)+ 門檻左右挪也成立 + 贏安慰劑,才會換成 App 的預設。',
+    ],
+    defaults: [
+      { key: 'strategy', val: 'park', n: '策略', t: '🅿️ 高檔飆股+停車 0050(👑 要在進階功能打開)' },
+      { key: 'hotRule', val: 'mean', n: '🔥 名單怎麼排', t: '照「這一招在這檔平均每次賺多少」排,這一招至少出現過 8 次' },
+      { key: 'bearGate', val: false, n: '🔥 / 🅿️ 大盤空頭時', t: '照常買(「空頭不開新倉」預設關)' },
+      { key: 'bearCash', val: false, n: '🅿️ 空頭時 0050 也換現金', t: '關' },
+      { key: 'leadBear', val: true, n: '👑 大盤空頭時', t: '一律不買新的(固定開、不能關)' },
+      { key: 'leadBooks', val: 1, n: '👑 兩本帳', t: '關(一本帳,每 10 個交易日一起換)' },
+      { key: 'leadTiming', val: 'split', n: '👑 換倉那天幾點買賣', t: '開盤賣、13:25 買(開盤就跌 3% 以上 → 開盤就買)' },
+      { key: 'exitRule', val: 'atr2', n: '🔥 / 🅿️ 出場', t: '吊燈 ATR 2 倍 / 硬停損 / 最多抱 20 個交易日,先到先賣' },
+      { key: 'lot', val: 150000, n: '🔥 / 🅿️ 每筆', t: '15 萬、每天最多 2 檔(回測本金 100 萬)' },
+      { key: 'alertStrict', val: true, n: '嚴格提醒', t: '開(K 線買賣訊號只跳實測過關的,其他只記在 🔔 鈴鐺)' },
+      { key: 'watchlistAlert', val: false, n: '⚡ 盤中即時警報', t: '關' },
+      { key: 'quietOn', val: false, n: '🌙 勿擾時段', t: '關' },
+    ],
+    risk: [
+      { n: '🔥 / 🅿️ 硬停損', now: '買進當天最低價和成本 −5% 取低的那個,進場後固定不動;收盤跌破才賣(盤中碰到不賣)', def: '一律有', gap: '收盤才賣 → 跳空大跌那天會賣得比停損價低' },
+      { n: '🔥 / 🅿️ 三條出場', now: '吊燈 ATR 2 倍(從買進後最高收盤回落 2 倍平均波動)/ 硬停損 / 最多抱 20 個交易日,先到先賣', def: '吊燈 ATR 2 倍', gap: '' },
+      { n: '🔥 / 🅿️ 部位大小', now: '每筆 15 萬、每天最多 2 檔(以 100 萬本金回測)', def: '', gap: '沒有同產業上限' },
+      { n: '🅿️ 閒錢停 0050', now: '沒買股票的錢先停在 0050,要買股票時才賣 0050 湊錢', def: '🅿️ 是預設', gap: '錢在 0050 = 跟大盤一起跌' },
+      { n: '🔥 / 🅿️ 大盤空頭時', now: '「空頭不開新倉」打開後,大盤嚴格空頭(加權收盤在 60 日線下、20 日線也在 60 日線下)那天不買新股', def: '關(空頭照常買)', gap: '' },
+      { n: '🅿️ 空頭時 0050 也換現金', now: '打開後,空頭那天把 0050 也賣掉放現金,空頭過了再停回去', def: '關', gap: '自動下單不跟這一格' },
+      { n: '👑 部位與賣出', now: '前 5 名各放五分之一;每 10 個交易日換一次,掉出前 10 名才賣', def: '', gap: '⛔ 沒有停損(中途最多賠見第 2 節)' },
+      { n: '👑 大盤空頭時', now: '大盤嚴格空頭時一律不買新的,手上的照換倉規則', def: '固定開、不能關', gap: '' },
+      { n: '👑 兩本帳', now: '錢分兩半、換倉日錯開 4 天,讓起跑日的運氣平均一點', def: '關', gap: '' },
+      { n: '📉 大跌撿便宜', now: '加權收盤跌 3% 以上那天,隔天開盤買熱門股裡跌最多的 10 檔、抱 40 個交易日;每批 1 成資金、同時最多 3 批', def: '決策台顯示(你自己決定買不買)', gap: '沒有停損;自動下單不做這一套' },
+      { n: '🧯 帳戶熔斷', now: '記進勝率鏡子的賣出:今天虧到帳戶 2%、本週 5%、本月 8% 會亮燈提醒先別開新倉', def: '只提醒', gap: '不會擋任何事(研究:帳戶賠到一個程度就停手,6 種停法全部少賺)' },
+      { n: '🧮 總風險', now: '手上全部碰到停損會賠多少,超過帳戶 6% 變橘色', def: '只提醒(要先填帳戶資金)', gap: '' },
+      { n: '🐢 手上的 ETF', now: '不套三條出場(買了放著)', def: '', gap: '' },
+      { n: '🚨 處置 / 注意股', now: '持股被列管照出場規則走,⛔ 不另外叫你先賣;提醒別用市價單', def: '', gap: '' },
+      { n: '🤖 自動下單的安全開關', now: '預設模擬帳戶;每筆最多 1 張或 10 萬元;真實帳戶停 0050 只預覽;👑 沒設分給它的錢就不買', def: '全部開著', gap: '每筆上限比回測的「每筆 15 萬」小很多 → 實際成績會跟回測不一樣' },
+    ],
+    swan: [
+      '📉 大跌事件(已經發生的事實才跳):加權離一年最高點跌 10% / 25 天內跌 15% / 跌 20% / 這一段結束 —— App 跳通知 + Telegram 台北 08:00,每一段每一種只跳一次,附過去發生過的比例;⛔ 不叫你賣。',
+      '🛰️ 反攻雷達:只描述(這一波跌多深、外資期貨、價差、急跌之後那一段的底以前多久到),⛔ 不給「跌到哪裡就買」。',
+      '⛔ 試過沒用的:24 種常見「崩盤前兆」0 種過關;大跌後放空,33 個股市 0 個過關;空頭時改抱反向 ETF,32 國只有 3 國比放現金好;空頭時把股票全賣,17 個起點全輸;帳戶賠到一個程度就停手,6 種停法全部少賺。',
+      '📜 歷史:加權跌 20% 之後,2010~2026 這 5 次都有回到前高,中位約 1 年半(含股利約 1 年);拉長到 2000 年起 11 次,最久的 2000 年那次 16 年多才回到前高。',
+    ],
+    ui: [
+      '📱 散戶 App 畫面只講「怎麼做」;回測數字、勝率只放產業作戰室(例外:三個比例一起寫的「發生率」、進階功能裡的「每年賺多少」)。',
+      '🚦 🔴🟢 只代表漲跌方向;好壞 / 風險一律用 ✅⚠️⛔🚨,避免同一顆紅燈在兩張卡意思相反。',
+      '🎯 決策台:今天要做的事(先賣、再買)、🔥 或 👑 名單、出場線還有多遠、🧯 你的風控;📉 大跌撿便宜只在有批次時出現。',
+      '📄 個股頁有總覽、報告、當沖、即時、K 線、籌碼、基本等分頁;指數只留總覽 + K 線;第一眼字數有上限,長說明收進摺疊。',
+      '🔒 沒打開 👑 的人,畫面上看不到領頭羊的任何字。',
+    ],
+    alert: [
+      '🔔 App 通知分 13 類,其中 3 類不能關(👑 換倉日 / 👜 你的部位 / 🔔 到價 —— 那是你自己的錢到了你自己設的點);其他可以在設定逐類關掉。',
+      '🧪 嚴格提醒(預設開):K 線買點 / 賣點訊號只跳實測過關的,其他只記在 🔔 鈴鐺(留 3 天)。',
+      '🌡️ 大盤風險 / 熔斷 / 黑天鵝:只記在 🔔 鈴鐺、不跳通知(只描述外面的壓力,不是賣出訊號)。',
+      '📉 大跌事件 / 大跌撿便宜:會跳通知(已經發生的事實)+ Telegram 08:00。',
+      '⚡ 盤中即時警報總開關(預設關):庫存每日體檢(破成本 −5% 停損)、盤中掃描、13:00 尾盤買點、處置股每日掃描,都要打開才有。',
+      '🌙 勿擾時段(預設關):時段內只記鈴鐺,不能關的那 3 類照樣叫。',
+      '📨 Telegram(Cloudflare Worker,只在平日):08:00 盤前簡報 + 👑 換倉、09:00 開盤、09:00~13:30 每 15 分鐘(破停損 / 到價)、17:00 盤後;另外 GitHub 排程送 13:20 尾盤買點、20:00 明天的作戰清單。',
+      '📲 關掉 App 的手機推播(Web Push):庫存破成本 −5% / −10%、你設的到價;V82.0.3 以前一則都沒送出去(讀錯報價欄位),這一版修好。',
+      '👑 時 13:00 的 🔥 尾盤買點提醒不跳,只跑 👑 換倉那天的開盤 / 13:20 提醒。',
+    ],
+    gaps: [
+      { s: '✅ 已修', t: '關掉 App 時的手機推播(破成本 −5% / −10%、你設的到價)以前一則都沒送出去 —— Worker 讀錯報價欄位;V82.0.3 修好,同時排除 ETF 與「大跌撿便宜」那幾檔(各有自己的賣法)。' },
+      { s: '⛔ 高', t: 'Telegram「13:20 尾盤買點」走 GitHub 排程:最近 10 個交易日最早台北 18:35 才跑 → 一次都沒在收盤前送到;「20:00 明天的作戰清單」實際凌晨 1 點到 5 點才到。', act: '改由 Cloudflare Worker 13:15 那條排程叫醒(Worker 已經有 13:00 / 13:15 / 13:30)' },
+      { s: '⛔ 高', t: '⚡ 盤中即時警報總開關預設關 → App 內「庫存破停損」體檢、盤中掃描、13:00 尾盤買點、處置股掃描預設都收不到(👑 換倉、大跌事件、大跌撿便宜不受影響)。', act: '要不要預設打開(通知會變多)' },
+      { s: '⛔ 高', t: '🤖 自動下單每筆預設最多 1 張或 10 萬元,比回測的「每筆 15 萬」小 → 實際成績會跟回測不一樣。', act: '會動真錢,要你決定' },
+      { s: '⚠️ 中', t: '🧺 沒有同產業 / 同方向的上限:👑 的 5 檔常常集中在同一個產業,一起漲也一起跌(這一波就是)。', act: '下一步研究「👑 同產業最多 N 檔」' },
+      { s: '⚠️ 中', t: '👑 沒有停損,掉出前 10 名才賣;🧯 帳戶熔斷 / 🧮 總風險只提醒、不擋。研究過「賠到一個程度就停手」6 種停法全部少賺,所以刻意不擋 —— 結果是大跌中沒有任何機制會替你減碼。', act: '想少賠看第 2 節的選項' },
+      { s: '⚠️ 中', t: '🧬 兩把尺:📈 符合進場清單用「位階 75 + 20 日振幅 3.2%」,決策台 🔥 用「位階 85 + 波動前 40%」→ 同一檔可能一邊有 🧬、一邊沒有。', act: '統一,或在畫面寫清楚是兩件事' },
+      { s: '💡 低', t: '📅 App / Worker / Telegram 都沒有國定假日表:只看星期幾,颱風假、國定假日照樣跑(拿到的是前一天的資料)。', act: '' },
+      { s: '💡 低', t: '📨 Telegram 作戰清單只有代號、沒有中文名:alert_system.py 從每檔 K 線檔找名字,但那些檔沒有名字欄(log:「0 檔有中文名」)。', act: '改讀 stock_names.json' },
+      { s: '💡 低', t: '📏 決策台 👑 那兩個「注意 / 處置」數字是回測引擎修正前算的(相對比較的方向不受影響,絕對數字待重跑)。', act: '' },
+      { s: '💡 低', t: '📝 alert_system.py 檔頭說明寫「09:00 + 14:00 兩則定時摘要」,實際排程是 13:20 + 20:00(說明過期)。', act: '' },
+    ],
+    asks: [
+      '先用 5 句話講你理解的這個 App(怎麼選股、怎麼買賣、錢怎麼放、怎麼提醒)。',
+      '找出邏輯矛盾和風險缺口:什麼情況下會一次賠很大?哪個提醒會來不及?哪兩個地方講的話互相打架?',
+      '列出最多 10 個改進,照「對少賠的幫助」排序;每一個都要附:① 可以寫成程式的規則(條件、數字)② 要怎麼回測(用什麼資料、跟什麼比)③ 成功標準(近 4 年和 16 年兩段都要成立)④ 預計會少賺多少。',
+      '也看一下呈現方式與提醒方式:哪裡會讓人看錯、漏看,或在錯的時間收到。',
+      '⛔ 不要重提第 5 節「驗證過沒用」的做法,除非你說得出跟我們測的版本差在哪裡。',
+      '⛔ 不推薦個股、⛔ 不保證報酬、⛔ 不要自己編數字(沒有數字就寫「需要回測」)。',
+      '回答請用繁體中文、條列。',
+    ],
+  },
+  _AUDIT_STRATS: ['lead', 'glide', 'stable', 'leadcash', 'close', 'park', 'hot', '0050'],
+  _AUDIT_TRAP_N: 40,   // 精簡版只列「⛔ 驗證過沒用」照名次的前 40 條;完整版全列
+  _AUDIT_WARN_CH: 30000,
+  /** 下拉重整 / 換資料時清掉這一頁自己算的東西(⛔ 不碰成績單的 _race —— 那是你在成績單選的起算日) */
+  _auditReset() { this._auditLegD = undefined; this._auditRaceSig = null; this._auditRace = null; this._auditRaceP = null; },
+  _auditYmd() { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { return new Date().toISOString().slice(0, 10); } },
+  /** LAB 任一欄用主題鍵找條目(⛔ 改 LAB 原文) */
+  _labByK(k) {
+    for (const t of this.LAB_TABS) { const a = this.LAB[t[0]]; if (!Array.isArray(a)) continue; const it = a.find(x => x && x.k === k); if (it) return { it, col: t[0] }; }
+    return null;
+  },
+  _auditWan(yuan) { return yuan == null || !isFinite(yuan) ? '—' : Math.round(yuan / 1e4).toLocaleString() + ' 萬'; },
+  _auditDd(v) { return v == null || !isFinite(v) ? '—' : '−' + Math.abs(+v).toFixed(1) + '%'; },
+  /** 🌪️ 這一段大跌(crash_events.json 的最後一段;還沒結束的優先)—— 第 2 節「這一波實際」與第 7 節共用 */
+  async _auditLegLoad() {
+    if (this._auditLegD !== undefined) return this._auditLegD;
+    let d;
+    try {
+      const j = await this.fetchJson('data/crash_events.json', 9000);
+      if (!j) throw new Error('沒有回應');
+      const legs = (j && Array.isArray(j.legs)) ? j.legs.filter(l => l && l.peak && l.peak.d) : [];
+      const leg = legs.filter(l => l.open).slice(-1)[0] || legs.slice(-1)[0] || null;
+      d = leg ? { leg, asof: (j && (j.asof || j.through)) || null } : { err: '檔案裡沒有任何一段' };
+    } catch (e) { d = { err: '讀不到 data/crash_events.json(' + String((e && e.message) || e).slice(0, 60) + ')' }; }
+    this._auditLegD = d;
+    return d;
+  },
+  /** 這一波的起算日 = 這一段的高點那天;⚠️ 名單快照從 _RECO_SINCE 起才有 → 更早就從那天起算並寫出來(⛔ 硬湊) */
+  _auditWaveS(leg) { const p = String((leg && leg.peak && leg.peak.d) || '').slice(0, 10); return p && p >= this._RECO_SINCE ? p : this._RECO_SINCE; },
+  _auditRaceSigOf(S) { return ['audit', S, this._exitRule(), this._isPark() ? 1 : 0, this._isLead() ? 1 : 0].join('|'); },
+  /** 🏁 這一波:跟成績單「100 萬同一天起跑」同一支 _raceLoad,只換起算日;結果另外存(⛔ 洗掉你在成績單選的那一份) */
+  _auditRaceEnsure(S) {
+    const sig = this._auditRaceSigOf(S);
+    if (this._auditRaceSig === sig && this._auditRace) return Promise.resolve(this._auditRace);
+    if (this._auditRaceSig === sig && this._auditRaceP) return this._auditRaceP;
+    this._auditRaceSig = sig; this._auditRace = null;
+    const p = this._auditRaceP = this._raceLoad(S)
+      .catch(e => ({ err: String(e).slice(0, 100), rows: [] }))
+      .then(r => { if (this._auditRaceSig === sig) this._auditRace = r; return this._auditRaceSig === sig ? r : null; })
+      .finally(() => { if (this._auditRaceP === p) this._auditRaceP = null; });
+    return p;
+  },
+  /** 「這一波實際」那幾個區塊(讀 _auditLegD + _auditRace;⛔ 自己算任何報酬) */
+  _auditWaveBlocks() {
+    const L = this._auditLegD;
+    if (L === undefined) return [{ k: 'p', t: '⏳ 正在讀這一段大跌的資料…' }];
+    if (!L || L.err) return [{ k: 'p', t: `⚠️ 讀不到這一段大跌的資料(${(L && L.err) || '不明原因'}),⛔ 不是沒有跌;可以到 📒 成績單把起算日選在高點那天自己看。` }];
+    const leg = L.leg, S = this._auditWaveS(leg), f0 = v => Math.round(+v || 0).toLocaleString();
+    const head = `${leg.open ? '這一段還沒結束' : '最近一段(已經結束)'}:${leg.peak.d} 加權高點 ${f0(leg.peak.c)} → ${leg.low.d} ${f0(leg.low.c)}(${this._auditDd(leg.depth)})。下面是 ${S} 收盤各放 100 萬、照 📒 成績單「100 萬同一天起跑」同一套算法跑到最新一天${S !== String(leg.peak.d).slice(0, 10) ? `(⚠️ 名單快照從 ${this._RECO_SINCE} 起才有,所以從那天起算)` : ''}。`;
+    const R = this._auditRace;
+    if (this._auditRaceSig !== this._auditRaceSigOf(S) || !R) return [{ k: 'p', t: head }, { k: 'p', t: '⏳ 正在逐日算…(大約 10~30 秒)' }];
+    if (R.err && !(R.rows || []).length) return [{ k: 'p', t: head }, { k: 'p', t: `⚠️ 算不出來(${R.err}),⛔ 不是 0 元。` }];
+    const sg = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '%';
+    const rows = (R.rows || []).map(r => [
+      r.name + (r.cur ? '(你現在用的)' : ''),
+      r.v == null ? (r.err ? '讀不到' : '—') : this._auditWan(r.v),
+      r.pct == null ? '—' : sg(r.pct),
+      r.dd == null ? '—' : this._auditDd(r.dd),
+      r.vs50 == null ? '—' : (r.vs50 >= 0 ? '+' : '−') + Math.abs(Math.round(r.vs50 / 1e4)).toLocaleString() + ' 萬',
+      r.buy != null ? `買 ${r.buy}・賣 ${r.sold || 0}・還抱 ${r.hold || 0}` : '',
+    ]);
+    return [{ k: 'p', t: head },
+      { k: 'tbl', head: ['策略', '最新剩多少', '漲跌', '期間最多賠', '比 0050 含息', '交易'], rows },
+      { k: 'note', t: `算到 ${R.last || '—'}(${R.days || 0} 個交易日)・成本含手續費和稅・0050 含息・👑 從空手開始,第一次換倉才買(= 那天才開始跟的人)。「漲跌」是跟原本的 100 萬比(含買進的手續費);「期間最多賠」是從帳戶最高的那天算,所以兩個數字會差一點點。這是模擬帳,⛔ 不是你真實帳戶的成績。` }];
+  },
+  /** ⭐ 唯一一份內容:畫面與匯出都讀它。o.full = 完整版(⛔ 沒用全列、還沒測的全列) */
+  _auditModel(o = {}) {
+    const full = !!o.full, F = this._AUDIT_FACTS, B = this._PROFIT_BOARD || {}, W = B.wins || {};
+    const secs = [];
+    const S = (id, t, blocks) => secs.push({ id, t, blocks: blocks.filter(Boolean) });
+    const rowOf = (win, k) => (((W[win] || {}).rows) || []).find(r => r && r.k === k) || null;
+    const nm = k => this._stratName(k) || ((rowOf('ai', k) || rowOf('long', k) || {}).n) || k;
+    const wan = v => this._auditWan(v), dd = v => this._auditDd(v);
+    // ① 這個 App 是什麼
+    S('about', '📌 這個 App 是什麼', [{ k: 'ul', items: F.about }]);
+    // ② 賺 vs 賠 並排
+    const aFrom = (W.ai || {}).from || '—', lFrom = (W.long || {}).from || '—';
+    const boardRows = this._AUDIT_STRATS.map(k => {
+      const a = rowOf('ai', k), l = rowOf('long', k);
+      if (!a && !l) return null;
+      const two = (x, y, f) => `${x != null ? f(x) : '—'}・${y != null ? f(y) : '—'}`;
+      return [nm(k), a ? wan(a.fin) : '—', a ? dd(a.mdd) : '—', a ? wan(a.worst) : '—', l ? wan(l.fin) : '—', l ? dd(l.mdd) : '—', l ? wan(l.worst) : '—',
+        two(a && a.tWin, l && l.tWin, v => v + '%'), two(a && a.tPer, l && l.tPer, v => '+' + v + '%')];
+    }).filter(Boolean);
+    const RM = this._RISK_MENU, srcT = k => { const z = this._labByK(k); return z ? this._labPlain(z.it.t).replace(/\*\*/g, '') : k; };
+    const menuRow = r => [r.n, r.app, (r.a[0]).toLocaleString() + ' 萬', dd(r.a[1]), (r.l[0]).toLocaleString() + ' 萬', dd(r.l[1]), r.note || ''];
+    const leadRows = RM.lead.rows.map(menuRow).concat((RM.lead.board || []).map(k => {
+      const a = rowOf('ai', k), l = rowOf('long', k); if (!a || !l) return null;
+      return [nm(k) + '(看板)', 'App 沒有開關:自己手動照做', wan(a.fin), dd(a.mdd), wan(l.fin), dd(l.mdd), (this.STRAT_NAMES[k] && this.STRAT_NAMES[k].how || []).slice(-1).join('')];
+    }).filter(Boolean));
+    const parkRows = RM.park.rows.map(r => [r.n, r.app, '+' + (r.a[0]).toLocaleString() + ' 萬', dd(r.a[1]), '+' + (r.l[0]).toLocaleString() + ' 萬', dd(r.l[1]), r.note || '']);
+    S('money', '💰 賺 vs 賠 並排(你選的:先看兩邊數字,⛔ 這一頁不換任何預設)', [
+      { k: 'h', t: 'A. 每一套的成績(看板同一組)' },
+      { k: 'p', t: `17 個起跑日的中間值・100 萬含本金・成本含手續費和稅・含股利;近 4 年 ${aFrom} 起、16 年 ${lFrom} 起,都算到 ${B.to || '—'}。「最差那條」= 17 條裡最後剩最少的那一條。` },
+      { k: 'tbl', head: ['策略', '近 4 年 100 萬→', '中途最多賠', '最差那條', '16 年 100 萬→', '中途最多賠', '最差那條', '勝率(4 年・16 年)', '每筆平均(4 年・16 年)'], rows: boardRows },
+      { k: 'note', t: '勝率低不代表不賺:這幾套都是賠的筆數比較多、靠少數幾筆大賺撐起來。0050 那一列是買了放著、含息。' },
+      { k: 'h', t: 'B. 想少賠,有哪些做法(都是取捨,⛔ 沒有一種兩段都「少賠又不少賺」)' },
+      { k: 'p', t: `👑 這張是「${RM.lead.unit}」、資料到 ${RM.lead.to},數字照抄實測總表「${srcT(RM.lead.src)}」。` },
+      { k: 'tbl', head: ['做法', 'App 現在', '近 4 年 100 萬→', '中途最多賠', '16 年 100 萬→', '中途最多賠', '說明'], rows: leadRows },
+      { k: 'p', t: `🅿️ 這張是「${RM.park.unit}」、資料到 ${RM.park.to},數字照抄實測總表「${srcT(RM.park.src)}」。⚠️ 單位跟上一張不一樣,⛔ 兩張不可互相比。` },
+      { k: 'tbl', head: ['做法', 'App 現在', '近 4 年賺', '中途最多賠', '16 年賺', '中途最多賠', '說明'], rows: parkRows },
+      { k: 'h', t: 'C. 這一波實際(從這一段的高點那天起算)' },
+      ...this._auditWaveBlocks(),
+    ]);
+    // ③ 每一套怎麼做
+    const HQ = this._HQ_RULE, LD = this._LEAD, CR = this._CAP_RULE;
+    const stratBlocks = [];
+    for (const k of ['park', 'hot', 'lead', 'leadcash', 'stable', 'glide', 'close']) {
+      const m = this.STRAT_NAMES[k]; if (!m) continue;
+      stratBlocks.push({ k: 'h', t: `${m.n}${m.ver ? `・${m.ver}` : ''}` }, { k: 'ul', items: (m.how || []).slice() });
+    }
+    S('rules', '🧭 每一套怎麼選、怎麼買、怎麼賣、放多少、空頭怎麼辦', [
+      { k: 'kv', items: [
+        ['🧬 🔥 / 🅿️ 的選股門檻', `一年位置在最高 ${100 - HQ.pos}% 以內(位階 ≥${HQ.pos})+ 波動率排前 ${100 - HQ.vol}%`],
+        ['👑 的選股與換股', `成交額前 ${LD.U} 大、站上月線季線、一年位置 ≥${LD.pos}%、${LD.L} 日漲最多的前 ${LD.N} 檔;每 ${LD.R} 個交易日換一次,掉出前 ${LD.N * LD.hyst} 名才賣`],
+        ['💵 回測的錢', `本金 ${CR.cap / 1e4} 萬、🔥 / 🅿️ 每筆 ${CR.lot / 1e4} 萬、👑 每檔 = 總資金 ÷ ${LD.N}`],
+      ] },
+      { k: 'h', t: 'App 現行預設' },
+      { k: 'kv', items: F.defaults.map(d => [d.n, d.t]) },
+      ...stratBlocks,
+    ]);
+    // ④ ✅ 驗證過有用(照畫面同一個順序)
+    const okRows = this._labOkOrder((this._labOf('ok') || []).map(it => ({ ...it, _col: 'ok' })));
+    const line = it => { const P = this._labPlainOf(it); return `${P.p}${P.pn ? `(${P.pn})` : ''}`; };
+    S('ok', `✅ 驗證過有用(${okRows.length} 條)`, [
+      { k: 'p', t: '每一條都通過本站的回測關卡;括號裡是白話數字。完整說明在實測總表(下載完整版會附上原文)。' },
+      { k: 'ul', items: okRows.map(line), fold: `✅ 展開 ${okRows.length} 條` },
+    ]);
+    // ⑤ ⛔ 驗證過沒用(照名次;精簡版前 N 條)
+    const trapAll = (this._labOf('trap') || []).map(it => ({ ...it, _col: 'trap' })).sort((a, b) => (b.r ?? -1) - (a.r ?? -1));
+    const trapRows = full ? trapAll : trapAll.slice(0, this._AUDIT_TRAP_N);
+    S('trap', `⛔ 驗證過沒用(${trapAll.length} 條${full || trapAll.length <= this._AUDIT_TRAP_N ? '' : `,這裡列名次前 ${trapRows.length} 條`})`, [
+      { k: 'p', t: '這些是江湖常見、但本站實測沒有優勢(或方向相反)的做法,照「多常見 × 錯得多嚴重」排。⛔ 請不要再推薦它們,除非你說得出跟我們測的版本差在哪裡。' },
+      { k: 'ul', items: trapRows.map(line), fold: `⛔ 展開 ${trapRows.length} 條` },
+    ]);
+    // ⑥ 🛡️ 風控現況
+    S('risk', '🛡️ 風控現況(現在怎麼做・預設・缺口)', [{ k: 'items', rows: F.risk }]);
+    // ⑦ 🌪️ 黑天鵝 / 大跌
+    const L = this._auditLegD, EVN = { leg10: '離一年最高點跌 10%', fast15: '25 天內跌 15%', bear20: '跌 20%', end: '這一段結束' };
+    const legLine = (L && L.leg) ? `🌪️ ${L.leg.open ? '現在這一段' : '最近一段'}:${L.leg.peak.d} 高點 → ${L.leg.low.d}(${this._auditDd(L.leg.depth)})${L.leg.open ? ',還沒結束' : ''};已經發生:${(L.leg.ev || []).map(e => `${EVN[e.k] || e.k}(${String(e.d).slice(5)})`).join('、') || '—'}(資料到 ${L.asof || '—'})。`
+      : (L && L.err ? `⚠️ 這一段大跌的資料讀不到(${L.err})。` : '⏳ 這一段大跌的資料還在讀。');
+    S('swan', '🌪️ 黑天鵝 / 大跌', [{ k: 'ul', items: [legLine, ...F.swan] }]);
+    // ⑧ 📱 呈現方式 ⑨ 🔔 提醒告警
+    S('ui', '🖥️ 呈現方式', [{ k: 'ul', items: F.ui }]);
+    S('alert', '🔔 提醒告警', [{ k: 'ul', items: F.alert }]);
+    // ⑩ 🧱 已知缺陷 / 還沒做(+ 實測總表「還測不了」「推薦下一步」兩欄的標題,自動帶)
+    const pend = [...(this._labOf('blocked') || []).map(it => ['⏳', it]), ...(this._labOf('next') || []).map(it => ['🔬', it])]
+      .sort((a, b) => String(b[1].u || '').localeCompare(String(a[1].u || '')));
+    const pendRows = (full ? pend : pend.slice(0, 20)).map(([ic, it]) => `${ic} ${this._labPlain(it.t).replace(/\*\*/g, '')}`);
+    S('gaps', '🧱 已知缺陷 / 還沒做', [
+      { k: 'items', rows: F.gaps.map(g => ({ n: g.s, now: g.t, fix: g.act || '' })) },
+      { k: 'h', t: `實測總表裡還沒驗證的(${pend.length} 條${full || pend.length <= 20 ? '' : ',這裡列最近更新的 20 條'})` },
+      { k: 'ul', items: pendRows, fold: `⏳ 展開 ${pendRows.length} 條` },
+    ]);
+    // ⑪ ❓ 請你(外部 AI)複查
+    S('ask', '❓ 請你(外部 AI)複查', [{ k: 'ul', items: F.asks }]);
+    return { secs, ver: this.VER, u: F.u };
+  },
+  /** 一個區塊 → Markdown 行(⛔ 任何 HTML 標籤) */
+  _auditMd(b) {
+    const cell = s => String(s == null ? '' : s).replace(/\|/g, '/').replace(/\n+/g, ' ');
+    if (b.k === 'p') return [b.t, ''];
+    if (b.k === 'note') return ['> ' + b.t, ''];
+    if (b.k === 'h') return ['### ' + b.t, ''];
+    if (b.k === 'ul') return [...b.items.map(x => '- ' + x), ''];
+    if (b.k === 'kv') return [...b.items.map(([a, v]) => `- ${a}:${v}`), ''];
+    if (b.k === 'items') return [...b.rows.map(r => `- ${r.n}:${String(r.now).replace(/。$/, '')}${r.def ? `(預設:${r.def})` : ''}${r.gap ? `。⚠️ ${r.gap}` : ''}${r.fix ? ` → 建議:${r.fix}` : ''}`), ''];
+    if (b.k === 'tbl') return ['| ' + b.head.map(cell).join(' | ') + ' |', '|' + b.head.map(() => '---').join('|') + '|', ...b.rows.map(r => '| ' + r.map(cell).join(' | ') + ' |'), ''];
+    return [];
+  },
+  /** 📤 匯出文字(精簡 = 1~11 節;完整 = 再附整份實測總表原文) */
+  auditText(o = {}) {
+    const full = o.full === true, M = this._auditModel({ full });
+    const L = [`# 台股 App 體檢報告(${M.ver}・匯出 ${this._auditYmd()}・內容 ${M.u})`, '',
+      '> 這份是給你(外部 AI)複查用的:我想知道這個 App 還有哪裡可以讓我「少賠」。數字都是本站回測或程式裡讀出來的,不是估計;請照第 11 節的格式回答。', ''];
+    M.secs.forEach((s, i) => { L.push(`## ${i + 1}. ${s.t}`, ''); for (const b of s.blocks) L.push(...this._auditMd(b)); });
+    if (full) L.push('---', '', '# 附錄:整份實測總表(原文)', '', this.labExportText({ scope: 'all', full: true, ask: false }));
+    return L.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+  },
+  /** 📎 附檔用的短提示(檔案太大貼不進對話框時:上傳完整版 .md + 貼這段) */
+  auditShortPrompt() {
+    return [`附檔是我的台股 App「體檢報告」(${this.VER}・${this._auditYmd()})。請先讀完附檔,再照附檔第 11 節「請你複查」的格式回答:`,
+      '1. 先用 5 句話講你理解的這個 App(怎麼選股、怎麼買賣、錢怎麼放、怎麼提醒)。',
+      '2. 找出邏輯矛盾和風險缺口:什麼情況下會一次賠很大?哪個提醒會來不及?',
+      '3. 最多 10 個改進,照「對少賠的幫助」排序;每個附:可以寫成程式的規則、要怎麼回測、成功標準(近 4 年和 16 年兩段都要成立)、預計會少賺多少。',
+      '⛔ 附檔第 5 節是驗證過沒用的,不要重提(除非說得出差在哪);⛔ 不推薦個股、不保證報酬、不要自己編數字。',
+      '請用繁體中文、條列回答。'].join('\n');
+  },
+  auditDo(kind) {
+    this.buzz(10);
+    if (kind === 'file') return this._dlText(this.auditText({ full: true }), `App體檢_${this._auditYmd()}.md`);
+    const txt = kind === 'short' ? this.auditShortPrompt() : this.auditText({ full: false });
+    const ok = this._copySync(txt);
+    this.toast(ok ? (kind === 'short' ? '📎 已複製短提示 —— 把下載的 .md 檔一起上傳給 AI' : `📋 已複製 ${txt.length.toLocaleString()} 字,貼到 AI 對話框${txt.length > this._AUDIT_WARN_CH ? '(很長,被截斷的話改用 ⬇️ 下載)' : ''}`)
+      : '⚠️ 這台裝置不給複製 —— 請改用 ⬇️ 下載完整版');
+    return ok;
+  },
+  /** 一個區塊 → HTML(全部跳脫;⛔ 紅綠 —— 這一頁講的是做法與取捨,不是漲跌) */
+  _auditBlockHtml(b) {
+    const e = s => this._esc(String(s == null ? '' : s));
+    if (b.k === 'p') return `<div class="note" style="margin:4px 0">${e(b.t)}</div>`;
+    if (b.k === 'note') return `<div class="note" style="margin:2px 0 8px;color:var(--dim2)">💡 ${e(b.t)}</div>`;
+    if (b.k === 'h') return `<div style="font-weight:800;margin:12px 0 4px">${e(b.t)}</div>`;
+    if (b.k === 'kv') return `<div class="aud-kv">${b.items.map(([a, v]) => `<div><b>${e(a)}</b>:${e(v)}</div>`).join('')}</div>`;
+    if (b.k === 'items') return `<div class="aud-it">${b.rows.map(r => `<div><b>${e(r.n)}</b>・${e(r.now)}${r.def ? `<span class="aud-def">預設:${e(r.def)}</span>` : ''}${r.gap ? `<div class="aud-gap">⚠️ ${e(r.gap)}</div>` : ''}${r.fix ? `<div class="aud-fix">→ 建議:${e(r.fix)}</div>` : ''}</div>`).join('')}</div>`;
+    if (b.k === 'tbl') return `<div class="tblwrap"><table class="grid aud-tbl"><thead><tr>${b.head.map(h => `<th>${e(h)}</th>`).join('')}</tr></thead><tbody>${b.rows.map(r => `<tr>${r.map((c, i) => `<td${i === 0 ? ' class="aud-n"' : ''}>${e(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    if (b.k === 'ul') {
+      const ul = `<ul class="aud-ul">${b.items.map(x => `<li>${e(x)}</li>`).join('')}</ul>`;
+      return b.fold ? `<details class="aud-fold"><summary>${e(b.fold)} ▾</summary>${ul}</details>` : ul;
+    }
+    return '';
+  },
+  async renderAudit() {
+    const el = document.getElementById('auditBody'); if (!el) return;
+    const paint = () => {
+      if (this._tab !== 'audit') return;
+      const M = this._auditModel({ full: false });
+      const brief = this.auditText({ full: false }).length;
+      el.innerHTML = `<div class="aud-ex" data-audex>
+          <div style="font-weight:800">📤 匯出給別的 AI 複查</div>
+          <div class="aud-btns">
+            <button class="lbtn" onclick="PRO.auditDo('copy')">📋 複製精簡版</button>
+            <button class="lbtn" onclick="PRO.auditDo('file')">⬇️ 下載完整版 .md</button>
+            <button class="lbtn" onclick="PRO.auditDo('short')">📎 複製附檔用的短提示</button>
+          </div>
+          <div class="note" style="margin:0">精簡版約 <b data-audlen>${brief.toLocaleString()}</b> 字${brief > this._AUDIT_WARN_CH ? ' —— ⚠️ 很長,貼進對話框可能被截斷,建議下載完整版當附件上傳' : ''};完整版另外附上整份實測總表。
+          ⛔ 它回給你的建議都還沒驗證 —— 貼回來給我,我先回測、過了關卡才會上線。</div>
+        </div>
+        ${M.secs.map((s, i) => `<div class="aud-sec" data-audsec="${s.id}"><div class="aud-h">${i + 1}. ${this._esc(s.t)}</div>${s.blocks.map(b => this._auditBlockHtml(b)).join('')}</div>`).join('')}
+        <div class="note" style="margin-top:10px">內容最後整理 ${this._esc(M.u)}・${this._esc(M.ver)}。數字都讀本站既有的表(看板 / 實測總表 / 成績單同一套算法),⛔ 這一頁不改任何判斷、不換任何預設。</div>`;
+    };
+    paint();
+    const L = await this._auditLegLoad();
+    paint();
+    if (L && L.leg) {
+      await this._auditRaceEnsure(this._auditWaveS(L.leg));
+      paint();
+    }
   },
 
   /** 目前條件下要顯示哪些條目。搜尋時**跨全部判定欄**,並帶上它來自哪一欄。 */
@@ -10371,7 +10762,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V82.0.2',
+  VER: 'V82.0.3',
   _ROT: {
     win: 20, spread: 1.95, top: 1.06, bot: -0.88,
     q1: 2.48, q2: 1.42, exBest: 1.83,
