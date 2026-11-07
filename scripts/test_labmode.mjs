@@ -36,7 +36,9 @@ try {
     for (let i = 0; i < 40; i++) {
         await p.waitForTimeout(1000);
         try { r = await p.evaluate(() => (typeof app !== 'undefined' && app.currentSymbolId === '2330' && app._activeSubTab === 'backtest') ? { lab: document.documentElement.classList.contains('lab'), disp: getComputedStyle(document.getElementById('subContentBacktest')).display, len: document.getElementById('subContentBacktest').innerText.length } : null); } catch (_) {}
-        if (r) break;
+        // ⏳ 等到「內容真的畫出來」才停(⛔ 一切到分頁就停 —— 機器忙的時候分頁切過去了、內容還沒畫,會誤判失敗;
+        //    40 秒內都沒畫出來照樣紅,判斷條件沒有放寬)
+        if (r && r.disp === 'flex' && r.len > 200) break;
     }
     ok('② 直接開 ?lab=1 = 實驗室模式', r && r.lab, JSON.stringify(r));
     ok('② 真的切到 2330 的回測分頁而且有內容', r && r.disp === 'flex' && r.len > 200, JSON.stringify(r));
