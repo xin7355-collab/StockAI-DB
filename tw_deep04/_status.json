@@ -1,10 +1,10 @@
 {
- "updated": "2026-11-06T13:18:57Z",
+ "updated": "2026-11-07T12:15:26Z",
  "start": "2004-02",
  "end": "2009-12",
  "months_total": 71,
- "months_complete": 13,
- "days_with_data": 282,
+ "months_complete": 27,
+ "days_with_data": 567,
  "div_years": [
   2004,
   2005,
@@ -14,7 +14,7 @@
   2009
  ],
  "fetched_this_run": 300,
- "last_day": "20050328",
+ "last_day": "20060522",
  "stopped": "",
  "more": 1,
  "gate": {
