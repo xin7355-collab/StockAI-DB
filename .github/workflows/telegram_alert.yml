@@ -20,10 +20,14 @@ name: 📲 Telegram 警報系統
 #      ① 無狀態 → 不可能重複推(不用維護「今天推過誰」的檔案)
 #      ② 13:20 正是實測有效進場時窗(13:00~13:28)的中間
 #      ⛔ 別改成每 5 分鐘一輪 —— 那要做去重,而且會把使用者吵到關通知 = 整套失效
+# 📲 V82.0.5 排程那兩輪改成 ALERT_MODE=none(⛔ 不發任何訊息):真正的推播改由 Cloudflare Worker 準時叫醒 tg_push.yml
+#   (外部健檢 11/07:13:20 那輪最近 10 個交易日最早台北 18:35 才跑、20:00 那輪凌晨 1~5 點才到 → 收盤前一次都沒送到)。
+#   ⛔ cron **不可刪**:macro_cron / news_express 用 workflow_run 跟在這支「📲 Telegram 警報系統」後面(scripts/test_wf_quota.py)。
+#   手動跑(workflow_dispatch)照舊可以選 playbook / eod。
 on:
   schedule:
-    - cron: '0 12 * * 1-5'   # 台北 20:00 — 推「明天的作戰清單」
-    - cron: '20 5 * * 1-5'   # 台北 13:20 — 尾盤買點到了就推
+    - cron: '0 12 * * 1-5'   # 台北 20:00 —— V82.0.5 起只當 macro_cron / news_express 的 host(ALERT_MODE=none,⛔ 不發)
+    - cron: '20 5 * * 1-5'   # 台北 13:20 —— 同上(尾盤買點改由 tg_push.yml 13:15 準時發)
   workflow_dispatch:
     inputs:
       mode:
@@ -75,7 +79,6 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # 判斷模式:手動 dispatch 用 input;cron 用**排程字串**對應(⛔ 別改回用 UTC 時間判斷,
-          # 舊版就是那樣才有時區 bug;GitHub 會把觸發的那條 cron 原文放在 github.event.schedule)
-          ALERT_MODE: ${{ github.event.inputs.mode || (github.event.schedule == '20 5 * * 1-5' && 'eod' || 'playbook') }}
+          # 📲 V82.0.5 排程那兩輪一律 none(⛔ 不發 —— 準時的推播在 tg_push.yml);手動 dispatch 照 input
+          ALERT_MODE: ${{ github.event.inputs.mode || 'none' }}
         run: python alert_system.py

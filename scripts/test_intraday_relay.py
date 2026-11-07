@@ -182,13 +182,22 @@ if not os.path.exists(WORKER):
     ok('④ 找得到 cloud-worker/worker.js', False)
 else:
     wsrc = open(WORKER, encoding='utf-8').read()
-    sent = set(re.findall(r"ghDispatch\(env,\s*'([^']+)'\)", wsrc))
+    # 📲 V82.0.5 Worker 發事件有三種寫法,⛔ 只抓一種會漏(以前只抓 ghDispatch 字面 → macro-cron / daily-miner / tg-* 都沒比到):
+    #   ① ghDispatch(env, 'x') / dispatchFn(env, 'x') 字面 ② 看門狗表 _INTRADAY_WATCH 與 Telegram 表 TG_KICK 的 ev: 'x'
+    sent = set(re.findall(r"(?:ghDispatch|dispatchFn)\(env,\s*'([^']+)'\)", wsrc))
+    sent |= set(re.findall(r"\bev:\s*'([^']+)'", wsrc))
+    # 收的那一邊掃**全部** workflow(⛔ 只掃盤中那兩支:新加一支收 dispatch 的就不會被比到)
     recv = {}
-    for k, path in WFS.items():
-        for m in re.finditer(r'repository_dispatch:\s*\n\s*types:\s*\[([^\]]+)\]', open(path, encoding='utf-8').read()):
+    wf_dir = os.path.join(ROOT, '.github/workflows')
+    for fn in sorted(os.listdir(wf_dir)):
+        if not fn.endswith(('.yml', '.yaml')):
+            continue
+        for m in re.finditer(r'repository_dispatch:\s*\n\s*types:\s*\[([^\]]+)\]', open(os.path.join(wf_dir, fn), encoding='utf-8').read()):
             for ev in m.group(1).split(','):
-                recv[ev.strip()] = k
+                recv[ev.strip()] = fn
     ok('④a Worker 真的會發 repository_dispatch', bool(sent), sorted(sent))
+    ok('④a2 空過守門:發 / 收兩邊都至少 6 種(盤中 ×2・每日採礦・總經・Telegram ×2)',
+       len(sent) >= 6 and len(recv) >= 6, f'發 {sorted(sent)} / 收 {sorted(recv)}')
     # ⭐ **雙向**都要比:發了沒人收 = 白發;收了沒人發 = 永遠不觸發。⛔ 只比一邊抓不到打錯字。
     ok('④b ⭐⭐ Worker 發的每個事件名都有 workflow 接(⛔ 差一字永遠不觸發且零訊息)',
        sent and sent <= set(recv), f'發 {sorted(sent)} / 收 {sorted(recv)}')

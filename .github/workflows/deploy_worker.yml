@@ -54,9 +54,12 @@ jobs:
           #    (GitHub 的 schedule 在這個 repo 實測遲到 4.5~5 小時、常常整天不進來)。
           #    ⛔ 選填 —— 沒設的話 Worker 那段整個跳過,既有 Telegram 功能不受影響。
           GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
+          # 📲 V82.0.5 Worker 要知道「擁有者」是哪個 Telegram(= GitHub 的 TELEGRAM_CHAT_ID)→ 擁有者選 👑 就不叫醒 🔥 作戰清單
+          #    ⛔ 選填 —— 沒設的話 Worker 照派(⛔ 比以前少送)
+          OWNER_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           set -e
-          for K in TELEGRAM_BOT_TOKEN GEMINI_API_KEY GH_DISPATCH_TOKEN; do
+          for K in TELEGRAM_BOT_TOKEN GEMINI_API_KEY GH_DISPATCH_TOKEN OWNER_CHAT_ID; do
             V="$(printenv "$K" || true)"
             if [ -n "$V" ]; then
               printf '%s' "$V" | npx --yes wrangler@3.90.0 secret put "$K"

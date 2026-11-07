@@ -92,7 +92,7 @@ async function fire(cron, iso) {
   } finally { console.log = origLog; console.error = origErr; console.warn = origWarn; }
   return ps.length;
 }
-const EXPECT = { eve: 2, open: 2, pre: 5, scan: 2, last: 2 };   // 📉 V82.0.0 pre 多一件:大跌事件 / 大跌撿便宜(runCrashDipPush)
+const EXPECT = { eve: 2, open: 2, pre: 6, scan: 2, last: 3 };   // 📉 V82.0.0 pre 多一件:大跌事件 / 大跌撿便宜(runCrashDipPush);📲 V82.0.5 pre / last 各多一件:Telegram 準時叫醒(tgKick)
 const FRI = { pre: '2026-10-23T00:00:00Z', open: '2026-10-23T01:00:00Z', scan: '2026-10-23T02:15:00Z', last: '2026-10-23T05:15:00Z', eve: '2026-10-23T09:00:00Z' };
 for (const k of Object.keys(EXPECT)) {
   const n = await fire(CRON[k], FRI[k]);
@@ -113,8 +113,9 @@ const bPre = br('} else if (event.cron === CRON.pre)', '} else {');
 const bElse = br('} else {', '\n    },');
 ok('⑥ 17:00:盤後總結 + 叫醒每日採礦', /runDailySummary\(env\)/.test(bEve) && /minerKick\(env\)/.test(bEve), bEve.slice(0, 200));
 ok('⑥b 09:00:ETF 跟單 + 叫醒逐筆', /runEtfFollowMorningPush\(env\)/.test(bOpen) && /ghDispatch\(env, 'intraday-ticks'\)/.test(bOpen), bOpen.slice(0, 200));
-ok('⑥c 08:00:盤前簡報 + 換倉 + 總經 + 盤中快照', ['runPreMarket(env)', 'runLeaderRebalPush(env)', 'macroKick(env)', "ghDispatch(env, 'intraday-quotes')"].every(x => bPre.includes(x)), bPre.slice(0, 200));
+ok('⑥c 08:00:盤前簡報 + 換倉 + 總經 + 盤中快照 + Telegram 作戰清單', ['runPreMarket(env)', 'runLeaderRebalPush(env)', 'macroKick(env)', "ghDispatch(env, 'intraday-quotes')", "tgKick(env, 'list'"].every(x => bPre.includes(x)), bPre.slice(0, 200));
 ok('⑥d 其他(盤中):個人警報 + 看門狗', /runScan\(env\)/.test(bElse) && /intradayWatchdog\(env\)/.test(bElse), bElse.slice(0, 200));
+ok('⑥d2 盤中末班(13:15 那輪)叫醒 Telegram 尾盤買點(tgKick 只在 CRON.last 呼叫)', /if \(event\.cron === CRON\.last\) ctx\.waitUntil\(tgKick\(env, 'eod'/.test(bElse), bElse.slice(0, 300));
 ok('⑥e ⛔ 分流不可再寫死字串(一律 CRON.xxx,改排程只改一處)', !/event\.cron === '/.test(S.slice(0, S.indexOf('\n    },'))));
 ok('⑥f 週五盤後總結那則會附週報(以前星期五沒跑 = 從來沒送過)', /isTaipeiFriday\(\) \? buildWeekBlock/.test(W));
 // ⑦ 週報第一次真的會送出去 → 內容先驗(以前從來沒跑過):標起訖日、⛔ 講成「本週」(週五 17:00 當天收盤還沒進 breadth)

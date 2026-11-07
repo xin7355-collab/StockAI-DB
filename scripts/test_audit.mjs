@@ -10,6 +10,8 @@
 //        ⛔ 動成績單自己的 _race
 //     ⑥ _AUDIT_FACTS 跟 index.html / auto_trade.py / 本檔常數逐項比對(改 App 預設 / 門檻要一起改這裡;V82.0.4 加收工對帳時間 / 虧損安全鎖預設)
 //     ⑦ 390 / 844 寬不橫捲、表格在框裡自己捲;⛔ 🔴🟢(只准講漲跌);有勝率就要有「勝率低不代表不賺」
+//     ⑧ V82.0.5 📝 外部複查紀錄:每一列(建議 / 判定 / 理由)== _AUDIT_REVIEWS、判定只用 ✅⚠️❌⏳;提問與短提示裡的「第 N 節」== _AUDIT_ORDER
+//        (決定性對照:改一列判定 → 畫面與匯出一起變);第 2 節要講「17 個起跑日不是 17 次獨立 / 樣本外只有 2026-11-07 以後」
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -88,7 +90,20 @@ const FIX = () => {
     o.btn = (b => b ? [b.dataset.g, b.dataset.sub] : null)(document.getElementById('tabBtnAudit'));
     const T = s => (document.querySelector(`[data-audsec="${s}"]`) || {}).innerText || '';
     o.secs = [...document.querySelectorAll('[data-audsec]')].map(x => x.dataset.audsec);
-    o.money = T('money'); o.risk = T('risk'); o.swan = T('swan'); o.alert = T('alert'); o.gaps = T('gaps');
+    o.money = T('money'); o.risk = T('risk'); o.swan = T('swan'); o.alert = T('alert'); o.gaps = T('gaps'); o.reviews = T('reviews'); o.ask = T('ask');
+    o.order = PRO._AUDIT_ORDER.slice();
+    // ⑧ 外部複查紀錄:畫面上每一列 == 資料
+    o.rvTable = !!document.querySelector('[data-audsec="reviews"] table');
+    o.rvRows = [...document.querySelectorAll('[data-audsec="reviews"] [data-rvrow]')].map(r => [...r.children].map(c => c.innerText.trim()));
+    o.rvExp = PRO._AUDIT_REVIEWS.rounds[0].rows.map(x => [x.q, x.v, x.why]);
+    o.rvBadV = PRO._AUDIT_REVIEWS.rounds.flatMap(r => r.rows).filter(x => !/^(✅|⚠️|❌|⏳)/.test(x.v)).map(x => x.v);
+    // 決定性對照:改一列判定 → 畫面與匯出一起變
+    const rv0 = PRO._AUDIT_REVIEWS.rounds[0].rows[0], rvKeep = rv0.v;
+    rv0.v = '⚠️ 測試改的判定XYZ'; await PRO.renderAudit();
+    o.rvCtlScreen = T('reviews').includes('測試改的判定XYZ'); o.rvCtlExport = PRO.auditText().includes('測試改的判定XYZ');
+    rv0.v = rvKeep; await PRO.renderAudit();
+    o.rvCtlBack = !T('reviews').includes('測試改的判定XYZ');
+    o.askN = PRO._auditSecN('ask'); o.trapN = PRO._auditSecN('trap'); o.revN = PRO._auditSecN('reviews');
     o.raceUntouched = PRO._race === 'SENTINEL' && PRO._raceSig === 'SIG' && PRO._recoStart() === startBefore;
     o.calls = window.__raceCalls.slice();
     // ② A 表 == 看板
@@ -161,14 +176,14 @@ const FIX = () => {
     PRO._auditReset(); await PRO.renderAudit(); o.legErrTxt = T('money'); o.legErrSwan = T('swan'); o.legErrCalls = window.__raceCalls.length;
     PRO.fetchJson = f0;
     // ⑦ 燈號:這一頁自己寫的字 ⛔ 🔴🟢(「🚦 🔴🟢 只代表漲跌方向」那一句是在講規則本身,除外)
-    const F = PRO._AUDIT_FACTS, own = JSON.stringify({ ...F, ui: F.ui.filter(x => !x.startsWith('🚦')) }) + JSON.stringify(PRO._RISK_MENU);
+    const F = PRO._AUDIT_FACTS, own = JSON.stringify({ ...F, ui: F.ui.filter(x => !x.startsWith('🚦')) }) + JSON.stringify(PRO._RISK_MENU) + JSON.stringify(PRO._AUDIT_REVIEWS);
     o.redGreen = (own.match(/🔴|🟢/g) || []).length;
     o.facts = F;
     return o;
   }, FIX.toString());
   ok('① 研究那一組有 audit、排在「選哪一套」後面;子頁鈕在', JSON.stringify(R.res) === '["pick","audit","qlab","col","lab","log"]' && JSON.stringify(R.btn) === '["res","audit"]', JSON.stringify([R.res, R.btn]));
   ok('① 進得去、只顯示這一頁、研究亮、子頁亮', JSON.stringify(R.vis) === '["audit"]' && R.cur === 'audit' && JSON.stringify(R.gOn) === '["res"]' && JSON.stringify(R.sOn) === '["audit"]', JSON.stringify([R.vis, R.cur, R.gOn, R.sOn]));
-  ok('① 11 節都畫出來(順序固定)', JSON.stringify(R.secs) === '["about","money","rules","ok","trap","risk","swan","ui","alert","gaps","ask"]', JSON.stringify(R.secs));
+  ok('① 12 節都畫出來(順序固定 = _AUDIT_ORDER)', JSON.stringify(R.secs) === '["about","money","rules","ok","trap","risk","swan","ui","alert","gaps","reviews","ask"]' && JSON.stringify(R.secs) === JSON.stringify(R.order), JSON.stringify([R.secs, R.order]));
   ok('② 💰 A 表每一列(名字 / 100 萬→ / 最多賠 / 最差那條 × 兩段)== _PROFIT_BOARD', R.aRows.length === R.aExp.length && R.aExp.every((e, i) => e.every((c, j) => R.aRows[i][j] === c)),
     JSON.stringify({ got: R.aRows.slice(0, 2), exp: R.aExp.slice(0, 2) }));
   ok('② 決定性對照:看板改一格 → 畫面與匯出一起變,改回來就回來', R.ctlScreen && R.ctlExport && R.ctlBack, JSON.stringify([R.ctlScreen, R.ctlExport, R.ctlBack]));
@@ -177,13 +192,22 @@ const FIX = () => {
   ok('③ _RISK_MENU 每個數字都在它那條 LAB 原文裡', R.menuMiss.length === 0, JSON.stringify(R.menuMiss));
   ok('③ 決定性對照:LAB 那個數字改掉 → 抓得到', R.menuCtl.some(x => /1,174/.test(x)), JSON.stringify(R.menuCtl));
   ok('③ 兩張表單位不同要明講、⛔ 沒有兩全', /單位跟上一張不一樣/.test(R.money) && /沒有一種兩段都「少賠又不少賺」/.test(R.money), R.money.slice(0, 300));
-  ok('④ 匯出 11 節標題都在(## 1. ~ ## 11.)', R.h2 === 11 && R.titlesIn, JSON.stringify([R.h2, R.titlesIn]));
+  ok('④ 匯出 12 節標題都在(## 1. ~ ## 12.)', R.h2 === 12 && R.titlesIn, JSON.stringify([R.h2, R.titlesIn]));
   ok('④ 匯出 ⛔ HTML 標籤(精簡 + 完整;偵測器自己抓得到標籤)', R.tagCtl === 4 && R.tagB.length === 0 && R.tagF.length === 0, JSON.stringify([R.tagCtl, R.tagB, R.tagF]));
   ok('④ 精簡 < 完整;完整附整份實測總表、精簡不附', R.briefLen > 3000 && R.briefLen < R.fullLen && R.fullHasLab && R.briefNoLab, JSON.stringify([R.briefLen, R.fullLen, R.fullHasLab, R.briefNoLab]));
   ok('④ 複製失敗一定 toast(⛔ 靜默)、成功也講幾個字', R.copyRet === false && /不給複製/.test(R.copyToast) && R.copyOk === true && /已複製 [\d,]+ 字/.test(R.copyOkToast), JSON.stringify([R.copyRet, R.copyToast, R.copyOk, R.copyOkToast]));
   ok('④ 下載 = 完整版、檔名 App體檢_日期.md;實測總表的下載也走同一支 _dlText', R.dl && /^App體檢_\d{4}-\d{2}-\d{2}\.md$/.test(R.dl.n) && R.dl.len === R.fullLen && R.labDl && /^實測總表_.+\.md$/.test(R.labDl.n),
     JSON.stringify([R.dl, R.labDl]));
-  ok('④ 附檔用的短提示:指到第 11 節、⛔ 推薦個股 / 編數字、夠短', /第 11 節/.test(R.short) && /不推薦個股/.test(R.short) && /不要自己編數字/.test(R.short) && R.short.length < 1000, R.short);
+  ok('④ 附檔用的短提示:提問 / 沒用 / 外部複查的節數 == _AUDIT_ORDER、⛔ 推薦個股 / 編數字、夠短', R.askN === 12 && R.trapN === 5 && R.revN === 11
+    && R.short.includes(`第 ${R.askN} 節「請你複查」`) && R.short.includes(`第 ${R.trapN} 節是驗證過沒用的`) && R.short.includes(`第 ${R.revN} 節是上一輪的建議`)
+    && /不推薦個股/.test(R.short) && /不要自己編數字/.test(R.short) && R.short.length < 1000, R.short);
+  ok('⑧ 提問那一節的「第 N 節」照 _AUDIT_ORDER 代入(⛔ 留下 {trap} 這種沒換掉的)', R.ask.includes(`第 ${R.trapN} 節「驗證過沒用」`) && R.ask.includes(`第 ${R.revN} 節是上一輪別的 AI 給的建議`) && !/\{\w+\}/.test(R.ask), R.ask.slice(0, 400));
+  ok('⑧ 📝 外部複查紀錄:畫面一列一張卡(⛔ 手機上 3 欄長文字用 table)、每一列(建議 / 判定 / 理由)== _AUDIT_REVIEWS', !R.rvTable && R.rvRows.length >= 10 && R.rvRows.length === R.rvExp.length && R.rvExp.every((e, i) => e.every((c, j) => R.rvRows[i][j] === c)),
+    JSON.stringify({ got: R.rvRows.slice(0, 2), exp: R.rvExp.slice(0, 2) }));
+  ok('⑧ 判定只用 ✅ ⚠️ ❌ ⏳ 開頭(⛔ 紅綠)', R.rvBadV.length === 0, JSON.stringify(R.rvBadV));
+  ok('⑧ 決定性對照:改一列判定 → 畫面與匯出一起變,改回來就回來', R.rvCtlScreen && R.rvCtlExport && R.rvCtlBack, JSON.stringify([R.rvCtlScreen, R.rvCtlExport, R.rvCtlBack]));
+  ok('⑧ 外部說錯的也要列(⛔ 只列同意的):至少一列 ❌', /❌/.test(R.reviews), R.reviews.slice(0, 200));
+  ok('⑧ 第 2 節講「17 個起跑日不是 17 次獨立」+「樣本外只有 2026-11-07 以後」', /不是 17 次獨立的證明/.test(R.money) && /約只有 6 條獨立路徑/.test(R.money) && /真正的樣本外只有 2026-11-07 以後/.test(R.money), R.money.slice(0, 200));
   ok('⑤ 這一波:起算日 = 這一段高點那天,數字照假的 _raceLoad 出來', R.calls[0] === '2026-10-06' && /68 萬/.test(R.money) && /−31\.9%/.test(R.money) && /−11 萬/.test(R.money) && /−20\.3%/.test(R.money),
     JSON.stringify([R.calls, R.money.slice(R.money.indexOf('C.'), R.money.indexOf('C.') + 300)]));
   ok('⑤ ⛔ 動到成績單自己的 _race / 起算日', R.raceUntouched);
@@ -218,7 +242,7 @@ for (const [w, h] of [[390, 844], [844, 390]]) {
     const wraps = [...document.querySelectorAll('#tabAudit .aud-tbl')].map(t => { const w = t.closest('.tblwrap'); return w ? { ov: getComputedStyle(w).overflowX, cw: w.clientWidth } : null; });
     return { deep, sx: window.scrollX, vw: innerWidth, wraps, n: document.querySelectorAll('#tabAudit [data-audsec]').length };
   }, FIX.toString());
-  ok(`① ?tab=audit 深連結直接進這一頁(${w}×${h})`, R.deep === 'audit' && R.n === 11, JSON.stringify([R.deep, R.n]));
+  ok(`① ?tab=audit 深連結直接進這一頁(${w}×${h})`, R.deep === 'audit' && R.n === 12, JSON.stringify([R.deep, R.n]));
   ok(`⑦ ${w}×${h} 頁面不橫捲、每張表都在可捲的框裡`, R.sx <= 2 && R.wraps.length >= 4 && R.wraps.every(x => x && /auto|scroll/.test(x.ov) && x.cw <= R.vw), JSON.stringify(R));
   await page.close();
 }

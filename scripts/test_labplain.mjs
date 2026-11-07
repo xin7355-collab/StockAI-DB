@@ -7,6 +7,7 @@
 //  ⑥ 搜尋「對你的意思」裡才有的字要找得到;點環節 = 搜尋那個環節
 //  ⑦ 匯出:有 pl 的條目要帶「一句話 / 對你的意思 / 分類」,而且在「判定」之前
 //  ⑧ 決定性對照:改一條 pl 的一句話 → 畫面與匯出一起變;拿掉一條 pl → ① 會紅
+//  ⑬ V82.0.5 ✅ / ⛔ u ≥ 2026-11-08 的新條目必帶 tries(試了幾種);畫面與匯出都印出來
 // 跑法:node scripts/test_labplain.mjs
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
@@ -131,6 +132,24 @@ ok('⑥b 點環節小標 = 搜尋那個環節(⛔ 不做常駐篩選列)', !!R.s
 ok('⑦ 匯出:✅ 每條帶「一句話 / 對你的意思 / 分類・環節」而且排在「判定」之前', R.exOk, '');
 ok('⑦b 匯出:沒有 pl 的欄位⛔ 不重複印一句話(推出來的就是標題本身)', R.trapNoPl, '');
 ok('⑧ 決定性對照:改 pl 的一句話 → 畫面與匯出一起變,改回就消失', R.injScreen && R.injExport && R.backClean, [R.injScreen, R.injExport, R.backClean]);
+// ⑬ 🎲 V82.0.5「試了幾種」(外部健檢 11/07:多重比較):✅ / ⛔ 兩欄 u ≥ 2026-11-08 的條目必帶 tries ≥ 1;
+//    畫面與匯出都印「這個主題一共試了 N 種」(⭐ 決定性對照:放一條沒帶 tries 的新條目 → 守門抓得到;帶了 → 畫面看得到)
+const TR = await page.evaluate(() => {
+    const need = col => (PRO.LAB[col] || []).filter(x => String(x.u || '') >= '2026-11-08' && !(+x.tries >= 1)).map(x => PRO._labPlain(x.t).slice(0, 30));
+    const miss = [...need('ok'), ...need('trap')];
+    const base = PRO.LAB.trap.length;
+    PRO.LAB.trap.push({ u: '2026-11-08', r: 1, t: '🧪 測試條目 —— 沒帶 tries', n: '1 2 3', d: 'x', s: '測試・V0.0.1' });
+    const ctl = need('trap').length;
+    const it = PRO.LAB.trap[PRO.LAB.trap.length - 1]; it.tries = 7;
+    const ctl2 = need('trap').length;
+    const txt = PRO._labTriesTxt(it), none = PRO._labTriesTxt({});
+    const ex = PRO.labExportText({ scope: 'all', full: true, ask: false });
+    PRO.LAB.trap.length = base;
+    return { miss, ctl, ctl2, txt, none, exHas: ex.includes('這個主題一共試了 7 種'), back: PRO.LAB.trap.length === base };
+});
+ok('⑬ 🎲 ✅ / ⛔ u ≥ 2026-11-08 的條目都帶 tries(試了幾種)', TR.miss.length === 0, TR.miss.join(' | '));
+ok('⑬b 決定性對照:新條目沒帶 tries → 抓得到;補上 → 放行', TR.ctl === 1 && TR.ctl2 === 0 && TR.back, JSON.stringify([TR.ctl, TR.ctl2, TR.back]));
+ok('⑬c 畫面與匯出都印「這個主題一共試了 N 種」;沒有 tries 的舊條目一個字都不多', /一共試了 7 種/.test(TR.txt) && TR.exHas && TR.none === '', JSON.stringify([TR.txt, TR.exHas, TR.none]));
 ok('⓪ 沒有 pageerror', errs.length === 0, errs.slice(0, 2).join(' | '));
 
 await browser.close();

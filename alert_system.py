@@ -4,7 +4,8 @@
 讀 data/ 下既有採礦 JSON,挑出「重大事件」推 Telegram。
 
 設計原則(不吵):
-- 每天 2 則「定時摘要」:盤前 09:00 + 盤後 14:00(台北)
+- 📲 V82.0.5 起:台北 08:00「今天的作戰清單」+ 13:15「尾盤買點」由 Cloudflare Worker 準時叫醒 tg_push.yml
+  (舊的 13:20 / 20:00 排程常常遲到好幾小時;那兩輪改成 ALERT_MODE=none,只當別的採礦的 host)
 - 重大事件即時:融資 > 3200 億 / 新增處置股 / 美債大跌等
 
 ENV(GitHub secrets):
@@ -24,7 +25,7 @@ from lib_hotrule import hot_rule, deck_pick, gene_rank   # 🔥 V79.4.9 名單�
 DATA_DIR = Path(__file__).parent / "data"
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-MODE = os.environ.get("ALERT_MODE", "summary").strip().lower()  # summary | watch
+MODE = os.environ.get("ALERT_MODE", "summary").strip().lower()  # playbook | playbook_am | eod | none | summary | watch
 
 
 def send_telegram(text):
@@ -88,7 +89,18 @@ def stock_label(sym):
                         _STOCK_NAMES_CACHE[f.stem.upper()] = str(j['name']).strip()[:30]
                 except Exception:
                     continue
-            print(f"   📚 stock_label 對照表建立完成:{len(_STOCK_NAMES_CACHE)} 檔有中文名")
+            n_k = len(_STOCK_NAMES_CACHE)
+            # 📲 V82.0.5 K 線檔大多沒有 name 欄(log 以前一直寫「0 檔有中文名」)→ 補讀 stock_names.json
+            #   (採礦每天產:{"names": {代號: [股名, 產業代碼, 市場]}};⛔ 不蓋掉 K 線檔自己的名字)
+            try:
+                sn = json.loads((DATA_DIR / 'stock_names.json').read_text(encoding='utf-8'))
+                for code, v in ((sn or {}).get('names') or {}).items():
+                    nm = (v[0] if isinstance(v, list) and v else v) if v else ''
+                    if nm and str(code).upper() not in _STOCK_NAMES_CACHE:
+                        _STOCK_NAMES_CACHE[str(code).upper()] = str(nm).strip()[:30]
+            except Exception as e:
+                print(f"   ⚠️ stock_names.json 讀不到({type(e).__name__}),只用 K 線檔裡的名字")
+            print(f"   📚 stock_label 對照表建立完成:{len(_STOCK_NAMES_CACHE)} 檔有中文名(K 線檔 {n_k} 檔)")
         except Exception as e:
             print(f"   ⚠️ stock_label 對照表建立失敗:{e}")
     name = _STOCK_NAMES_CACHE.get(str(sym).upper(), '')
@@ -286,8 +298,11 @@ def _pick_line(p, i):
     return t
 
 
-def build_playbook_brief():
-    """【A】盤後推「明日作戰清單」—— 讓使用者不用自己記得開 App 看。"""
+def build_playbook_brief(am=False):
+    """【A】推作戰清單 —— 讓使用者不用自己記得開 App 看。
+    am=False:盤後那一輪(「明天的作戰清單」;手動跑 playbook 才會用到)
+    am=True :📲 V82.0.5 台北 08:00 由 Worker 叫醒(tg_push.yml,ALERT_MODE=playbook_am)→「今天的作戰清單」;
+             名單是前一個交易日晚上算的 → 資料日一定要早於今天(⛔ 拿今天收盤後的名單講「今天」)"""
     j = load_json("playbook_edge.json")
     if not j:
         print("   ⚠️ 沒有 playbook_edge.json,不發")
@@ -306,30 +321,35 @@ def build_playbook_brief():
     if gap > 4:
         print(f"   ❌ playbook_edge 資料日 {dd} 已距今 {gap} 天,過期不發")
         return None
+    if am and gap < 1:
+        print(f"   ⏭️ 名單資料日 {dd} 就是今天(收盤後才算好的)→ 那是「明天的」清單,早上這一輪⛔ 拿來講「今天」,不發")
+        return None
     top = _rank_picks(picks)[:MAX_PICKS]
     if not top:
         # 🧬 V80.0.9 名單上沒有「🧬 而且這一檔自己不是空頭」的 → 決策台明天也不會列,⛔ 不推(以前會推非 🧬 / 自己空頭的)
         print("   ✅ 名單上沒有 🧬 而且自己不是空頭的 → 明天決策台也不會列可以買的,不發")
         return None
     ml = _mkt_line(j)
-    msg = (f"🎯 *明天的作戰清單*\n{SEP2}\n"
+    day = '今天' if am else '明天'
+    msg = (f"🎯 *{day}的作戰清單*\n{SEP2}\n"
            + (f"{ml}\n\n" if ml else "")
            + f"⭐ *跟 App 決策台同一份:一天最多 2 檔*\n\n")
     for i, p in enumerate(top, 1):
         msg += _pick_line(p, i) + "\n"
     msg += (f"{SEP2}\n"
-            f"⛔ *不是叫你明天一開盤就買* —— 要「漲過那個價,而且撐到*尾盤 13:00~13:25* 還站得住」才進場。\n"
+            f"⛔ *不是叫你{day}一開盤就買* —— 要「漲過那個價,而且撐到*尾盤 13:00~13:25* 還站得住」才進場。\n"
             f"⚠️ 這是*全市場*排序,雲端看不到你的自選/庫存 —— App 裡的清單會把你手上的排前面。\n"
             f"👉 {SITE}")
     return msg
 
 
 def build_eod_triggers():
-    """【B】尾盤 13:20 一輪:比對即時價,買點到了就推。
+    """【B】尾盤一輪:比對即時價,買點到了就推。
+    📲 V82.0.5 起台北 13:15 由 Cloudflare Worker 叫醒 tg_push.yml(舊的 13:20 排程常常晚好幾小時才跑)
 
     ⛔ 刻意**只跑一輪**(不是每 5 分鐘):
-       ① 無狀態 → 不用維護「今天推過誰」的檔案,也就不可能重複推
-       ② 13:20 正是實測有效的進場時窗(13:00~13:28)的中間
+       ① Worker 每天只派一次(KV 記著)→ 不用維護「今天推過誰」的檔案
+       ② 13:15~13:20 在實測有效的進場時窗(13:00~13:28)裡
     """
     j = load_json("playbook_edge.json")
     q = load_json("live_quotes.json")
@@ -348,6 +368,17 @@ def build_eod_triggers():
     if not (0 <= age_min <= 30):
         print(f"   ❌ 即時報價不新鮮(updated={upd},{age_min:.0f} 分鐘前)→ 不發")
         print("      ⚠️ 這代表盤中快照採礦沒跑到,要去查 live_snapshot,⛔ 不是把守門放寬")
+        return None
+    # 🚧 V82.0.5 名單也要新鮮(同作戰清單那道):⛔ 拿好幾天前的觸發價判「買點到了」
+    #   (以前這輪只看即時報價;改成每天準時跑之後,名單沒更新的日子也會跑到這裡)
+    dd = str(j.get('data_date') or '')[:10]
+    try:
+        from datetime import date
+        gap = (now.date() - date(*map(int, dd.split('-')))).days
+    except Exception:
+        gap = 99
+    if gap > 4:
+        print(f"   ❌ playbook_edge 資料日 {dd} 已距今 {gap} 天,過期不發")
         return None
     data = q.get('data') or {}
     picks = j.get('picks') or []
@@ -396,14 +427,19 @@ def build_eod_triggers():
 
 def main():
     print(f"🚨 alert_system 啟動 — MODE={MODE} / {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    if MODE == "none":
+        # 📲 V82.0.5「📲 Telegram 警報系統」的排程那兩輪:只當 macro_cron / news_express 的 host(workflow_run 跟在它後面),
+        #   ⛔ 不發任何訊息 —— 準時的推播改由 Cloudflare Worker 叫醒 tg_push.yml(GitHub 排程常常遲到好幾小時)
+        print("   ⏭️ ALERT_MODE=none:這一輪不發 Telegram(作戰清單 / 尾盤買點改由 tg_push.yml 準時發)")
+        return
     if not BOT_TOKEN or not CHAT_ID:
         print("❌ Telegram 未設定 secrets,跳過(workflow 繼續)")
         sys.exit(0)
 
     # 🎯 V73.8.5 兩個新模式(使用者要求:「買點到了跟我說,不用一直盯」)
     #    ⛔ 跟舊的 summary/watch 完全分開 —— 那兩個是**大盤層級籠統摘要**,V21.4 已刻意停用。
-    if MODE in ("playbook", "eod"):
-        msg = build_playbook_brief() if MODE == "playbook" else build_eod_triggers()
+    if MODE in ("playbook", "playbook_am", "eod"):
+        msg = (build_playbook_brief(am=(MODE == "playbook_am")) if MODE != "eod" else build_eod_triggers())
         if msg is None:
             print("   ✅ 本輪沒有要發的內容(上面已印原因)")
             sys.exit(0)

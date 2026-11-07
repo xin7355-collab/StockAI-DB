@@ -157,7 +157,7 @@ ok('⑦ 新的字 ⛔ 🔴🟢(燈號只代表漲跌)', R.newHtml.length > 200 &
 const bad = badOf(R.allNew.replace(/<[^>]+>/g, ' '));
 ok('⑦ 新的字 ⛔ 研究字樣(跟 test_retail_clean 同一份清單)', !bad.length, bad.join(' '));
 // ⑧ 🧯 V80.0.9 決策台「你的風控」
-const K = await page.evaluate(() => {
+const K = await page.evaluate(async () => {
     const A = app, o = {};
     A._isLead = () => false;
     A.settings.accountSize = 1000000;
@@ -177,6 +177,19 @@ const K = await page.evaluate(() => {
     A._tradeLogNet = () => [{ date: today, pnlNTD: -30000 }];
     o.brk = A._deckRiskHtml(mk(false, 48000, 47705, 46534));
     A._tradeLogNet = _tl;
+    // ⑨ ⚡ V82.0.5 盤中即時警報關著那一行(⭐ 決定性對照:同一份大盤只換開關 / 策略)
+    A.settings.watchlistAlert = false; o.alOff = A._deckRiskHtml(mk(false, 48000, 47705, 46534));
+    A.settings.watchlistAlert = true; o.alOn = A._deckRiskHtml(mk(false, 48000, 47705, 46534));
+    A.settings.watchlistAlert = false; A._isLead = () => true; o.alLead = A._deckRiskHtml(mk(false, 48000, 47705, 46534)); A._isLead = () => false;
+    o.alDef = A.settings.watchlistAlert;
+    // 「⚙️ 打開」:展開通知那一組、⛔ 替你把開關打開
+    const ws = document.getElementById('set_watchlistAlert'), wd = ws && ws.closest('details');
+    if (wd) wd.open = false;
+    const before = ws ? ws.checked : null;
+    A._openAlertSetting();
+    await new Promise(r => setTimeout(r, 400));
+    o.alDetOpen = !!(wd && wd.open); o.alChecked = ws ? ws.checked : null; o.alBefore = before; o.alSet = A.settings.watchlistAlert;
+    try { A.closeSettings?.(); } catch (_) {}
     o.reg = (A._DECK_SECTIONS.find(c => c.k === 'risk') || null);
     o.shown = A._deckShow().risk;
     o.hasBox = !!document.getElementById('deckRisk');
@@ -191,7 +204,10 @@ ok('⑧ 你的設定跟著變(決定性對照:同一份大盤,守門關 → 照�
 ok('⑧ 沒有賣出紀錄 → ⛔ 熔斷那行;今天賠 3% → 熔斷那行出現', !/帳戶熔斷/.test(KT(K.below)) && /帳戶熔斷/.test(KT(K.brk)), KT(K.brk).slice(0, 300));
 ok('⑧ 總風險同 ②(現價 110 → 停損 95 → 15,000)', /15,000/.test(KT(K.up)), KT(K.up).slice(-260));
 ok('⑧ 登記在 _DECK_SECTIONS、預設開、決策台有容器', !!K.reg && K.reg.def === true && !K.reg.unlock && !K.reg.st && K.shown === true && K.hasBox, JSON.stringify(K.reg));
-const KA = [K.bear, K.below, K.up, K.na, K.gateOn, K.brk].join(' ');
+ok('⑨ ⚡ 盤中即時警報關著 → 多一行「哪些 App 通知不會跳」+ ⚙️ 打開(決定性對照:打開 → 那一行消失;選 👑 → 不顯示)',
+   /data-deckriskalert="off"/.test(K.alOff) && /盤中即時警報關著/.test(KT(K.alOff)) && !/data-deckriskalert/.test(K.alOn) && !/data-deckriskalert/.test(K.alLead), [KT(K.alOff).slice(0, 200)]);
+ok('⑨ ⛔ 改預設(盤中即時警報預設仍是關)、⚙️ 打開 = 展開通知那一組、⛔ 替你把開關打開', K.alDef === false && K.alDetOpen && K.alChecked === K.alBefore && K.alSet === false, JSON.stringify([K.alDef, K.alDetOpen, K.alChecked, K.alBefore, K.alSet]));
+const KA = [K.bear, K.below, K.up, K.na, K.gateOn, K.brk, K.alOff].join(' ');
 ok('⑧ ⛔ 🔴🟢、⛔ 研究字樣', !/[🔴🟢]/u.test(KA) && !badOf(KT(KA)).length, badOf(KT(KA)).join(' '));
 ok('⓪ 沒有 pageerror', !errs.length, errs.join(' | '));
 await browser.close();

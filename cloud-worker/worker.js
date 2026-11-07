@@ -344,7 +344,49 @@ async function macroKick(env, now = Date.now(), fetchFn = fetch, dispatchFn = gh
     return { sent: !!(r && r.ok), why: r && r.why, upd, close };
 }
 
-const WORKER_VER = 'V22.9 (2026-11-06)';   // 📉 08:00 大跌事件 / 大跌撿便宜;V22.8 盤中推播只描述(⛔ 進場 / 目標價 / 低接 / 鎖利);V22.7 排程星期欄 1-5 → MON-FRI
+// 📲 V82.0.5 Telegram「今天的作戰清單」(台北 08:00)與「尾盤買點」(13:15)改由這裡準時叫醒 tg_push.yml
+//   (外部健檢 11/07 查到:GitHub 排程在這個 repo 遲到好幾小時 —— 13:20 那輪最近 10 個交易日最早台北 18:35 才跑 →
+//    一次都沒在收盤前送到;20:00「明天的作戰清單」實際凌晨 1~5 點才到。⛔ 原因不是時區)
+//   ⛔ 擁有者(OWNER_CHAT_ID = GitHub 的 TELEGRAM_CHAT_ID,deploy_worker 上傳)在 App 選 👑 → 不派(🔥 清單跟他無關;👑 有自己的換倉推播)
+//   ⛔ 讀不到擁有者設定 → 照派(⛔ 比以前少送);擁有者按了暫停推播 → 不派
+//   ⛔ 今天不開盤(crash_events.nx = 官方休市表算的下一個開盤日,比今天晚)→ 不派;讀不到 → 照派
+//   ⛔ 每天每種只派一次(KV);只在自己的時段派(08:00 那輪 / 13:15 那輪)
+export const TG_KICK = {
+    list: { ev: 'tg-list', from: 7 * 60 + 50, to: 8 * 60 + 40 },    // 台北 08:00 那一輪
+    eod:  { ev: 'tg-eod',  from: 13 * 60 + 10, to: 13 * 60 + 25 },  // 台北 13:15 那一輪(13:00 / 13:30 那兩輪 ⛔ 派)
+};
+export async function tgKick(env, kind, now = Date.now(), fetchFn = fetch, dispatchFn = ghDispatch) {
+    const K = TG_KICK[kind];
+    if (!K) return { sent: false, why: 'kind' };
+    if (!env.GH_DISPATCH_TOKEN) return { sent: false, why: 'no-token' };
+    const tw = new Date(now + 8 * 3600e3), wd = tw.getUTCDay(), today = tw.toISOString().slice(0, 10);
+    if (wd === 0 || wd === 6) return { sent: false, why: 'weekend' };
+    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    if (mins < K.from || mins > K.to) return { sent: false, why: 'time' };
+    const key = `tgkick:${kind}:${today}`;
+    try { if (env.KV && await env.KV.get(key)) return { sent: false, why: 'done' }; } catch (_) {}
+    let nx = null;
+    try {
+        const r = await fetchFn(`${GH_PAGES_BASE}/data/crash_events.json?t=${now}`);
+        if (r && r.ok) nx = String((await r.json())?.nx || '').slice(0, 10) || null;
+    } catch (_) { nx = null; }
+    if (nx && nx > today) return { sent: false, why: 'closed', nx };
+    let strat = null, muted = false;
+    const owner = String(env.OWNER_CHAT_ID || '').trim();
+    if (owner && env.KV) {
+        try {
+            const u = JSON.parse((await env.KV.get(`user:${owner}`)) || 'null');
+            if (u) { strat = (u.settings && u.settings.strategy) || null; muted = !!(u.muted_until && u.muted_until > now); }
+        } catch (_) { strat = null; }
+    }
+    if (strat === 'lead') return { sent: false, why: 'lead' };
+    if (muted) return { sent: false, why: 'muted' };
+    const r = await dispatchFn(env, K.ev);
+    if (r && r.ok && env.KV) { try { await env.KV.put(key, '1', { expirationTtl: 2 * 86400 }); } catch (_) {} }
+    return { sent: !!(r && r.ok), why: r && r.why, strat, nx };
+}
+
+const WORKER_VER = 'V23.0 (2026-11-07)';   // 📲 08:00 / 13:15 準時叫醒 Telegram 作戰清單 / 尾盤買點(tgKick);V22.9 📉 08:00 大跌事件 / 大跌撿便宜;V22.8 盤中推播只描述(⛔ 進場 / 目標價 / 低接 / 鎖利);V22.7 排程星期欄 1-5 → MON-FRI
 const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
 
 // 🗓️ V22.7 排程(⛔ 要跟 wrangler.toml 的 crons 一字不差 —— Cloudflare 傳進來的 event.cron 就是那串原文)
@@ -415,6 +457,7 @@ export default {
             ctx.waitUntil(runLeaderRebalPush(env));   // 👑 V77.9.6 選 👑 的人:換倉日「今天開盤買 / 賣哪幾檔」
             ctx.waitUntil(runCrashDipPush(env));      // 📉 V82.0.0 大跌事件 / 大跌撿便宜(只在有事的日子發一則)
             ctx.waitUntil(macroKick(env));   // 🌅 V79.3.4 總經資料還停在美股收盤前 → 叫醒 macro_cron(盤前體檢)
+            ctx.waitUntil(tgKick(env, 'list', event.scheduledTime || Date.now()));   // 📲 V82.0.5 Telegram「今天的作戰清單」(擁有者選 👑 不派)
             // 🚀 順便把盤中快照的主迴圈叫起來(GitHub 排程實測整天不進來,見上面那段)。
             //    ⭐ 08:00 發沒問題 —— `intraday_window.py` 會自己 SLEEP 到 08:45 那一拍。
             ctx.waitUntil(ghDispatch(env, 'intraday-quotes'));
@@ -423,6 +466,8 @@ export default {
             ctx.waitUntil(runScan(env));
             // ⏱️ 同一輪順便當看門狗(⛔ 它自己會判「太久沒更新」才發,不是每輪都發)
             ctx.waitUntil(intradayWatchdog(env));
+            // 📲 V82.0.5 13:15 那一輪叫醒 Telegram「尾盤買點」(tgKick 自己只在 13:10~13:25 派;13:00 / 13:30 那兩輪不會派)
+            if (event.cron === CRON.last) ctx.waitUntil(tgKick(env, 'eod', event.scheduledTime || Date.now()));
         }
     },
 };

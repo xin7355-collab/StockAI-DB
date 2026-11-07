@@ -1,0 +1,65 @@
+name: 📲 Telegram 準時推播(Worker 叫醒)
+
+# 📲 V82.0.5 Telegram「今天的作戰清單」與「尾盤買點」改由 Cloudflare Worker 準時叫醒這一支
+#   (外部健檢 11/07 查到:GitHub 排程在這個 repo 遲到好幾小時 —— 13:20 那輪最近 10 個交易日最早台北 18:35 才跑 →
+#    一次都沒在收盤前送到;20:00「明天的作戰清單」實際凌晨 1~5 點才到。⛔ 原因不是時區)
+#   ⭐ repository_dispatch 不吃排程配額;Worker 只在擁有者選 🔥 / 🅿️、今天開盤、每天每種一次時才派(cloud-worker/worker.js tgKick)
+#   ⛔ 這一支沒有 cron、也⛔ 不給別的 workflow 用 workflow_run 跟(📲 Telegram 警報系統那支的排程照留,給 macro_cron / news_express 跟)
+#   ⚠️ 事件名要跟 worker.js 的 TG_KICK 一字不差(scripts/test_intraday_relay.py ④ 雙向比對)
+on:
+  repository_dispatch:
+    types: [tg-list, tg-eod]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '模式(playbook_am=今天的作戰清單 / eod=尾盤買點)'
+        required: false
+        default: 'playbook_am'
+        type: choice
+        options:
+          - playbook_am
+          - eod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tg-push-${{ github.event.action || github.event.inputs.mode || 'manual' }}
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 📥 拉 data 分支最新 JSON snapshot
+        run: |
+          git fetch origin data --depth=1 2>&1 || echo "⚠️ data 分支拉取失敗"
+          git checkout FETCH_HEAD -- data/ 2>&1 || echo "⚠️ data/ 取出失敗"
+          ls -la data/*.json 2>&1 | head -5 || echo "(無 JSON 檔)"
+
+      # 🚨 live_quotes.json 只在 gh-pages(同 telegram_alert.yml)→ 尾盤買點那輪一定要另外拉
+      - name: 📥 拉 gh-pages 的即時報價(尾盤買點才需要)
+        run: |
+          git fetch origin gh-pages --depth=1 2>&1 || echo "⚠️ gh-pages 拉取失敗"
+          mkdir -p data
+          git show FETCH_HEAD:data/live_quotes.json > data/live_quotes.json 2>/dev/null \
+            && echo "✅ live_quotes.json $(wc -c < data/live_quotes.json) bytes" \
+            || { rm -f data/live_quotes.json; echo "⚠️ gh-pages 上沒有 live_quotes.json"; }
+
+      - name: 🐍 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📲 發 Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # repository_dispatch 的事件名 → 模式(⛔ 別用時間判斷);手動跑用選單
+          ALERT_MODE: ${{ github.event.inputs.mode || (github.event.action == 'tg-eod' && 'eod' || 'playbook_am') }}
+        run: python alert_system.py

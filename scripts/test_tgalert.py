@@ -16,6 +16,9 @@ App 內的提醒是**前端定時器**,完全關掉 App 就收不到 → 這條�
   ⑦ 尾盤那輪**只跑一輪** —— ⛔ 多輪就要做去重,而且會吵到使用者關通知。
   ⑧ ⛔ 舊的 summary/watch(大盤籠統摘要,V21.4 刻意停用)**不可被重新排程**。
   ⑨ **即時報價要從 gh-pages 拉** —— 它刻意不進 data 分支,只拉 data 會永遠讀不到。
+  📲 V82.0.5:作戰清單(台北 08:00)與尾盤買點(13:15)改由 Cloudflare Worker 叫醒 tg_push.yml
+     (排程那兩輪常常晚好幾小時才跑 → ALERT_MODE=none ⛔ 不發);早上那輪講「今天」、名單是今天的 ⛔ 不發;
+     尾盤那輪名單太舊也 ⛔ 不發;ALERT_MODE=none 一則都不發;股名讀 stock_names.json。
 """
 import importlib.util
 import json
@@ -36,6 +39,7 @@ def ok(name, cond, extra=''):
 
 SRC = (ROOT / 'alert_system.py').read_text(encoding='utf-8')
 WF = (ROOT / '.github/workflows/telegram_alert.yml').read_text(encoding='utf-8')
+TP = (ROOT / '.github/workflows/tg_push.yml').read_text(encoding='utf-8')   # 📲 V82.0.5 Worker 準時叫醒的那支
 
 sys.path.insert(0, str(ROOT))   # 🔥 V79.4.9 alert_system 會 import 根目錄的 lib_hotrule(workflow 從根目錄跑本來就找得到)
 spec = importlib.util.spec_from_file_location('als', ROOT / 'alert_system.py')
@@ -59,7 +63,7 @@ for ln in SRC.splitlines():
     if 'api.telegram.org/bot' in s or re.search(r'print\([^)]*\{url\}', s):
         _bad.append(s)
 ok('①b 🔐 ⛔ 不可把 token / 含 token 的網址印出來', not _bad, ' | '.join(_bad))
-ok('①c workflow 走 secrets', 'secrets.TELEGRAM_BOT_TOKEN' in WF)
+ok('①c workflow 走 secrets', 'secrets.TELEGRAM_BOT_TOKEN' in WF and 'secrets.TELEGRAM_BOT_TOKEN' in TP)
 
 # ── ⑨ 即時報價要從 gh-pages 拉 ────────────────────────────────────
 ok('⑨ 🚨 有從 gh-pages 拉 live_quotes.json(⛔ 它不在 data 分支)',
@@ -67,14 +71,18 @@ ok('⑨ 🚨 有從 gh-pages 拉 live_quotes.json(⛔ 它不在 data 分支)',
 
 # ── ⑧ 舊模式不可被重新排程 ────────────────────────────────────────
 crons = re.findall(r"- cron: '([^']+)'", WF)
-ok('⑧ 只有 2 條 cron(明日清單 + 尾盤買點)', len(crons) == 2, str(crons))
-ok('⑧b 台北 20:00 推明日清單', '0 12 * * 1-5' in crons, str(crons))
-ok('⑦ 台北 13:20 只跑一輪(⛔ 不可每 5 分鐘)', '20 5 * * 1-5' in crons and
-   not any(c.startswith('*/') for c in crons), str(crons))
+# 📲 V82.0.5 那兩條 cron 照留(macro_cron / news_express 用 workflow_run 跟在它後面),但排程那兩輪 ALERT_MODE=none ⛔ 不發
+ok('⑧ 排程只有 2 條 cron(照留,當 macro_cron / news_express 的 host)', len(crons) == 2, str(crons))
+ok('⑧b 兩條都在(⛔ 刪了 macro_cron / news_express 就沒有 host)', '0 12 * * 1-5' in crons and '20 5 * * 1-5' in crons, str(crons))
+ok('⑦ ⛔ 不可每 5 分鐘(排程與準時推播那支都是)', not any(c.startswith('*/') for c in crons) and not re.search(r"- cron:", TP), str(crons))
 ok('⑧c ⛔ 舊的 summary/watch 不可被排到 cron 上',
    "'summary'" not in re.sub(r'inputs:.*?run:', '', WF, flags=re.S).split('ALERT_MODE')[0] or True)
-ok('⑧d ALERT_MODE 用**排程字串**對應,⛔ 不可回去用 UTC 時間判斷',
-   "github.event.schedule == '20 5 * * 1-5'" in WF, '')
+ok('⑧d 📲 排程那兩輪 ALERT_MODE = none(⛔ 再用排程字串對應成 playbook / eod —— 那兩輪常常晚好幾小時才跑)',
+   "ALERT_MODE: ${{ github.event.inputs.mode || 'none' }}" in WF and 'github.event.schedule ==' not in WF, '')
+ok("⑧e 📲 準時推播那支(tg_push.yml):Worker 事件 → 模式(tg-eod → eod、tg-list → playbook_am)",
+   "ALERT_MODE: ${{ github.event.inputs.mode || (github.event.action == 'tg-eod' && 'eod' || 'playbook_am') }}" in TP
+   and re.search(r'types:\s*\[tg-list,\s*tg-eod\]', TP) is not None, '')
+ok('⑨b 📲 tg_push.yml 也從 gh-pages 拉 live_quotes.json(尾盤那輪)', 'gh-pages' in TP and 'live_quotes.json' in TP)
 
 # ── ⑤⑥ 上限與排序 ────────────────────────────────────────────────
 ok('⑤ 一天最多 2 檔', A.MAX_PICKS == 2, str(A.MAX_PICKS))
@@ -122,6 +130,18 @@ try:
     ok('③b 新鮮清單 → 有發(空過守門:上面那條才不是假綠)', isinstance(m, str) and '1234' in m, str(m)[:120])
     ok('④ 🚨 ⛔ 文案不可叫人「開盤買」', m and '不是叫你明天一開盤就買' in m and '尾盤' in m)
     ok('④b 要寫出「這是全市場排序,看不到你的自選」', m and '看不到你的自選' in m)
+    # 📲 V82.0.5 早上 08:00 那一輪(playbook_am):名單是前一個交易日晚上算的 → 講「今天」
+    YDAY = (A._tpe_now().date() - timedelta(days=1)).isoformat()
+    stub(pb={**PB_OK, 'data_date': YDAY})
+    ma = A.build_playbook_brief(am=True)
+    ok('④c 📲 早上那一輪:昨天晚上的名單 → 「今天的作戰清單」+「不是叫你今天一開盤就買」',
+       isinstance(ma, str) and '今天的作戰清單' in ma and '不是叫你今天一開盤就買' in ma and '明天' not in ma, str(ma)[:160])
+    stub(pb=PB_OK)
+    ok('④d 📲 早上那一輪:名單資料日就是今天(收盤後才算好的明天名單)→ ⛔ 不發(⛔ 拿明天的講成今天)',
+       A.build_playbook_brief(am=True) is None)
+    ok('④e 決定性對照:同一份名單用盤後模式 → 照發「明天的作戰清單」', '明天的作戰清單' in (A.build_playbook_brief() or ''))
+    stub(pb={**PB_OK, 'data_date': '2020-01-01'})
+    ok('④f 📲 早上那一輪:名單太舊 → ⛔ 不發', A.build_playbook_brief(am=True) is None)
 
     # ② 即時報價新鮮度
     old = (A._tpe_now() - timedelta(hours=3)).isoformat()
@@ -131,6 +151,9 @@ try:
     m2 = A.build_eod_triggers()
     ok('②b 新鮮報價 + 站上觸發價 → 有發(空過守門)', isinstance(m2, str) and '尾盤買點成立' in m2, str(m2)[:120])
     ok('②c 要寫出現價與時窗', m2 and '999' in m2 and '13:00~13:28' in m2)
+    # 📲 V82.0.5 名單本身過期 → 尾盤那輪也 ⛔ 不發(以前只看即時報價;改成每天準時跑之後,名單沒更新的日子也會跑到)
+    stub(pb={**PB_OK, 'data_date': '2020-01-01'}, lq={'updated': A._tpe_now().isoformat(), 'data': {'1234': {'p': 999}}})
+    ok('②b2 🚨 名單資料日太舊 + 報價新鮮、站上觸發價 → 尾盤 ⛔ 不發(對照:②b 同一份換成新鮮名單會發)', A.build_eod_triggers() is None)
     # 沒站上就不可發
     stub(pb=PB_OK, lq={'updated': A._tpe_now().isoformat(), 'data': {'1234': {'p': 100}}})
     ok('②d 沒站上觸發價 → ⛔ 不發', A.build_eod_triggers() is None)
@@ -187,6 +210,39 @@ try:
        not any(WB.search(x) for x in W) and all('出場規則' in x for x in W), [WB.findall(x) for x in W])
 finally:
     A.load_json = _orig
+
+# ── 📲 V82.0.5 ALERT_MODE=none:排程那兩輪 ⛔ 不發任何訊息(連 token 都不用)──────────
+_sent = []
+_orig_send, _orig_mode = A.send_telegram, A.MODE
+try:
+    A.send_telegram = lambda t: (_sent.append(t), True)[1]
+    A.MODE = 'none'
+    _exit = None
+    try:
+        A.main()
+    except SystemExit as e:
+        _exit = e.code
+    ok('⑮ 📲 ALERT_MODE=none → 一則都不發、⛔ 不中斷(workflow 照綠,macro_cron / news_express 照跟)', not _sent and _exit is None, f'sent={len(_sent)} exit={_exit}')
+finally:
+    A.send_telegram, A.MODE = _orig_send, _orig_mode
+
+# ── 📲 V82.0.5 股名:K 線檔沒有 name 欄時讀 stock_names.json(log 以前一直寫「0 檔有中文名」)──
+import tempfile
+_td = Path(tempfile.mkdtemp(prefix='tgnm_'))
+_orig_dir, _orig_cache = A.DATA_DIR, A._STOCK_NAMES_CACHE
+try:
+    (_td / '1234.json').write_text(json.dumps({'data': []}), encoding='utf-8')            # 沒有 name 欄
+    (_td / '5678.json').write_text(json.dumps({'name': 'K線名'}), encoding='utf-8')
+    (_td / 'stock_names.json').write_text(json.dumps({'names': {'1234': ['測試甲', '24', 'twse'], '5678': ['名單名', '24', 'tpex']}}), encoding='utf-8')
+    A.DATA_DIR, A._STOCK_NAMES_CACHE = _td, None
+    ok('⑯ 📲 K 線檔沒有 name → 讀 stock_names.json 的股名', A.stock_label('1234') == '測試甲 1234', A.stock_label('1234'))
+    ok('⑯b ⛔ 不蓋掉 K 線檔自己的名字', A.stock_label('5678') == 'K線名 5678', A.stock_label('5678'))
+    ok('⑯c 兩邊都沒有 → 純代號', A.stock_label('9999') == '9999', A.stock_label('9999'))
+    (_td / 'stock_names.json').unlink()
+    A._STOCK_NAMES_CACHE = None
+    ok('⑯d 決定性對照:拿掉 stock_names.json → 回到純代號', A.stock_label('1234') == '1234', A.stock_label('1234'))
+finally:
+    A.DATA_DIR, A._STOCK_NAMES_CACHE = _orig_dir, _orig_cache
 
 # ── 🧪 V79.5.2 summary 的「今日大盤」那句(手動 dispatch 才會跑)────────────
 # ⚠️ 兩組都放在門檻邊上(舊寫法 ±1 分就會翻):A = 1 分(中性)、B = 2 分(偏多)
