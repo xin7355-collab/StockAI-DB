@@ -42,13 +42,13 @@ ok('⑦b auto_trade 讀 `mkt.bear60` 擋買進(賣出在它之前處理)、🔥 
    && /\ndef hot_step\([\s\S]*?if BEAR_GATE and _mkt\.get\('bear60'\) is True:[\s\S]*?\ndef /.test(AT)
    && AT.indexOf('hot_step(api, sj, st, meta, picks, day)', AT.indexOf('先處理出場')) > AT.indexOf('先處理出場'));   // ⚠️ V79.4.9 🔥 買進搬進 hot_step → 守門在 hot_step 裡、而 main 在「出場之後」才呼叫它
 ok('⑦c auto_trade 的持倉記下自己的上限(`mh`)—— 換規則前買的照舊規則走', /'mh': max_hold\(EXIT_RULE\)/.test(AT) && /pos\.get\('mh'\)/.test(AT));
-// 🐻 V79.4.9 守門拆兩份
+// 🐻 V79.4.9 守門拆兩份(✂️ V82.0.7 leader_step 先算 `_bear = LEADER_BEAR_GATE and …`:賣一半照做、空頭只擋買)
 const lsSrc = (AT.match(/\ndef leader_step\([\s\S]*?\ndef /) || [''])[0];
 ok('⑧ 🐻 兩份守門分開:App `_bearGateOn` 只認 === true(🔥 預設關)、`_leadBearOn` 回 true;auto_trade LEADER_BEAR_GATE 預設 1、leader_step 只看它',
    /_bearGateOn\(\) \{ return !!\(this\.settings && this\.settings\.bearGate === true\); \}/.test(IDX)
    && /_leadBearOn\(\) \{ return true; \}/.test(IDX)
    && /\nLEADER_BEAR_GATE = \(os\.getenv\('LEADER_BEAR_GATE'\) or '1'\) == '1'/.test(AT)
-   && /if LEADER_BEAR_GATE and _mkt\.get\('bear60'\) is True/.test(lsSrc) && !/(^|[^_])BEAR_GATE and/.test(lsSrc), lsSrc.slice(0, 80));
+   && /(?:if|_bear =) LEADER_BEAR_GATE and _mkt\.get\('bear60'\) is True/.test(lsSrc) && !/(^|[^_])BEAR_GATE and/.test(lsSrc), lsSrc.slice(0, 80));
 // 🐻 V80.0.9 🔥 第三處:尾盤買點提醒 `_eodTriggerSweep`(以前決策台寫「今天不開新倉」、通知照推 = 兩邊講不一樣)
 const eodSrc = (IDX.match(/async _eodTriggerSweep\(\) \{[\s\S]*?\n    \},/) || [''])[0];
 ok('⑧b 👑 兩個呼叫點都走 `_leadBearOn()`、⛔ 不再跟 🔥 的開關;🔥 那三處(清單 / 決策台 / 尾盤提醒)照舊走 `_bearGateOn()`',
