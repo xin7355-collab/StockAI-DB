@@ -3,6 +3,11 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🩺 V82.0.6(2026-11-07)健康度基準 + 👑 跌停賣不掉 + 同產業上限
+- `scripts/health_base.mjs`(新):`LEAD_EQ=<leader_probe EQ_DIR(SETS='[["現行",{}]]' WINS=2011-01-03)> PARK_EQ=<portfolio_backtest EQUITY_OUT 前綴(🅿️ 看板設定 16 年 17 條)> DATA_DIR=$S/d16 node scripts/health_base.mjs out.json` → `node scripts/embed_health_base.mjs out.json`(寫 pro `_HEALTH_BASE`);`--selftest` 各 7 / 5 條。**何時重跑**:👑 / 🅿️ 看板換數字或換規則的那一次(百分位與失效門檻跟著變);⛔ 為了這一波改 SEAL / RULE。
+- `scripts/leader_probe.mjs` 新參數 `ldLock`(1 / 2)、`indCap` + `indUnk` + `indSham`(selftest ㊿i ㊿j):`SETS='[["現行",{"capital":1000000}],["ld1",{"capital":1000000,"ldLock":1}],["cap2",{"capital":1000000,"indCap":2,"indUnk":"free"}],["cap2s1",{…,"indSham":1}]]' DATA_DIR=$S/d16 DIV=$S/d16/_div16.json IND_MAP=data/industry_map.json END=2026-09-24 node --max-old-space-size=9000 scripts/leader_probe.mjs out.json`(兩段 × 17 條約 4 分)。⛔ 同產業上限已判 ⛔(現行規則 + 安慰劑,LAB `lead-indcap`)—— 規則大改(池子 / 動能天數)才值得重跑;`ldLock` 結果在 LAB `lead-ldlock`。
+- `scripts/lead_dd_probe.mjs SLEEVE='{"ldLock":1}' ONLY=B RULES_B='[{"k":"dd","X":20,"lo":0.5,"rec":"hi"}]'`:在跌停賣不掉的算法下重算「跌 20% 收一半」(比較基準仍是不加 ldLock 的「現在」,會逐元比對看板)。
+
 ### 🔄 V82.0.2(2026-11-06)大跌時放空 / 買反一 + 股債背離
 - `scripts/short_inverse_probe.mjs`(新):`WORLD=<world_hist.json.gz> IDX_LONG IDX_EARLY TWII_NOW INV=<00632R.json> B50=<0050.json> DIV50=<d16/_div0050.json> CUT=YYYY-MM-DD PARTS=ABCDE node --max-old-space-size=4000 scripts/short_inverse_probe.mjs out.json`(約 1 分);`PARTS=F D16=<d16> DIV=<d16/_div16.json>`(約 30 秒,8 GB)。回答「大跌之後放空 / 買反一賺不賺」(A 真反一校正・B 五種大跌事件 × 33 個股市・C 星期五大跌隔天 31 國樣本外・D 空頭時抱反一 vs 放現金・E 股債背離三種講法・F 放空個股含平盤以下限制)。⛔ 別再測「大跌後放空」(0 格過關);E 的 C3 走完下一次美國信用事件後重跑;`--selftest` 10 條。
 - `scripts/dipleader_probe.mjs`:V82.0.2 修 `bench()` 隔天開盤買 0050 的倍數(selftest ⑯、`DL_INJECT=benchinv`)→ V82.0.0 以前的「比 0050 多多少」全部作廢,以 V82.0.2 重跑為準。

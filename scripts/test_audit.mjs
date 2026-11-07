@@ -12,6 +12,8 @@
 //     ⑦ 390 / 844 寬不橫捲、表格在框裡自己捲;⛔ 🔴🟢(只准講漲跌);有勝率就要有「勝率低不代表不賺」
 //     ⑧ V82.0.5 📝 外部複查紀錄:每一列(建議 / 判定 / 理由)== _AUDIT_REVIEWS、判定只用 ✅⚠️❌⏳;提問與短提示裡的「第 N 節」== _AUDIT_ORDER
 //        (決定性對照:改一列判定 → 畫面與匯出一起變);第 2 節要講「17 個起跑日不是 17 次獨立 / 樣本外只有 2026-11-07 以後」
+//     ⑨ V82.0.6 第 2 節 D「這一波在歷史裡算不算正常」:百分位 / 回撤段 / 0050 大跌段 照 _HEALTH_BASE(決定性對照:換一組基準 → 畫面與匯出一起變);
+//        失效規則 _healthCheck(連 2 格低於 2.5 百分位才標、隔開的不算、起點 = 封存日之前最後一天、⛔ 不自動停用);這一波比封存日晚 → 另外跑
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -227,6 +229,81 @@ const FIX = () => {
     && (+llock === 0 ? allTxt.includes('虧損安全鎖預設關') : allTxt.includes(`虧損安全鎖預設 ${llock}%`)), JSON.stringify([recon && recon.slice(1), llock]));
   ok('⑥ 📈 符合進場那把尺 == index.html _EDGE_RULES.gene', allTxt.includes(`位階 ${egene[1]} + 20 日振幅 ${egene[2]}%`), JSON.stringify(egene && egene.slice(1)));
   ok('⑦ 這一頁自己寫的字 ⛔ 🔴🟢(只准講漲跌)', R.redGreen === 0, R.redGreen);
+  await page.close();
+}
+
+// ⑨ V82.0.6 🩺 第 2 節 D「這一波在歷史裡算不算正常」+ 事先講好的失效規則(只讀 _HEALTH_BASE + 這一波的 _raceLoad;⛔ 自己算)
+{
+  const page = await open(390, 844);
+  const R = await page.evaluate(async FIXs => {
+    const o = {};
+    eval('(' + FIXs + ')')();
+    const T = s => (document.querySelector(`[data-audsec="${s}"]`) || {}).innerText || '';
+    const HB = PRO._HEALTH_BASE;
+    o.real = !!(HB && HB.s && ['lead', 'park', '0050'].every(k => HB.s[k] && HB.s[k].paths >= 1)) && HB.seal === '2026-11-07' && HB.rule && HB.rule.every === 21 && HB.rule.below === 2.5 && HB.rule.times === 2
+      && HB.wins.every(W => ['lead', 'park', '0050'].every(k => HB.s[k].q[W].every((v, i, a) => !i || v >= a[i - 1])));
+    // 假的基準(⛔ 讀真的 —— 測的是接線,不是那 16 年的數字)
+    const lv = [1, 2.5, 5, 10, 25, 50, 75, 90, 95, 97.5, 99];
+    const qA = [-0.30, -0.25, -0.20, -0.12, -0.05, 0.02, 0.08, 0.15, 0.20, 0.25, 0.35];
+    const mkB = (k, qq) => ({ k, name: k, paths: 17, from: '2011-01-03', to: '2026-10-08', days: 3900, q: { 5: qq, 21: qq, 63: qq }, mdd: [-0.62, -0.58, -0.50], n10: 20, n20: 8, n30: 3,
+      segs: [['2018-01-02', '2018-03-01', '2018-08-01', -0.45, 40, 100], ['2020-02-03', '2020-03-20', '2020-06-01', -0.35, 30, 50], ['2015-05-04', '2015-08-25', '2016-01-04', -0.25, 80, 90]],
+      worst: { 1: [-0.09, '2020-03-18', '2020-03-19'], 5: [-0.2, '2020-03-12', '2020-03-19'], 21: [-0.3, '2020-02-20', '2020-03-19'] } });
+    const fakeH = () => ({ seal: '2026-11-07', rule: { every: 21, below: 2.5, times: 2 }, wins: [5, 21, 63], lv, s: { lead: mkB('lead', qA.slice()), park: mkB('park', qA.slice()), '0050': mkB('0050', qA.slice()) },
+      falls: [{ peak: '2020-01-14', trough: '2020-03-19', rec: '2020-06-01', e50: -0.31, lead: -0.36, park: -0.18 }] });
+    PRO._HEALTH_BASE = fakeH();
+    const day = i => new Date(Date.UTC(2026, 9, 6 + i)).toISOString().slice(0, 10);
+    const ser = tot => Array.from({ length: 22 }, (_, i) => ({ d: day(i), v: 1e6 * (1 + tot * i / 21) }));
+    PRO._raceLoad = async S => { window.__raceCalls.push(S); return { S, days: 22, last: day(21), rows: [
+      { k: 'lead', name: '👑 假領頭羊', v: 681200, pct: -31.88, dd: 31.7, vs50: -110615, eq: ser(-0.3188), cur: true },
+      { k: 'park', name: '🅿️ 假', v: 900000, pct: -10, dd: 12, vs50: 0, eq: ser(-0.10) },
+      { k: '0050', name: '📏 假 0050', v: 791800, pct: -20.82, dd: 20.6, vs50: null, eq: ser(-0.2082) }] }; };
+    PRO.navGo('audit'); await new Promise(r => setTimeout(r, 300));
+    PRO._auditReset(); await PRO.renderAudit();
+    o.money = T('money');
+    o.d = o.money.slice(o.money.indexOf('D. 這一波在歷史裡'));
+    o.exp = PRO.auditText();
+    // 決定性對照:基準換一組 → 畫面與匯出一起變(👑 從「最差的 1% 以內」變成第 19 百分位)
+    PRO._HEALTH_BASE.s.lead.q[21] = [-0.50, -0.45, -0.40, -0.35, -0.30, -0.10, 0, 0.1, 0.2, 0.3, 0.4];
+    await PRO.renderAudit();
+    o.d2 = T('money'); o.exp2 = PRO.auditText();
+    // 失效規則(純函式):封存日之前最後一天當起點、每 21 個交易日一格
+    PRO._HEALTH_BASE = fakeH();
+    const post = rs => { const eq = [{ d: '2026-11-06', v: 1e6 }]; let v = 1e6, k = 0;
+      for (const r of rs) { const a = v; for (let j = 1; j <= 21; j++) { k++; eq.push({ d: new Date(Date.UTC(2026, 10, 8 + k)).toISOString().slice(0, 10), v: a * (1 + r * j / 21) }); } v = a * (1 + r); } return eq; };
+    o.cA = PRO._healthCheck('lead', post([0.01, -0.30, -0.30]));
+    o.cB = PRO._healthCheck('lead', post([-0.30, 0.01, -0.30]));
+    o.cC = PRO._healthCheck('lead', post([-0.30]));
+    const e30 = post([0.01, 0.01]).slice(0, 31);
+    o.cD = PRO._healthCheck('lead', e30);
+    o.cE = PRO._healthCheck('lead', [{ d: '2026-11-06', v: 1e6 }, { d: '2026-11-09', v: 1e6 }]);
+    o.cX = PRO._healthCheck('nope', post([0.01]));
+    // 這一波比封存日晚 → 要另外跑封存日之後那一段
+    PRO._auditLegD = { leg: { peak: { d: '2026-12-01', c: 1 }, low: { d: '2026-12-10', c: 1 }, depth: -10, open: 1 } };
+    o.needLate = PRO._auditSealNeed(); o.sealS = PRO._auditSealS();
+    PRO._auditLegD = { leg: { peak: { d: '2026-10-06', c: 1 }, low: { d: '2026-11-06', c: 1 }, depth: -20, open: 1 } };
+    o.needNow = PRO._auditSealNeed();
+    // 讀不到基準 → 明講(⛔ 空白、⛔ 寫成「很正常」)
+    PRO._HEALTH_BASE = null; PRO._auditReset(); await PRO.renderAudit(); o.noBase = T('money');
+    PRO._HEALTH_BASE = HB;
+    return o;
+  }, FIX.toString());
+  ok('⑨ 真的 _HEALTH_BASE 有嵌進來:三套都在、封存日 2026-11-07、失效規則 21 天 / 2.5 百分位 / 連 2 次、百分位由小到大', R.real, String(R.real));
+  ok('⑨ D 這一節在第 2 節、照假的這一波算:👑 −31.9%(21 個交易日)落在最差的 1% 以內、比這更深 2 段(中間那段 100 個交易日回到高點)',
+    /D\. 這一波在歷史裡算不算正常/.test(R.money) && /−31\.9%\(21 個交易日\)/.test(R.d) && /最差的 1% 以內/.test(R.d) && /2 段\(中間那段 100 個交易日回到高點\)/.test(R.d), R.d.slice(0, 700));
+  ok('⑨ 🅿️ −10% → 第 14 百分位(內插)、3 段;0050 −20.8% → 第 5 百分位;中間 90% 寫成 −20.0% ~ +20.0%(連續 21 天)',
+    /第 14 百分位/.test(R.d) && /3 段\(中間那段 90 個交易日回到高點\)/.test(R.d) && /第 5 百分位/.test(R.d) && /−20\.0% ~ \+20\.0%\(連續 21 天\)/.test(R.d), R.d.slice(0, 900));
+  ok('⑨ 決定性對照:基準換一組 → 畫面與匯出一起變成第 19 百分位', /第 19 百分位/.test(R.d2) && /第 19 百分位/.test(R.exp2) && !/第 19 百分位/.test(R.exp), JSON.stringify([/第 19 百分位/.test(R.d2), /第 19 百分位/.test(R.exp2)]));
+  ok('⑨ 匯出也有 D 與失效規則(⛔ 只有畫面有)', /D\. 這一波在歷史裡算不算正常/.test(R.exp) && /可能失效、要重驗/.test(R.exp) && /不會自動停用/.test(R.exp), '');
+  ok('⑨ 0050 歷次跌 ≥15% 那幾段 + 16 年最深幾段都有列', /2020-01-14 → 2020-03-19/.test(R.d) && /2018-01-02 → 2018-03-01/.test(R.d) && /−45\.0%/.test(R.d), R.d.slice(0, 1500));
+  ok('⑨ 失效規則:連 2 格低於門檻 → 標(在第 3 格的最後一天);隔開的兩格 / 只有一格 → ⛔ 標',
+    R.cA && R.cA.blocks.length === 3 && R.cA.flag === R.cA.blocks[2].to && R.cA.blocks[1].below && !R.cA.blocks[0].below && Math.abs(R.cA.lim + 0.25) < 1e-9
+    && R.cB && R.cB.flag === null && R.cB.blocks.filter(x => x.below).length === 2 && R.cC && R.cC.flag === null && R.cC.blocks.length === 1,
+    JSON.stringify([R.cA, R.cB && R.cB.flag, R.cC && R.cC.flag]));
+  ok('⑨ 失效規則:還沒滿一格 → 0 格、算得出還要幾天;起點 = 封存日之前最後一天;沒有基準 → null',
+    R.cD && R.cD.blocks.length === 1 && R.cD.since === 30 && R.cD.left === 12 && R.cD.from === '2026-11-06' && R.cE && R.cE.blocks.length === 0 && R.cE.left === 20 && R.cX === null,
+    JSON.stringify([R.cD && [R.cD.blocks.length, R.cD.since, R.cD.left, R.cD.from], R.cE && [R.cE.since, R.cE.left], R.cX]));
+  ok('⑨ 這一波比封存日晚 → 另外跑封存日之後那一段(封存日隔天起算);現在這一波 → 不用', R.needLate === true && R.needNow === false && R.sealS === '2026-11-08', JSON.stringify([R.needLate, R.needNow, R.sealS]));
+  ok('⑨ 讀不到基準 → 明講,⛔ 寫成「很正常」', /讀不到健康度基準/.test(R.noBase) && /不是「很正常」/.test(R.noBase), R.noBase.slice(-300));
   await page.close();
 }
 
