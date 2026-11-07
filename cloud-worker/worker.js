@@ -522,24 +522,33 @@ async function handlePushTest(request, env) {
     const st = await sendWebPush(env, rec.sub, { title: '✅ 推播測試成功', body: '收到這則=關掉 App 也能收到防守告警(庫存破鐵血停損/-10% 絕對底線/盯價到價)。', tag: 'push-test' });
     return json({ ok: st >= 200 && st < 300, status: st });
 }
-// 盤中掃描 Web Push 用戶(庫存防守線 + 盯價到價;KV psent: 當日去重)
-async function scanPushUser(env, rec, liveQuotes) {
+// 🐛 V82.0.3 盤中推播候選(純函式,測試直接呼叫)—— 報價表 fetchTwseMisQuote 的欄位是 `z`(最後成交價)、`y`(昨收),
+//   以前讀 `q.price`(根本不存在)→ 價格永遠是空的 → 「破停損」「到價」兩種推播從上線起一則都沒發過(全綠零訊息)。
+//   ⛔ 不送:👑 的持股(換倉日排名才是訊號)・ETF(買了放著,同 App `_etfHoldNote`)・大跌撿便宜那幾檔(App 同步前就排除,照第 40 天收盤賣)
+export function pushCandidates(rec, liveQuotes, today) {
     const sends = [];
-    const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
-    for (const it of (rec.inventory || [])) {
-        const q = liveQuotes.get(it.sym); const price = q && +q.price;
+    const pxOf = q => { const v = q ? (+q.z || +q.price) : NaN; return v > 0 ? v : NaN; };
+    for (const it of ((rec && rec.inventory) || [])) {
+        const price = pxOf(liveQuotes.get(it.sym));
         if (!(price > 0) || !(+it.cost > 0)) continue;
+        if (/^00/.test(String(it.sym))) continue;           // 🐢 ETF ⛔ 套個股停損
         if (_leadStock(rec.strategy, it.sym)) continue;   // 🎯 V77.9.6 你選 👑:個股沒有停損線(換倉日排名才是訊號)
         const nm = it.name || it.sym;
         if (price <= it.cost * 0.90) sends.push({ k: `abs10:${it.sym}:${today}`, title: `🛑 ${nm} 破絕對底線 -10%`, body: `現價 ${price},已低於成本 ${it.cost} 的 -10%(${(it.cost * 0.9).toFixed(2)})→ 早就破了硬停損:收盤前還在線下就尾盤賣(13:00~13:28),別凹單。` });
         else if (price <= it.cost * 0.95) sends.push({ k: `hard5:${it.sym}:${today}`, title: `⚠️ ${nm} 破鐵血停損 -5%`, body: `現價 ${price},跌破成本 ${it.cost} 的 -5% 防守(${(it.cost * 0.95).toFixed(2)})→ 照規則:收盤前 13:00~13:28 還在線下就尾盤賣,⛔ 不用現在急賣(App 會再看買進當天最低)。` });
     }
-    for (const t of (rec.triggers || [])) {
-        const q = liveQuotes.get(t.sym); const price = q && +q.price;
+    for (const t of ((rec && rec.triggers) || [])) {
+        const price = pxOf(liveQuotes.get(t.sym));
         if (!(price > 0) || !(+t.px > 0)) continue;
         if (t.dir === 'gte' ? price >= t.px : price <= t.px)
             sends.push({ k: `trig:${t.sym}:${t.dir}:${t.px}`, title: `🔔 ${t.name || t.sym} 到價 ${t.px}`, body: `現價 ${price},已${t.dir === 'gte' ? '站上' : '跌到'}你設定的 ${t.px} → 開 App 看該買還是該賣。` });
     }
+    return sends;
+}
+// 盤中掃描 Web Push 用戶(庫存防守線 + 盯價到價;KV psent: 當日去重)
+async function scanPushUser(env, rec, liveQuotes) {
+    const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+    const sends = pushCandidates(rec, liveQuotes, today);
     for (const s of sends.slice(0, 4)) {
         const sentKey = `psent:${rec._key}:${s.k}`;
         if (await env.KV.get(sentKey)) continue;

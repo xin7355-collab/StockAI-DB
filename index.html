@@ -54759,7 +54759,11 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             if (!reg || !reg.pushManager) return;
             const sub = subArg || await reg.pushManager.getSubscription();
             if (!sub) return;
-            const inv = (this.inventory || []).filter(i => i && i.symbol && +i.cost > 0).slice(0, 30)
+            // 🐛 V82.0.3 ⛔ 同步給 Worker 的庫存不含:ETF(買了放著,⛔ 套個股停損)、大跌撿便宜標了「我有買」的那幾檔(照第 40 天收盤賣)
+            //   —— Worker 只會發「破 −5% / −10%」那種停損推播,這兩種持股不適用(同 `_etfHoldNote` / `_dipMine`,⛔ 另寫一份判斷)
+            if (this._dipMineTs().length && !this._dipPick()) { try { await this._loadDipData(); } catch (_) {} }
+            const dipSet = this._dipMine();
+            const inv = (this.inventory || []).filter(i => i && i.symbol && +i.cost > 0 && !this._isEtfSym(i.symbol) && !dipSet.has(String(i.symbol))).slice(0, 30)
                 .map(i => ({ sym: String(i.symbol), cost: +i.cost, name: this.getStockName(i.symbol) || '' }));
             const trig = (Array.isArray(this.priceAlerts) ? this.priceAlerts : []).filter(a => a && a.enabled !== false && +a.price > 0).slice(0, 40)
                 .map(a => ({ sym: String(a.sym), dir: a.cond === 'gte' ? 'gte' : 'lte', px: +a.price, name: this.getStockName(a.sym) || '' }));
