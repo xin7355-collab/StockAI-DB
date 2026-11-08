@@ -236,6 +236,9 @@ const b = await chromium.launch({
   ok(!R7.wide && R7.out.length === 0, '⑦ 390px:頁面不橫捲、卡片裡沒有東西超出父層', JSON.stringify(R7));
 
   // ④ digest 整份讀不到 → 頁頭說「還沒產出、⛔ 不代表簡報沒內容」,卡片說「還沒讀到」(⛔ 說成沒有法說會)
+  //   🧪 V82.0.8 讀不到要「明確擋掉」那個檔:本機跑過 fetch_testdata 之後 data/ 裡就有真的 digest,
+  //   只清記憶體快取會被 renderConf 重新讀回來 = 這條跟本機有沒有那個檔綁在一起(陷阱 #40)
+  await pg.route('**/confcall_digest.json*', r => r.fulfill({ status: 404, contentType: 'text/plain', body: '' }));
   const R8 = await pg.evaluate(async () => {
     PRO._confDig = null; PRO._confDigM = null;
     PRO._cache['data/confcall_digest.json'] = null;

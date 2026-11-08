@@ -59,7 +59,7 @@ const A = await pg.evaluate(async () => {
   const D = PRO._fishD, N = PRO._LEAD.N;
   out.buy = (D.LD.buy || []).map(r => r.sym).sort();
   out.crown = (PRO._fish || []).filter(f => f.lbuy).map(f => f.sym).sort();
-  out.poolN = PRO._fishPoolRows(D).length; out.U = PRO._LEAD.U;
+  out.poolN = PRO._fishPoolRows(D).length; out.U = PRO._LEAD.U; out.N = N;
   out.below = PRO._fishPoolRows(D).filter(r => r.pos252 < 75).length;
   window.__slow = false;             // 量完就恢復正常速度(不然 31 批 × 8 秒)
   return out;
@@ -68,7 +68,8 @@ ok(A.fish > 0 && A.t > 0 && A.t < 3000 && A.chips.length >= 3 && !A.roeDone,
   '① 財報慢 8 秒也不擋:3 秒內魚缸有魚、池子鈕有字(財報那時候還沒讀完)', `${A.t}ms ・${A.fish} 條 ・${A.chips.length} 顆鈕 ・roeDone=${A.roeDone}`);
 ok(/讀取財報中 \d+ \/ \d+/.test(A.valMsg), '② 💎 那一池財報還沒讀完 → 寫「讀取財報中 x/y」(⛔ 不可空白)', A.valMsg.slice(0, 80));
 ok(A.poolK === 'lead' && /👑 領頭羊池/.test(A.chips[0] || ''), '③ 預設池 = 👑 領頭羊池(排第一顆)', `${A.poolK} / ${A.chips[0]}`);
-ok(A.buy.length === 5 && JSON.stringify(A.crown) === JSON.stringify(A.buy), '③b 魚缸戴 👑 的剛好是 `_leaderCalc` 買進名單(= 決策台今天會買的)', `${A.crown.join(',')} vs ${A.buy.join(',')}`);
+// 🧪 V82.0.8 ⛔ 寫死「剛好 5 檔」:大跌時站得上月線的沒幾檔(11/06 只剩 2 檔),名單本來就會變短 → 釘用意(戴冠 == 買進名單),長度只要求 1~N
+ok(A.buy.length >= 1 && A.buy.length <= A.N && JSON.stringify(A.crown) === JSON.stringify(A.buy), '③b 魚缸戴 👑 的剛好是 `_leaderCalc` 買進名單(= 決策台今天會買的)', `${A.crown.join(',')} vs ${A.buy.join(',')}(N=${A.N})`);
 ok(A.poolN > 50 && A.poolN <= A.U && A.below > 0, '③c 👑 池子 = 成交額前 U 大,⛔ 不先用位階篩(上層以外的魚也在)', `${A.poolN} 條 ・位階 <75 的 ${A.below} 條`);
 
 // ② 讀完之後 💎 才有魚
@@ -88,7 +89,7 @@ const C = await pg.evaluate(async () => {
   const R = PRO._cast || {};
   return { picked: (R.picked || []).map(x => x.sym).sort(), buy: PRO._fishD.LD.buy.map(r => r.sym).sort(), lead: R.lead, strip: (document.getElementById('rodCastPicks') || {}).innerText || '' };
 });
-ok(C.lead && C.picked.length === 5 && JSON.stringify(C.picked) === JSON.stringify(C.buy), '④ 🎣 拋竿 = 👑 領頭羊前 N 名(= 決策台預設)', C.picked.join(','));
+ok(C.lead && C.picked.length >= 1 && JSON.stringify(C.picked) === JSON.stringify(C.buy), '④ 🎣 拋竿 = 👑 領頭羊前 N 名(= 決策台預設;大跌時名單會變短)', C.picked.join(','));
 ok(/👑1/.test(C.strip) && /(換倉日|還要 \d+ 個交易日|空頭)/.test(C.strip), '④b 上鉤條寫出名次 + 換倉節拍 / 空頭', C.strip.slice(0, 100));
 
 // ⑥ 同時呼叫 starFetch 兩次

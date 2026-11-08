@@ -78,7 +78,7 @@ const C = await pg.evaluate(async () => {
   // 決定性對照:把「那一批」塞成今天前 10 → 名單一條都不可以變(⛔ 不可再扣)
   PRO._fpvBatch = { date: D.LD.date, syms: lead10.slice(), today: true }; const tenInj = PRO._fpvTen(D, PRO._castPick(D), PRO._fpvBatch).map(x => x.sym); delete PRO._fpvBatch;
   // 🚫 不補魚:排行只剩 3 條 → 只有 3 條(⛔ 不拿魚池後段補)
-  const saveL = D.LD; const r3 = saveL.ranked.slice(0, 3); D.LD = { ...saveL, ranked: r3, buy: saveL.buy.filter(x => r3.some(y => y.sym === x.sym)) }; const three = PRO._fpvTen(D, PRO._castPick(D)).length; D.LD = saveL;
+  const saveL = D.LD; const r3 = saveL.ranked.slice(0, 3), r3n = r3.length; D.LD = { ...saveL, ranked: r3, buy: saveL.buy.filter(x => r3.some(y => y.sym === x.sym)) }; const three = PRO._fpvTen(D, PRO._castPick(D)).length; D.LD = saveL;
   // 🎣 手動釣第 1 條:等咬鉤 → 按住收線(魚衝或張力高就放手)→ 破水 → 出卡
   const S = PRO._fpv, seen = [];
   for (let k = 0; k < 400 && S.G; k++) {
@@ -93,14 +93,14 @@ const C = await pg.evaluate(async () => {
   const sea2 = JSON.parse(localStorage.getItem('fpvSea_v1') || '{}');
   const again = await PRO.fpvCast();
   return { expect, isLead, lead: R0.lead === true, lead10, stub, tenInj, seaDate: document.getElementById('fpvSeaDate').innerText, real, calls, ms: performance.now() - t0, seq: S.Q ? S.Q.seq : [], seen, cards1, i1, sub1, sea1, sea2, netR,
-           cards: document.querySelectorAll('#fpvCards .fpvcard').length, rows: S.lastRows.slice(), ten, three, ranks, again, gAfter: !!S.G,
+           cards: document.querySelectorAll('#fpvCards .fpvcard').length, rows: S.lastRows.slice(), ten, three, r3n, ranks, again, gAfter: !!S.G,
            hint: document.getElementById('fpvHint').innerText, netHidden: document.getElementById('fpvNet').classList.contains('hidden') };
 });
 ok(C.lead && !C.isLead, 'ⓒ ⭐ App 模式沒有任何設定也一律 👑(主畫面 App 讀不到作戰室的設定)', JSON.stringify([C.lead, C.isLead]));
 ok(C.calls === 1 && JSON.stringify(C.stub) === JSON.stringify(C.expect) && JSON.stringify(C.real) === JSON.stringify(C.expect),
   'ⓒ2 ⭐ 名單 == _castPick;動畫 stub 掉前後名單一樣', JSON.stringify([C.stub, C.real, C.expect, C.calls]));
 const exSet = new Set(C.expect);
-ok(C.lead10.length > 0 && JSON.stringify(C.rows) === JSON.stringify(C.lead10) && JSON.stringify(C.ten) === JSON.stringify(C.lead10) && C.three === 3,
+ok(C.lead10.length > 0 && JSON.stringify(C.rows) === JSON.stringify(C.lead10) && JSON.stringify(C.ten) === JSON.stringify(C.lead10) && C.r3n >= 1 && C.three === C.r3n,   // 🧪 V82.0.8 大跌時排行可能不到 3 條 → 釘用意(切到幾條就幾條,⛔ 補魚)
   'ⓛ 🐟 V78.6.2 海裡的魚 == 今天排行前 10 條(照名次)、⛔ 不補魚(排行只剩 3 條 → 3 條)', JSON.stringify([C.lead10, C.rows, C.three]));
 ok(JSON.stringify(C.tenInj) === JSON.stringify(C.lead10), 'ⓛ1 決定性對照:就算傳入「那一批」,名單也⛔ 不扣(每天換回今天前 10)', JSON.stringify([C.tenInj, C.lead10]));
 ok(C.ranks.length === C.rows.length && C.ranks.every(([s, r], i) => r.endsWith('#' + (i + 1)) && (/⭐/.test(r) === exSet.has(s))),
@@ -316,15 +316,17 @@ ok(SO.desc.length >= 2 && SO.ok1 && SO.ok2 && SO.ok3 && SO.ok4 && /名次/.test(
 const pg4 = await open('?app=fish');
 await pg4.waitForFunction(() => PRO._fpv && PRO._fpv.Q, null, { timeout: 60000 }).catch(() => {});
 const V0 = await pg4.evaluate(() => { const S = PRO._fpv, sea = JSON.parse(localStorage.getItem('fpvSea_v1'));
-  const order = sea.order.slice(), caught = order.slice(0, 2); localStorage.setItem('fpvSea_v1', JSON.stringify({ date: sea.date, order, caught }));
+  const order = sea.order.slice(), caught = order.slice(0, Math.min(2, order.length - 1)); localStorage.setItem('fpvSea_v1', JSON.stringify({ date: sea.date, order, caught }));
   return { order, caught, date: sea.date, total: S.Q.total }; });
 await pg4.reload();
 await pg4.waitForFunction(() => typeof PRO !== 'undefined' && PRO._fpv && PRO._fpv.Q, null, { timeout: 60000 }).catch(() => {});
 const V1 = await pg4.evaluate(() => { const S = PRO._fpv;
   return { q: S.Q.fish.map(f => f.sym), cards: [...document.querySelectorAll('#fpvCards .fpvcard')].map(e => e.dataset.fpv), swim: S.swim.map(s => s.F.sym),
            sub: document.getElementById('fpvSub').innerText }; });
-ok(V0.total >= 3 && JSON.stringify(V1.q) === JSON.stringify(V0.order.slice(2)) && V1.cards.length === 2 && V0.caught.every(x => V1.cards.includes(x))
-   && V1.swim.length === V0.total - 2 && !V1.swim.some(x => V0.caught.includes(x)) && new RegExp('還有 ' + (V0.total - 2) + ' 條').test(V1.sub),
+// 🧪 V82.0.8 釣幾條 = min(2, 全部 − 1)(大跌時海裡可能只有 2 條;⛔ 寫死 2 條 → 全部釣完、沒有「還有幾條」可驗)
+const Vk = V0.caught.length;
+ok(V0.total >= 2 && Vk >= 1 && JSON.stringify(V1.q) === JSON.stringify(V0.order.slice(Vk)) && V1.cards.length === Vk && V0.caught.every(x => V1.cards.includes(x))
+   && V1.swim.length === V0.total - Vk && !V1.swim.some(x => V0.caught.includes(x)) && new RegExp('還有 ' + (V0.total - Vk) + ' 條').test(V1.sub),
   'ⓥ 🗓️ 重新打開 App:釣過的直接出卡、海裡只剩沒釣的(照上次的隨機順序)', JSON.stringify([V0, V1]));
 await pg4.evaluate(() => { const v = JSON.parse(localStorage.getItem('fpvSea_v1')); v.date = '2000-01-01'; localStorage.setItem('fpvSea_v1', JSON.stringify(v)); });
 await pg4.reload();
@@ -333,7 +335,7 @@ const V2 = await pg4.evaluate(() => ({ n: PRO._fpv.Q.fish.length, total: PRO._fp
   sea: JSON.parse(localStorage.getItem('fpvSea_v1')) }));
 ok(V2.n === V2.total && V2.cards === 0 && V2.sea.caught.length === 0 && V2.sea.date !== '2000-01-01', 'ⓥ2 換了資料日 → 整池重來', JSON.stringify(V2));
 // 🎲 釣起順序隨機:洗牌 30 次,至少有一次跟名次順序不同(⛔ 不可永遠照 #1 → #10)
-const SH = await pg4.evaluate(() => { const a = PRO._fpv.Q.fish.map(f => f.rank); let diff = 0;
+const SH = await pg4.evaluate(() => { const a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; let diff = 0;   // 🧪 V82.0.8 固定 10 條(⛔ 拿當天的海:大跌時只有 2 條,洗 30 次本來就約一半一樣)
   for (let k = 0; k < 30; k++) if (JSON.stringify(PRO._fpvShuffle(a)) !== JSON.stringify(a)) diff++; return { diff, same: JSON.stringify(PRO._fpvShuffle(a).slice().sort((x, y) => x - y)) === JSON.stringify(a.slice().sort((x, y) => x - y)) }; });
 ok(SH.diff > 20 && SH.same, 'ⓥ3 🎲 釣起順序是洗牌過的(同一批魚、順序隨機)', JSON.stringify(SH));
 // 👆 捲線器 + 瞄準(真的滑鼠事件)
@@ -406,7 +408,7 @@ const RL = await pg4.evaluate(() => {
     bask: localStorage.getItem('proWar_catch') === bask, sub: document.getElementById('fpvSub').innerText };
   return { total, l0, c0: c0.length, btn, allBtn, one, busy, busyCards, busyC1: c1.length, all };
 });
-ok(RL.total >= 3 && RL.c0 === RL.total && RL.l0 === 0 && RL.btn && RL.allBtn, '🌊a 全部釣起後每張卡都有「🌊 放回海裡」、上方有「🌊 全部放回」—— 🚧 空過守門', JSON.stringify(RL));
+ok(RL.total >= 2 && RL.c0 === RL.total && RL.l0 === 0 && RL.btn && RL.allBtn, '🌊a 全部釣起後每張卡都有「🌊 放回海裡」、上方有「🌊 全部放回」—— 🚧 空過守門', JSON.stringify(RL));
 ok(RL.one.r1.ok && RL.one.cards === RL.total - 1 && RL.one.gone && RL.one.caught === RL.total - 1 && RL.one.notCaught && RL.one.left === 1 && RL.one.q0 && RL.one.swim && RL.one.net,
   '🌊b 放回一條:卡片少一張、今天的海記錄拿掉牠、牠回到水裡游、可以再釣(拋網鈕也回來了)', JSON.stringify(RL.one));
 ok(RL.one.bask && RL.all.bask, '🌊c ⭐ 放回海裡⛔ 不動漁獲籃(proWar_catch 前後一字不差)', JSON.stringify([RL.one.bask, RL.all.bask]));

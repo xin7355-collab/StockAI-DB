@@ -44,6 +44,10 @@ ok('⓪e _keyLevels 的觸發價跟主卡同一個條件:⛔ 空頭不給、⛔ 
    /trigPx = \+_pb\.trig/.test(klv) && /!_pb\.loose/.test(klv) && /!this\._bearGate\(/.test(klv) && /if \(!\(cost > 0\)\)/.test(klv), '');
 
 const B = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
+// 🧪 V82.0.8 K 線固定截到 2026-10-15(⛔ 用「今天」的資料):② ③ 要的情境是「現價在 5 日線下、但三條出場線都沒破」,
+//   真實資料 11/06 那天 2330 已經跌破唐奇安 40 日低點(2135 < 2235)→ 守門 ③0 一定紅、③ 量的不是 5 日線。
+//   10/15:收 2440 < 5 日線 2502、唐奇安 40 日低點 2335(還有 4.5%)、從 8/26 買進才 34 個交易日 —— 行情怎麼變都不影響。
+const UPTO = process.env.OVS_UPTO === undefined ? '2026-10-15' : process.env.OVS_UPTO;   // OVS_UPTO='' = 用今天的資料(舊行為)
 const run = async (sym, inv, rule) => {
     const page = await B.newPage({ viewport: { width: 390, height: 844 } });
     await page.addInitScript(() => {
@@ -51,6 +55,11 @@ const run = async (sym, inv, rule) => {
         Object.defineProperty(window, 'echarts', { value: new Proxy({}, { get: (_t, k) => k === 'init' ? (() => inst) : (k === 'graphic' ? {} : () => inst) }), writable: true, configurable: true });
     });
     await page.route('**/*', r => (r.request().url().startsWith('file://') ? r.continue() : r.abort()));
+    if (UPTO) await page.route(`**/data/${sym}.json*`, async r => {
+        const all = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', `${sym}.json`), 'utf8'));
+        const cut = all.filter(x => String(x.date || '').replace(/\//g, '-').slice(0, 10) <= UPTO);
+        await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(cut) });
+    });
     await page.goto(pathToFileURL(HTML).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(() => typeof app !== 'undefined' && !!app.analyze, null, { timeout: 30000 });
     const r = await page.evaluate(async ([sym, inv, rule]) => {
