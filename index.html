@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.0.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.0.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1282,6 +1282,17 @@
                         </div>
                         <p class="text-[10px] text-gray-500 leading-relaxed mt-1">只列跟你選的策略有關的區塊;收起來的<b class="text-gray-300">不會刪掉</b>,勾回來就有。</p>
                         <div id="deckShowBox" class="hidden mt-1.5 border-t border-[#21262d] pt-1.5"><div id="deckShowList"></div></div>
+                    </div>
+                    <!-- 🌅 V82.0.8 早上第一次打開先到盤前(預設開;使用者 11/09 要的)。判斷只在 app._premktAutoWant -->
+                    <div class="flex items-center justify-between pt-2">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <label class="text-xs font-bold text-purple-300">🌅 早上第一次打開先到盤前</label>
+                            <p class="text-[10px] text-gray-500 leading-relaxed">開著(預設):平日早上 5 點到 9 點第一次打開 App,直接停在「大盤 › 盤前」;9 點開盤後照原本到決策台。美股收盤後的資料早上 8 點左右才補齊,8 點以後看最準。</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" id="set_premktAuto" onchange="app.togglePremktAuto(this.checked);" class="sr-only peer">
+                            <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500"></div>
+                        </label>
                     </div>
                     <!-- 🗑️ V78.1.9 「📦 決策台只挑營收年增加速」開關已移除(實測少賺且贏不了同通過率隨機抽;使用者:「沒有用的不是說要移除嗎」)-->
                     <!-- 📊 訊號成績單:跨自選+庫存回測,找出「哪種買進訊號在你的股票上真的準」(準確率工具) -->
@@ -2673,6 +2684,8 @@
 
             <!-- ════════ 🌅 盤前檢視:盤前體檢 + 反攻雷達 + 指揮中心(會下判斷的都在這)════════ -->
             <div id="subContent_advice" class="hidden flex-col gap-3">
+                <!-- 🎯 V82.0.8 早上自動停在盤前時,決策台今天有事要做 → 這一行一鍵過去(數字讀底部 🎯 徽章同一個,⛔ 另算;0 就藏起來) -->
+                <button id="premktDeskLine" type="button" onclick="app.switchAppTab('desk')" class="hidden w-full text-left text-[12px] font-bold text-amber-200 border-l-4 border-amber-500 pl-3 py-2" style="min-height:44px"></button>
                 <!-- 🌅 V36.8 盤前大盤體檢(加權技術+美股+ADR+外資 → 開盤方向總結) -->
                 <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
                 <!-- 🧭 V70.2.7 反攻條件雷達(還差什麼條件台股才會漲 / 是不是黑天鵝該停損) -->
@@ -4855,6 +4868,19 @@ const app = {
         const initialSym = this._deepLinkSym || '2330';
         // 🎯 V75.0.0 預設落地改成決策台(⛔ 帶股票代號進來的深連結仍直接進個股頁)
         this.switchAppTab(this._deepLinkSym ? 'diag' : 'desk');
+        // 🌅 V82.0.8 早上第一次打開(台北平日 05:00~08:59、一天一次)→ 大盤 › 盤前;決策台照樣先切過一次
+        //   (底部 🎯 徽章照算、往回滑回到決策台)。⛔ 帶股票 / 開某個功能的連結進來照原本。
+        try {
+            const _qp = new URLSearchParams(window.location.search);
+            const _deep = !!(this._deepLinkSym || _qp.get('open') || _qp.get('noise'));
+            let _last = ''; try { _last = localStorage.getItem('premktAuto_v1') || ''; } catch (_) {}
+            const _ymd = this._premktAutoWant(Date.now(), _last, (this.settings || {}).premktAuto === false, _deep);
+            if (_ymd) {
+                try { localStorage.setItem('premktAuto_v1', _ymd); } catch (_) {}
+                this.switchAppTab('market');
+                this.switchMarketSubTab('tw');
+            }
+        } catch (_) {}
         if (this._deepLinkSym) {
             await this.analyze(initialSym, true);
             // 🔬 V78.3.7 產業作戰室「🔬 個股實測」內嵌:只有實驗室模式才認 ?sub= / ?open=(一般模式一律忽略,⛔ 不給入口)
@@ -5025,6 +5051,7 @@ const app = {
             }
             // 🌇 V70.1.0 每交易日 13:32 後跑一次盤後零股盤點(方法內自帶時窗+每日一次 gate)
             try { this._afterCloseOddLotSweep(); } catch (_) {}
+            try { this._premktRefreshTick(); } catch (_) {}   // 🌅 V82.0.8 停在盤前頁:08:05 後補抓美股收盤後那份(自帶時窗 + 5 分鐘一次)
             if (this.isMarketOpen()) {
                 this.refreshUSMarketBar();
             }
@@ -6026,6 +6053,12 @@ const app = {
         this.settings.alertStrict = !!checked;
         try { this.saveSettings?.(); } catch (_) {}
         this.showToast?.(checked ? '🔕 只提醒有把握的訊號(其他的仍收在 🔔 通知歷史)' : '🔔 已改回全部都推(舊行為)', 'info', 4000);
+    },
+    /** 🌅 V82.0.8 早上第一次打開先到盤前(預設開 = `premktAuto !== false`;判斷在 `_premktAutoWant`) */
+    togglePremktAuto(checked) {
+        this.settings.premktAuto = !!checked;
+        try { this.saveSettings?.(); } catch (_) {}
+        this.showToast?.(checked ? '🌅 平日早上 5~9 點第一次打開會先到盤前' : '🎯 早上打開照原本到決策台', 'info', 3500);
     },
     // 🗑️ V78.1.9 `toggleDeckFinAccel` / `_fillDeckFinDesc` 隨「📦 營收加速濾網」一起移除(實測少賺、贏不了隨機抽)
     async toggleWatchlistAlert(checked) {
@@ -8929,10 +8962,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.0.7',
+    _APP_VERSION: 'V82.0.8',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.0.8', d: [
+            '🌅 平日早上 5 點到 9 點第一次打開 App,直接停在「大盤 › 盤前」;最上面一行告訴你決策台今天有幾件事要做(點了就過去)。不想要可以在 ⚙️ 設定 › 🛠️ 進階與工具 關掉',
+            '⚠️ 盤前體檢:週末到週一早上看到的美股,如果是上週五美股還沒收盤時抓的,會寫清楚是「盤中」的數字(以前寫成上週五收盤);停在盤前頁,早上 8 點過後會自己補抓收盤後那份',
+            '🎙️ 分析師盤勢解讀、📊 市場廣度:不再寫「站回季線才有轉多空間」「順勢做多」「回檔可找買點」這類說法,只描述位置和今天漲跌家數(⛔ 不是買賣訊號);要不要買照決策台',
+        ], dt: '2026-11-09' },
         { v: 'V82.0.7', d: [
             '✂️ 👑 領頭羊多一條規則「跌 20% 收一半」(預設開):這一套從最高點跌 2 成,下一次換倉起每檔只放一半(留著的每檔賣一半、新買的買一半);回到最高點那次換倉再補回全額。決策台、換倉提醒、Telegram、自動下單都照同一條做',
             '🔓 👑 不想要的話:⚙️ 設定 › 🔓 進階功能 › ✂️ 跌 20% 收一半 關掉,就跟以前一模一樣(自動下單是 LEADER_DD_HALF=0)',
@@ -9249,9 +9287,6 @@ ${list}
             '🔧 報告頁:收盤後「量能倍數」照常顯示(以前同一天一路寫「還沒收盤」寫到半夜)',
             '🔧 背景整理:收盤後不再重抓整天的逐筆資料(省券商流量)',
         ], dt: '2026-10-23' },
-        { v: 'V79.5.5', d: [
-            '🔧 背景整理:每天早上的盤前資料開始存下來,之後看得到準不準(畫面沒有變)',
-        ], dt: '2026-10-22' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -9484,6 +9519,8 @@ ${list}
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
         const asEl = document.getElementById('set_alertStrict');
         if (asEl) asEl.checked = this.settings.alertStrict !== false;   // 🔕 V76.1.7 預設開
+        const paEl = document.getElementById('set_premktAuto');
+        if (paEl) paEl.checked = this.settings.premktAuto !== false;    // 🌅 V82.0.8 預設開
         try {   // 🌙 V80.1.2 勿擾時段(預設關 —— ⛔ 不可寫成 !== false)
             const qOn = document.getElementById('set_quietOn'); if (qOn) qOn.checked = this.settings.quietOn === true;
             const qr = this._quietRange(), hm = x => `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`;
@@ -10130,7 +10167,7 @@ ${list}
         const nf = nKey(S.fugleKeys), nm = nKey(S.finmindKeys), na = nKey(S.groqKeys) + nKey(S.openrouterKeys) + nKey(S.geminiKeys);
         put('keys', `Fugle ${nf} 把・FinMind ${nm} 把・AI ${na} 把`);
         let hid = 0; try { const sh = this._deckShow(), st = this._strat(); hid = (this._DECK_SECTIONS || []).filter(d => !(d.st && d.st !== st) && !sh[d.k]).length; } catch (_) {}
-        put('tools', `決策台收起 ${hid} 塊${this._labMode() ? '・自訂回測・盲測練習' : ''}`);
+        put('tools', `決策台收起 ${hid} 塊${S.premktAuto !== false ? '・早上先到盤前' : ''}${this._labMode() ? '・自訂回測・盲測練習' : ''}`);
     },
     _renderAIKeyStats() {
         const box = document.getElementById('aiKeyStatsBox');
@@ -16497,8 +16534,19 @@ const marginByDate = {};
                 s += pos.join('、') + '。';
                 const nearSup = (kl.sup || [])[0];
                 const reclaim = (q && q.above) ? q : (m && m.above ? m : (kl.res || [])[0]);
-                if (nearSup) s += ` 短線先守 <b class="text-green-300">${cma(nearSup.v)}</b>（${nearSup.n}），失守易再破底；`;
-                if (reclaim) s += `站回 <b class="text-red-300">${cma(reclaim.v)}</b>（${reclaim.n}）才有轉多空間。`;
+                // 🎙️ V82.0.8 只描述位置(灰字 + ▲▼,⛔ 紅綠:位置不是漲跌)。以前寫「失守易再破底」「站回(季線)才有轉多空間」,
+                //   讀起來像「等站回才買」—— 沒驗證過,而且跟決策台打架(📉 大跌撿便宜就是在跌的時候買、🔥 空頭也照買);
+                //   「賣掉之後等站回季線才買回」實測比一直抱著少賺很多(ftd_probe / rebound_reentry_probe)。
+                //   唯一跟季線有關、回測過的是「大盤嚴格空頭不開新倉」(👑 固定開、🔥 看你的設定 _bearGateOn)→ 只在那種情況講。
+                const lv = [];
+                if (nearSup) lv.push(`下面最近 <b class="text-gray-200">▼ ${cma(nearSup.v)}</b>(${nearSup.n})`);
+                if (reclaim) lv.push(`上面 <b class="text-gray-200">▲ ${cma(reclaim.v)}</b>(${reclaim.n}${/季線|MA60/.test(reclaim.n || '') ? ',中期多空分界' : ''})`);
+                if (lv.length) {
+                    const _lead = !!this._isLead?.(), _gate = _lead || !!this._bearGateOn?.();
+                    s += ` ${lv.join('、')} —— 只是參考位置` + (_gate
+                        ? `;${_lead ? '👑 照規則' : '你開著「大盤空頭不開新倉」'}:大盤嚴格空頭(收盤在季線下、月線也在季線下)時決策台不買新的。要不要買照決策台,手上的照你的出場規則走。`
+                        : `,⛔ 不用等站回才買:要不要買照決策台,手上的照你的出場規則走。`);
+                }
                 parts.push(s);
             }
             // ② 外部:亞股 + 避險
@@ -16614,17 +16662,82 @@ const marginByDate = {};
         return null;
     },
     // 🌅 V79.3.4 盤前體檢:總經資料是不是「美股收盤前」抓的(那時美股漲跌是盤中數字)
-    //   只在收盤後 12 小時內講(= 台北隔天上午到下午);回 null = 不用講
+    //   講到「收盤後 12 小時」與「收盤後下一個台股開盤 + 7 小時」比較晚的那個;回 null = 不用講
+    //   🌙 V82.0.8 平日跟以前一模一樣(台北下午 4~5 點);週五收盤那份講到週一 16:00 ——
+    //     11/09(一)06:24 截圖:那份是 11/07(六)02:40 抓的 = 上週五美股盤中,以前收盤 12 小時後就不講了
+    //     (Cloudflare 只有平日早上 8 點補抓 → 整個週末到週一 8 點都是盤中數字)。⛔ 沒管台灣假日。
     _macroPreUsClose(now = Date.now()) {
         try {
             const m = String((this._macroRiskCache || {}).updated || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
             if (!m) return null;
             const upd = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - 8 * 3600e3;
             const close = this._lastUsCloseMs(now);
-            if (!close || upd >= close || now - close > 12 * 3600e3) return null;
+            if (!close || upd >= close) return null;
+            // 收盤後下一個台股開盤(台北平日 09:00)
+            let twOpen = null;
+            for (let k = 0; k < 8 && twOpen == null; k++) {
+                const day = Math.floor((close + 8 * 3600e3) / 86400e3) * 86400e3 + k * 86400e3;   // 台北那天 00:00(當成 UTC 的牆上時間)
+                const wd = new Date(day).getUTCDay();
+                const open = day + 9 * 3600e3 - 8 * 3600e3;
+                if (wd !== 0 && wd !== 6 && open >= close) twOpen = open;
+            }
+            const until = Math.max(close + 12 * 3600e3, twOpen != null ? twOpen + 7 * 3600e3 : 0);
+            if (now > until) return null;
             const tw = new Date(close + 8 * 3600e3);
-            return { upd, close, closeTxt: `${String(tw.getUTCHours()).padStart(2, '0')}:00` };
+            return { upd, close, closeTxt: `${String(tw.getUTCHours()).padStart(2, '0')}:00`, wkend: new Date(close + 8 * 3600e3).getUTCDay() === 6 };
         } catch (_) { return null; }
+    },
+    // 🌅 V82.0.8 停在盤前頁、資料還是美股收盤前抓的 → 台北平日 08:05~08:59 每 5 分鐘重抓一次 macro_risk.json
+    //   (Cloudflare 08:00 叫醒採礦,約 10 分鐘後才有收盤後那份);抓到新的就重畫,收盤後那份到了自然停(_macroPreUsClose 回 null)。
+    //   ⛔ 看不到盤前頁 / 背景 / 週末 / 9 點以後一律不抓。由 setupAutoRefresh 那個 10 秒迴圈與切到盤前時呼叫。
+    _premktRefreshTick(now = Date.now()) {
+        try {
+            if (document.hidden) return false;
+            const pane = document.getElementById('subContent_advice');
+            if (!pane || pane.offsetParent === null) return false;
+            const t = this._tpeMinutes();
+            if (/Sat|Sun/.test(t.wd) || t.min < 8 * 60 + 5 || t.min >= 9 * 60) return false;
+            if (!this._macroPreUsClose(now)) return false;
+            if (this._premktRefAt && now - this._premktRefAt < 5 * 60e3) return false;
+            this._premktRefAt = now;
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            fetch(new URL('data/macro_risk.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) })
+                .then(r => (r.ok ? r.json() : null))
+                .then(j => {
+                    if (!j || !j.updated || j.updated === (this._macroRiskCache || {}).updated) return;
+                    this._macroRiskCache = { ...(this._macroRiskCache || {}), ...j };
+                    try { this.renderMarketBriefing(); } catch (_) {}
+                })
+                .catch(() => {});
+            return true;
+        } catch (_) { return false; }
+    },
+    // 🌅 V82.0.8 每天早上第一次打開 → 大盤 › 盤前(使用者 11/09:「每天早上第一次打開網頁我要在盤前頁面」)
+    //   台北平日 05:00~08:59:美股冬天台北 05:00 收盤(夏天 04:00);09:00 開盤後盤前那頁就過時了 → 照原本落在決策台。
+    //   一天一次(localStorage premktAuto_v1 = 那天日期)、設定可關(premktAuto)、帶股票 / 開某個功能的連結進來照原本。
+    //   ⛔ 國定假日判斷不出來(App 沒有休市行事曆)→ 也會停在盤前,無害。回傳那天日期 = 要跳;null = 不跳(純判斷,測試直接呼叫)。
+    _premktAutoWant(now = Date.now(), last = '', off = false, deep = false) {
+        try {
+            if (off || deep) return null;
+            const d = new Date(now);
+            const p = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', hour12: false, weekday: 'short', hour: '2-digit', minute: '2-digit' }).formatToParts(d);
+            const g = k => (p.find(x => x.type === k) || {}).value || '';
+            const wd = g('weekday'), min = ((+g('hour')) % 24) * 60 + (+g('minute'));
+            const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(d);
+            if (/Sat|Sun/.test(wd) || min < 5 * 60 || min >= 9 * 60 || last === ymd) return null;
+            return ymd;
+        } catch (_) { return null; }
+    },
+    // 🎯 V82.0.8 盤前頁最上面一行:決策台今天有幾件事 → 一鍵過去。數字 = 底部 🎯 徽章那一個(renderDeck 算好的,⛔ 另算);0 / 還沒算好 → 藏起來
+    _premktDeskLineSync() {
+        try {
+            const el = document.getElementById('premktDeskLine');
+            if (!el) return;
+            const dot = document.getElementById('navBtnDeskDot');
+            const n = dot && !dot.classList.contains('hidden') ? parseInt(dot.textContent, 10) || 0 : 0;
+            el.classList.toggle('hidden', n <= 0);
+            el.textContent = n > 0 ? `🎯 決策台今天有 ${n} 件事要做 → 點這裡去看` : '';
+        } catch (_) {}
     },
 
     // 🌅 V79.5.2 盤前體檢「逐欄位」日期 —— ⛔ 全 App 唯一判斷點(`_macroFresh` 看的是整份檔的時間,這支看檔案裡每一格)
@@ -17473,7 +17586,13 @@ const marginByDate = {};
         if (s >= 3) patNote = '隔夜海外偏多 → 今天比較少開低,但開高跟開平差不多一樣常見 → 照原本計畫做。開高大多是昨晚美股造成的,開盤之後會不會繼續漲這裡不預測,⛔ 別在開盤追高。';
         else if (s <= -3) patNote = '隔夜海外偏弱 → 今天比較常開低(大約一半),開平也很常見 → 新買的先縮小部位、別在開盤前掛大單;⛔ 不用因為分數低就整天不做,手上的照你的出場規則走。';
         else patNote = '多空拉扯,今天多半開平 → 照原本計畫做;開盤之後怎麼走這裡不預測。';
-        if (_usClosed) patNote = '🌙 美股週末休市(以下美股為上週五收盤,今天美股台灣晚間才開)→ 美股那幾項參考度降低。' + patNote;
+        // 🌙 V82.0.8 只有收盤後抓的那份才可以說「上週五收盤」;收盤前抓的是上週五盤中的數字(11/09 截圖:11/07 02:40 抓,美股 05:00 才收)
+        if (_usClosed) {
+            const _wkPre = this._macroFresh().ok ? this._macroPreUsClose() : null;
+            patNote = (_wkPre
+                ? '🌙 美股週末休市(以下美股是上週五<b>盤中</b>抓的、⛔ 不是收盤;平日早上 8 點左右會補抓收盤後那份,今天美股台灣晚間才開)'
+                : '🌙 美股週末休市(以下美股為上週五收盤,今天美股台灣晚間才開)') + '→ 美股那幾項參考度降低。' + patNote;
+        }
         let light, verdict, vColor;
         if (s >= 3) { light = '🔴'; verdict = '開高偏多'; vColor = 'red'; }
         else if (s <= -3) { light = '🟢'; verdict = '開低偏空'; vColor = 'green'; }
@@ -17673,7 +17792,7 @@ const marginByDate = {};
         // 🌅 V79.3.4 資料是美股收盤前抓的 → 灰字說明(⛔ 不改分數;整份過期時上面那條已經講了)
         const _usPre = _mFresh.ok ? this._macroPreUsClose() : null;
         const _usPreWarn = _usPre
-            ? `<div class="mt-1 text-[10px] text-gray-500 leading-snug" data-uspre="1">⚠️ 美股收盤後還沒更新 —— 這份是收盤前抓的(美股台北 ${_usPre.closeTxt} 收盤),美股 / 費半 / 台積 ADR 的漲跌是盤中數字,收盤後會再抓一次。</div>`
+            ? `<div class="mt-1 text-[10px] text-gray-500 leading-snug" data-uspre="1">⚠️ 美股收盤後還沒更新 —— 這份是收盤前抓的(美股台北 ${_usPre.closeTxt} 收盤),美股 / 費半 / 台積 ADR 的漲跌是盤中數字;平日早上 8 點左右會補抓${_usPre.wkend ? '(週末要等週一早上)' : ''},停在這一頁 8 點過後會自己再抓。</div>`
             : '';
         const _lagWarn = _lagI2.lag > 0
             ? `<div class="mt-1 text-[10px] text-amber-300 bg-amber-900/15 border-l-2 border-amber-500 pl-2 py-1 rounded-r leading-snug">⚠️ 加權指數資料落後 ${_lagI2.lag} 天(最新交易日 ${this._dW(_lagI2.mktD)})— 下方點位與解讀用的是 ${this._dW(_lagI2.twiiD)} 收盤</div>`
@@ -36121,7 +36240,7 @@ ${this._reportFacts(sym)}
         try { localStorage.setItem('mktSubTab', tab); } catch(_) {}
         // 🐛 V71.4.4 修對接錯位:盤前體檢(#marketBriefing)在「盤前檢視」格,新聞清單在「消息面」格,
         //    但原本寫反了(進消息面才刷體檢、進盤前檢視才拉新聞)。分頁改名後一併校正。
-        if (tab === 'tw') { try { this.renderMarketBriefing(); } catch(_){} try { this.switchSccTab(localStorage.getItem('sccTab') || 'weather'); this._initSccSwipe(); } catch(_){} }
+        if (tab === 'tw') { try { this.renderMarketBriefing(); } catch(_){} try { this.switchSccTab(localStorage.getItem('sccTab') || 'weather'); this._initSccSwipe(); } catch(_){} try { this._premktRefreshTick(); this._premktDeskLineSync(); } catch(_){} }
         if (tab === 'global') { this.loadNewsHeadlines(); }   // _newsCache 1 分鐘內走快取,不會狂打
     },
 
@@ -51547,6 +51666,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const dot = $('navBtnDeskDot'), n = (_sh.sell ? st.sell.length + near.filter(x => x.ed && x.ed.level === 'today').length : 0) + (_sh.pb ? st.buy.length : 0) + (_sh.leader && _ls.isRebal ? (_ls.buyN || 0) : 0);   // 🚨 今天可能碰到的也算一件事
                 if (dot) { dot.textContent = String(n); dot.classList.toggle('hidden', n === 0); }
             } catch (_) {}
+            try { this._premktDeskLineSync(); } catch (_) {}   // 🎯 V82.0.8 盤前頁最上面那一行跟著徽章
         } finally { this._deckBusy = false; }
     },
 
@@ -55503,18 +55623,22 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             const adRatio = down > 0 ? up / down : (up > 0 ? 99 : 0);            // 騰落比
             const upPctAll = total ? up / total * 100 : 0;
             // 健康度判讀(騰落 + 漲停/跌停 對比)
+            // 📊 V82.0.8 只描述今天(使用者 11/09 問「盤中看到全面復甦可以加碼嗎」):以前寫「主升段特徵,順勢做多」
+            //   「回檔可找買點」「控好部位、別重壓」「做強勢股別碰弱勢股」—— 都沒驗證過;同類的全面上漲日 / Zweig 寬度衝刺
+            //   之後 60 天跟修正中隨便一天差不到 ±2pp(stopfall_probe)。燈號(🔴🟢 = 多數股的漲跌方向)照舊。
             let tone, verdict, msg;
-            if (upPctAll >= 65 && limUp > limDown * 2) { tone = 'red'; verdict = '🔥 全面上攻·廣度極強'; msg = '多數股齊漲、漲停遠多於跌停=資金普遍進場,主升段特徵,順勢做多。'; }
-            else if (upPctAll >= 55) { tone = 'red'; verdict = '🔴 偏多·廣度健康'; msg = '上漲家數明顯多於下跌,大盤體質健康,回檔可找買點。'; }
-            else if (upPctAll <= 35 && limDown > limUp) { tone = 'green'; verdict = '🩸 全面下殺·廣度極弱'; msg = '多數股齊跌、跌停多於漲停=資金正在撤離;手上的照你的出場規則走。'; }
-            else if (upPctAll <= 45) { tone = 'green'; verdict = '🟢 偏空·廣度轉弱'; msg = '下跌家數多於上漲,大盤體質轉弱,控好部位、別重壓。'; }
-            else { tone = 'yellow'; verdict = '⚖️ 多空拉鋸·廣度分歧'; msg = '漲跌家數接近,方向未定,選股比押方向重要,做強勢股別碰弱勢股。'; }
+            if (upPctAll >= 65 && limUp > limDown * 2) { tone = 'red'; verdict = '🔥 全面上攻·廣度極強'; msg = '多數股齊漲、漲停遠多於跌停 —— 今天買的人很廣。'; }
+            else if (upPctAll >= 55) { tone = 'red'; verdict = '🔴 偏多·廣度健康'; msg = '上漲家數明顯多於下跌。'; }
+            else if (upPctAll <= 35 && limDown > limUp) { tone = 'green'; verdict = '🩸 全面下殺·廣度極弱'; msg = '多數股齊跌、跌停多於漲停 —— 今天賣的人很廣。'; }
+            else if (upPctAll <= 45) { tone = 'green'; verdict = '🟢 偏空·廣度轉弱'; msg = '下跌家數多於上漲。'; }
+            else { tone = 'yellow'; verdict = '⚖️ 多空拉鋸·廣度分歧'; msg = '漲跌家數接近。'; }
+            msg += ' ⛔ 只描述今天,不是買賣訊號(⛔ 不是會漲或會跌):要不要買照決策台,手上的照你的出場規則走。';
             // 指數 vs 廣度背離提醒(需大盤今日漲跌)
             let divWarn = '';
             const twPct = (typeof this._taiexTodayPct === 'number') ? this._taiexTodayPct : null;
             if (twPct != null) {
-                if (twPct > 0.3 && upPctAll < 45) divWarn = `⚠️ <b>指數漲(${twPct.toFixed(1)}%)但廣度弱</b>(只 ${upPctAll.toFixed(0)}% 股上漲)=少數權值股扛盤、多數股在跌,是<b>假強</b>,別被指數騙。`;
-                else if (twPct < -0.3 && upPctAll > 55) divWarn = `💡 <b>指數跌(${twPct.toFixed(1)}%)但廣度強</b>(${upPctAll.toFixed(0)}% 股上漲)=權值股拖累、個股其實在漲,選股可偏多。`;
+                if (twPct > 0.3 && upPctAll < 45) divWarn = `⚠️ <b>指數漲(${twPct.toFixed(1)}%)但廣度弱</b>(只 ${upPctAll.toFixed(0)}% 股上漲)=少數權值股扛盤、多數股在跌。`;
+                else if (twPct < -0.3 && upPctAll > 55) divWarn = `💡 <b>指數跌(${twPct.toFixed(1)}%)但廣度強</b>(${upPctAll.toFixed(0)}% 股上漲)=權值股拖累、多數股其實在漲。`;
             }
             const bcls = tone === 'red' ? 'border-red-500' : tone === 'green' ? 'border-green-500' : 'border-yellow-500';
             const vcls = tone === 'red' ? 'text-red-300' : tone === 'green' ? 'text-green-300' : 'text-yellow-300';
@@ -55523,7 +55647,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             box.innerHTML = `
                 <div class="flex items-center justify-between mb-1.5">
                     <span class="text-[12px] font-black text-gray-100">📊 市場廣度 <span class="text-[9px] text-gray-500 font-normal">全市場 ${total} 檔即時 · ${this._liveTs || ''}</span></span>
-                    <button onclick="app._helpBox('【市場廣度 Market Breadth】\\n\\n指數只反映「權值股」(台積電佔權重超大),廣度反映「多數股」的真實狀況。\\n\\n・騰落比 = 上漲家數 ÷ 下跌家數。>1 多方、<1 空方。\\n・漲停 vs 跌停家數:極端情緒。\\n・上漲家數% ≥ 65% 且漲停多 = 全面上攻(主升段);≤ 35% 且跌停多 = 全面下殺。\\n\\n🎯 最重要:指數 vs 廣度「背離」——指數創高但只有少數股在漲(廣度弱)=少數大牛扛盤(只描述現況,⛔ 不能拿來預告會不會跌)。反之指數跌但多數股漲=個股行情。\\n\\n這是機構級大盤健康度指標,用全市場即時快照算,免費。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 原理</button>
+                    <button onclick="app._helpBox('【市場廣度 Market Breadth】\\n\\n指數只反映「權值股」(台積電佔權重超大),廣度反映「多數股」的真實狀況。\\n\\n・騰落比 = 上漲家數 ÷ 下跌家數。>1 多方、<1 空方。\\n・漲停 vs 跌停家數:極端情緒。\\n・上漲家數% ≥ 65% 且漲停多 = 全面上攻;≤ 35% 且跌停多 = 全面下殺(只描述今天,⛔ 不是會漲或會跌)。\\n\\n🎯 最重要:指數 vs 廣度「背離」——指數創高但只有少數股在漲(廣度弱)=少數大牛扛盤(只描述現況,⛔ 不能拿來預告會不會跌)。反之指數跌但多數股漲=個股行情。\\n\\n這是機構級大盤健康度指標,用全市場即時快照算,免費。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 原理</button>
                 </div>
                 <div class="text-xl font-black ${vcls} leading-tight mb-1.5">${verdict}</div>
                 <div class="grid grid-cols-4 gap-1.5 mb-1.5">

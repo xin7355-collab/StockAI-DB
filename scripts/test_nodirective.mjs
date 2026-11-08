@@ -26,6 +26,9 @@
  *    「朱家泓 5MA 進場訊號 + 進場 / 停損 / 目標價」「漲 7% 借建倉訊號範本」「主力強買盤:空手可拉回低接」「漲停:賣半碼鎖利」
  *    「到價:出 1/3 鎖利」「ETF 跟單 高勝率」「全市場戰略選股」「AI 短評給操作建議」→ 一律只描述 + 共用一句 HOW_NOTE。
  *    INJECT=9:5 日線那則塞回「進場:」→ ⑧ 必須紅。
+ * ⑨ V82.0.8 大盤頁「🎙️ 分析師盤勢解讀」⛔「失守易再破底」「站回(季線)才有轉多空間」(讀起來像等站回才買)、
+ *    「📊 市場廣度」⛔「主升段特徵,順勢做多」「回檔可找買點」「控好部位、別重壓」「做強勢股別碰弱勢股」「假強」—— 只描述 +
+ *    要不要買照決策台;價位是位置 → ▲▼ 灰字。INJECT=10 / 11 塞回舊句 → ⑨a 必須紅。
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
@@ -189,6 +192,36 @@ if (m) {
        !/function (calcLevels|tplInventoryStop|tplAttention|runOvernightUS|runMidday|runMonitorChuMorningScan)\(/.test(code));
     ok('⑧e 17:00 AI 短評 ⛔ 叫 AI 給操作建議', /⛔ 不可給買賣/.test(code) && !/明日操作節奏建議|直接給操作建議/.test(code));
     ok('⑧f 庫存提醒照留(−5% 硬停損 / 5 日線 / +20%),尾巴 ⛔ 再寫「跌破 5MA = 紀律停損」', /已破 -5% 停損線/.test(code) && /跌破 5日均價/.test(code) && /已達 \+20%/.test(code) && !/5MA = 紀律停損/.test(code));
+}
+
+// ⑨ 🎙️📊 V82.0.8 大盤頁「分析師盤勢解讀」與「📊 市場廣度」⛔ 不可再叫人等站回 / 順勢做多(⛔ 註解不算)
+//    使用者 11/09 問「盤中看到全面復甦可以加碼嗎」「等站回季線會不會太慢」:那幾句都沒驗證過
+//    (全面上漲日 / Zweig 衝刺之後跟修正中隨便一天差不到 ±2pp;「賣掉後等站回季線才買回」比一直抱著少賺很多)。
+//    INJECT=10:分析師卡塞回「失守易再破底」;INJECT=11:廣度卡塞回「回檔可找買點」→ ⑨a 必須紅。
+{
+    let s9 = src;
+    if (INJ === '10') { s9 = s9.replace('lv.push(`下面最近 <b class="text-gray-200">▼ ${cma(nearSup.v)}</b>(${nearSup.n})`);', 'lv.push(`短線先守 ${cma(nearSup.v)},失守易再破底`);'); console.log('💉 INJECT=10:分析師卡塞回「失守易再破底」→ ⑨a 必須紅'); }
+    if (INJ === '11') { s9 = s9.replace("msg = '上漲家數明顯多於下跌。';", "msg = '上漲家數明顯多於下跌,大盤體質健康,回檔可找買點。';"); console.log('💉 INJECT=11:廣度卡塞回「回檔可找買點」→ ⑨a 必須紅'); }
+    if ((INJ === '10' || INJ === '11') && s9 === src) ok('⑨ 注入沒有注進去', false);
+    const L9 = s9.split('\n');
+    const head = /^    (?:async )?([_A-Za-z0-9]+)\(.*\) *\{ *$/;
+    const body = name => {
+        const i = L9.findIndex(x => (x.match(head) || [])[1] === name);
+        if (i < 0) return null;
+        let j = i + 1; while (j < L9.length && !head.test(L9[j])) j++;
+        return L9.slice(i, j).map(x => x.replace(/^\s*\/\/.*$/, '').replace(/[ \t]+\/\/[^\n]*$/, '')).join('\n');
+    };
+    const an = body('_marketAnalystHtml') || '', br = body('renderMarketBreadth') || '';
+    ok('⑨0 空過守門:找得到分析師卡與市場廣度卡', an.length > 2000 && br.length > 2000 && /總結:今天開盤/.test(an) && /騰落比/.test(br), `${an.length} / ${br.length}`);
+    const BAN9 = /失守易再破底|才有轉多空間|順勢做多|回檔可找買點|別重壓|別碰弱勢股|主升段|假強|別被指數騙|選股可偏多/;
+    const hits = [an, br].join('\n').split('\n').filter(x => BAN9.test(x)).map(x => x.match(BAN9)[0] + ' ← ' + x.trim().slice(0, 70));
+    ok('⑨a ⛔ 「失守易再破底 / 站回才有轉多空間 / 順勢做多 / 回檔可找買點 / 別重壓 / 別碰弱勢股 / 假強」', hits.length === 0, hits.slice(0, 4).join(' | '));
+    ok('⑨b 兩張卡都指回同一套:要不要買照決策台、手上的照你的出場規則走',
+       /要不要買照決策台,手上的照你的出場規則走/.test(an) && /要不要買照決策台,手上的照你的出場規則走/.test(br) && /⛔ 不是會漲或會跌/.test(br));
+    ok('⑨c 分析師卡的價位是「位置」:▲▼ 灰字,⛔ 紅綠', /▼ \$\{cma\(nearSup\.v\)\}/.test(an) && /▲ \$\{cma\(reclaim\.v\)\}/.test(an)
+       && !/text-(red|green)-300">\$\{cma\((nearSup|reclaim)\.v\)\}/.test(an));
+    ok('⑨d 空頭守門那句只在真的會擋的時候講(👑 一律 / 🔥 看你的設定)', /const _lead = !!this\._isLead\?\.\(\), _gate = _lead \|\| !!this\._bearGateOn\?\.\(\);/.test(an)
+       && /⛔ 不用等站回才買/.test(an));
 }
 
 const browser = await chromium.launch({

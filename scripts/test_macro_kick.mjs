@@ -87,6 +87,18 @@ ok('④b ⭐ 決定性對照:資料換成 08:06(收盤後)→ 不講', app._macr
 app._macroRiskCache = { updated: '2026-10-15 23:57 +0800' };
 ok('④c 收盤 12 小時後(台北 16:30)不講', app._macroPreUsClose(at('2026-10-16T08:30:00Z')) === null);
 ok('④d 灰字接在盤前體檢標題下(⛔ 不改分數)', /\$\{_staleWarn\}\s*\n\s*\$\{_usPreWarn\}/.test(IDX) && /text-gray-500[^"]*" data-uspre="1"/.test(IDX));
+// 🌙 V82.0.8 週末 / 週一早上:週五美股收盤前抓的那份要一直講到週一 16:00(11/09 06:24 截圖:11/07 02:40 抓的,美股 05:00 才收)
+app._macroRiskCache = { updated: '2026-11-07 02:40 +0800' };
+const p5 = app._macroPreUsClose(at('2026-11-08T22:24:00Z'));   // 台北 11/09(一)06:24
+ok('④e 週一 06:24 看上週五盤中抓的那份 → 要講(以前收盤 12 小時後就不講了)', !!p5 && p5.closeTxt === '05:00' && p5.wkend === true, JSON.stringify(p5));
+ok('④f 週一 16:30(台股收盤後)→ 不講', app._macroPreUsClose(at('2026-11-09T08:30:00Z')) === null);
+ok('④f2 週六 22:00 → 照講(還沒有收盤後那份)', !!app._macroPreUsClose(at('2026-11-07T14:00:00Z')));
+app._macroRiskCache = { updated: '2026-11-07 05:30 +0800' };
+ok('④g ⭐ 決定性對照:資料換成週六 05:30(收盤後)→ 週一 06:24 不講', app._macroPreUsClose(at('2026-11-08T22:24:00Z')) === null);
+app._macroRiskCache = { updated: '2026-10-15 23:57 +0800' };
+ok('④h 平日跟以前一樣:台北 15:59 照講、16:30 不講', !!app._macroPreUsClose(at('2026-10-16T07:59:00Z')) && app._macroPreUsClose(at('2026-10-16T08:30:00Z')) === null);
+ok('④i 週末那句看它:收盤前抓的 ⛔ 不可寫「上週五收盤」', /const _wkPre = this\._macroFresh\(\)\.ok \? this\._macroPreUsClose\(\) : null;/.test(IDX) && /上週五<b>盤中<\/b>抓的、⛔ 不是收盤/.test(IDX));
+ok('④j 停在盤前頁 08:05 後自己補抓(10 秒迴圈 + 切到盤前都會叫)', /try \{ this\._premktRefreshTick\(\); \} catch \(_\) \{\}/.test(IDX) && /this\._premktRefreshTick\(\); this\._premktDeskLineSync\(\);/.test(IDX));
 
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ test_macro_kick 全過');
 process.exit(fails.length ? 1 : 0);
