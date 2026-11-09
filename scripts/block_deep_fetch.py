@@ -33,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib_http import Gate  # noqa: E402
 
 URL = 'https://www.twse.com.tw/rwd/zh/block/BFIAUU'
+FAIL_STOP = 5     # 連續幾天都失敗(不是斷路)就整輪停手
 GAP_SEC = 10.0    # 預設間隔(環境變數 GAP_SEC 可改):第一輪 3 秒問到第 1,127 次被擋、第二輪 5 秒問到第 100 次被擋
 FIELDS = ('證券代號', '交易別', '成交價', '成交股數', '成交金額')
 
@@ -103,6 +104,7 @@ def run(out_dir, start_ym, today, max_min, gate, clock=time.time, log=print, max
     t0 = clock()
     months = months_between(start_ym, today)
     stopped, more, last_day, fetched = '', 0, '', 0
+    asked, fails_in_row = 0, 0   # asked = 這輪送出幾次(⛔ 只算成功的:11/09 每天都回 307 → 「最多 300 次」形同虛設,問了 426 次)
     for y, m in months:
         p = out / f'{y:04d}-{m:02d}.json'
         mj = load_month(p)
@@ -110,16 +112,23 @@ def run(out_dir, start_ym, today, max_min, gate, clock=time.time, log=print, max
             continue
         todo = [d for d in month_weekdays(y, m, today) if d not in mj['days'] and d not in mj['none']]
         for ds in todo:
-            if (clock() - t0) / 60 > max_min or fetched >= max_req:
+            if (clock() - t0) / 60 > max_min or asked >= max_req:
                 more = 1
                 break
             res, why = gate.get(URL, params={'response': 'json', 'date': ds})
+            asked += 1
             if res is None:
                 if why.startswith('斷路'):
                     stopped = f'{ds} {why}'
                     break
+                fails_in_row += 1
+                if fails_in_row >= FAIL_STOP:
+                    # 一天失敗可能是那天剛好有問題;連續好幾天都一樣失敗 = 網址改了或換了擋法 → 停手、亮紅燈(⛔ 一直問到時間到)
+                    stopped = f'{ds} 連續 {fails_in_row} 天都失敗(最後一次:{why})→ 網址可能改了或被擋,先別再按'
+                    break
                 log(f'  ⚠️ {ds}:{why}(這天先跳過,下一輪再問)')
                 continue
+            fails_in_row = 0
             try:
                 kind, rows = parse_day(res.json())
             except ValueError:
@@ -150,11 +159,13 @@ def run(out_dir, start_ym, today, max_min, gate, clock=time.time, log=print, max
         more = 1   # 這輪有跳過的日子(暫時失敗)→ 下一輪再補
     st = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'start': start_ym,
           'months_total': len(months), 'months_complete': comp, 'days_with_data': ndays,
-          'fetched_this_run': fetched, 'last_day': last_day, 'stopped': stopped, 'more': more,
+          'fetched_this_run': fetched, 'asked_this_run': asked, 'last_day': last_day, 'stopped': stopped, 'more': more,
           'gate': gate.stats}
     if stopped:
-        # 擋頁長什麼樣(lib_http 斷路那一次記的)→ 下一輪要不要按、隔多久,看這個決定
-        st['blocked_page'] = (getattr(gate, 'blocked_page', None) or {}).get('www.twse.com.tw', '')
+        # 擋頁 / 失敗那一頁長什麼樣(lib_http 記的)→ 下一輪要不要按、隔多久,看這個決定
+        host = 'www.twse.com.tw'
+        st['blocked_page'] = ((getattr(gate, 'blocked_page', None) or {}).get(host)
+                              or (getattr(gate, 'fail_page', None) or {}).get(host, ''))
     (out / '_status.json').write_text(json.dumps(st, ensure_ascii=False, indent=1), encoding='utf-8')
     return st
 
@@ -279,13 +290,23 @@ def selftest():
     st6 = run(tmp4, '2026-09', today, 999, g6, log=lambda *a: None)
     ok('⑫ 單一天暫時失敗(不是斷路)→ 跳過那天、9 月 ⛔ 標 complete、more=1 下一輪補',
        not load_month(os.path.join(tmp4, '2026-09.json'))['complete'] and st6['more'] == 1 and not st6['stopped'], st6)
+    g8 = FakeGate(lambda ds: 'HTTP 307(沒有 Location)')
+    g8.fail_page = {'www.twse.com.tw': 'Moved'}
+    st8 = run(tempfile.mkdtemp(), '2026-09', today, 999, g8, log=lambda *a: None, max_req=300)
+    ok('⑫c 連續 5 天都失敗(11/09 每天 307)→ 整輪停手、標 stopped(紅燈)、記下那一頁;⛔ 一直問到時間到',
+       len(g8.asked) == FAIL_STOP == 5 and '連續 5 天' in st8['stopped'] and st8.get('blocked_page') == 'Moved'
+       and st8['asked_this_run'] == 5, (len(g8.asked), st8))
+    g9 = FakeGate(lambda ds: 'HTTP 307(沒有 Location)' if int(ds[-2:]) % 2 else new)
+    st9 = run(tempfile.mkdtemp(), '2026-09', today, 999, g9, log=lambda *a: None, max_req=6)
+    ok('⑫d 「最多問幾次」算的是送出幾次(含失敗的),⛔ 只算成功的(11/09 問了 426 次)',
+       len(g9.asked) == 6 and st9['asked_this_run'] == 6 and st9['more'] == 1 and not st9['stopped'], (len(g9.asked), st9))
     ok('⑫b 間隔:空 / 壞值 = 預設 10 秒、可以調慢、⛔ 比 3 秒快(填 1 → 3)',
        [gap_sec(x) for x in (None, '', 'abc', '15', '1')] == [10.0, 10.0, 10.0, 15.0, 3.0],
        [gap_sec(x) for x in (None, '', 'abc', '15', '1')])
     src = open(os.path.abspath(__file__), encoding='utf-8').read()
     ok('⑬ 走共用連線守門 lib_http.Gate(⛔ 自己寫 requests;⛔ 偽裝瀏覽器)',
        'from lib_http import Gate' in src and 'requests.get' not in src.replace("'requests.get'", ''))
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 16 條)')
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 18 條)')
     return 1 if fails else 0
 
 
