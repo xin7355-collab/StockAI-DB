@@ -16,7 +16,8 @@
   {
     "updated": ISO時間,
     "ts": "07/13 10:32",
-    "idx": { "txf": {"p":23150,"c":0.85,"v":12345}, "mxf": {...} },
+    "idx": { "txf": {"p":23150,"c":0.85,"v":12345}, "mxf": {...},
+             "twii": {"p":40388.1,"c":1.73}, "twoii": {...} },   # 📈 V82.0.9 現貨加權 / 櫃買(盤前模式沒有)
     "data": { "2330": {"p":1085.0,"c":1.2,"v":18342}, ... }   # p=價 c=漲跌% v=量
   }
 
@@ -100,6 +101,63 @@ def _fetch_index_futures(api):
         except Exception as e:
             print(f'⚠️ 台指期 {sym} 抓取失敗:{e}')
     return idx
+
+
+# 📈 V82.0.9 現貨指數(加權 / 櫃買)也放進同一份快照 —— 2026-11-09 09:45 使用者截圖:App 拿上週五的加權漲跌 −4.51%
+#   配今天的個股中位數 +2.15%,講成「今天指數被權值股拖累」,實際 0050 / 台指期都漲約 5%(正好相反)。
+#   放進快照之後,「大盤 vs 中位數個股」兩個數字出自同一個時間點,而且⛔ 不用每個人自己的富果金鑰。
+#   合約依序試:1.5 版代碼 '001' / '101' → 1.7 版 'IX0001' / 'IX0043' → 屬性 TSE001 / OTC101(⛔ 猜不到就不寫)。
+#   ⛔ 任何錯只印原因、回空的 —— 不可擋掉股票快照,也⛔ 不算進 MIN_STOCKS。盤前模式⛔ 呼叫(現貨還沒開,會是昨天的值)。
+_SPOT_INDEX = (('twii', 'TSE', ('001', 'IX0001'), 'TSE001'), ('twoii', 'OTC', ('101', 'IX0043'), 'OTC101'))
+
+
+def _index_contract(api, exch, codes, attr):
+    """找現貨指數合約(Shioaji 1.5 / 1.7 代碼不同);找不到回 None。"""
+    try:
+        grp = getattr(api.Contracts.Indexs, exch, None)
+    except Exception:
+        grp = None
+    if grp is None:
+        return None
+    for code in codes:
+        try:
+            c = grp[code]
+            if c is not None:
+                return c
+        except Exception:
+            pass
+    try:
+        return getattr(grp, attr, None)
+    except Exception:
+        return None
+
+
+def _fetch_spot_index(api):
+    """加權 / 櫃買現貨指數快照 → {'twii': {'p':.., 'c':..}, 'twoii': {...}}(抓不到的那個就不寫)。"""
+    out, pairs = {}, []
+    for tag, exch, codes, attr in _SPOT_INDEX:
+        c = _index_contract(api, exch, codes, attr)
+        if c is None:
+            print(f'⚠️ 找不到 {tag} 指數合約({exch} {"/".join(codes)} / {attr})→ 這一拍不寫 {tag}')
+            continue
+        pairs.append((tag, c))
+    if not pairs:
+        return out
+    try:
+        snaps = api.snapshots([c for _, c in pairs])
+    except Exception as e:
+        print(f'⚠️ 現貨指數 snapshot 失敗:{type(e).__name__}: {str(e)[:120]}')
+        return out
+    for (tag, _c), snap in zip(pairs, snaps or []):
+        try:
+            cl = _snap_num(snap, 'close')
+            cr = _snap_num(snap, 'change_rate')
+            if cl is None or float(cl) <= 0 or cr is None:
+                continue
+            out[tag] = {'p': round(float(cl), 2), 'c': round(float(cr), 2)}
+        except Exception as e:
+            print(f'⚠️ {tag} 指數快照解析失敗:{e}')
+    return out
 
 
 
@@ -228,6 +286,13 @@ def main():
     # ── 2) 台指期(大台 TXF / 小台 MXF)近月 ──
     idx = _fetch_index_futures(api)
     print(f'✅ 台指期 idx:{list(idx.keys())}')
+    # ── 3) 📈 V82.0.9 現貨指數(加權 / 櫃買)── ⛔ 失敗不影響上面任何東西
+    try:
+        spot = _fetch_spot_index(api)
+        idx.update(spot)
+        print(f'✅ 現貨指數:{ {k: v for k, v in spot.items()} or "沒抓到(前端改用富果 / 日線)"}')
+    except Exception as e:
+        print(f'⚠️ 現貨指數整段失敗:{type(e).__name__}: {str(e)[:120]}')
 
     try:
         api.logout()

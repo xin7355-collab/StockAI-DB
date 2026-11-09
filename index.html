@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.0.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.0.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8962,10 +8962,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.0.8',
+    _APP_VERSION: 'V82.0.9',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.0.9', d: [
+            '🐛 大盤 › 行情:盤中「大盤 vs 你手上那檔」以前會拿上一個交易日的加權漲跌去比今天的個股(11/09 早上寫成「今天指數被權值股拖累」,其實正好相反);現在只拿今天的比,今天的還沒拿到就先不比',
+            '📈 行情頁的加權、櫃買方塊:盤中會跟著動,下面一行灰字寫這是「盤中幾點」還是「哪一天的收盤」',
+            '🧯 決策台「你的風控」:「全部碰到停損會賠多少」只算有停損線的持股;沒有停損線的(大跌撿便宜那一批、ETF 等)另外寫一行,照它們自己的規則賣',
+        ], dt: '2026-11-09' },
         { v: 'V82.0.8', d: [
             '🌅 平日早上 5 點到 9 點第一次打開 App,直接停在「大盤 › 盤前」;最上面一行告訴你決策台今天有幾件事要做(點了就過去)。不想要可以在 ⚙️ 設定 › 🛠️ 進階與工具 關掉',
             '⚠️ 盤前體檢:週末到週一早上看到的美股,如果是上週五美股還沒收盤時抓的,會寫清楚是「盤中」的數字(以前寫成上週五收盤);停在盤前頁,早上 8 點過後會自己補抓收盤後那份',
@@ -9280,12 +9285,6 @@ ${list}
             '🧹 永豐智慧單攻略「直接照抄」那塊改成照你的三條出場線算(以前寫停利價、先賣一半、回檔 5%、−10% 停損,跟 App 的出場規則打架)',
             '🧹 提醒、K 線訊號說明、多空計分卡、主升段體檢、節氣卡、選股頁的大盤提醒:不再叫你先賣一部分、減碼或空手 —— 手上的照你的出場規則走,要不要買照決策台',
             '📌 葛蘭碧八大法則、K 棒型態說明、朱老師選股說明:下面加一行講清楚「這是理論原本的說法,App 的規則是哪一套」',
-        ], dt: '2026-10-23' },
-        { v: 'V79.5.6', d: [
-            '🔧 基本頁:資料日期會正確顯示(以前一律寫「資料日期未知」);網路不穩、圖表沒載到時,下面的數字照常出來',
-            '📚 行事曆每個事件的說明改成「要看什麼」,不再叫你減碼、加碼或先賣一部分;個股頁頂端標籤也一樣,而且偏多改紅字 🔺、偏空改綠字 🔻(跟漲跌的顏色一致)',
-            '🔧 報告頁:收盤後「量能倍數」照常顯示(以前同一天一路寫「還沒收盤」寫到半夜)',
-            '🔧 背景整理:收盤後不再重抓整天的逐筆資料(省券商流量)',
         ], dt: '2026-10-23' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -11793,17 +11792,29 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         this.fiFuturesLong  = macro.fiLong    ?? null;
         this.fiFuturesShort = macro.fiShortOI ?? null;
 
-        if (macro.taiex && macro.taiex.length > 0) {
-            const taiex = macro.taiex, last = taiex[taiex.length-1], prev = taiex.length > 1 ? taiex[taiex.length-2] : last;
-            this._macroTaiexSeries = macro.taiex;   // 🐛 V49.5 存新鮮加權序列(macro_cache 有更新),供年線乖離 merge 蓋過停更的 ^TWII.json
-            const price = last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
-            this._taiexTodayPct = pct;   // ⚡ V54.3 供當沖「相對大盤強弱」卡
+        // 📈 V82.0.9 日線最後一根(加權 / 櫃買)只存成「哪一天的收盤」—— 盤中那一根還沒有 → ⛔ 拿它當「今天」
+        //   (舊版寫 `_taiexTodayPct` 被 5 個地方當今天讀:11/09 盤中把上週五的 −4.51% 配今天的個股 → 講反話)。
+        //   要「今天的漲跌」一律問 `_idxToday()` / `_twiiToday()`(只在這一根就是今天時才收);
+        //   已經有今天的即時值(盤中快照 / 富果)而這一根不是今天 → 畫今天的即時值,⛔ 用舊收盤蓋掉。
+        const _daily = (rows, key, id, dec) => {
+            const last = rows[rows.length - 1], prev = rows.length > 1 ? rows[rows.length - 2] : last;
+            const price = +last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
+            const d = String(last.date || '').slice(0, 10).replace(/\//g, '-');
+            this._idxDaily = Object.assign(this._idxDaily || {}, { [key]: { d, pct, close: price } });
+            const now = this._idxToday(key);
+            if (now && now.src !== 'close' && d !== now.d) { this._applyLiveIndex(id, now.price, now.pct, dec, now); return; }
+            this._idxAsOf = Object.assign(this._idxAsOf || {}, { [id]: { d, live: false } });
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(0)}</span>`;
-            document.getElementById('mktTWII_chg').innerHTML = `<span class="${color}">${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
-            const tM = document.getElementById('mktTWII_main'), tcM = document.getElementById('mktTWII_chg_main');
-            if (tM) { tM.innerText = price.toFixed(0); tM.className = `text-xl font-black font-mono ${color}`; }
-            if (tcM) { tcM.innerText = `${diff > 0 ? '+' : ''}${pct.toFixed(2)}%`; tcM.className = `text-xs font-bold mt-0.5 ${color}`; }
+            const $ = x => document.getElementById(x);
+            if ($(id)) $(id).innerHTML = `<span class="${color}">${price.toFixed(dec)}</span>`;
+            if ($(id + '_chg')) $(id + '_chg').innerHTML = `<span class="${color}">${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+            const m = $(id + '_main'), cm = $(id + '_chg_main');
+            if (m) { m.innerText = price.toFixed(dec); m.className = `text-xl font-black font-mono ${color}`; }
+            if (cm) { cm.innerText = `${diff > 0 ? '+' : ''}${pct.toFixed(2)}%`; cm.className = `text-xs font-bold mt-0.5 ${color}`; }
+        };
+        if (macro.taiex && macro.taiex.length > 0) {
+            this._macroTaiexSeries = macro.taiex;   // 🐛 V49.5 存新鮮加權序列(macro_cache 有更新),供年線乖離 merge 蓋過停更的 ^TWII.json
+            _daily(macro.taiex, 'twii', 'mktTWII', 0);
         }
         if (macro.taiexEntry) {
             // legacy cache compatibility
@@ -11826,16 +11837,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         else if (_fsT.level === 'good')   { this.twiiState = 'bull'; }                               // ✅ 回補
         else                              { this.twiiState = 'neutral'; }                            // neutral / unknown(含沒有資料)
 
-        if (macro.tpex && macro.tpex.length > 0) {
-            const tpex = macro.tpex, last = tpex[tpex.length-1], prev = tpex.length > 1 ? tpex[tpex.length-2] : last;
-            const price = last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
-            const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWOII').innerHTML = `<span class="${color}">${price.toFixed(2)}</span>`;
-            document.getElementById('mktTWOII_chg').innerHTML = `<span class="${color}">${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
-            const oM = document.getElementById('mktTWOII_main'), ocM = document.getElementById('mktTWOII_chg_main');
-            if (oM) { oM.innerText = price.toFixed(2); oM.className = `text-xl font-black font-mono ${color}`; }
-            if (ocM) { ocM.innerText = `${diff > 0 ? '+' : ''}${pct.toFixed(2)}%`; ocM.className = `text-xs font-bold mt-0.5 ${color}`; }
-        }
+        if (macro.tpex && macro.tpex.length > 0) _daily(macro.tpex, 'twoii', 'mktTWOII', 2);
         if (macro.tpexEntry) {
             // legacy cache compatibility
             const e = macro.tpexEntry;
@@ -24636,7 +24638,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return `<div class="${box}" data-deckrisk="${m ? (m.on ? 'bear' : (+m.c < +m.ma60 ? 'below60' : 'ok')) : 'na'}">
             <div class="text-[12px] font-black text-gray-200">🧯 你的風控</div>
             <div class="text-[11px] text-gray-300 leading-snug mt-1">${mk}</div>
-            <div class="text-[10px] text-gray-400 leading-snug mt-0.5" data-deckriskgate="${this._isLead() ? 'lead' : this._bearCashOn() ? 'cash' : (this._bearGateOn() ? 'on' : 'off')}">${gate} <button onclick="app._openBearGateSetting()" class="text-cyan-300 underline">⚙️ 改</button> ・ 每一筆照你的出場規則走(硬停損收盤確認)</div>
+            <div class="text-[10px] text-gray-400 leading-snug mt-0.5" data-deckriskgate="${this._isLead() ? 'lead' : this._bearCashOn() ? 'cash' : (this._bearGateOn() ? 'on' : 'off')}">${gate} <button onclick="app._openBearGateSetting()" class="text-cyan-300 underline">⚙️ 改</button> ・ ${this._isLead() ? '👑 名單上的照換倉日名次走;其他的照你的出場規則(硬停損收盤確認)' : '每一筆照你的出場規則走(硬停損收盤確認)'}</div>
             ${alertOff}${brk}${tr}
         </div>`;
     },
@@ -26528,7 +26530,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const q = await this.fetchFugleData('IX0001');
                 if (q && q.price > 0 && !q.isHistorical && q.prevClose > 0) { mktPct = (q.price - q.prevClose) / q.prevClose * 100; mktLive = true; }
             } catch (_) {}
-            if (mktPct == null && this._taiexTodayPct != null && Number.isFinite(this._taiexTodayPct)) mktPct = this._taiexTodayPct;
+            if (mktPct == null) mktPct = this._twiiTodayPct();   // 📈 V82.0.9 只收今天的(⛔ 拿上一個交易日的日線頂替)
             if (this.currentSymbolId !== sym) return;
             if (mktPct == null) { el.classList.add('hidden'); el.innerHTML = ''; return; }
             // 連動度(近60日日報酬迴歸斜率);大盤序列缺/對不齊 → 退用純相對強弱
@@ -36234,7 +36236,7 @@ ${this._reportFacts(sym)}
         styleBtn('subTab_global2', tab === 'global', 'cyan');
         if (tab === 'rot') { this._renderRotTab().catch(() => {}).then(() => { try { if (this._liveQuotes && Object.keys(this._liveQuotes).length) this._renderConceptLive(); else this._conceptLiveRefresh(); } catch (_) { } }); }
         if (tab === 'eve') { this.renderEvening().catch(() => {}); }
-        if (tab === 'idx') { try { this._renderIndexRow(); } catch (_) {} try { this.renderMarketBreadth(); } catch (_) {} }
+        if (tab === 'idx') { try { this._renderIndexRow(); } catch (_) {} try { this.renderMarketBreadth(); } catch (_) {} this._refreshLiveTwIndices().catch(() => {}); }   // 📈 V82.0.9 一進行情頁就抓今天的指數(⛔ 等 30 秒那一輪)
         // 🗞️ V72.6.2 進「消息面」時把三格分頁初始化(記住上次選的;預設新聞焦點)
         if (tab === 'global') { try { this.switchNewsPane(this._newsPane || localStorage.getItem('newsPane') || 'news'); } catch (_) {} }
         try { localStorage.setItem('mktSubTab', tab); } catch(_) {}
@@ -39043,7 +39045,7 @@ ${this._reportFacts(sym)}
                 const wasBull = C >= ma60 * 0.92 && ma60Up;
                 const nearSup = C >= ma20 * 0.95 || C >= ma60 * 0.95;
                 const volShrink = vr != null && vr <= 0.8;
-                const twPct = (typeof this._taiexTodayPct === 'number') ? this._taiexTodayPct : null;
+                const twPct = this._twiiTodayPct();   // 📈 V82.0.9 只收今天的
                 let regimeBad = false; try { const rg = this._chuPositionAdvice(); regimeBad = rg && rg.regime === 'bear'; } catch (_) {}
                 const mktDrag = (twPct != null && twPct <= -0.5) || regimeBad;
                 const pulling = trend !== 'bear' && (C < ma5 || (rHigh != null && C <= rHigh * 0.97));   // 回檔中(短線轉弱或距前高 3%+)
@@ -41784,50 +41786,81 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } catch (_) { /* CORS/離線/限流 → 靜默保留後端值 */ }
     },
 
-    // 📊 V66.2 — 加權/櫃買前端即時(Fugle 指數行情端點,用你現有金鑰);抓不到/方案不含指數→靜默保留後端值(零風險)
+    // 📊 V66.2 — 加權/櫃買前端即時;抓不到 → 保留日線那一根(而且標它是哪一天的收盤)
+    // 📈 V82.0.9 三件事(11/09 09:45 截圖:行情頁的加權方塊盤中一直是上週五收盤 ▼−4.51%、沒標日期):
+    //   ① 守門以前看「盤前那頁的扁平列 mktTWII_main 看得到」→ 在 📈 行情頁永遠不跑 → 改成「大盤頁看得到」
+    //   ② 來源:盤中快照自己的加權 / 櫃買(live_quotes.json idx.twii / twoii,⛔ 不吃富果額度)+ 富果 `fetchFugleData('IX0001')`
+    //      (`/stock/intraday/quote/`,V58.5 起實證可用;輪金鑰 / 429 / 節流照它)→ 兩個都有先用快照的(跟廣度同一個時間點,`_idxToday` 的順序)
+    //   ③ 報價日期 = 今天(台北)、而且 09:00 以後才算今天的即時 → 寫進 `_idxLiveF`,`_twiiToday()` 才會收
+    //   開盤時間外最多 10 分鐘問一次富果;有拿到今天的加權就回 true(`_refreshAllIndices` 的「即時 HH:MM」標籤在等它)
+    _IDX_LIVE: { twii: { id: 'mktTWII', code: 'IX0001', lo: 8000, hi: 100000, dec: 0 }, twoii: { id: 'mktTWOII', code: 'IX0043', lo: 50, hi: 1500, dec: 2 } },
     async _refreshLiveTwIndices() {
         try {
-            if (this.settings.liveTwIndex === false) return;
-            const main = document.getElementById('mktTWII_main');
-            if (!main || main.offsetParent === null) return;   // 不在大盤頁顯示 → 略過省 Fugle 額度
-            const keys = this._getFugleKeys().filter(k => k && k.trim());
-            if (!keys.length) return;
-            const token = keys[(this.fugleKeyIndex++) % keys.length];
-            const pull = async (code, lo, hi) => {
-                try {
-                    const r = await fetch(`https://api.fugle.tw/marketdata/v1.0/index/intraday/quote/${code}`, { headers: { 'X-API-KEY': token }, signal: AbortSignal.timeout(5000) });
-                    if (!r.ok) return null;
-                    const d = await r.json();
-                    const price = +(d.index ?? d.lastPrice ?? d.closePrice ?? d.previousClose);
-                    if (!(price >= lo && price <= hi)) return null;   // 合理範圍守門(防欄位解析錯誤顯垃圾)
-                    const prev = +(d.previousClose);
-                    const pct = (d.changePercent != null && Number.isFinite(+d.changePercent)) ? +d.changePercent : (prev > 0 ? (price - prev) / prev * 100 : null);
-                    return { price, pct };
-                } catch (_) { return null; }
+            if (this.settings.liveTwIndex === false) return false;
+            const mk = document.getElementById('tabContentMarket');
+            if (!mk || mk.offsetParent === null) return false;   // 不在大盤頁 → 略過省富果額度
+            let T = null; try { T = this._tpeMinutes(); } catch (_) {}
+            if (!T) return false;
+            const wkday = !/Sat|Sun/.test(T.wd);
+            const inSess = wkday && T.min >= 9 * 60 && T.min <= 13 * 60 + 35;
+            const keys = (this._getFugleKeys ? this._getFugleKeys() : []).filter(k => k && k.trim());
+            const due = inSess || !this._idxFugleAt || (Date.now() - this._idxFugleAt > 10 * 60e3);
+            const pull = async (cfg) => {
+                // ① 實證可用的那條(個股報價同一個端點)
+                let q = null; try { q = await this.fetchFugleData(cfg.code, 25000); } catch (_) {}
+                let price = +(q && q.price), prev = +(q && q.prevClose), d = String((q && q.date) || '').replace(/\//g, '-');
+                if (!(price >= cfg.lo && price <= cfg.hi)) {
+                    // ② 舊的指數端點(V66.2;沒驗證過能不能用 → 只當備援)
+                    try {
+                        const token = keys[(this.fugleKeyIndex++) % keys.length];
+                        const r = await fetch(`https://api.fugle.tw/marketdata/v1.0/index/intraday/quote/${cfg.code}`, { headers: { 'X-API-KEY': token }, signal: AbortSignal.timeout(5000) });
+                        if (!r.ok) return null;
+                        const j = await r.json();
+                        price = +(j.index ?? j.lastPrice ?? j.closePrice);
+                        prev = +(j.previousClose ?? j.referencePrice);
+                        d = String(j.date || '').slice(0, 10).replace(/\//g, '-');
+                        if (!(price >= cfg.lo && price <= cfg.hi)) return null;   // 合理範圍守門(防欄位解析錯誤顯垃圾)
+                    } catch (_) { return null; }
+                }
+                if (!(prev > 0)) return null;
+                return { price, pct: (price - prev) / prev * 100, d };
             };
-            const tw = await pull('IX0001', 8000, 60000);        // 加權
-            if (tw) this._applyLiveIndex('mktTWII', tw.price, tw.pct, 0);
-            const otc = await pull('IX0043', 50, 1500);          // 櫃買
-            if (otc) this._applyLiveIndex('mktTWOII', otc.price, otc.pct, 2);
-            // 🎯 V71.4.3 台指電子盤即時價 —— 這段原本寫在上面那個「同名死碼」裡,從沒執行過。
-            //   兩層 fallback:① Yahoo ^TXF=F 實價 → ② 加權即時 + 升貼水(taifex_backwardation)估算;
-            //   兩層都拿不到就維持原本的結算倒數,不硬掰數字。
+            let got = false;
+            for (const key of ['twii', 'twoii']) {
+                const cfg = this._IDX_LIVE[key];
+                if (keys.length && due) {
+                    const r = await pull(cfg);
+                    // ⛔ 報價不是今天的 / 台北 09:00 以前 → 不當成今天(開盤前的報價常常是上一個交易日的收盤)
+                    if (r && r.d === T.ymd && wkday && T.min >= 9 * 60) this._idxLiveF = Object.assign(this._idxLiveF || {}, { [key]: { pct: r.pct, price: r.price, d: r.d, at: Date.now() } });
+                }
+                const now = this._idxToday(key);
+                if (now && now.src !== 'close') { this._applyLiveIndex(cfg.id, now.price, now.pct, cfg.dec, now); if (key === 'twii') got = true; }
+            }
+            if (keys.length && due) this._idxFugleAt = Date.now();
+            // 🎯 V71.4.3 台指電子盤即時價:盤中快照的台指期(_renderTaiexFutures 最優先讀它)沒有的時候才問 Yahoo ^TXF=F,
+            //   再沒有才用「加權即時 + 升貼水」估算(標 est,前端顯「估」);兩層都拿不到就維持原本的結算倒數。
             try {
-                this._macroRiskCache = this._macroRiskCache || {};
-                const txf = await this._fetchLiveIndexYahoo('^TXF=F').catch(() => null);
-                if (txf && txf.price > 0) {
-                    this._macroRiskCache.taifex_tx_now = { price: txf.price, chg: txf.chgPct, est: false };
-                    this._renderTaiexFutures();
-                } else if (tw && tw.price > 0) {
-                    const back = parseFloat(this._macroRiskCache.taifex_backwardation);
-                    if (!isNaN(back)) {   // 估算值標 est:true,前端顯「估」不假裝是實價
-                        this._macroRiskCache.taifex_tx_now = { price: tw.price + back, chg: null, est: true };
+                if (this._liveFresh() && this._liveIdx && this._liveIdx.txf) this._renderTaiexFutures();   // 快照裡就有 → 直接用最新那一拍
+                else {
+                    this._macroRiskCache = this._macroRiskCache || {};
+                    const tw = this._twiiToday();
+                    const txf = await this._fetchLiveIndexYahoo('^TXF=F').catch(() => null);
+                    if (txf && txf.price > 0) {
+                        this._macroRiskCache.taifex_tx_now = { price: txf.price, chg: txf.chgPct, est: false };
                         this._renderTaiexFutures();
+                    } else if (tw && tw.price > 0) {
+                        const back = parseFloat(this._macroRiskCache.taifex_backwardation);
+                        if (!isNaN(back)) {
+                            this._macroRiskCache.taifex_tx_now = { price: tw.price + back, chg: null, est: true };
+                            this._renderTaiexFutures();
+                        }
                     }
                 }
             } catch (_) {}
             try { this._renderIndexRow(); } catch (_) {}        // 📊 V71.4.1 值更新後同步大盤頁三格列
-        } catch (_) {}
+            try { const bc = document.getElementById('marketBreadthCard'); if (got && bc && bc.offsetParent !== null) this.renderMarketBreadth(); } catch (_) {}
+            return got;
+        } catch (_) { return false; }
     },
     // 📊 V71.4.1 三大指數即時列(大盤頁最上方,仿專業看盤 App 三格卡)
     //   ⚠️ 刻意「不自己抓資料」:數值直接讀既有那條扁平指數列的 DOM
@@ -41843,8 +41876,25 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const m = t.match(/([+-]?\d+(?:\.\d+)?)%/);
             return { txt: t, pct: m ? parseFloat(m[1]) : null };
         };
+        // 📈 V82.0.9 方塊下面一行灰字講「這個數字是哪一天的」:盤中 09:45 / 今天收盤 / 11/06(五)收盤(⛔ 紅綠,只講日期)
+        //   11/09 09:45 截圖:加權方塊盤中一直是上週五收盤 ▼−4.51%、沒標日期 → 看起來像「今天跌 4.51%」
+        const asOf = (id) => {
+            const a = (this._idxAsOf || {})[id];
+            if (!a || !a.d) return '';
+            let T = null; try { T = this._tpeMinutes(); } catch (_) {}
+            const d = String(a.d).slice(0, 10).replace(/\//g, '-');
+            if (T && d === T.ymd) {
+                if (a.live && T.min <= 13 * 60 + 30) {
+                    let hm = ''; try { hm = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(a.at || Date.now())); } catch (_) {}
+                    return `盤中 ${hm}`.trim();
+                }
+                return '今天收盤';
+            }
+            return `${this._dW ? this._dW(d) : d}收盤`;
+        };
         const cell = (label, val, chg, opt) => {
             const has = val && val !== '--' && val !== '計算中…' && val !== '—';
+            const when = has && opt.asOf ? asOf(opt.asOf) : '';
             const pct = chg.pct;
             const cls = pct == null ? 'text-gray-300' : pct > 0 ? 'text-[#f87171]' : pct < 0 ? 'text-[#4ade80]' : 'text-gray-300';
             const arrow = pct == null ? '' : pct > 0 ? '▲' : pct < 0 ? '▼' : '';
@@ -41868,13 +41918,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="text-[10px] text-gray-400 mb-0.5">${label}${opt.onclick ? ' <span class="text-amber-400/70">›</span>' : ''}</div>
                 <div class="text-base font-black font-mono ${cls} leading-tight truncate">${has ? val : '--'}</div>
                 <div class="text-[10px] font-mono ${cls} leading-tight truncate">${has && chg.txt ? `${arrow}${chg.txt.replace('+', '')}` : '—'}</div>
+                ${when ? `<div class="text-[9px] text-gray-500 leading-tight truncate mt-0.5" data-idxasof="${opt.asOf}">${when}</div>` : ''}
             </div>`;
         };
         try {
             row.innerHTML =
                 cell('加權指數', pick('mktTWII_main'), pickChg('mktTWII_chg_main'),
-                     { onclick: "app.analyze('^TWII'); app.switchAppTab('diag'); app.vibrate(30);" }) +
-                cell('櫃買指數', pick('mktTWOII_main'), pickChg('mktTWOII_chg_main'), { whyKey: 'twoii' }) +
+                     { onclick: "app.analyze('^TWII'); app.switchAppTab('diag'); app.vibrate(30);", asOf: 'mktTWII' }) +
+                cell('櫃買指數', pick('mktTWOII_main'), pickChg('mktTWOII_chg_main'), { whyKey: 'twoii', asOf: 'mktTWOII' }) +
                 cell('台指電子盤', pick('taiexFuturesInfo'), { txt: '', pct: null }, { whyKey: 'txf' });
         } catch (_) {}
     },
@@ -41892,7 +41943,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         app._helpBox(`【${e[0]}】\n\n${e[1]}`);
     },
 
-    _applyLiveIndex(id, price, pct, dec) {
+    // meta = `_idxToday()` 回的那一份({d, at, src})→ 記下方塊現在顯示的是「今天的即時」(三格列的日期灰字讀它)
+    _applyLiveIndex(id, price, pct, dec, meta) {
+        if (meta) this._idxAsOf = Object.assign(this._idxAsOf || {}, { [id]: { d: meta.d, live: true, at: meta.at || Date.now(), src: meta.src } });
         const color = pct == null ? 'text-gray-400' : pct > 0 ? 'text-[#f87171]' : pct < 0 ? 'text-[#4ade80]' : 'text-gray-400';
         const el = document.getElementById(id), chg = document.getElementById(id + '_chg');
         if (el) el.innerHTML = `<span class="${color}">${price.toFixed(dec)}</span>`;
@@ -49154,12 +49207,26 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             + `<div class="text-[9px] text-gray-500 leading-snug">${line}・門檻 ${L.day} / ${L.week} / ${L.month}% 是常見的建議值(不是本站算出來的),只算記進鏡子的賣出</div>`;
     },
     /** 手上全部碰到停損會賠多少(從現價算;沒有現價用成本)。extra = 還沒買的那一筆 {symbol,cost,shares(張)} */
+    // 🧮 V82.0.9 只算「有停損線的」持股 —— 11/09 截圖:選 👑 時寫「6 檔已經在停損下面(照你的出場規則處理)」,
+    //   同一頁最上面卻寫「今天不用動、換倉日還在 10 名外才賣」(打架)。👑 名單上的(`_leaderMine`,只有選 👑 才有)、
+    //   📉 大跌撿便宜那一批(`_dipMine`,抱到賣出日)、ETF(買了放著)本來就沒有停損線 → ⛔ 算進來,另外數幾檔(skip)。
+    //   背景停損提醒 / 三擊出場 / 出場線那幾支早就這樣排除(⛔ 只有這支漏了,陷阱 #37)。
     _totalRisk(inv, acc, extra) {
         let sum = 0, n = 0, nEst = 0, below = 0;
+        const skip = { lead: 0, dip: 0, etf: 0 };
+        let lm = new Set(), dm = new Set();
+        try { lm = this._leaderMine(); } catch (_) {}
+        try { dm = this._dipMine(); } catch (_) {}
         const list = (Array.isArray(inv) ? inv : []).concat(extra ? [extra] : []);
         for (const it of list) {
             const cost = +it?.cost, sh = Math.round((+it?.shares || 0) * 1000);
             if (!(cost > 0 && sh > 0)) continue;
+            const sym = String(it?.symbol || '');
+            if (it !== extra) {
+                if (this._isEtfSym && this._isEtfSym(sym)) { skip.etf++; continue; }
+                if (lm.has(sym)) { skip.lead++; continue; }
+                if (dm.has(sym)) { skip.dip++; continue; }
+            }
             const kd = this._invKlineCache?.[it.symbol];
             const hs = (it === extra) ? null : this._hardStopOf(kd, it.symbol, cost);
             const stop = hs ? hs.px : (this._floorTick ? this._floorTick(cost * 0.95) : cost * 0.95);
@@ -49170,10 +49237,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             sum += (px - stop) * sh;
         }
         acc = +acc || 0;
-        return { sum: Math.round(sum), n, nEst, below, acc, pct: acc > 0 ? sum / acc * 100 : null, lim: this._TOTAL_RISK_LIM };
+        return { sum: Math.round(sum), n, nEst, below, skip, acc, pct: acc > 0 ? sum / acc * 100 : null, lim: this._TOTAL_RISK_LIM };
+    },
+    /** 沒有停損線的那幾檔(👑 / 大跌撿便宜 / ETF)→ 一行說明;沒有就空字串。⛔ 沒選 👑 時 skip.lead 一定是 0(_leaderMine 回空的)→ 一個 👑 字都不會出現 */
+    _totalRiskSkipTxt(k) {
+        if (!k) return '';
+        const parts = [];
+        if (k.lead) parts.push(`👑 名單上 ${k.lead} 檔換倉日照名次賣`);
+        if (k.dip) parts.push(`大跌撿便宜 ${k.dip} 檔抱到賣出日`);
+        if (k.etf) parts.push(`ETF ${k.etf} 檔買了放著`);
+        if (!parts.length) return '';
+        const nn = (k.lead || 0) + (k.dip || 0) + (k.etf || 0);
+        return `另 ${nn} 檔沒有停損線(${parts.join('・')}),⛔ 算進上面 → 這幾檔最多賠多少這裡算不出來`;
     },
     _totalRiskHtml(r, label = '手上') {
-        if (!r.n) return '';
+        const sk = this._totalRiskSkipTxt(r.skip);
+        if (!r.n) return sk ? `<div class="text-[10px] text-gray-400 leading-snug mt-1.5" data-totrisk="skip">🧮 ${sk}</div>` : '';
         const f = v => Math.round(v).toLocaleString();
         const over = r.pct != null && r.pct > r.lim;
         const w = r.pct == null ? 0 : Math.min(100, r.pct / (r.lim * 1.5) * 100);
@@ -49182,7 +49261,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             + (r.pct == null ? '(⚙️ 填了帳戶資金才算得出佔幾 %)' : `,佔帳戶 ${r.pct.toFixed(1)}%${over ? `,超過常見建議上限 ${r.lim}%` : ''}`) + `</div>${bar}`
             + `<div class="text-[9px] text-gray-500 leading-snug mt-0.5">從現價算到每一檔的停損(成本 −5% 與買進當天最低取低的)`
             + (r.nEst ? `・${r.nEst} 檔還沒抓到 K 線,先用成本 −5% 估` : '') + (r.below ? `・${r.below} 檔已經在停損下面(照你的出場規則處理)` : '')
-            + `・${r.lim}% 是常見的建議值(不是本站算出來的)</div>`;
+            + `・${r.lim}% 是常見的建議值(不是本站算出來的)</div>`
+            + (sk ? `<div class="text-[9px] text-gray-500 leading-snug mt-0.5" data-totriskskip="1">${sk}</div>` : '');
     },
     // 📊 持股損益歸因:這段時間賺賠多少是「大盤帶動」、多少是「個股自己」
     //   (拆法參考 desk-note app/analytics/core.py 的 fit_betas / attribution,MIT;只借想法、程式是這裡自己寫的)
@@ -55280,6 +55360,29 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const when = this._liveTs || (this._liveUpdated ? this._dW(String(this._liveUpdated).slice(0, 10)) : '');
         return `<div class="text-[10px] text-yellow-300 mt-1">⚠️ 全市場即時快照停在 ${when || '更早之前'},不是今天的 → 這裡改用<b>收盤價</b>,⛔ 不拿舊快照當現價。</div>`;
     },
+    // 📈 V82.0.9 「今天加權漲跌 %」全 App 唯一一份 —— ⛔ 只回今天的(台北日曆日),⛔ 拿上一個交易日頂替。
+    //   🚨 11/09 09:45 使用者截圖:市場廣度卡「大盤 vs 你手上那檔」寫「加權 −4.51%・今天指數被權值股拖累 −6.66pp」——
+    //      −4.51% 是上週五的(舊 `_taiexTodayPct` = FinMind 日線最後一根,盤中那根還沒有 → 永遠是上一個交易日,
+    //      而且一天只抓一次);同一時間 0050 / 台指期都漲約 5%、中位數 +2.36% → 實際是「被大型股拉上去」,正好相反。
+    //   依序:① 盤中快照自己的加權(`live_quotes.json` 的 idx.twii,跟廣度同一個時間點)
+    //         ② 富果即時(`_twiiLive`,報價日期 = 今天、台北 09:00 以後才收)③ 日線最後一根是今天(收盤後)④ null
+    //   ⛔ 新增任何「今天大盤漲跌」的顯示或判斷,一律呼叫這支(或 `_twiiTodayPct()`),⛔ 自己讀日線最後一根。
+    //   key:'twii' 加權 / 'twoii' 櫃買(同一條規則;`_idxLiveF` = 富果即時、`_idxDaily` = 日線最後一根,都帶日期)
+    _idxToday(key) {
+        let today = '';
+        try { today = this._tpeMinutes().ymd; } catch (_) { return null; }
+        try {
+            const s = this._liveFresh() && this._liveIdx && this._liveIdx[key];
+            if (s && +s.p > 0 && s.c != null && Number.isFinite(+s.c)) return { pct: +s.c, price: +s.p, src: 'snap', at: Date.parse(this._liveUpdated) || null, d: today };
+        } catch (_) {}
+        const L = (this._idxLiveF || {})[key];
+        if (L && L.d === today && Number.isFinite(L.pct)) return { pct: L.pct, price: L.price, src: 'fugle', at: L.at || null, d: today };
+        const D = (this._idxDaily || {})[key];
+        if (D && D.d === today && Number.isFinite(D.pct)) return { pct: D.pct, price: D.close, src: 'close', at: null, d: today };
+        return null;
+    },
+    _twiiToday() { return this._idxToday('twii'); },
+    _twiiTodayPct() { const t = this._twiiToday(); return t ? t.pct : null; },
     async _loadLiveQuotes() {
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
@@ -55413,9 +55516,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 n = cs.length; live = true;
             }
         }
-        if (live) idx = (typeof this._taiexTodayPct === 'number') ? this._taiexTodayPct : null;
+        if (live) idx = this._twiiTodayPct();   // 📈 V82.0.9 只收今天的(盤中快照自己的加權優先 → 跟中位數同一個時間點)
         else if (hist.length) { const last = hist[hist.length - 1]; med = last.med; idx = last.idx; n = last.total || 0; }
-        if (med == null || idx == null) return null;
         // 歷史基準:大盤平均贏中位數個股多少、贏的天數佔比
         let avgGap = null, winPct = null, days = hist.length;
         if (days >= 20) {
@@ -55423,6 +55525,10 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             avgGap = gs.reduce((s, v) => s + v, 0) / gs.length;
             winPct = gs.filter(v => v > 0).length / gs.length * 100;
         }
+        // 📈 V82.0.9 有今天的快照、但還沒有今天的加權 → 只講中位數,⛔ 拿上一個交易日的漲跌配今天的個股
+        //   (11/09 09:45 就是這一步:上週五 −4.51% 配今天 +2.15% →「今天指數被權值股拖累 −6.66pp」,實際正好相反)
+        if (live && med != null && idx == null) return { med, idx: null, gap: null, live, n, noIdx: true, avgGap, winPct, days };
+        if (med == null || idx == null) return null;
         return { med, idx, gap: idx - med, live, n, avgGap, winPct, days };
     },
 
@@ -55439,6 +55545,14 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const base = (s.avgGap != null)
             ? `<div class="text-[9px] text-gray-500 mt-1 leading-relaxed">📐 近 ${s.days} 個交易日:大盤<b class="text-gray-300">平均每天贏中位數個股 ${s.avgGap >= 0 ? '+' : ''}${s.avgGap.toFixed(2)} pp</b>、<b class="text-gray-300">${s.winPct.toFixed(0)}% 的天數大盤贏</b>。所以「贏大盤」本來就比想像中難。</div>`
             : `<div class="text-[9px] text-gray-500 mt-1">📐 歷史基準累積中(已 ${s.days} 日,滿 20 日開始給長期落差)。</div>`;
+        const head = `<div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] text-gray-400">🎯 大盤 vs 你手上那檔 <span class="text-[9px] text-gray-600">${s.live ? `盤中即時 ${s.n} 檔` : `收盤 ${s.n} 檔`}</span></span>
+                <button onclick="event.stopPropagation();app._showMedGapHelp()" class="text-[9px] text-gray-600 hover:text-cyan-300">ⓘ 怎麼看</button>
+            </div>`;
+        // 📈 V82.0.9 還沒有今天的加權 → 只印中位數 + 一行原因(⛔ 落差 / 拖累 / 拉上去 —— 那要兩邊都是今天的才比得了)
+        if (s.noIdx) return `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 mb-1.5" data-medgap="noidx">${head}
+            <div class="text-[11px] text-gray-300">中位數個股 <b class="font-mono ${cc(s.med)}">${f(s.med)}</b></div>
+            <div class="text-[10px] text-gray-500 leading-relaxed mt-0.5">⏳ 加權<b class="text-gray-400">今天的</b>即時還沒拿到 → 先不比(⛔ 拿上一個交易日的漲跌配今天的個股)。</div>${base}</div>`;
         return `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 mb-1.5">
             <div class="flex items-center justify-between mb-1">
                 <span class="text-[10px] text-gray-400">🎯 大盤 vs 你手上那檔 <span class="text-[9px] text-gray-600">${s.live ? `盤中即時 ${s.n} 檔` : `收盤 ${s.n} 檔`}</span></span>
@@ -55635,7 +55749,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             msg += ' ⛔ 只描述今天,不是買賣訊號(⛔ 不是會漲或會跌):要不要買照決策台,手上的照你的出場規則走。';
             // 指數 vs 廣度背離提醒(需大盤今日漲跌)
             let divWarn = '';
-            const twPct = (typeof this._taiexTodayPct === 'number') ? this._taiexTodayPct : null;
+            const twPct = this._twiiTodayPct();   // 📈 V82.0.9 只收今天的(11/09 舊版拿上週五 −4.5% 配今天 76% 上漲 →「指數跌但廣度強」講反話)
             if (twPct != null) {
                 if (twPct > 0.3 && upPctAll < 45) divWarn = `⚠️ <b>指數漲(${twPct.toFixed(1)}%)但廣度弱</b>(只 ${upPctAll.toFixed(0)}% 股上漲)=少數權值股扛盤、多數股在跌。`;
                 else if (twPct < -0.3 && upPctAll > 55) divWarn = `💡 <b>指數跌(${twPct.toFixed(1)}%)但廣度強</b>(${upPctAll.toFixed(0)}% 股上漲)=權值股拖累、多數股其實在漲。`;
@@ -56746,7 +56860,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         </div>`);
 
         // 🗑️ V77.5.1 刪「⚖️ 相對大盤強弱 → 挑強做多・挑弱做空」(盤中版沒測過;5 分K 的「大盤順風」實測方向相反)
-        const twiiPct = this._taiexTodayPct;
+        const twiiPct = this._twiiTodayPct();   // 📈 V82.0.9 只收今天的
 
         // 📋 V64.5 當沖紀律 SOP 已移進「📖 新手」modal(_dtBeginnerGuide),不再獨立成卡
 

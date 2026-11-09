@@ -12,6 +12,7 @@
  *  ⑤ 熔斷了 → 標題列那顆鈕看得到燈
  *  ⑥ 新增持倉視窗:填了成本股數才算、超過單筆風險設定要說、沒填帳戶要說出來
  *  ⑦ 新的字 ⛔ 🔴🟢(燈號鐵則)、⛔ 研究字樣(散戶 App 鐵則,跟 test_retail_clean 同一份清單)
+ *  ⑩ V82.0.9 總風險只算有停損線的(👑 名單上 / 大跌撿便宜 / ETF ⛔ 算進「碰到停損」,另寫一行;決定性對照:集合清空 → 照舊算)
  *  ⑧ V80.0.9 決策台「🧯 你的風控」一行:大盤三種狀態(嚴格空頭 / 跌破 60 日線但還不算 / 在上面)讀 `_mktBear60` 那份、
  *     你的空頭守門設定跟著變(決定性對照:同一份大盤改設定)、有記賣出才顯示熔斷、總風險同 ②;⛔ 🔴🟢、⛔ 研究字樣;登記在 `_DECK_SECTIONS`
  * 跑法:node scripts/test_discipline.mjs
@@ -207,6 +208,44 @@ ok('⑧ 登記在 _DECK_SECTIONS、預設開、決策台有容器', !!K.reg && K
 ok('⑨ ⚡ 盤中即時警報關著 → 多一行「哪些 App 通知不會跳」+ ⚙️ 打開(決定性對照:打開 → 那一行消失;選 👑 → 不顯示)',
    /data-deckriskalert="off"/.test(K.alOff) && /盤中即時警報關著/.test(KT(K.alOff)) && !/data-deckriskalert/.test(K.alOn) && !/data-deckriskalert/.test(K.alLead), [KT(K.alOff).slice(0, 200)]);
 ok('⑨ ⛔ 改預設(盤中即時警報預設仍是關)、⚙️ 打開 = 展開通知那一組、⛔ 替你把開關打開', K.alDef === false && K.alDetOpen && K.alChecked === K.alBefore && K.alSet === false, JSON.stringify([K.alDef, K.alDetOpen, K.alChecked, K.alBefore, K.alSet]));
+// ⑩ 🧮 V82.0.9 總風險只算「有停損線的」(11/09 截圖:選 👑 時寫「6 檔已經在停損下面(照你的出場規則處理)」,
+//    同一頁最上面卻寫「今天不用動」)→ 👑 名單上的 / 大跌撿便宜那一批 / ETF ⛔ 算進來,另外數幾檔
+const S = await page.evaluate(() => {
+    const A = app, o = {};
+    const oL = A._leaderMine, oD = A._dipMine, oI = A._isLead;
+    A._invKlineCache = {};
+    const inv = [
+        { symbol: '1111', cost: 100, shares: 1, currentPrice: 80 },   // 👑 名單上(跌 20%)
+        { symbol: '2222', cost: 100, shares: 1, currentPrice: 80 },   // 大跌撿便宜那一批
+        { symbol: '0050', cost: 100, shares: 1, currentPrice: 80 },   // ETF
+        { symbol: '9999', cost: 100, shares: 1, currentPrice: 110 },  // 一般持股(停損 95 → 15,000)
+    ];
+    try {
+        A._leaderMine = () => new Set(['1111']); A._dipMine = () => new Set(['2222']);
+        const r = A._totalRisk(inv, 1e6);
+        o.r = { n: r.n, below: r.below, sum: r.sum, skip: r.skip };
+        o.html = A._totalRiskHtml(r);
+        // ⭐ 決定性對照:同一份清單,👑 / 大跌撿便宜的集合清空 → 那兩檔照舊算進去(現價 80 < 停損 95 → 在停損下面)
+        A._leaderMine = () => new Set(); A._dipMine = () => new Set();
+        const c = A._totalRisk(inv, 1e6);
+        o.c = { n: c.n, below: c.below, sum: c.sum, skip: c.skip };
+        o.cHtml = A._totalRiskHtml(c);
+        // 全部都沒有停損線 → 只印那一行(⛔ 整段安靜消失)
+        A._leaderMine = () => new Set(['1111']); A._dipMine = () => new Set(['2222']);
+        o.onlySkip = A._totalRiskHtml(A._totalRisk(inv.slice(0, 3), 1e6));
+        // 🧯 那一行:選 👑 → 👑 名單上的照換倉日名次走;沒選 → 照舊
+        const mk = { mkt: { on: true, c: 39702, ma60: 46415, ma20: 46134, d: '2026-11-06' } };
+        A._isLead = () => true; o.leadLine = A._deckRiskHtml(mk);
+        A._isLead = () => false; A._leaderMine = () => new Set(); o.geneLine = A._deckRiskHtml(mk);
+    } finally { A._leaderMine = oL; A._dipMine = oD; A._isLead = oI; }
+    return o;
+});
+ok('⑩ ⭐ 👑 名單上 / 大跌撿便宜 / ETF ⛔ 算進「碰到停損」:只剩一般那檔(15,000)、⛔「在停損下面」', S.r.n === 1 && S.r.below === 0 && S.r.sum === 15000 && S.r.skip.lead === 1 && S.r.skip.dip === 1 && S.r.skip.etf === 1, JSON.stringify(S.r));
+ok('⑩ 另外寫一行「另 3 檔沒有停損線…這裡算不出來」', /另 3 檔沒有停損線/.test(KT(S.html)) && /算不出來/.test(KT(S.html)) && /👑 名單上 1 檔/.test(KT(S.html)) && /大跌撿便宜 1 檔/.test(KT(S.html)), KT(S.html).slice(-260));
+ok('⑩ ⭐ 決定性對照:同一份清單把那兩個集合清空 → 那兩檔照舊算(在停損下面 2 檔)、ETF 照樣不算', S.c.n === 3 && S.c.below === 2 && S.c.skip.lead === 0 && S.c.skip.dip === 0 && S.c.skip.etf === 1, JSON.stringify(S.c));
+ok('⑩ 沒選 👑(集合是空的)→ 一個 👑 字都沒有', !/👑/.test(S.cHtml), KT(S.cHtml));
+ok('⑩ 全部都沒有停損線 → 只印那一行(⛔ 整段消失)', /data-totrisk="skip"/.test(S.onlySkip) && /另 3 檔沒有停損線/.test(KT(S.onlySkip)), KT(S.onlySkip));
+ok('⑩ 🧯 那一行:選 👑 → 「👑 名單上的照換倉日名次走」;沒選 → 「每一筆照你的出場規則走」', /👑 名單上的照換倉日名次走/.test(KT(S.leadLine)) && /每一筆照你的出場規則走/.test(KT(S.geneLine)) && !/👑/.test(KT(S.geneLine).split('你的設定')[1] || ''), [KT(S.leadLine).slice(0, 260), KT(S.geneLine).slice(0, 260)].join(' ‖ '));
 const KA = [K.bear, K.below, K.up, K.na, K.gateOn, K.brk, K.alOff].join(' ');
 ok('⑧ ⛔ 🔴🟢、⛔ 研究字樣', !/[🔴🟢]/u.test(KA) && !badOf(KT(KA)).length, badOf(KT(KA)).join(' '));
 ok('⓪ 沒有 pageerror', !errs.length, errs.join(' | '));

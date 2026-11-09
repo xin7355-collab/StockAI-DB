@@ -37,13 +37,17 @@ const hist = (n, gapPP, flipN = 0) => Array.from({ length: n }, (_, i) => ({
     up: 1000, dn: 1000, flat: 300, lu: 5, ld: 5, st: 100, wk: 100, amt: 4000,
 }));
 
+// 📈 V82.0.9 盤中的「今天加權漲跌」走真的 `_twiiToday()`:taiex 放進快照自己的 idx.twii(跟中位數同一個時間點)。
+//   ⛔ 舊版直接塞 `app._taiexTodayPct = …` —— 而正式環境那個值是 FinMind 日線最後一根(盤中 = 上一個交易日),
+//      於是 ⑧「拿不到就不比」永遠測得過,11/09 盤中卻拿上週五 −4.51% 配今天 +2.15% 講反話(假綠燈,陷阱 #40)。
 const run = ({ h = hist(60, 0.4), live = null, taiex = null }) => page.evaluate(a => {
     app._breadthHist = a.h;
     app._liveQuotes = a.live;
     // ⚠️ V78.1.2 V77.0.4 起即時快照要「是今天的」才算數(`_liveFresh` 看 `_liveUpdated`)——
     //   舊測資沒給時間戳 → 盤中那幾條全被當成「昨天的快照」退回收盤檔 = 假紅燈。有給快照就蓋今天的戳。
     app._liveUpdated = a.live ? new Date().toISOString() : null;
-    app._taiexTodayPct = a.taiex;
+    app._liveIdx = (a.live && a.taiex != null) ? { twii: { p: 40000, c: a.taiex } } : {};
+    app._idxLiveF = {}; app._idxDaily = {};
     return { s: app._medGapState(), html: app._medGapHtml() };
 }, { h, live, taiex });
 
@@ -61,7 +65,7 @@ const mkLive = arr => Object.fromEntries(arr.map((c, i) => [`s${i}`, { c }]));
 x = await run({ live: mkLive([...Array(300).fill(-2), ...Array(300).fill(0)]), taiex: 1.5 });
 ok('② 盤中改用即時快照', x.s && x.s.live === true, JSON.stringify(x.s));
 ok('② 中位數算對(−1%)', Math.abs(x.s.med - (-1)) < 1e-9, x.s.med);
-ok('② idx 取 _taiexTodayPct', x.s.idx === 1.5, x.s.idx);
+ok('② idx 取盤中快照自己的加權(跟中位數同一個時間點)', x.s.idx === 1.5, x.s.idx);
 ok('② 要顯示「盤中即時 600 檔」', /盤中即時 600 檔/.test(x.html), x.html.slice(0, 400));
 
 // ── ③ ⭐ 落差判讀三段 ──────────────────────────────────────
@@ -104,8 +108,30 @@ ok('⑧ 沒有歷史也沒有快照 → null', (await run({ h: [], live: null })
 ok('⑧ html 為空字串', (await run({ h: [], live: null })).html === '');
 ok('⑧ 歷史列缺 idx → 濾掉 → null',
    (await run({ h: [{ d: '2026-07-30', med: -1, total: 2300 }] })).s === null);
-ok('⑧ 盤中有快照但拿不到大盤漲跌 → null(⛔ 不拿收盤 idx 配盤中 med)',
-   (await run({ live: mkLive(Array(600).fill(-1)), taiex: null, h: [{ d: '2026-07-30', med: -1.02, idx: -0.26, total: 2314 }] })).s === null);
+// 📈 V82.0.9 盤中有今天的快照、但拿不到今天的加權 → 只印中位數 + 原因(⛔ 不拿收盤 idx 配盤中 med;⛔ 整張安靜消失)
+x = await run({ live: mkLive(Array(600).fill(-1)), taiex: null, h: [{ d: '2026-07-30', med: -1.02, idx: -0.26, total: 2314 }] });
+ok('⑧ 盤中有快照但拿不到今天的大盤漲跌 → noIdx、idx / gap 都是 null(⛔ 拿收盤 idx 配盤中 med)',
+   x.s && x.s.noIdx === true && x.s.idx === null && x.s.gap === null && x.s.med === -1, JSON.stringify(x.s));
+ok('⑧ 畫面只印中位數 + 「今天的即時還沒拿到」,⛔ 落差 / 拖累 / 拉上去',
+   /還沒拿到/.test(x.html) && /data-medgap="noidx"/.test(x.html) && !/>落差<|拖累|拉上去|方向一致/.test(x.html), x.html.slice(0, 600));   // ⚠️ 底下「歷史基準累積中…長期落差」是合法的那一行 → 只擋落差那一格
+
+// ⑧b ⭐ 決定性對照:走真的 processMacroData(FinMind 日線)—— 最後一根是「昨天」→ ⛔ 收;改成「今天」→ 收
+const viaDaily = (lastIsToday) => page.evaluate(a => {
+    const tpe = t => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date(t));
+    const today = tpe(Date.now()), prevDay = tpe(Date.now() - 86400e3);
+    app._breadthHist = [];
+    app._liveQuotes = Object.fromEntries(Array.from({ length: 600 }, (_, i) => [`s${i}`, { c: i < 300 ? 1 : 3 }]));   // 中位數 +2
+    app._liveUpdated = new Date().toISOString();
+    app._liveIdx = {}; app._idxLiveF = {}; app._idxDaily = {};
+    app.processMacroData({ taiex: [{ date: '2026-01-01', close: 41570 }, { date: a.lastIsToday ? today : prevDay, close: 39700 }], tpex: [{ date: '2026-01-01', close: 300 }, { date: a.lastIsToday ? today : prevDay, close: 304 }], fiShort: null });
+    return { s: app._medGapState(), html: app._medGapHtml(), tw: app._twiiToday() };
+}, { lastIsToday });
+let y = await viaDaily(false);
+ok('⑧b ⭐ 日線最後一根是昨天(−4.50%)+ 今天的快照 → ⛔ 拿來比(noIdx、_twiiToday() = null)',
+   y.s && y.s.noIdx === true && y.tw === null && !/拖累|拉上去/.test(y.html), JSON.stringify({ s: y.s, tw: y.tw }));
+y = await viaDaily(true);
+ok('⑧b ⭐ 決定性對照:同一份日線最後一根改成今天 → 收(idx = −4.50%,來源 close)',
+   y.s && !y.s.noIdx && Math.abs(y.s.idx - (-4.502) ) < 0.01 && y.tw && y.tw.src === 'close', JSON.stringify({ s: y.s, tw: y.tw }));
 
 // ── ⑨ ⭐⛔ 不可宣稱台積電權重 / 不可下買賣方向 ──────────────────
 x = await run({ live: mkLive([...Array(300).fill(-2), ...Array(300).fill(0)]), taiex: 1.5 });
