@@ -31223,7 +31223,9 @@ ${this._reportFacts(sym)}
         //   ⭐ 照既有慣例:**只改「叫人怎麼做」那句,事實描述(verdict / 條件明細 / 實測數字)一個字不動**。
         const _smBear = (() => { try { return !!this._bearGate?.(this.currentSymbolId); } catch (_) { return false; } })();
         const _smSop = _smBear
-            ? '⚠️ <b>上面的主結論是空頭</b> → 這幾條翻多只能<b>當反彈看待</b>,⛔ 別加碼、別追;想做只能小量搶短而且守緊停損。(下面那組實測數字是<b>全市場平均</b>,⛔ 沒有分多空頭環境。)'
+            ? '⚠️ <b>上面的主結論是空頭</b> → 這幾條翻多只能<b>當反彈看待</b>,⛔ 別加碼、別追;想做只能小量搶短而且守緊停損。'
+              // 🧹 V82.0.9 研究那句只在實驗室模式(V78.3.4 散戶 App ⛔ 研究字樣;「下面那組數字」本來就只有實驗室看得到)
+              + (this._labMode && this._labMode() ? '(下面那組實測數字是<b>全市場平均</b>,⛔ 沒有分多空頭環境。)' : '')
             : v.sop;
         const _smHtml = `
             <div class="flex items-center justify-between gap-2">
