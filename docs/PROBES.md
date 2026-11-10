@@ -3,6 +3,11 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🟥⬇️ V82.1.0(2026-11-10)漲停隔天放空 × 權證小哥的條件
+- `scripts/lu_short_probe.mjs`(新):`DATA_DIR=$S/d16 DIV=$S/d16/_div16.json SHARE_DIR=$S/sd/stock_deep/share KBAR5_DIR=$S/k5d/kbar5_deep:$S/k5/kbar5:$S/k5lu/kbar5_lu node --max-old-space-size=12000 scripts/lu_short_probe.mjs out.json`(約 20 分)。回答「收盤鎖漲停的股票,隔天開盤放空賺不賺 —— 加上換手率夠高 / 前面漲過一段 / 位階高 / 連續漲停這些條件有沒有比較好」。事件 = `downday_lu_probe.lockUp`(⛔ 第二份);隔天開盤放空(開盤在跌停 = 空不到;平盤以下另算);回補 = 當天收盤(當沖 0.25%)/ 3 / 5 / 10 天(融券 0.665%);回補那天又鎖漲停 → 延到第一個開盤沒在漲停的那天(延太久的那段也過斷崖守門);換手率 = 量 ÷ 前一天以前的發行股數(`stock_deep/share`);對照 = 同一天全部股票開盤放空 + 安慰劑(同換手桶 × 前漲桶、當天沒漲停);六關 = `maxim_kbar5_probe.gates`;換手 ≥3/5/10/15 × 前漲 ≥20/30/50(± 位階 ≥80)24 格;熱門股 5 分 K 09:05 再量一次;加權盤勢分開。`--selftest` 12 條(`LS_INJECT=peek` 前漲含漲停那天必紅)。
+- 資料:d16 要先建(`merge_deep_klines.mjs` → `merge_stock_deep.py --base <放 ^TWII / 0050 的資料夾>`),⚠️ d16 的 `^TWII.json` 要用 `data/idx_long.json` 的 twii 接到 2010(base 那份只有 2021-11 起,`loadCtx` 拿它當日曆)。
+- 何時重跑:⛔ 結論已定(見 LAB `lu-short`);走完下一次大空頭、或主管機關改放空規則(平盤以下 / 當沖先賣)之後可以重跑一次看方向有沒有變。
+
 ### ✂️ V82.0.7(2026-11-07)👑 跌 20% 收一半(換倉日才收 / 才補)
 - `scripts/lib_leaddd.mjs`(新,唯一一份判斷):`LEAD_DD` + `ddSeries` / `waChain` / `shiftSched`;`--selftest` 7 條(⛔ 前視:截斷資料前面的狀態不變)。
 - `scripts/leader_probe.mjs` 新參數 `ddHalf:{th,lo,rec,at:'reb'|'next',top:0|1,shift}`(兩趟;不設 = 逐位相同)。

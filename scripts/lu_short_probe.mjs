@@ -73,7 +73,7 @@ export function shortFwd(S, i, ex, cal, entryPx = null) {
         lag = k - e;
         long = (S.C[i + 1] / o1) * (S.A[k - 1] / S.A[i + 1]) * (S.O[k] * S.F[k] / S.C[k - 1]) - 1;
     }
-    return { r: -100 * long, lag, below: o1 < pc, gap: 100 * (o1 / pc - 1) };
+    return { r: -100 * long, lag, below: o1 < pc, gap: 100 * (o1 / pc - 1), end: e + lag };
 }
 
 const tBin = t => (t < 2 ? '<2' : t < 5 ? '2~5' : t < 10 ? '5~10' : t < 20 ? '10~20' : '≥20');
@@ -126,6 +126,7 @@ export function scan(ctx, opt = {}) {
                 const h = EXITS[ex], f = shortFwd(S, i, ex, cal);
                 if (f === 'nofill') { if (ex === 'dt') out.cnt.nofill++; continue; }
                 if (!f) continue;
+                if (f.end > i + 12 && cliff(S, i + 12, f.end, cal)) { out.cnt.cliffLate = (out.cnt.cliffLate || 0) + 1; continue; }   // 補不回延很久 → 那段也要過斷崖守門
                 const am = allMean(i, h); if (!Number.isFinite(am)) continue;
                 const pl = bin ? plMean(i, h, bin) : NaN;
                 let r905 = null;
@@ -148,7 +149,7 @@ function sumArr(arr) {
     const nets = arr.map(o => o.net), k9 = arr.filter(o => Number.isFinite(o.r905));
     const byRg = {}; for (const o of arr) (byRg[o.rg || '?'] = byRg[o.rg || '?'] || []).push(o.net);
     return { n: arr.length, net: +mean(nets).toFixed(2), med: +pct(nets, 0.5).toFixed(2), win: +(100 * nets.filter(x => x > 0).length / nets.length).toFixed(1),
-        p10: +pct(nets, 0.1).toFixed(1), worst: +Math.min(...nets).toFixed(1), stuck: +(100 * mean(arr.map(o => (o.lag > 0 ? 1 : 0)))).toFixed(1), nlu: +(100 * mean(arr.map(o => o.nlu))).toFixed(1),
+        p10: +pct(nets, 0.1).toFixed(1), worst: +Math.min(...nets).toFixed(1), stuck: +(100 * mean(arr.map(o => (o.lag > 0 ? 1 : 0)))).toFixed(1), lagMax: Math.max(...arr.map(o => o.lag)), p1: +pct(nets, 0.01).toFixed(1), nlu: +(100 * mean(arr.map(o => o.nlu))).toFixed(1),
         inc: g.inc, t: g.t, pass: g.pass, gates: g.gates, years: g.years,
         pl: pl.length >= 30 ? { n: pl.length, inc: +mean(pl).toFixed(2), t: +(mean(pl) / (Math.sqrt(mean(pl.map(a => (a - mean(pl)) ** 2))) / Math.sqrt(pl.length) || 1)).toFixed(1) } : null,
         k5: k9.length >= 20 ? { n: k9.length, open: +mean(k9.map(o => o.net)).toFixed(2), at905: +mean(k9.map(o => o.r905)).toFixed(2) } : null,
@@ -248,8 +249,8 @@ if (process.argv[1] && process.argv[1].endsWith('lu_short_probe.mjs')) {
     const out = scan(ctx, { shares, k5, reg, FROM: process.env.FROM || '' });
     const res = summarize(out);
     if (out.cnt.lu < 5000) { console.log('❌ 漲停事件 <5,000,資料不對'); process.exit(1); }
-    console.log(`鎖漲停 ${out.cnt.lu} 次 ・斷崖剔除 ${out.cnt.cliff} ・沒有股數 ${out.cnt.noShare} ・隔天開盤在跌停空不到 ${out.cnt.nofill} ・5分K 尺標不合 ${out.cnt.k5scale}`);
-    const line = (k, ex, x, bp) => x ? `${k.padEnd(26)} ${ex.padEnd(3)} n=${String(x.n).padStart(6)} 平盤下${String(bp).padStart(5)}% ・放空扣成本 ${x.net}%(中位 ${x.med} 賺 ${x.win}% 最差10% ${x.p10} 最慘 ${x.worst})・補不回 ${x.stuck}% ・增量 ${x.inc} t${x.t} 關${x.pass}` +
+    console.log(`鎖漲停 ${out.cnt.lu} 次 ・斷崖剔除 ${out.cnt.cliff}(回補延太久又碰到斷崖 ${out.cnt.cliffLate || 0}) ・沒有股數 ${out.cnt.noShare} ・隔天開盤在跌停空不到 ${out.cnt.nofill} ・5分K 尺標不合 ${out.cnt.k5scale}`);
+    const line = (k, ex, x, bp) => x ? `${k.padEnd(26)} ${ex.padEnd(3)} n=${String(x.n).padStart(6)} 平盤下${String(bp).padStart(5)}% ・放空扣成本 ${x.net}%(中位 ${x.med} 賺 ${x.win}% 最差10% ${x.p10} 最差1% ${x.p1} 最慘 ${x.worst})・補不回 ${x.stuck}%(最多延 ${x.lagMax} 天) ・增量 ${x.inc} t${x.t} 關${x.pass}` +
         (x.pl ? ` ・vs安慰劑 ${x.pl.inc}(t${x.pl.t})` : '') + (x.k5 ? ` ・5分K n=${x.k5.n} 開盤 ${x.k5.open} / 09:05 ${x.k5.at905}` : '') + ` ・盤勢 ${Object.entries(x.rg).map(([a, b]) => a + b[1] + '/' + b[0]).join(' ')}` : `${k} ${ex} —`;
     const ORDER = ['全部', '換手:', '換手≥', '前20日:', '前20日≥', '位階', '連續', '隔天開盤', '組合:', '組合+'];
     const keys = Object.keys(res).sort((a, b) => ORDER.findIndex(p => a.startsWith(p)) - ORDER.findIndex(p => b.startsWith(p)) || a.localeCompare(b, 'zh-Hant'));
