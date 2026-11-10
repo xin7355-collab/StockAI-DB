@@ -49,6 +49,7 @@ class Gate:
         self.last = {}      # host → 上一次送出的時間
         self.stats = {'sent': 0, 'retried': 0, 'tripped': 0}
         self.blocked_page = {}   # host → 斷路那一次的回應文字開頭(分得出「暫時封鎖」還是「系統忙碌 / 維護」)
+        self.fail_page = {}      # host → 最後一次「不重試的失敗」(404、3xx…)的回應文字開頭
 
     def _pace(self, host):
         wait = self.gaps.get(host, self.default_gap) - (self.clock() - self.last.get(host, -1e18))
@@ -73,6 +74,11 @@ class Gate:
             return 'block', f'HTTP {code}'
         if code == 429 or code >= 500:
             return 'retry', f'HTTP {code}'
+        if 300 <= code < 400:
+            # requests 會自己跟著轉址;還拿到 3xx = 沒有 Location 或轉不過去 → 把轉去哪寫出來(11/09 鉅額每天 307,看不出原因)
+            h = getattr(res, 'headers', None) or {}
+            loc = h.get('Location') or h.get('location') if hasattr(h, 'get') else None
+            return 'fail', f'HTTP {code}' + (f'(轉到 {str(loc)[:120]})' if loc else '(沒有 Location)')
         if code != 200:
             return 'fail', f'HTTP {code}'
         if expect == 'json':
@@ -102,6 +108,7 @@ class Gate:
             if verdict == 'block':
                 return self._trip(host, why, res)
             if verdict == 'fail':
+                self.fail_page[host] = page_text(res)
                 return None, why
             self.fails[host] = self.fails.get(host, 0) + 1
             if self.fails[host] >= self.trip_after:
@@ -185,6 +192,18 @@ def selftest():
     r, why = g.post('https://www.taifex.com.tw/cht/3/x', expect='any')
     ok('④b expect=any(期交所沒資料本來就回 HTML)→ 照常回', r is not None and why == '' and not g.open)
 
+    class R3(R):
+        def __init__(self, code, loc=None):
+            super().__init__(code, b'<html><body>Moved</body></html>')
+            self.headers = {'Location': loc} if loc else {}
+    g, calls, slept = make([R3(307, 'https://www.twse.com.tw/zh/error')])
+    r, why = g.get(TW)
+    g2, _, _ = make([R3(307)])
+    r2, why2 = g2.get(TW)
+    ok('④e 拿到 3xx(requests 沒跟過去)→ 不重試、不斷路,原因寫出轉去哪 / 沒有 Location,回應文字記在 fail_page',
+       r is None and '307' in why and 'https://www.twse.com.tw/zh/error' in why and len(calls) == 1 and not g.open
+       and '沒有 Location' in why2 and g.fail_page.get('www.twse.com.tw') == 'Moved', (why, why2, g.fail_page))
+
     g, calls, slept = make([R(404), R(200)])
     r, why = g.get(TW)
     ok('⑤ 404 → ⛔ 重試、⛔ 斷路,原因寫 HTTP 404', r is None and why == 'HTTP 404' and len(calls) == 1 and not g.open)
@@ -199,7 +218,7 @@ def selftest():
     g.get('https://www.tpex.org.tw/openapi/v1/x')
     ok('⑦ 同一個網站隔 3 秒(證交所 www)、不同網站不用等', slept == [3.0], slept)
 
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 12 條)')
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 13 條)')
     return 1 if fails else 0
 
 
