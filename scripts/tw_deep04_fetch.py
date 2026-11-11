@@ -19,6 +19,8 @@
                         "complete": true/false(那個月每個平日都問過、而且整個月已經過完)}
        數字 "--"(那天沒成交)→ null;漲跌號 = "+" / "-" / "X"(不比價,除權息 / 新上市那類)/ ""。
      div/YYYY.json = TWT49U 那一年的除權息(欄位照名字找,原樣存:資料日期, 代號, 前收, 參考價, 權值+息值, 權/息)
+     idx/YYYY-MM.json = FMTQIK 那個月每天的加權指數收盤 + 全市場成交股數 / 金額(V82.1.2 加:MI_INDEX 那份只存個股,
+                        2004~2009 的「大盤空頭不買」要用真的加權;一個月問一次 = 71 次):{"rows": [[日期, 成交股數, 成交金額, 加權指數]], "complete"}
      _status.json  = {updated, start, end, months_total, months_complete, days_with_data, div_years, fetched_this_run, last_day, stopped, more, gate}
   時間到(MAX_MIN 分)或這輪問滿 MAX_REQ 次就存檔收工(more=1),下一輪接著抓;complete 的月份 / 已抓的年份 ⛔ 重抓。
 
@@ -42,6 +44,7 @@ MI_NEW = 'https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX'
 MI_OLD = 'https://www.twse.com.tw/exchangeReport/MI_INDEX'
 DIV_NEW = 'https://www.twse.com.tw/rwd/zh/exRight/TWT49U'
 DIV_OLD = 'https://www.twse.com.tw/exchangeReport/TWT49U'
+IDX_NEW = 'https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK'
 GAP_SEC = 10.0
 # 欄位照名字找(⛔ 用位置:新舊網址、不同年份欄位順序可能不同)
 NEED = ('證券代號', '開盤價', '最高價', '最低價', '收盤價', '成交股數')
@@ -162,6 +165,32 @@ def parse_div(obj):
     return 'format', '找不到除權息那張表(表:' + ' / '.join(f'{ti}:{f[:6]}' for ti, f, _ in _tables(obj))[:300] + ')'
 
 
+def parse_idx(obj):
+    """FMTQIK 一個月的回應 → ('data', [[YYYY-MM-DD, 成交股數, 成交金額, 加權指數], ...]) / ('none', []) / ('format', 說明)。
+    欄位照名字找(「日期」+ 名字含「指數」那一欄,⛔ 拿「漲跌點數」);指數讀不出來的那一列 ⛔ 收。"""
+    if not isinstance(obj, dict):
+        return 'format', '回應不是物件'
+    if str(obj.get('stat', '')).upper() != 'OK':
+        return 'none', []
+    for ti, f, data in _tables(obj):
+        if '日期' not in f:
+            continue
+        ii = next((i for i, n in enumerate(f) if '指數' in n and '漲跌' not in n), None)
+        if ii is None:
+            continue
+        iv = f.index('成交股數') if '成交股數' in f else None
+        ia = f.index('成交金額') if '成交金額' in f else None
+        out = []
+        for r in data:
+            if not isinstance(r, list) or len(r) < len(f):
+                continue
+            d, x = roc_date(r[f.index('日期')]), _num(r[ii])
+            if d and x and x > 0:
+                out.append([d, _num(r[iv]) if iv is not None else None, _num(r[ia]) if ia is not None else None, x])
+        return ('data', out) if out else ('none', [])
+    return 'format', '找不到加權指數那張表(表:' + ' / '.join(f'{ti}:{f[:6]}' for ti, f, _ in _tables(obj))[:300] + ')'
+
+
 def month_weekdays(y, m, upto):
     d, out = date(y, m, 1), []
     while d.month == m and d < upto:
@@ -200,10 +229,12 @@ def save_month(path, mj):
 
 
 def run(out_dir, start_ym, end_ym, today, max_min, gate, clock=time.time, log=print, max_req=10 ** 9,
-        mi_url=MI_NEW, div_url=DIV_NEW, first_day='20040211'):
-    """抓到時間到 / 被擋 / 全部完成為止 → status dict。先抓每一年的除權息(一年一次),再一天一天抓收盤行情。"""
+        mi_url=MI_NEW, div_url=DIV_NEW, first_day='20040211', idx_url=IDX_NEW):
+    """抓到時間到 / 被擋 / 全部完成為止 → status dict。先抓每一年的除權息(一年一次)、每個月的加權指數(一個月一次),
+    再一天一天抓收盤行情。"""
     out = Path(out_dir)
     (out / 'div').mkdir(parents=True, exist_ok=True)
+    (out / 'idx').mkdir(parents=True, exist_ok=True)
     t0 = clock()
     months = months_between(start_ym, end_ym)
     stopped, more, last_day, fetched = '', 0, '', 0
@@ -237,6 +268,38 @@ def run(out_dir, start_ym, end_ym, today, max_min, gate, clock=time.time, log=pr
             break
         p.write_text(json.dumps({'y': y, 'rows': rows}, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
         log(f'  除權息 {y}:{len(rows)} 筆')
+
+    # ①b 加權指數:一個月一次(⛔ 重抓 complete 的月份;還沒過完的月份 complete=false 下一輪再問)
+    if not stopped and not more:
+        for y, m in months:
+            p = out / 'idx' / f'{y:04d}-{m:02d}.json'
+            try:
+                if json.loads(p.read_text(encoding='utf-8')).get('complete'):
+                    continue
+            except (OSError, ValueError):
+                pass
+            if budget():
+                more = 1
+                break
+            res, why = gate.get(idx_url, params={'response': 'json', 'date': f'{y:04d}{m:02d}01'})
+            fetched += 1
+            if res is None:
+                if why.startswith('斷路'):
+                    stopped = f'加權指數 {y:04d}-{m:02d} {why}'
+                    break
+                log(f'  ⚠️ 加權指數 {y:04d}-{m:02d}:{why}(下一輪再問)')
+                continue
+            try:
+                kind, rows = parse_idx(res.json())
+            except ValueError:
+                kind, rows = 'format', '不是 JSON'
+            if kind == 'format':
+                stopped = f'加權指數 {y:04d}-{m:02d} 格式不對:{rows}'
+                break
+            rows = [r for r in rows if r[0][:7] == f'{y:04d}-{m:02d}']
+            done = date(y + (m == 12), 1 if m == 12 else m + 1, 1) <= today
+            p.write_text(json.dumps({'rows': rows, 'complete': done and bool(rows)}, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+            log(f'  加權指數 {y:04d}-{m:02d}:{len(rows)} 天')
 
     # ② 每天的收盤行情
     if not stopped and not more:
@@ -283,10 +346,17 @@ def run(out_dir, start_ym, end_ym, today, max_min, gate, clock=time.time, log=pr
     comp = sum(1 for f in files if load_month(f).get('complete'))
     ndays = sum(len(load_month(f)['days']) for f in files)
     divy = sorted(int(p.stem) for p in (out / 'div').glob('[0-9][0-9][0-9][0-9].json'))
-    if not stopped and not more and (comp < len(months) or len(divy) < len({y for y, _ in months})):
+
+    def _idx_ok(p):
+        try:
+            return bool(json.loads(p.read_text(encoding='utf-8')).get('complete'))
+        except (OSError, ValueError):
+            return False
+    idxm = sum(1 for y, m in months if _idx_ok(out / 'idx' / f'{y:04d}-{m:02d}.json'))
+    if not stopped and not more and (comp < len(months) or len(divy) < len({y for y, _ in months}) or idxm < len(months)):
         more = 1   # 這輪有跳過的日子(暫時失敗)→ 下一輪再補
     st = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'start': start_ym, 'end': end_ym,
-          'months_total': len(months), 'months_complete': comp, 'days_with_data': ndays, 'div_years': divy,
+          'months_total': len(months), 'months_complete': comp, 'days_with_data': ndays, 'div_years': divy, 'idx_months': idxm,
           'fetched_this_run': fetched, 'last_day': last_day, 'stopped': stopped, 'more': more,
           'gate': getattr(gate, 'stats', {})}
     if stopped:
@@ -369,10 +439,11 @@ def main():
     today = datetime.now(timezone(timedelta(hours=8))).date()
     mi_url = (os.environ.get('MI_URL') or MI_NEW).strip()
     div_url = (os.environ.get('DIV_URL') or DIV_NEW).strip()
+    idx_url = (os.environ.get('IDX_URL') or IDX_NEW).strip()
     print(f'🇹🇼 證交所全市場日 K:{start} ~ {end}、最多 {max_min:.0f} 分鐘 / {max_req} 次、間隔 {gap:g} 秒 → {out_dir}/({mi_url})')
-    st = run(out_dir, start, end, today, max_min, gate, max_req=max_req, mi_url=mi_url, div_url=div_url)
+    st = run(out_dir, start, end, today, max_min, gate, max_req=max_req, mi_url=mi_url, div_url=div_url, idx_url=idx_url)
     print(f'\n📋 完成 {st["months_complete"]}/{st["months_total"]} 個月、有資料 {st["days_with_data"]} 天、'
-          f'除權息 {len(st["div_years"])} 年、這輪問了 {st["fetched_this_run"]} 次、最後 {st["last_day"] or "—"}、'
+          f'除權息 {len(st["div_years"])} 年、加權指數 {st["idx_months"]}/{st["months_total"]} 個月、這輪問了 {st["fetched_this_run"]} 次、最後 {st["last_day"] or "—"}、'
           f'{"⛔ 停手:" + st["stopped"] if st["stopped"] else ("時間到,下一輪接著抓" if st["more"] else "全部抓完")}')
     if st.get('blocked_page'):
         print(f'   擋頁文字:{st["blocked_page"]}')
@@ -430,12 +501,20 @@ def selftest():
         def json(self):
             return self._o
 
+    IF = ['日期', '成交股數', '成交金額', '成交筆數', '發行量加權股價指數', '漲跌點數']
+    ix_ok = lambda ym: {'stat': 'OK', 'fields': IF, 'data': [[f'{int(ym[:4]) - 1911}/{ym[4:6]}/05', '5,000,000,000', '90,000,000,000', '1', '6,021.06', '12.30'],  # noqa: E731
+                                                             [f'{int(ym[:4]) - 1911}/{ym[4:6]}/06', '1', '1', '1', '--', '0']]}
+
     class FakeGate:
-        def __init__(self, plan, dplan=None):
+        def __init__(self, plan, dplan=None, iplan=None):
             self.plan, self.dplan, self.asked, self.dasked, self.stats = plan, dplan or (lambda y: dv), [], [], {}
+            self.iplan, self.iasked = iplan or ix_ok, []
 
         def get(self, url, params=None):
-            if 'TWT49U' in url:
+            if 'FMTQIK' in url:
+                self.iasked.append(params['date'][:6])
+                x = self.iplan(params['date'][:6])
+            elif 'TWT49U' in url:
                 y = params['startDate'][:4]
                 self.dasked.append(y)
                 x = self.dplan(y)
@@ -470,7 +549,7 @@ def selftest():
     ok('⑩ 下一輪從被擋那天接著抓(⛔ 從頭來)', g4.asked[0] == '20040301', g4.asked[:2])
     g5 = FakeGate(lambda ds: new)
     st5 = run(tempfile.mkdtemp(), '2004-02', '2004-03', today, 999, g5, log=lambda *a: None, max_req=6)
-    ok('⑪ 問滿 MAX_REQ 次 → 收工、more=1(除權息那次也算一次)', len(g5.asked) + len(g5.dasked) == 6 and st5['more'] == 1, (len(g5.asked), st5))
+    ok('⑪ 問滿 MAX_REQ 次 → 收工、more=1(除權息 / 加權指數那幾次也算)', len(g5.asked) + len(g5.dasked) + len(g5.iasked) == 6 and st5['more'] == 1, (len(g5.asked), st5))
     g6 = FakeGate(lambda ds: '連不上 ConnectionError' if ds == '20040212' else new)
     tmp6 = tempfile.mkdtemp()
     st6 = run(tmp6, '2004-02', '2004-02', today, 999, g6, log=lambda *a: None)
@@ -482,6 +561,21 @@ def selftest():
     g8 = FakeGate(lambda ds: new, dplan=lambda y: '斷路:HTTP 403')
     st8 = run(tempfile.mkdtemp(), '2004-02', '2004-02', today, 999, g8, log=lambda *a: None)
     ok('⑭ 除權息就被擋 → 收盤行情一天都 ⛔ 問', st8['stopped'].startswith('除權息 2004') and g8.asked == [], st8)
+    ki, ri = parse_idx(ix_ok('200810'))
+    IF2 = ['日期', '發行量加權股價指數', '成交金額', '成交股數', '成交筆數', '漲跌點數']
+    ki2, ri2 = parse_idx({'stat': 'OK', 'fields': IF2, 'data': [['97/10/01', '5,719.28', '9', '8', '1', '-10']]})
+    ok('⑱ 加權指數:欄位照名字找(⛔ 拿漲跌點數)、民國日期、-- 那天 ⛔ 收',
+       ki == 'data' and ri == [['2008-10-05', 5e9, 9e10, 6021.06]] and ki2 == 'data' and ri2[0][3] == 5719.28 and ri2[0][1] == 8.0, (ri, ri2))
+    ok('⑲ 加權指數:休市 / 格式不對', parse_idx({'stat': 'NO'}) == ('none', []) and parse_idx({'stat': 'OK', 'fields': ['日期', '漲跌點數'], 'data': [['97/10/01', '1']]})[0] == 'format')
+    ok('⑳ run:每個月問一次加權指數、存 idx/、再跑 ⛔ 重問、status 記幾個月', g.iasked == ['200402', '200403'] and g2.iasked == [] and st['idx_months'] == 2
+       and json.load(open(os.path.join(tmp, 'idx', '2004-02.json')))['rows'][0][0] == '2004-02-05', (g.iasked, g2.iasked, st.get('idx_months')))
+    g9 = FakeGate(lambda ds: new, iplan=lambda ym: '斷路:要 JSON 卻回 HTML(擋頁)')
+    st9 = run(tempfile.mkdtemp(), '2004-02', '2004-02', today, 999, g9, log=lambda *a: None)
+    ok('㉑ 加權指數就被擋 → 收盤行情一天都 ⛔ 問', st9['stopped'].startswith('加權指數 2004-02') and g9.asked == [], st9)
+    tmpn = tempfile.mkdtemp()
+    stn = run(tmpn, '2026-11', '2026-11', today, 999, FakeGate(lambda ds: new, iplan=lambda ym: ix_ok('202611')), log=lambda *a: None)
+    ok('㉒ 還沒過完的月份 → 加權指數 complete=false、more=1(下一輪再問)',
+       not json.load(open(os.path.join(tmpn, 'idx', '2026-11.json')))['complete'] and stn['more'] == 1, stn)
     ok('⑮ 間隔:空 / 壞值 = 10 秒、⛔ 比 3 秒快', [gap_sec(x) for x in (None, '', 'abc', '15', '1')] == [10.0, 10.0, 10.0, 15.0, 3.0])
     src = open(os.path.abspath(__file__), encoding='utf-8').read()
     ok('⑯ 走共用連線守門 lib_http.Gate(⛔ 自己寫 requests)', 'from lib_http import Gate' in src and 'import requests' not in src.replace("'import requests'", ''))
@@ -495,7 +589,7 @@ def selftest():
     finally:
         os.chdir(cwd)
     ok('⑰ 探路:新舊網址 × 3 天 + 除權息兩個網址、⛔ 寫任何檔', len(pr) == 8 and os.listdir(tmpp) == [], (pr, os.listdir(tmpp)))
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 18 條)')
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 23 條)')
     return 1 if fails else 0
 
 

@@ -13,6 +13,8 @@
  *   ⑤ `checkPack`:缺件 / 0050 含息起點晚於 2010-12 / 加權不到 4,000 天 / 個股不到 2,000 檔 → exit 1(⛔ 壞的包不寫 MANIFEST)
  *   ⑥ MANIFEST.json:來源 commit、這支程式的 commit、每個關鍵檔筆數與起訖、每一檔 sha256、整包雜湊
  *
+ *   ⑦ 🇹🇼 TW04=1(V82.1.2 B9):再從 tw_deep04 分支取 2004~2009(上市全市場日 K + 除權息 + 加權),`tw04_merge.py` 接成 <OUT>/d04
+ *      (d16 一個位元組都不動;d04 另寫一份 MANIFEST,記 tw_deep04 的 commit 與抓到幾個月)。月份或加權沒抓齊 → exit 1。
  * 跑法:node scripts/research_pack.mjs <OUT 資料夾>(約 10 分;會用到 <OUT>/src 與 <OUT>/work,做完刪掉,KEEP_SRC=1 留著)
  *       node scripts/research_pack.mjs --check <d16 資料夾>     → 只驗、印雜湊
  *       node scripts/research_pack.mjs --selftest
@@ -93,6 +95,22 @@ function build(OUT) {
     const M = { built: new Date().toISOString(), hash: H.hash, refs, idx_long_sha: sha(fs.readFileSync(path.join(od, 'idx_long.json'))).slice(0, 16),
         code: git('rev-parse', 'HEAD'), key: C.key, files: Object.keys(H.per).length, per: H.per };
     fs.writeFileSync(path.join(d16, 'MANIFEST.json'), JSON.stringify(M, null, 1));
+    if (process.env.TW04 === '1') {
+        git('fetch', '-q', '--depth=1', 'origin', '+refs/heads/tw_deep04:refs/remotes/origin/tw_deep04');
+        const twRef = git('rev-parse', 'origin/tw_deep04');
+        sh(`git archive ${twRef} | tar -x -C "${src}"`);
+        const tw = path.join(src, 'tw_deep04'), stt = JSON.parse(fs.readFileSync(path.join(tw, '_status.json'), 'utf8'));
+        if (!(stt.months_complete === stt.months_total && stt.idx_months === stt.months_total))
+            throw new Error(`tw_deep04 還沒抓齊:日 K ${stt.months_complete}/${stt.months_total} 個月、加權 ${stt.idx_months ?? 0}/${stt.months_total} 個月`);
+        const d04 = path.join(OUT, 'd04');
+        sh(`python3 scripts/tw04_merge.py --tw "${tw}" --d16 "${d16}" --sd "${sd}" --out "${d04}"`);
+        const C4 = checkPack(d04);
+        if (C4.bad.length) { console.error('🚨 d04 不合格(⛔ 不寫 MANIFEST):\n  ' + C4.bad.join('\n  ')); process.exit(1); }
+        const H4 = packHash(d04);
+        fs.writeFileSync(path.join(d04, 'MANIFEST.json'), JSON.stringify({ ...M, hash: H4.hash, refs: { ...refs, tw_deep04: twRef }, from_d16: H.hash,
+            tw04: { months: stt.months_complete, idx_months: stt.idx_months, days: stt.days_with_data, updated: stt.updated }, key: C4.key, files: Object.keys(H4.per).length, per: H4.per }, null, 1));
+        console.log(`✅ d04(2004 起)${d04}:加權 ${C4.key['^TWII.json'].from}~${C4.key['^TWII.json'].to}・0050 含息 ${C4.key['_bench0050.json'].from} 起・雜湊 ${H4.hash}`);
+    }
     if (!process.env.KEEP_SRC) { fs.rmSync(src, { recursive: true, force: true }); fs.rmSync(work, { recursive: true, force: true }); }
     console.log(`✅ 研究資料包 ${d16}:${C.key.stocks} 檔・加權 ${C.key['^TWII.json'].from}~${C.key['^TWII.json'].to}・0050 含息 ${C.key['_bench0050.json'].from} 起・雜湊 ${H.hash}・${((Date.now() - t0) / 60000).toFixed(1)} 分`);
 }
