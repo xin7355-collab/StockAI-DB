@@ -230,7 +230,7 @@ BH 多重比較、`tries`(V82.0.5 起每條新結論必寫試了幾種)、樣本
 | P6 獨立審查 | `/probe` ③b + 示範(埋兩個錯都抓到,另抓到 5 個真的) | LAB method `probe-review` |
 | P8 H2 | `scripts/l1_report.py` + `data_audit.py --json` + `weekly_backtest.yml` 部署前多產 `data/l1_report.json`(⛔ 不擋部署);App 體檢第 3 節 H | test_evolve ⑥;第一份要等下一次週五那一輪 |
 | P8 H1 | ↓ 下面那段你自己貼 | — |
-| B9 | ⏳ 2004~2009 資料到齊後(tw_deep04 第 6 輪之後) | — |
+| B9 | ✅ V82.1.4:tw_deep04 71/71 個月 + 加權 → d04(只有上市);照事先登記驗 2004~2010(含 2008):👑 分不出來(偏輸,中位 +51.5% vs 0050 含息 +84.7%、17 條贏 5)、📉 資金版 ⛔ 沒過;⛔ 不換預設 | LAB method `lead-oos-2004` / `dip-oos-2004`・EXP-20261111-05 / 06 |
 
 ### 🪝 H1:改 `index.html` 後自動跑 smoke_test(你自己貼進 `.claude/settings.json`)
 

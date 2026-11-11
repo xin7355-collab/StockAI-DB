@@ -14,6 +14,7 @@
 - `scripts/exp_log.mjs`(新):`pre`(跑之前登記問題 / 判定條件 / 預計試幾種 / 資料包雜湊)/ `done` / `list` → `research/experiments.ndjson`。⭐ 新探針一律先 `pre` 再跑。
 - 獨立審查(`/probe` ③b):結論出來之前派不知道結論的代理只讀探針原始碼;示範埋兩個前視錯兩個都抓到(LAB method `probe-review`)。
 - 🇹🇼 V82.1.3 `scripts/tw04_merge.py`(新)+ `scripts/tw_deep04_fetch.py` 多抓 FMTQIK(每個月一次,2004~2009 每天的加權收盤 → `tw_deep04/idx/`):`TW04=1 node scripts/research_pack.mjs <OUT>` → `<OUT>/d04`(2004-02 起,只有上市;d16 一個位元組都不動,d04 另寫 MANIFEST)。日 K 或加權沒抓齊 → exit 1。`--selftest` 10 條。用途:2004~2010 是唯一沒拿來挑過規則的年份(含 2008)→ 👑 / 📉 / 0050 的樣本外。
+- 🇹🇼 V82.1.4 已跑完(tw_deep04 71/71 個月 + 加權 71/71):`TW04=1 KEEP_SRC=1 node scripts/research_pack.mjs <OUT>` → d04;👑 `DATA_DIR=<d04> DIV=<d04>/_div16.json WINS=2004-06-01 END=2010-12-31 SETS='[["現行",{}]]' EQ_DIR=… node scripts/leader_probe.mjs out.json`(錢放現金 `{"park":false}`);📉 `DATA_DIR=<d04> DIV=<d04>/_div16.json DL_MONEY=1 DL_GROUPS=RSlo,U100 DL_HS=20,30,40,50,60 DL_KEYS='RSlo|o|20,RSlo|o|40,U100|o|40' FROM=2004-08-02 END=2010-12-31 node scripts/dipleader_probe.mjs out.json`(一組十幾秒)。結果見 LAB `lead-oos-2004` / `dip-oos-2004`。⛔ 別拿這段回頭調規則 —— 它是唯一的舊年份樣本外。
 
 ### 📅 V82.1.1(2026-11-11)👑 換倉挑星期幾買
 - `scripts/lead_wd_probe.mjs`(新):`DATA_DIR=$S/d16 DIV=$S/d16/_div16.json [WINS=2011-01-03,2022-09-16] [KEEP_ROWS=1] node --max-old-space-size=9000 scripts/lead_wd_probe.mjs out.json`(約 20 秒)→ 每個星期幾:10 天贏 0050 機率、平均多賺、買完 10 天內跌 ≥8%、買在 10 天最高;同一週裡比 + 週內打亂星期幾 2,000 次 + BH;連 2 次都大跌的機率。`--cmp <leader_probe 輸出>` = 事先寫死的回測層判定(SETS 要叫「現行」+ `wd{1~5}k{0,1}`)。`--selftest` 6 條(`WD_INJECT=peek` 必紅)。
