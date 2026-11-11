@@ -148,6 +148,11 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     //   books = B → 錢平分 B 本帳,每本帳是**完全獨立**的帳戶(各自的現金 / 0050 / 持股,同一檔兩本都買 = 各持一份),
     //   第 j 本帳的換倉日 = 第 1 本 + j × bookOff 個交易日(phase = R − j×bookOff);bookJoin = 'now' 第 0 天就照當下名單買 / 'wait' 錢先停 0050 等自己的換倉日
     books: 1, bookOff: 5, bookJoin: 'now',
+    // 📅 V82.1.1 星期幾換倉(使用者:「找週一~週五最適合進場的時機,取代領頭羊購買日」)⛔ 不設(rebWd 0)時逐位相同(selftest ㊿l):
+    //   rebWd = 1~5(星期一~五,一律 UTC)・rebWk = 0 | 1(兩週一格,哪一週開始)→ 買進日 = 那一格裡第一個 ≥「第一週的星期 X」的交易日(假日往後),
+    //   決策日 = 買進日前一個交易日(照原本收盤決定、隔天開盤買);s0 那天照舊先買一次(= 現行規則的第一天)。設了就不看 phase / join、⛔ 不可配 books / ddHalf
+    //   dayTrace = 陣列:**每一個交易日**用引擎自己的 rankAt + candOk 取當天前 N 名(⛔ 不看手上有什麼),記隔天開盤買 → R 天後收盤(只分析用,⛔ 影響交易)
+    rebWd: 0, rebWk: 0, dayTrace: null,
     // 🛑 V79.3.6 停手(使用者:「高檔 + 外資拋售 + 大盤收綠,👑 要不要先不操作?」)⛔ 不設時逐位相同(selftest ㊿d):
     //   pause = Uint8Array(對齊 cal;1 = 那天收盤 ⛔ 不開新倉 —— 換倉日碰到就只賣不買、閒錢照停 0050,跟空頭守門同一個做法)
     //   pauseFile = JSON 檔(['YYYY-MM-DD', …] 或 {日期: 1})= 訊號日 ・pauseK = 訊號當天起 K 個交易日都不開新倉(0 = 只有訊號當天)
@@ -268,6 +273,21 @@ export function dipPoolOf(ctx, i, U) {
 }
 /** 今天收盤 vs 昨天收盤(除權息調整);昨天沒交易 / 今天是資料斷崖 → NaN */
 export function dipRet(S, i) { return i > 0 && S.C[i] > 0 && S.C[i - 1] > 0 && S.jump[i] !== i ? S.C[i] * S.F[i] / S.C[i - 1] - 1 : NaN; }
+/** 📅 V82.1.1 星期幾換倉的決策日(Uint8Array,1 = 這天收盤換倉 → 隔天開盤買)。
+ *  週數 = 從 1970-01-05(星期一)起算的第幾週;兩週一格,格的第一週 % 2 === wk;目標日 = 那一週的星期 wd;
+ *  買進日 = 這一格裡第一個日期 ≥ 目標日的交易日(遇假日往後,⛔ 不跨到下一格)。日期一律 UTC(⛔ 本地時區會差一天)。 */
+export function wdRebFlags(cal, wd, wk) {
+    const n = cal.length, out = new Uint8Array(n);
+    const dn = d => Math.floor(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 86400000);
+    const info = d => { const x = dn(d), dow = (x + 3) % 7, mon = x - dow, wkI = (mon - 4) / 7, bs = wkI - (((wkI - wk) % 2) + 2) % 2; return { x, bs, tgt: 4 + bs * 7 + (wd - 1) }; };
+    let prev = null;
+    for (let j = 0; j < n; j++) {
+        const a = info(cal[j]);
+        if (a.x >= a.tgt && (!prev || prev.bs !== a.bs || prev.x < a.tgt) && j > 0) out[process.env.LP_INJECT === 'wdsame' ? j : j - 1] = 1;   // 注入:決策日 = 買進日(selftest ㊿l 必紅)
+        prev = a;
+    }
+    return out;
+}
 
 /** 📉 dip 事件層級(V78.2.6):熱門池裡跌 ≥dip% → 隔天開盤買、第 hold 天收盤賣(扣 0.44%),對照 = 同一天熱門池**全部**用同一個做法
  *  開盤接近漲停買不到 → 剔除並計數。回 {ev:[{d, v, raw}], cnt}(v = 這一筆 − 同一天熱門池平均)→ 直接餵 gates() */
@@ -446,6 +466,14 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     const DDH = P.ddHalf ? ddRule(P.ddHalf) : null;
     if (DDH && (!DDH._w || DDH._w.length < nEnd - s0)) throw new Error(`ddHalf._w 長度 ${DDH._w ? DDH._w.length : 0} < 這一段 ${nEnd - s0} 天`);
     if (DDH && P.glide > 0) throw new Error('ddHalf 不可跟 glide 一起用(沒驗過)');
+    // 📅 V82.1.1 星期幾換倉(⛔ 不設 → WDR = null,換倉照原本的 (i − s0 + phase) % R)
+    if (P.rebWd && (!(P.rebWd >= 1 && P.rebWd <= 5) || (P.rebWd | 0) !== P.rebWd || ![0, 1].includes(P.rebWk))) throw new Error(`rebWd 只認 1~5、rebWk 只認 0 / 1,收到 ${P.rebWd} / ${P.rebWk}`);
+    if (P.rebWd && (P.phase || P.join || P.ddHalf)) throw new Error('rebWd 不可配 phase / join / books / ddHalf(沒驗過)');
+    const WDR = P.rebWd ? wdRebFlags(cal, P.rebWd, P.rebWk) : null;
+    // 🔬 dayTrace(只分析用):⛔ 會動到亂數的挑法不收(那會改變交易結果)
+    const DT = Array.isArray(P.dayTrace) ? P.dayTrace : null;
+    if (DT && (P.pick !== 'mom' || P.pool === 'theme' || P.shamKeep > 0 || P.xsSham > 0 || P.accAvoid === 'sham' || P.rankUp || P.volMin > 0 || P.xsW > 0))
+        throw new Error('dayTrace 只收 pick mom、不含 sham / theme / rankUp / volMin / xsW(會動到亂數或要上一期名次)');
     let ddW = 1, ddTgt = 1;                                   // ddW = 現在手上 / 新買用的比例;ddTgt = 'next' 模式已經決定好的比例
     const ddRe = new Map();                                   // 賣一半那天跌停賣不掉 / 沒有價格 → 下一個成交點再賣(sym → 要賣幾成)
     // 🅿️ V79.1.6 parkGate(⛔ 不設 → 一律回 true;sham 一天只抽一次)
@@ -552,6 +580,26 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     const ipx = (S, i, side, base) => { if (!P.intraPx || P.fill !== 'open' || retryNow) return base; const v = P.intraPx.get(`${S.sym}|${cal[i]}|${side}`); if (v > 0) { st.ipxHit = (st.ipxHit || 0) + 1; return v; } st.ipxMiss = (st.ipxMiss || 0) + 1; return base; };
     const sell = (p, px, i, why) => { if (LOG) LOG.push({ s: p.S.sym, side: 'S', d: cal[i], dd: cal[i - 1], px, why: why || 'other', e: cal[Math.floor(p.entry)], cost: p.cost }); const amt = p.sh * px; const got = CAP ? amt - feeOf(amt) - amt * TAX : amt * (1 - FEE - TAX); cash += got; turnover += amt; const ret = px / p.cost - 1 - 2 * FEE - TAX; trades++; sumRet += ret; if (ret > 0) wins++;
         const pa = got - p.paid; sumAmt += pa; if (worstAmt === null || pa < worstAmt) worstAmt = pa; if (bestAmt === null || pa > bestAmt) bestAmt = pa; pos.delete(p.S.sym); };
+    // 🔬 V82.1.1 dayTrace:今天收盤的前 N 名(同 rankAt + candOk;開盤漲停買不到、窗口內有斷崖的跳過、往下一名找),
+    //   隔天開盤等權買 → 第 R 天收盤(含息);v = 籃子淨值(每天收盤),mdd = 期間最低、top = 期間沒有一天收盤比買進價高、r3 = 第 3 天收盤
+    const dayTraceAt = i => {
+        const { ranked } = rankAt(i);
+        const cand = CAND ? ranked.filter((S, k) => candOk(S, i, new Map(), k, null)) : ranked;
+        const e = i + P.R, picks = [];
+        for (const S of cand) {
+            if (picks.length >= P.N) break;
+            const o = S.O[i + 1];
+            if (!(o > 0 && S.C[i] > 0) || o / S.C[i] - 1 > limitOf(cal[i + 1]) - 0.003 || S.jump[e] !== S.jump[i]) continue;
+            picks.push(S);
+        }
+        if (!picks.length) return;
+        const v = new Float64Array(e - i);
+        for (const S of picks) { let f = 1; for (let j = i + 1; j <= e; j++) { if (j > i + 1) f *= S.F[j]; v[j - i - 1] += lastC(S, j) * f / S.O[i + 1] / picks.length; } }
+        let mn = Infinity, mx = -Infinity; for (const x of v) { mn = Math.min(mn, x); mx = Math.max(mx, x); }
+        const k3 = Math.min(3, v.length) - 1;
+        DT.push({ d: cal[i + 1], dd: cal[i], k: picks.length, r: (v[v.length - 1] - 1) * 100, b: (etf.tr[e] / etf.tr[i] - 1) * 100,
+                  mdd: (mn - 1) * 100, top: mx <= 1 ? 1 : 0, r3: (v[k3] - 1) * 100, b3: (etf.tr[i + 1 + k3] / etf.tr[i] - 1) * 100, bear: noBuy(i) ? 1 : 0 });
+    };
     for (let i = s0; i < nEnd; i++) {
         if (P.add > 0 && i > s0 && cal[i].slice(0, 7) !== cal[i - 1].slice(0, 7)) { cash += P.add; contributed += P.add; }   // 🌱 每月投入
         // ① 成交點:執行上一次決策的委託 —— fill='open' 在今天開盤、'nextclose' 在今天收盤(見 ②b)
@@ -715,7 +763,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         if (dailySell.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; for (const sym of dailySell) if (!pending.sell.includes(sym)) pending.sell.push(sym); dailySell.clear(); }
         if (ddRe.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; pending.ddRe = new Map([...(pending.ddRe || []), ...ddRe]); ddRe.clear(); }   // ✂️ 賣一半沒賣掉的明天再賣
         // 🔄 V78.6.3 refill:不是換倉日 → 今天收盤就照當下名次補滿空位(換倉日交給 ③)
-        const isReb = !DIP && ((i - s0 + P.phase) % P.R === 0 || (P.join === 'now' && i === s0));
+        const isReb = !DIP && (WDR ? (WDR[i] === 1 || i === s0) : ((i - s0 + P.phase) % P.R === 0 || (P.join === 'now' && i === s0)));
         if (P.refill && !isReb && pending && pending.sell.length && i + 1 < n && !noBuy(i)) {
             const room = P.N - (pos.size - pending.sell.filter(s => pos.has(s)).length) - pending.buy.length;
             if (room > 0) {
@@ -728,6 +776,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         // 🅿️ V79.1.6 parkGate:閘門關著時留下的現金,哪天收盤開了就停進 0050(⛔ 不設時整段不跑)
         if (P.parkGate) { st.gTot = (st.gTot || 0) + 1; const g = gateOpen(i); if (g) st.gOpen = (st.gOpen || 0) + 1; if (g && deferPark) { deferPark = false; parkCash(i); } }
         eq.push(value(i));
+        if (DT && i + P.R < nEnd) dayTraceAt(i);   // 🔬 V82.1.1 只分析用(⛔ 不碰 cash / pos / pending)
         // ③ 換倉日收盤:決定明天開盤要做什麼
         if (P.join === 'wait' && P.phase > 0 && i === s0 && (i - s0 + P.phase) % P.R !== 0 && i + 1 < n) pending = { sell: [], buy: [] };   // 🕐 等的那幾天錢停 0050
         // 📉 dip:每天收盤挑訊號 → 隔天開盤買(⛔ 不跑下面的換倉)
@@ -1669,6 +1718,53 @@ function selftest() {
             `㊿k 跌 20% 收一半:不設 == null == th 99(逐位相同、sham 不動)、第 ${dDay - 100} 天跌破 → 換倉日才收(賣掉 ${(trimFrac * 100).toFixed(1)}%)、`
             + `回到最高點 top 1 補回 / top 0 不補(${Math.round(h1.r.eq.at(-1))} > ${Math.round(h0.r.eq.at(-1))})、一字跌停 → 隔天才賣、空頭那次不補下一次補、`
             + `安慰劑天數一樣(${hs.r.st.ddDays})、'next' 隔天就收、兩本帳各收一次、打錯字 throw ${thrown}/7`);
+    }
+    {   // ㊿l 📅 V82.1.1 星期幾換倉 rebWd / rebWk + dayTrace:
+        //   ① 不設 == rebWd 0(逐位相同)② 乾淨日曆:10 組(星期一~五 × 兩種週別)的買進日把每個交易日剛好分完一次,每個買進日都是那個星期
+        //   ③ 有假日:買進日只會往後、⛔ 跨格,相鄰兩次買進隔 8~12 個交易日 ④ 引擎真的只在那幾天買(第一天照舊)
+        //   ⑤ dayTrace 不影響交易、一檔世界的報酬 / 最低 / 買在最高 = 手算 ⑥ 打錯字 / 配 phase / books throw
+        const wdOf = d => new Date(d + 'T00:00:00Z').getUTCDay();
+        const calW = []; for (let k = 0; calW.length < 400; k++) { const d = new Date(Date.UTC(2023, 0, 2 + k)).toISOString().slice(0, 10); const w = wdOf(d); if (w >= 1 && w <= 5) calW.push(d); }
+        const hol = new Set(['2023-01-24', '2023-02-28', '2023-04-05', '2023-06-22', '2023-09-29', '2023-10-10', '2024-02-08', '2024-02-09', '2024-02-12']);
+        const calH = calW.filter(d => !hol.has(d));
+        const buyDays = (cl, wd, wk) => { const f = wdRebFlags(cl, wd, wk), out = []; for (let i = 0; i + 1 < cl.length; i++) if (f[i]) out.push(i + 1); return out; };
+        let cover = new Map(), wdBad = 0;
+        let gap10 = true;
+        for (let wd = 1; wd <= 5; wd++) for (const wk of [0, 1]) { const bj = buyDays(calW, wd, wk); bj.forEach((j, k) => { cover.set(j, (cover.get(j) || 0) + 1); if (wdOf(calW[j]) !== wd) wdBad++; if (k && j - bj[k - 1] !== 10) gap10 = false; }); }
+        const exact = [...Array(calW.length).keys()].slice(1).every(j => cover.get(j) === 1);
+        let back = 0, gapBad = 0, gaps = [];
+        for (let wd = 1; wd <= 5; wd++) for (const wk of [0, 1]) {
+            const bj = buyDays(calH, wd, wk);
+            const tradeSet = new Set(calH);
+            for (const j of bj) {   // 不是那個星期 → 往回走到那個星期,中間每一天都不能是交易日、那一天要是假日(= 只會因為假日往後)
+                if (wdOf(calH[j]) === wd) continue;
+                let d = new Date(calH[j] + 'T00:00:00Z'), steps = 0, fine = false;
+                while (steps++ < 10) { d = new Date(d.getTime() - 86400000); const ds = d.toISOString().slice(0, 10); if (tradeSet.has(ds)) break; if (wdOf(ds) === wd) { fine = hol.has(ds); break; } }
+                if (!fine) back++;
+            }
+            for (let k = 1; k < bj.length; k++) { const g = bj[k] - bj[k - 1]; gaps.push(g); if (g < 5 || g > 12) gapBad++; }
+        }
+        const mkW = (sym, f) => prepStock(sym, calH.map((d, i) => { const c = f(i); return { d, o: c, h: c * 1.005, l: c * 0.995, c, v: 1e7 }; }), calH, []);
+        const nW = calH.length, flatW = { tr: new Float64Array(nW).fill(1) };
+        const W1 = mkW('5101', i => 100 + 8 * Math.sin(i / 7)), W2 = mkW('5102', i => 100 + 8 * Math.cos(i / 9)), W3 = mkW('5103', i => 100 + i * 0.05);
+        const ctxW = { cal: calH, stocks: [W1, W2, W3], etf: flatW, bear: new Uint8Array(nW) };
+        const cfgW = { U: 3, N: 1, R: 10, L: 5, chand: 0, park: false, trend: false, hyst: 1 };
+        const eqS = (a, b) => a.eq.length === b.eq.length && a.eq.every((v, k) => v === b.eq[k]);
+        const w0 = simulate(ctxW, 60, cfgW, 3), w00 = simulate(ctxW, 60, { ...cfgW, rebWd: 0, rebWk: 0 }, 3);
+        const logW = [], w3 = simulate(ctxW, 60, { ...cfgW, rebWd: 3, rebWk: 1, log: logW }, 3);
+        const okDays = new Set([61, ...buyDays(calH, 3, 1)].map(j => calH[j]));
+        const buyLog = logW.filter(x => x.side === 'B'), offDay = buyLog.filter(x => !okDays.has(x.d)).length;
+        const dt = [], wT = simulate(ctxW, 60, { ...cfgW, dayTrace: dt }, 3);
+        const one = { cal: calH, stocks: [W3], etf: flatW, bear: new Uint8Array(nW) }, dt1 = [];
+        simulate(one, 60, { U: 1, N: 1, R: 10, L: 5, chand: 0, park: false, trend: false, dayTrace: dt1 }, 3);
+        const i0 = 100, x0 = dt1.find(x => x.dd === calH[i0]), rHand = (W3.C[i0 + 10] / W3.O[i0 + 1] - 1) * 100;
+        let thrown = 0;
+        for (const bad of [{ rebWd: 6 }, { rebWd: 2, rebWk: 2 }, { rebWd: 2, phase: 3 }, { rebWd: 2, books: 2, bookOff: 4 }, { dayTrace: [], pick: 'sham' }]) { try { simulate(ctxW, 60, { ...cfgW, ...bad }, 3); } catch (_) { thrown++; } }
+        t(eqS(w0, w00) && exact && gap10 && wdBad === 0 && back === 0 && gapBad === 0 && buyLog.length >= 5 && offDay === 0 && !eqS(w3, w0)
+            && eqS(wT, w0) && dt.length === nW - 60 - 10 && x0 && Math.abs(x0.r - rHand) < 1e-9 && x0.top === 0 && x0.mdd <= 0 && thrown === 5,
+            `㊿l 星期幾換倉:不設 == rebWd 0、乾淨日曆 10 組剛好分完每個交易日(${exact ? '是' : '否'})・每次隔 10 天(${gap10 ? '是' : '否'})、星期不對 ${wdBad}、有假日:不是因為假日才換天 ${back}・`
+            + `間隔 ${Math.min(...gaps)}~${Math.max(...gaps)} 天(超出 5~12 的 ${gapBad})、星期三那組買了 ${buyLog.length} 次・不在買進日 ${offDay}、`
+            + `dayTrace 不影響交易 ${dt.length} 筆・一檔手算 ${x0 ? x0.r.toFixed(3) : '?'} == ${rHand.toFixed(3)}、打錯字 throw ${thrown}/5`);
     }
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;

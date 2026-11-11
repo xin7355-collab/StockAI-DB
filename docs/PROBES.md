@@ -3,6 +3,12 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 📅 V82.1.1(2026-11-11)👑 換倉挑星期幾買
+- `scripts/lead_wd_probe.mjs`(新):`DATA_DIR=$S/d16 DIV=$S/d16/_div16.json [WINS=2011-01-03,2022-09-16] [KEEP_ROWS=1] node --max-old-space-size=9000 scripts/lead_wd_probe.mjs out.json`(約 20 秒)→ 每個星期幾:10 天贏 0050 機率、平均多賺、買完 10 天內跌 ≥8%、買在 10 天最高;同一週裡比 + 週內打亂星期幾 2,000 次 + BH;連 2 次都大跌的機率。`--cmp <leader_probe 輸出>` = 事先寫死的回測層判定(SETS 要叫「現行」+ `wd{1~5}k{0,1}`)。`--selftest` 6 條(`WD_INJECT=peek` 必紅)。
+- `scripts/leader_probe.mjs` 新參數 `rebWd` / `rebWk`(每兩週的星期 X 買;遇假日往後、⛔ 跨格;s0 照舊先買一次;⛔ 配 phase / join / books / ddHalf)、`dayTrace`(每一個交易日的前 N 名隔天開盤買 → R 天後收盤,只分析用);`wdRebFlags(cal, wd, wk)` 匯出;selftest ㊿l(`LP_INJECT=wdsame` 必紅)。回測層:`SETS='[["現行",{"capital":1000000}],["wd1k0",{"capital":1000000,"rebWd":1,"rebWk":0}],…]' WINS=2022-09-16,2011-01-03 DATA_DIR=$S/d16 DIV=$S/d16/_div16.json node --max-old-space-size=11000 scripts/leader_probe.mjs out.json`(11 組約 25 分)。
+- 資料:d16 要有 `_bench0050.json` / `_div0050.json`(⛔ 沒有就只有 2023-06 起的 0050 → 16 年的「贏 0050」全部是空的;用 `data/idx_long.json` 的 e0050 / div0050 接,同 `merge_k66_history.apply_idx_long` 那三行)。
+- 何時重跑:⛔ 結論已定(LAB `lead-weekday`:星期幾沒有差,差的是排到哪一天的運氣)。👑 規則大改(換倉天數、排名)才值得重跑。
+
 ### 🟥⬇️ V82.1.0(2026-11-10)漲停隔天放空 × 權證小哥的條件
 - `scripts/lu_short_probe.mjs`(新):`DATA_DIR=$S/d16 DIV=$S/d16/_div16.json SHARE_DIR=$S/sd/stock_deep/share KBAR5_DIR=$S/k5d/kbar5_deep:$S/k5/kbar5:$S/k5lu/kbar5_lu node --max-old-space-size=12000 scripts/lu_short_probe.mjs out.json`(約 20 分)。回答「收盤鎖漲停的股票,隔天開盤放空賺不賺 —— 加上換手率夠高 / 前面漲過一段 / 位階高 / 連續漲停這些條件有沒有比較好」。事件 = `downday_lu_probe.lockUp`(⛔ 第二份);隔天開盤放空(開盤在跌停 = 空不到;平盤以下另算);回補 = 當天收盤(當沖 0.25%)/ 3 / 5 / 10 天(融券 0.665%);回補那天又鎖漲停 → 延到第一個開盤沒在漲停的那天(延太久的那段也過斷崖守門);換手率 = 量 ÷ 前一天以前的發行股數(`stock_deep/share`);對照 = 同一天全部股票開盤放空 + 安慰劑(同換手桶 × 前漲桶、當天沒漲停);六關 = `maxim_kbar5_probe.gates`;換手 ≥3/5/10/15 × 前漲 ≥20/30/50(± 位階 ≥80)24 格;熱門股 5 分 K 09:05 再量一次;加權盤勢分開。`--selftest` 12 條(`LS_INJECT=peek` 前漲含漲停那天必紅)。
 - 資料:d16 要先建(`merge_deep_klines.mjs` → `merge_stock_deep.py --base <放 ^TWII / 0050 的資料夾>`),⚠️ d16 的 `^TWII.json` 要用 `data/idx_long.json` 的 twii 接到 2010(base 那份只有 2021-11 起,`loadCtx` 拿它當日曆)。
