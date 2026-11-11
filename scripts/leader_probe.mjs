@@ -31,6 +31,7 @@ import { finSeries, finOnAt, finKnownAt } from './lib_finaccel.mjs';
 import { valuePrep } from './lib_value.mjs';
 import { accrualSeries, accrualMonthCut, accrualHiAt } from './lib_accrual.mjs';
 import { gates } from './maxim_kbar5_probe.mjs';
+import { perf } from './lib_perf.mjs';
 import { parseThemes } from './lib_themes.mjs';
 import { limitOf } from './lib_limit.mjs';
 import { ddRule, ddSeries, shiftSched as ddShift } from './lib_leaddd.mjs';
@@ -392,6 +393,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     // 🚧 V79.2.4 fill 認不得 → throw(以前打錯字會讓 pending 永遠不執行、整段只剩 0050,安靜地變成錯的對照)
     if (!FILLS.includes(P.fill)) throw new Error(`fill 只認 ${FILLS.join(' / ')},收到 ${JSON.stringify(P.fill)}`);
     const n = cal.length;
+    // 📦 V82.1.2 起點那天沒有 0050 含息值 → 停(⛔ 印 NaN 繼續跑:2026-11-11 d16 少了 _bench0050.json,16 年「贏 0050」整欄空的才發現)
+    if (!(etf && etf.tr && etf.tr[s0] > 0)) throw new Error(`起點 ${cal[s0]} 沒有 0050 含息值(研究資料夾少了 _bench0050.json?用 scripts/research_pack.mjs 組)`);
     // 📅 V78.0.8 endIdx:跑到這一天收盤就停(逐年成績單:每年 1 月重放 100 萬、年底以市值計)—— 不設 = 跑到最後一天(逐位相同)
     const nEnd = P.endIdx != null ? Math.min(n, P.endIdx + 1) : n;
     const CAP = P.capital > 0;
@@ -951,7 +954,11 @@ export function metrics(eq, trSlice) {
     let peak = -Infinity, mdd = 0; for (const v of eq) { peak = Math.max(peak, v); mdd = Math.min(mdd, v / peak - 1); }
     let pk2 = -Infinity, mdd0 = 0; for (const v of trSlice) { pk2 = Math.max(pk2, v); mdd0 = Math.min(mdd0, v / pk2 - 1); }
     const tot = eq[n - 1] / eq[0] - 1, b = trSlice[n - 1] / trSlice[0] * (1 - FEE) - 1;
-    return { tot: tot * 100, cagr: (Math.pow(eq[n - 1] / eq[0], 1 / yrs) - 1) * 100, mdd: mdd * 100, b0050: b * 100, mdd0050: mdd0 * 100, ex: (tot - b) * 100, roll12 };
+    // 📐 V82.1.2 風險調整後(lib_perf 唯一一份;⛔ 舊欄位一個都不動)
+    const Pf = perf(eq, trSlice) || {}, Pb = perf(trSlice) || {};
+    return { tot: tot * 100, cagr: (Math.pow(eq[n - 1] / eq[0], 1 / yrs) - 1) * 100, mdd: mdd * 100, b0050: b * 100, mdd0050: mdd0 * 100, ex: (tot - b) * 100, roll12,
+        sharpe: Pf.sharpe ?? null, sortino: Pf.sortino ?? null, calmar: Pf.calmar ?? null, roll24: Pf.roll24 ?? null, vol: Pf.vol ?? null,
+        bSharpe: Pb.sharpe ?? null, bSortino: Pb.sortino ?? null, bCalmar: Pb.calmar ?? null };
 }
 /** 逐年(日曆年)報酬:策略 vs 0050 */
 export function yearly(eq, trSlice, dates) {
@@ -1077,6 +1084,8 @@ function runSet(ctx, name, cfg, startDate, paths = 17) {
         forced: med(r => r.st.forced), rebought: med(r => r.st.rebought), sellRate: r2(res.reduce((a, r) => a + r.st.forced, 0) / Math.max(1, res.reduce((a, r) => a + r.st.posDays, 0)) * 1e4),
         passRate: (() => { const T = res.reduce((a, r) => a + r.st.fTot, 0); return T ? r2(res.reduce((a, r) => a + r.st.fPass, 0) / T * 100) : null; })(), finMiss: med(r => r.st.finMiss), accCut: med(r => r.st.accCut), accUnk: med(r => r.st.accUnk), accDropRate: (() => { const K = res.reduce((a, r) => a + r.st.accKnown, 0); return K ? r2(res.reduce((a, r) => a + r.st.accCut, 0) / K * 100) : null; })(),
         eqEnd: res.map(r => r2(r.m.tot)),
+        perf: { sharpe: med(r => r.m.sharpe), sortino: med(r => r.m.sortino), calmar: med(r => r.m.calmar), roll24: med(r => r.m.roll24), vol: med(r => r.m.vol),
+            b: { sharpe: med(r => r.m.bSharpe), sortino: med(r => r.m.bSortino), calmar: med(r => r.m.bCalmar) } },   // 📐 V82.1.2(17 條中位)
         lu: cfg.luExit ? { lock: med(r => r.st.luLock), hold: med(r => r.st.luHold), open: med(r => r.st.luOpen), close: med(r => r.st.luClose) } : null,
         rk: (cfg.rkLu || cfg.rkLd || cfg.rkSham) ? { seen: med(r => r.st.rkSeen || 0), park: med(r => r.st.rkPark || 0), next: med(r => r.st.rkNext || 0), sham: med(r => r.st.rkSham || 0) } : null,
         gate: cfg.parkGate ? r2(res.reduce((a, r) => a + (r.st.gOpen || 0), 0) / Math.max(1, res.reduce((a, r) => a + (r.st.gTot || 0), 0)) * 100) : null,
@@ -1876,6 +1885,7 @@ function main() {
         if (R.ld) console.log(`    🟩 跌停賣不掉(中位):${R.ld.ep} 次、共卡 ${R.ld.blk} 個交易日 ・最後賣到的比原本的跌停價 ${R.ld.gap}%(17 條合計平均)`);
         if (R.otcMiss != null) console.log(`    🏪 櫃買沒資料退回加權的日子 ${R.otcMiss}(中位)`);
         if (R.skip) console.log(`    📉 換倉 ${R.skip.reb} 次裡跳過 ${R.skip.n} 次(中位;17 條合計跳過 ${R.skip.rate}%)・每條總報酬 ${R.eqEnd.join(' / ')}`);
+        if (R.perf) console.log(`    📐 Sharpe ${R.perf.sharpe}・Sortino ${R.perf.sortino}・Calmar ${R.perf.calmar}・滾動 24 月贏 0050 ${R.perf.roll24}%・年化波動 ${R.perf.vol}%(0050 含息 Sharpe ${R.perf.b.sharpe}・Sortino ${R.perf.b.sortino}・Calmar ${R.perf.b.calmar};無風險利率 0)`);
         console.log('    逐年 ' + Object.entries(R.years).map(([y, v]) => `${y} ${r2(v.s)}/${r2(v.c)}`).join(' ・'));
     }
     if (out) fs.writeFileSync(out, JSON.stringify(res));

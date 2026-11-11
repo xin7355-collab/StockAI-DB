@@ -226,7 +226,8 @@ done
 - **採礦 `*.py` 改動**:同上,直接 merge main + push,由 `daily_miner.yml` 接手
 - **無需先開 PR**;若 web session 開在 feature branch,完成就 fast-forward 合併回 main
 - 🏃 **2026-10-23 使用者明示:「你就直接一直做下去就好」(不要一直停下來要我確認)** → 改 workflow、改採礦、大改版面、動 `data/` 快取都**直接做**,做完回報「做了什麼 + 怎麼換回」。
-- ⛔ **只剩兩件仍須先問使用者**(做錯了沒辦法用 `git revert` 救回來):① **會動真錢的開關**(自動下單真實帳戶,例如 `PARK_LIVE_OK`、`LIVE`)② **刪掉使用者自己存的資料 / 不可回復的刪除**(例:IndexedDB 的貼上報告、AI 圖,或 force-push 蓋掉別人的東西)
+- ⛔ **只剩三件仍須先問使用者**(做錯了沒辦法用 `git revert` 救回來):① **會動真錢的開關**(自動下單真實帳戶,例如 `PARK_LIVE_OK`、`LIVE`)② **刪掉使用者自己存的資料 / 不可回復的刪除**(例:IndexedDB 的貼上報告、AI 圖,或 force-push 蓋掉別人的東西)
+  ③ 🔏 **2026-11-11 使用者決定(SELF_EVOLVING_AUDIT §10 ①)**:換版會改到 `auto_trade.py` / `lib_leader.py` / `lib_hotrule.py` / `scripts/lib_leaddd.mjs` 的**策略參數**(門檻・預設・錨點・規則)→ 先照 `docs/RELEASES.md` 寫發布報告、在對話裡問,核准後才更新 `research/approved_live.json`(⛔ 自己改它讓測試變綠);App 那邊的同一個預設**一起等**。守門 `scripts/test_release_gate.py`(四驗證)。程式修 bug 不算(修復 ≠ 優化)。
 - ⚠️ 雲端 session 的「Plan(計畫)」模式本來就會停下來等核准、排程工具(send_later / update_trigger)在 Auto 模式也可能被攔 —— 那兩個不是 CLAUDE.md 管得到的;要不被問,使用者在輸入框旁的下拉選單選「Auto」,並自己把 `permissions.allow` 寫進 `.claude/settings.json`(Claude 自己改那個檔會被安全檢查擋下,⛔ 不可繞過)
 - 壞了 → 使用者說「壞了」→ Claude 直接修;或 `git revert HEAD` 回退
 
@@ -240,6 +241,8 @@ done
    而出場規則變更會**直接改變他手上部位的防守價**。
 ② 🚨 **引用舊成績的地方沒有跟著換** —— 決策台的 `_DECK_TRACK49` 是用**舊出場**跑的
    → 畫面上那個「這套實測賺多少」**在低估自己**。那正是「回測沒有意義」的另一種形式。
+
+🔏 **2026-11-11 起:下面「直接換」只到 App 畫面 / 研究那一層;只要那次換版會改到 auto_trade 的下單參數,整包(App 一起)改成「寫發布報告 → 等使用者核准」**(`docs/RELEASES.md`、`test_release_gate.py`)。
 
 #### ✅ 直接換(⛔ 不用問)—— 五個條件**同時**成立
 1. **八道關卡全過**:六道(全期正 / 前後半同向 / 逐年同向 / 去最好年或最好月 / 扣成本 0.44% / 增量檢定)
@@ -612,7 +615,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 ### 溝通風格
 - **語言**:繁體中文回答(永遠不英文)
 - **風格**:**直接做別問**,不要長篇解釋,重點條列;一次回多件事用編號 + 短句
-- **問問題時機**(2026-10-23 更新,使用者:「直接一直做下去就好」):**只有兩件先問** —— ① 會動真錢的開關 ② 刪掉使用者自己存的資料 / 不可回復的刪除(詳見上面「Claude 永久授權」)。其他(含架構大改、改 GitHub Actions、動採礦邏輯)直接做、做完回報怎麼換回;拿不準的取捨挑一個合理預設先做,回報時寫出來。連「需要繼續嗎/部署嗎/版本要不要 bump」都不用問
+- **問問題時機**(2026-10-23 更新,使用者:「直接一直做下去就好」):**只有三件先問** —— ① 會動真錢的開關 ② 刪掉使用者自己存的資料 / 不可回復的刪除 ③ 會改到 auto_trade 下單參數的換版(🔏 發布報告,詳見上面「Claude 永久授權」)。其他(含架構大改、改 GitHub Actions、動採礦邏輯)直接做、做完回報怎麼換回;拿不準的取捨挑一個合理預設先做,回報時寫出來。連「需要繼續嗎/部署嗎/版本要不要 bump」都不用問
 - **使用者性格**:看不懂程式碼,壞了再說;Claude 永久授權 push main 直接 deploy
 
 ### 數字呈現
@@ -690,6 +693,8 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`python3 scripts/check_undefined_py.py`**(用到不存在的名字 = 潛在 NameError — V72.3.0 新增)
    + **`python3 scripts/check_dup_def.py`**(同一個檔案裡重複定義同名函式 → Python 用最後那個,前面等於死碼 — V74.6.9 新增,實跑踩到才寫的)
    + **`python3 scripts/check_env_default.py`**(🔧 workflow 從 `inputs.*` 餵的環境變數,Python 端必須 `or 預設` —— 排程觸發時是**空字串**不是不存在;V75.1.3 新增,pe_band 四個週日零產出就是這個坑,V74.7.0 intraday_probe 是第一次)
+   + **`python3 scripts/test_release_gate.py`** + `--selftest`(🔏 V82.1.2 實盤策略參數指紋 == 使用者核准那份 `research/approved_live.json`;紅了 ⛔ 自己改核准檔,先寫 `docs/RELEASES.md` 發布報告問使用者;改註解 / 函式內容不擋、新增像策略常數的名字沒收進指紋也擋)
+   + **`node scripts/test_exp_registry.mjs`**(🗂️ V82.1.2 實驗登錄 `research/experiments.ndjson`:每一筆 pre 早於 done、tries 一致、id 不重複;2026-11-12 起新的 ✅ / ⛔ 條目一定有 `x` 而且登錄裡是事先登記的(⛔ retro);新探針先 `node scripts/exp_log.mjs pre …` 再跑)+ **`node scripts/test_evolve.mjs`**(🧭 App 體檢第 3 節 E 風險調整後 / F Walk-forward / G 交易層預警 / H 每週 L1 體檢:只讀 `_EVOLVE` 與 `data/l1_report.json`(改一格畫面跟著變)、連 2 次低於線才標、讀不到要明講;INJECT=noflag / static 必紅)+ `node scripts/lib_perf.mjs --selftest` + `node scripts/research_pack.mjs --selftest` + `node scripts/lead_wf_probe.mjs --selftest` + `node scripts/trade_base.mjs --selftest` + `node scripts/embed_evolve.mjs --selftest` + `python3 scripts/fills_report.py --selftest` + `python3 scripts/l1_report.py --selftest`
    + **`node scripts/test_worker_cron.mjs`**(🗓️ Worker V22.7 排程:wrangler.toml == worker.js `CRON` 一字不差・星期欄 ⛔ 數字・照 Cloudflare 規則(1 = 週日)算出是週一~週五(決定性對照:舊 `1-5` = 週日~週四必判錯)・真的呼叫 `scheduled()` 週五五條都做事、週末都不做;注入三種全紅)
    + **`node scripts/test_worker_push.mjs`**(📲 V82.0.3 關掉 App 時的手機推播:Worker `pushCandidates` 讀報價表的 `z`(⛔ `price` —— 以前讀錯欄位一則都沒送出去,決定性對照:舊寫法同一份報價 0 則)・跌破成本 −5% / −10% / 到價各一則・ETF / 👑 / 價格不是正數 ⛔ 送・App `_syncPushSub` 同步前排除 ETF 與大跌撿便宜「我有買」那幾檔(批次還沒讀先讀,實跑一次))
    + **`node scripts/test_tg_kick.mjs`**(📲 V82.0.5 Telegram 作戰清單 / 尾盤買點由 Worker 準時叫醒:`tgKick` 只在台北 07:50~08:40(tg-list)/ 13:10~13:25(tg-eod)派、週末 / 沒金鑰 / 休市(crash_events `nx` 比今天晚)不派、每天每種一次(KV `tgkick:*`,派失敗 ⛔ 記)・⭐ 決定性對照:擁有者(`OWNER_CHAT_ID` = TELEGRAM_CHAT_ID)KV 設定 strategy=lead → 不派、換成 gene → 派;讀不到擁有者 / 沒設 / KV 壞 → 照派・接線 08:00 那輪 + 盤中末班(CRON.last)那輪、真的跑 scheduled() 13:15 派一次 13:30 不再派・事件名 TG_KICK ev == tg_push.yml types(雙向)、tg_push ⛔ cron・telegram_alert 排程兩輪 ALERT_MODE=none(cron 照留,macro_cron / news_express 跟在它後面)・deploy_worker 上傳 OWNER_CHAT_ID;INJECT=nolead / noclosed / nokv 各自紅)

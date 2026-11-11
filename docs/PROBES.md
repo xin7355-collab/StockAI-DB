@@ -3,6 +3,17 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🧭 V82.1.2(2026-11-11)自我進化工程(SELF_EVOLVING_AUDIT P1~P8)
+- `scripts/research_pack.mjs`(新):`node scripts/research_pack.mjs <輸出資料夾>` → 從 data / klines_deep / stock_deep 分支 + `data/idx_long.json` 組出 d16(含已下市、真加權 2010 起、`_bench0050.json` / `_div0050.json`)+ `MANIFEST.json`(來源 commit、檔數、關鍵檔起訖、內容雜湊);`--check <d16>` 只驗;`--selftest` 5 條(拿掉 0050 對照必紅、組兩次雜湊一樣)。⭐ 之後所有 16 年研究一律先跑它,⛔ 手組 d16。
+- `scripts/lead_wf_probe.mjs`(新):`DATA_DIR=<pack>/d16 DIV=<pack>/d16/_div16.json node --max-old-space-size=9000 scripts/lead_wf_probe.mjs run <cache>`(162 組 × 3 條起點,可續跑,約 1 小時)→ `analyze <cache> out.json`(擴張窗 / 滾動 3 年兩種挑法,挑訓練期總報酬最高)。`--selftest`(`WF_INJECT=peek` 必紅)。何時重跑:👑 規則換了、或資料多一年(新的一年才是真的樣本外)。
+- `scripts/trade_base.mjs`(新):`DATA_DIR=<pack>/d16 DIV=… node --max-old-space-size=9000 scripts/trade_base.mjs out.json` → 👑 16 年 17 條逐筆扣成本報酬的「連續 20 / 60 筆」百分位(App 體檢 G 的線)。`--selftest` 3 條。
+- `scripts/lib_perf.mjs` 新 `perf(daily, bench)` → Sharpe / Sortino / Calmar / 滾動 24 月贏 0050 / 波動(244 天、無風險 0);`leader_probe` 每個 SET 多帶 `perf`(舊欄位不變)。`--selftest`。
+- `scripts/embed_evolve.mjs`(新):`--perf <leader_probe 輸出> --perf-to YYYY-MM-DD` / `--wf <lead_wf analyze 輸出>` / `--trades <trade_base 輸出>` / `--pack <MANIFEST>` → pro.html `_EVOLVE`(⛔ 手改)。`--selftest` 3 條。
+- `scripts/fills_report.py`(新,在使用者電腦跑):讀自動下單 FILLS_LOG → 每月買 / 賣比回測假設的收盤價差多少;連 2 個月某一邊平均 > 0.30% 提醒(⛔ 不停用)。`--selftest` 4 條。
+- `scripts/l1_report.py`(新):每週回測部署前跑,`data_audit.py --json` + backtest_edge + test_release_gate + 實驗登錄 → `data/l1_report.json`(App 體檢 H)。`--selftest` 4 條。
+- `scripts/exp_log.mjs`(新):`pre`(跑之前登記問題 / 判定條件 / 預計試幾種 / 資料包雜湊)/ `done` / `list` → `research/experiments.ndjson`。⭐ 新探針一律先 `pre` 再跑。
+- 獨立審查(`/probe` ③b):結論出來之前派不知道結論的代理只讀探針原始碼;示範埋兩個前視錯兩個都抓到(LAB method `probe-review`)。
+
 ### 📅 V82.1.1(2026-11-11)👑 換倉挑星期幾買
 - `scripts/lead_wd_probe.mjs`(新):`DATA_DIR=$S/d16 DIV=$S/d16/_div16.json [WINS=2011-01-03,2022-09-16] [KEEP_ROWS=1] node --max-old-space-size=9000 scripts/lead_wd_probe.mjs out.json`(約 20 秒)→ 每個星期幾:10 天贏 0050 機率、平均多賺、買完 10 天內跌 ≥8%、買在 10 天最高;同一週裡比 + 週內打亂星期幾 2,000 次 + BH;連 2 次都大跌的機率。`--cmp <leader_probe 輸出>` = 事先寫死的回測層判定(SETS 要叫「現行」+ `wd{1~5}k{0,1}`)。`--selftest` 6 條(`WD_INJECT=peek` 必紅)。
 - `scripts/leader_probe.mjs` 新參數 `rebWd` / `rebWk`(每兩週的星期 X 買;遇假日往後、⛔ 跨格;s0 照舊先買一次;⛔ 配 phase / join / books / ddHalf)、`dayTrace`(每一個交易日的前 N 名隔天開盤買 → R 天後收盤,只分析用);`wdRebFlags(cal, wd, wk)` 匯出;selftest ㊿l(`LP_INJECT=wdsame` 必紅)。回測層:`SETS='[["現行",{"capital":1000000}],["wd1k0",{"capital":1000000,"rebWd":1,"rebWk":0}],…]' WINS=2022-09-16,2011-01-03 DATA_DIR=$S/d16 DIV=$S/d16/_div16.json node --max-old-space-size=11000 scripts/leader_probe.mjs out.json`(11 組約 25 分)。

@@ -1,0 +1,72 @@
+{
+ "approved": "2026-11-11",
+ "by": "使用者",
+ "fp": {
+  "auto_trade.py": {
+   "ACCOUNT_SIZE": "int(os.getenv('ACCOUNT_SIZE', '0'))",
+   "BEAR_GATE": "(os.getenv('BEAR_GATE') or '0') == '1'",
+   "EOD_FROM": "int(os.getenv('EOD_FROM', '13')) * 60 + int(os.getenv('EOD_FROM_M', '0'))",
+   "EOD_TO": "int(os.getenv('EOD_TO', '13')) * 60 + int(os.getenv('EOD_TO_M', '28'))",
+   "EXIT_RULE": "os.getenv('EXIT_RULE') or 'atr2'",
+   "GENE_RANK": "75 if os.getenv('GENE_RANK', '85').strip() == '75' else 85",
+   "GENE_VOL": "60",
+   "HOT_RULE": "hot_rule(os.getenv('HOT_RULE'))",
+   "LEADER": "os.getenv('LEADER') == '1'",
+   "LEADER_ACCOUNT": "int(os.getenv('LEADER_ACCOUNT') or 0)",
+   "LEADER_ANCHOR": "os.getenv('LEADER_ANCHOR') or _LL.LEADER_ANCHOR",
+   "LEADER_ANCHOR2": "os.getenv('LEADER_ANCHOR2') or _LL.LEADER_ANCHOR2",
+   "LEADER_BEAR_GATE": "(os.getenv('LEADER_BEAR_GATE') or '1') == '1'",
+   "LEADER_BOOKS": "int(os.getenv('LEADER_BOOKS') or _LL.LEADER_BOOKS)",
+   "LEADER_DD_HALF": "(os.getenv('LEADER_DD_HALF') or '1') == '1'",
+   "LEADER_DD_LIVE": "'2026-11-12'",
+   "LEADER_DEFER_BUY_FROM": "13 * 60 + 25",
+   "LEADER_GAPDN": "-0.03",
+   "LEADER_POS": "None if (os.getenv('LEADER_POS') or '') == '' else float(os.getenv('LEADER_POS'))",
+   "LEADER_RULE": "_LL.LEADER_RULE",
+   "LEADER_WINDOW": "(os.getenv('LEADER_WINDOW') or 'split').lower()",
+   "LIVE": "os.getenv('LIVE') == '1'",
+   "LOSS_LOCK_PCT": "float(os.getenv('LOSS_LOCK_PCT') or 0)",
+   "MAX_AMT_PER_TRADE": "int(os.getenv('MAX_AMT_PER_TRADE', '100000'))",
+   "MAX_HOLD_BY_RULE": "{'don40': 40}",
+   "MAX_HOLD_OVERRIDE": "int(os.getenv('MAX_HOLD_DAYS') or 0)",
+   "MAX_LOTS_PER_TRADE": "int(os.getenv('MAX_LOTS_PER_TRADE', '1'))",
+   "MAX_PICKS": "int(os.getenv('MAX_PICKS', '2'))",
+   "PARK": "(os.getenv('PARK') or '1') == '1'",
+   "PARK_AT": "int(os.getenv('PARK_AT_H') or 13) * 60 + int(os.getenv('PARK_AT_M') or 27)",
+   "PARK_BUF_PCT": "1.0",
+   "PARK_LIVE_OK": "False",
+   "PARK_MAX_AMT_PER_DAY": "int(os.getenv('PARK_MAX_AMT_PER_DAY') or 300000)",
+   "PARK_MIN_TRADE_PCT": "float(os.getenv('PARK_MIN_TRADE_PCT') or 2)",
+   "PARK_RESERVE_PCT": "float(os.getenv('PARK_RESERVE_PCT') or 0)",
+   "PARK_STALE_X": "1.1",
+   "PARK_SYM": "'0050'",
+   "POS_PCT": "float(os.getenv('POS_PCT', '15'))",
+   "SELL_ENABLE": "os.getenv('SELL_ENABLE', '1') == '1'"
+  },
+  "lib_hotrule.py": {
+   "GENE_RANK": "85",
+   "GENE_VOL": "60",
+   "HOT_DEFAULT": "'mean'",
+   "HOT_RULES": "{'mean': {'minN': 8, 'z': 0, 'top': 99}, 'lb': {'minN': 8, 'z': 1.28, 'top': 2}}"
+  },
+  "lib_leader.py": {
+   "LEADER_ANCHOR": "'2026-09-24'",
+   "LEADER_ANCHOR2": "'2026-10-02'",
+   "LEADER_BOOKS": "1",
+   "LEADER_RULE": "{'U': 100, 'N': 5, 'R': 10, 'L': 10, 'hyst': 2, 'pos': 85}"
+  },
+  "scripts/lib_leaddd.mjs": {
+   "LEAD_DD": "Object.freeze({th:20,lo:0.5,rec:'hi',top:1,from:'2024-07-01',live:'2026-11-12'})",
+   "LEAD_DD_MODEL": "Object.freeze({capital:1e6,ldLock:1})"
+  }
+ },
+ "hash": "95ae59b3064e8000",
+ "history": [
+  {
+   "date": "2026-11-11",
+   "hash": "95ae59b3064e8000",
+   "why": "基準線(現行)"
+  }
+ ],
+ "note": "使用者 11/11 回覆「你建議都做」→ 採用 SELF_EVOLVING_AUDIT §10 決定 ①:會改到 auto_trade 實際下單的換版要先核准。這一份 = 當天正在跑的現行參數(基準線),之後每一次改這些常數都要先寫 docs/RELEASES.md 的發布報告、問使用者、核准後才更新這個檔。"
+}

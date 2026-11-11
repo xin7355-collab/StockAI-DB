@@ -494,7 +494,7 @@ def dig(j, path):
     return cur
 
 
-def audit(ref):
+def audit(ref, json_out=None):
     problems = []   # (等級, 類別, 訊息)
     add = lambda lv, cat, msg: problems.append((lv, cat, msg))
     now = datetime.now(TW)
@@ -829,6 +829,16 @@ def audit(ref):
     print('\n' + '═' * 66)
     bad = [p for p in problems if p[0] == '❌']
     warn = [p for p in problems if p[0] == '⚠️']
+    if json_out:   # 🩺 V82.1.2 每週 L1 報告讀這一份(⛔ 不改判定;只把同一份結果寫成 JSON)
+        cats = {}
+        for l, cat, _m in problems:
+            c = cats.setdefault(cat, {'bad': 0, 'warn': 0}); c['bad' if l == '❌' else 'warn'] += 1
+        try:
+            with open(json_out, 'w', encoding='utf-8') as f:
+                json.dump({'ref': ref, 'at': now.isoformat(), 'bad': len(bad), 'warn': len(warn), 'cats': cats,
+                           'items': [[l, cat, str(m)[:200]] for l, cat, m in (bad + warn)[:60]]}, f, ensure_ascii=False)
+        except Exception as _e:
+            print(f'⚠️ --json 寫不進去:{_e}')
     if not problems:
         print('✅ 全部通過,沒有發現問題')
         return 0
@@ -980,10 +990,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--ref', default='origin/gh-pages', help='要體檢哪個 ref(預設 origin/gh-pages)')
     ap.add_argument('--selftest', action='store_true', help='🧪 用合成資料驗 C 類叫不叫得出來(不打 git)')
+    ap.add_argument('--json', help='🩺 V82.1.2 把結果(各類幾個錯 / 警告 + 前 60 條)另外寫成 JSON(每週 L1 報告用)')
     args = ap.parse_args()
     if args.selftest:
         sys.exit(selftest())
-    sys.exit(audit(args.ref))
+    sys.exit(audit(args.ref, args.json))
 
 
 if __name__ == '__main__':

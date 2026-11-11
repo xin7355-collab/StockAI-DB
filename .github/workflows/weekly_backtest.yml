@@ -270,15 +270,30 @@ jobs:
           name: weekly-edge
           path: /tmp/edge_out
 
+      # 🩺 V82.1.2 每週 L1 體檢報告(SELF_EVOLVING_AUDIT H2):資料體檢 + 實盤參數守門 + 實驗登錄 → data/l1_report.json
+      #   ⛔ 不擋部署(continue-on-error + 自己的時限);跑不動也要寫一份帶 err 的(⛔ 頁面以為上週那份是最新的)
+      - name: 🩺 每週 L1 體檢報告(⛔ 不擋部署)
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          git fetch -q --depth=1 origin "+refs/heads/gh-pages:refs/remotes/origin/gh-pages" || true
+          timeout 360 python3 scripts/data_audit.py --ref origin/gh-pages --json /tmp/edge_out/l1_audit.json > /tmp/l1_audit.log 2>&1 || true
+          tail -5 /tmp/l1_audit.log || true
+          python3 scripts/l1_report.py /tmp/edge_out/l1_audit.json /tmp/edge_out/backtest_edge.json > /tmp/edge_out/l1_report.json \
+            || echo '{"err":"l1_report.py 跑不動"}' > /tmp/edge_out/l1_report.json
+          head -c 400 /tmp/edge_out/l1_report.json; echo
+
       - name: 🚀 部署 backtest_edge.json + signal_edge.json 到 gh-pages + data
         run: |
           set -e
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           [ -s /tmp/edge_out/backtest_edge.json ] || { echo "❌ 拿回的 artifact 裡沒有 backtest_edge.json"; exit 1; }
+          [ -s /tmp/edge_out/l1_report.json ] || echo '{"err":"這一輪沒產出 L1 報告"}' > /tmp/edge_out/l1_report.json
           restore_files () {
             cp /tmp/edge_out/backtest_edge.json data/backtest_edge.json
             [ -s /tmp/edge_out/signal_edge.json ] && cp /tmp/edge_out/signal_edge.json data/signal_edge.json || true
+            cp /tmp/edge_out/l1_report.json data/l1_report.json
           }
           deploy_branch () {
             local BR="$1"
@@ -288,9 +303,9 @@ jobs:
             git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
             mkdir -p data
             restore_files
-            git add -f data/backtest_edge.json data/signal_edge.json 2>/dev/null || git add -f data/backtest_edge.json
+            git add -f data/backtest_edge.json data/signal_edge.json data/l1_report.json 2>/dev/null || git add -f data/backtest_edge.json data/l1_report.json
             if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
-            git commit -q -m "🔁 每週自動回測 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/backtest_edge.json data/signal_edge.json
+            git commit -q -m "🔁 每週自動回測 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/backtest_edge.json data/signal_edge.json data/l1_report.json
             for i in 1 2 3 4 5; do
               if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
@@ -299,8 +314,8 @@ jobs:
               git reset --hard -q "origin/$BR" 2>/dev/null || true
               mkdir -p data
               restore_files
-              git add -f data/backtest_edge.json data/signal_edge.json 2>/dev/null || git add -f data/backtest_edge.json
-              git commit -q -m "🔁 每週自動回測 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/backtest_edge.json data/signal_edge.json 2>/dev/null || true
+              git add -f data/backtest_edge.json data/signal_edge.json data/l1_report.json 2>/dev/null || git add -f data/backtest_edge.json data/l1_report.json
+              git commit -q -m "🔁 每週自動回測 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/backtest_edge.json data/signal_edge.json data/l1_report.json 2>/dev/null || true
             done
           }
           deploy_branch gh-pages

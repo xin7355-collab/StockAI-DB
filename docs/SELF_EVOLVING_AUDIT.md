@@ -179,6 +179,8 @@ BH 多重比較、`tries`(V82.0.5 起每條新結論必寫試了幾種)、樣本
 
 ## 10. 要你先決定的事
 
+> ✅ **2026-11-11 使用者:「你建議都做」** → ① 只有會改到 auto_trade 下單參數的換版要先核准(`docs/RELEASES.md` + `scripts/test_release_gate.py` + `research/approved_live.json`)② 實驗登錄放 main 的 `research/` ③ Walk-forward 先 👑 再 🔥。§11 P1~P8 全做,外加 2004~2009 到齊後含 2008 重跑。
+
 1. **正式策略要不要改成「人工核准才換」?**
    - A(提案):研究可以一直做,但任何改到 App 預設或 `auto_trade.py` 行為的換版,一律先出「發布報告」等你按核准。
    - B(現行 V75.0.9):五個條件全過就直接換,換完跳一次窗 + 一鍵換回舊的。
@@ -211,3 +213,48 @@ BH 多重比較、`tries`(V82.0.5 起每條新結論必寫試了幾種)、樣本
 - 不准為了贏 0050 改對的程式(陷阱 #45 / #46 / #49 都是「修完數字變差」照樣上線)。
 - 失敗全保留(⛔ 欄 206 條、method 欄 105 條「回測自己的坑」)。
 - 承認沒有優勢(今天的星期幾研究、昨天的漲停放空,結論都是「⛔ 不換」)。
+
+---
+
+## 13. V82.1.2 做完了什麼(2026-11-11,「你建議都做」)
+
+| 階段 | 交付 | 驗收 |
+|---|---|---|
+| B0 規則 | CLAUDE.md「先問使用者」第 ③ 件:換版會改到 auto_trade / lib_leader / lib_hotrule / lib_leaddd 的策略參數 → `docs/RELEASES.md` 發布報告 → 核准才更新 `research/approved_live.json` | — |
+| P7 發布守門 | `scripts/live_fingerprint.py`(49 個策略常數的預設值指紋)+ `research/approved_live.json`(2026-11-11 核准 = 現行)+ `scripts/test_release_gate.py`(四驗證) | selftest 5 條;改註解 / 函式內容不擋、新增像策略常數的名字沒收進指紋也擋 |
+| P1 資料包 | `scripts/research_pack.mjs`:data / klines_deep / stock_deep 分支 + idx_long → d16 + `MANIFEST.json`(來源 commit、內容雜湊);引擎起點那天 0050 含息不是數字就停 | selftest 5 條;實包雜湊 aaa094538cd18ee7、組兩次一樣 |
+| P2 實驗登錄 | `research/experiments.ndjson` + `scripts/exp_log.mjs` + `scripts/test_exp_registry.mjs`(四驗證);補登 23 筆(標 retro) | 2026-11-12 起新的 ✅ / ⛔ 條目一定要有 x 而且是事先登記的 |
+| P3 績效 | `scripts/lib_perf.mjs perf()`(Sharpe / Sortino / Calmar / 滾動 24 月);`leader_probe` 摘要多帶(舊欄位不變);App 體檢第 3 節 E | 👑 近 4 年 Sharpe 1.54 vs 0050 1.77、16 年 1.00 vs 0.95 |
+| P4 Walk-forward | `scripts/lead_wf_probe.mjs`(👑 162 組);App 體檢第 3 節 F | 看板年化高估 2.1~6.7 個百分點;🔥 列在推薦下一步(一組要 1~2 小時) |
+| P5 失效預警 | `scripts/trade_base.mjs`(👑 16 年逐筆基準)+ pro `_healthTrades`(每 10 筆看一次、連 2 次低於 2.5 百分位才標)+ `scripts/fills_report.py`(在你電腦跑,讀自動下單成交紀錄) | test_evolve ④;fills_report selftest 4 條 |
+| P6 獨立審查 | `/probe` ③b + 示範(埋兩個錯都抓到,另抓到 5 個真的) | LAB method `probe-review` |
+| P8 H2 | `scripts/l1_report.py` + `data_audit.py --json` + `weekly_backtest.yml` 部署前多產 `data/l1_report.json`(⛔ 不擋部署);App 體檢第 3 節 H | test_evolve ⑥;第一份要等下一次週五那一輪 |
+| P8 H1 | ↓ 下面那段你自己貼 | — |
+| B9 | ⏳ 2004~2009 資料到齊後(tw_deep04 第 6 輪之後) | — |
+
+### 🪝 H1:改 `index.html` 後自動跑 smoke_test(你自己貼進 `.claude/settings.json`)
+
+⛔ Claude 改 `.claude/settings.json` 會被安全檢查擋下,所以請你自己貼。把 `"hooks"` 那一塊加進現有的 `.claude/settings.json`(跟 `extraKnownMarketplaces` / `enabledPlugins` 並排,外面那層大括號只要一個):
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 240,
+            "command": "f=$(python3 -c \"import json,sys;print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))\"); case \"$f\" in *index.html) cd \"$CLAUDE_PROJECT_DIR\" && node scripts/smoke_test.mjs > /tmp/smoke_hook.log 2>&1 || { tail -25 /tmp/smoke_hook.log >&2; exit 2; } ;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- 只在改到 `index.html` 時跑(其他檔不跑,省時間);跑過不出聲,壞了把最後 25 行丟回給 Claude(exit 2 = 讓 Claude 看到並自己修)。
+- 一次約 1~2 分鐘。嫌慢就把 `Edit|Write` 改成只在你說「推」之前手動跑 —— 四驗證本來就會跑。
+- 換回:把 `"hooks"` 那一塊刪掉。

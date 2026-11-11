@@ -44,3 +44,51 @@ export const propZ = (k1, n1, k2, n2) => {
 
 /** 隨機亮燈的期望捕捉率:flag 每天以機率 p 亮,連看 k 天至少亮一次的機率 —— ⛔ 沒有這個對照,「捕捉率 60%」毫無意義 */
 export const randExpect = (p, k) => 1 - Math.pow(1 - p, k);
+
+/* ───────────────────────────────────────────────────────────────────────────────
+ * 📐 V82.1.2 風險調整後指標(SELF_EVOLVING_AUDIT G4)—— Sharpe / Sortino / Calmar / 年化 / 最大回撤 / 滾動 12、24 月贏 0050
+ *   輸入:每天收盤的淨值(含現金 + 0050 停車 + 持股市值;⛔ 只算持股)與同一天的 0050 含息指數(可省略)
+ *   口徑(寫死,畫面要照講):無風險利率 = 0、一年 244 個交易日、滾動窗口每 5 天取一次(同 leader_probe roll12)
+ *   ⛔ 別處不要再寫一份 Sharpe;要用就 import 這支。跑法:node scripts/lib_perf.mjs --selftest
+ * ─────────────────────────────────────────────────────────────────────────────── */
+const Y = 244;
+
+export function perf(v, bench = null) {
+    const n = v.length;
+    if (n < 2 || !(v[0] > 0)) return null;
+    const r = [];
+    for (let i = 1; i < n; i++) if (v[i] > 0 && v[i - 1] > 0) r.push(v[i] / v[i - 1] - 1);
+    const m = r.reduce((a, x) => a + x, 0) / r.length;
+    const sd = Math.sqrt(r.reduce((a, x) => a + (x - m) ** 2, 0) / Math.max(1, r.length - 1));
+    const dn = Math.sqrt(r.reduce((a, x) => a + Math.min(0, x) ** 2, 0) / r.length);
+    let pk = -Infinity, mdd = 0; for (const x of v) { pk = Math.max(pk, x); mdd = Math.min(mdd, x / pk - 1); }
+    const cagr = Math.pow(v[n - 1] / v[0], Y / (n - 1)) - 1;
+    const roll = w => { if (!bench || bench.length !== n) return null; let k = 0, b = 0; for (let i = w; i < n; i += 5) { if (!(bench[i] > 0 && bench[i - w] > 0)) continue; k++; if (v[i] / v[i - w] > bench[i] / bench[i - w]) b++; } return k ? b / k * 100 : null; };
+    return { cagr: cagr * 100, mdd: mdd * 100, vol: sd * Math.sqrt(Y) * 100,
+        sharpe: sd > 1e-12 ? m / sd * Math.sqrt(Y) : null, sortino: dn > 1e-12 ? m / dn * Math.sqrt(Y) : null, calmar: mdd < 0 ? cagr / -mdd : null,
+        roll12: roll(Y), roll24: roll(2 * Y) };
+}
+
+export function perfSelftest() {
+    let ok = 0, bad = 0; const t = (c, m) => { console.log((c ? '  ✅ ' : '  ❌ ') + m); c ? ok++ : bad++; };
+    // ① 每天 +0.1%、沒有波動 → Sharpe / Sortino 算不出來(null)、回撤 0、年化 = 1.001^244 − 1
+    const up = Array.from({ length: 500 }, (_, i) => Math.pow(1.001, i)), P = perf(up);
+    t(P.sharpe === null && P.sortino === null && P.mdd === 0 && Math.abs(P.cagr - (Math.pow(1.001, 244) - 1) * 100) < 1e-6, `① 直線上漲:年化 ${P.cagr.toFixed(2)}%、回撤 0、Sharpe 算不出來`);
+    // ② 一漲一跌 +2% / −1%:手算 Sharpe;Sortino 只罰往下的 → 比 Sharpe 大
+    const zz = [1]; for (let i = 1; i < 401; i++) zz.push(zz[i - 1] * (i % 2 ? 1.02 : 0.99));
+    const r = []; for (let i = 1; i < zz.length; i++) r.push(zz[i] / zz[i - 1] - 1);
+    const m = r.reduce((a, x) => a + x, 0) / r.length, sd = Math.sqrt(r.reduce((a, x) => a + (x - m) ** 2, 0) / (r.length - 1));
+    const Z = perf(zz);
+    t(Math.abs(Z.sharpe - m / sd * Math.sqrt(244)) < 1e-9 && Z.sortino > Z.sharpe && Z.mdd < 0, `② 一漲一跌:Sharpe ${Z.sharpe.toFixed(3)} = 手算、Sortino ${Z.sortino.toFixed(3)} 比較大(只罰往下)`);
+    // ③ 回撤 / Calmar:漲到 2 跌回 1 再漲到 3
+    const v3 = [1, 2, 1, 3], C = perf(v3);
+    t(Math.abs(C.mdd + 50) < 1e-9 && Math.abs(C.calmar - C.cagr / 100 / 0.5) < 1e-9, `③ 從 2 跌到 1 → 最大回撤 −50%、Calmar = 年化 ÷ 0.5`);
+    // ④ 滾動贏 0050:策略每天多 0.05% → 100%;一樣 → 0%;bench 長度不對 → null
+    const b = Array.from({ length: 800 }, (_, i) => Math.pow(1.0005, i)), s = b.map((x, i) => x * Math.pow(1.0005, i));
+    const R4 = perf(s, b), R5 = perf(b, b), R6 = perf(s, b.slice(1));
+    t(R4.roll12 === 100 && R4.roll24 === 100 && R5.roll24 === 0 && R6.roll24 === null, `④ 滾動 12 / 24 月贏 0050:一直多一點 → ${R4.roll12}% / ${R4.roll24}%、一樣 → ${R5.roll24}%、長度不對 → null`);
+    console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
+    return bad ? 1 : 0;
+}
+
+if (process.argv[1] && process.argv[1].endsWith('lib_perf.mjs') && process.argv.includes('--selftest')) process.exit(perfSelftest());

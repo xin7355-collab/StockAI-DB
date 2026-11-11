@@ -20,6 +20,18 @@ grep -n "關鍵字" docs/PROBES.md   # 探針登記表（📋 一大張表，每
 
 ---
 
+## ①b 跑之前先登記（V82.1.2 起必做；`scripts/test_exp_registry.mjs` 釘住）
+
+```bash
+node scripts/research_pack.mjs $S/pack          # 研究資料一律用資料包（約 2 分；MANIFEST 有雜湊）
+node scripts/exp_log.mjs pre --q "問題" --crit "事先寫死的判定條件" --tries 預計試幾種 --data <MANIFEST hash> --lab <k>
+```
+⛔ 判定條件寫進登錄**之後**才可以跑；跑完 `exp_log.mjs done <id> --verdict ok|trap|method|blocked --tries N --result "數字"`，
+LAB 條目帶 `x: '<id>'`。⛔ 事後補登（`--retro`）只准用在 2026-11-12 以前的舊結論。
+
+---
+
+
 ## ② 寫探針（樣板：`short_probe.py` 是目前方法學最完整的一支，可直接照抄）
 
 - 只讀 `data/*.json`，⛔ 不打 API、⛔ 不寫檔到 `data/`
@@ -59,6 +71,16 @@ grep -n "關鍵字" docs/PROBES.md   # 探針登記表（📋 一大張表，每
 - **格內對照**：位階 × 波動 × 成交金額三分位，格內比才不會量到「大型股本來就穩」
 
 ---
+
+## ③b 獨立審查（V82.1.2 起必做，下結論之前）
+
+派一個**不知道結論**的子代理（Agent，`subagent_type: scout` 或 general-purpose），只給它探針檔路徑與這句話：
+「只讀這支程式，找前視偏誤（用到訊號那天之後才知道的資料）、資料洩漏、成本漏算、對照組錯、漲停買不到沒處理、去重灌水；
+每一點給行號與具體情境，CONFIRMED / SUSPICIOUS」。⛔ 不可以把結論或數字給它（會被帶著走）。
+它的回覆原文附進 `docs/DECISIONS.md` 那一節；CONFIRMED 的先修完、重跑，才可以下結論。
+
+---
+
 
 ## ④ 結論**當場**寫回兩個地方（⛔ 不可留到下次順手）
 
