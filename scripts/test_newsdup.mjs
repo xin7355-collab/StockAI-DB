@@ -8,6 +8,7 @@
  *   ⑤~⑧ 🐛 V82.1.5 四個新聞畫面 ⛔ 再標採礦端 AI 判的利多 / 利空(tone / ai_sentiment 前後定義不一致、研究不可用):
  *      ⑤ 總覽消息面 ⑥ 最新焦點(新的在前) ⑦ 即時情報新聞 ⑧ 盤前新聞的台股那幾則(國際那幾則照舊上色 = 對照)
  *      每條都有決定性對照:同一批新聞把 AI 判的方向整個對調 → 畫面一個字都不能變(證明沒讀那個欄位)。
+ *   ⑨~⑪ 🐛 V82.2.3 風險指數 ⛔ 吃新聞 AI 利空比例;盤前報告 / 新聞綜合深度分析的提示詞 ⛔ 附台股那幾則的 AI 利多利空(國際照舊 = 對照)。
  */
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -111,6 +112,29 @@ const R = await page.evaluate(async () => {
     const r2 = [...document.getElementById('globalNewsList').children].map(r => r.outerHTML);
     out.gl8b = { rg: r2.filter(h => /乙公司/.test(h)).some(h => /text-(red|green)-/.test(h)), sum: r2.some(h => /營收年增三成/.test(h)),
         fxColored: r2.filter(h => /油價大漲/.test(h)).some(h => /text-green-400/.test(h)) };
+
+    // ⑨ 🐛 V82.2.3 風險指數 ⛔ 再吃「新聞被 AI 判利空的比例」:同一批新聞全部換成利空 / 全部換成利多 → 分數一模一樣
+    const baseNews = A._globalNewsItems.map(x => ({ ...x }));
+    // ⚠️ 要先給 VIX:沒有 VIX 也沒有外資時 _calcRiskScore 一開頭就回 null → 根本算不到新聞那段(第一版就這樣假綠、注入沒抓到)
+    A._macroRiskCache = { vix: 18.5, vix_chg_pct: 2.1, vix_date: '2026-11-11' };
+    A._globalNewsItems = baseNews.map(x => ({ ...x, impact_level: 'bearish' })); const rsBear = A._calcRiskScore();
+    A._globalNewsItems = baseNews.map(x => ({ ...x, impact_level: 'bullish' })); const rsBull = A._calcRiskScore();
+    A._globalNewsItems = []; const rsNone = A._calcRiskScore();
+    out.rs9 = { rsBear, rsBull, rsNone };
+    // ⑩ 盤前報告那一段:台股那幾則 ⛔ 利多利空字、標「台股」+ 摘要;國際那則照舊附判讀(對照)
+    const sec = A._globalNewsPromptSection(baseNews);
+    const secFlip = A._globalNewsPromptSection(baseNews.map(x => x.tw ? { ...x, impact_level: x.impact_level === 'bullish' ? 'bearish' : 'bullish', impact: x.impact === '利多' ? '利空' : '利多' } : x));
+    const twLines = sec.split('\n').filter(l => /乙公司/.test(l));
+    out.sec10 = { sec, tw: twLines.length, word: twLines.some(l => /利多|利空/.test(l)), tag: twLines.every(l => /\[台股\]/.test(l)), sum: twLines.some(l => /營收年增三成/.test(l)),
+        fx: /\[🔴利空\] 油價大漲/.test(sec), same: sec === secFlip };
+    // ⑪ 新聞綜合深度分析:台股那幾則 ⛔ 附「採礦端標記」;國際那則照舊(對照)。AI 呼叫換成假的,只抓提示詞
+    let captured = '';
+    const realCall = A._callDeepAI; A._callDeepAI = async (o) => { captured = o.prompt; return '假的回覆'; };
+    A._globalNewsItems = baseNews;
+    try { await A._deepAnalyzeNews(); } catch (_) {}
+    A._callDeepAI = realCall;
+    const capTw = captured.split('\n').filter(l => /乙公司/.test(l));
+    out.deep11 = { got: !!captured, tw: capTw.length, mark: capTw.some(l => /採礦端標記/.test(l)), fx: /油價大漲\(採礦端標記:利空\)/.test(captured) };
     return out;
 });
 
@@ -136,6 +160,11 @@ ok('⑧ 對照:國際那則照舊上色(這輪只動台股那幾則)', R.gl8.fxC
 ok('⑧ 決定性對照:AI 方向對調 → 台股那幾則畫面不變', R.gl8.same);
 ok('⑧ 風險指數 / 提示詞讀的欄位照舊(只改畫面)', R.gl8.keep === 'bullish,bearish,neutral', R.gl8.keep);
 ok('⑧b AI 翻譯後重畫(_renderGlobalNewsList)也一樣:台股灰字 + 摘要、國際照舊', !R.gl8b.rg && R.gl8b.sum && R.gl8b.fxColored, JSON.stringify(R.gl8b));
+ok('⑨ 風險指數 ⛔ 吃 AI 判的新聞利空比例:全部換成利空 / 利多 / 沒有新聞 → 分數一樣(而且真的有算出分數)',
+   typeof R.rs9.rsBear === 'number' && R.rs9.rsBear === R.rs9.rsBull && R.rs9.rsBull === R.rs9.rsNone, JSON.stringify(R.rs9));
+ok('⑩ 盤前報告:台股那幾則 [台股] + 摘要、⛔ 利多利空字;國際那則照舊附判讀(對照)', R.sec10.tw === 3 && !R.sec10.word && R.sec10.tag && R.sec10.sum && R.sec10.fx, R.sec10.sec);
+ok('⑩ 決定性對照:台股那幾則 AI 方向對調 → 那一段一個字不變', R.sec10.same);
+ok('⑪ 新聞綜合深度分析:台股那幾則 ⛔ 附「採礦端標記」;國際那則照舊(對照)', R.deep11.got && R.deep11.tw === 3 && !R.deep11.mark && R.deep11.fx, JSON.stringify(R.deep11));
 ok('🚧 沒有 pageerror', !errs.length, errs.join(' | '));
 await browser.close();
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ test_newsdup 全過');
