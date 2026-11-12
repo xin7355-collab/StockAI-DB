@@ -22,6 +22,15 @@
 若開新分支會導致採礦機無法用到最新程式碼。
 手動觸發時，永遠選 **`main`** 分支。
 
+### 🤝 多個工作階段同時開發(2026-11-12 使用者明示:另一個工作階段也在改同一個 repo)
+1. **動手前**:`git fetch origin main` → 分支先合 `origin/main`(或從它重開),⛔ 在落後的分支上改完才合。
+2. **推之前再同步一次**:fetch → 合 main → 衝突照「Merge conflict」規則解(⛔ rebase / force-push 別人的東西)→ 四驗證 → ff 推 main;推被拒 = 別人剛推,重來一次。
+3. **版號**:照「推的當下 origin/main 的 `_APP_VERSION`」往上加,⛔ 照自己分支上的;撞號就改下一號(V80.1.8 → V80.1.9 前例)。`_CHANGELOG` 搬移與 CHANGELOG.md 開頭計數跟著最新那份算。
+4. **實驗登錄**:`exp_log.mjs pre` 之前先合 main(編號 = 日期 + 當天第幾筆,⛔ 各自從舊檔數);合併時 experiments.ndjson 兩邊的行都留(只增不改)。
+5. **抓官方資料互斥**:派 tw_deep04 / block_deep / 任何打證交所・櫃買・期交所的回補前,先 `actions_list` 看有沒有 in_progress / queued 的同類 run,有就不派(排程叫醒的也一樣)。
+6. **排程**:建 send_later / scheduled task 前先 `list_triggers`,⛔ 兩邊各排一個做同一件事。
+7. **實測總表 / 文件**:同一個主題鍵 `k` 只能一條(`test_labkey`)→ 合 main 後先 grep 那個 k 有沒有被另一邊改過,改它而不是新增。
+
 ---
 
 ## GitHub Actions Workflow
@@ -225,7 +234,7 @@ done
 ### ⭐ Claude 永久授權（使用者明示:看不懂程式碼,壞了再修就好）
 - **純前端 / 小邏輯改動完成、四驗證通過後**：**不需問使用者**,直接 `git checkout main && git merge <feature-branch> --ff-only && git push origin main`,讓 `deploy_pages.yml` 自動上線
 - **採礦 `*.py` 改動**:同上,直接 merge main + push,由 `daily_miner.yml` 接手
-- **無需先開 PR**;若 web session 開在 feature branch,完成就 fast-forward 合併回 main
+- **無需先開 PR**;若 web session 開在 feature branch,完成就 fast-forward 合併回 main(先合最新 origin/main,見「🤝 多個工作階段同時開發」)
 - 🏃 **2026-10-23 使用者明示:「你就直接一直做下去就好」(不要一直停下來要我確認)** → 改 workflow、改採礦、大改版面、動 `data/` 快取都**直接做**,做完回報「做了什麼 + 怎麼換回」。
 - ⛔ **只剩三件仍須先問使用者**(做錯了沒辦法用 `git revert` 救回來):① **會動真錢的開關**(自動下單真實帳戶,例如 `PARK_LIVE_OK`、`LIVE`)② **刪掉使用者自己存的資料 / 不可回復的刪除**(例:IndexedDB 的貼上報告、AI 圖,或 force-push 蓋掉別人的東西)
   ③ 🔏 **2026-11-11 使用者決定(SELF_EVOLVING_AUDIT §10 ①)**:換版會改到 `auto_trade.py` / `lib_leader.py` / `lib_hotrule.py` / `scripts/lib_leaddd.mjs` 的**策略參數**(門檻・預設・錨點・規則)→ 先照 `docs/RELEASES.md` 寫發布報告、在對話裡問,核准後才更新 `research/approved_live.json`(⛔ 自己改它讓測試變綠);App 那邊的同一個預設**一起等**。守門 `scripts/test_release_gate.py`(四驗證)。程式修 bug 不算(修復 ≠ 優化)。
