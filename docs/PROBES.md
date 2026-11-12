@@ -61,6 +61,8 @@
 
 ### 📉 V81.0.2(2026-11-06)大盤殺到 41,575 的 7 個問題 —— 評估紀錄 55
 - `scripts/volsurge_probe.mjs`(新):`DATA_DIR=$S/d16 node --max-old-space-size=8000 scripts/volsurge_probe.mjs out.json`。App「剛爆量啟動」的規則照著買有沒有用(K = 2 / 2.5 / 3 / 5 / 10、收盤 / 隔天開盤、流動性、大盤大跌日)。⏭️ 只有 App 換規則才重跑。
+- `scripts/psych_state_probe.mjs`(🧠 V82.1.7 新):`IDX_LONG IDX_EARLY TWII_NOW node scripts/psych_state_probe.mjs out.json` → 大盤 5 種心理狀態(遲滯、擴張百分位)、
+  各狀態之後 20/60 天與回檔、狀態轉移、恐慌每段第一天、EXP-20261112-02 判定、現在的狀態。⏭️ ⛔ 看結果調門檻;要換規則先登記新的實驗。
 - `scripts/nsf_probe.mjs`(新):`IDX_LONG IDX_EARLY TWII_NOW US_HIST` → 國安基金 9 次進場前後 + 一樣深沒進場的修正段。⏭️ 國安基金再進場一次就加一筆重跑。
   🏛️ V82.1.6:第 10 次(2026-11-06)加進 `stopfall_probe.NSF`;新增退場研究 `exitStudy`(粗版)+ `exitMatched`(配對對照,EXP-20261112-01 事先登記;
   距一年高差 ≤5pp、前 120 天漲跌差 ≤10pp、不在護盤期間)。退場日在 `NSF_EXIT`(新聞整理,⚠️ 沒逐一對到官方公告)。⏭️ 國安基金再退場一次就加一筆重跑;
