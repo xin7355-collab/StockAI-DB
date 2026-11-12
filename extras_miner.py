@@ -12,7 +12,7 @@
 import csv
 import io
 import json
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -119,12 +119,27 @@ def fetch_day_trade():
     print(f'✅ day_trade.json 已寫({len(data)} 檔當沖比, date={date_str})')
 
 
-def fetch_tdcc_holdings():
+def fetch_tdcc_holdings(today=None):
     """TDCC 集保戶股權分散表(1-5)— 每週更新,每天試抓,內容無變動就保留。
 
     取「15. 1000張以上」級距佔比 = 千張大戶持股 %
     跟上次比對算 top_pct_week_chg。
     """
+    # 🐛 V82.1.5 tdcc_holders.json 是 tdcc_sweep 週排程產的,但那支排程從來沒跑過(V75.2.x 查到「排程 0 筆」);
+    #   當時看 tdcc.json 的 updated 是今天就判「不用修」—— updated 是這裡每天轉檔的時間,資料日其實停在 2026-08-07,
+    #   畫面上的集保一直是 8/7 那週。→ 資料日超過 9 天就在這裡順便跑一次 tdcc_sweep.update()
+    #   (一週下載一次 CSV;其他天照舊零下載);抓不到就照舊用舊檔、log 寫原因,每週 L1 體檢(data_audit 的 DATA_DATE_RULE)會叫。
+    try:
+        import tdcc_sweep
+        _th = DATA_DIR / 'tdcc_holders.json'
+        _today = today or datetime.now(timezone(timedelta(hours=8))).date()
+        _dd = tdcc_sweep.data_date_of(_th)
+        if tdcc_sweep.is_stale(_dd, _today):
+            print(f'   🏦 集保週資料日 {_dd or "(沒有)"} 超過 {tdcc_sweep.STALE_DAYS} 天 → 順便抓最新一週')
+            _ok, _msg = tdcc_sweep.update(str(_th))
+            print(f"   🏦 集保週資料{'已更新' if _ok else '沒更新成(照舊用舊檔)'}:{_msg}")
+    except Exception as e:  # noqa: BLE001
+        print(f'⚠️ 集保週資料自動更新出錯(照舊用舊檔):{e}')
     # ⚡ V69.8.6 P3-4:優先改讀 tdcc_sweep 已產出的 data/tdcc_holders.json(同一份 TDCC id=1-5,
     #    它每週六抓、進 data 分支、deploy 已還原)→ 免再下載數十 MB CSV(原本每交易日重抓一次,
     #    每週多 100+ MB 傳輸 + 30-90 秒 parse,而內容一週只變一次)。讀不到才 fallback 下載。

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.1.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.1.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6871,9 +6871,14 @@ const app = {
                     const arr = Array.isArray(rj) ? rj : (rj.items || rj.news || rj.data || []);
                     twItems = arr.slice(0, 12).map(n => {
                         const sen = n.ai_sentiment || n.sentiment || '';
+                        // 🐛 V82.1.5 台股這幾則「畫面上」⛔ 再印 AI 判的「利多 / 利空」紅綠字(ai_sentiment = 個股消息面同一個
+                        //   AI 欄位,前後定義不一致、研究不可用,理由見 _ovNewsHtml)→ tw 旗標讓兩個畫面改印 AI 那句摘要(aiSum)、灰字。
+                        //   ⚠️ impact / impact_level 照舊留著:風險指數(利空比例)跟兩個 AI 提示詞還在讀 → 這輪只改畫面,
+                        //      那幾處要不要也拿掉是另一個決定(⛔ 順手改分數)。國際新聞那幾則研究沒測過 → 照舊。
                         return { source: n.source || '台股', title: n.title || '', title_zh: n.title || '',
                             url: n.link || n.url || '#', published: n.published_time || n.published || '',
                             cat: n.cat || '',   // 🗂️ V72.3.4 採礦端分好的類別(火災/缺貨/地緣…)
+                            tw: 1, aiSum: String(n.ai_reason || '').slice(0, 30),
                             impact: (sen && sen !== '待分析' && sen !== '中立') ? sen : '',
                             impact_level: /利多|bullish/.test(sen) ? 'bullish' : /利空|bearish/.test(sen) ? 'bearish' : 'neutral' };
                     }).filter(n => n.title);
@@ -6893,10 +6898,10 @@ const app = {
             // 只過濾掉完全沒標題的空項目
             const rows = merged.filter(item => item.title_zh || item.title).map(item => {
                 const sc = srcColor[item.source] || 'bg-gray-800 text-gray-400';
-                const ic = impColor[item.impact_level] || 'text-gray-500';
+                const ic = item.tw ? 'text-gray-500' : (impColor[item.impact_level] || 'text-gray-500');   // 🐛 V82.1.5 台股那幾則一律灰(見上)
                 const displayTitle = (item.title_zh || item.title || '').slice(0, 50) + ((item.title_zh || item.title || '').length > 50 ? '…' : '');
                 // AI 沒分析時不顯示「暫無分析」字串，改成淡灰短橫線，避免每條都重複佔位
-                const rawImpact = item.impact || '';
+                const rawImpact = item.tw ? (item.aiSum || '') : (item.impact || '');
                 const impact = (rawImpact && rawImpact !== '暫無分析') ? rawImpact.slice(0, 30) : '—';
                 // 改用 <a> 取代 window.open，iOS PWA 內嵌瀏覽器無法被擋
                 const safeUrl = (item.url || '#').replace(/"/g, '&quot;');
@@ -7115,10 +7120,11 @@ ${list}
         const impColor = { bullish: 'text-red-400', bearish: 'text-green-400', neutral: 'text-gray-500' };
         list2.innerHTML = items.filter(it => it.title_zh || it.title).map(item => {
             const sc = srcColor[item.source] || 'bg-gray-800 text-gray-400';
-            const ic = impColor[item.impact_level] || 'text-gray-500';
+            const ic = item.tw ? 'text-gray-500' : (impColor[item.impact_level] || 'text-gray-500');   // 🐛 V82.1.5 台股那幾則一律灰(⛔ AI 利多利空)
             // V17.2 — 字體放大配對台股新聞(text-[13px]),title slice 50→80 給更大字體應對更長標題
             const t  = (item.title_zh || item.title || '').slice(0, 80) + ((item.title_zh || item.title || '').length > 80 ? '…' : '');
-            const im = (item.impact && item.impact !== '暫無分析') ? item.impact.slice(0, 50) : '—';
+            const _imp = item.tw ? (item.aiSum || '') : (item.impact || '');
+            const im = (_imp && _imp !== '暫無分析') ? _imp.slice(0, 50) : '—';
             const safeUrl = (item.url || '#').replace(/"/g, '&quot;');
             // 🔎 V41.26 標題用於「深入查」onclick:去掉會破 JS 字串的引號/反斜線(改全形,不影響搜尋)
             const safeTitle = (item.title_zh || item.title || '').slice(0, 120).replace(/\\/g, '').replace(/'/g, '’').replace(/"/g, '”');
@@ -8962,10 +8968,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.1.4',
+    _APP_VERSION: 'V82.1.5',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.1.5', d: [
+            '🚨 個股頁「注意 / 處置」那張明細卡:官方公告的理由後面標出哪天公告;證交所另外列的名單(全額交割、理財節目異常推介…)也接上了 —— 以前寫好了卻接在一張早就拿掉的卡上,所以從來沒出現過',
+            '🏦 集保大戶 / 散戶持股:資料以前停在 8/7 沒更新(畫面上看起來每天都有更新),現在資料舊了就自動補抓最新一週',
+            '📰 新聞(個股消息面、最新焦點、即時情報、盤前新聞的台股那幾則):不再標 🔴利多 / 🟢利空、不再照利多利空排前面 —— AI 判的方向不穩定、常判錯,只列消息、摘要、來源跟日期',
+        ], dt: '2026-11-12' },
         { v: 'V82.1.4', d: [
             '📉 大跌撿便宜:說明補上 2004~2010(含 2008 一整年下跌)那段的情況 —— 那種大空頭會接在半山腰,所以每批只用 1 成、最多 3 批的規則照舊',
             '📚 產業作戰室研究總表:2004~2010 的資料接上後,領頭羊那套也拿這段再看一次(散戶 App 的用法不變)',
@@ -9279,11 +9290,6 @@ ${list}
             '📞 產業作戰室的法說會頁重做:一進來就是剛開完的那幾場,每場一張卡;點開看公司給的數字、跟上一次比多講了什麼、開完到現在的股價;搜尋也搜得到簡報裡的詞',
             '📰 解鎖後的專欄多三篇(大戶和散戶的那些說法):庫存或自選碰到「融資一直增加、法人在賣」或「融資斷頭」時會跳出來',
         ], dt: '2026-10-23' },
-        { v: 'V79.6.2', d: [
-            '📢 法說會提醒:拿掉「過去法說會後幾天平均漲跌」那一行(那個數字沒扣大盤),只提醒法說會前後波動會變大;找得到的法說會從未來兩週拉長到 45 天',
-            '🌇 收盤後的「零股盤點」推播停了(它用的分數沒有把握),只在實驗室模式記在 🔔',
-        ], dt: '2026-10-23' },
-
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -14516,6 +14522,8 @@ const marginByDate = {};
 
     // 🚨 V66.0/V67.6 — 處置頁 headline「這檔離被關還有幾步」
     //   官方資料(注意/處置)優先且標「官方」;無官方資料才退回公式並誠實標「參考推估·非官方」+ 官方查證連結。
+    // 🪦 死碼:容器 #dispHeadlineCard 自 V70.3.1 處置分頁下架(使用者:8 款推估資料撐不起)就不存在 → 一進來就 return。
+    //   ⛔ 新東西接這裡(V80.1.9 的官方理由 / 其他官方名單就是接錯地方、從沒顯示過)→ 接 #attentionDetailCard。
     renderDispHeadline(sym) {
         const box = document.getElementById('dispHeadlineCard');
         if (!box) return;
@@ -14547,9 +14555,6 @@ const marginByDate = {};
                 } else {
                     sub = `官方已把它列<b>注意股</b> — 持股嚴守 5MA 短線停利、別過夜凹單;空手別追高,等脫離注意再看。`;
                 }
-                // 🆕 V80.1.9 官方寫的理由 + 公告日(上櫃注意股 V80.1.9 起才有官方名單;白天看到的可能是上一個交易日公告的)
-                //   ⚠️ 放在上面 if/else 之後 —— 那裡是 `extra =`(整個換掉),放前面會被蓋掉
-                if (info.reason || info.date) extra = `<div class="text-[10px] text-gray-400 leading-snug mt-1" data-dispwhy="1">📄 官方理由:${info.reason ? this._escHtml(info.reason) : '(名單沒寫)'}${info.date ? `(${this._fmtMD(info.date)} 公告)` : ''}</div>` + extra;
             } else {
                 // 無官方資料 → 公式參考推估(誠實降級,大字標「推估」不裝準)
                 const need5 = Math.max(0, 5 - (x.recentHitDays5 || 0));
@@ -14561,8 +14566,6 @@ const marginByDate = {};
                 else if (x.predictText.startsWith('💡')) { big = '💡 累積中(推估)'; bCls = 'border-yellow-500'; tCls = 'text-yellow-300'; sub = `公式推估還有約 <b>${steps}</b> 步才踩門檻 — 強勢股可抱,守 5MA 短線停利。`; }
                 else { big = '✅ 目前安全'; bCls = 'border-green-500'; tCls = 'text-green-300'; sub = '目前沒有被關風險,照正常技術分析操作即可。'; }
             }
-            // 🆕 V80.1.9 其他官方名單(radar_miner flags):⛔ 不改上面「離被關還幾步」的判斷,只多一行告訴你官方還把它列在哪
-            extra += this._attentionFlagsHtml(sym);
             // 官方查證連結(非「安全」時都給,帶股名開 Google 直接查官方公告)
             let linkLine = '';
             if (!(big.startsWith('✅'))) {   // 🐛 V74.8.8 修:原本比 '🟢',但 big 從來沒有 🟢 開頭的分支 = 死條件
@@ -18253,13 +18256,33 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     renderAttentionDetailCard(sym) {
         const card = document.getElementById('attentionDetailCard');
         if (!card) return;
-        if (!sym || !this.attentionStatus?.[String(sym).trim()]) {
+        const s = String(sym || '').trim();
+        const listed = !!(s && this.attentionStatus?.[s]);
+        // 🐛 V82.1.5 只在「其他官方名單」(變更交易 / 理財節目異常推介 / 停資停券 / 暫停先賣後買)上的也要出現 ——
+        //   V80.1.9 把這一行寫進 renderDispHeadline,但它的容器 #dispHeadlineCard 自 V70.3.1 處置分頁下架就不存在
+        //   → 一進去就 return,從沒顯示過(測試自己造了那個容器,所以是綠的)。這張是總覽上唯一活著的官方名單卡。
+        const flagsOnly = !listed && !!(s && this._attentionFlagsHtml(s));
+        if (!listed && !flagsOnly) {
             card.classList.add('hidden');
             card.innerHTML = '';
             return;
         }
         card.classList.remove('hidden');
-        card.innerHTML = this._renderAttentionDetailHtml(sym);
+        card.innerHTML = listed ? this._renderAttentionDetailHtml(s) : this._renderAttentionFlagsCardHtml(s);
+    },
+
+    // 🆕 V82.1.5 只在其他官方名單上(不是注意 / 處置股)時的小卡:只寫官方列了什麼,⛔ 下漲跌判斷
+    _renderAttentionFlagsCardHtml(sym) {
+        const line = this._attentionFlagsHtml(sym);
+        if (!line) return '';
+        const list = (this.attentionFlags && this.attentionFlags[String(sym).trim()]) || [];
+        const cash = list.some(f => f && f.k === 'change_trade');
+        return `<div class="mt-2 bg-[#0d1117] border border-gray-700/60 rounded-lg p-3" data-attcard="flags">
+            <h4 class="text-gray-200 font-bold text-sm">🏷️ 證交所其他官方名單${this._dChip(this._attentionUpdated, '名單')}</h4>
+            ${line}
+            ${cash ? '<div class="text-[11px] text-gray-300 leading-snug mt-1.5">變更交易 = 全額交割:要先把買股票的錢準備好(圈存)才能下單。</div>' : ''}
+            <div class="mt-1 text-[9px] text-gray-600">名單來自證交所,每天盤後更新。</div>
+        </div>`;
     },
 
     // V19.4 — 處置股完整資訊卡(個股頁用,在 _renderAttentionBadge 之外提供完整 detail)
@@ -18317,11 +18340,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <span class="${isDisp ? 'text-red-200 bg-red-900/40' : 'text-orange-200 bg-orange-900/40'} px-2 py-0.5 rounded text-[11px] font-bold">${info.status || ''}</span>
             </div>
             <div class="text-[12px] space-y-1.5">
-                ${showReason ? `<div class="flex justify-between gap-2"><span class="text-gray-400 flex-shrink-0">原因</span><span class="text-gray-200 text-right">${this._escHtml(reason)}</span></div>` : ''}
+                ${showReason ? `<div class="flex justify-between gap-2"><span class="text-gray-400 flex-shrink-0">原因</span><span class="text-gray-200 text-right">${this._escHtml(reason)}${info.date ? `<span class="text-gray-500">(${this._fmtMD(info.date)} 公告)</span>` : ''}</span></div>` : ''}
                 ${info.interval ? `<div class="flex justify-between"><span class="text-gray-400">分盤撮合</span><span class="text-amber-300 font-mono font-bold">每 ${info.interval} 分鐘 1 次</span></div>` : ''}
                 ${info.end_date ? `<div class="flex justify-between"><span class="text-gray-400">出關日期</span><span class="text-gray-200 font-mono">${info.end_date}${daysToEnd != null ? ` <b class="text-gray-300">(${daysToEnd <= 0 ? '今天出關' : daysToEnd + ' 天後'})</b>` : ''}</span></div>` : ''}
                 ${willEscalate ? `<div class="mt-2 p-2 bg-[#161b22] border-l-4 border-amber-500 rounded-r text-amber-200 text-[11px] leading-relaxed">⚠️ <b>可能被升級成處置</b>:已是注意股,近 5 日有 ${limitDays} 次漲跌停,下個交易日可能被宣告分盤撮合。</div>` : ''}
             </div>
+            ${this._attentionFlagsHtml(sym)}
             <div class="mt-2 pt-2 border-t border-[#21262d]" data-atthow="1">
                 <div class="text-[11px] font-bold text-gray-200 mb-1">💡 怎麼做</div>
                 <ul class="text-[11px] text-gray-300 leading-relaxed space-y-1">${how.map(h => `<li>${h}</li>`).join('')}</ul>
@@ -32129,10 +32153,10 @@ ${this._reportFacts(sym)}
         }
         if (!document.getElementById('aiGodNewsBox')) return;
         if (!items.length) { box.innerHTML = `<div class="text-[10px] text-gray-600 text-center mt-3 pt-2 border-t border-[#21262d]">📰 你的${label}股目前沒有對應焦點新聞(採礦每 4 小時自動更新,冷門股新聞較少)</div>`; return; }
-        items.sort((a, b) => (a.tone === 'neu' ? 1 : 0) - (b.tone === 'neu' ? 1 : 0));
-        const toneTag = t => t === 'pos' ? '<span class="text-[9px] font-bold text-red-300 bg-red-900/30 border border-red-700/40 rounded px-1">🔴 利多</span>'
-            : t === 'neg' ? '<span class="text-[9px] font-bold text-green-300 bg-green-900/30 border border-green-700/40 rounded px-1">🟢 利空</span>'
-                : '<span class="text-[9px] text-gray-500">新聞消息</span>';
+        // 🐛 V82.1.5 ⛔ 不再照 AI 判的利多 / 利空排前面、也 ⛔ 貼 🔴利多 / 🟢利空(理由見 _ovNewsHtml)→ 一律新的在前
+        //   (日期字串 'YYYY-MM-DD HH:MM' 直接比;沒日期的排最後)
+        items.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+        const toneTag = () => '<span class="text-[9px] text-gray-500">新聞消息</span>';
         box.innerHTML = `
             <div class="mt-3 pt-2 border-t border-[#30363d]">
                 <div class="flex items-center justify-between mb-1.5"><span class="text-[12px] font-black text-gray-100">📰 最新焦點・你的${label}股</span><span class="text-[9px] text-gray-500">每 4 小時自動更新</span></div>
@@ -32142,7 +32166,7 @@ ${this._reportFacts(sym)}
                     <div class="text-[11px] text-gray-200 leading-snug">${n.title || ''}</div>
                     ${n.reason ? `<div class="text-[9px] text-gray-500 mt-0.5">${n.reason}</div>` : ''}
                 </div>`).join('')}
-                <div class="text-[8px] text-gray-600 text-center">點新聞跳該股 ・ 利多利空為 AI 判讀僅供參考,別單憑新聞進出</div>
+                <div class="text-[8px] text-gray-600 text-center">點新聞跳該股 ・ 只列消息、不標利多利空,別單憑新聞進出</div>
             </div>`;
     },
 
@@ -40026,7 +40050,7 @@ ${this._reportFacts(sym)}
         const also = Array.isArray(it.also) && it.also.length ? it.also.map(a => this._escHtml(String(a)).replace(/"/g, '&quot;')).join('、') : '';
         return `<span data-newsdup="${n}" class="text-gray-500"${also ? ` title="也報的:${also}${n > it.also.length ? ' 等' : ''}"` : ''}> ・另 ${n} 家也報</span>`;
     },
-    // 📰 V69.5.1 個股消息面:載入 data/stock_news.json(採礦端 universal_radar 產,含 AI 利多/利空 tone)
+    // 📰 V69.5.1 個股消息面:載入 data/stock_news.json(採礦端 universal_radar 產;裡面的 AI tone 欄 V82.1.5 起畫面不再用)
     async _loadStockNews() {
         if (this._stockNewsCache && (Date.now() - (this._stockNewsAt || 0) < 300000)) return this._stockNewsCache;
         try {
@@ -40040,7 +40064,7 @@ ${this._reportFacts(sym)}
         } catch (_) { this._stockNewsCache = this._stockNewsCache || {}; }
         return this._stockNewsCache;
     },
-    // 📰 V69.5.1 總覽消息面卡:近期個股新聞 + 利多🔴/利空🟢(台股色);純告警不動總評分(新聞情緒噪音大,避免誤判蓋掉技術/籌碼)
+    // 📰 V69.5.1 總覽消息面卡:近期個股新聞;不動總評分。V82.1.5 起只列消息、⛔ 標 AI 判的利多 / 利空(理由在函式裡)
     _ovNewsHtml() {
         try {
             const sym = String(this.currentSymbolId || '');
@@ -40052,15 +40076,17 @@ ${this._reportFacts(sym)}
             const rec = this._stockNewsCache[sym];
             if (!rec || !Array.isArray(rec.items) || !rec.items.length) return '';
             const items = rec.items.slice(0, 4);
-            const toneMap = { pos: ['🔴', 'text-red-300', '利多'], neg: ['🟢', 'text-green-300', '利空'], neu: ['⚪', 'text-gray-400', '中性'] };
-            const hasNeg = items.some(it => it.tone === 'neg'), hasPos = items.some(it => it.tone === 'pos');
-            const box = hasNeg ? 'border-green-500 bg-green-900/10' : hasPos ? 'border-red-500 bg-red-900/10' : 'border-[#30363d]';
-            return `<div class="bg-[#0d1117] border-l-4 ${box} border-y border-r rounded-r p-2.5 mt-1.5">
-                <div class="text-[11px] font-black text-gray-100 mb-1">📰 消息面 <span class="text-[9px] text-gray-500 font-normal">近期新聞・採礦端 AI 判利多利空</span></div>
+            // 🐛 V82.1.5 ⛔ 不再標 AI 判的 🔴利多 / 🟢利空、外框也 ⛔ 跟著變紅綠:
+            //   tone 是採礦端 AI(ai_sentiment)判的 —— 模型被下架換過(V73.9.0)→ 前後定義不一致;
+            //   新聞事件研究裡「利多」「利空」之後兩邊都是漲的 → 標的是「有沒有被報導」,不是方向。
+            //   散戶看到紅色「利多」會當成買進理由 → 一律中性灰,只留標題 / 摘要 / 來源 / 日期。
+            //   ⛔ 讀 it.tone 排序或上色(test_newsdup ⑤ 會抓)。
+            return `<div class="bg-[#0d1117] border-l-4 border-[#30363d] border-y border-r rounded-r p-2.5 mt-1.5" data-newsneutral="1">
+                <div class="text-[11px] font-black text-gray-100 mb-1">📰 消息面 <span class="text-[9px] text-gray-500 font-normal">近期新聞・只列消息,不標利多利空</span></div>
                 <div class="space-y-1.5">
-                ${items.map(it => { const [ic, cls, lbl] = toneMap[it.tone] || toneMap.neu; return `<div class="flex gap-1.5 items-start"><span class="flex-shrink-0 text-[10px]">${ic}</span><div class="min-w-0 flex-1"><a href="${it.url || '#'}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-gray-200 leading-snug hover:text-cyan-300">${(it.title || '').slice(0, 46)}</a> <span class="${cls} text-[9px] font-bold whitespace-nowrap">${lbl}</span>${it.reason ? `<div class="text-[9px] text-gray-500 leading-snug mt-0.5">${it.reason}</div>` : ''}<div class="text-[8px] text-gray-600 mt-0.5">${it.source || ''}${it.date ? ' · ' + it.date : ''}${this._newsDupTxt(it)}</div></div></div>`; }).join('')}
+                ${items.map(it => `<div class="flex gap-1.5 items-start"><span class="flex-shrink-0 text-[10px] text-gray-500">•</span><div class="min-w-0 flex-1"><a href="${it.url || '#'}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-gray-200 leading-snug hover:text-cyan-300">${(it.title || '').slice(0, 46)}</a>${it.reason ? `<div class="text-[9px] text-gray-500 leading-snug mt-0.5">${it.reason}</div>` : ''}<div class="text-[8px] text-gray-600 mt-0.5">${it.source || ''}${it.date ? ' · ' + it.date : ''}${this._newsDupTxt(it)}</div></div></div>`).join('')}
                 </div>
-                <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">💡 新聞情緒僅供參考、AI 可能誤判 → <b>不直接影響總評分</b>;想深查點上方搜尋或「最新消息」免費查。</div>
+                <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">💡 只列消息、不幫你判利多利空(AI 判的方向不穩定、常判錯)→ <b>不影響總評分</b>;想深查點上方搜尋或「最新消息」免費查。</div>
             </div>`;
         } catch (_) { return ''; }
     },
@@ -54140,17 +54166,11 @@ App 會在那個時段幫你盯,到價自動提醒。
         const tsEl  = document.getElementById('newsLastUpdated');
         if (!body && !embed) return;
         const renderItems = async (items) => {
-            // V58.0 — 重點新聞置頂(利多/利空排前、中立在後,組內維持時間序)+ 標題優先用採礦端繁中翻譯
-            const _pri = n => { const t = n.tone || n.sentiment || n.ai_sentiment || ''; return (t.includes('利多') || t === 'bull' || t.includes('利空') || t === 'bear') ? 0 : 1; };
-            items = [...items].sort((a, b) => _pri(a) - _pri(b));
+            // 🐛 V82.1.5 ⛔ 不再照 AI 判的利多 / 利空排前面、⛔ 畫 🟥🟩 點與紅綠左框(V58.0 加的):
+            //   ai_sentiment 是採礦端 AI 判的,模型換過 → 前後定義不一致、研究不可用(理由見 _ovNewsHtml)
+            //   → 維持採礦端給的時間序、一律中性灰;標題優先用採礦端繁中翻譯照舊。
             const html = items.map(n => {
-                // tone 支援採礦端的 ai_sentiment + 舊欄位 + 範例頭條的 tone
-                const tone = n.tone || n.sentiment || n.ai_sentiment || '';
-                const dot = tone.includes('利多') || tone === 'bull' ? '🟥'
-                          : tone.includes('利空') || tone === 'bear' ? '🟩' : '⚪';
-                // 🎨 V58.0 顏色區分(台股色):利多=紅左框、利空=綠左框、中立=灰
-                const toneBorder = tone.includes('利多') || tone === 'bull' ? 'border-l-4 border-l-red-500'
-                                 : tone.includes('利空') || tone === 'bear' ? 'border-l-4 border-l-green-500' : '';
+                const dot = '📰';
                 const src = (n.source || n.source_name) ? `<span class="text-gray-600">${n.source || n.source_name}</span>` : '';
                 const t = n.title_zh || n.title || n.headline || n.summary || '';
                 const safeUrl = (n.url || n.link || '').replace(/"/g, '&quot;');
@@ -54163,7 +54183,7 @@ App 會在那個時段幫你盯,到價自動提醒。
                     try { const d = new Date(raw); if (!isNaN(d.getTime())) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; } catch(_){}
                     return String(raw).slice(0, 16).replace('T', ' ');
                 })();
-                const card = `<div class="bg-[#0d1117]/70 border border-[#30363d] ${toneBorder} rounded p-2.5 transition-colors ${safeUrl ? 'hover:border-amber-700/60 cursor-pointer' : ''}">
+                const card = `<div class="bg-[#0d1117]/70 border border-[#30363d] rounded p-2.5 transition-colors ${safeUrl ? 'hover:border-amber-700/60 cursor-pointer' : ''}">
                     <div class="flex items-start gap-1.5"><span class="flex-shrink-0">${dot}</span>
                     <div class="flex-1 min-w-0"><div class="text-gray-200 text-[13px] font-bold leading-snug">${t}</div>
                     ${aiImpact ? `<div class="text-amber-300 text-[11px] mt-0.5 leading-snug">💡 ${aiImpact}</div>` : ''}
@@ -54177,9 +54197,9 @@ App 會在那個時段幫你盯,到價自動提醒。
             if (embed) embed.innerHTML = html;
         };
         const SAMPLES = [
-            { tone: '利多', title: '外資連三日大舉匯入，台積電擴充 CoWoS 先進封裝產能', note: 'AI 供應鏈題材延燒，留意封裝/載板族群', source: '範例頭條', url: 'https://tw.stock.yahoo.com/' },
-            { tone: '利多', title: 'NVDA 新一代 GPU 拉貨動能強，伺服器代工訂單能見度看到明年',       note: '廣達/緯穎/鴻海受惠',                source: '範例頭條', url: 'https://tw.stock.yahoo.com/' },
-            { tone: '中立', title: '台股量能觀望，等待美國 CPI 數據與 Fed 利率決策',                note: '盤面震盪，控制部位、嚴守均線',     source: '範例頭條', url: 'https://tw.stock.yahoo.com/' },
+            { title: '外資連三日大舉匯入，台積電擴充 CoWoS 先進封裝產能', note: 'AI 供應鏈題材延燒，留意封裝/載板族群', source: '範例頭條', url: 'https://tw.stock.yahoo.com/' },
+            { title: 'NVDA 新一代 GPU 拉貨動能強，伺服器代工訂單能見度看到明年',       note: '廣達/緯穎/鴻海受惠',                source: '範例頭條', url: 'https://tw.stock.yahoo.com/' },
+            { title: '台股量能觀望，等待美國 CPI 數據與 Fed 利率決策',                note: '盤面震盪，控制部位、嚴守均線',     source: '範例頭條', url: 'https://tw.stock.yahoo.com/' },
         ];
         // 🕒 1 分鐘 client cache,避免狂按「立即重抓」每次都打 gh-pages
         if (!force && this._newsCache && (Date.now() - this._newsCache.ts) < 60e3) {

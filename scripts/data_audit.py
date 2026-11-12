@@ -72,6 +72,32 @@ CADENCE_H = {
     'lead_dd.json': 80,          # ✂️ V82.0.7 👑 跌 20% 收一半的狀態:playbook_scan 每個平日晚上產(自動下單 / App / Telegram 都讀它)
 }
 
+# 🏦 V82.1.5 這幾個檔的 updated 是「採礦那天」不是資料日:採礦每天把同一份舊資料重寫、updated 寫今天
+#   → B 類照 updated 判新鮮度永遠通過(tdcc.json 資料停在 2026-08-07 整整三個月,體檢一次都沒叫)。
+#   這裡改看資料日欄位;值 = (欄位, 允許幾天, 說明)。
+DATA_DATE_RULE = {
+    # 集保每週五的資料、週末公布;extras_miner 看到資料日超過 9 天會自己補抓一次 → 12 天還沒換 = 補抓失敗
+    'tdcc.json': ('date', 12, '集保週資料;extras_miner 舊了會自己補抓(tdcc_sweep.update),去看那輪採礦 log 的「集保」那行'),
+}
+
+
+def data_date_findings(f, j, now):
+    """🏦 V82.1.5 用資料日(⛔ updated)判新鮮度。回 [(等級, 訊息)]。"""
+    rule = DATA_DATE_RULE.get(f)
+    if not rule or not isinstance(j, dict):
+        return []
+    key, allow_days, why = rule
+    raw = re.sub(r'[^0-9]', '', str(j.get(key) or ''))[:8]
+    try:
+        d = datetime.strptime(raw, '%Y%m%d').date()
+    except ValueError:
+        return [('⚠️', f'data/{f} 找不到資料日({key}),⛔ 拿 updated 代替(那是採礦日)')]
+    gap = (now.date() - d).days
+    if gap > allow_days:
+        return [('⚠️', f'data/{f} 資料日 {d:%m/%d} 已距今 {gap} 天(預期 ≤{allow_days} 天;updated 是採礦日不算)—— {why}')]
+    return []
+
+
 # 🌅 V79.5.5 index.html 沒有 fetch、但也要體檢的檔(只有產業作戰室讀)
 #    first = 第一次應該出現在 gh-pages 的台北日期;在那之前不在是正常的(⛔ 過了那天照常報 ❌,不是無條件豁免)
 EXTRA_FILES = {
@@ -542,6 +568,10 @@ def audit(ref, json_out=None):
         j = cache.get(f)
         if not isinstance(j, dict):
             continue
+        if f in DATA_DATE_RULE:   # 🏦 V82.1.5 updated 是採礦日 → 看資料日(理由見 DATA_DATE_RULE)
+            for lv, m in data_date_findings(f, j, now):
+                add(lv, 'B', m)
+            continue
         cad = CADENCE_H.get(f, 'unknown')
         if cad is None:
             continue
@@ -981,6 +1011,19 @@ def selftest():
     ok('⑩d 舊格式(沒有 twse_dated)→ ⚠️ 看不出來', any('沒有 twse_dated' in m for _l, m in g_findings(_old)), g_findings(_old))
     _frz_old = {'2026-10-21': _day(2, dt=0), '2026-10-22': _day(2, dt=0), '_src': {}}
     ok('⑩e 沒帶 dt 的不拿來比「一模一樣」(那是上櫃 / 舊快取)', not any(l == '❌' for l, _m in g_findings(_frz_old)), g_findings(_frz_old))
+
+    print('🧪 B 類資料日(V82.1.5)—— updated 是今天、資料日是三個月前,叫不叫得出來')
+    _now = datetime(2026, 11, 12, 9, 0, tzinfo=TW)
+    _stale = {'updated': '2026-11-12 03:10', 'date': '20260807', 'data': {'2330': {'top_pct': 80.1}}}
+    ok('⑪ tdcc.json updated 今天、資料日 8/7 → ⚠️(寫出資料日)',
+       any(l == '⚠️' and '08/07' in m for l, m in data_date_findings('tdcc.json', _stale, _now)), data_date_findings('tdcc.json', _stale, _now))
+    ok('⑪b 決定性對照:同一份只把資料日換成 11/06 → 不報', data_date_findings('tdcc.json', dict(_stale, date='20261106'), _now) == [])
+    ok('⑪c 沒有資料日 → ⚠️(⛔ 拿 updated 代替)', any('找不到資料日' in m for _l, m in data_date_findings('tdcc.json', {'updated': '2026-11-12'}, _now)))
+    ok('⑪d 不在規則裡的檔照舊走 updated(這裡不管)', data_date_findings('radar.json', _stale, _now) == [])
+    import inspect
+    _src = inspect.getsource(audit)
+    ok('⑪e audit 的 B 類真的先走資料日那條(⛔ 寫了函式沒接上)',
+       'data_date_findings(f, j, now)' in _src and _src.index('data_date_findings(f, j, now)') < _src.index('ts = parse_ts(j)'))
 
     print(f"\n{'✅ 全過' if not fails else '❌ 失敗 ' + str(len(fails)) + ' 條:' + ', '.join(fails)}")
     return 1 if fails else 0

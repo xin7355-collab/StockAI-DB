@@ -65,7 +65,7 @@ STATIC = [
     ('macro_miner.py', "load_accum(rh_file", 'risk_history.json'),
     ('radar_miner.py', "load_accum(HIST_FILE", 'attention_history.json'),
     ('etf_miner.py', "load_accum(OUT", 'etf_tracking.json'),
-    ('tdcc_sweep.py', "load_accum(_Path(OUT_FILE)", 'tdcc_holders.json'),
+    ('tdcc_sweep.py', "load_accum(_Path(out_file)", 'tdcc_holders.json'),   # V82.1.5 搬進 update(out_file)(extras_miner 每天順便叫)
     ('pe_band_miner.py', "load_accum(OUT", 'pe_band.json'),
     ('fund_sweep.py', "load_accum(OUT_PATH", 'fund_yoy_gm.json'),
     ('rotation_miner.py', "load_accum(OUT", 'fundamentals_rotation.json'),

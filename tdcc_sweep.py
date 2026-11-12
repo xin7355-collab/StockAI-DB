@@ -30,6 +30,10 @@ import urllib.request
 from datetime import datetime, timezone, timedelta
 
 TDCC_URL = 'https://opendata.tdcc.com.tw/getOD.ashx?id=1-5'
+TDCC_URL_ALT = 'https://smart.tdcc.com.tw/opendata/getOD.ashx?id=1-5'   # extras_miner 以前的備援網址
+# ⛔ 偽裝瀏覽器(V80.1.6 決策):寫明是誰;被擋就記下來,⛔ 換身分再試
+UA = 'Mozilla/5.0 (compatible; StockAI-DB tdcc_sweep/1.0; +https://github.com/xin7355-collab/stockai-db)'
+STALE_DAYS = 9           # 資料日超過幾天算舊(TDCC 每週更新一次 → 9 天 = 至少漏了一週)
 OUT_FILE = 'data/tdcc_holders.json'
 KEEP_WEEKS = 13          # 滾動保留 13 週(一季)歷史
 MIN_STOCKS = 500         # 低於此檔數視為抓壞,不覆寫
@@ -37,13 +41,50 @@ TW_TZ = timezone(timedelta(hours=8))
 
 
 def fetch_csv() -> str:
-    req = urllib.request.Request(TDCC_URL, headers={
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Accept': 'text/csv,*/*',
-    })
-    with urllib.request.urlopen(req, timeout=300) as r:
-        raw = r.read()
-    return raw.decode('utf-8-sig', errors='replace')
+    last = None
+    for url in (TDCC_URL, TDCC_URL_ALT):
+        req = urllib.request.Request(url, headers={'User-Agent': UA, 'Accept': 'text/csv,*/*'})
+        try:
+            # ⏱️ 60 秒 = 連線 / 每次讀取「多久沒動靜」就放棄(⛔ 整個下載的總時間,大檔照樣下得完)。
+            #   以前 300:extras_miner 現在每天會順便叫 → 萬一 TDCC 對機房丟封包,兩個網址各卡 5 分鐘 = 每天拖 10 分鐘。
+            with urllib.request.urlopen(req, timeout=60) as r:
+                raw = r.read()
+            return raw.decode('utf-8-sig', errors='replace')
+        except Exception as e:  # noqa: BLE001
+            last = e
+            print(f'  ⚠️ {url.split("/")[2]} 抓不到:{e}')
+    raise last
+
+
+def data_date_of(path) -> str:
+    """tdcc_holders.json 的資料日(YYYYMMDD):先看 _meta.data_date,沒有就取各檔最後一週的最大值;讀不到回 ''。"""
+    try:
+        with open(path, encoding='utf-8') as f:
+            d = json.load(f)
+    except Exception:  # noqa: BLE001
+        return ''
+    if not isinstance(d, dict):
+        return ''
+    dd = str((d.get('_meta') or {}).get('data_date') or '')
+    if dd:
+        return dd
+    best = ''
+    for k, v in d.items():
+        if k.startswith('_') or not isinstance(v, dict):
+            continue
+        h = v.get('h')
+        if isinstance(h, list) and h and isinstance(h[-1], list) and h[-1]:
+            best = max(best, str(h[-1][0]))
+    return best
+
+
+def is_stale(data_date: str, today, max_days: int = STALE_DAYS) -> bool:
+    """資料日比今天(台北)早超過 max_days 天 → True;沒有資料日也算舊。"""
+    try:
+        d = datetime.strptime(str(data_date), '%Y%m%d').date()
+    except (TypeError, ValueError):
+        return True
+    return (today - d).days > max_days
 
 
 def num(s, cast=int):
@@ -102,33 +143,31 @@ def build(parsed, old):
     return result
 
 
-def main():
-    print('🏦 TDCC 股權分散表週採礦開始…')
+def update(out_file: str = None):
+    """抓最新一週、併進舊檔 → (ok, 說明)。⛔ 丟例外 / ⛔ sys.exit(extras_miner 每天順便叫它,失敗不能拖垮別的)。"""
+    # ⚠️ 預設值寫成 None、呼叫時才讀 OUT_FILE:寫成 `= OUT_FILE` 會在定義當下就綁死,
+    #    之後改模組的 OUT_FILE(test_accum_safe ② 就這樣測「舊檔讀壞 ⛔ 下載」)完全沒作用 → 保護作用在別的檔上。
+    out_file = out_file or OUT_FILE
     # 讀舊檔(workflow 會先從 origin/data 還原)以滾動累積歷史
     # 🩺 10/24 巡邏:讀壞了 ⛔「忽略,重建」(那會把每檔累積的週資料蓋成只剩這一週)→ 救得回用前面那份,救不回 ⛔ 寫
     from pathlib import Path as _Path
     from lib_jsonsafe import load_accum
-    old, _old_ok = load_accum(_Path(OUT_FILE), {}, what=OUT_FILE)
+    old, _old_ok = load_accum(_Path(out_file), {}, what=out_file)
     if not _old_ok:
-        sys.exit(1)
+        return False, f'{out_file} 讀不出來 → 不寫(先修檔)'
     if not isinstance(old, dict):
         old = {}
     if old:
         print(f'  ↩️ 舊檔載入:{len([k for k in old if not k.startswith("_")])} 檔(續累歷史)')
-
     try:
         txt = fetch_csv()
-    except Exception as e:
-        print(f'❌ TDCC 下載失敗:{e}')
-        sys.exit(1)
+    except Exception as e:  # noqa: BLE001
+        return False, f'TDCC 下載失敗:{e}(舊檔不動)'
     print(f'  📥 下載完成:{len(txt) // 1024} KB')
-
     parsed = parse(txt)
     print(f'  🔍 解析出 {len(parsed)} 檔')
     if len(parsed) < MIN_STOCKS:
-        print(f'❌ 檔數 {len(parsed)} < {MIN_STOCKS},疑似抓壞/格式變 → 不覆寫舊檔,保留原狀')
-        sys.exit(1)
-
+        return False, f'檔數 {len(parsed)} < {MIN_STOCKS},疑似抓壞 / 格式變 → 不覆寫舊檔'
     result = build(parsed, old)
     data_date = next(iter(parsed.values()))['date'] if parsed else ''
     result['_meta'] = {
@@ -138,11 +177,17 @@ def main():
         'keep_weeks': KEEP_WEEKS,
         'src': 'TDCC opendata 1-5(集保股權分散表,每週六更新)',
     }
-    os.makedirs('data', exist_ok=True)
-    with open(OUT_FILE, 'w', encoding='utf-8') as f:
+    os.makedirs(os.path.dirname(out_file) or '.', exist_ok=True)
+    with open(out_file, 'w', encoding='utf-8') as f:
         json.dump(result, f, ensure_ascii=False, separators=(',', ':'))
-    size_kb = os.path.getsize(OUT_FILE) // 1024
-    print(f'✅ 輸出 {OUT_FILE}:{len(result) - 1} 檔 / {size_kb} KB / 資料日 {data_date}')
+    return True, f'{out_file}:{len(result) - 1} 檔 / 資料日 {data_date}'
+
+
+def main():
+    print('🏦 TDCC 股權分散表週採礦開始…')
+    ok, msg = update()
+    print(('✅ ' if ok else '❌ ') + msg)
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == '__main__':
