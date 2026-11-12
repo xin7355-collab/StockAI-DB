@@ -1,0 +1,102 @@
+name: 💬 PTT 股板中繼資料 (ptt_meta)
+
+# 💬 V82.1.9 使用者 11/12:「PTT爬蟲照做」。只收看板列表頁看得到的(標題 / 分類 / 推文數 / 發文時間 / 代號 / [標的] 多空),
+#    ⛔ 內文、⛔ 作者帳號、⛔ 偽裝瀏覽器、⛔ 繞過 18 禁確認頁或任何擋。每一輪先讀 robots.txt,不允許就整輪不抓(紅燈)。
+# 🚨 誰來觸發:**跟在每日採礦後面**(`workflow_run`,⛔ 新開 cron —— 排程配額已經不夠用,CLAUDE.md V73.9.0);手動可選 probe。
+# 存放:orphan 分支 ptt_meta(永遠 1 個 commit;只有這支會寫、concurrency 同時只有一輪 → force-push 不會蓋掉別人)。
+#    ⛔ 進 gh-pages / App(研究用,RESEARCH_ONLY)。
+
+on:
+  workflow_run:
+    workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'probe = 只讀 robots.txt + 第一頁、不寫檔;mine = 抓最新幾頁併進月檔'
+        required: false
+        default: 'probe'
+      max_pages:
+        description: '這一輪最多翻幾頁(預設 30;第一次跑只翻 10)'
+        required: false
+        default: ''
+
+concurrency:
+  group: ptt-meta
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ptt:
+    name: 💬 PTT 股板中繼資料
+    runs-on: ubuntu-latest
+    # 只跟每日採礦「排程 / 手動」成功的那一輪(⛔ push 觸發的那輪也跟 → 一天只要一次)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'push')
+    # ⏱️ 15 分:安裝 1 分 + 最多 30 頁 × 3 秒間隔 ≈ 2 分 + 推分支 1 分;被砍 = 這一輪沒存
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝
+        run: pip install requests
+
+      - name: 🧪 自我測試(離線)
+        run: python3 ptt_meta.py --selftest
+
+      - name: 📚 還原已存的月檔 (origin/ptt_meta → ptt_meta/)
+        run: |
+          mkdir -p ptt_meta
+          git fetch origin ptt_meta --depth=1 2>/dev/null || true
+          if git rev-parse --verify -q origin/ptt_meta >/dev/null; then
+            for f in $(git ls-tree --name-only -r origin/ptt_meta -- ptt/ 2>/dev/null); do
+              mkdir -p "ptt_meta/$(dirname "$f")"
+              if git show "origin/ptt_meta:$f" > "ptt_meta/$f" 2>/dev/null && [ -s "ptt_meta/$f" ]; then :; else
+                rm -f "ptt_meta/$f"; echo "  ⚠️ $f 還原失敗(當成沒有)"
+              fi
+            done
+          else
+            echo "ℹ️ 還沒有 ptt_meta 分支(第一次跑)"
+          fi
+          echo "📚 既有月檔 $(ls ptt_meta/ptt/*/*.json 2>/dev/null | wc -l) 個"
+
+      - name: 💬 抓
+        id: run
+        env:
+          # 🔧 排程 / workflow_run 觸發時 inputs.* 是空字串 → Python 端一律 `or 預設`;workflow_run 一律 mine
+          MODE: ${{ github.event_name == 'workflow_run' && 'mine' || inputs.mode }}
+          PTT_MAX_PAGES: ${{ inputs.max_pages }}
+        run: |
+          set -o pipefail
+          python3 ptt_meta.py "${MODE:-probe}" --out ptt_meta 2>&1 | tee /tmp/ptt.log
+          echo "ran=1" >> "$GITHUB_OUTPUT"
+
+      - name: 🚀 推 ptt_meta 分支(orphan,只留 1 個 commit)
+        if: ${{ steps.run.outputs.ran == '1' && (github.event_name == 'workflow_run' || inputs.mode == 'mine') }}
+        run: |
+          set -e
+          ls ptt_meta/ptt/*/*.json >/dev/null 2>&1 || { echo "ℹ️ 沒有月檔 → 不推"; exit 0; }
+          rm -rf /tmp/ptt_out && cp -r ptt_meta/ptt /tmp/ptt_out
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git reset --hard -q; git clean -fdxq -e ptt_meta
+          git checkout -f -q --orphan ptt_meta_tmp
+          git rm -rfq --cached . >/dev/null 2>&1 || true
+          rm -rf ptt && cp -r /tmp/ptt_out ptt
+          git add -f ptt
+          git commit -q -m "💬 PTT 股板中繼資料 $(date -u '+%Y-%m-%d %H:%M UTC')($(ls ptt/*/*.json | wc -l) 個月檔)"
+          pushed=0
+          for i in 1 2 3 4 5; do
+            git push -f -q origin HEAD:refs/heads/ptt_meta && { echo "✅ ptt_meta push 成功 ($i)"; pushed=1; break; }
+            sleep $((i*5))
+          done
+          [ "$pushed" -eq 1 ] || { echo "❌ ptt_meta push 連 5 次失敗"; exit 1; }
