@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.1.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.2.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8968,10 +8968,17 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.1.8',
+    _APP_VERSION: 'V82.2.0',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.2.0', d: [
+            '📚 產業作戰室研究總表:新研究「新聞出來前股價已經先漲 = 利多出盡?」—— 1,552 次個股新聞暴增,先漲的之後反而好一點,利多出盡不成立(散戶 App 的用法不變)',
+            '📰 專欄多一篇「新聞出來之前已經先漲了,是不是該賣?」',
+        ], dt: '2026-11-12' },
+        { v: 'V82.1.9', d: [
+            '💬 研究資料:每天收 PTT 股板的標題、推文數、[標的] 喊多喊空(只收看板列表,不收內文和帳號;先確認 PTT 的 robots.txt 允許;散戶 App 的用法不變)',
+        ], dt: '2026-11-12' },
         { v: 'V82.1.8', d: [
             '📚 產業作戰室研究總表:新研究「大跌時營收還在成長的股票是不是被錯殺?」—— 平常日子也一樣好一點,大跌時沒有特別的錯殺好處(散戶 App 的用法不變)',
             '📰 專欄多一篇「大跌時營收成長股是錯殺、營收衰退股是接刀子?」(大跌時會跳出來)',
@@ -9279,14 +9286,6 @@ ${list}
         { v: 'V79.6.8', d: [
             '📋 法說會多了「公司講的展望」:個股「基本」頁那一格會列出公司在簡報上說的話(例如「第四季營收會比第三季好」),之後月營收、財報出來就自動對答案 —— ✅ 做到了 / ❌ 沒做到 / ⏳ 還沒到期,附實際數字與哪天知道',
             '📄 簡報裡 PDF 抽出來的怪字(「成⾧」)會自動換成一般字;講毛利率的那句也不會再被當成總經新聞排到最後',
-        ], dt: '2026-10-24' },
-        { v: 'V79.6.7', d: [
-            '🩺 修好週六早上「選股快照、法說會一覽表讀不出來」:採礦把 20 台機器的結果合在一起時,剛好遇到別的流程更新同一個檔,寫成一半新一半舊;現在一台一台依序寫,推上網站前每個檔都會先檢查讀不讀得出來',
-            '📞 法說會的歷年紀錄、推薦紀錄讀到壞掉的檔會先救回前面完整的那份,⛔ 不會再用今天一天蓋掉整份歷史',
-        ], dt: '2026-10-24' },
-        { v: 'V79.6.6', d: [
-            '💳 上市股的融資餘額改照證交所當天公布的那一份:以前常常是前一天的數字(5~6 月有一段甚至每天都一樣),籌碼頁的融資走勢和融資追繳那一格會跟著變準',
-            '🕘 證交所當天的融資晚上才公布:傍晚看的時候最新那一天會先空著(融資走勢只畫到前一天),晚上或隔天自動補上',
         ], dt: '2026-10-24' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },

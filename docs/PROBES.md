@@ -61,6 +61,8 @@
 
 ### 📉 V81.0.2(2026-11-06)大盤殺到 41,575 的 7 個問題 —— 評估紀錄 55
 - `scripts/volsurge_probe.mjs`(新):`DATA_DIR=$S/d16 node --max-old-space-size=8000 scripts/volsurge_probe.mjs out.json`。App「剛爆量啟動」的規則照著買有沒有用(K = 2 / 2.5 / 3 / 5 / 10、收盤 / 隔天開盤、流動性、大盤大跌日)。⏭️ 只有 App 換規則才重跑。
+- `scripts/news_runup_probe.mjs`(📰 V82.2.0 新):`NEWS_CNT=<news_factor.py 的 news_cnt.json> DATA_DIR=<d16> node --max-old-space-size=8000 scripts/news_runup_probe.mjs out.json`
+  → 新聞暴增前已先漲 vs 沒先漲(EXP-20261112-04)。news_cnt:`NEWS_DIR=<news_deep 解開> DATA_DIR=<d16> NAMES=stock_names.json OUT=news_cnt.json python3 scripts/news_factor.py`(約 15 分)。
 - `scripts/crash_stock_probe.mjs` 🧾 V82.1.8 加 `REV_DIR=<stock_deep/rev> [REV_ONLY=1]` → 恐慌 vs 基本面(跌深股月營收年增 ≥+10% vs ≤−10%,EXP-20261112-03)。
   rev 在 research_pack 的 `src/stock_deep/rev`(要 `KEEP_SRC=1` 或先複製出來,做完 src 會刪)。⏭️ 下一次大跌滿 60 天後重跑。
 - `scripts/psych_state_probe.mjs`(🧠 V82.1.7 新):`IDX_LONG IDX_EARLY TWII_NOW node scripts/psych_state_probe.mjs out.json` → 大盤 5 種心理狀態(遲滯、擴張百分位)、
