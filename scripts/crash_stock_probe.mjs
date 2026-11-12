@@ -19,7 +19,12 @@
  *   ・跟「同期買合成正 2」比(2 × 加權日報酬 − 2.5%/年,同 crash_playbook_probe)
  *   ・Benjamini-Hochberg(lib_fdr.bhQ)把全部「門檻 × 分組 × 天數」的 p 一起校正
  *
- * 跑法:DATA_DIR=$S/d16 DIV=$S/d16/_div16.json node --max-old-space-size=8000 scripts/crash_stock_probe.mjs out.json
+ * 🧾 V82.1.8 恐慌 vs 基本面(使用者提案 Phase 0 C;EXP-20261112-03 事先登記,判定寫死在 revJudge):
+ *   每一段第一次跌到 ≥10% 那天,「跌得比大盤深」的股票裡,最近公布的月營收年增 ≥ +10%(還在成長 = 錯殺?)vs ≤ −10%(衰退 = 接刀子?)
+ *   之後 60 天(含息、扣 beta)差多少;安慰劑 = 同一套分組挪到 120 個交易日之後(⛔ 大跌那天)—— 成長股本來就比較會漲的部分在這裡現形。
+ *   月營收「知道」的日子 = 隔月 11 日(法定 10 日前公布;同 trade_lead_probe),⛔ 用還沒公布的那個月。
+ *   REV_DIR = stock_deep/rev(FinMind 免費月營收 2009 起,*.json.gz);沒給就跳過這段。
+ * 跑法:DATA_DIR=$S/d16 DIV=$S/d16/_div16.json [REV_DIR=$S/rev] node --max-old-space-size=8000 scripts/crash_stock_probe.mjs out.json
  *       node scripts/crash_stock_probe.mjs --selftest
  */
 import fs from 'fs';
@@ -28,6 +33,7 @@ import { corrLegs, mean, med, r2 } from './lib_crash.mjs';
 import { detectFTD } from './ftd_probe.mjs';
 import { bhQ } from './lib_fdr.mjs';
 import { trSeries } from './lib_totalreturn.mjs';
+import zlib from 'zlib';
 
 export const HS = [20, 60, 120], DDS = [10, 15, 20], MIN_AMT = 1e7, LOOK = 250;
 
@@ -104,6 +110,69 @@ export function crossAt(stocks, i, peakI, hs = HS, tw = null) {
                 exb: aa != null && ga.length >= 5 ? mean(ga.map(z => z.a)) - aa : null, beta: ga.length ? mean(ga.map(z => z.r.f.beta)) : null } : { n: gs.length };
         }
         out.h[h] = { all: am, nAll: pr.length, g, idx: ix, x2: tw ? idx2x(tw, i, h) : null };
+    }
+    return out;
+}
+
+/** 🧾 V82.1.8 月營收:一檔 {d, c, v}(FinMind)→ Map('YYYY-M' → 營收);同一個月第二次出現(更正)用後面那筆 */
+export function revMapOf(j) {
+    const c = j && Array.isArray(j.c) ? j.c : [], m = new Map();
+    const ir = c.indexOf('revenue'), im = c.indexOf('revenue_month'), iy = c.indexOf('revenue_year');
+    if (ir < 0 || im < 0 || iy < 0 || !Array.isArray(j.v)) return m;
+    for (const r of j.v) { const y = +r[iy], mo = +r[im], v = +r[ir]; if (y > 1990 && mo >= 1 && mo <= 12 && v > 0) m.set(`${y}-${mo}`, v); }
+    return m;
+}
+/** 某一天(YYYY-MM-DD)已經公布的最近一個月的年增率(%):第 M 月的營收隔月 11 日才算知道;兩邊都要有 → 否則 null */
+export function yoyAt(R, d) {
+    if (!R || !R.size) return null;
+    let y = +d.slice(0, 4), m = +d.slice(5, 7) - 1; if (+d.slice(8, 10) < 11) m -= 1;   // 11 日(含)以後才知道上個月
+    while (m <= 0) { m += 12; y -= 1; }
+    const a = R.get(`${y}-${m}`), b = R.get(`${y - 1}-${m}`);
+    return a > 0 && b > 0 ? (a / b - 1) * 100 : null;
+}
+export function loadRev(dir) {
+    const out = new Map(); if (!dir || !fs.existsSync(dir)) return out;
+    for (const f of fs.readdirSync(dir)) { if (!/^\d{4}\.json(\.gz)?$/.test(f)) continue;
+        try { let b = fs.readFileSync(`${dir}/${f}`); if (f.endsWith('.gz')) b = zlib.gunzipSync(b); out.set(f.slice(0, 4), revMapOf(JSON.parse(b.toString('utf8')))); } catch (_) {} }
+    return out;
+}
+/** 一個時點:跌得比大盤深(這一檔從那段高點那天到今天 ≤ 加權同期)的股票,營收成長 vs 衰退 之後 h 天(含息、扣 beta)平均差 */
+export function revAt(stocks, i, peakI, tw, cal, rev, h = 60, G = 10) {
+    const ixLeg = tw[peakI] > 0 ? tw[i] / tw[peakI] - 1 : null, ix = idxFwd(tw, i, h);
+    if (ixLeg == null || ix == null) return null;
+    const g = [], b = [];
+    for (const S of stocks) {
+        const f = featAt(S, i, peakI, tw); if (!f || f.ddLeg == null || f.ddLeg > ixLeg || f.beta == null) continue;
+        const y = yoyAt(rev.get(S.sym), cal[i]); if (y == null) continue;
+        const x = fwd(S, i, h); if (x == null) continue;
+        const a = x - f.beta * ix;
+        if (y >= G) g.push(a); else if (y <= -G) b.push(a);
+    }
+    return g.length >= 5 && b.length >= 5 ? { d: cal[i], g: mean(g), b: mean(b), diff: mean(g) - mean(b), ng: g.length, nb: b.length } : null;
+}
+/** EXP-20261112-03 判定(寫死):60 天 平均差 ≥ +3pp 且 ≥ 2/3 次為正 且 正負號翻轉 p < 0.05 且 比安慰劑(挪 120 天)多 ≥ 2pp → ✅;其他 ⛔ */
+export function revJudge(ev, pl, SIMS = 20000, seed = 13) {
+    const d = ev.map(e => e.diff), pd = pl.map(e => e.diff);
+    if (d.length < 5) return { verdict: '次數不夠', n: d.length };
+    const m = mean(d), pos = d.filter(x => x > 0).length, R = (() => { let s = seed; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; })();
+    let ge = 0; for (let k = 0; k < SIMS; k++) { let t = 0; for (const x of d) t += R() < 0.5 ? -x : x; if (t / d.length >= m) ge++; }
+    const p = (ge + 1) / (SIMS + 1), pm = pd.length ? mean(pd) : null;
+    const okv = m >= 3 && pos / d.length >= 2 / 3 && p < 0.05 && pm != null && m - pm >= 2;
+    return { verdict: okv ? '✅ 營收還在成長的跌深股之後回得比較多(而且不是平常就這樣)' : '⛔ 分不出來 / 平常就這樣', n: d.length, m: r2(m), pos, p: r2(p), pl: r2(pm), npl: pd.length };
+}
+export function runRev(ctx, tw, rev, log = console.log) {
+    const out = {};
+    for (const X of DDS) {
+        const ev = [], pl = [];
+        for (const e of evalDays(tw, X)) {
+            const a = revAt(ctx.stocks, e.i, e.peakI, tw, ctx.cal, rev); if (a) ev.push(a);
+            const j = e.i + 120; if (j + 60 < tw.length) { const b = revAt(ctx.stocks, j, e.peakI + 120, tw, ctx.cal, rev); if (b) pl.push(b); }
+        }
+        const J = revJudge(ev, pl);
+        out[X] = { ev, pl, J };
+        log(`\n── 🧾 恐慌 vs 基本面:每一段第一次跌到 ≥${X}%,跌得比大盤深的股票,月營收年增 ≥+10% vs ≤−10%(之後 60 天、含息、扣 beta)${X === 10 ? ' ← EXP-20261112-03 判定' : '(只描述)'} ──`);
+        for (const a of ev) log(`  ${a.d}:成長 ${r2(a.g)}%(${a.ng} 檔)vs 衰退 ${r2(a.b)}%(${a.nb} 檔)→ 差 ${r2(a.diff)}pp`);
+        log(`  → 平均差 ${J.m}pp ・正 ${J.pos}/${J.n} ・翻轉 p ${J.p} ・安慰劑(挪 120 天)${J.pl}pp(${J.npl} 次)→ ${J.verdict}`);
     }
     return out;
 }
@@ -236,6 +305,23 @@ function selftest() {
     // ⑩ 合成正 2 = 每天 2 倍 − 2.5%/年
     const x2 = idx2x(twA, 100, 20), man = (() => { let v = 1; for (let k = 101; k <= 120; k++) v *= 1 + 2 * (twA[k] / twA[k - 1] - 1) - 0.025 / 252; return (v - 1) * 100; })();
     t(Math.abs(x2 - man) < 1e-9, '⑩ 合成正 2 = 每天 2 倍漲跌 − 2.5%/年');
+    // ⑪ 🧾 V82.1.8 月營收「知道」的日子:10 月營收 11/11 才算知道(11/10 還只能用 9 月)
+    const Rv = new Map([['2024-10', 120], ['2023-10', 100], ['2024-9', 90], ['2023-9', 100], ['2024-12', 50], ['2023-12', 100]]);
+    t(Math.abs(yoyAt(Rv, '2024-11-10') + 10) < 1e-9 && Math.abs(yoyAt(Rv, '2024-11-11') - 20) < 1e-9 && Math.abs(yoyAt(Rv, '2025-01-11') + 50) < 1e-9 && yoyAt(Rv, '2025-03-01') === null,
+       '⑪ 月營收隔月 11 日才算知道(11/10 用 9 月 −10%、11/11 用 10 月 +20%、跨年 1/11 用 12 月;缺去年同月 → null)');
+    // ⑫ 判定:注入「成長組每次多 6pp、安慰劑 0」→ ✅;⑬ 決定性對照:差 ≈ 0 → ⛔;⑭ 平常就這樣(安慰劑也多 6pp)→ ⛔
+    const evI = Array.from({ length: 9 }, (_, k) => ({ diff: 6 + (k % 3) - 1 })), plZ = Array.from({ length: 9 }, () => ({ diff: 0 }));
+    const evZ = Array.from({ length: 9 }, (_, k) => ({ diff: (k % 2 ? 1 : -1) * (1 + k * 0.3) }));
+    t(revJudge(evI, plZ).verdict.startsWith('✅'), `⑫ 注入成長組每次多 ~6pp、安慰劑 0 → ${revJudge(evI, plZ).verdict.slice(0, 2)}`);
+    t(revJudge(evZ, plZ).verdict.startsWith('⛔'), `⑬ 決定性對照:差 ≈ 0 → ${revJudge(evZ, plZ).verdict.slice(0, 2)}`);
+    t(revJudge(evI, evI).verdict.startsWith('⛔'), '⑭ 安慰劑(平常日子)一樣多 6pp → ⛔(不是恐慌錯殺,是成長股平常就比較會漲)');
+    // ⑮ revAt 走真的流程:跌得比大盤深的 40 檔,一半營收 +30%(之後每天多漲)、一半 −30% → 差 > 0;不埋 → ≈ 0
+    const evR = evalDays(tw, 15)[0], dEv = cal[evR.i];
+    const mkRev = (yoy) => { const m = new Map(); for (let y = 2010; y <= 2016; y++) for (let mo = 1; mo <= 12; mo++) m.set(`${y}-${mo}`, 100 * Math.pow(1 + yoy / 100, y - 2010)); return m; };
+    const mkDeep = (boost) => Array.from({ length: 40 }, (_, k) => mk(String(3000 + k), i => { let v = 50 * twA[i] / twA[0]; if (i > evR.i - 30 && i <= evR.i) v *= 1 - 0.3 * (i - evR.i + 30) / 30; else if (i > evR.i) v *= 0.7 * (k < 20 ? 1 + boost * (i - evR.i) : 1); return v; }));
+    const revM = new Map(Array.from({ length: 40 }, (_, k) => [String(3000 + k), mkRev(k < 20 ? 30 : -30)]));
+    const r1 = revAt(mkDeep(0.003), evR.i, evR.peakI, twA, cal, revM), r0 = revAt(mkDeep(0), evR.i, evR.peakI, twA, cal, revM);
+    t(r1 && r0 && r1.ng === 20 && r1.nb === 20 && r1.diff > 10 && Math.abs(r0.diff) < 1, `⑮ 走真的流程(${dEv}):埋成長組每天多 0.3% → 差 ${r1 && r2(r1.diff)}pp;不埋 → ${r0 && r2(r0.diff)}pp`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
@@ -250,7 +336,8 @@ if (process.argv[1] && process.argv[1].endsWith('crash_stock_probe.mjs')) {
     const am = new Map(raw.map(r => [String(r.date).replace(/\//g, '-').slice(0, 10), +r.amount || 0]));
     const amt = ctx.cal.map(d => am.get(d) || 0);
     console.log(`股票 ${ctx.stocks.length} 檔 ・${ctx.cal[0]} ~ ${ctx.cal.at(-1)}`);
-    const out = run(ctx, tw, console.log, amt);
+    const out = process.env.REV_ONLY ? {} : run(ctx, tw, console.log, amt);
+    if (process.env.REV_DIR) { const rev = loadRev(process.env.REV_DIR); console.log(`\n月營收 ${rev.size} 檔(${process.env.REV_DIR})`); out.rev = runRev(ctx, tw, rev); }
     if (process.env.EQ_DIR) {
         const pos = new Map(ctx.cal.map((d, i) => [d, i]));
         const files = fs.readdirSync(process.env.EQ_DIR).filter(f => /^eq_\d+\.json$/.test(f));
@@ -265,6 +352,6 @@ if (process.argv[1] && process.argv[1].endsWith('crash_stock_probe.mjs')) {
         const tm = DDS.map(X => [`跌到 ≥${X}%`, evalDays(tw, X)]).concat([['追盤日(FTD)', ftdDays(tw, amt)]]);
         out.lead = eqAfter(ctx.cal, eqs, b50, tm);
     }
-    if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify(Object.fromEntries(Object.entries(out).map(([k, v]) => [k, k === 'lead' ? v
+    if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify(Object.fromEntries(Object.entries(out).map(([k, v]) => [k, k === 'lead' || k === 'rev' ? v
         : { sum: v.sum, dates: v.ev.map(o => o.d), pl: v.pl.map(o => o.d) }])), null, 1));
 }
