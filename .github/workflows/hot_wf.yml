@@ -1,0 +1,174 @@
+name: 🧭 🔥 Walk-forward 12 組 (hot_wf)
+
+# 🧭 V82.2.4 實驗登錄 EXP-20261112-05(跑之前寫死):RANK_MIN 75/80/85/90 × VOLAT_MIN 50/60/70,一組一個 job 平行(公開 repo 分鐘數不限)。
+#   每組照 docs/PROBES.md「照 App 實際怎麼買」①~③,資料用 research_pack 的 d16(16 年含下市):
+#   交易快取(這一組自己的門檻;⛔ 共用 —— 快取只留過門檻那天的 🧬)→ 每一晚名單前 60 筆 → list_trig 判觸發 → 17 條起點 EQUITY_OUT
+#   → scripts/hot_wf_probe.mjs years;最後 analyze 照登記的挑法串起來(結果在 Step Summary + artifact)。
+# ⛔ 排程(手動才跑,一次約 2~4 小時);⛔ 寫任何分支;三個資料分支先在 pin job 釘住版本 → 12 組吃同一份資料。
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: '只跑這幾組(例 R85_V60,R75_V50;空白 = 12 組全跑)'
+        required: false
+        default: ''
+
+concurrency:
+  group: hot-wf
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pin:
+    name: 📌 釘住資料版本
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      data: ${{ steps.p.outputs.data }}
+      kd: ${{ steps.p.outputs.kd }}
+      sd: ${{ steps.p.outputs.sd }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        run: |
+          set -e
+          for b in data klines_deep stock_deep; do
+            s=$(git ls-remote origin "refs/heads/$b" | cut -f1)
+            [ -n "$s" ] || { echo "::error::找不到 $b 分支"; exit 1; }
+            echo "$b → $s"
+            case $b in data) echo "data=$s" >> "$GITHUB_OUTPUT";; klines_deep) echo "kd=$s" >> "$GITHUB_OUTPUT";; stock_deep) echo "sd=$s" >> "$GITHUB_OUTPUT";; esac
+          done
+
+  combo:
+    name: 🔥 R${{ matrix.rank }}_V${{ matrix.volat }}
+    needs: pin
+    runs-on: ubuntu-latest
+    # ⏱️ 330 分:資料包 3~5 分 + 交易快取 4 片約 70 分 + 名單 / 判觸發約 30~60 分 + 17 條約 30 分;job 上限 360
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        rank: [75, 80, 85, 90]
+        volat: [50, 60, 70]
+    env:
+      K: R${{ matrix.rank }}_V${{ matrix.volat }}
+    steps:
+      - name: 🎯 這組要不要跑
+        id: sel
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          if [ -z "$ONLY" ] || echo ",$ONLY," | grep -q ",$K,"; then echo "run=1" >> "$GITHUB_OUTPUT"; else echo "run=0" >> "$GITHUB_OUTPUT"; echo "⏭️ $K 不在 only 清單"; fi
+
+      - uses: actions/checkout@v4
+        if: steps.sel.outputs.run == '1'
+
+      - name: 🌐 playwright(list_trig 跑 App 自己的偵測器)
+        if: steps.sel.outputs.run == '1'
+        run: |
+          npm i -D playwright@1.49.1
+          npx playwright install --with-deps chromium
+
+      - name: 📦 研究資料包 d16(版本釘住)
+        if: steps.sel.outputs.run == '1'
+        env:
+          DATA_REF: ${{ needs.pin.outputs.data }}
+          KD_REF: ${{ needs.pin.outputs.kd }}
+          SD_REF: ${{ needs.pin.outputs.sd }}
+        run: |
+          set -o pipefail
+          node scripts/research_pack.mjs /tmp/rp 2>&1 | tail -8
+
+      - name: 💼 交易快取 → 名單 → 判觸發 → 17 條起點
+        if: steps.sel.outputs.run == '1'
+        env:
+          DATA_DIR: /tmp/rp/d16
+          DIV_TRADES: /tmp/rp/d16/_div16.json
+          DIV: /tmp/rp/d16/_div0050.json
+          BENCH0050: /tmp/rp/d16/_bench0050.json
+          LOT: '150000'
+          STOPFILL: close
+          EXIT: chand2
+          MAXD: '20'
+          RANK_MIN: ${{ matrix.rank }}
+          VOLAT_MIN: ${{ matrix.volat }}
+        run: |
+          set -o pipefail
+          fail () { echo "::error::$K $1"; exit 1; }
+          T0=$(date +%s); tsec () { echo "$(( $(date +%s) - T0 ))s"; }
+          echo "🖥️ $(nproc) 核心・記憶體 $(free -m | awk '/Mem:/{print $2}') MB"
+          # ① 交易快取:這一組自己的門檻,4 片平行(⛔ 每一片的結束碼都要檢查)
+          pids=""
+          for k in 0 1 2 3; do
+            SELF=high+hivolat ALLFIRE=1 WARMUP=251 SHARD=$k/4 TRADES_CACHE=/tmp/tc.s$k.ndjson node --max-old-space-size=3500 scripts/portfolio_backtest.mjs 9999 2 > /tmp/tc.s$k.log 2>&1 &
+            pids="$pids $!"
+          done
+          rc=0; for p in $pids; do wait $p || rc=1; done
+          for k in 0 1 2 3; do echo "── 片 $k"; tail -c 400 /tmp/tc.s$k.log; echo; done
+          [ "$rc" -eq 0 ] || fail "交易快取有一片失敗"
+          node --max-old-space-size=6000 scripts/merge_trades_cache.mjs /tmp/tc.ndjson /tmp/tc.s0.ndjson /tmp/tc.s1.ndjson /tmp/tc.s2.ndjson /tmp/tc.s3.ndjson | tail -3 || fail "交易快取合併失敗"
+          rm -f /tmp/tc.s0.ndjson /tmp/tc.s1.ndjson /tmp/tc.s2.ndjson /tmp/tc.s3.ndjson
+          echo "🧱 交易快取 $(du -h /tmp/tc.ndjson | cut -f1)・$(tsec)"
+          export TRADES_CACHE=/tmp/tc.ndjson ALLFIRE=1 GATE=lb CLIFF=20 STATS_WIN=1200 MIN_MKT_N=0 MIN_N=8 LB_Z=0 LB_TOP=99 LISTK=2 FILTER=
+          # ② 每一晚的名單(前 60 筆、單一起點、空頭照買)
+          SELF=high+hivolat+nobear PARK= LIST_DUMP=/tmp/dump.ndjson LIST_DUMP_N=60 WARMUP=251 node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -4
+          [ -s /tmp/dump.ndjson ] || fail "名單沒產出"
+          echo "🧾 名單 $(wc -l < /tmp/dump.ndjson) 晚・$(tsec)"
+          # ③ 判明天會不會觸發(App 自己的偵測器,4 片;TOPN 一定要 60)
+          pids=""
+          for k in 0 1 2 3; do
+            HTML_DIR=. TOPN=60 SHARD=$k/4 node scripts/list_trig.mjs /tmp/dump.ndjson /tmp/trig.s$k.ndjson > /tmp/trig.s$k.log 2>&1 &
+            pids="$pids $!"
+          done
+          rc=0; for p in $pids; do wait $p || rc=1; done
+          for k in 0 1 2 3; do tail -c 300 /tmp/trig.s$k.log; echo; done
+          [ "$rc" -eq 0 ] || fail "判觸發有一片失敗"
+          cat /tmp/trig.s0.ndjson /tmp/trig.s1.ndjson /tmp/trig.s2.ndjson /tmp/trig.s3.ndjson > /tmp/trig.ndjson
+          echo "🎯 判了 $(wc -l < /tmp/trig.ndjson) 筆・$(tsec)"
+          # ④ 17 條起點(🅿️ 閒錢停 0050 = App 預設)
+          mkdir -p /tmp/eq /tmp/out
+          W=$(node -e "console.log(Array.from({length:17},(_,k)=>251+3*k).join(','))")
+          SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson PARK=idle WARMUPS="$W" EQUITY_OUT='/tmp/eq/eq_{W}.json' SUMMARY_OUT='/tmp/eq/sum_{W}.json' \
+            node --max-old-space-size=7000 scripts/portfolio_backtest.mjs 9999 2 | tail -20
+          node scripts/hot_wf_probe.mjs years /tmp/eq "$K" "/tmp/out/$K.json" || fail "17 條沒齊"
+          echo "💼 完成・$(tsec)"
+
+      - name: ⬆️ 上傳這一組
+        if: steps.sel.outputs.run == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotwf-${{ env.K }}
+          path: /tmp/out/
+          retention-days: 14
+          if-no-files-found: error
+
+  analyze:
+    name: 🧮 照登記的規則串起來
+    needs: combo
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hotwf-*
+          merge-multiple: true
+          path: /tmp/all
+      - name: 🧮 analyze
+        run: |
+          set -o pipefail
+          ls /tmp/all
+          node scripts/hot_wf_probe.mjs analyze /tmp/all /tmp/hot_wf.json | tee /tmp/hot_wf.txt
+          { echo '### 🧭 🔥 Walk-forward(EXP-20261112-05)'; echo; echo '```'; cat /tmp/hot_wf.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hot-wf-result
+          path: |
+            /tmp/hot_wf.json
+            /tmp/hot_wf.txt
+            /tmp/all/
+          retention-days: 30

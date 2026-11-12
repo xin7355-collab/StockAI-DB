@@ -61,6 +61,10 @@
 
 ### 📉 V81.0.2(2026-11-06)大盤殺到 41,575 的 7 個問題 —— 評估紀錄 55
 - `scripts/volsurge_probe.mjs`(新):`DATA_DIR=$S/d16 node --max-old-space-size=8000 scripts/volsurge_probe.mjs out.json`。App「剛爆量啟動」的規則照著買有沒有用(K = 2 / 2.5 / 3 / 5 / 10、收盤 / 隔天開盤、流動性、大盤大跌日)。⏭️ 只有 App 換規則才重跑。
+- `scripts/hot_wf_probe.mjs` + `.github/workflows/hot_wf.yml`(🧭 V82.2.4 新,EXP-20261112-05):🔥 / 🅿️ Walk-forward —— Actions 手動派,12 組一組一個 job
+  (pin job 先釘住 data / klines_deep / stock_deep 版本 → research_pack d16 → 這一組自己的交易快取 4 片 → 名單前 60 → list_trig 4 片 → 17 條 WARMUPS → `years`),
+  最後 analyze job 照登記的挑法串起來(Step Summary + artifact `hot-wf-result`)。⚠️ 交易快取 ⛔ 共用(只留過門檻那天的 🧬,門檻不同內容不同)。
+  本機小測:同一套指令 40 檔(快取 2 片 155 秒、名單 3 秒、判觸發 32 秒、17 條 8 秒)。失敗的組用 `only=R85_V60,…` 補跑。
 - `scripts/news_runup_probe.mjs`(📰 V82.2.0 新):`NEWS_CNT=<news_factor.py 的 news_cnt.json> DATA_DIR=<d16> node --max-old-space-size=8000 scripts/news_runup_probe.mjs out.json`
   → 新聞暴增前已先漲 vs 沒先漲(EXP-20261112-04)。news_cnt:`NEWS_DIR=<news_deep 解開> DATA_DIR=<d16> NAMES=stock_names.json OUT=news_cnt.json python3 scripts/news_factor.py`(約 15 分)。
 - `scripts/crash_stock_probe.mjs` 🧾 V82.1.8 加 `REV_DIR=<stock_deep/rev> [REV_ONLY=1]` → 恐慌 vs 基本面(跌深股月營收年增 ≥+10% vs ≤−10%,EXP-20261112-03)。
