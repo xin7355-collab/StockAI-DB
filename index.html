@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.2.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.2.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.2.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8968,10 +8968,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.2.4',
+    _APP_VERSION: 'V82.2.5',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.2.5', d: [
+            '🧭 編輯庫存的每一檔可以選「為什麼買」(App 推薦、領頭羊、自己看線型、營收財報、新聞消息、別人報的、存股長抱、其他),也可以勾「買之前想好停損價」;賣出時會一起記下來',
+            '🪞 勝率鏡子多一塊「照為什麼買分」:每一種理由幾筆、平均賺賠多少、合計多少元,看得出哪一種理由最常讓你賠錢;賣的時候才補選的會註明',
+            '🏆 A 級買點提醒的門檻改成先扣掉手續費和證交稅再判斷(以前少扣了這一段,有幾檔不該拿 A 級的也拿到了)',
+            '📒 產業作戰室的成績單下面多一塊:每天推薦之後真的漲跌,跟推薦當時寫的數字對照,看要打幾折',
+        ], dt: '2026-11-13' },
         { v: 'V82.2.4', d: [
             '📚 研究:「🔥 / 🅿️ 樣本外驗證」開始在 GitHub 上 12 組一起跑(照事先登記的規則;結果出來會寫進產業作戰室,散戶 App 的用法不變)',
         ], dt: '2026-11-13' },
@@ -9286,7 +9292,6 @@ ${list}
         { v: 'V79.7.5', d: ['🧹 內部更新(畫面沒有變動)'], dt: '2026-10-25' },
         { v: 'V79.7.4', d: ['🧹 內部更新(畫面沒有變動)'], dt: '2026-10-24' },
         { v: 'V79.7.3', d: ['🧹 內部更新(畫面沒有變動)'], dt: '2026-10-24' },
-        { v: 'V79.7.2', d: ['🧹 內部更新(畫面沒有變動)'], dt: '2026-10-24' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -48301,6 +48306,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-[9px] leading-tight flex-1 text-right ${bd ? 'text-gray-600' : 'text-amber-400/80'}" data-bdnote="${idx}">${bd ? '出場線會用這天起算' : '沒填 → 出場線只能用近 20 日代理'}</span>
                 <button onclick="app._invSellOpen(${idx}); app.vibrate(15);" data-sellbtn="${idx}" class="flex-shrink-0 text-[12px] font-black px-3 rounded-lg border ${this._invSellIdx === idx ? 'bg-orange-600 text-white border-orange-500' : 'bg-[#21262d] text-orange-300 border-orange-700/60'}" style="min-height:36px">🎯 賣出</button>
             </div>
+            <div class="flex items-center gap-2 px-2 pb-2 flex-wrap" data-whyrow="${idx}">
+                <span class="text-[10px] text-gray-500 flex-shrink-0">🧭 為什麼買</span>
+                <select onchange="app._updateInvEditDraft(${idx}, 'why', this.value)" data-whysel="${idx}" class="bg-[#21262d] text-white text-[11px] px-1 py-0.5 rounded border border-[#30363d] outline-none focus:border-blue-500" style="max-width:9.5em">${this._whyOptionsHtml(item.why || '')}</select>
+                <label class="flex items-center gap-1 text-[10px] text-gray-400 ml-auto" style="min-height:24px"><input type="checkbox" data-planstop="${idx}" ${item.planStop === true ? 'checked' : ''} onchange="app._updateInvEditDraft(${idx}, 'planStop', this.checked)"> 買之前想好停損價</label>
+            </div>
             ${this._invSellIdx === idx ? this._invSellPanelHtml(idx) : ''}
             </div>`;
         }).join('');
@@ -48352,6 +48362,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 note.classList.toggle('text-amber-400/80', !has);
             }
             return;   // ⛔ 買進日不影響總成本,不用往下重算
+        } else if (field === 'why') {
+            // 🧭 V82.2.5 只收清單裡的 key(⛔ 亂寫的存成未填)
+            const v = String(value || '');
+            this._invEditDraft[idx].why = this._WHY_LIST.some(x => x[0] === v) ? v : '';
+            delete this._invEditDraft[idx].whyLate;   // 在編輯頁自己選 = 賣之前選的,⛔ 再算補填
+            return;
+        } else if (field === 'planStop') {
+            this._invEditDraft[idx].planStop = !!value;
+            return;
         }
         // 即時更新總成本顯示
         const item = this._invEditDraft[idx];
@@ -48547,6 +48566,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //   ⭐ 損益一律走 _netPL(已扣買賣手續費 × 你的折數 + 賣出證交稅)—— 舊版是毛利。
     //   ⭐ 按確認就馬上存(這是一個動作不是編輯),⛔ 不等 💾 儲存;
     //      ⛔ 不用 showConfirm(z=300 會被編輯頁 z=9999 蓋住,V19.1 的坑)。
+    // 🧭 V82.2.5 買進理由(使用者 11/13「可以做的都做」;想法參考 tradermonty trade-performance-coach「先寫計畫再交易」,MIT,程式是這裡自己寫的)
+    //   ⭐ 理由在**買的時候**選(編輯庫存那一列)→ 賣出時一起寫進交易日誌 → 勝率鏡子照理由分組,看哪一種最常讓你賠錢。
+    //   ⚠️ 賣的時候才補填的另外記 `whyLate`(事後回想容易被結果影響:賺了記得是看準、賠了記得是聽別人的),鏡子上會講幾筆是補的。
+    //   ⛔ key 只能加、不能改(舊紀錄存的是 key)。
+    _WHY_LIST: [['app', '🎯 App 推薦'], ['lead', '👑 領頭羊'], ['tech', '📈 自己看線型'], ['fund', '📊 營收財報'],
+                ['news', '📰 新聞消息'], ['tip', '🗣️ 別人報的'], ['long', '🐢 存股長抱'], ['other', '❓ 其他']],
+    _whyOk(k) { return this._WHY_LIST.some(x => x[0] === k); },
+    _whyLabel(k) { const f = this._WHY_LIST.find(x => x[0] === k); return f ? f[1] : '未填'; },
+    _whyOptionsHtml(sel) {
+        return '<option value="">未填</option>' + this._WHY_LIST.map(([k, t]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${t}</option>`).join('');
+    },
     _invSellOpen(idx) {
         this._invSellIdx = (this._invSellIdx === idx) ? null : idx;
         const modal = document.getElementById('inventoryEditPageModal');
@@ -48575,6 +48605,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <label class="flex flex-col gap-0.5" style="min-width:0"><span class="text-[10px] text-gray-400">賣出股數</span><input type="number" step="1" min="1" max="${df.shares}" inputmode="numeric" value="${df.shares}" data-sellf="shares" oninput="app._invSellPreview(${idx})" class="${inp}" style="min-height:38px"></label>
                 <label class="flex flex-col gap-0.5" style="min-width:0;grid-column:1 / -1"><span class="text-[10px] text-gray-400">賣出日</span><input type="date" value="${df.date}" data-sellf="date" oninput="app._invSellPreview(${idx})" class="bg-[#0d1117] text-white text-[12px] font-mono px-1 rounded border border-[#30363d] outline-none focus:border-orange-500 w-full" style="min-height:38px"></label>
             </div>
+            ${this._whyOk(item.why) ? `<div class="text-[10px] text-gray-400 mb-1.5" data-sellwhy="have">🧭 當初買的理由:${this._whyLabel(item.why)}</div>` : `
+            <label class="flex items-center gap-1.5 mb-1.5" data-sellwhy="ask"><span class="text-[10px] text-gray-400 flex-shrink-0">🧭 當初為什麼買?</span>
+                <select data-sellf="why" class="bg-[#0d1117] text-white text-[12px] px-1 py-0.5 rounded border border-[#30363d] outline-none focus:border-orange-500" style="max-width:9.5em">${this._whyOptionsHtml('')}</select>
+                <span class="text-[9px] text-gray-500 leading-tight">現在才補的,鏡子會註明</span></label>`}
             <div data-sellprev class="text-[12px] leading-relaxed mb-1.5">${this._invSellPreviewHtml(item, df.price, df.shares)}</div>
             <div class="flex gap-2">
                 <button onclick="app._invSellCommit(${idx})" class="flex-1 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-[13px] font-black" style="min-height:40px">✅ 記入勝率鏡子</button>
@@ -48601,7 +48635,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const p = document.querySelector(`[data-sellpanel="${idx}"]`);
         if (!p) return null;
         const v = k => p.querySelector(`[data-sellf="${k}"]`)?.value;
-        return { price: parseFloat(v('price')), shares: Math.round(+v('shares') || 0), date: String(v('date') || '').slice(0, 10) };
+        return { price: parseFloat(v('price')), shares: Math.round(+v('shares') || 0), date: String(v('date') || '').slice(0, 10), why: String(v('why') || '') };
     },
     _invSellPreview(idx) {
         const item = (this._invEditDraft || [])[idx], r = this._invSellRead(idx);
@@ -48637,19 +48671,28 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             let nm = item.symbol; try { nm = this.getStockName(item.symbol) || item.symbol; } catch (_) {}
             const pnlPct = cost > 0 ? +(net / (cost * shares) * 100).toFixed(2) : 0;
             const log = { symbol: item.symbol, name: nm, cost, sellPrice: price, shares: shares / 1000, pnlNTD: net, pnlPct, buyDate: item.buyDate || null, date: sellDate.replace(/-/g, '/'), holdDays, net: 1 };
+            // 🧭 V82.2.5 買進理由:買的時候選的照抄;沒選、賣的時候才補 → whyLate(鏡子會註明)。停損有沒有先想好:勾過 / 選過理由才記
+            const _w0 = this._whyOk(item.why) ? item.why : '', _wL = !_w0 && this._whyOk(r.why) ? r.why : '';
+            if (_w0 || _wL) log.why = _w0 || _wL;
+            if (_wL || (_w0 && item.whyLate)) log.whyLate = 1;   // 上次賣一部分時才補的,剩下那筆再賣也還是補的
+            if (item.planStop === true || item.planStop === false || log.why) log.planStop = item.planStop === true ? 1 : 0;
             let tradeLog = [];
             try { const raw = JSON.parse(localStorage.getItem('proTerminalTradeLog') || '[]'); if (Array.isArray(raw)) tradeLog = raw; } catch (_) { tradeLog = []; }   // 壞掉就重建(V68.4.8)
             tradeLog.push(log);
             const rest = own - shares;
             // 真正的庫存:同步這一列在草稿裡的成本/買進日,再扣股數
             const nextInv = this.inventory.slice();
-            if (rest > 0) nextInv[oi] = { ...orig, cost: item.cost, buyDate: item.buyDate, shares: rest / 1000 };
+            if (rest > 0) nextInv[oi] = { ...orig, cost: item.cost, buyDate: item.buyDate, shares: rest / 1000,
+                ...(this._whyOk(log.why) ? { why: log.why, ...(log.whyLate ? { whyLate: 1 } : {}) } : {}), ...(typeof item.planStop === 'boolean' ? { planStop: item.planStop } : {}) };
             else nextInv.splice(oi, 1);
             localStorage.setItem('proTerminalTradeLog', JSON.stringify(tradeLog));
             localStorage.setItem('proTerminalInv', JSON.stringify(nextInv));
             this.inventory = nextInv;
             // 草稿跟著改,並重排 _oi(拿掉一筆後後面的原始索引要往前)
-            if (rest > 0) { item.shares = rest / 1000; }
+            if (rest > 0) {
+                item.shares = rest / 1000;
+                if (this._whyOk(log.why)) { item.why = log.why; if (log.whyLate) item.whyLate = 1; }   // 草稿也要跟著(⛔ 只改存檔:再賣一次會讀草稿)
+            }
             else {
                 this._invEditDraft.splice(idx, 1);
                 this._invEditDraft.forEach(it => { if (Number.isInteger(it._oi) && it._oi > oi) it._oi -= 1; });
@@ -49668,10 +49711,53 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="bg-[#0d1117] border border-[#30363d] rounded px-1 py-1.5"><div class="text-[9px] text-gray-500">總損益</div><div class="font-mono font-black text-base ${totalPnl >= 0 ? 'text-red-300' : 'text-green-300'}">${_nf(totalPnl)}</div><div class="text-[8px] text-gray-500">期望 ${expectancyPct >= 0 ? '+' : ''}${expectancyPct.toFixed(1)}%/筆</div></div>
             </div>
             ${insight ? `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[11px] ${insightCls} leading-relaxed mb-1.5">${insight}</div>` : ''}
+            ${this._mirrorWhyHtml(log)}
             <details><summary class="text-[10px] text-gray-500 cursor-pointer list-none">📜 最近 5 筆 · 獲利因子 ${profitFactor >= 99 ? '∞' : profitFactor.toFixed(2)} · 最大單筆虧損 ${_nf(maxLoss)}</summary><div class="mt-1">${recent}</div></details>
             <div class="text-[9px] text-gray-600 mt-1.5">💡 只算在編輯庫存按「🎯 賣出」的單,損益已扣買賣手續費與證交稅。純刪除不計入。這面鏡子照的是你自己——比任何訊號都重要。</div>
             <div id="mirrorXc" class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5"></div>`;
         return this._mirrorRiskHtml(log) + box.innerHTML;
+    },
+    /** 🧭 V82.2.5 照「為什麼買」分組(純函式,測試直接打)→ { n, filled, late, groups:[{k,label,n,win,wr,avgPct,sum}], plan:{yes,no} }
+     *   ⛔ 沒填的單獨一組「未填」(⛔ 不猜);停損那兩組只算有記 planStop 的(舊紀錄 ⛔ 當成沒想好)。 */
+    _mirrorWhyGroups(log) {
+        const L = Array.isArray(log) ? log : [];
+        const acc = (m, k, t) => {
+            if (!m.has(k)) m.set(k, { k, n: 0, win: 0, sumPct: 0, sum: 0 });
+            const o = m.get(k), p = +t.pnlNTD || 0;
+            o.n++; if (p > 0) o.win++; o.sumPct += +t.pnlPct || 0; o.sum += p;
+        };
+        const fin = (o, label) => ({ k: o.k, label, n: o.n, win: o.win, wr: o.n ? o.win / o.n * 100 : 0, avgPct: o.n ? o.sumPct / o.n : 0, sum: o.sum });
+        const g = new Map(), pm = new Map();
+        let filled = 0, late = 0;
+        for (const t of L) {
+            const k = this._whyOk(t.why) ? t.why : '';
+            if (k) { filled++; if (t.whyLate) late++; }
+            acc(g, k, t);
+            if (t.planStop === 1 || t.planStop === 0) acc(pm, t.planStop === 1 ? 'yes' : 'no', t);
+        }
+        const groups = [...g.values()].map(o => fin(o, o.k ? this._whyLabel(o.k) : '未填'))
+            .sort((a, b) => (b.k ? 1 : 0) - (a.k ? 1 : 0) || b.n - a.n);   // 有填的在前、筆數多的在前;未填放最後
+        return { n: L.length, filled, late, groups,
+                 plan: { yes: pm.has('yes') ? fin(pm.get('yes'), '有') : null, no: pm.has('no') ? fin(pm.get('no'), '沒有') : null } };
+    },
+    _mirrorWhyHtml(log) {
+        const G = this._mirrorWhyGroups(log);
+        if (!G.n) return '';
+        if (!G.filled) return `<div class="text-[10px] text-gray-500 leading-snug mb-1.5" data-mirrorwhy="0">🧭 以後在「✏️ 編輯庫存」幫每一檔選「為什麼買」,這裡就會照理由分開算 —— 看得出哪一種理由最常讓你賠錢。</div>`;
+        const nf = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+        const pf = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+        const cls = v => v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400';
+        const row = o => `<div class="flex flex-wrap items-baseline gap-x-1.5 text-[10.5px] py-0.5 border-b border-[#21262d]" data-whygrp="${o.k || 'none'}">
+            <span class="text-gray-200 min-w-0" style="flex:1 1 7em">${o.label}</span>
+            <span class="text-gray-500 font-mono">${o.n} 筆${this._wrEnough(o.n) ? `・賺 ${o.win} 筆` : '(還太少)'}</span>
+            <span class="font-mono ${cls(o.avgPct)}">平均 ${pf(o.avgPct)}</span>
+            <span class="font-mono ${cls(o.sum)}">${nf(o.sum)} 元</span></div>`;
+        const P = G.plan;
+        const planLine = (P.yes && P.no) ? `<div class="text-[10px] text-gray-400 leading-snug mt-1" data-whyplan="1">🛑 買之前<b class="text-gray-200">有</b>想好停損 ${P.yes.n} 筆,平均 <span class="font-mono ${cls(P.yes.avgPct)}">${pf(P.yes.avgPct)}</span>
+            ・<b class="text-gray-200">沒有</b> ${P.no.n} 筆,平均 <span class="font-mono ${cls(P.no.avgPct)}">${pf(P.no.avgPct)}</span>${this._wrEnough(Math.min(P.yes.n, P.no.n)) ? '' : '(筆數還少,先當參考)'}</div>` : '';
+        return `<details class="mb-1.5 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5" data-mirrorwhy="1"><summary class="text-[11px] text-gray-300 cursor-pointer list-none">🧭 照「為什麼買」分 <span class="text-[9px] text-gray-500">有填 ${G.filled}/${G.n} 筆${G.late ? `・${G.late} 筆是賣的時候才補` : ''} ▾</span></summary>
+            <div class="mt-1">${G.groups.map(row).join('')}</div>${planLine}
+            <div class="text-[9px] text-gray-600 leading-snug mt-1">💡 盡量在買的時候就選 —— 賣了才補的,容易被結果影響(賺了記得是自己看準、賠了記得是聽別人的)。</div></details>`;
     },
     /** 🧭 V80.0.4 鏡子最上面:帳戶熔斷 + 手上的總風險 */
     _mirrorRiskHtml(log) {
@@ -52245,12 +52331,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // ⛔ 五個門檻**全部**來自實測,不是我訂的:
     //  ① 🧬 高位階+高波動 —— V73.2.9 實測**不挑它整套輸給買 0050**,所以是**必要條件**
     //  ② 樣本 ≥ `_wrEnough`(10)—— ⛔ 全 App 同一份,別在這裡寫死數字
-    //  ③ 保守下界 `lb` > 0 —— 已扣成本、且**依樣本數打過折**(V72.9.2:排點估計值必挑到僥倖股)
+    //  ③ 保守下界 `lb` 扣掉來回成本後 > 0 —— **依樣本數打過折**(V72.9.2:排點估計值必挑到僥倖股);⚠️ 檔案裡的 lb 是毛的,這裡才扣(V82.2.5)
     //  ④ 勝率要**贏得過基準**(36.4%,⛔ 不是 50%)且統計上站得住(`_winRateConfidence` p≤25%)
     //  ⑤ 賺賠比 ≥ 2 —— V72.0.3 的教訓:42 個 A 級訊號有 36 個「常對但期望值是負的」
     _pbGrade(x) {
         const w = +x.w, n = +x.n, po = +x.po;
-        const lb = Number.isFinite(+x.lb) ? +x.lb : +x.exp;
+        // 🐛 V82.2.5 playbook_edge 的 `lb` / `exp` 存的是**還沒扣成本**的(playbook_scan `rowOf`:exp = 平均、lb = 平均 − 1.28×標準差/√n),
+        //   但第 ③ 關寫的是「已扣成本」、沒過時也說「扣完成本後期望值不正」→ 以前 lb 介於 0 ~ 0.44 的也拿得到 A 級(扣完其實是負的)。
+        //   V79.4.9 以前舊排法進名單本來就要 lb − 成本 > 0,所以這關等於沒差;換成照平均排之後才漏出來。成本讀 playbook_edge 自己寫的那個。
+        const _cost = Number.isFinite(+(this._pbEdge && this._pbEdge.cost)) ? +this._pbEdge.cost : 0.44;
+        const lb = (Number.isFinite(+x.lb) ? +x.lb : +x.exp) - _cost;
         const hq = !!this._hqOf(x);
         const base = this._VERIFIED_EDGE?.base?.winBase ?? 36.4;
         const enough = this._wrEnough ? this._wrEnough(n) : (n >= 10);

@@ -6331,6 +6331,17 @@ const PRO = {
     for (const x of sorted) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }   // 同一檔只留排最前面那一招
     return uniq.filter(x => (+x.hq || 0) === 1 && !(+x.bear || 0)).slice(0, this._RECO_PICKS);
   },
+  /** 📏 V82.2.5 整份名單(校準用):那天名單上每一檔都算 —— ⛔ 只取前 2 名、⛔ 濾 🧬 / 空頭(要量的是「回測數字準不準」,不是「這套賺不賺」)。
+   *  同一檔只留排最前面那一招(去重同 `_recoPicks`;規則照那一天的 `rule`,⛔ 拿今天的規則改寫過去)。 */
+  _recoAllPicks(pb, rule) {
+    const rows = (pb || []).filter(x => x && x.s);
+    if (!rows.length) return null;
+    const R = rule || 'lb';
+    const sorted = rows.filter(x => this._pbRuleOk(x, R)).sort((a, b) => this._pbKeyOf(b, R) - this._pbKeyOf(a, R));
+    const seen = new Set(), uniq = [];
+    for (const x of sorted) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }
+    return uniq;
+  },
   /** 📈 V77.2.5 成績單的三張清單(使用者:「符合進場的也進到成績單裡面…用分頁區隔開…
    *  另外可以用混搭的方式回測」)。⭐ 三張問的是**不同的問題**,⛔ 不可混成一個數字:
    *    ・`pb`  🧬 高基期高波動 = 決策台「🎯 今天可以買的」(playbook_edge:這一檔自己最會賺的那一招)
@@ -6377,15 +6388,17 @@ const PRO = {
     return [...best.values()].sort((a, b) => (+b.e || 0) - (+a.e || 0));
   },
 
-  async _recoLedgerLoad(ruleArg, srcArg) {
+  async _recoLedgerLoad(ruleArg, srcArg, startArg, onProg) {
     // 🏆 V77.2.4 收 `ruleArg` —— 讓「哪個出場最強」可以用**同一批推薦**跑第二種出場。
     //   ⛔ 預設仍是 `_exitRule()`(你自己設的那條),既有呼叫端零影響。
     // 📈 V77.2.5 再收 `srcArg` —— 三張清單各自獨立跑(⛔ 三張的筆數不可相加)。
     const rule = ruleArg || this._exitRule();
     const src = srcArg || 'pb';
-    const S = this._recoStart();                  // 🏁 V79.5.3 起算日可以換(⛔ 不再直接讀 `_RECO_COMMON`)
+    // 📏 V82.2.5 `pball` = 整份名單(校準用,跟 🔥 同一套買法);startArg = 校準自己的起算日(⛔ 動到成績單的起算日設定)
+    const trigMode = src === 'pb' || src === 'pball';
+    const S = startArg || this._recoStart();      // 🏁 V79.5.3 起算日可以換(⛔ 不再直接讀 `_RECO_COMMON`)
     // 🧬 `fit` / `mix` 要用到 index.html 的門檻與黑名單 → 先把它載進來(⛔ 不在這裡抄一份)
-    if (src !== 'pb') { try { await this.loadIdx(); } catch (_) {} }
+    if (src === 'fit' || src === 'mix') { try { await this.loadIdx(); } catch (_) {} }
     const H = await this.fetchJson('data/pick_history.json', 12000);
     await this._twiiLoad();
     // 🎑 V77.9.3 假日快照⛔ 不算:加權那天沒開盤(中秋 / 教師節 / 颱風)卻有一份名單 = 採礦把假日幽靈 K 當成交易日(陷阱 #48)。
@@ -6398,8 +6411,8 @@ const PRO = {
     const days = days0.filter(d => !_isGhost(d.d)).slice().sort((a, b) => (a.d < b.d ? -1 : 1));
     const out = { rule, src, start: S, days: days.length, ghost: days0.length - days.length, since: null, skipped: 0, trades: [], noK: [],
                   // 🔥 V79.5.3 照 App 真正的買法(只有 🔥 這張):沒有觸發價 / 收盤沒到觸發價 / 名單是最新那份(明天才知道)/ 已經抱著
-                  mech: src === 'pb' ? 'trig' : 'paper', noTrig: [], miss: [], pend: [], heldSkip: 0,
-                  geneErr: (src !== 'pb' && !this._geneRule()) ? (this._idxErr || '解析不到門檻') : null };
+                  mech: trigMode ? 'trig' : 'paper', noTrig: [], miss: [], pend: [], heldSkip: 0,
+                  geneErr: ((src === 'fit' || src === 'mix') && !this._geneRule()) ? (this._idxErr || '解析不到門檻') : null };
     const open = new Map();                       // sym → 那筆的出場日('9999' = 還持有中)
     const K = this._rlK = this._rlK || {};        // K 線快取(⛔ 同一檔不重抓)
     const kOf = async s => {
@@ -6414,6 +6427,7 @@ const PRO = {
     // 🧪 混搭 = 兩張聯集。⛔ 任一張重建不出來就整天跳過 ——
     //   只算得出來的那一半會讓它看起來像「兩張都買」,但其實只買了一張(同名不同義)。
     const picksOf = (day) => {
+      if (src === 'pball') return this._recoAllPicks(day.pb, day.rule);
       if (src === 'pb') return this._recoPicks(day.pb, day.rule);
       if (src === 'fit') return this._recoFitPicks(day);
       const a = this._recoPicks(day.pb, day.rule), b = this._recoFitPicks(day);
@@ -6422,12 +6436,15 @@ const PRO = {
       for (const x of a.concat(b)) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }
       return uniq;
     };
+    let _di = 0;
     for (const day of days) {
+      if (onProg) { try { onProg(_di, days.length); } catch (_) {} }
+      _di++;
       const picks = picksOf(day);
       if (!picks) { out.skipped++; continue; }
       out.since = out.since || day.d;
       for (const x of picks) {
-        if (src === 'pb') {
+        if (trigMode) {
           // 🔥 V79.5.3 = 自動下單 `hot_step` / 回測 LISTK=2:前一晚名單前 2 名 → 隔天收盤 ≥ 觸發價才買(收盤價成交)。
           //   ⛔ 以前用「推薦那天的收盤」買 —— 名單要收盤後才出來,那個價**根本買不到**(陷阱 #58 在成績單又一次)。
           //   ⛔ 沒有觸發價的不買(自動下單一律跳過;那一格⛔ 不遞補第 3 名)。
@@ -6439,7 +6456,8 @@ const PRO = {
           if (until && until >= F) { out.heldSkip++; continue; }   // ④ 還抱著 → 不重複買(= 自動下單「已持有的⛔ 不再買」)
           const rows = await kOf(x.s);
           let i1 = -1; for (let i = rows.length - 1; i >= 0; i--) { const dd = this._dstr(rows[i].date); if (dd === F) { i1 = i; break; } if (dd < F) break; }
-          const t = { sym: x.s, d: F, ld, trig, px: trig, k: `${x.k || ''}・${ld.slice(5).replace('-', '/')} 名單・觸發 ${this._px(trig)}`, st: null };
+          const t = { sym: x.s, d: F, ld, trig, px: trig, k: `${x.k || ''}・${ld.slice(5).replace('-', '/')} 名單・觸發 ${this._px(trig)}`, st: null,
+                      kk: x.k || '', exp: Number.isFinite(+x.exp) && x.exp !== null && x.exp !== '' ? +x.exp : null, hq: +x.hq || 0 };   // 📏 V82.2.5 推薦當時的回測數字(校準用)
           if (i1 < 1) { out.noK.push(x.s); out.trades.push(t); continue; }   // ⛔ 讀不到那天的 K → 照實寫,⛔ 不猜買沒買到
           const c = +rows[i1].close;
           if (!(c >= trig)) { out.miss.push({ sym: String(x.s), ld, d: F, trig, c }); continue; }   // 收盤沒到觸發價 → 那天不買(⛔ 不追)
@@ -6469,6 +6487,130 @@ const PRO = {
       }
     }
     return out;
+  },
+  // ═══ 📏 V82.2.5 回測說的 vs 推薦之後真的(使用者 11/13「可以做的都做」:每個訊號的實盤命中率對照回測)═══
+  //  ⭐ 決策台每一檔的「這一招每趟 +x%」是拿這一檔自己的歷史、從 22 招裡挑最好那一招算的平均(還沒扣成本)——
+  //     挑冠軍本來就會偏高(選樣偏誤,`_patternFitBacktest` 註解 V72.9.2 那段)。這裡把「推薦之後真的發生的」拿來對,看要打幾折。
+  //  ⛔ 鐵則(測試 scripts/test_calib.mjs 釘住):
+  //   ① 買法 / 結算 = 成績單那一份(`_recoLedgerLoad` + `_settleReplay`,⛔ 另寫一份持有迴圈)
+  //   ② 兩邊都用「還沒扣成本」的 %(回測那個數字是毛的);扣成本後另外寫
+  //   ③ 只拿「那天推薦的每一筆都出場了」的日子下結論 —— ⛔ 只算已出場的:剛開始那幾週先出場的多半是碰停損的、賺的還抱著,
+  //      只算已出場的一定看起來特別差(V82.2.5 第一次跑真資料就是這樣:19 筆已出場全賠、另有 20 筆還在抱)。
+  //      還在抱的另外用今天收盤算「帳面」(會變,⛔ 下結論);沒有回測數字的 ⛔ 算;筆數 < 10 ⛔ 下結論
+  //   ④ 95% 區間 = 差距平均 ± 1.96 × 標準差 ÷ √筆數;整段區間都在 0 下面,才說「比回測差,而且不是運氣」
+  //   ⑤ 整份名單要下載幾百檔 K 線 → 按了才算、一檔一檔排隊抓(⛔ 一次全部打出去)
+  //   ⑥ 回測的勝率沒有存在每天的名單快照裡 → 只能比每趟平均;要比勝率得讓採礦多存一欄(改採礦要先問使用者)
+  _CALIB_MIN: 10,
+  _CALIB_START: '2026-10-21',   // 名單從這天起才有觸發價(V79.5.3 那段:之前五週都沒有)→ 再早的買不了,⛔ 硬算
+  _calibSig: null, _calibTop: null, _calibAll: null, _calibProg: null,
+  /** 純函式:trades = `_recoLedgerLoad` 的 trades(要有 st / exp / kk / ld)
+   *  → { all(只用全部出場的推薦日), mtm(含持有中、今天收盤的帳面), byK, days, doneDays, open, noExp } */
+  _calibAgg(trades) {
+    const L = Array.isArray(trades) ? trades : [];
+    const hasExp = t => t.exp != null && Number.isFinite(+t.exp);
+    const W = L.filter(t => t && t.st && Number.isFinite(+t.st.ret));
+    const byDay = new Map();
+    for (const t of W) { const d = String(t.ld || t.d || ''); if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(t); }
+    const done = new Set([...byDay.entries()].filter(([, a]) => a.every(t => !t.st.open)).map(([d]) => d));
+    const T = W.filter(t => done.has(String(t.ld || t.d || '')) && hasExp(t));
+    const M = W.filter(hasExp);
+    const open = W.filter(t => t.st.open).length;
+    const noExp = W.filter(t => !hasExp(t)).length;
+    const MIN = this._CALIB_MIN;
+    const one = (arr, mtm) => {
+      const n = arr.length; if (!n) return null;
+      const mean = a => a.reduce((x, v) => x + v, 0) / a.length;
+      const live = arr.map(t => +t.st.ret), ex = arr.map(t => +t.exp), d = live.map((v, i) => v - ex[i]);
+      const lm = mean(live), em = mean(ex), dm = mean(d);
+      const sd = n > 1 ? Math.sqrt(d.reduce((x, v) => x + (v - dm) ** 2, 0) / (n - 1)) : null;
+      const se = sd != null ? sd / Math.sqrt(n) : null;
+      const lo = se != null ? dm - 1.96 * se : null, hi = se != null ? dm + 1.96 * se : null;
+      const win = live.filter(v => v > 0).length;
+      const verdict = mtm ? 'mtm' : (n < MIN || se == null) ? 'few' : hi < 0 ? 'worse' : lo > 0 ? 'better' : 'same';
+      const bs = arr.map(t => t.st.bench).filter(v => v != null && Number.isFinite(+v)).map(Number);   // 同一段持有期間的加權(`_stlEnrich`)
+      return { n, live: lm, exp: em, diff: dm, lo, hi, win, wr: win / n * 100, ratio: em > 0 ? lm / em : null,
+               net: mean(arr.map(t => +t.st.net)), bench: bs.length ? mean(bs) : null, verdict };
+    };
+    const grp = (arr, mtm) => { const by = new Map(); for (const t of arr) { const k = String(t.kk || '—'); if (!by.has(k)) by.set(k, []); by.get(k).push(t); }
+      return [...by.entries()].map(([k, a]) => ({ k, ...one(a, mtm) })).sort((a, b) => b.n - a.n || a.k.localeCompare(b.k)); };
+    return { all: one(T), mtm: one(M, true), open, noExp, days: byDay.size, doneDays: done.size,
+             byK: grp(T), byKm: grp(M, true) };
+  },
+  _calibPct(v) { return v == null || !Number.isFinite(v) ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; },
+  /** 一段的白話結論(⛔ 用紅綠講好壞 —— 燈號鐵則:紅綠只講漲跌) */
+  _calibVerdictHtml(A) {
+    const p = v => this._calibPct(v), MIN = this._CALIB_MIN;
+    if (!A) return '<div class="note">還沒有「那天推薦的每一筆都出場了」的日子 —— 先出場的多半是碰停損的,只算它們會看起來特別差,所以等整天都出場才下結論。</div>';
+    const bt = A.bench != null ? ` ・同一段期間大盤 <span class="mono ${this.cls(A.bench)}">${p(A.bench)}</span>` : '';   // 回測的平均是好壞行情混在一起的 → 這段大盤怎麼走一起寫
+    const nums = `實際每趟平均 <b class="mono ${this.cls(A.live)}">${p(A.live)}</b>(扣成本後 <span class="mono ${this.cls(A.net)}">${p(A.net)}</span>)・推薦當時回測說 <b class="mono">${p(A.exp)}</b>`
+      + ` ・賺錢的 ${A.win}/${A.n} 筆${bt}`;
+    if (A.verdict === 'mtm') return `<div class="note" data-calibverdict="mtm">📌 <b>連還在抱的一起算(今天收盤的帳面,會變,⛔ 當結論)</b>:${A.n} 筆・平均 <b class="mono ${this.cls(A.live)}">${p(A.live)}</b>・推薦當時回測說 <b class="mono">${p(A.exp)}</b>・目前賺錢的 ${A.win}/${A.n} 筆${A.bench != null ? ` ・同一段期間大盤 <span class="mono ${this.cls(A.bench)}">${p(A.bench)}</span>` : ''}</div>`;
+    if (A.verdict === 'few') return `<div class="note" data-calibverdict="few">⏳ 全部出場的推薦日裡只有 <b>${A.n}</b> 筆,還太少(至少 ${MIN} 筆才判斷)。<br>${nums}</div>`;
+    const ci = `差 <b class="mono">${p(A.diff)}</b>(95% 區間 <span class="mono">${p(A.lo)} ~ ${p(A.hi)}</span>)`;
+    const cut = A.exp > 0 ? (A.live <= 0 ? ' → 回測說每趟賺,實際平均是賠的' : ` → 大約只剩回測說的 <b>${Math.round(A.ratio * 100)}%</b>`) : '';
+    const head = A.verdict === 'worse' ? '⚠️ <b>比回測差,而且不是運氣</b>' : A.verdict === 'better' ? '👍 <b>比回測好</b>(區間整段在 0 上面)' : '🤷 <b>跟回測說的分不出差別</b>(區間含 0)';
+    return `<div class="${A.verdict === 'worse' ? 'warnbox' : 'note'}" data-calibverdict="${A.verdict}">${head}:${A.n} 筆,${ci}${cut}。<br>${nums}</div>`;
+  },
+  _calibKHtml(byK, mtm) {
+    const p = v => this._calibPct(v), MIN = this._CALIB_MIN;
+    if (!byK || !byK.length) return '';
+    const row = g => `<div data-calibk="1" style="display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;font-size:11px;padding:3px 0;border-bottom:1px solid var(--line)">
+        <b style="flex:1 1 9em;min-width:0">${this._esc(g.k)}</b><span class="mono" style="color:var(--dim2)">${g.n} 筆${g.n < MIN ? '(還太少)' : ''}</span>
+        <span class="mono ${this.cls(g.live)}">實際 ${p(g.live)}</span><span class="mono">回測 ${p(g.exp)}</span><span class="mono" style="color:var(--dim)">差 ${p(g.diff)}</span></div>`;
+    const top = byK.slice(0, 10);
+    return `<details style="margin-top:6px"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">📋 每一招分開看${mtm ? '(含還在抱的帳面)' : ''}(筆數多的在前,最多 10 招)▾</summary>${top.map(row).join('')}
+      ${byK.length > 10 ? `<div class="note">還有 ${byK.length - 10} 招沒列(筆數更少)。</div>` : ''}</details>`;
+  },
+  _calibCountsHtml(R, C) {
+    if (!R || !C) return '';
+    return `<div style="font-size:10.5px;color:var(--dim2);margin:4px 0" data-calibcounts="1">📅 ${this._CALIB_START} 起名單・買到 ${C.mtm ? C.mtm.n + C.noExp : C.noExp} 筆(還在抱 ${C.open})・推薦日 ${C.days} 天裡全部出場的 ${C.doneDays} 天・沒有回測數字 ${C.noExp} 筆不算・收盤沒到觸發價 ${(R.miss || []).length} 次(沒買)</div>`;
+  },
+  _calibStart() {
+    if (this.buzz) this.buzz(10);
+    if (this._calibAll && this._calibAll.busy) return;
+    const rule = this._exitRule(), sig = this._calibSig;
+    this._calibAll = { busy: true }; this._calibProg = [0, 0];
+    this._recoCalibRender();
+    // ⑤ `_recoLedgerLoad` 本來就是一檔一檔 await 抓 K 線(⛔ 同時打出去)、同一檔不重抓(`_rlK` 快取)
+    this._recoLedgerLoad(rule, 'pball', this._CALIB_START, (i, n) => {
+      this._calibProg = [i, n];
+      const el = document.querySelector('[data-calibprog]'); if (el) el.textContent = `⏳ 算到第 ${i} / ${n} 天(一檔一檔抓 K 線,手機大約一兩分鐘)…`;
+    }).then(r => { if (this._calibSig !== sig) return; this._calibAll = r; this._recoCalibRender(); })
+      .catch(e => { if (this._calibSig !== sig) return; this._calibAll = { err: String(e).slice(0, 120) }; this._recoCalibRender(); });
+  },
+  _recoCalibRender() {
+    const el = document.getElementById('recoCalib'); if (!el) return;
+    const rule = this._exitRule(), sig = 'calib|' + rule;
+    if (this._calibSig !== sig) { this._calibSig = sig; this._calibTop = null; this._calibAll = null; }
+    const head = `<div class="big">📏 回測說的 vs 推薦之後真的</div>`;
+    const why = `<details style="margin-top:6px"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">📖 這是在量什麼 ▾</summary><div class="note">
+        決策台每一檔寫的「這一招每趟 +x%」,是拿<b>這一檔自己的歷史</b>、從 22 招裡<b>挑最好那一招</b>算的平均(還沒扣成本)。挑冠軍本來就會偏高 ——
+        這裡拿<b>推薦之後真的發生的</b>(跟成績單同一套買法:隔天收盤到觸發價才買、出場用你這頁設定的「${this._esc(this._exitRuleName() || rule)}」)來對,看要打幾折。<br>
+        ・兩邊都是<b>還沒扣成本</b>的 %(扣成本後另外寫)・未滿 ${this._CALIB_MIN} 筆不下結論。<br>
+        ・只拿「那天推薦的每一筆都出場了」的日子下結論 —— 剛開始那幾週先出場的多半是碰到停損的、賺的還抱著,只算已出場的會看起來特別差。還在抱的另外用今天收盤算帳面(會變)。<br>
+        ・「不是運氣」= 差距的 95% 區間整段在 0 下面。<br>
+        ・回測的<b>勝率</b>沒有存在每天的名單快照裡,所以這裡只能比每趟平均;要比勝率,採礦要多存一欄(改採礦要先問你)。</div></details>`;
+    if (!this._calibTop) {
+      this._calibTop = { busy: true };
+      el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-calib="1">${head}<div class="note">⏳ 正在對每天的推薦…</div></div>`;
+      this._recoLedgerLoad(rule, 'pb', this._CALIB_START).then(r => { if (this._calibSig !== sig) return; this._calibTop = r; this._recoCalibRender(); })
+        .catch(e => { if (this._calibSig !== sig) return; this._calibTop = { err: String(e).slice(0, 120) }; this._recoCalibRender(); });
+      return;
+    }
+    const T = this._calibTop, A = this._calibAll;
+    let top;
+    if (T.busy) top = `<div class="note">⏳ 正在對每天的推薦…</div>`;
+    else if (T.err) top = `<div class="note">⚠️ 讀不到推薦快照(${this._esc(T.err)})—— 稍後再開一次;⛔ 這不是成績為零。</div>`;
+    else { const C = this._calibAgg(T.trades); top = this._calibCountsHtml(T, C) + this._calibVerdictHtml(C.all) + (C.mtm ? this._calibVerdictHtml(C.mtm) : '') + this._calibKHtml(C.byK.length ? C.byK : C.byKm, !C.byK.length); }
+    let all;
+    if (!A) all = `<div class="labbar" style="margin:4px 0"><span class="labbtn" data-calibgo="1" onclick="PRO._calibStart()">📏 算整份名單(每天名單上每一檔都算)</span></div>
+        <div class="note">要下載幾百檔 K 線、一檔一檔排隊抓,手機大約一兩分鐘;筆數比上面多很多,打幾折會比較準。</div>`;
+    else if (A.busy) all = `<div class="note" data-calibprog="1">⏳ 算到第 ${(this._calibProg || [0])[0]} / ${(this._calibProg || [0, 0])[1] || '…'} 天(一檔一檔抓 K 線,手機大約一兩分鐘)…</div>`;
+    else if (A.err) all = `<div class="note">⚠️ 整份名單算不出來(${this._esc(A.err)})—— 稍後再按一次。</div>`;
+    else { const C = this._calibAgg(A.trades); all = this._calibCountsHtml(A, C) + this._calibVerdictHtml(C.all) + (C.mtm ? this._calibVerdictHtml(C.mtm) : '') + this._calibKHtml(C.byK.length ? C.byK : C.byKm, !C.byK.length); }
+    el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-calib="1">${head}
+      <div style="font-size:11.5px;font-weight:700;margin-top:6px">🔥 實際推薦(每天前 ${this._RECO_PICKS} 名)</div>${top}
+      <div style="font-size:11.5px;font-weight:700;margin-top:10px">📋 整份名單(校準:名單上每一檔)</div>${all}${why}</div>`;
   },
   // ═══ 👑 V77.9.3 領頭羊模擬帳(使用者:「領頭羊策略也加進去成績單裡面自動買賣」)═══
   // ⛔ 五條鐵則(測試 scripts/test_leader_ledger.mjs 釘住):
@@ -7201,8 +7343,10 @@ const PRO = {
     const el = document.getElementById('recoLedger'); if (!el) return;
     if (!document.getElementById('recoCmpAll')) el.insertAdjacentHTML('beforebegin', '<div id="recoCmpAll"></div>');   // 🏁 V78.2.2 同一起點比一比(獨立渲染,⛔ 不擋下面的分頁)
     if (!document.getElementById('recoRace')) document.getElementById('recoCmpAll').insertAdjacentHTML('beforebegin', '<div id="recoRace"></div>');   // 🏁 V79.5.3 100 萬同一天起跑(最上面)
+    if (!document.getElementById('recoCalib')) el.insertAdjacentHTML('afterend', '<div id="recoCalib"></div>');   // 📏 V82.2.5 回測說的 vs 推薦之後真的(獨立渲染)
     this._raceRender();
     this._recoCmpAllRender();
+    this._recoCalibRender();
     // 📈 V77.2.5 快取鍵要含「哪一張清單」—— ⛔ 少了它換分頁會吃到上一張的結果
     const SRC = (this._recoSrc === 'lead' && !this._recoLeadOn()) ? 'pb' : (this._recoSrc || 'pb');   // 🔒 V77.9.6
     const sig = 'reco|' + this._exitRule() + '|' + SRC + '|' + this._recoStart();
@@ -9653,6 +9797,7 @@ const PRO = {
       { k: 'calendar-filter', u: '2026-10-04', col: {"s": "破解迷思", "q": "結算日、連假前,要不要先賣掉或先不買?", "a": "不用。把結算日、連假前、週幾、月初月底這些日子當成「那天不買」,試了 13 種,全部讓整套少賺。", "num": "13 種行事曆日 + 13 種大盤狀況當成「那天不買」,26 種全部少賺;唯二看起來賺的,拿掉其中一個月就變賠", "mean": "照原本的進出場規則做,不用為了日子特別避開。", "do": ["結算日、連假前不用特別先賣或停買", "照你原本的賣出條件走", "那幾天如果比較晃,部位小一點、停損別設太近"], "warn": "這只說「不用避開」;那幾天可能比較晃,但會漲還是會跌量不出來,⛔ 別拿來押方向。", "how": "把 13 種日子(週幾、月初月底、結算日、長假前後)和 13 種大盤狀況,各當成「那天不買」的規則,疊在整套策略上比總共賺多少。", "range": "600 檔・13 個月・每天 2 檔・本金 100 萬(2025~2026 那一版窗口)", "trig": ["holiday_pre", "settle"], "u": "2026-10-04", "fig": {"pct": null, "rate": 0, "rn": 26, "ru": "種", "rw": "26 種日子裡方向站得住的"}}, r: 76, t: '📆 行事曆與大盤環境當濾網', n: '26 種全部少賺', d: '13 種行事曆(週幾/月初月底/結算日/長假)+ 13 種大盤事件(不追高/廣度極弱/地板股)。⭐ 唯二「贏」的兩個,優勢<b>全部集中在 2026-04 那一個月</b>,拿掉就由正轉負。🚨 累計測了 86 種變體,採用的只有 2 個。', s: 'V73.2.0 / V73.2.1 / V73.2.2' },
     ],
     method: [
+      { k: 'calib-live', u: '2026-11-13', s: 'pro.html _calibAgg / _recoCalibRender(scripts/test_calib.mjs)・index.html _pbGrade(test_verified ④d)・playbook_scan.mjs cost_note・V82.2.5', t: '📏 <b>決策台每一檔寫的「這一招每趟 +x%」是從 22 招裡挑冠軍、還沒扣成本的平均 → 推薦之後真的發生的一定要打折;而且「只算已經出場的」會看起來特別差(先出場的多半是碰停損的)</b>', n: '① 毛的不是淨的:playbook_edge 的 exp / lb 都是還沒扣成本的(rowOf 直接存平均),但檔案說明寫「已扣成本」、A 級那關也直接拿毛的 lb > 0 比 → V82.2.5 A 級改成扣掉 0.44% 再比、說明改正。② 第一次拿真資料對(10/21~11/11 名單,出場用吊燈 ATR):整份名單只算已出場的 19 筆全賠、平均 −9.4%(回測說 +8.3%)—— 但同一批還有 20 筆在抱;改成「那天推薦的每一筆都出場了才算」後只剩 1 天 1 筆 → 還不能下結論。③ 連還在抱的一起看帳面(會變):整份名單 38 筆平均 −2.6%(回測說 +8.1%、同一段大盤 −2.3%);實際推薦前 2 名 4 筆 +6.4%(回測說 +12.6%、大盤 +1.1%)。④ 判準:差距的 95% 區間整段在 0 下面才說「比回測差,而且不是運氣」;未滿 10 筆不下結論。⑤ 回測的勝率沒存在每天的名單快照 → 現在只能比每趟平均(要比勝率得讓採礦多存一欄,改採礦要先問使用者)。' },
       { k: 'lead-oos-2004', x: 'EXP-20261111-05', u: '2026-11-11', s: 'leader_probe.mjs・tw04_merge.py + research_pack.mjs TW04=1(d04 雜湊 862fa2dcd99d485d)・事先登記 EXP-20261111-05・V82.1.4', t: '🇹🇼 <b>👑 拿「從來沒用來定規則」的 2004~2010(含 2008)再跑一次:現行 100 萬中位 +51.5%,同期 0050 含息 +84.7%,17 個起跑日只有 5 個贏 —— 照事先寫好的規則判「分不出來」(差一條就算輸),2008 年 −49.3%(0050 −43.2%)</b>', n: '資料:證交所 2004~2009 全市場日 K + 除權息 + 每天的加權指數(tw_deep04 分支,6 輪抓完 71 個月),接在 16 年資料包前面(只有<b>上市</b>股:734 檔接上、76 檔 2010 年前就下市,上櫃那幾年沒有)。規則一行不改(成交額前 100・10 日動能前 5・每 10 天換・一年位置 ≥85%・大盤嚴格空頭不買・閒錢停 0050),2004-06-01 起 17 個起跑日(間距 3)、跑到 2010-12-31、100 萬含股利。<br><b>現行</b>:總報酬中位 +51.5%(年化 6.5%)vs 0050 含息 +84.7%・17 條贏 5 條・中途最多賠 −67.7%(0050 −55.7%)・Sharpe 0.36(0050 0.51)・逐年(👑 / 0050):2004 −0.5 / +12.0・2005 +48.4 / +10.0・2006 +28.0 / +21.1・2007 +10.7 / +10.3・<b>2008 −49.3 / −43.2</b>・2009 +35.8 / +75.0・2010 +11.4 / +13.0;2008 年內最多賠 −58.6%(0050 −55.1%);最高點都在 2007-07-25,最低點都在 2008-11-20。<br><b>錢放現金</b>(自動下單的做法):+23.3%・贏 2 條・中途最多賠 −60.5%・2008 只 −15.0%(年內最多賠 −24.7%),但 2009 只 +2.1%(0050 +75.0%)、2007 −2.4%。', d: '⭐ 讀法:① 事先寫死的判定(EXP-20261111-05):中位贏 0050 且 ≥13/17 = 樣本外也贏;中位輸 且 ≤4/17 = 輸;其他 = 分不出來 → 這次 5/17,⛔ 不改判定 ② 跟 16 年(2011~2026)看板的大幅領先比,這段沒看到優勢:2005~2007 多頭贏、2008 跟著大盤一起跌(停 0050 的錢也一起跌)、2009 V 型反彈追不上 —— 跟 wf-inflation「看板數字要打折」同一個方向 ③ 錢放現金那版 2008 少賠很多,但反彈年也沒賺到,整段反而更差 ④ ⚠️ 只有上市股(池子比 2011 以後小)、17 條實際只有 10 種換倉排法、2004 年頭幾個月一年位置是用現有天數算。⛔ 不換任何預設(規則照舊);這段資料以後只拿來「驗」。' },
       { k: 'dip-oos-2004', x: 'EXP-20261111-06', u: '2026-11-11', s: 'dipleader_probe.mjs DL_MONEY=1・d04(雜湊 862fa2dcd99d485d)・事先登記 EXP-20261111-06・V82.1.4', t: '🇹🇼 <b>📉 大跌撿便宜拿 2004~2010(含 2008 一整年空頭)再驗:事先講好的資金版主判準 ⛔ 沒過 —— 跌 ≥3% 那天隔天買、抱 20 天、一次一批,比一直放 0050 少 7.0%;2008 年 9 月那批 20 天少 14.3%</b>', n: '同一支探針、同一個判準(moneyGate:熱門股跌最多 10 檔・隔天開盤買・抱 20 天・一次只抱一批,門檻 2.5 / 3 / 3.5% 都要贏一直放 0050 + 逐年 ≥6 成),只換資料到 2004-08~2010-12(只有上市股):2.5% +1.8% ✓・<b>3% −7.0%(做了 18 次)✗</b>・3.5% −6.7% ✗・逐年 2/6 ✗・成本 ×2 −11.1%。2008 那幾次(20 天比 0050 超額):1 月 −1.9%・9 月 <b>−14.3%</b>・12 月 +4.0%;2009 年那幾次大多是正的。<br>App 實際用的那組(抱 40 天、每次都買,最多 3 批)這段 +3.4%、6 年裡 4 年贏(只描述,⛔ 不是事先講好的判準)。', d: '⭐ 讀法:① 16 年(2011~2026)那次勉強過關,換到沒挑過的年份就沒過 → 「大跌撿便宜」的優勢很可能有一部分是挑出來的 ② 最怕的就是 2008 那種一路跌:9 月那批接在半山腰 ③ ⛔ 不換預設、決策台「📉 大跌撿便宜」照舊(每批 1 成、最多 3 批本來就是為了這種情況),dip-hot-3pct 那條補了這段。⚠️ 只有上市股、跌 ≥3% 的日子這段有 56 天(2008 佔很多)。' },
       { k: 'wf-inflation', x: 'EXP-20261111-02', u: '2026-11-11', s: 'lead_wf_probe.mjs(selftest,WF_INJECT=peek 必紅)・research_pack.mjs 資料包 aaa094538cd18ee7・V82.1.2', t: '🧭 <b>看板上 👑 的年化有一截是「事後挑出來的」:假裝每年年初只能看之前的年份挑設定,2014~2026 年化少 2.1~6.7 個百分點 —— 照規則挑的版本仍然贏 0050,但 13 年裡只有 6~7 年贏</b>', n: '162 組設定(成交額前 50 / 100 / 200 × 取 3 / 5 / 8 檔 × 看 5 / 10 / 20 天漲幅 × 5 / 10 / 20 天換一次 × 位置門檻 0 / 85,含現行)每一組都跑 2011~2026、3 條起點平均;每年年初只看之前的年份、挑訓練期總報酬最高那組套到下一年,一年一年接起來(2014~2026 共 13 年;100 萬 →):<b>現行那組 38.7%・7,033 萬</b>(162 組排第 9)・<b>每年用之前全部年份挑 36.6%・5,756 萬</b>(高估 2.1 個百分點、最後的錢有 18% 是事後挑來的;贏 0050 6/13 年)・<b>只看前 3 年挑 32.0%・3,683 萬</b>(高估 6.7、48%;7/13 年)・網格中間那組 23.6%・0050 含息 19.3%・991 萬;162 組裡整段贏 0050 的 119 組;兩種挑法 13 年都沒挑中過現行那組。', d: '⭐ 讀法:① 看板的 👑 數字是「看過 2011~2026 全部年份才定的規則」= 樣本內,實盤預期要打折 —— 年化大約少 2~7 個百分點 ② 但不是全部是運氣:照規則挑也還贏 0050 一大截,賺的集中在少數幾年 ③ ⚠️ 換組那天的換股成本沒算、各年是 3 條起點平均、中途最多賠沒有算 ④ 🔥 那一套要全市場交易快取 × 每組重排名單,一組約 1 小時以上 → 列在「推薦下一步」。App 體檢頁第 3 節 F 讀 _EVOLVE.wf(⛔ 寫死)。' },
@@ -11059,7 +11204,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V82.2.4',
+  VER: 'V82.2.5',
   _ROT: {
     win: 20, spread: 1.95, top: 1.06, bot: -0.88,
     q1: 2.48, q2: 1.42, exBest: 1.83,

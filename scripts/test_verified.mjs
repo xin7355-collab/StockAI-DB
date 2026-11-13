@@ -76,6 +76,9 @@ const R = await page.evaluate(() => {
         negLb: app._pbGrade({ ...good, lb: -0.3 }),
         lowPo: app._pbGrade({ ...good, po: 1.4 }),
         lowWr: app._pbGrade({ ...good, w: 30 }),
+        // 🐛 V82.2.5 lb 是毛的:0.3 扣 0.44 成本是負的 → ⛔ A 級;決定性對照 0.5 → 扣完 +0.06 → 照樣 A 級
+        grossOnly: app._pbGrade({ ...good, lb: 0.3 }),
+        netOk: app._pbGrade({ ...good, lb: 0.5 }),
     };
 });
 await browser.close();
@@ -113,6 +116,8 @@ ok('③c 🚨 要講「期間沒有一年是空頭」', /沒有一年是空頭/.
 
 // ④⑥ 分級
 ok('④c 五關全過 → A 級', R.good.top === true, R.good);
+ok('④d 🐛 V82.2.5 保守下界只有毛的 0.3(扣 0.44 成本後是負的)→ ⛔ A 級、說得出卡在成本那關;0.5 → 照樣 A 級(決定性對照)',
+   R.grossOnly.top === false && /扣完成本後期望值不正/.test(R.grossOnly.miss.join('')) && R.netOk.top === true, [R.grossOnly, R.netOk]);
 for (const [k, label] of [['noHq', '🧬'], ['fewN', '樣本'], ['negLb', '期望值'], ['lowPo', '賺賠比'], ['lowWr', '勝率']]) {
     ok(`④d 缺「${label}」→ ⛔ 不可判 A 級`, R[k].top === false, [k, R[k]]);
 }

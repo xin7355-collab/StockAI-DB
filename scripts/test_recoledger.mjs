@@ -114,7 +114,7 @@ const R = await pg.evaluate(() => {
   for (const d of clone.querySelectorAll('details')) if (!d.open) for (const c of [...d.children]) if (c.tagName !== 'SUMMARY') c.remove();
   return {
     tabName: (document.getElementById('tabBtnFish').textContent || '').trim(),
-    ids: [...tab.querySelectorAll('[id]')].map(e => e.id).filter(i => i !== 'recoCmpAll' && i !== 'recoRace'),   // 🏁 V78.2.2 同一起點比一比 / V79.5.3 100 萬同一天起跑 是成績單的一部分
+    ids: [...tab.querySelectorAll('[id]')].map(e => e.id).filter(i => i !== 'recoCmpAll' && i !== 'recoRace' && i !== 'recoCalib'),   // 🏁 V78.2.2 同一起點比一比 / V79.5.3 100 萬同一天起跑 / 📏 V82.2.5 回測說的 vs 推薦之後真的 是成績單的一部分
     // 🎣 V77.3.9 兩個分頁各司其職 —— 釣魚池的 8 個畫面 id 必須**全部在 #tabRod 底下**
     panes: (() => {
       const want = ['fishPoolPane', 'fishPickPane', 'fishBasketPane', 'fishCanvas', 'fishBasket', 'fishList', 'fishCard', 'fishPool'];

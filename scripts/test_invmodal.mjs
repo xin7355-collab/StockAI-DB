@@ -6,7 +6,7 @@
  *   ③ 代號建議清單 / 視窗本體 ⛔ 被全站去框規則(V77.0.0)拉成透明、左右清成 0(.keepbox)
  *      代號建議清單跟著版面往下排(⛔ absolute 疊在底下那幾列上)
  *   ④ 股數還沒填 ⛔ 寫「= 0 張」;填 1000 → 「= 1 張」
- *   ⑤ 賣出面板三格(含賣出日)右緣不超出面板 / 390
+ *   ⑤ 賣出面板每一格(賣價 / 股數 / 賣出日;🧭 V82.2.5 沒選理由時多一格「當初為什麼買」)右緣不超出面板 / 390
  *   ⑥ 編輯頁頂列讓開瀏海(safe-area)
  *   ⑦ 整頁沒有橫向捲動
  * ⚠️ iOS 的自動放大與原生日期框在 Chromium 重現不了 → 這支只釘得住條件(字級 / 深色 / 不溢出)。
@@ -102,7 +102,8 @@ ok('③f 視窗本體不透明(⛔ 被全站去框規則拉成透明)', /rgb\(22
 ok('③g 視窗左右留邊(⛔ 被去框規則清成 0 → 字貼邊被切)', R.boxPl >= 12, R.boxPl);
 ok('④a 股數還沒填 ⛔「= 0 張」', !/=\s*0\s*張/.test(R.hint0) && /1000 股/.test(R.hint0), R.hint0);
 ok('④b 填 1000 → = 1 張', /=\s*1\s*張/.test(R.hint1), R.hint1);
-ok('⑤ 賣出面板三格不超出面板 / 390', (R.sellR || []).length === 3 && R.sellR.every(x => x.r <= R.panelR + 0.5 && x.r <= 390), JSON.stringify(R.sellR) + ' panel ' + R.panelR);
+// ⭐ 釘用意(每一格都在面板裡)而不是釘格數 —— V82.2.5 多了「當初為什麼買」那格,三格那三個仍一定要在
+ok('⑤ 賣出面板每一格不超出面板 / 390(賣價 / 股數 / 賣出日都在)', ['price', 'shares', 'date'].every(k => (R.sellR || []).some(x => x.k === k)) && R.sellR.every(x => x.r <= R.panelR + 0.5 && x.r <= 390), JSON.stringify(R.sellR) + ' panel ' + R.panelR);
 ok('⑤b 賣出日自己一整行(16px 日期要放得下,⛔ 擠成三分之一被切)', ((R.sellR || []).find(x => x.k === 'date') || {}).w >= 250, JSON.stringify(R.sellR));
 ok('⑥ 編輯頁頂列讓開瀏海', /safe-area-inset-top/.test(R.head), R.head);
 ok('⑦ 整頁沒有橫向捲動', R.sx <= 2, R.sx);

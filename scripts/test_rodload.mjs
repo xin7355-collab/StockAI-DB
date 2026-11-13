@@ -90,7 +90,9 @@ const C = await pg.evaluate(async () => {
   return { picked: (R.picked || []).map(x => x.sym).sort(), buy: PRO._fishD.LD.buy.map(r => r.sym).sort(), lead: R.lead, strip: (document.getElementById('rodCastPicks') || {}).innerText || '' };
 });
 ok(C.lead && C.picked.length >= 1 && JSON.stringify(C.picked) === JSON.stringify(C.buy), '④ 🎣 拋竿 = 👑 領頭羊前 N 名(= 決策台預設;大跌時名單會變短)', C.picked.join(','));
-ok(/👑1/.test(C.strip) && /(換倉日|還要 \d+ 個交易日|空頭)/.test(C.strip), '④b 上鉤條寫出名次 + 換倉節拍 / 空頭', C.strip.slice(0, 100));
+// 🔁 V82.2.5 修長期紅燈(main 上就紅):原本釘「👑1」(要剛好有第 1 名上鉤 = 看當天真資料)與「換倉日」(V80.0.7 文字已改成「MM/DD 換倉 → 下一個交易日買」)
+//   → 改釘用意:有寫名次(👑 + 數字)、有寫換倉節拍 / 空頭(⛔ 釘當天是第幾名)
+ok(/👑\d+/.test(C.strip) && /(換倉|還要 \d+ 個交易日|空頭)/.test(C.strip), '④b 上鉤條寫出名次 + 換倉節拍 / 空頭', C.strip.slice(0, 100));
 
 // ⑥ 同時呼叫 starFetch 兩次
 const S = await pg.evaluate(async () => { PRO._starData = undefined; const [a, c] = await Promise.all([PRO.starFetch(), PRO.starFetch()]); return { a: !!a, c: !!c }; });

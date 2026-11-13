@@ -5,12 +5,14 @@
  *   ② 實測總表(pro.html PRO.LAB)寫了 x 的條目:登錄裡找得到、已經有結果、判定 == 條目所在的欄(ok / trap)、tries 一致
  *   ③ 2026-11-12 以後新加的 ✅ / ⛔ 條目一定要有 x,而且 ⛔ 不可以是事後補登(retro)—— 先登記判定條件再跑
  *   ④ 同一個 id 不可以掛在兩條上
+ *   ⑤ 🧪 V82.2.5 BIAS_CUTOFF 以後登記的 pre:偏誤檢查 14 條(exp_log.mjs `BIAS`)每條都要寫怎麼處理,不適用要寫 `na:理由`
  *   ⭐ 決定性對照(合成資料,不讀檔):沒有 x / 判定跟欄位不同 / 先有結果才登記 / 新條目標補登 → 各自要紅
- * 跑法:node scripts/test_exp_registry.mjs      INJECT=nox|verdict|order|retro 注入必紅
+ * 跑法:node scripts/test_exp_registry.mjs      INJECT=nox|verdict|order|retro|nobias 注入必紅
  */
 import fs from 'fs';
 import path from 'path';
-import { readReg, byId, VERDICTS } from './exp_log.mjs';
+import os from 'os';
+import { readReg, byId, VERDICTS, BIAS_CUTOFF, BIAS_KEYS, checkBias, pre } from './exp_log.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 export const CUTOFF = '2026-11-12';
@@ -38,6 +40,7 @@ export function check(rows, lab) {
         if (!/^EXP-\d{8}-\d{2}$/.test(id)) bad.push(`${id} id 格式不對`);
         if (!e.pre) { bad.push(`${id} 有結果卻沒有事先登記`); continue; }
         if (!e.pre.crit) bad.push(`${id} 沒寫判定條件`);
+        if (String(e.pre.at || '') >= BIAS_CUTOFF) { const bb = checkBias(e.pre.bias); if (bb.length) bad.push(`${id} 偏誤檢查沒填完:${bb.join(';')}`); }
         if (e.done) {
             if (!(e.pre.at <= e.done.at)) bad.push(`${id} 結果比登記早(${e.done.at} < ${e.pre.at})`);
             if (!VERDICTS.includes(e.done.verdict)) bad.push(`${id} 判定 ${e.done.verdict} 不認得`);
@@ -77,6 +80,24 @@ function selftest() {
     t(check([{ ...reg[0], retro: true }, reg[1]], lab).some(x => /事後補登/.test(x)), '⑤ 新條目標事後補登 → 紅');
     t(check(reg, [{ ...lab[0], u: '2026-11-01', x: null }]).length === 0, '⑥ 11/12 以前的舊條目沒有 x → 不擋');
     t(check([...reg, reg[1]], lab).some(x => /兩筆 done/.test(x)), '⑦ 同一個 id 兩筆結果 → 紅');
+    // 🧪 V82.2.5 偏誤檢查:cutoff 之後的新登記
+    const full = Object.fromEntries(BIAS_KEYS.map(k => [k, '有處理']));
+    const nb = { id: 'EXP-20261114-01', t: 'pre', at: '2026-11-14T01:00:00Z', q: 'q', crit: 'c', retro: false, bias: I === 'nobias' ? undefined : full };
+    t(check([nb], []).length === 0, `⑨ 新登記 14 條都寫了 → 沒問題`);
+    t(check([{ ...nb, bias: undefined }], []).some(x => /偏誤檢查沒填完/.test(x)), '⑩ 新登記沒有 bias → 紅');
+    t(check([{ ...nb, bias: { ...full, oos: '' } }], []).some(x => /oos 沒寫/.test(x)), '⑪ 少一條(oos 空白)→ 紅');
+    t(check([{ ...nb, bias: { ...full, sham: 'na' } }], []).some(x => /sham 寫 na 卻沒寫理由/.test(x)), '⑫ 只寫 na 沒理由 → 紅;na:理由 → 過');
+    t(check([{ ...nb, bias: { ...full, sham: 'na:這題沒有可以隨機的對照' } }], []).length === 0, '⑫b na:理由 → 過');
+    t(check([{ ...nb, at: '2026-11-12T01:00:00Z', bias: undefined }], []).length === 0, '⑬ cutoff 以前的舊登記沒有 bias → 不擋(⛔ 回頭補)');
+    // ⑭ 登記那一步自己就擋(⛔ 只靠事後的守門):沒 bias → 丟錯、檔案不寫;JSON 字串 / @檔案 都收
+    const td = fs.mkdtempSync(path.join(os.tmpdir(), 'expreg-')), tf = path.join(td, 'e.ndjson'), bf = path.join(td, 'b.json');
+    let threw = false; try { pre({ q: 'q', crit: 'c', day: '2026-11-14' }, tf); } catch (e) { threw = /偏誤檢查沒填完/.test(e.message); }
+    t(threw && !fs.existsSync(tf), '⑭ pre 沒給 bias → 丟錯而且沒寫進登錄');
+    const r1 = pre({ q: 'q', crit: 'c', day: '2026-11-14', bias: JSON.stringify(full) }, tf);
+    fs.writeFileSync(bf, JSON.stringify({ ...full, sham: 'na:沒有可以隨機的對照' }));
+    const r2 = pre({ q: 'q2', crit: 'c2', day: '2026-11-14', bias: '@' + bf }, tf);
+    t(BIAS_KEYS.every(k => r1.bias[k] === '有處理') && r2.bias.sham.startsWith('na:') && readReg(tf).length === 2, '⑭b JSON 字串與 @檔案都收、14 條原樣存進登錄');
+    fs.rmSync(td, { recursive: true, force: true });
     return nbad;
 }
 
