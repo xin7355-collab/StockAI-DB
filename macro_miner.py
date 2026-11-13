@@ -763,7 +763,7 @@ def fetch_earnings_calls(window_days=14):
     return uniq
 
 
-# ── 🏛️ 美債殖利率走官方(換掉 yfinance 第一階段,docs/DECISIONS.md 最上面那一節)──────────────
+# ── 🏛️ 美債殖利率走官方(換掉 yfinance 第一階段,docs/DECISIONS.md 的 V82.3.6 那一節)──────────────
 #   以前:10 年 = yfinance ^TNX、2 年 = FRED(帶**假的 Chrome UA**)失敗再退 yfinance ^IRX + ^FVX 內插。
 #   ⛔ yfinance 要冒充瀏覽器才連得到 Yahoo;FRED 那個假 UA 本身也違反「⛔ 偽裝瀏覽器」
 #      (正式產物 11/12 那份 us2y_error = 「FRED 失敗，yfinance 內插」—— 推測就是假 UA 被當成機器人擋;未驗證)。
@@ -775,7 +775,9 @@ _OFF_GATE = None
 
 
 def _off_gate():
-    """一輪共用一個連線守門(斷路狀態跨請求生效);macro_cron 整個 job 只有 8 分 → 逾時 12 秒、只退避 2 / 4 秒。"""
+    """一輪共用一個連線守門(斷路狀態跨請求生效);macro_cron 整個 job 只有 8 分 → 逾時 12 秒、只退避 2 / 4 秒。
+    ⏱️ 例外:財政部那一個 CSV 等 30 秒(lib_official.TREASURY_TIMEOUT;11/13 正式第一輪 12 秒退避 3 次都沒拿到);
+       一輪最多等它一次(失敗也進快取)→ 最壞多花約 1.5 分,8 分的 job 放得下。"""
     global _OFF_GATE
     if _OFF_GATE is None:
         _OFF_GATE = _LO.make_gate(timeout=12, backoff=(2, 4))

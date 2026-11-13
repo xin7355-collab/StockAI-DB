@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """🏛️ 換掉 yfinance 第一階段:走正式入口、網路全換假的(⛔ 真的連網)。
 
-換掉的那幾格(docs/DECISIONS.md 最上面那一節):
+換掉的那幾格(docs/DECISIONS.md 的 V82.3.6 那一節):
   macro_miner  美債 10 年 / 2 年 / ust10y(含日漲跌與日期)→ 美國財政部 → FRED 備援;加權 60 日位階最後一層 → 證交所
   radar_miner  RS 大盤基準 → 本機官方 ^TWII.json → 證交所
   miner        macro_cache 的 us02y → 財政部 3 個月期;加權 / 櫃買長歷史的底 → 磁碟 / 已發佈那份(⛔ Yahoo 5 年)

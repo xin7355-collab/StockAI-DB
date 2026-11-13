@@ -5034,7 +5034,7 @@ def _merge_official_over_base(base_rows, official_rows):
 
 
 # ── 美股大盤快取(macro_cache.json)+ 加權 / 櫃買指數長歷史(data/^TWII.json、data/^TWOII.json)──────────
-# 🏛️ 換掉 yfinance 第一階段(docs/DECISIONS.md 最上面那一節):
+# 🏛️ 換掉 yfinance 第一階段(docs/DECISIONS.md 的 V82.3.6 那一節):
 #   ・加權 / 櫃買長歷史 = 磁碟那份(每輪從 data 分支還原)疊上官方近期,⛔ 不再拿 yfinance 5 年當底 ——
 #     Yahoo 要冒充瀏覽器才連得到;而且每輪用 Yahoo 重寫 3 個月以前的列 → 那些列沒有 amount
 #     → 每輪都要重打 ~60 個 FMTQIK 月份檔(現在只剩最近 3 個月要補)。

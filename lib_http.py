@@ -93,11 +93,14 @@ class Gate:
         if host in self.open:
             return None, f'斷路中:{self.open[host]}'
         headers = {'User-Agent': self.ua, 'Accept': '*/*', **(kw.pop('headers', None) or {})}
+        # ⏱️ 個別網址可以等久一點(財政部整年殖利率 CSV 是現做的、回得慢,見 lib_official.TREASURY_TIMEOUT);
+        #    沒指定 = 守門的預設(⛔ 為了一個慢網站把整個守門調慢 → 其他網站壞掉時每次都白等)
+        timeout = kw.pop('timeout', None) or self.timeout
         why = ''
         for i in range(len(self.backoff) + 1):
             self._pace(host)
             try:
-                res = self.send(method, url, headers=headers, timeout=self.timeout, **kw)
+                res = self.send(method, url, headers=headers, timeout=timeout, **kw)
             except Exception as e:  # noqa: BLE001
                 res = e
             self.last[host] = self.clock()
@@ -127,9 +130,10 @@ class Gate:
 
 
 def selftest():
-    fails = []
+    fails, n = [], [0]
 
     def ok(name, cond, got=''):
+        n[0] += 1
         print(f'{"✅" if cond else "❌"} {name}' + ('' if cond else f' → {got}'))
         if not cond:
             fails.append(name)
@@ -162,6 +166,17 @@ def selftest():
     ok('① 200 → 回 response、原因空字串', r is not None and why == '' and len(calls) == 1)
     ok('①b UA 寫明 StockAI-DB(⛔ 瀏覽器字樣)', 'StockAI-DB' in calls[0][2]['User-Agent']
        and 'Chrome' not in calls[0][2]['User-Agent'] and 'Safari' not in calls[0][2]['User-Agent'])
+
+    seen_t = []
+
+    def send_t(method, url, **kw):
+        seen_t.append(kw.get('timeout'))
+        return R(200)
+    gt = Gate(send=send_t, sleep=lambda s: None, clock=lambda: 0.0, timeout=12)
+    gt.get(TW)
+    gt.get(TW + 'b', timeout=30)
+    gt.get(TW + 'c')
+    ok('①c 逾時:沒指定 = 守門的預設、個別指定就照指定(⛔ 影響下一個請求)', seen_t == [12, 30, 12], seen_t)
 
     g, calls, slept = make([R(503), R(429), ConnectionError('x'), R(200)])
     r, why = g.get(TW)
@@ -226,7 +241,7 @@ def selftest():
     g.get('https://www.tpex.org.tw/openapi/v1/x')
     ok('⑦ 同一個網站隔 3 秒(證交所 www)、不同網站不用等', slept == [3.0], slept)
 
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 14 條)')
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 {n[0]} 條)')
     return 1 if fails else 0
 
 

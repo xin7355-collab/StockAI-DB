@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""🏛️ 官方免費來源的抓取 + 解析 —— 換掉 yfinance 第一階段(docs/DECISIONS.md 最上面那一節)
+"""🏛️ 官方免費來源的抓取 + 解析 —— 換掉 yfinance 第一階段(docs/DECISIONS.md 的 V82.3.6 那一節)
 
 為什麼要有這支:
   yfinance 1.x 要靠 curl_cffi 冒充 Chrome 瀏覽器(`impersonate="chrome"`)才連得到 Yahoo
@@ -41,6 +41,11 @@ TAIEX_URL = 'https://www.twse.com.tw/rwd/zh/TAIEX/MI_5MINS_HIST?response=json&da
 UST = {'10y': ('10 Yr', 'DGS10'), '2y': ('2 Yr', 'DGS2'), '3m': ('3 Mo', 'DGS3MO')}
 
 _CACHE = {}   # 網址 → (status, 解析結果, 原因):同一輪 10 年 / 2 年 / 漲跌 共用一次財政部請求
+
+# ⏱️ 財政部整年殖利率 CSV 是現做的、回得慢:2026-11-13 正式上線第一輪 —— 總經採礦(守門逾時 12 秒)退避重試共 3 次都失敗(最後一次 ReadTimeout)
+#    → 掉到 FRED(晚一天;那天 FRED 最新還停在 11/10),同一輪籌碼採礦(逾時 20 秒)卻拿到財政部 11/12 的值。
+#    → 只放寬這一個網址(⛔ 調慢整個守門:其他網站壞掉時每次都要白等)。失敗也進快取,一輪最多等這一次。
+TREASURY_TIMEOUT = 30
 
 
 def make_gate(send=None, sleep=None, clock=None, timeout=20, backoff=(2, 4, 8, 16)):
@@ -137,9 +142,9 @@ def parse_treasury_csv(text):
     return 'ok', out, ''
 
 
-def _get_text(gate, url, expect):
+def _get_text(gate, url, expect, **kw):
     """→ (status, 文字, 原因)。HTTP 層的失敗(被擋 / 404 / 5xx 退避完)一律是 'fail'。"""
-    res, why = gate.get(url, expect=expect)
+    res, why = gate.get(url, expect=expect, **kw)
     if res is None:
         return 'fail', None, why
     raw = getattr(res, 'content', None)
@@ -152,7 +157,7 @@ def treasury_curve(gate, year):
     """某一年的整條曲線(有快取)→ (status, {iso: {欄: 值}}, 原因)。"""
     url = TREASURY_URL.format(y=year)
     if url not in _CACHE:
-        st, txt, why = _get_text(gate, url, 'csv')
+        st, txt, why = _get_text(gate, url, 'csv', timeout=max(TREASURY_TIMEOUT, getattr(gate, 'timeout', 0) or 0))
         _CACHE[url] = parse_treasury_csv(txt) if st == 'ok' else ('fail', None, why)   # 來源名由呼叫端加(⛔ 重複)
     return _CACHE[url]
 
@@ -403,6 +408,19 @@ def selftest():
     ua = calls[0][1].get('User-Agent', '')
     ok('③b UA 寫明 StockAI-DB、⛔ 冒充瀏覽器、⛔ Referer',
        'StockAI-DB' in ua and not re.search(r'Chrome|Safari|Firefox|Edg', ua) and 'Referer' not in calls[0][1], calls[0][1])
+
+    seen_t = []
+
+    def send_t(method, url, **kw):
+        seen_t.append(('treasury' if 'treasury' in url else 'fred', kw.get('timeout')))
+        return R(200, CSV26) if 'treasury' in url else R(200, 'observation_date,DGS10\n2026-11-11,4.90\n2026-11-12,4.98\n')
+    clear_cache()
+    gt = make_gate(send=send_t, sleep=lambda s: None, clock=lambda: 0.0, timeout=12, backoff=(2, 4))
+    treasury_series(gt, '10 Yr', today=date(2026, 11, 13))
+    fred_series(gt, 'DGS10', today=date(2026, 11, 13))
+    ok('③c 財政部那一個請求等 30 秒(11/13 正式第一輪:12 秒 3 次都沒拿到、20 秒拿得到),FRED 照守門的 12 秒',
+       seen_t == [('treasury', TREASURY_TIMEOUT), ('fred', 12)] and TREASURY_TIMEOUT >= 30, seen_t)
+    clear_cache()
 
     JAN = 'Date,10 Yr\n01/02/2027,5.01\n'
     g, calls = fake({'csv/2027': R(200, JAN), 'csv/2026': R(200, CSV26)})
