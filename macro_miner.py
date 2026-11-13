@@ -7,7 +7,7 @@ macro_miner.py — 輕量級總經風險採礦機
 設計準則：
 - 1GB RAM 雲端可跑：不載入 pandas，全用內建 json + requests
 - 全 try/except + urllib3 Retry：任何外部 API 故障絕不崩潰
-- yfinance 拉 ^TNX（10Y *10 顯示，需 /10）
+- 🏛️ 美債殖利率(10Y / 2Y)走官方:美國財政部每日殖利率曲線 → FRED 備援(lib_official;⛔ 不再用 yfinance ^TNX)
 - 不在 watchdog/cron 觸發崩潰，缺資料時欄位寫 null + reason
 """
 import os
@@ -22,7 +22,10 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from common import parse_twse_margin_ms   # 🧩 TWSE 融資餘額解析(與 miner.py 共用同一份)
-import yfinance
+# 🏛️ yfinance ⛔ 在模組層 import:以前這裡一行 `import yfinance`,yfinance 裝不起來 / 版本壞掉時
+#   整支 macro_miner 直接當掉 → 連官方來源的法人、台指期、匯率都一起沒了。
+#   還在用 yfinance 的那幾格(美股指數 / 期貨 / 原物料 / 亞股)各自在函式裡 import,壞了只少那幾格。
+import lib_official as _LO   # 🏛️ 官方免費來源(財政部殖利率 / FRED / 證交所加權指數)
 
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -747,23 +750,41 @@ def fetch_earnings_calls(window_days=14):
     return uniq
 
 
+# ── 🏛️ 美債殖利率走官方(換掉 yfinance 第一階段,docs/DECISIONS.md 最上面那一節)──────────────
+#   以前:10 年 = yfinance ^TNX、2 年 = FRED(帶**假的 Chrome UA**)失敗再退 yfinance ^IRX + ^FVX 內插。
+#   ⛔ yfinance 要冒充瀏覽器才連得到 Yahoo;FRED 那個假 UA 本身也違反「⛔ 偽裝瀏覽器」
+#      (正式產物 11/12 那份 us2y_error = 「FRED 失敗，yfinance 內插」—— 推測就是假 UA 被當成機器人擋;未驗證)。
+#   現在:① 美國財政部每日殖利率曲線(官方說美東 18:00 前公布 → 台北 08:00 那輪拿得到前一晚的收盤)
+#        ② FRED DGS10 / DGS2(備援;聯準會 H.15 轉載同一條曲線,但通常晚一天才上 FRED → 用到時日期會舊一天,看 *_date)
+#   10 年、2 年、10 年漲跌三個地方同一輪只問財政部一次(lib_official 快取)。
+UST10Y_SRC = "美國財政部 10 Yr"   # _YF_LAST_DATE 的鍵(「日期不可倒退」守門靠它查這一筆是哪一天的)
+_OFF_GATE = None
+
+
+def _off_gate():
+    """一輪共用一個連線守門(斷路狀態跨請求生效);macro_cron 整個 job 只有 8 分 → 逾時 12 秒、只退避 2 / 4 秒。"""
+    global _OFF_GATE
+    if _OFF_GATE is None:
+        _OFF_GATE = _LO.make_gate(timeout=12, backoff=(2, 4))
+    return _OFF_GATE
+
+
+def _ust_err(what, status, note):
+    """兩條官方來源都拿不到時的 error:分清楚「官方還沒有值」(安靜等)跟「抓不到」(真的壞掉,要說下一步)。"""
+    if status == "none":
+        return f"{what}:官方還沒有值(休市或還沒公布;下一輪再抓)・{note}"[:240]
+    return (f"{what}:財政部與 FRED 都抓不到 → 多半是 GitHub 機器被擋或對方暫時故障,下一輪會再試;"
+            f"連續一天都這樣再看 Actions log ・{note}")[:240]
+
+
 def fetch_us10y_yield():
-    """美債 10Y 殖利率 (^TNX，數值 = 殖利率 * 10，需 /10 還原 %)"""
-    try:
-        import yfinance as yf
-        t = yf.Ticker("^TNX")
-        hist = t.history(period="5d", auto_adjust=False)
-        if hist is None or hist.empty:
-            return None, "yfinance 回空"
-        last_close = float(hist["Close"].iloc[-1])
-        # ^TNX 的值即為殖利率（已是 %），不需再除 10
-        # 但部分 yfinance 版本回傳 *10，做防呆判斷
-        if last_close > 20:   # 殖利率不可能 > 20%，代表是 *10 版本
-            last_close = last_close / 10
-        return round(last_close, 3), None
-    except Exception as e:
-        print(f"  ⚠️ US10Y 抓取失敗: {e}")
-        return None, str(e)[:100]
+    """美債 10 年期殖利率(%)→ (值, error)。🏛️ 官方:財政部 10 Yr → FRED DGS10(備援)。
+    用到備援時 error 寫「…備援…」(值可信,只是交代來源;data_audit 認得「備援」= 有交代的降級)。"""
+    st, pts, src, note = _LO.ust_series(_off_gate(), "10y")
+    if st == "ok":
+        print(f"     [US10Y] {src} {pts[-1][0]} = {pts[-1][1]}%")
+        return round(pts[-1][1], 3), (note or None)
+    return None, _ust_err("美債 10 年期", st, note)
 
 
 def _bfi82u_parse_rwd(j):
@@ -1189,59 +1210,20 @@ def _fetch_taifex_html_fallback():
 
 
 def fetch_us2y_yield():
-    """美債 2Y — FRED DGS2 CSV；HTTPS 偶爾逾時，3 次 exponential backoff + 鏡像 endpoint 重試
-    雙層 fallback：FRED 全敗時退到 yfinance ^IRX(13W) 與 ^FVX(5Y) 內插近似 2Y
-    """
-    import csv as _csv
-    import io as _io
-    import requests as _rq
-    urls = [
-        "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2",
-        "https://fred.stlouisfed.org/data/DGS2.csv",  # 鏡像 endpoint（fallback）
-    ]
-    ua = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-          "Accept": "text/csv,text/plain,*/*"}
-    last_err = "FRED DGS2 全失敗"
-    # 單發 GET（不走帶 urllib3 Retry 的 http session）→ FRED 在 GH Actions IP 常被封，
-    # 用裸 requests + 8s timeout 快速放棄（省下原本最多 ~120s 的重試空轉），直接走 yfinance fallback。
-    for url in urls:
-        try:
-            r = _rq.get(url, headers=ua, timeout=8)
-            if r.status_code != 200:
-                last_err = f"HTTP {r.status_code} @ {url[:60]}"
-                continue
-            rows = list(_csv.reader(_io.StringIO(r.text)))
-            for row in reversed(rows[1:]):
-                if len(row) >= 2 and row[1] not in (".", "", None):
-                    try:
-                        return round(float(row[1]), 3), None
-                    except ValueError:
-                        continue
-            last_err = "FRED DGS2 無有效值"
-        except Exception as e:
-            last_err = str(e)[:100]
-    # Fallback：yfinance ^IRX(13W) + ^FVX(5Y) 內插近似 2Y（FRED IP 被 GH Actions 阻斷時的救命管道）
-    try:
-        import yfinance as yf
-        irx = yf.Ticker("^IRX").history(period="5d", auto_adjust=False)
-        fvx = yf.Ticker("^FVX").history(period="5d", auto_adjust=False)
-        if irx is not None and not irx.empty and fvx is not None and not fvx.empty:
-            irx_v = float(irx["Close"].iloc[-1])
-            fvx_v = float(fvx["Close"].iloc[-1])
-            # ^IRX 13週、^FVX 5Y — 2Y 介於其中，用簡單時間距離權重
-            # 13週=0.25Y、2Y=2Y、5Y=5Y → 線性內插：w_irx = (5-2)/(5-0.25) = 3/4.75
-            approx_2y = round(irx_v * (3 / 4.75) + fvx_v * (1 - 3 / 4.75), 3)
-            print(f"  [US2Y fallback] ^IRX={irx_v} ^FVX={fvx_v} → 近似 2Y={approx_2y}")
-            return approx_2y, f"FRED 失敗，yfinance 內插（IRX+FVX）"
-    except Exception as e:
-        last_err = f"FRED+yfinance 全敗：{str(e)[:80]}"
-    print(f"  ⚠️ US2Y 三次嘗試皆失敗: {last_err}")
-    return None, last_err
+    """美債 2 年期殖利率(%)→ (值, error)。🏛️ 官方:財政部 2 Yr → FRED DGS2(備援)。
+    ⛔ 以前的兩件事都拿掉了:FRED 帶假的 Chrome UA(偽裝瀏覽器)、FRED 失敗退 yfinance ^IRX + ^FVX「內插近似」
+       (那是估計值,不是 2 年期本身)。現在兩條都是官方的 2 年期本身;兩條都拿不到就誠實回 None + 原因,
+       斷崖防護照舊會沿用上一份(us2y_yield 在那張清單裡)。"""
+    st, pts, src, note = _LO.ust_series(_off_gate(), "2y")
+    if st == "ok":
+        print(f"     [US2Y] {src} {pts[-1][0]} = {pts[-1][1]}%")
+        return round(pts[-1][1], 3), (note or None)
+    print(f"  ⚠️ US2Y 官方兩條都拿不到:{note}")
+    return None, _ust_err("美債 2 年期", st, note)
 
 
 # ════════ 🌍 全球巨頭脈動採集（8 大國際資金真實流向）════════
-_YF_LAST_DATE: dict = {}   # V71.5.1 ticker → 該筆收盤的資料日期(擋「成功但過期」的覆蓋)
+_YF_LAST_DATE: dict = {}   # V71.5.1 來源鍵(yfinance ticker 或官方來源,如 UST10Y_SRC)→ 該筆收盤的資料日期(擋「成功但過期」的覆蓋)
 
 
 def _fetch_yf_future(ticker, name):
@@ -1939,7 +1921,21 @@ def fetch_umc_adr():  return _fetch_yf_close("UMC",      "聯電ADR")      # NYS
 def fetch_es_fut():   return _fetch_yf_future("ES=F",    "標普500期貨")   # 🐛 V71.5.2 改抓盤中現價(日線=上一個結算,方向會相反)
 def fetch_ym_fut():   return _fetch_yf_future("YM=F",    "道瓊期貨")     # 🐛 V71.5.2 同上
 def fetch_nq_fut():   return _fetch_yf_future("NQ=F",    "那斯達克期貨")  # 🐛 V71.5.2 同上(半導體最連動)
-def fetch_ust10y():   return _fetch_yf_close("^TNX",     "美債10年殖利率") # close 值即殖利率%(如 4.25=4.25%)
+def fetch_ust10y():
+    """美債 10 年期殖利率 + 日漲跌%(盤前體檢 ust 那一項;簽章同 _fetch_yf_close → (值, 漲跌%, error))。
+    🏛️ 官方(財政部 → FRED 備援;同一輪跟 fetch_us10y_yield 共用一次請求)。⛔ 不再用 yfinance ^TNX。
+    漲跌% = (最新 − 前一個交易日) ÷ 前一個交易日 × 100(跟以前 ^TNX 同一個算法:4.90% → 5.00% = +2.04%)。
+    資料日期記進 _YF_LAST_DATE[UST10Y_SRC] → 「日期不可倒退」守門照樣作用(備援 FRED 晚一天時不會蓋掉較新的)。"""
+    st, pts, src, note = _LO.ust_series(_off_gate(), "10y")
+    if st != "ok":
+        _YF_LAST_DATE.pop(UST10Y_SRC, None)
+        return None, None, _ust_err("美債 10 年期", st, note)
+    val, chg, d = _LO.last_change(pts)
+    _YF_LAST_DATE[UST10Y_SRC] = d
+    err = note or None
+    if chg is None:   # 只有一天的值(1 月初 / 剛恢復)→ ⛔ 硬算 0%;「不給漲跌」是 data_audit 認得的刻意降級
+        err = ((err + " ・") if err else "") + "只拿到一天的殖利率,不給漲跌%"
+    return round(val, 2), chg, err
 
 
 # 📈 V79.5.9 加權指數日 K(data/^TWII.json)本機沒有就讀已發佈那份 —— 順逆價差與 60 日位階共用
@@ -2004,41 +2000,31 @@ def _twii_rows(get=None):
 def fetch_twii_position():
     """V25.4 — 算 ^TWII 在過去 60 日的位置百分位(0=最低,100=最高)
     給 marketMakerIndex 判讀「真低檔護盤」vs「高檔買超警訊」用。
-    返回 {price, pos_60d, hi_60d, lo_60d}, 失敗回 {}
-    📈 V79.5.9 先用證交所收盤(_twii_rows:本機 → 已發佈那份,多帶 date / src),拿不到才退 yfinance(實測落後一個交易日)
+    返回 {price, pos_60d, hi_60d, lo_60d, date, src}, 失敗回 {}
+    📈 V79.5.9 先用證交所收盤(_twii_rows:本機 → 已發佈那份,多帶 date / src)
+    🏛️ 那兩份都不夠 → 直接問證交所 MI_5MINS_HIST 最近 4 個月(⛔ 不再退 yfinance:Yahoo 要冒充瀏覽器,而且實測落後一個交易日)
     """
+    def _pos(rows, src):
+        # 取最近 60 個交易日(若不足 60,用所有可用的);百分位 = 現價在 [lo, hi] 區間的位置(0-100)
+        _cl = [r['close'] for r in rows[-60:]]
+        current, hi, lo = _cl[-1], max(_cl), min(_cl)
+        pos = round((current - lo) / (hi - lo) * 100, 1) if hi > lo else 50.0
+        return {'price': round(current, 2), 'pos_60d': pos, 'hi_60d': round(hi, 2), 'lo_60d': round(lo, 2),
+                'date': str(rows[-1]['date']).replace('/', '-'), 'src': src}
     try:
         _rows, _src = _twii_rows()
         if len(_rows) >= 30:
-            _cl = [r['close'] for r in _rows[-60:]]
-            current, hi, lo = _cl[-1], max(_cl), min(_cl)
-            pos = round((current - lo) / (hi - lo) * 100, 1) if hi > lo else 50.0
-            return {'price': round(current, 2), 'pos_60d': pos, 'hi_60d': round(hi, 2), 'lo_60d': round(lo, 2),
-                    'date': _rows[-1]['date'], 'src': _src}
-        print(f"   ⚠️ 加權 60 日位階:證交所收盤不夠({len(_rows)} 天;{_src})→ 改用 yfinance(可能落後一天)")
+            return _pos(_rows, _src)
+        print(f"   ⚠️ 加權 60 日位階:本機 / 已發佈的收盤不夠({len(_rows)} 天;{_src})→ 直接問證交所")
     except Exception as e:
-        print(f"   ⚠️ 加權 60 日位階:讀證交所收盤失敗({str(e)[:60]})→ 改用 yfinance")
+        print(f"   ⚠️ 加權 60 日位階:讀本機 / 已發佈的收盤失敗({str(e)[:60]})→ 直接問證交所")
     try:
-        import yfinance as yf
-        import time as _t
-        _t.sleep(0.4)
-        hist = yf.Ticker("^TWII").history(period='3mo')
-        if hist.empty: return {}
-        closes = hist['Close'].dropna()
-        if len(closes) < 30: return {}
-        # 取最近 60 個交易日(若不足 60,用所有可用的)
-        recent = closes.iloc[-60:]
-        current = float(recent.iloc[-1])
-        hi = float(recent.max())
-        lo = float(recent.min())
-        # 百分位 = 現價在 [lo, hi] 區間的位置(0-100)
-        pos = round((current - lo) / (hi - lo) * 100, 1) if hi > lo else 50.0
-        return {
-            'price':  round(current, 2),
-            'pos_60d': pos,
-            'hi_60d':  round(hi, 2),
-            'lo_60d':  round(lo, 2),
-        }
+        st, rows, note = _LO.taiex_months(_off_gate(), _LO.recent_months(4))
+        if st == 'ok' and len(rows) >= 30:
+            return _pos(rows, '證交所 MI_5MINS_HIST' + (f'({note})' if note else ''))
+        why = (f'只有 {len(rows)} 天' if st == 'ok' else ('證交所這幾個月沒有資料' if st == 'none' else '抓不到')) + (f':{note}' if note else '')
+        print(f"   ⚠️ 加權 60 日位階這輪沒有:{why}")
+        return {}
     except Exception as e:
         print(f"   ⚠️ fetch_twii_position 失敗:{e}")
         return {}
@@ -3479,12 +3465,12 @@ def main():
     }
 
     print("─" * 50)
-    print("[1/8] 抓取美債 10Y 殖利率 (^TNX)…")
+    print("[1/8] 抓取美債 10Y 殖利率(美國財政部 → FRED 備援)…")
     y10, y10err = fetch_us10y_yield()
     out["us10y_yield"], out["us10y_error"] = y10, y10err
     print(f"     → {y10}% （err={y10err}）" if y10 is not None else f"     → 失敗：{y10err}")
 
-    print("[2/8] 抓取美債 2Y 殖利率 (FRED DGS2)…")
+    print("[2/8] 抓取美債 2Y 殖利率(美國財政部 → FRED 備援)…")
     y2, y2err = fetch_us2y_yield()
     out["us2y_yield"], out["us2y_error"] = y2, y2err
     print(f"     → {y2}% （err={y2err}）")
@@ -3580,15 +3566,16 @@ def main():
         ("標普期貨",       "es_fut", fetch_es_fut),      # 💡 V68.8.2 美股期貨(盤後即時)
         ("道瓊期貨",       "ym_fut", fetch_ym_fut),
         ("那指期貨",       "nq_fut", fetch_nq_fut),
-        ("美債10Y",       "ust10y", fetch_ust10y),      # 💡 V68.8.2 美債殖利率
+        ("美債10Y",       "ust10y", fetch_ust10y),      # 💡 V68.8.2 美債殖利率(🏛️ 官方:財政部 → FRED 備援)
     ]
-    # V71.5.1 key → yfinance ticker(給「日期不可倒退」守門查 _YF_LAST_DATE 用;
-    #   必須與上方 big_player_fns 各 fetch_* 實際使用的 ticker 完全一致)
+    # V71.5.1 key → 來源鍵(給「日期不可倒退」守門查 _YF_LAST_DATE 用;
+    #   必須與上方 big_player_fns 各 fetch_* 實際寫進 _YF_LAST_DATE 的鍵完全一致 —— yfinance 那幾格是 ticker,
+    #   🏛️ ust10y 是官方來源鍵 UST10Y_SRC)
     _BIG_PLAYER_TICKERS = {
         "gold": "GC=F", "wti": "CL=F", "dxy": "DX-Y.NYB", "btc": "BTC-USD", "vix": "^VIX",
         "nikkei": "^N225", "hsi": "^HSI", "kospi": "^KS11", "sp500": "^GSPC", "nasdaq": "^IXIC",
         "dji": "^DJI", "sox": "^SOX", "tsm": "TSM", "asx": "ASX", "umc": "UMC",
-        "es_fut": "ES=F", "ym_fut": "YM=F", "nq_fut": "NQ=F", "ust10y": "^TNX",
+        "es_fut": "ES=F", "ym_fut": "YM=F", "nq_fut": "NQ=F", "ust10y": UST10Y_SRC,
     }
     key_alias = {"gold": "gold_usd", "wti": "wti_oil", "dxy": "dxy",
                  "btc": "btc_usd", "vix": "vix", "nikkei": "nikkei",

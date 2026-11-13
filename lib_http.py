@@ -81,10 +81,11 @@ class Gate:
             return 'fail', f'HTTP {code}' + (f'(轉到 {str(loc)[:120]})' if loc else '(沒有 Location)')
         if code != 200:
             return 'fail', f'HTTP {code}'
-        if expect == 'json':
+        # 🏛️ CSV 端點(財政部殖利率 / FRED)跟 JSON 一樣:回 HTML = 擋頁或改版 → 斷路(⛔ 拿網頁當資料解析)
+        if expect in ('json', 'csv'):
             head = (getattr(res, 'content', b'') or b'').lstrip()[:20].lower()
             if head.startswith(b'<'):
-                return 'block', '要 JSON 卻回 HTML(擋頁)'
+                return 'block', f'要 {expect.upper()} 卻回 HTML(擋頁)'
         return 'ok', ''
 
     def request(self, method, url, expect='json', **kw):
@@ -191,6 +192,13 @@ def selftest():
     g, calls, slept = make([R(200, b'<!DOCTYPE html>no data')])
     r, why = g.post('https://www.taifex.com.tw/cht/3/x', expect='any')
     ok('④b expect=any(期交所沒資料本來就回 HTML)→ 照常回', r is not None and why == '' and not g.open)
+    g, calls, slept = make([R(200, b'\n<html><body>Access Denied</body></html>')])
+    r, why = g.get('https://home.treasury.gov/x.csv', expect='csv')
+    g2, _, _ = make([R(200, b'Date,10 Yr\n11/12/2026,4.98\n')])
+    r2, why2 = g2.get('https://home.treasury.gov/x.csv', expect='csv')
+    ok('④f expect=csv:回 HTML → 擋頁、斷路;決定性對照:真的 CSV 照常回',
+       r is None and 'CSV' in why and 'HTML' in why and g.open and r2 is not None and why2 == '' and not g2.open,
+       (why, why2))
 
     class R3(R):
         def __init__(self, code, loc=None):
@@ -218,7 +226,7 @@ def selftest():
     g.get('https://www.tpex.org.tw/openapi/v1/x')
     ok('⑦ 同一個網站隔 3 秒(證交所 www)、不同網站不用等', slept == [3.0], slept)
 
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 13 條)')
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 14 條)')
     return 1 if fails else 0
 
 

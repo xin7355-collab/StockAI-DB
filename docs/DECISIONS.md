@@ -4,6 +4,57 @@
 
 
 
+## V82.3.6(2026-11-13)🏛️ 換掉 yfinance 第一階段:美債殖利率 / 加權・櫃買長歷史 / 13 週美債改官方;美股指數等先留著(趕不上早上 8 點)
+
+**為什麼**:yfinance 1.x 靠 curl_cffi 冒充 Chrome 才連得到 Yahoo(實測 1.7.0:`yfinance/_http.py` → `Session(impersonate="chrome")`),違反「⛔ 偽裝瀏覽器 / 繞過封鎖」;workflow 裝的又是沒鎖版本。使用者核准「用官方來源取代 yfinance」:只用免費(FinMind 只用免費層)、⛔ 偽裝、固定間隔 + 指數退避(`lib_http`)、金鑰只走 Secrets + 標頭。
+
+### 盤點(非測試程式 + workflow)
+| 檔案 / 函式 | 從 Yahoo 抓什麼 | 誰在用 | 類型 | 這一版 |
+|---|---|---|---|---|
+| macro_miner `fetch_us10y_yield`、`fetch_ust10y` | ^TNX(值 / 日漲跌 / 日期) | macro_risk `us10y_yield`、`ust10y*`(盤前分數 ust、風險) | 排程(macro_cron 5 輪 + daily_miner) | ✅ 財政部 10 Yr → FRED DGS10 |
+| macro_miner `fetch_us2y_yield` | FRED DGS2(**假 Chrome UA**)失敗 → ^IRX+^FVX「內插」 | `us2y_yield`(利差) | 排程 | ✅ 財政部 2 Yr → FRED DGS2(UA 寫明身分;⛔ 內插估計值) |
+| macro_miner `fetch_twii_position` 最後一層 | ^TWII 3 個月 | `twii_pos`(主力出貨 / 風險) | 排程 | ✅ 證交所 MI_5MINS_HIST |
+| radar_miner `_fetch_twii_ret20` | ^TWII 2 個月 | RS 強勢榜 | 排程(daily_miner 部署) | ✅ 本機官方 ^TWII.json → 證交所 |
+| miner `fetch_us_macro_cache` 長歷史 | ^TWII / ^TWOII 5 年當底 | data/^TWII.json、^TWOII.json、macro_cache `twii*`(K 線、泡沫預警、盤前、回測) | 排程(daily_miner chips) | ✅ 底 = 磁碟 / 已發佈那份 + 證交所(加權)/ FinMind 免費層 → 櫃買官網(櫃買),裁到 5 年 |
+| miner `fetch_us_macro_cache` us02y | ^IRX(13 週國庫券) | macro_cache `us02y`(美股列備援) | 排程 | ✅ 財政部 3 Mo(⚠️ 債券等值殖利率,比 ^IRX 的貼現率約高 0.1 個百分點;漲跌% 幾乎一樣) |
+| miner `fetch_us_macro_cache` 其他 13 格 | ^GSPC ^IXIC ^DJI ^VIX ^SOX TSM ASX UMC NVDA AAPL MSFT BZ=F DX-Y.NYB | macro_cache(美股列 / 盤前備援) | 排程 | ⏸ 留 |
+| macro_miner `_fetch_yf_close` / `_fetch_yf_future` | 黃金、WTI、DXY、BTC、VIX、日經、恆指、韓股、日圓、標普、那指、道瓊、費半、3 檔 ADR;ES/YM/NQ 盤中、^TXF=F | macro_risk 全球指標 → 盤前分數 / 風險指數 / risk_history | 排程 | ⏸ 留 |
+| macro_miner `_fetch_fx` | TWD=X KRW=X CNY=X、HG=F | 匯率 / 亞幣競貶 / 週報銅價 | 排程 | ⏸ 留(第二階段) |
+| macro_miner `fetch_sector_etfs` / `fetch_us_earnings` | 20 多檔美股 / ETF / 韓股;美股財報日 | 板塊對標;財報行事曆 | 排程 | ⏸ 留 |
+| macro_miner `fetch_twii_240ma_bias` | ^TWII 2 年 | 沒有人呼叫(已停用) | 死碼 | 不動 |
+| miner `yfinance_ohlcv_fallback` | 個股 .TW/.TWO 730 / 30 天 | data/{sym}.json 補洞 / 校正 | 排程(20 批) | ⏭ 第二階段(官方有:證交所 / 櫃買逐日全市場) |
+| miner 融券第 3 條源 | `yf.info` sharesShort(CHIP_WATCHLIST) | margin_cache | 排程 | ⏭ 第二階段(程式註解寫 4 條免費源都沒有個股融券 → 很可能一直 0 檔,未驗證) |
+| etf_miner `total_return_metrics` / `dividend_fill_metrics` | ETF 含息報酬(auto_adjust)/ 配息 | etf_tracking `tr_120d` `tr_20d` `fill`(前端缺值會退回市價報酬) | 排程(daily_miner 部署) | ⏭ 第二階段(官方有:本站官方日 K + 證交所 TWT49U;要處理 ETF 分割、上櫃 ETF 的除息端點 repo 還沒有) |
+| scripts/us_hist_miner、world_hist_miner | 美股 / ETF、38 國指數 + 債券 ETF 全部歷史 | 研究(App 不讀) | 手動 | ⏸ 留 |
+| scripts/crash_global_probe、us_cycle_probe、premkt_probe、overseas_probe | 各國指數 / ^GSPC / 盤前重建 | 研究探針 | 手動 | ⏸ 留 |
+| workflow / 套件清單 | daily_miner、macro_cron、macro_probe、us_hist、premkt_probe 的 pip;requirements.txt、.github/pip-packages.txt | — | — | ⏸ 留(還有人用);confcall_av_probe.yml ✅ 拿掉(只因 macro_miner 模組層 import 才裝,實測不裝 selftest 照過) |
+
+### 為什麼美股指數 / VIX 這一階段不換(官方有,但趕不上台北 08:00 那輪)
+- 盤前體檢靠 macro_cron 00:00 UTC(台北 08:00)那輪;App `usPct` 不看美股指數的日期。FRED 更新時間(官網快照):標普 500 約美中 19:01(台北冬天 09:01 / 夏天 08:01)、那斯達克看過 22:41、VIX(VIXCLS)隔天早上 08:37 → 換了盤前分數會拿前一天的美股算。道瓊約美中 17:01 趕得上,但只換一檔會讓同一份檔的日期混在一起。
+- 財政部殖利率曲線官方寫「美東 18:00 前公布」→ 趕得上,所以美債先換;FRED DGS10 / DGS2 通常晚一天才上 → 只當備援(用到時 error 寫「備援」,`*_date` 舊一天由「不可倒退」守門擋)。
+- 日經(FRED 約美中 07:02)、日圓 / 韓元 / 人民幣(歐洲央行參考匯率,歐洲 16:00)趕得上早上那輪,但白天那幾輪會比現在舊一天,匯率也從「即時」變「定盤價」→ 第二階段配合「依日期判斷新舊」一起換。台幣要接央行 / 台北外匯經紀公司的官方收盤(repo 還沒用過,先查端點)。
+
+### 還在 yfinance 的(沒有免費官方來源)+ 選項(⛔ 這次沒做付費 / 要金鑰的)
+個股 / ETF(ADR、NVDA…、板塊 ETF、美股日線研究)、美股財報日、費半、恆指、韓股、黃金、原油期貨、美元指數、比特幣、美股期貨盤中、台指期夜盤即時。
+- A. 留 yfinance、**隔離**(本版已做:模組層不 import、壞了只少那幾格、各寫 `*_error`)+ **鎖版本**(要使用者決定:鎖舊版 Yahoo 一改就壞,而且照樣冒充瀏覽器)
+- B. 申請要金鑰的免費 API(Alpha Vantage / Twelve Data / Finnhub / EIA 原油…):使用者註冊、金鑰放 Secrets、走標頭
+- C. 拿掉功能(例:板塊對標、ADR 那幾項改只看台股)
+- D. 比特幣用交易所公開 API(Coinbase / Kraken 免金鑰,但那是交易所報價不是「官方」)
+
+### 改了什麼
+- 新 `lib_official.py`:財政部殖利率 CSV / FRED CSV / 證交所 MI_5MINS_HIST 的抓取 + 解析;一律走 `lib_http.Gate`(UA 寫明身分、⛔ Referer、證交所 3 秒、被擋斷路、退避);結果分 ok / 沒資料(安靜等)/ 抓失敗(說下一步);同一輪財政部只問一次。`lib_http` 加 `expect='csv'`(要 CSV 卻回網頁 = 擋頁)。
+- macro_miner:美債三個函式改官方、⛔ 模組層 `import yfinance`(以前 yfinance 壞掉整支 macro_miner 當掉);macro_cron 8 分時限 → 這裡逾時 12 秒、只退避 2 / 4 秒。
+- miner `fetch_us_macro_cache`:yfinance 壞掉不再整支跳過;加權長歷史底改磁碟那份 → FMTQIK 從每輪 ~60 個月份檔降到 3 個(以前 Yahoo 底沒有 amount);`_fetch_twii_history_official` 改走 lib_official(以前帶假瀏覽器 UA + 假 Referer);磁碟沒有讀已發佈那份、都沒有冷啟動要 61 個月、不到 240 根 ⛔ 寫檔。檔案格式 / 欄名全部不變(新增的只有拿不到時的 `*_error`)。
+- radar_miner:RS 大盤基準改本機官方 ^TWII.json → 證交所。
+
+### 驗證
+- `python3 lib_official.py --selftest`(31 條)、`python3 scripts/test_yf_official.py`(走正式入口、網路全假;內建 1 種注入,另外手動注入 7 種退化 —— 不裁 5 年 / Yahoo 清單加回 ^TWII / 拿掉 240 根守門 / 日期沒進守門 / 空白當 0 / 拿掉「備援」字 / 今年失敗還問去年 —— 全部會紅)、`lib_http --selftest`(14 條)+ 相關舊測試全綠(test_yf_no_regress、test_twii_volume、test_otc_hist、test_macro_*、test_premkt_log、test_rh_fallback、test_attention_fetch…)。
+- ⚠️ 沒驗到:沙箱連不到財政部 / FRED / 證交所(proxy 403)→ 全靠 fixture。財政部 CSV 的日期格式沒官方說明(兩種都收、欄位照名字找,改版會明講「格式變了」);財政部 / FRED 對 GitHub runner 擋不擋不知道(推測以前 FRED DGS2 失敗是假 Chrome UA 被當機器人,未驗證)。上線後第一輪看:macro_risk `us10y_error` / `us2y_error`(應為 null)、`ust10y_date`;macro_cache `us02y`;daily_miner log「💾 ^TWII.json」「FMTQIK 3 個月份檔」。
+- 換回去:`git revert` 這一個 commit(資料格式沒變)。
+
+### 範圍外發現(沒改,建議另開)
+- index.html `fetchMassiveUSMarket` 用 api.allorigins.win / corsproxy.io 繞 CORS 抓 Yahoo(App 端,違反「⛔ CORS 繞路」)。
+- miner.py `HEADERS` / `_rnd_hdrs()` 對證交所 / 櫃買用假瀏覽器 UA + 假 Referer 還隨機換(FMTQIK、櫃買指數、個股月檔);這版只把加權指數那條改成 lib_official。
 ## V82.3.5(2026-11-13)📉 營收衰退當名單濾網:🔥 那一半也沒過(安慰劑比濾網還多)→ 兩半都不採用
 
 - **EXP-20261113-05 判完(trap)**,照登記 👑 / 🔥 各自判、全部過才算有用:

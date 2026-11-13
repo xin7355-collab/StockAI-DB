@@ -1101,18 +1101,52 @@ def _rs_vs_market(raw_data, twii_ret20):
     return None
 
 
-def _fetch_twii_ret20():
-    """大盤(^TWII)近 20 交易日報酬%,供 RS 用;任何失敗回 None(該輪 RS 榜空,不影響其他戰區)。"""
+def _twii_closes_local():
+    """本機 data/^TWII.json(miner 用證交所 MI_5MINS_HIST 寫的官方日 K)→ [(日期, 收盤)…] 由舊到新;沒有 / 讀壞回 []。"""
+    p = Path(DATA_DIR) / '^TWII.json'
+    if not p.exists():
+        return []
+    rows = json.loads(p.read_text(encoding='utf-8'))
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        try:
+            c = float((r or {}).get('close') or 0)
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if c > 0:
+            out.append((str(r.get('date') or '').replace('/', '-')[:10], c))
+    return sorted(out)
+
+
+def _fetch_twii_ret20(_gate=None):
+    """大盤(加權指數)近 20 交易日報酬%,供 RS 用;拿不到回 None(該輪 RS 榜空,不影響其他戰區)。
+    🏛️ 只用官方:① 本機 data/^TWII.json(部署那一步本來就鋪好、當天 miner 剛寫)② 證交所 MI_5MINS_HIST 最近 3 個月。
+       ⛔ 不再用 yfinance ^TWII —— Yahoo 要冒充瀏覽器才連得到,而且實測落後一個交易日(RS 會拿昨天的大盤比今天的個股)。
+    `_gate` 只給測試換成假的連線(⛔ 真的連網)。"""
+    closes, src = [], ''
     try:
-        import yfinance as yf
-        hist = yf.Ticker("^TWII").history(period="2mo")
-        closes = [float(x) for x in hist["Close"].tolist() if x == x]
-        if len(closes) < 21:
-            return None
-        return (closes[-1] - closes[-21]) / closes[-21] * 100
-    except Exception as e:
-        print(f"   ⚠️ RS 大盤基準抓取失敗,本輪 RS 榜略過:{e}")
+        closes = _twii_closes_local()
+        src = f'本機 ^TWII.json(最新 {closes[-1][0]})' if closes else '本機沒有 ^TWII.json'
+    except Exception as e:  # noqa: BLE001
+        src = f'本機 ^TWII.json 讀不到({type(e).__name__})'
+    if len(closes) < 21:
+        try:
+            import lib_official as _LO
+            st, rows, note = _LO.taiex_months(_gate or _LO.make_gate(timeout=20, backoff=(2, 4)), _LO.recent_months(3))
+            if st == 'ok' and len(rows) >= 21:
+                closes = [(r['date'].replace('/', '-'), r['close']) for r in rows]
+                src = f'證交所 MI_5MINS_HIST(最新 {closes[-1][0]}' + (f';{note}' if note else '') + f';{src})'
+            else:
+                src += (f' ・證交所只有 {len(rows)} 天' if st == 'ok' else
+                        (' ・證交所這幾個月沒有資料' if st == 'none' else ' ・證交所抓不到')) + (f':{note}' if note else '')
+        except Exception as e:  # noqa: BLE001
+            src += f' ・證交所例外 {type(e).__name__}'
+    if len(closes) < 21:
+        print(f"   ⚠️ RS 大盤基準拿不到({src[:200]})→ 本輪 RS 榜略過")
         return None
+    c = [x[1] for x in closes]
+    print(f"   📊 RS 大盤基準:{src[:160]}")
+    return (c[-1] - c[-21]) / c[-21] * 100
 
 
 # 🚦 V69.1.26 全市場當沖歷史勝率(開盤買→收盤賣),依開盤情境分組 — 對齊前端 _dtLongStats

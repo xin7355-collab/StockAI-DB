@@ -4758,73 +4758,26 @@ def _fetch_fmtqik_months(months, _get=None):
     return vol_map
 
 
-def _fetch_twii_history_official(months_back=2):
-    """TWSE 加權指數 OHLC 官方歷史 — MI_5MINS_HIST 月份檔。
-    回傳 list of OHLC dict(date='YYYY/MM/DD');網路失敗/空白回 None,讓 yfinance fallback。
-    端點對 GHA runner(美國 IP)穩定,連不上時靜默退回。"""
-    import re as _re
-    rows_out = []
-    today = date.today()
-    months_to_fetch = []
-    cur_y, cur_m = today.year, today.month
-    for _ in range(months_back + 1):
-        months_to_fetch.append((cur_y, cur_m))
-        cur_m -= 1
-        if cur_m == 0:
-            cur_m = 12
-            cur_y -= 1
-    months_to_fetch.reverse()
-    for y, m in months_to_fetch:
-        url = f"https://www.twse.com.tw/rwd/zh/TAIEX/MI_5MINS_HIST?response=json&date={y:04d}{m:02d}01"
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=10)
-            if r.status_code != 200:
-                print(f"  [TWSE TAIEX] {y}/{m:02d} HTTP {r.status_code}")
-                continue
-            j = r.json()
-            if j.get('stat') and j.get('stat') != 'OK':
-                print(f"  [TWSE TAIEX] {y}/{m:02d} stat={str(j.get('stat'))[:60]}")
-                continue
-            data = j.get('data') or []
-            if not data:
-                print(f"  [TWSE TAIEX] {y}/{m:02d} 回 200 但 data 空")
-            for row in data:
-                try:
-                    mtch = _re.match(r'(\d{2,3})/(\d{1,2})/(\d{1,2})', str(row[0]))
-                    if not mtch:
-                        continue
-                    iso = f"{int(mtch.group(1))+1911:04d}/{int(mtch.group(2)):02d}/{int(mtch.group(3)):02d}"
-                    def _flt(s):
-                        return float(str(s).replace(',', ''))
-                    o, h, l, c = _flt(row[1]), _flt(row[2]), _flt(row[3]), _flt(row[4])
-                    # ⚠️ volume 只能給 0:MI_5MINS_HIST 這個端點只有 OHLC,沒有成交量。
-                    #   這不是 bug,是資料源限制 —— 但下游務必知道:
-                    #   ① 前端 applyLatestPrice 的「幽靈棒過濾」不能用量門檻砍指數 K 棒,
-                    #      否則會把整段近期資料當假日棒刪掉(V71.4.9 實測 ^TWII 486→424 根,
-                    #      個股頁停在 3 個月前、現價跟大盤頁對不上)。前端已加「零量佔比 ≥20% 就不濾」守門。
-                    #   ② 指數頁的量能類判讀(量價背離/OBV/均量)拿不到真量。
-                    #      ✅ V71.6.2 已補官方量能,但寫在**獨立欄位** mkt_vol / amount,
-                    #         `volume` 這欄刻意保持 0 —— 因為既有列的 volume 來自 yfinance,
-                    #         跟官方成交股數差約 1,500 倍,混同一欄會做出 1000 倍斷崖,
-                    #         也會讓前端「零量佔比 ≥20% 就不濾」那道守門失效(詳見
-                    #         _merge_twii_volume 的說明)。
-                    rows_out.append({'date': iso, 'open': round(o, 2), 'high': round(h, 2),
-                                     'low': round(l, 2), 'close': round(c, 2), 'volume': 0})
-                except Exception:
-                    continue
-        except Exception as e:
-            print(f"  [TWSE TAIEX] {y}/{m:02d} 抓取失敗: {str(e)[:60]}")
-            continue
-    # 去重(月份重疊)+ 排序
-    seen, uniq = set(), []
-    for r in rows_out:
-        if r['date'] not in seen:
-            seen.add(r['date'])
-            uniq.append(r)
-    uniq.sort(key=lambda x: x['date'])
-    # 📌 官方量能(FMTQIK)**不在這裡併** —— 這支只回最近 3 個月,在這裡併只會蓋到那 63 列。
-    #    要涵蓋 ^TWII.json 完整 486 列,必須在 _merge_official_over_yf 之後再併(見下方呼叫處)。
-    return uniq if uniq else None
+def _fetch_twii_history_official(months_back=2, _gate=None):
+    """TWSE 加權指數 OHLC 官方歷史 — MI_5MINS_HIST 月份檔(往回 months_back 個月 + 這個月)。
+    回傳 list of OHLC dict(date='YYYY/MM/DD');一個月都拿不到回 None(呼叫端會說出原因,⛔ 靜默)。
+    🏛️ 換掉 yfinance 第一階段:改走 lib_official(lib_http 連線守門)——
+       以前這裡帶 HEADERS(假的瀏覽器 UA + 假 Referer)直接 requests.get;現在 UA 寫明身分、⛔ Referer、
+       同一個網站隔 3 秒、被擋就斷路、忙就退避。哪幾個月抓不到 / 證交所沒有資料一律印出來(⛔ 默默少幾個月)。
+    ⚠️ volume 只能給 0:MI_5MINS_HIST 只有 OHLC,沒有成交量(資料源限制,不是 bug)——
+       ① 前端「幽靈棒過濾」⛔ 用量門檻砍指數 K 棒(V71.4.9 實測 ^TWII 486→424 根;前端已有「零量佔比 ≥20% 就不濾」守門)
+       ② 官方量能(V71.6.2)寫在**獨立欄位** mkt_vol / amount,`volume` 刻意保持 0 —— 舊列的 volume 來自 yfinance,
+          跟官方成交股數差約 1,500 倍,混同一欄會做出 1000 倍斷崖(詳見 _merge_twii_volume)。
+    📌 官方量能(FMTQIK)**不在這裡併** —— 要在合併長歷史之後再併,才蓋得到完整那幾年(見 fetch_us_macro_cache)。
+    `_gate` 只給測試換成假的連線。"""
+    import lib_official as _LO
+    st, rows, note = _LO.taiex_months(_gate or _LO.make_gate(), _LO.recent_months(months_back + 1))
+    if note:
+        print(f"  [TWSE TAIEX] {note}")
+    if st != 'ok':
+        print(f"  [TWSE TAIEX] {'證交所這幾個月沒有資料' if st == 'none' else '一個月都抓不到'}(往回 {months_back + 1} 個月)")
+        return None
+    return rows
 
 
 def _hist_stale_error(key, official_rows, long_rows):
@@ -5065,183 +5018,251 @@ def _fetch_otc_history_official(months_back=2):
     return uniq if uniq else None
 
 
-def _merge_official_over_yf(yf_rows, official_rows):
-    """官方近期資料優先覆蓋 yfinance 長歷史的重疊日期,長歷史部分維持 yfinance 補足 240MA。
-    yf_rows: list[dict] (date='YYYY/MM/DD');official_rows 同格式。
-    回傳合併後 sorted list。"""
+def _merge_official_over_base(base_rows, official_rows):
+    """官方近期資料覆蓋長歷史底的重疊日期(同一天以官方為準)。
+    🏛️ 換掉 yfinance 第一階段起,底 = 磁碟 / 已發佈那份 ^TWII.json、^TWOII.json(本身就是之前官方寫的),
+       以前的底是 yfinance 5 年(函式舊名 _merge_official_over_yf)。
+    base_rows / official_rows:list[dict](date='YYYY/MM/DD' 或 'YYYY-MM-DD',同一個指數同一種寫法)。回傳合併後 sorted list。"""
     if not official_rows:
-        return yf_rows
-    if not yf_rows:
+        return base_rows
+    if not base_rows:
         return official_rows
-    by_date = {r['date']: r for r in yf_rows}
+    by_date = {r['date']: r for r in base_rows}
     for r in official_rows:
-        by_date[r['date']] = r   # 官方覆蓋 yfinance
+        by_date[r['date']] = r   # 官方覆蓋舊底
     return sorted(by_date.values(), key=lambda x: x['date'])
 
 
-# ── 美股大盤快取 ──────────────────────────────────────────────────────────────
-def fetch_us_macro_cache():
+# ── 美股大盤快取(macro_cache.json)+ 加權 / 櫃買指數長歷史(data/^TWII.json、data/^TWOII.json)──────────
+# 🏛️ 換掉 yfinance 第一階段(docs/DECISIONS.md 最上面那一節):
+#   ・加權 / 櫃買長歷史 = 磁碟那份(每輪從 data 分支還原)疊上官方近期,⛔ 不再拿 yfinance 5 年當底 ——
+#     Yahoo 要冒充瀏覽器才連得到;而且每輪用 Yahoo 重寫 3 個月以前的列 → 那些列沒有 amount
+#     → 每輪都要重打 ~60 個 FMTQIK 月份檔(現在只剩最近 3 個月要補)。
+#   ・us02y(13 週美債)= 美國財政部 3 個月期(lib_official)。
+#   ・美股 / ADR / 布蘭特原油 / 美元指數:還沒有「趕得上早上 8 點」的免費官方來源 → 照舊 yfinance(只剩這些)。
+#     yfinance 裝不起來 / 壞掉 → 只少這幾格、各寫 {key}_error,⛔ 不再整支跳過(以前連加權長歷史都一起停)。
+INDEX_HIST_YEARS = 5      # 跟以前 yfinance period='5y' 一樣長(V73.2.8:回測窗口的天花板是指數)→ 檔案不會一直長大
+INDEX_HIST_MIN = 240      # 合併後不到一年 = 長歷史不完整 → ⛔ 寫檔(⛔ 拿短的蓋掉 data 分支那份長的)
+INDEX_COLD_MONTHS = 61    # 冷啟動(磁碟、已發佈的都拿不到)才跟證交所要 5 年(61 個月份檔,間隔 3 秒 ≈ 3 分;很少走到)
+_INDEX_PUB_URLS = (
+    ("data 分支 raw", "https://raw.githubusercontent.com/xin7355-collab/StockAI-DB/data/data/{f}"),
+    ("gh-pages", "https://xin7355-collab.github.io/StockAI-DB/data/{f}"),
+)
+# 🌐 只剩這幾格走 yfinance(沒有「趕得上早上 8 點」的免費官方來源;理由與選項見 docs/DECISIONS.md)
+_YF_MACRO_SYMBOLS = {'sp500': '^GSPC', 'nasdaq': '^IXIC', 'tsm': 'TSM',
+                     'dji': '^DJI', 'vix': '^VIX',
+                     'asx': 'ASX', 'umc': 'UMC',   # 🌅 V36.8 日月光 ADR / 聯電 ADR(盤前大盤體檢用)
+                     'sox': '^SOX', 'nvda': 'NVDA', 'aapl': 'AAPL', 'msft': 'MSFT',
+                     'ukoil': 'BZ=F',     # 布蘭特原油期貨
+                     'dxy':   'DX-Y.NYB', # 美元指數
+                     }
+
+
+def _trim_years(rows, years=INDEX_HIST_YEARS, today=None):
+    """只留最近 years 年(日期 'YYYY/MM/DD' 或 'YYYY-MM-DD' 都收;解不出日期的列丟掉)。"""
+    today = today or date.today()
+    try:
+        cut = today.replace(year=today.year - years).isoformat()
+    except ValueError:   # 2/29
+        cut = today.replace(year=today.year - years, day=28).isoformat()
+    return [r for r in (rows or []) if isinstance(r, dict)
+            and len(str(r.get('date') or '')) >= 10 and str(r['date']).replace('/', '-')[:10] >= cut]
+
+
+def _index_base_rows(fname, _get=None):
+    """長歷史的底 → (rows, 從哪裡讀到的)。磁碟(data 分支還原的)→ 已發佈那份(data 分支 raw → gh-pages)。
+    ⛔ 永遠不丟例外。`_get` 只給測試換成假的連線。"""
+    why = []
+    p = Path(DATA_DIR, fname)
+    try:
+        if p.exists():
+            rows = json.loads(p.read_text(encoding='utf-8')) or []
+            if isinstance(rows, list) and rows:
+                return rows, f'磁碟 {len(rows)} 筆'
+            why.append('磁碟檔是空的')
+        else:
+            why.append('磁碟沒有')
+    except Exception as e:
+        why.append(f'磁碟讀不到({type(e).__name__})')
+    get = _get or (lambda u: requests.get(u, timeout=20, headers={'User-Agent': _HONEST_UA}))
+    for label, tpl in _INDEX_PUB_URLS:
+        try:
+            r = get(tpl.format(f=urllib.parse.quote(fname)) + f'?t={int(time.time())}')
+            if getattr(r, 'status_code', 0) == 200:
+                rows = r.json()
+                if isinstance(rows, list) and rows:
+                    return rows, f'線上 {label} {len(rows)} 筆(' + ';'.join(why) + ')'
+                why.append(f'{label} 內容是空的')
+            else:
+                why.append(f"{label} HTTP {getattr(r, 'status_code', '?')}")
+        except Exception as e:
+            why.append(f'{label} {type(e).__name__}')
+    return [], ';'.join(why)
+
+
+def _us02y_official(result, gate):
+    """🏛️ macro_cache 的 us02y:以前 yfinance ^IRX(13 週國庫券**貼現率**)→ 美國財政部 3 個月期(**債券等值殖利率**,
+    同一天通常比 ^IRX 高約 0.1 個百分點、漲跌% 幾乎一樣)→ FRED DGS3MO 備援。欄名 / 形狀照舊(App 美股列只讀 close / chg_pct)。
+    拿不到 → 寫 us02y_error(data_audit D3 看到原因才降級成 ⚠️,⛔ 默默少一格)。"""
+    import lib_official as _LO
+    st, pts, src, note = _LO.ust_series(gate, '3m')
+    if st == 'ok' and len(pts) >= 2:
+        v, chg, d = _LO.last_change(pts)
+        result['us02y'] = {'date': d, 'close': round(v, 2), 'prev': round(pts[-2][1], 2), 'chg_pct': chg}
+        print(f"  us02y: {round(v, 2)} ({chg:+.2f}%;{src} 3 個月期 {d}{';' + note if note else ''})")
+        return
+    why = ('只有一天的值,不給漲跌' if st == 'ok' else
+           ('官方還沒有值(休市或還沒公布)' if st == 'none' else '財政部與 FRED 都抓不到(多半是被擋或對方故障,下一輪再試)'))
+    result['us02y_error'] = f'13 週美債(財政部 3 個月期):{why} ・{note}'[:220]
+    print(f"  ⚠️ us02y:{result['us02y_error']}")
+
+
+def _index_long_official(key, result, gate, _get=None):
+    """🏛️ 加權(twii)/ 櫃買(twoii)長歷史 → data/^*.json + macro_cache 的 *_history(120 根)/ 單值 / *_error。
+    底 = 磁碟 / 已發佈那份,疊上官方近期(加權:證交所 MI_5MINS_HIST;櫃買:FinMind 免費層 → 櫃買官網)。"""
+    fname = '^TWOII.json' if key == 'twoii' else f"^{key.upper()}.json"
+    base_rows, base_src = _index_base_rows(fname, _get=_get)
+    base_win = _trim_years(base_rows)
+    months_back = 2
+    if key == 'twii' and len(base_win) < INDEX_HIST_MIN:
+        months_back = INDEX_COLD_MONTHS - 1
+        print(f"  🧊 {key} 長歷史的底只有 {len(base_win)} 筆({base_src})→ 冷啟動:跟證交所要 {INDEX_COLD_MONTHS} 個月")
+    # 🏛️ 官方來源:TWSE TAIEX(twii)/ FinMind → TPEX(twoii)
+    official_rows = None
+    try:
+        if key == 'twii':
+            official_rows = _fetch_twii_history_official(months_back=months_back, _gate=gate)
+        elif key == 'twoii':
+            # ⭐ V73.6.1 先走 FinMind(實測唯一穩定拿得到的);⛔ 空了才退回 TPEX 官網
+            #   (官網對 GitHub runner 會 403,見 _fetch_otc_history_finmind 的說明)
+            official_rows = _fetch_otc_history_finmind(days_back=400)
+            if not official_rows:
+                official_rows = _fetch_otc_history_official(months_back=2)
+    except Exception as _e:
+        print(f"  ⚠️ 官方來源 {key} 抓取例外: {str(_e)[:80]}")
+    # 🔊 V71.2.3:官方來源掛掉時要「大聲講」—— 這條線斷掉時 ^TWII.json 會停在舊日期(加權指數整整落後一天,
+    #    前端所有「站回 5 日線 / 指數跌幅 / M 頭頸線」全部用到錯的收盤),以前只印一行小小的 HTTP code 完全看不到。
+    if official_rows:
+        print(f"  🏛️ 官方來源 {key}: {len(official_rows)} 筆(最新 {official_rows[-1]['date']})")
+    else:
+        print(f"  🚨 官方來源 {key} 掛了(0 筆)→ 只剩長歷史的底({base_src}),"
+              f"指數收盤可能落後一天。查上方 [TWSE TAIEX]/[TPEX OTC] 訊息找原因")
+    long_rows = _trim_years(_merge_official_over_base(base_rows, official_rows) if official_rows else base_rows)
+    # 📊 V71.6.2 官方量能(成交股數/金額)併入 —— 放在**合併之後**,才蓋得到完整長歷史。
+    #   ⛔ 只有 twii(集中市場)適用;twoii 是櫃買,FMTQIK 不含它,不可套用。
+    #   ⛔ 一律寫獨立欄位 mkt_vol / amount,**不動 volume**(舊列的 volume 來自 yfinance,
+    #      跟官方股數差約 1,500 倍,混同一欄會做出 1000 倍斷崖 —— 詳見 _merge_twii_volume)。
+    if key == 'twii' and long_rows:
+        try:
+            # 📊 只抓「還缺 amount」的月份(底本身已經有 amount → 平常只剩官方最近 3 個月要補);
+            #   ⚠️ 補完之後 _need 會變空 —— 這時**只刷最近 3 個月**(當月數字會被官方回補),⛔ 退回全量。
+            _need = [r for r in long_rows if not r.get('amount')]
+            _mo = _months_span(_need, cap=70) if _need else _months_span(long_rows, cap=3)
+            long_rows, _hit = _merge_twii_volume(long_rows, _fetch_fmtqik_months(_mo))
+            print(f"  📊 官方量能(mkt_vol/amount)併入 {_hit}/{len(long_rows)} 列"
+                  f"(FMTQIK {len(_mo)} 個月份檔)")
+        except Exception as _e:
+            print(f"  ⚠️ FMTQIK 量能併入失敗(不影響 OHLC): {str(_e)[:80]}")
+    # 💾 個股格式檔(供前端 analyze('^TWII') 查完整 K 線)—— 不到一年 ⛔ 寫(部署那邊保留 data 分支那份,⛔ 短蓋長)
+    _short = None
+    if len(long_rows) >= INDEX_HIST_MIN:
+        try:
+            Path(DATA_DIR, fname).write_text(
+                json.dumps(long_rows, ensure_ascii=False, separators=(',', ':')),
+                encoding='utf-8')
+            print(f"  💾 {fname}: {len(long_rows)} 筆 OHLCV ({long_rows[-1].get('date','?')};底 {base_src})")
+        except Exception as _e:
+            print(f"  ⚠️ 寫 {fname} 失敗:{_e}")
+    elif long_rows:
+        _short = (f'{key} 長歷史只湊到 {len(long_rows)} 筆(< {INDEX_HIST_MIN};底 {base_src})'
+                  f'→ 這輪 ⛔ 寫 {fname},部署那邊照用 data 分支那份')
+    # macro_cache 內保留 twii_history / twoii_history(120 日,泡沫預警 + 盤前大盤體檢櫃買用)
+    hist_key = 'twii_history' if key == 'twii' else 'twoii_history'
+    result[hist_key] = long_rows[-120:] if long_rows else []
+    # 🚨 V77.4.5 陷阱 #22:官方來源全空時要**說出原因**,⛔ 不可靜靜拿磁碟舊檔當今天
+    _stale = _hist_stale_error(key, official_rows, long_rows)
+    if _stale:
+        result[f'{key}_error'] = _stale
+        print(f"  🚨 {key}: {_stale}")
+    else:
+        result.pop(f'{key}_error', None)
+        if _short:
+            result[f'{key}_error'] = _short
+            print(f"  ⛔ {_short}")
+    # 單值(date/close/prev/chg_pct):官方最準優先,否則 long_rows 末兩根
+    src2 = official_rows if (official_rows and len(official_rows) >= 2) else (long_rows if len(long_rows) >= 2 else None)
+    if src2 and (official_rows or key not in result):
+        lo, po = src2[-1], src2[-2]
+        if po.get('close', 0) > 0:
+            result[key] = {
+                'date': str(lo['date']).replace('/', '-'),
+                'close': lo['close'],
+                'prev': po['close'],
+                'chg_pct': round((lo['close'] - po['close']) / po['close'] * 100, 2),
+            }
+    if key in result:
+        print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
+
+
+def fetch_us_macro_cache(_gate=None, _get=None):
+    """macro_cache.json(美股 / ADR / 13 週美債 / 原油 / 美元指數 / 加權 / 櫃買)+ data/^TWII.json、^TWOII.json。
+    `_gate`(lib_official 的連線)/ `_get`(讀已發佈那份)只給測試換成假的。"""
+    today = date.today()
+    result = {}
     try:
         import yfinance as yf
-    except ImportError:
-        print("\n⚠️  yfinance 未安裝，跳過美股快取")
-        return
-    today   = date.today()
-    symbols = {'sp500': '^GSPC', 'nasdaq': '^IXIC', 'tsm': 'TSM',
-               'dji': '^DJI', 'vix': '^VIX',
-               'asx': 'ASX', 'umc': 'UMC',   # 🌅 V36.8 日月光 ADR / 聯電 ADR(盤前大盤體檢用)
-               'sox': '^SOX', 'nvda': 'NVDA', 'aapl': 'AAPL', 'msft': 'MSFT',
-               'us02y': '^IRX',     # 13W T-Bill 短債利率（Fed 政策風向）
-               'ukoil': 'BZ=F',     # 布蘭特原油期貨
-               'dxy':   'DX-Y.NYB', # 美元指數
-               'twii':  '^TWII',    # 台股加權指數（供泡沫預警 K 線型態判讀 + 個股查詢頁）
-               # 🐛 V73.6.1 `^TWO` 是**錯的 ticker** —— 實測(scripts/otc_probe.py)yfinance 回的是
-               #    `exchangeName: CBO / currency: USD` = **美國 CBOE 的選擇權**,根本不是台灣櫃買。
-               #    這就是舊註解說「^TWO yfinance 幾乎永遠回空」的真相:不是回空,是抓錯東西被過濾掉。
-               #    正確 ticker 是 `^TWOII`(實測 66 根)。
-               'twoii': '^TWOII',   # 台股上櫃指數（OTC,供個股查詢頁查上櫃整體走勢)
-               }
-    # 🎯 台股指數特例:這些 ticker 抓 period=2y 充足歷史(支援前端 240MA/季線等技術指標)
-    LONG_HIST_KEYS = {'twii', 'twoii'}
+        yf_why = ''
+    except Exception as e:   # ⚠️ 不只 ImportError:curl_cffi 版本不合在 import 時就會丟別的例外
+        yf, yf_why = None, f'{type(e).__name__}: {str(e)[:60]}'
     print(f"\n🌐 抓取美股昨收資料（{today}）...")
-    result = {}
-    for key, ticker in symbols.items():
+    if yf is None:
+        print(f"⚠️  yfinance 載入失敗({yf_why})→ 美股那 {len(_YF_MACRO_SYMBOLS)} 格這輪沒有;"
+              f"加權 / 櫃買 / 13 週美債照常(官方)")
+    for key, ticker in _YF_MACRO_SYMBOLS.items():
+        if yf is None:
+            result[f'{key}_error'] = f'yfinance 載入失敗({yf_why})→ 這一格這輪沒有(還沒有官方替代)'
+            continue
         try:
-            is_long = key in LONG_HIST_KEYS
-            # 🛡️ SIGALRM 硬逾時，防 yfinance 無限 hang
-            #    台股指數抓 2y(供前端個股頁完整功能)、其他維持 10d(省 API 額度)
-            # 📏 V73.2.8 指數 2y → 5y:回測窗口的天花板是**指數**不是個股 ——
-            #   個股有 763 筆(3 年)但 ^TWII 只有 486 筆(2 年),而超額報酬要扣同期大盤
-            #   → 整套回測只能算 2 年,連 2022 那次 −32% 空頭都涵蓋不到。
-            #   ⛔ 只放寬指數(2 檔);2,700 檔個股全部重抓會被 yfinance 限流。
-            _period = '5y' if is_long else '10d'
-            hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period=_period), 30, None)
-            yf_empty = (hist is None or hist.empty)
-            # 🐛 V40.1 長線台股指數(twii/twoii)即使 yfinance 空/逾時也「不可 continue」,
-            #    否則跳過官方來源 + 不寫 ^TWII.json → 個股頁加權 K 線停更(實測停在 6/10)。
-            #    twoii(^TWO)yfinance 幾乎永遠回空 → 櫃買全靠官方 TPEX。非長線指數維持空就跳過。
-            if yf_empty and not is_long:
+            # 🛡️ SIGALRM 硬逾時,防 yfinance 無限 hang;只要最近 10 天(昨收 + 前收)
+            hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period='10d'), 30, None)
+            if hist is None or hist.empty:
+                result[f'{key}_error'] = f'Yahoo 回空或逾時({ticker};沒有資料或被擋,還沒有官方替代)'
                 continue
-            yf_rows = []
-            if not yf_empty:
-                prev = hist.iloc[-2] if len(hist) >= 2 else hist.iloc[-1]
-                last = hist.iloc[-1]
-                result[key] = {
-                    'date':    str(last.name.date()),
-                    'close':   round(float(last['Close']), 2),
-                    'prev':    round(float(prev['Close']), 2),
-                    'chg_pct': round((float(last['Close']) - float(prev['Close'])) /
-                                      float(prev['Close']) * 100, 2),
-                }
-                if is_long:
-                    yf_rows = [
-                        {'date':   str(idx.date()).replace('-', '/'),
-                         'open':   round(float(row['Open']), 2),
-                         'high':   round(float(row['High']), 2),
-                         'low':    round(float(row['Low']), 2),
-                         'close':  round(float(row['Close']), 2),
-                         'volume': (int(row['Volume']) if (row['Volume'] == row['Volume']) else 0)}
-                        for idx, row in hist.iterrows()
-                        if (row['Close'] == row['Close'])   # dropna
-                    ]
-            # 🎯 ^TWII / ^TWOII 寫成 data/^*.json 個股格式(對齊 list of OHLCV),供前端 analyze('^TWII') 查完整 K 線。
-            if is_long:
-                # 🏛️ 官方來源(主要):TWSE TAIEX(twii)/ TPEX OTC(twoii)抓最近 2 個月權威 OHLC
-                official_rows = None
-                try:
-                    if key == 'twii':
-                        official_rows = _fetch_twii_history_official(months_back=2)
-                    elif key == 'twoii':
-                        # ⭐ V73.6.1 先走 FinMind(實測唯一穩定拿得到的);⛔ 空了才退回 TPEX 官網
-                        #   (官網對 GitHub runner 會 403,見 _fetch_otc_history_finmind 的說明)
-                        official_rows = _fetch_otc_history_finmind(days_back=400)
-                        if not official_rows:
-                            official_rows = _fetch_otc_history_official(months_back=2)
-                except Exception as _e:
-                    print(f"  ⚠️ 官方來源 {key} 抓取例外: {str(_e)[:80]}")
-                # 🔊 V71.2.3:官方來源掛掉時要「大聲講」,不能靜靜退回 yfinance。
-                #    這條線斷掉時 ^TWII.json 會停在舊日期(加權指數整整落後一天,前端所有
-                #    「站回 5 日線 / 指數跌幅 / M 頭頸線」全部用到錯的收盤),但以前只印一行
-                #    小小的 HTTP code,淹沒在 2 千行 log 裡完全看不到。
-                if official_rows:
-                    print(f"  🏛️ 官方來源 {key}: {len(official_rows)} 筆(最新 {official_rows[-1]['date']})")
-                else:
-                    print(f"  🚨 官方來源 {key} 掛了(0 筆)→ 只能退回 yfinance/磁碟,"
-                          f"指數收盤可能落後一天。查上方 [TWSE TAIEX]/[TPEX OTC] 訊息找原因")
-                fname = '^TWOII.json' if key == 'twoii' else f"^{key.upper()}.json"
-                # yfinance 逾時/空時,讀磁碟既有 ^*.json(origin/data restore)當長歷史底,官方鮮值疊上 → 保歷史又即時
-                base_rows = yf_rows
-                if not base_rows:
-                    try:
-                        _p = Path(DATA_DIR, fname)
-                        if _p.exists():
-                            base_rows = json.loads(_p.read_text(encoding='utf-8')) or []
-                            print(f"  ♻️ {key} yfinance 空 → 沿用磁碟 {len(base_rows)} 筆長歷史,官方鮮值疊上")
-                    except Exception as _e:
-                        print(f"  ⚠️ 讀既有 {fname} 失敗:{_e}")
-                long_rows = _merge_official_over_yf(base_rows, official_rows) if official_rows else base_rows
-                # 📊 V71.6.2 官方量能(成交股數/金額)併入 —— 放在**合併之後**,才蓋得到完整長歷史。
-                #   踩過的坑:一開始寫在 _fetch_twii_history_official 裡面,但那支只回最近 3 個月
-                #   → 只有最新 63 列拿到 amount,舊的 423 列永遠沒有,量能類指標算不出一年趨勢。
-                #   ⛔ 只有 twii(集中市場)適用;twoii 是櫃買,FMTQIK 不含它,不可套用。
-                #   ⛔ 一律寫獨立欄位 mkt_vol / amount,**不動 volume**(volume 來自 yfinance,
-                #      跟官方股數差約 1,500 倍,混同一欄會做出 1000 倍斷崖 —— 詳見 _merge_twii_volume)。
-                if key == 'twii' and long_rows:
-                    try:
-                        # 📊 只抓「還缺 amount」的月份 —— 拉長到 5 年後若照舊 cap=30,
-                        #   最舊那 2 年永遠拿不到 amount(指數量能是「整條序列換成 amount」,
-                        #   缺了會出現空洞 → 陷阱 #29/#17)。改成自我限縮:
-                        #   首次補歷史時抓多一點,之後每天只剩 1~2 個月要補。
-                        _need = [r for r in long_rows if not r.get('amount')]
-                        # ⚠️ 補完之後 _need 會變空 —— 這時**只刷最近 3 個月**(當月數字會被官方回補),
-                        #   ⛔ 不可退回全量,否則拉長到 5 年後每天都要打 60 次 FMTQIK。
-                        _mo = _months_span(_need, cap=70) if _need else _months_span(long_rows, cap=3)
-                        long_rows, _hit = _merge_twii_volume(long_rows, _fetch_fmtqik_months(_mo))
-                        print(f"  📊 官方量能(mkt_vol/amount)併入 {_hit}/{len(long_rows)} 列"
-                              f"(FMTQIK {len(_mo)} 個月份檔)")
-                    except Exception as _e:
-                        print(f"  ⚠️ FMTQIK 量能併入失敗(不影響 OHLC): {str(_e)[:80]}")
-                # 個股格式檔
-                if long_rows:
-                    try:
-                        Path(DATA_DIR, fname).write_text(
-                            json.dumps(long_rows, ensure_ascii=False, separators=(',', ':')),
-                            encoding='utf-8')
-                        print(f"  💾 {fname}: {len(long_rows)} 筆 OHLCV ({long_rows[-1].get('date','?')})")
-                    except Exception as _e:
-                        print(f"  ⚠️ 寫 {fname} 失敗:{_e}")
-                # macro_cache 內保留 twii_history / twoii_history(120 日,泡沫預警 + 盤前大盤體檢櫃買用)
-                hist_key = 'twii_history' if key == 'twii' else 'twoii_history'
-                result[hist_key] = long_rows[-120:] if long_rows else []
-                # 🚨 V77.4.5 陷阱 #22:三條來源全空時要**說出原因**,⛔ 不可靜靜沿用磁碟舊檔
-                _stale = _hist_stale_error(key, official_rows, long_rows)
-                if _stale:
-                    result[f'{key}_error'] = _stale
-                    print(f"  🚨 {key}: {_stale}")
-                else:
-                    result.pop(f'{key}_error', None)
-                # 單值(date/close/prev/chg_pct):官方最準優先,否則 yfinance(已設),否則 long_rows 末兩根
-                src2 = official_rows if (official_rows and len(official_rows) >= 2) else (long_rows if len(long_rows) >= 2 else None)
-                if src2 and (official_rows or key not in result):
-                    lo, po = src2[-1], src2[-2]
-                    if po.get('close', 0) > 0:
-                        result[key] = {
-                            'date': str(lo['date']).replace('/', '-'),
-                            'close': lo['close'],
-                            'prev': po['close'],
-                            'chg_pct': round((lo['close'] - po['close']) / po['close'] * 100, 2),
-                        }
-            if key in result:
-                print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
+            prev = hist.iloc[-2] if len(hist) >= 2 else hist.iloc[-1]
+            last = hist.iloc[-1]
+            result[key] = {
+                'date':    str(last.name.date()),
+                'close':   round(float(last['Close']), 2),
+                'prev':    round(float(prev['Close']), 2),
+                'chg_pct': round((float(last['Close']) - float(prev['Close'])) /
+                                  float(prev['Close']) * 100, 2),
+            }
+            print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
         except Exception as e:
+            result[f'{key}_error'] = f'yfinance 例外 {type(e).__name__}({ticker})'
             print(f"  ⚠️  {ticker}: {e}")
+    import lib_official as _LO
+    gate = _gate or _LO.make_gate()
+    try:
+        _us02y_official(result, gate)
+    except Exception as e:
+        result['us02y_error'] = f'13 週美債例外 {type(e).__name__}: {str(e)[:60]}'
+        print(f"  ⚠️ us02y: {e}")
+    # 🎯 ^TWII / ^TWOII 寫成 data/^*.json 個股格式(對齊 list of OHLCV)
+    for key in ('twii', 'twoii'):
+        try:
+            _index_long_official(key, result, gate, _get=_get)
+        except Exception as e:
+            result[f'{key}_error'] = f'{key} 長歷史例外 {type(e).__name__}: {str(e)[:60]}'
+            print(f"  ⚠️  {key}: {e}")
     if not result:
         return
     result['generated'] = today.strftime('%Y-%m-%d')
     with open('macro_cache.json', 'w', encoding='utf-8') as f:
         json.dump(result, f, ensure_ascii=False)
-    print(f"  ✅ macro_cache.json（{len(result)-1} 指標）")
-
+    _n = sum(1 for k in result if k != 'generated' and not k.endswith('_error') and not k.endswith('_history'))
+    _e = sorted(k[:-6] for k in result if k.endswith('_error'))
+    print(f"  ✅ macro_cache.json({_n} 指標" + (f";沒拿到 {len(_e)} 格:{', '.join(_e)}" if _e else '') + ")")
 
 
 def fetch_free_fundamentals():
@@ -7563,7 +7584,7 @@ if __name__ == '__main__':
         # 🛡️ 各步驟彼此獨立 → 逐步包 _safe_step,一步失敗仍續跑其餘(避免單點失敗讓 radar/top_picks 全停更)
         _safe_step("每檔基本面 fetch_free_fundamentals", fetch_free_fundamentals)    # data/chips/*.json(只放基本面)
         _safe_step("外資期貨 fetch_futures_cache", fetch_futures_cache)   # futures_cache.json （TAIFEX，不吃 FinMind 額度）
-        _safe_step("美股宏觀 fetch_us_macro_cache", fetch_us_macro_cache)  # macro_cache.json （yfinance）
+        _safe_step("美股宏觀 fetch_us_macro_cache", fetch_us_macro_cache)  # macro_cache.json(美股 yfinance;加權 / 櫃買 / 美債 官方)
         _safe_step("雷達掃描 build_radar_cache", build_radar_cache)     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
         _safe_step("泡沫預警 build_bubble_warning", build_bubble_warning)  # 💥 → data/bubble_warning.json
         _safe_step("板塊熱度 build_sector_heat", build_sector_heat)     # 🌡️ → data/sector_heat.json
