@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.2.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.2.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.2.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8968,10 +8968,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.2.5',
+    _APP_VERSION: 'V82.2.6',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.2.6', d: [
+            '🧯 設定裡的「帳戶總資金」如果比手上的股票 + 0050 還少(代表那個數字過期了),決策台「你的風控」、勝率鏡子、新增持倉、該買幾張都不再拿它來算「佔帳戶幾 %」—— 以前會因此亮出不對的「🟠 這個月先停手」;現在改成提醒你先到 ⚙️ 設定把它改成真正的總資金(股票 + 0050 + 現金)',
+            '🧮 手上算得到停損的股票如果都已經在停損下面,不再寫「全部碰到停損 ≈ 賠 0 元」,改成直接講「已經在停損下面 → 照你的出場規則處理(收盤確認)」',
+            '👑 換倉那天:「賣一半拿回來的錢」就算帳戶總資金過期也會算出大約多少;那天不買新股票時,不再寫「今天要買股票的錢先扣掉」;過了 10:00 還沒賣的,改寫成「13:00 起尾盤賣」(跟自動下單補賣的時間一樣),10 點後才打開 App 收到的提醒也照這樣講',
+        ], dt: '2026-11-13' },
         { v: 'V82.2.5', d: [
             '🧭 編輯庫存的每一檔可以選「為什麼買」(App 推薦、領頭羊、自己看線型、營收財報、新聞消息、別人報的、存股長抱、其他),也可以勾「買之前想好停損價」;賣出時會一起記下來',
             '🪞 勝率鏡子多一塊「照為什麼買分」:每一種理由幾筆、平均賺賠多少、合計多少元,看得出哪一種理由最常讓你賠錢;賣的時候才補選的會註明',
@@ -9291,7 +9296,6 @@ ${list}
         { v: 'V79.7.6', d: ['🧹 內部更新(畫面沒有變動)'], dt: '2026-10-25' },
         { v: 'V79.7.5', d: ['🧹 內部更新(畫面沒有變動)'], dt: '2026-10-25' },
         { v: 'V79.7.4', d: ['🧹 內部更新(畫面沒有變動)'], dt: '2026-10-24' },
-        { v: 'V79.7.3', d: ['🧹 內部更新(畫面沒有變動)'], dt: '2026-10-24' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -22338,14 +22342,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const kOpen = 'leadDayOpen';
         if (!seen(kOpen) && (t.min >= 9 * 60 + 10 || all.slice(0, 12).every(s => Q[s]))) {
             const L1 = [];
+            // ⏰ V82.2.6 過了 10:00 才第一次跳(App 那時才打開)→ ⛔ 再寫「現在開盤賣」:開盤時段已過,
+            //   只轉述自動下單現行做法 = 開盤沒賣成的 13:00 起尾盤補賣(同決策台 `_deckTodoLead` 的 late)
+            const late = t.min > 10 * 60;   // = auto_trade `mins > LEADER_DEFER_SELL_TO`
             const sellSide = (arr, verb, icon) => {
+                if (late) { L1.push(`${icon} 開盤時段已過 → 還沒${verb}的 13:00 起尾盤${verb}:${arr.map(s => `${nm(s)} ${gapTxt(s)}`).join('、')}`); return; }
                 const now = arr.filter(s => !(sp && down3(s))), wait = arr.filter(s => sp && down3(s));
                 if (now.length) L1.push(`${icon} 現在開盤${verb}:${now.map(s => `${nm(s)} ${gapTxt(s)}`).join('、')}`);
                 if (wait.length) L1.push(`${icon} 開盤就跌 3% 以上 → 等到 09:30~10:00 再${verb}:${wait.map(s => `${nm(s)} ${gapTxt(s)}`).join('、')}`);
             };
             const buySide = (arr, verb, icon) => {
                 const nowB = arr.filter(s => (!sp || down3(s)) && !lu(s)), noB = arr.filter(lu), laterB = arr.filter(s => sp && !down3(s) && !lu(s));
-                if (nowB.length) L1.push(`${icon} ${sp ? '開盤就跌 3% 以上 → ' : ''}現在開盤${verb}:${nowB.map(s => `${nm(s)} ${gapTxt(s)}`).join('、')}`);
+                const v0 = String(verb).replace(/\(.*\)$/, '');   // 「買(每檔只買一半)」→「買」(⛔ 括號重複三次)
+                if (nowB.length) L1.push(late
+                    ? `${icon} ${sp ? `開盤就跌 3% 以上(規則是開盤就${v0})→ ` : ''}開盤時段已過,還沒${v0}的等下一次換倉一起${v0}:${nowB.map(s => `${nm(s)} ${gapTxt(s)}`).join('、')}`
+                    : `${icon} ${sp ? '開盤就跌 3% 以上 → ' : ''}現在開盤${verb}:${nowB.map(s => `${nm(s)} ${gapTxt(s)}`).join('、')}`);
                 if (laterB.length) L1.push(`${icon} 下午 13:25 再${verb}:${laterB.map(nm).join('、')}`);
                 if (noB.length) L1.push(`⛔ 開盤就漲停 → 不追:${noB.map(nm).join('、')}`);
             };
@@ -22354,7 +22365,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (T.length) sellSide(T, '賣一半', '✂️');
             if (A.buy.length) buySide(A.buy, half ? '買(每檔只買一半)' : '買', '🛒');
             if (U.length) { L1.push('✂️ 回到最高點:這次換倉起恢復全額'); buySide(U, '補回', '✂️'); }
-            this._fireAlert('👑 換倉日・開盤要做的事', L1.join('\n') + `\n(⛔ 這是提醒不是自動下單;沒用到的錢放${this._park() ? ' 0050' : '現金'})`, null);
+            this._fireAlert(late ? '👑 換倉日・還沒做的事' : '👑 換倉日・開盤要做的事', L1.join('\n') + `\n(⛔ 這是提醒不是自動下單;沒用到的錢放${this._park() ? ' 0050' : '現金'})`, null);
             stamp(kOpen);
         }
         // ② 13:20 那一則(只有 split:要買的 / 要補回的 13:25 買)
@@ -23913,6 +23924,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const S = this._leadSlot();
         const wan = v => `${(Math.round(v / 1000) / 10).toLocaleString()} 萬`;
         const sp = this._leadTiming() === 'split';
+        // ⏰ V82.2.6 換倉那天過了 10:00、還沒收盤 → 開盤那段已過(11/13 12:33 截圖還寫「今天 09:00 開盤賣」)。
+        //   ⛔ 新規則 —— 只轉述自動下單(auto_trade)現行的做法:開盤沒賣成的 → 尾盤(EOD_FROM 13:00 起)補賣;
+        //   全部開盤模式(open)錯過開盤的買進 → 那天跳過(⛔ 不改到尾盤補做),所以講「等下一次換倉」= 收盤後那句同一個意思
+        const late = P.ph === 'act' && !P.past && T.min > 10 * 60;   // = auto_trade `mins > LEADER_DEFER_SELL_TO`(10:00 那一分鐘還算時段內)
+        const sellWhen = () => late ? `${chip('13:00')} 起尾盤賣<span class="text-[10px] text-gray-400" data-todolate="sell">(開盤時段已過;自動下單開盤沒賣成的也是這時候補賣)</span>` : when('sell');
+        const buyWhen = () => (late && !sp) ? `開盤時段已過<span class="text-[10px] text-gray-400" data-todolate="buy">(還沒買的等下一次換倉一起買;自動下單錯過開盤也是跳過)</span>` : when('buy');
         // ✂️ V82.0.7 跌 20% 收一半(⛔ 只轉述 `_leadActs().dd` = `_leadDdPlan`;⛔ 不印離最高點幾 %)
         const D = A.dd || { W: 1, WP: 1, mode: '' }, W1 = D.W > 0 && D.W < 1 ? D.W : 1;
         const ddF = D.mode === 'trim' && D.WP > 0 ? Math.max(0, 1 - D.W / D.WP) : 0;
@@ -23946,18 +23963,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (!(P.ph === 'act' && !P.past && T.min >= 9 * 60)) return '';
             const { q } = pxOf(s); if (!q || !(q.o > 0) || !(q.prev > 0)) return '';
             const g = (q.o / q.prev - 1) * 100, gt = `開 ${g >= 0 ? '+' : '−'}${Math.abs(g).toFixed(1)}%`;
-            const a = side === 'sell' ? (sp && g <= -3 ? '→ 等到 09:30~10:00 再賣' : '→ 開盤賣')
-                : (g >= 9.5 ? '→ 開盤就漲停,<b>不追</b>' : (sp && g <= -3 ? '→ 開盤就買' : (sp ? '→ 13:25 照買' : '→ 開盤買')));
+            const a = side === 'sell' ? (late ? '' : (sp && g <= -3 ? '→ 等到 09:30~10:00 再賣' : '→ 開盤賣'))
+                : (g >= 9.5 ? '→ 開盤就漲停,<b>不追</b>' : (sp && g <= -3 ? (late ? '→ 規則是開盤就買(開盤時段已過:還沒買的等下一次換倉)' : '→ 開盤就買') : (sp ? '→ 13:25 照買' : (late ? '' : '→ 開盤買'))));
             return `<span class="text-[10px] text-gray-300" data-todogap="${s}"> ${gt} ${a}</span>`;
         };
         // 💰 換倉那幾天才講錢(帳戶總資金過期 / 沒填 → 只講要先去改,⛔ 不算金額)
         const moneyLines = () => {
             // ✂️ V82.0.7 收一半拿回來的錢:照你選的放 0050 / 現金(⛔ 研究數字)
-            const trimV = S.st === 'ok' ? A.trim.reduce((a, s) => a + (S.val[s] || 0) / (twoHalf(s) ? 2 : 1) * ddF, 0) : 0;
-            const trimOut = A.trim.length ? [`💰 賣一半拿回來的錢${trimV > 0 ? `約 <b class="font-mono">${wan(trimV)}</b>` : ''} → ${this._park() ? '<b>停 0050</b>(今天要買股票的錢先扣掉)' : '<b>放現金</b>'}`] : [];
-            if ((!A.buy.length && !A.topup.length) || bearOn) return trimOut;
-            if (S.st === 'stale') return [`⚠️ 你填的帳戶總資金 <b class="font-mono">${wan(S.acc)}</b> 比手上的股票 + 0050(<b class="font-mono">${wan(S.stock + S.park)}</b>)還少 → 先到 ⚙️ 設定改成<b>真正的總資金(股票 + 0050 + 現金)</b>,這裡才算得出每檔買多少`];
-            if (S.st !== 'ok') return [`💡 到 ⚙️ 設定填「帳戶總資金」(股票 + 0050 + 現金),這裡就會算每檔買多少`];
+            //   💵 V82.2.6 金額只要持股市值就算得出來 → ⛔ 被「帳戶總資金過期」擋掉;「今天要買股票的錢先扣掉」只在今天真的有買時才講
+            //   (11/13 截圖:空頭不買那天照樣印那句、金額也沒印)
+            const buying = (A.buy.length || A.topup.length) && !bearOn;
+            const trimV = A.trim.reduce((a, s) => a + (S.val[s] || 0) / (twoHalf(s) ? 2 : 1) * ddF, 0);
+            const trimOut = A.trim.length ? [`💰 賣一半拿回來的錢${trimV > 0 ? `約 <b class="font-mono">${wan(trimV)}</b>` : ''} → ${this._park() ? `<b>停 0050</b>${buying ? '(今天要買股票的錢先扣掉)' : ''}` : '<b>放現金</b>'}`] : [];
+            if (!buying) return trimOut;
+            if (S.st === 'stale') return trimOut.concat([`⚠️ 你填的帳戶總資金 <b class="font-mono">${wan(S.acc)}</b> 比手上的股票 + 0050(<b class="font-mono">${wan(S.stock + S.park)}</b>)還少 → 先到 ⚙️ 設定改成<b>真正的總資金(股票 + 0050 + 現金)</b>,這裡才算得出每檔買多少`]);
+            if (S.st !== 'ok') return trimOut.concat([`💡 到 ⚙️ 設定填「帳戶總資金」(股票 + 0050 + 現金),這裡就會算每檔買多少`]);
             const per = A.buy.map(s => { const p = pxOf(s).p; return p > 0 ? `${nm(s)} ≈ <span class="font-mono">${this._lotTxt(Math.floor(S.slot * W1 / p))}</span>` : ''; }).filter(Boolean).join('、');
             const out = A.buy.length ? [`💵 每檔約 <b class="font-mono">${wan(S.slot * W1)}</b>${W1 < 1 ? '<span class="text-[10px] text-gray-300" data-tododdslot="1">(✂️ 收一半中:平常的一半)</span>' : ''}${per ? `:${per}` : ''}`] : [];
             const topNeed = A.topup.reduce((a, s) => a + Math.max(0, S.slot * D.W - (S.val[s] || 0) / (twoHalf(s) ? 2 : 1)), 0);
@@ -23978,10 +23998,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const p = [];
             if (bookLine) p.push(bookLine);
             if (ddLine) p.push(ddLine);
-            if (A.sell.length) p.push(`🚪 <b>${W}</b> ${when('sell')}:${list(A.sell, s => halfTag(s) + gapTag('sell')(s))}`);
-            if (A.trim.length) p.push(`✂️ <b>${W}</b> ${when('sell')} <b>賣一半</b>:${list(A.trim, s => trimTag(s) + gapTag('sell')(s))}`);
-            if (A.buy.length) p.push(`🛒 <b>${W}</b> ${when('buy')}${W1 < 1 ? '<span class="text-[10px] text-gray-300">(每檔只買一半)</span>' : ''}:${list(A.buy, s => addTag(s) + gapTag('buy')(s))}`);
-            if (A.topup.length) p.push(`✂️ <b>${W}</b> ${when('buy')} <b>補回</b>:${list(A.topup, s => topTag(s) + gapTag('buy')(s))}`);
+            if (A.sell.length) p.push(`🚪 <b>${W}</b> ${sellWhen()}:${list(A.sell, s => halfTag(s) + gapTag('sell')(s))}`);
+            if (A.trim.length) p.push(`✂️ <b>${W}</b> ${sellWhen()} <b>賣一半</b>:${list(A.trim, s => trimTag(s) + gapTag('sell')(s))}`);
+            if (A.buy.length) p.push(`🛒 <b>${W}</b> ${buyWhen()}${W1 < 1 ? '<span class="text-[10px] text-gray-300">(每檔只買一半)</span>' : ''}:${list(A.buy, s => addTag(s) + gapTag('buy')(s))}`);
+            if (A.topup.length) p.push(`✂️ <b>${W}</b> ${buyWhen()} <b>補回</b>:${list(A.topup, s => topTag(s) + gapTag('buy')(s))}`);
             if (A.keep.length) p.push(`✅ 續抱:${names(A.keep)}${A.trim.length ? '<span class="text-[10px] text-gray-300">(賣一半的那幾檔,留下的一半照抱)</span>' : ''}`);
             if (A.waitOther && A.waitOther.length) p.push(`⏳ ${names(A.waitOther)} 是${this._leadBookChip(clk.book === 'A' ? 'B' : 'A', true)}的 → 這次不動,等${oNm}自己的換倉日`);
             if (bearOn) p.push(`🐻 大盤空頭 → 這次<b>不買</b>${A.trim.length ? '(賣一半照做)' : ''},手上的照規則`);
@@ -24050,6 +24070,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
      *  帳戶總資金比手上的股票 + 0050 還少 → 'stale'(設定過期,⛔ 不算金額 —— 舊版拿 6 萬去減 48 萬,算出「0050 多了要賣」)。
      *  回 {st:'none'|'stale'|'ok', acc, stock, park, cash, slot, val:{sym → 市值}};市值用今天的價(有的話),沒有就用庫存記的現價 / 成本 */
     _leadSlot() {
+        const B = this._acctBase();
+        const base = { acc: B.acc, stock: B.stock, park: B.park, val: B.val, cash: 0, slot: 0 };
+        if (B.st !== 'ok') return { ...base, st: B.st };
+        return { ...base, st: 'ok', cash: Math.max(0, B.acc - B.stock - B.park), slot: B.acc / (this._LEADER_EDGE.rule.N * this._leadBooks()) };   // 📚 V79.2.5 兩本帳 → 每檔 = 總資金 ÷ 10
+    },
+    /** 💵 V82.2.6 帳戶總資金「能不能拿來當分母」—— ⛔ 全 App 只判斷這一次(陷阱 #37)。
+     *  11/13 截圖:決策台「🟠 帳戶熔斷 本月虧 8.2%」= −4,894 ÷ 設定的 6 萬,而手上光股票 + 0050 就約 34 萬;
+     *  `_leadSlot` 從 V79.1.6 起就把這種情況當「過期、⛔ 不算」,熔斷 / 總風險 / 該買幾張卻一直直接拿它除。
+     *  回 {st:'none'|'stale'|'ok', acc, stock, park, hold, val:{sym → 市值}};hold = 手上的股票 + 0050 市值。
+     *  過期 = 總資金 < (股票 + 0050) × 0.98(⛔ 改這個條件,`_leadSlot` / 熔斷 / 總風險 / 張數會一起變)。
+     *  市值用今天的價(有的話),沒有就用庫存記的現價 / 成本 */
+    _acctBase() {
         const acc = +(this.settings?.accountSize || 0), val = {};
         let stock = 0, park = 0;
         for (const it of this._getInventory()) {
@@ -24060,10 +24092,28 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             val[s] = (val[s] || 0) + v;
             if (s === '0050') park += v; else stock += v;
         }
-        const base = { acc, stock, park, val, cash: 0, slot: 0 };
-        if (!(acc > 0)) return { ...base, st: 'none' };
-        if (acc < (stock + park) * 0.98) return { ...base, st: 'stale' };
-        return { ...base, st: 'ok', cash: Math.max(0, acc - stock - park), slot: acc / (this._LEADER_EDGE.rule.N * this._leadBooks()) };   // 📚 V79.2.5 兩本帳 → 每檔 = 總資金 ÷ 10
+        const hold = stock + park;
+        const st = !(acc > 0) ? 'none' : (acc < hold * 0.98 ? 'stale' : 'ok');
+        return { st, acc, stock, park, hold, val };
+    },
+    /** 💵 V82.2.6 帳戶總資金過期 → 一句話(熔斷 / 總風險 / 該買幾張共用,⛔ 各寫一份) */
+    _acctStaleTxt(B) {
+        const wan = v => `${(Math.round((+v || 0) / 1000) / 10).toLocaleString()} 萬`;
+        return `你填的帳戶總資金 <b class="font-mono">${wan(B && B.acc)}</b> 比手上的股票 + 0050(<b class="font-mono">${wan(B && B.hold)}</b>)還少 → 先到 ⚙️ 設定改成<b>真正的總資金(股票 + 0050 + 現金)</b> <button onclick="app._openAcctSetting()" class="text-cyan-300 underline">⚙️ 改</button>`;
+    },
+    /** 💵 V82.2.6 「買幾張?___就會幫你算」那一句(沒填 / 過期兩種,⛔ 每個呼叫點各寫一份) */
+    _acctCta() {
+        const B = this._acctBase();
+        return B.st === 'stale' ? '先到 ⚙️ 設定把「帳戶總資金」改成真正的總資金(現在填的比手上的股票 + 0050 還少)' : '先到 ⚙️ 設定填「帳戶總資金」';
+    },
+    /** 💵 V82.2.6 開設定、捲到「帳戶總資金」那一格(⛔ 替你改數字) */
+    _openAcctSetting() {
+        try { this.openSettings?.(); } catch (_) {}
+        setTimeout(() => {
+            const el = document.getElementById('set_accountSize'); if (!el) return;
+            const d = el.closest('details'); if (d) d.open = true;
+            const row = el.closest('.flex') || el; row.scrollIntoView({ block: 'center' });
+        }, 150);
     },
     // ═══ ✂️ V82.0.7 👑「跌 20% 收一半」(使用者 11/07 選「做成開關並幫我打開」)═══
     //   規則全站只有一份:scripts/lib_leaddd.mjs。⛔ App 不算淨值、不算最高點 —— 只讀每晚 data/lead_dd.json 的 rot
@@ -24648,7 +24698,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const gate = this._isLead() ? '👑 那一套空頭一律不開新倉'
             : this._bearCashOn() ? '你的設定:大盤嚴格空頭時<b>不開新倉,0050 也賣掉放現金</b>'
             : (this._bearGateOn() ? '你的設定:大盤嚴格空頭時<b>不開新倉</b>' : '你的設定:大盤嚴格空頭時<b>照常買</b>(預設)');
-        const acc = +(this.settings && this.settings.accountSize || 0);
+        const acc = this._acctBase();   // 💵 V82.2.6 帳戶總資金過期 → 熔斷 / 總風險 ⛔ 給 %(⛔ 直接讀 settings.accountSize)
         let brk = '';
         try { const b = this._acctBreaker(this._tradeLogNet(), acc); if (b.state !== 'noacc' && (b.state !== 'ok' || b.sum.month !== 0)) brk = `<div class="mt-1">${this._acctBreakerHtml(b)}</div>`; } catch (_) {}
         let tr = '';
@@ -37701,10 +37751,11 @@ ${this._reportFacts(sym)}
     //   ⭐ 抽出來的原因(陷阱 #37):明日作戰清單也要算張數,再抄一份的話
     //      改風險比例時一定有一邊沒跟上。
     _lotsForRisk(price, stop) {
-        const acc = +(this.settings?.accountSize || 0);
+        // 💵 V82.2.6 帳戶總資金過期(比手上的股票 + 0050 還少)→ ⛔ 拿它算張數(同 `_leadSlot`;stale: true 讓呼叫端叫你先改)
+        const B = this._acctBase(), acc = B.st === 'ok' ? B.acc : 0, stale = B.st === 'stale';
         const riskPct = this.settings?.riskPct ?? 1;
         const per = price - stop;                       // 每股風險
-        if (!(acc > 0) || !(price > 0) || !(per > 0)) return { acc, riskPct, lots: 0, per };
+        if (!(acc > 0) || !(price > 0) || !(per > 0)) return { acc, stale, riskPct, lots: 0, per };
         const riskAmt = acc * riskPct / 100;
         let lots = Math.floor(riskAmt / (per * 1000));
         const capLots = Math.floor(acc * 0.25 / (price * 1000));   // 單檔上限 25% 帳戶(防單押)
@@ -37741,8 +37792,9 @@ ${this._reportFacts(sym)}
     //      (不是連續成交)③ 部分券商有最低手續費(20 元)—— 15 萬的單不受影響,小額才會。
     _PB_POS_PCT: 15,          // 每筆投入 = 帳戶總資金的幾 %(= 回測用的 15 萬 / 100 萬)
     _lotsForPlaybook(price, stop) {
-        const acc = +(this.settings?.accountSize || 0);
-        if (!(acc > 0) || !(price > 0)) return { acc, shares: 0, lots: 0, odd: 0, howTxt: '' };
+        // 💵 V82.2.6 帳戶總資金過期 → ⛔ 拿它算(每筆 15% × 過期的數字 = 買太少);stale: true 讓呼叫端叫你先改
+        const B = this._acctBase(), acc = B.st === 'ok' ? B.acc : 0, stale = B.st === 'stale';
+        if (!(acc > 0) || !(price > 0)) return { acc, stale, shares: 0, lots: 0, odd: 0, howTxt: '' };
         const budget = acc * this._PB_POS_PCT / 100;
         const shares = Math.floor(budget / price);          // 🧩 股數(1 張 = 1000 股)
         const lots = Math.floor(shares / 1000), odd = shares % 1000;
@@ -37781,14 +37833,15 @@ ${this._reportFacts(sym)}
             stop = Math.max(stop, price * 0.92);
             if (!(stop > 0 && stop < price)) { box.classList.add('hidden'); box.innerHTML = ''; return; }
             const riskPerShare = price - stop, stopPct = (price - stop) / price * 100;
-            const acc = this.settings.accountSize, riskPct = this.settings.riskPct ?? 1;
+            // 💵 V82.2.6 帳戶總資金過期(比手上的股票 + 0050 還少)→ 同沒填:⛔ 拿它算張數
+            const _B = this._acctBase(), acc = _B.st === 'ok' ? _B.acc : 0, riskPct = this.settings.riskPct ?? 1;
             // 持倉
             let cost = null, heldLots = 0;
             try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) { cost = +p.cost; heldLots = +p.shares || 0; } } catch (_) {}
             if (!acc) {
                 box.className = 'bg-[#161b22] border border-[#30363d] rounded-lg p-3';
                 box.innerHTML = `<div class="flex items-center justify-between mb-1"><span class="text-[12px] font-black text-gray-100">💰 該買幾張(風控部位)</span><button onclick="app.switchAppTab('settings')" class="text-[9px] text-red-300 border border-red-700/50 rounded px-1.5 py-0.5">去設定 →</button></div>
-                    <div class="text-[11px] text-gray-300 leading-relaxed">先到 ⚙️ 設定填「帳戶總資金」,系統就會用 <b class="text-red-300">ATR 波動率</b>幫你算:這檔該買幾張才不會爆倉(單筆最多虧帳戶的 1~2%)。<b>散戶九成虧在買太多,這比進場點更重要。</b></div>
+                    <div class="text-[11px] text-gray-300 leading-relaxed" data-sizeracc="${_B.st}">${this._acctCta()},系統就會用 <b class="text-red-300">ATR 波動率</b>幫你算:這檔該買幾張才不會爆倉(單筆最多虧帳戶的 1~2%)。<b>散戶九成虧在買太多,這比進場點更重要。</b></div>
                     <div class="text-[10px] text-gray-500 mt-1.5">📊 這檔波動 ATR ${atr.toFixed(2)} 元/日(${atrPct.toFixed(1)}%)· 建議停損 ${stop.toFixed(2)}(${stopPct.toFixed(1)}%)</div>
                     ${this._warrantFitLine(data)}`;
                 box.classList.remove('hidden'); return;
@@ -49252,9 +49305,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (d >= wk) sum.week += v;
             if (d.slice(0, 7) === mo) sum.month += v;
         }
-        acc = +acc || 0;
+        // 💵 V82.2.6 acc 也可以傳 `_acctBase()` 那一份 → 帳戶總資金過期就 'stale'(⛔ 拿它當分母:11/13 用 6 萬除,算出假的 🟠 8.2%)
+        const B = acc && typeof acc === 'object' ? acc : null;
+        acc = B ? (+B.acc || 0) : (+acc || 0);
         if (!(acc > 0)) return { state: 'noacc', sum, lim: this._BRK_LIM };
-        const pct = { day: -sum.day / acc * 100, week: -sum.week / acc * 100, month: -sum.month / acc * 100 };
+        if (B && B.st === 'stale') return { state: 'stale', sum, lim: this._BRK_LIM, acc, hold: B.hold };
+        const pct ={ day: -sum.day / acc * 100, week: -sum.week / acc * 100, month: -sum.month / acc * 100 };
         const L = this._BRK_LIM;
         const state = pct.month >= L.month ? 'month' : pct.week >= L.week ? 'week' : pct.day >= L.day ? 'day' : 'ok';
         return { state, sum, pct, lim: L };
@@ -49262,6 +49318,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _acctBreakerHtml(b) {
         const L = b.lim, f = v => Math.round(v).toLocaleString();
         if (b.state === 'noacc') return `<div class="text-[10px] text-gray-500 leading-snug" data-brk="noacc">🧯 帳戶熔斷:⚙️ 設定裡還沒填帳戶資金 → 算不出今天 / 本週 / 本月虧了帳戶幾 %</div>`;
+        // 💵 V82.2.6 帳戶總資金過期 → ⛔ 給 %、⛔ 亮燈(拿過期的數字除會亮假的燈),只講金額 + 叫你先改
+        if (b.state === 'stale') {
+            const sg = v => `${v >= 0 ? '+' : ''}${f(v)}`;
+            return `<div class="text-[11px] text-gray-300 leading-snug" data-brk="stale">🧯 <b>帳戶熔斷:算不出佔帳戶幾 %</b> —— ${this._acctStaleTxt(b)}</div>`
+                + `<div class="text-[9px] text-gray-500 leading-snug">已實現:今天 ${sg(b.sum.day)} 元・本週 ${sg(b.sum.week)}・本月 ${sg(b.sum.month)}(只算記進鏡子的賣出)・門檻 ${L.day} / ${L.week} / ${L.month}% 是常見的建議值(不是本站算出來的)</div>`;
+        }
         const p = b.pct, line = `今天 ${b.sum.day >= 0 ? '+' : ''}${f(b.sum.day)} 元(${(-p.day).toFixed(1)}%)・本週 ${b.sum.week >= 0 ? '+' : ''}${f(b.sum.week)}(${(-p.week).toFixed(1)}%)・本月 ${b.sum.month >= 0 ? '+' : ''}${f(b.sum.month)}(${(-p.month).toFixed(1)}%)`;
         const msg = {
             ok: ['⚪', 'text-gray-300', '正常'],
@@ -49302,8 +49364,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (px <= stop) { below++; continue; }       // 已經在停損下面 = 照規則該賣了,⛔ 不算「還會再賠」
             sum += (px - stop) * sh;
         }
-        acc = +acc || 0;
-        return { sum: Math.round(sum), n, nEst, below, skip, acc, pct: acc > 0 ? sum / acc * 100 : null, lim: this._TOTAL_RISK_LIM };
+        // 💵 V82.2.6 acc 也可以傳 `_acctBase()` 那一份 → 帳戶總資金過期就 ⛔ 給佔幾 %(stale: true,畫面叫你先改)
+        const B = acc && typeof acc === 'object' ? acc : null;
+        acc = B ? (+B.acc || 0) : (+acc || 0);
+        const stale = !!(B && B.st === 'stale');
+        return { sum: Math.round(sum), n, nEst, below, skip, acc, stale, hold: B ? B.hold : null, pct: acc > 0 && !stale ? sum / acc * 100 : null, lim: this._TOTAL_RISK_LIM };
     },
     /** 沒有停損線的那幾檔(👑 / 大跌撿便宜 / ETF)→ 一行說明;沒有就空字串。⛔ 沒選 👑 時 skip.lead 一定是 0(_leaderMine 回空的)→ 一個 👑 字都不會出現 */
     _totalRiskSkipTxt(k) {
@@ -49320,15 +49385,24 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const sk = this._totalRiskSkipTxt(r.skip);
         if (!r.n) return sk ? `<div class="text-[10px] text-gray-400 leading-snug mt-1.5" data-totrisk="skip">🧮 ${sk}</div>` : '';
         const f = v => Math.round(v).toLocaleString();
+        const skLine = sk ? `<div class="text-[9px] text-gray-500 leading-snug mt-0.5" data-totriskskip="1">${sk}</div>` : '';
+        const estTxt = r.nEst ? `・${r.nEst} 檔還沒抓到 K 線,先用成本 −5% 估` : '';
+        // 🧮 V82.2.6 有算到的每一檔都已經在停損下面 → ⛔ 寫「全部碰到停損 ≈ 賠 0 元・佔帳戶 0.0%」
+        //   (11/13 截圖:看起來像沒有風險,其實是那一檔已經該照規則處理了)
+        const live = r.n - (r.below || 0);
+        if (live <= 0) return `<div class="text-[11px] text-amber-200 leading-snug mt-1.5" data-totrisk="below">🧮 <b>${label} ${r.n} 檔都已經在停損下面</b> → 照你的出場規則處理(收盤確認)</div>`
+            + `<div class="text-[9px] text-gray-500 leading-snug mt-0.5">停損 = 成本 −5% 與買進當天最低取低的${estTxt}</div>` + skLine;
         const over = r.pct != null && r.pct > r.lim;
         const w = r.pct == null ? 0 : Math.min(100, r.pct / (r.lim * 1.5) * 100);
         const bar = r.pct == null ? '' : `<div class="h-1.5 rounded bg-white/10 mt-1 relative overflow-hidden"><div class="absolute inset-y-0 left-0 ${over ? 'bg-orange-400' : 'bg-amber-200/70'}" style="width:${w.toFixed(0)}%"></div><div class="absolute inset-y-0 bg-white/50" style="left:${(100 / 1.5).toFixed(1)}%;width:1px"></div></div>`;
-        return `<div class="text-[11px] ${over ? 'text-orange-300' : 'text-gray-300'} leading-snug mt-1.5" data-totrisk="${over ? 'over' : 'ok'}">🧮 <b>${label} ${r.n} 檔全部碰到停損 ≈ 賠 ${f(r.sum)} 元</b>`
-            + (r.pct == null ? '(⚙️ 填了帳戶資金才算得出佔幾 %)' : `,佔帳戶 ${r.pct.toFixed(1)}%${over ? `,超過常見建議上限 ${r.lim}%` : ''}`) + `</div>${bar}`
+        // 💵 V82.2.6 帳戶總資金過期 → ⛔ 給 %(⛔ 拿過期的數字除);完整那句在熔斷那一行(三個地方都排在這行上面),這裡只講一句
+        const noPct = r.stale ? '(帳戶總資金要先更新,才算得出佔幾 %)' : '(⚙️ 填了帳戶資金才算得出佔幾 %)';
+        return `<div class="text-[11px] ${over ? 'text-orange-300' : 'text-gray-300'} leading-snug mt-1.5" data-totrisk="${over ? 'over' : (r.stale ? 'stale' : 'ok')}">🧮 <b>${label} ${live} 檔全部碰到停損 ≈ 賠 ${f(r.sum)} 元</b>`
+            + (r.below ? `<span class="text-amber-200" data-totriskbelow="${r.below}">・另 ${r.below} 檔已經在停損下面(照你的出場規則處理)</span>` : '')
+            + (r.pct == null ? noPct : `,佔帳戶 ${r.pct.toFixed(1)}%${over ? `,超過常見建議上限 ${r.lim}%` : ''}`) + `</div>${bar}`
             + `<div class="text-[9px] text-gray-500 leading-snug mt-0.5">從現價算到每一檔的停損(成本 −5% 與買進當天最低取低的)`
-            + (r.nEst ? `・${r.nEst} 檔還沒抓到 K 線,先用成本 −5% 估` : '') + (r.below ? `・${r.below} 檔已經在停損下面(照你的出場規則處理)` : '')
-            + `・${r.lim}% 是常見的建議值(不是本站算出來的)</div>`
-            + (sk ? `<div class="text-[9px] text-gray-500 leading-snug mt-0.5" data-totriskskip="1">${sk}</div>` : '');
+            + estTxt + `・${r.lim}% 是常見的建議值(不是本站算出來的)</div>`
+            + skLine;
     },
     // 📊 持股損益歸因:這段時間賺賠多少是「大盤帶動」、多少是「個股自己」
     //   (拆法參考 desk-note app/analytics/core.py 的 fit_betas / attribution,MIT;只借想法、程式是這裡自己寫的)
@@ -49631,20 +49705,20 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _invPreTradeRender() {
         const body = document.getElementById('invPreTradeBody');
         if (!body) return;
-        const acc = +(this.settings?.accountSize || 0), riskPct = this.settings?.riskPct ?? 1;
+        const B = this._acctBase(), acc = B.st === 'ok' ? B.acc : 0, riskPct = this.settings?.riskPct ?? 1;   // 💵 V82.2.6 過期 → ⛔ 當分母
         const cost = parseFloat(document.getElementById('invCostInput')?.value) || 0;
         const sh = parseFloat(document.getElementById('invSharesInput')?.value) || 0;
         const sym = (document.getElementById('invModalInput')?.value || '').trim();
-        let h = this._acctBreakerHtml(this._acctBreaker(this._tradeLogNet(), acc));
+        let h = this._acctBreakerHtml(this._acctBreaker(this._tradeLogNet(), B));
         if (cost > 0 && sh > 0) {
             const stop = this._floorTick ? this._floorTick(cost * 0.95) : +(cost * 0.95).toFixed(2);
             const loss = (cost - stop) * sh + cost * sh * 0.001425 * 2 + stop * sh * 0.003;
             const pct = acc > 0 ? loss / acc * 100 : null;
             h += `<div class="text-[11px] text-gray-300 leading-snug mt-1.5" data-pretrade="one">🛑 停損 ${stop.toFixed(2)}(成本 −5%;買進當天最低比它低就用那個,收盤確認才賣)→ 這一筆碰到停損 ≈ 賠 <b>${Math.round(loss).toLocaleString()} 元</b>`
-                + (pct == null ? '' : `,佔帳戶 ${pct.toFixed(1)}%${pct > riskPct ? `<span class="text-orange-300">,超過你設定的單筆 ${riskPct}%</span>` : ''}`) + '</div>';
+                + (pct == null ? (B.st === 'stale' ? '(帳戶總資金要先更新,才算得出佔幾 %)' : '') : `,佔帳戶 ${pct.toFixed(1)}%${pct > riskPct ? `<span class="text-orange-300">,超過你設定的單筆 ${riskPct}%</span>` : ''}`) + '</div>';
             const editIdx = parseInt(document.getElementById('invModal')?.dataset.editIdx ?? '-1', 10);
             const inv = this._getInventory().filter((_, i) => i !== editIdx);
-            h += this._totalRiskHtml(this._totalRisk(inv, acc, { symbol: sym, cost, shares: sh / 1000 }), '買完之後');
+            h += this._totalRiskHtml(this._totalRisk(inv, B, { symbol: sym, cost, shares: sh / 1000 }), '買完之後');
         } else {
             h += `<div class="text-[10px] text-gray-500 mt-1.5">填了成本和股數,這裡會算出這一筆碰到停損會賠多少、買完之後全部持股的總風險</div>`;
         }
@@ -49761,7 +49835,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
     /** 🧭 V80.0.4 鏡子最上面:帳戶熔斷 + 手上的總風險 */
     _mirrorRiskHtml(log) {
-        const acc = +(this.settings?.accountSize || 0);
+        const acc = this._acctBase();   // 💵 V82.2.6 過期 → ⛔ 給 %
         return `<div class="mx-2 mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5" data-mirrorrisk="1">`
             + this._acctBreakerHtml(this._acctBreaker(log || this._tradeLogNet(), acc))
             + this._totalRiskHtml(this._totalRisk(this._getInventory(), acc)) + `</div>`;
@@ -49778,7 +49852,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             label = this._wrEnough(n) ? `${n} 筆 · 賺 ${w} 筆` : `${n} 筆(還太少)`;
             cls = 'text-gray-300 border-[#30363d] bg-white/5';
             // 🧯 V80.0.4 熔斷了 → 鈕上直接看得到(⛔ 只有點開才知道 = 沒用)
-            const b = this._acctBreaker(log, +(this.settings?.accountSize || 0));
+            const b = this._acctBreaker(log, this._acctBase());   // 💵 V82.2.6 帳戶總資金過期 → 'stale' → ⛔ 寫「先停手」(以前拿 6 萬除,亮假的 🟠)
             if (b.state === 'day') label += ' · 🟡 今天先停手';
             else if (b.state === 'week' || b.state === 'month') label += ` · 🟠 ${b.state === 'week' ? '這週' : '這個月'}先停手`;
         }
@@ -52119,7 +52193,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const sub = ps.acc > 0 && ps.shares > 0
                 ? `約 ${Math.round(ps.investAmt).toLocaleString()} 元(佔本金 ${ps.investPct.toFixed(0)}%)・停損時虧 <b>${(ps.maxLoss ?? 0).toLocaleString()} 元</b>${ps.oddOnly ? '・🧩 <b>零股</b>' : ''}${ps.riskPct > 2 ? '<span class="text-yellow-400">・⚠️ 停損很寬,可考慮減量</span>' : ''}`
                 : ps.acc > 0 ? `本金太小,這檔 1 股要 ${Math.round(r.trig || r.c).toLocaleString()} 元` : '';
-            if (!(ps.acc > 0)) noAcc = true;
+            if (!(ps.acc > 0)) noAcc = ps.stale ? 'stale' : (noAcc || true);
             const trigCell = r.trig != null
                 ? `<span class="text-right leading-tight" data-deckbuytrig="${r.trig}"><span class="font-mono text-[11px] text-gray-100 block">${px(r.trig)}</span><span class="font-mono text-[9px] text-gray-500">${r.up != null ? `+${r.up.toFixed(1)}%` : ''}</span></span>`
                 : `<span class="text-[9px] text-gray-500 text-right leading-tight" data-deckbuytrig="none" title="這招不是靠「漲過某個數字」成立,App 盤中會用即時價重算">盤中算</span>`;
@@ -52140,7 +52214,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>`;
         };
         const body = rows.map(row).join('');
-        return `<div data-deckbuytbl="1">${hdr}${body}${noAcc ? '<div class="text-[10px] text-gray-400 mt-1" data-deckbuynoacc="1">買幾張?先到 ⚙️ 設定填「帳戶總資金」就會幫你算</div>' : ''}${this._minFeeListNote(amts)}<div class="text-[9px] text-gray-600 mt-1 leading-snug">觸發價 = 收盤前<b>漲過</b>它才買(底下「+%」= 離現價還差多少)・停損 = 跌破就賣・點股名看個股・點表頭可排序</div></div>`;
+        return `<div data-deckbuytbl="1">${hdr}${body}${noAcc ? `<div class="text-[10px] text-gray-400 mt-1" data-deckbuynoacc="${noAcc === 'stale' ? 'stale' : 1}">買幾張?${this._acctCta()}就會幫你算</div>` : ''}${this._minFeeListNote(amts)}<div class="text-[9px] text-gray-600 mt-1 leading-snug">觸發價 = 收盤前<b>漲過</b>它才買(底下「+%」= 離現價還差多少)・停損 = 跌破就賣・點股名看個股・點表頭可排序</div></div>`;
     },
     _pbRowHtml(x, mine, rank, dupN, noFin, amts) {
         const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
@@ -52160,7 +52234,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ? (ps.shares > 0
                 ? `買 <b class="text-red-300">${ps.howTxt}</b>(約 ${Math.round(ps.investAmt).toLocaleString()} 元,佔本金 ${ps.investPct.toFixed(0)}%)・停損時虧 <b>${ps.maxLoss.toLocaleString()} 元</b>(本金的 ${ps.riskPct.toFixed(1)}%)${ps.oddOnly ? '<span class="text-cyan-300">・🧩 這是<b>零股</b>,下單要選「零股」</span>' : ''}${ps.riskPct > 2 ? '<span class="text-yellow-400">・⚠️ 停損很寬,一次會虧超過本金 2%,可考慮減量</span>' : ''}`
                 : `<span class="text-yellow-400">⚠️ 本金太小,連 1 股都買不起</span>(這檔 1 股要 ${Math.round(trig).toLocaleString()} 元)`)
-            : `<span class="text-gray-500">買幾張?先到 ⚙️ 設定填「帳戶總資金」就會幫你算</span>`;
+            : `<span class="text-gray-500">買幾張?${this._acctCta()}就會幫你算</span>`;
         return `<div onclick="app.analyze('${x.s}'); app.switchAppTab('diag'); app.vibrate(15);" class="px-2 py-1.5 rounded ${isMine ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
             <div class="flex items-baseline justify-between gap-2">
                 <div class="min-w-0 flex-1 flex items-baseline gap-1.5">
@@ -52217,7 +52291,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const txt = [
             `【明日條件單】${sym} ${nm !== sym ? nm : ''}`.trim(),
             `觸發:成交價 ≥ ${x.trig}(現價 ${x.c}${Number.isFinite(+x.up) ? `,要漲 +${(+x.up).toFixed(1)}%` : ''})`,
-            `買進:${x.trig} 元` + (lots ? ` × ${lots}(約 ${Math.round(ps.investAmt).toLocaleString()} 元)${ps.oddOnly ? ' ← 選「零股」' : ''}` : '(數量請先到設定填帳戶總資金)'),
+            `買進:${x.trig} 元` + (lots ? ` × ${lots}(約 ${Math.round(ps.investAmt).toLocaleString()} 元)${ps.oddOnly ? ' ← 選「零股」' : ''}` : (ps.stale ? '(數量:帳戶總資金比手上的股票 + 0050 還少,請先到設定改成真正的總資金)' : '(數量請先到設定填帳戶總資金)')),
             `停損:跌破 ${x.stop} 出場` + (lots ? `(會虧 ${ps.maxLoss.toLocaleString()} 元,本金的 ${ps.riskPct.toFixed(1)}%)` : ''),
             `打法:${x.k}`,
             '',
@@ -52671,7 +52745,7 @@ App 會在那個時段幫你盯,到價自動提醒。
                 const lotTxt = ps.acc > 0
                     ? (ps.shares > 0 ? `買 ${ps.howTxt}(約 ${Math.round(ps.investAmt).toLocaleString()} 元,佔本金 ${ps.investPct.toFixed(0)}%),停損時虧 ${ps.maxLoss.toLocaleString()} 元(本金 ${ps.riskPct.toFixed(1)}%)${ps.oddOnly ? ' ・🧩 零股,下單記得選零股' : ''}`
                                    : `⚠️ 本金太小,連 1 股都買不起`)
-                    : `(想知道買幾張:去 ⚙️ 設定填「帳戶總資金」)`;
+                    : `(想知道買幾張:${ps.stale ? '帳戶總資金比手上的股票 + 0050 還少,去 ⚙️ 設定改成真正的總資金' : '去 ⚙️ 設定填「帳戶總資金」'})`;
                 // 📌 記一筆「待確認」→ 你按「我買了」之後才會幫你盯停損(⛔ 不預設你買了)
                 try { this._pbRecordFire(sym, x.k, chk.price, chk.stop, x); } catch (_) { }
                 // 🏆 V73.9.8 夠格的才升級標題並附證據(⛔ 不另開一種通知,見 `_pbGrade`)

@@ -13,6 +13,8 @@
  *  ⑥ 新增持倉視窗:填了成本股數才算、超過單筆風險設定要說、沒填帳戶要說出來
  *  ⑦ 新的字 ⛔ 🔴🟢(燈號鐵則)、⛔ 研究字樣(散戶 App 鐵則,跟 test_retail_clean 同一份清單)
  *  ⑩ V82.0.9 總風險只算有停損線的(👑 名單上 / 大跌撿便宜 / ETF ⛔ 算進「碰到停損」,另寫一行;決定性對照:集合清空 → 照舊算)
+ *  ⑪ V82.2.6 帳戶總資金過期(`_acctBase`:總資金 < 股票 + 0050 × 0.98 = _leadSlot 同一條)→ 熔斷 / 總風險 / 該買幾張 / 新增持倉 ⛔ 給 %、
+ *     ⛔ 🟠、鏡子鈕 ⛔「先停手」;決定性對照:只把總資金改 100 萬 → 照舊算;有算到的都已經在停損下面 → ⛔「賠 0 元」
  *  ⑧ V80.0.9 決策台「🧯 你的風控」一行:大盤三種狀態(嚴格空頭 / 跌破 60 日線但還不算 / 在上面)讀 `_mktBear60` 那份、
  *     你的空頭守門設定跟著變(決定性對照:同一份大盤改設定)、有記賣出才顯示熔斷、總風險同 ②;⛔ 🔴🟢、⛔ 研究字樣;登記在 `_DECK_SECTIONS`
  * 跑法:node scripts/test_discipline.mjs
@@ -246,6 +248,68 @@ ok('⑩ ⭐ 決定性對照:同一份清單把那兩個集合清空 → 那兩�
 ok('⑩ 沒選 👑(集合是空的)→ 一個 👑 字都沒有', !/👑/.test(S.cHtml), KT(S.cHtml));
 ok('⑩ 全部都沒有停損線 → 只印那一行(⛔ 整段消失)', /data-totrisk="skip"/.test(S.onlySkip) && /另 3 檔沒有停損線/.test(KT(S.onlySkip)), KT(S.onlySkip));
 ok('⑩ 🧯 那一行:選 👑 → 「👑 名單上的照換倉日名次走」;沒選 → 「每一筆照你的出場規則走」', /👑 名單上的照換倉日名次走/.test(KT(S.leadLine)) && /每一筆照你的出場規則走/.test(KT(S.geneLine)) && !/👑/.test(KT(S.geneLine).split('你的設定')[1] || ''), [KT(S.leadLine).slice(0, 260), KT(S.geneLine).slice(0, 260)].join(' ‖ '));
+// ⑪ 💵 V82.2.6 帳戶總資金過期(11/13 截圖:「🟠 帳戶熔斷 本月虧 8.2%」= −4,894 ÷ 設定的 6 萬,手上光股票 + 0050 就約 34 萬)
+//    `_acctBase` 是唯一判斷(= `_leadSlot` 從 V79.1.6 就在用的那條):過期 → 熔斷 / 總風險 / 張數 ⛔ 拿它當分母、⛔ 亮 🟠
+//    + 「手上 N 檔全部碰到停損 ≈ 賠 0 元」:有算到的都已經在停損下面 → 改講「已經在停損下面 → 照你的出場規則處理」
+const V = await page.evaluate(() => {
+    const A = app, o = {};
+    const keep = { inv: A.inventory, acc: A.settings.accountSize, q: A._deckQuoteOf, tl: A._tradeLogNet, L: A._leaderMine, D: A._dipMine, I: A._isLead };
+    try {
+        A._deckQuoteOf = () => null; A._isLead = () => false; A._leaderMine = () => new Set(); A._dipMine = () => new Set();
+        A._invKlineCache = {};
+        A.inventory = [{ symbol: '9999', cost: 100, shares: 3, currentPrice: 98 }, { symbol: '0050', cost: 50, shares: 1, currentPrice: 40 }];   // 股票 29.4 萬 + 0050 4 萬
+        A.settings.accountSize = 60000;
+        const log = [{ date: '2026/11/05', pnlNTD: -4894 }];
+        o.base = A._acctBase();
+        o.brk = A._acctBreaker(log, o.base, '2026/11/13');
+        o.brkHtml = A._acctBreakerHtml(o.brk);
+        o.brkNum = A._acctBreaker(log, 60000, '2026/11/13').state;          // 純數字的舊呼叫法:行為不變(純函式)
+        o.slot = A._leadSlot().st;
+        o.risk = A._totalRisk(A.inventory, o.base);
+        o.riskHtml = A._totalRiskHtml(o.risk);
+        const today = A.getTodayStr();
+        A._tradeLogNet = () => [{ date: today, pnlNTD: -50000 }];
+        o.btn = A._tradeMirrorBtnHtml();
+        o.deck = A._deckRiskHtml({ mkt: { on: true, c: 40000, ma20: 42000, ma60: 43000, d: '2026-11-12' } });
+        o.lots = A._lotsForPlaybook(100, 95); o.lotsR = A._lotsForRisk(100, 95); o.cta = A._acctCta();
+        // 新增持倉視窗
+        const m = document.getElementById('invModal'); m.classList.remove('hidden'); m.style.display = 'flex'; m.dataset.editIdx = '-1';
+        document.getElementById('invCostInput').value = '100'; document.getElementById('invSharesInput').value = '1000';
+        A._invPreTradeRender(); o.pre = document.getElementById('invPreTradeBody').textContent;
+        // ⭐ 決定性對照:同一份紀錄 / 持股,只把總資金改成 100 萬 → 照舊算出 % 與張數、鈕上照舊亮燈
+        A.settings.accountSize = 1000000;
+        o.base2 = A._acctBase();
+        o.brk2 = A._acctBreaker(log, o.base2, '2026/11/13');
+        o.risk2 = A._totalRisk(A.inventory, o.base2);
+        o.lots2 = A._lotsForPlaybook(100, 95);
+        o.btn2 = A._tradeMirrorBtnHtml();
+        A._invPreTradeRender(); o.pre2 = document.getElementById('invPreTradeBody').textContent;
+        // 全部 / 一部分已經在停損下面
+        o.allBelow = A._totalRiskHtml(A._totalRisk([{ symbol: '9999', cost: 100, shares: 1, currentPrice: 90 }], 1e6));
+        o.partBelow = A._totalRiskHtml(A._totalRisk([{ symbol: '9999', cost: 100, shares: 1, currentPrice: 90 }, { symbol: '8888', cost: 100, shares: 1, currentPrice: 110 }], 1e6));
+    } finally {
+        A.inventory = keep.inv; A.settings.accountSize = keep.acc; A._deckQuoteOf = keep.q; A._tradeLogNet = keep.tl; A._leaderMine = keep.L; A._dipMine = keep.D; A._isLead = keep.I;
+    }
+    return o;
+});
+ok('⑪ _acctBase:6 萬 < 手上股票 + 0050 33.4 萬 → stale(= _leadSlot 同一條)', V.base.st === 'stale' && Math.round(V.base.hold) === 334000 && V.slot === 'stale', JSON.stringify(V.base));
+ok('⑪ 熔斷 → stale:⛔ 給 %、⛔ 🟠 / 🟡、講「算不出佔帳戶幾 %」+ 你填的 6 萬 vs 手上 33.4 萬 + ⚙️ 改',
+    V.brk.state === 'stale' && !V.brk.pct && /data-brk="stale"/.test(V.brkHtml) && !/[🟠🟡]/u.test(V.brkHtml) && /算不出佔帳戶幾 %/.test(KT(V.brkHtml)) && /6 萬/.test(KT(V.brkHtml)) && /33\.4 萬/.test(KT(V.brkHtml)) && /_openAcctSetting/.test(V.brkHtml), KT(V.brkHtml));
+ok('⑪ 純數字的舊呼叫法(_acctBreaker(log, 60000))行為不變 → month', V.brkNum === 'month', V.brkNum);
+ok('⑪ 總風險 → stale:⛔ 給「佔帳戶 %」、講要先更新', V.risk.stale && V.risk.pct === null && !/佔帳戶 \d/.test(KT(V.riskHtml)) && /帳戶總資金要先更新/.test(KT(V.riskHtml)), KT(V.riskHtml));
+ok('⑪ 勝率鏡子鈕:今天賠 5 萬但總資金過期 → ⛔「先停手」(11/13「🟠 這個月先停手」那顆)', !/先停手/.test(V.btn), V.btn.slice(-160));
+ok('⑪ 決策台 🧯:熔斷那行講過期、⛔ 🟠、總風險 ⛔ %', /data-brk="stale"/.test(V.deck) && !/[🟠]/u.test(V.deck) && !/佔帳戶 \d/.test(KT(V.deck)), KT(V.deck).slice(0, 500));
+ok('⑪ 該買幾張:過期 → 不算(acc 0、stale)、提示改成「改成真正的總資金」', V.lots.acc === 0 && V.lots.stale === true && V.lots.shares === 0 && V.lotsR.stale === true && V.lotsR.lots === 0 && /改成真正的總資金/.test(V.cta), JSON.stringify([V.lots, V.lotsR, V.cta]));
+ok('⑪ 新增持倉視窗:過期 → ⛔「佔帳戶 %」、要說先更新', !/佔帳戶 \d/.test(V.pre) && /帳戶總資金要先更新/.test(V.pre) && /算不出佔帳戶幾 %/.test(V.pre), V.pre.slice(0, 400));
+ok('⑪ ⭐ 決定性對照:同一份紀錄 / 持股,總資金改 100 萬 → ok、本月 % 算得出、總風險有 %、張數算得出、鈕上照舊亮燈',
+    V.base2.st === 'ok' && V.brk2.state === 'ok' && V.brk2.pct && Math.abs(V.brk2.pct.month - 0.4894) < 1e-6 && V.risk2.pct > 0 && !V.risk2.stale && V.lots2.shares > 0 && /先停手/.test(V.btn2) && /佔帳戶 \d/.test(V.pre2),
+    JSON.stringify([V.base2.st, V.brk2, V.risk2.pct, V.lots2.shares, V.btn2.slice(-80)]));
+ok('⑪ 有算到的都已經在停損下面 → 標題「已經在停損下面 → 照你的出場規則處理」、⛔「賠 0 元」⛔「佔帳戶 0.0%」',
+    /data-totrisk="below"/.test(V.allBelow) && /1 檔都已經在停損下面/.test(KT(V.allBelow)) && /照你的出場規則處理/.test(KT(V.allBelow)) && !/賠 0 元/.test(KT(V.allBelow)) && !/佔帳戶 0\.0%/.test(KT(V.allBelow)), KT(V.allBelow));
+ok('⑪ 一部分在停損下面 → 「1 檔全部碰到停損 ≈ 賠 15,000 元・另 1 檔已經在停損下面」',
+    /手上 1 檔全部碰到停損 ≈ 賠 15,000 元/.test(KT(V.partBelow)) && /另 1 檔已經在停損下面/.test(KT(V.partBelow)) && /data-totriskbelow="1"/.test(V.partBelow), KT(V.partBelow));
+const VA = [V.brkHtml, V.riskHtml, V.deck, V.allBelow, V.partBelow].join(' ');
+ok('⑪ 新的字 ⛔ 🔴🟢、⛔ 研究字樣', !/[🔴🟢]/u.test(VA) && !badOf(KT(VA)).length, badOf(KT(VA)).join(' '));
 const KA = [K.bear, K.below, K.up, K.na, K.gateOn, K.brk, K.alOff].join(' ');
 ok('⑧ ⛔ 🔴🟢、⛔ 研究字樣', !/[🔴🟢]/u.test(KA) && !badOf(KT(KA)).length, badOf(KT(KA)).join(' '));
 ok('⓪ 沒有 pageerror', !errs.length, errs.join(' | '));

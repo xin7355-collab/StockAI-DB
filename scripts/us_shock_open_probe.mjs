@@ -65,6 +65,8 @@ export function judge(pts, dir = 1) {
     return { n, m: r2(m), med: r2(median(v)), ci: [r2(lo), r2(hi)], h1: r2(h1), h2: r2(h2), same: r2(same * 100), g, ok: g.every(Boolean) };
 }
 /** 美股日 → 台股日 要「真的是下一個台股交易日」:台股日曆比美股日還晚開始(資料起點之前)或隔超過 12 天(農曆年最長約 10 天)→ ⛔ 不算 */
+/** 美股最後一天比台股最後一天早幾天(日曆天;任一邊讀不到 → 0,⛔ 亂報) */
+export function usStaleDays(usLast, twLast) { const a = Date.parse(usLast), b = Date.parse(twLast); return Number.isFinite(a) && Number.isFinite(b) ? Math.round((b - a) / 864e5) : 0; }
 export function mapOk(usD, twD, cal0) { return !!(usD && twD && usD >= cal0 && (Date.parse(twD) - Date.parse(usD)) / 864e5 <= 12); }
 /** 一檔一天 → 各賣法比「開盤賣」多(少)幾 %;R0 = 現行 */
 export function sellRow(st, P) {
@@ -164,6 +166,10 @@ function selftest() {
       T('⑥ 資料起點之前的美股日 ⛔ 對到第一天', mapOk('2009-12-08', '2010-01-04', '2010-01-04') === false);
       T('⑥ 農曆年休市 7 天 → 算', mapOk('2025-01-27', '2025-02-03', '2010-01-04') === true);
       T('⑥ 隔 20 天 → 不算', mapOk('2025-01-01', '2025-01-21', '2010-01-04') === false); }
+    { // ⑦ V82.2.6 美股資料舊了要講出來(11/13:停在 10/30,台股到 11/12)
+      T('⑦ 美股 10/30、台股 11/12 → 差 13 天', usStaleDays('2026-10-30', '2026-11-12') === 13);
+      T('⑦ 同一天 / 美股比台股新 → 0 或負的(⛔ 報)', usStaleDays('2026-11-12', '2026-11-12') === 0 && usStaleDays('2026-11-13', '2026-11-12') < 0);
+      T('⑦ 讀不到日期 → 0(⛔ 亂報)', usStaleDays(undefined, '2026-11-12') === 0 && usStaleDays('2026-11-12', '') === 0); }
     // ⑦ 留著的報酬:除息加回(A 含倍數),開盤買
     { const S = { O: [10, 20, 20, 20], C: [10, 20, 19, 21], A: [10, 20, 19 * 1.05, 21 * 1.05], jump: [-1e9, -1e9, -1e9, -1e9] };
       T('⑦ 開盤 20 → 兩天後收 21、中間除息 5% → +10.25%', Math.abs(holdRet(S, 1, 2) - 10.25) < 1e-9);
@@ -186,6 +192,9 @@ async function main() {
     console.log('📂 載入台股日 K…'); const ctx = loadCtx(ENV.DATA_DIR, ENV.DIV || ''); const { cal, stocks } = ctx;
     const cIdx = new Map(cal.map((d, i) => [d, i])), bySym = new Map(stocks.map(S => [S.sym, S]));
     console.log(`   ${stocks.length} 檔 ・${cal[0]} ~ ${cal.at(-1)}`);
+    // ⚠️ V82.2.6 美股資料比台股舊 > 7 天 → 講出來(us_hist.yml 只有手動 Run;11/13 那次停在 10/30,最近的事件全部漏掉卻沒人知道)
+    const usLag = usStaleDays(U.days.at(-1), cal.at(-1));
+    if (usLag > 7) console.log(`⚠️ 美股資料停在 ${U.days.at(-1)},台股到 ${cal.at(-1)}(差 ${usLag} 天)→ 中間的美股事件都不會出現;要用最新的先到 Actions 手動 Run「🇺🇸 美股日線歷史」`);
     const nextTw = nextTwFactory(cal);
 
     // 0050:開 / 收 + 除息(含息)

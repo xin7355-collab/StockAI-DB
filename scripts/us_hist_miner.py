@@ -52,6 +52,12 @@ OUT = os.environ.get('OUT') or 'data/us_hist.json'
 MIN_SYMS = int(os.environ.get('MIN_SYMS') or 30)
 MIN_DAYS = int(os.environ.get('MIN_DAYS') or 1000)
 MAX_STALE_DAYS = int(os.environ.get('MAX_STALE_DAYS') or 5)
+# 🛡️ V82.2.6 ⛔ 默默把長歷史蓋成短的:手動 Run 時 start 留空 = 只抓 5 年,而 data 分支上那份是 2009 起
+#   (us_shock_open_probe / vix_crash 這些研究要用);以前守門只看 ≥1000 天 → 5 年那份照樣蓋掉。
+#   PREV = 上一份(workflow 從 data 分支拿出來);新檔起點比它晚 > SHRINK_SLACK 天 → 不覆蓋(ALLOW_SHRINK=1 才放行)
+PREV = (os.environ.get('PREV') or '').strip()
+ALLOW_SHRINK = (os.environ.get('ALLOW_SHRINK') or '').strip() == '1'
+SHRINK_SLACK = 30
 SPLIT_SUSPECT = 0.40   # 單日 |報酬| 超過這個就不可能是真實行情(美股沒有漲跌停,但 40% 單日只會是分割沒調到)
 
 
@@ -156,6 +162,34 @@ def guard(doc, today=None):
     return True, ''
 
 
+def shrink_guard(doc, prev, allow=False, slack=SHRINK_SLACK):
+    """回 (ok, reason)。新檔第一天比上一份晚 > slack 天 = 會把長歷史蓋短 → ⛔(allow=True 才放行)。
+    prev 讀不到 / 沒有 days → 不擋(第一次跑、或上一份壞掉)。"""
+    try:
+        pd = (prev or {}).get('days') or []
+        nd = doc.get('days') or []
+        if not pd or not nd:
+            return True, ''
+        gap = (_dt.date.fromisoformat(nd[0]) - _dt.date.fromisoformat(pd[0])).days
+    except Exception as e:  # noqa: BLE001 —— 上一份格式不對就不擋,原因印出來
+        return True, f'(上一份讀不懂:{type(e).__name__},不比)'
+    if gap > slack and not allow:
+        return False, f'新的從 {nd[0]} 起、data 分支上那份從 {pd[0]} 起(短了 {gap} 天)→ 會把長歷史蓋掉;要這樣做請設 ALLOW_SHRINK=1'
+    return True, ''
+
+
+def load_prev(path=PREV):
+    """上一份(workflow 從 data 分支 git show 出來的);不在 / 0 bytes / 讀不出來 → None(印原因,⛔ 當成擋)。"""
+    if not path or not os.path.exists(path) or os.path.getsize(path) == 0:
+        return None
+    try:
+        with open(path, encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:  # noqa: BLE001
+        print(f'   ⚠️ 上一份 {path} 讀不出來({type(e).__name__})→ 不比長短')
+        return None
+
+
 def write(doc, out=OUT):
     os.makedirs(os.path.dirname(out) or '.', exist_ok=True)
     tmp = out + '.tmp'
@@ -177,6 +211,13 @@ def main():
             print(f'   ⚠️ {t}: {e}')
     if not ok:
         print(f'⛔ 空過守門:{why} → 不覆蓋 {OUT}(舊檔保留)')
+        sys.exit(0)
+    prev = load_prev()
+    sok, swhy = shrink_guard(doc, prev, ALLOW_SHRINK)
+    if prev is not None:
+        print(f'🧾 上一份:{(prev.get("days") or ["-"])[0]} ~ {prev.get("asof")}({len(prev.get("days") or [])} 天)' + (f' {swhy}' if swhy and sok else ''))
+    if not sok:
+        print(f'⛔ 縮短守門:{swhy} → 不覆蓋 {OUT}(舊檔保留)')
         sys.exit(0)
     size = write(doc)
     print(f'💾 {OUT} ・{size / 1024:.0f} KB')
@@ -209,6 +250,7 @@ def _synth(n_syms=37, n_days=1300, start=_dt.date(2021, 9, 1), skip_for=None, sp
 
 
 def selftest():
+    import tempfile
     fails = []
 
     def ok(name, cond, extra=''):
@@ -272,6 +314,20 @@ def selftest():
     ok('⑪ 預設抓的清單含 ^KS11 / ^N225 / JPY=X', '^KS11' in ASIA and '^N225' in ASIA and 'JPY=X' in MACRO
        and fetch_all.__defaults__[0] == TICKERS + MACRO + ASIA)
     ok('⑩ START 有設 → 用 start、沒設 → 用 period', hist_kwargs('5y', '2009-01-01') == {'start': '2009-01-01', 'auto_adjust': True} and hist_kwargs('5y', '') == {'period': '5y', 'auto_adjust': True})
+    # ⑫ V82.2.6 縮短守門:data 分支上那份從 2009 起,新抓的只有 5 年 → ⛔ 蓋掉(決定性對照:上一份也是 5 年 / ALLOW_SHRINK / 沒有上一份 → 照寫)
+    f09, _ = _synth(n_days=4400, start=_dt.date(2009, 1, 2))
+    long_doc = compact(f09, {}, 'from 2009-01-01')
+    ok('⑫ 上一份 2009 起、新的 2021 起 → 擋(不覆蓋)', shrink_guard(doc, long_doc)[0] is False and '短了' in shrink_guard(doc, long_doc)[1])
+    ok('⑫ ⭐ 決定性對照:上一份也是 2021 起 → 照寫', shrink_guard(doc, json.loads(json.dumps(doc)))[0] is True)
+    ok('⑫ ALLOW_SHRINK → 放行', shrink_guard(doc, long_doc, allow=True)[0] is True)
+    ok('⑫ 沒有上一份 / 上一份沒有 days / 格式壞掉 → 不擋', shrink_guard(doc, None)[0] and shrink_guard(doc, {})[0] and shrink_guard(doc, {'days': ['bad']})[0])
+    ok('⑫ 新的比上一份更長(2009 蓋 2021)→ 照寫', shrink_guard(long_doc, doc)[0] is True)
+    ok('⑫ 只晚 20 天(< 30 天寬限,美股假日 / 不同檔第一天)→ 照寫', shrink_guard(compact(_synth(start=_dt.date(2021, 9, 21))[0], {}, '5y'), doc)[0] is True)
+    with tempfile.TemporaryDirectory() as td:
+        p0 = os.path.join(td, 'empty.json'); open(p0, 'w').close()
+        p1 = os.path.join(td, 'bad.json'); open(p1, 'w').write('{"days": [')
+        p2 = os.path.join(td, 'good.json'); open(p2, 'w').write(json.dumps(long_doc))
+        ok('⑫ load_prev:0 bytes / 半截 / 不存在 → None;正常 → 讀得回來', load_prev(p0) is None and load_prev(p1) is None and load_prev(os.path.join(td, 'nope.json')) is None and (load_prev(p2) or {}).get('days', [None])[0] == long_doc['days'][0])
     # ⑧ write 原子替換 + 不覆蓋:guard 沒過時 main 路徑不會呼叫 write(這裡只驗 write 本身可讀回)
     import tempfile
     with tempfile.TemporaryDirectory() as td:

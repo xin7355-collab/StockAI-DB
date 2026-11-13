@@ -4,9 +4,9 @@
 #   risk_history 只有 59 天)→ 「美股隔夜異常 → 台股」(us_tw_lead_probe.mjs)沒東西可測。
 #   沙箱連不到 Yahoo(CONNECT 403),只有 Actions 能用 yfinance → 採礦只能在這裡跑。
 #
-# ⭐ 觸發 = workflow_run 掛 daily_miner(實測 100% 進得來的 host)+ 手動 dispatch;⛔ 不開 cron
-#   (CLAUDE.md V75.2.0:全 repo 排程配額被吃光,固定五支 0 筆;判準不是頻率而是「這一支實測進不進得來」)。
-#   host 名字要跟 daily_miner.yml 的 `name:` **逐字一致**,差一字永遠不觸發且零訊息(scripts/test_wf_quota.py 釘住)。
+# ⭐ 觸發 = **只有手動 Run**(V78.2.5 起;⛔ 不開 cron、⛔ 不掛 workflow_run)→ data 分支上那份只在有人按的時候才更新,
+#   ⛔ 不是每天自動更新(V82.2.6 更正:CLAUDE.md / 實測總表以前寫「每天自動更新」是錯的;11/13 使用者問「美股日線為什麼停在 10/30」)。
+#   要用最新的美股資料做研究 → 先到 Actions 手動 Run 一次(預設從 2009-01-01 抓起)。
 #
 # ⭐ 為什麼推 data 分支而不是 gh-pages:daily_miner 的 gh-pages 是 orphan force-push,內容全部來自
 #   `git archive origin/data` 鋪的底層 + 🛟 撿回 → 進了 data 分支就會自動跟著上 gh-pages,**daily_miner 一行不改**
@@ -26,7 +26,11 @@ on:
         required: false
         default: ''
       start:
-        description: '從哪一天抓起(YYYY-MM-DD;有填就不看 years。變因研究用 2009-01-01)'
+        description: '從哪一天抓起(YYYY-MM-DD;有填就不看 years)。預設 2009-01-01 = data 分支上那份的長度(研究探針要用);清空 = 只抓 years'
+        required: false
+        default: '2009-01-01'
+      allow_shrink:
+        description: '填 1 才允許新的比 data 分支上那份短(⛔ 平常別填:會把 2009 起的長歷史蓋成 5 年)'
         required: false
         default: ''
       group:
@@ -98,15 +102,24 @@ jobs:
           done
           echo "❌ push 連 5 次失敗"; exit 1
 
-      - name: 🇺🇸 selftest → 抓 5 年日線
+      - name: 🇺🇸 selftest → 抓日線(預設 2009-01-01 起)
         if: github.event.inputs.group != 'world'
         env:
           # 🔧 排程/workflow_run 觸發時 inputs.* 是**空字串**不是不存在 → Python 端一律 `or 預設`(check_env_default.py)
           YEARS: ${{ github.event.inputs.years }}
           START: ${{ github.event.inputs.start }}
+          ALLOW_SHRINK: ${{ github.event.inputs.allow_shrink }}
           OUT: /tmp/us_hist.json
+          PREV: /tmp/us_prev.json
         run: |
           python3 scripts/us_hist_miner.py --selftest
+          # 🛡️ V82.2.6 上一份(data 分支)拿出來給縮短守門比:新的比它短 → 不覆蓋。拿不到 → 刪掉(⛔ 留 0 bytes,陷阱 #18/#20)
+          if git fetch --depth=1 origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null \
+             && git show origin/data:data/us_hist.json > /tmp/us_prev.json 2>/dev/null && [ -s /tmp/us_prev.json ]; then
+            echo "🧾 上一份 $(wc -c < /tmp/us_prev.json) bytes"
+          else
+            rm -f /tmp/us_prev.json; echo "ℹ️ data 分支上還沒有 us_hist.json(或拿不到)→ 不比長短"
+          fi
           python3 scripts/us_hist_miner.py
           [ -s /tmp/us_hist.json ] || { echo "⛔ 守門沒過或抓不到 → 這輪不推(舊檔保留)"; echo "SKIP=1" >> "$GITHUB_ENV"; }
 

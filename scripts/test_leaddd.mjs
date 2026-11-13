@@ -9,7 +9,9 @@
  *   ④ 決策台「今天要做的事」:收一半那次寫出要賣幾股、新買的每檔只買一半(每檔金額 × 0.5);關掉 → 一個 ✂️ 都沒有
  *      讀不到 / 沒更新要明講(⛔ 跟「全額」長得一樣)
  *   ⑤ 換倉提醒:收一半寫進那一則;狀態還沒到 → ⛔ 先蓋章(沒事要做時);先發了換倉提醒、之後狀態才到 → 補一則收一半
- *   ⑥ 開盤提醒:賣一半跟賣出同一個時段、補回跟買進同一個時段
+ *   ④b V82.2.6 賣一半拿回來的錢:金額只看持股市值(帳戶總資金過期也照算)、「今天要買股票的錢先扣掉」只在今天真的有買時講
+ *   ④c V82.2.6 換倉那天過了 10:00(= auto_trade `mins > LEADER_DEFER_SELL_TO`)→ 賣 / 賣一半改「13:00 起尾盤賣」;10:00 / 09:05 照舊(決定性對照)
+ *   ⑥ 開盤提醒:賣一半跟賣出同一個時段、補回跟買進同一個時段;⑥b 過了 10:00 才第一次跳 → 「還沒做的事」、⛔「現在開盤…」
  *   ⑦ 設定:🔓 進階功能只在 👑 + 解鎖時列 ddhalf、預設勾、取消 = settings.leadDdHalf false(⛔ 存進 deckShow)
  *   ⑧ Telegram 同步送 leadDdHalf / leadDdAt;策略變更那一筆只給 👑、「換回舊的」= 關掉
  *   ⑨ ⛔ App 不存也不印「離最高點幾 %」(只留 rot / def / since);390px 決策台那段不橫向溢出
@@ -136,6 +138,24 @@ const R = await page.evaluate(() => {
     o.dNoH = todo();
     app._leadDdData = J(R1.slice(0, 1), '2026-11-06');
     o.dStaleH = todo();
+    // ④b 💵 V82.2.6(11/13 截圖):賣一半拿回來的錢 —— 金額只要持股市值就算得出來、「今天要買股票的錢先扣掉」只在今天真的有買時才講
+    app._leadDdData = J(R1, '2026-11-12'); app._leadCtx = { clk: clkR(), date: '2026-11-12', snap: {} };
+    const oPark = app._park; app._park = () => true;
+    try {
+        o.pkBuyH = todo();                                                                                          // 有買 → 括號要在(決定性對照)
+        o.pkBearH = app._deckTodoLead({ clk: app._leadCtx.clk, bearOn: true, L, held, H: 10, inv: mine });     // 空頭不買 → ⛔ 括號
+        app.settings.accountSize = 100000;                                                                          // 10 萬 < 手上 65 萬 → 過期
+        o.pkStale = app._leadSlot().st;
+        o.pkStaleH = todo();
+        app.settings.accountSize = 5000000;
+        // ④c ⏰ 換倉那天過了 10:00、還沒收盤 → 賣的那幾行改口(= auto_trade 開盤沒賣成的尾盤補賣);09:05 照舊(決定性對照)
+        app._tpeMinutes = () => ({ ymd: '2026-11-13', wd: 'Fri', min: 10 * 60 + 30 }); o.lateH = todo(); o.latePh = app._leadPhase(app._leadCtx.clk, '2026-11-12').ph;
+        app._tpeMinutes = () => ({ ymd: '2026-11-13', wd: 'Fri', min: 10 * 60 }); o.at10H = todo();
+        app._tpeMinutes = () => ({ ymd: '2026-11-13', wd: 'Fri', min: 9 * 60 + 5 }); o.earlyH = todo();
+        app._leadTiming = () => 'open';
+        app._tpeMinutes = () => ({ ymd: '2026-11-13', wd: 'Fri', min: 10 * 60 + 30 }); o.lateOpenH = todo();
+        app._leadTiming = () => 'split';
+    } finally { app._park = oPark; app._tpeMinutes = () => ({ ymd: '2026-11-12', wd: 'Thu', min: 18 * 60 }); }
     return o;
 });
 
@@ -191,6 +211,12 @@ const R5 = await page.evaluate(async () => {
     await run(J(R1, '2026-11-12'), ['1001', '1002', '1003', '1004', '1011'], ['1001', '1002', '1003', '1004', '1011']);
     await app._leadDayPulse();
     o.open = fired.filter(f => /開盤要做的事/.test(f.t));
+    // ⑥b ⏰ V82.2.6 過了 10:00 才第一次跳 → 標題「還沒做的事」、賣的改尾盤(⛔「現在開盤賣」)
+    localStorage.removeItem('leadDayOpen'); localStorage.removeItem('leadDay1320'); fired.length = 0;
+    app._tpeMinutes = () => ({ ymd: '2026-11-13', wd: 'Fri', min: 10 * 60 + 30 });
+    await app._leadDayPulse();
+    o.openLate = fired.slice();
+    localStorage.removeItem('leadDayOpen');
     const R4 = R1.concat([{ d: '2026-11-26', b: 'A', W: 1, bear: 0 }]);
     localStorage.removeItem('leadDayOpen'); localStorage.removeItem('leadDay1320'); fired.length = 0;
     app._leadDdData = J(R4, '2026-11-26', 0);
@@ -236,6 +262,19 @@ ok('④ 賣一半拿回來的錢有寫去處(0050 或現金)', /賣一半拿回�
 ok('④ ⭐ 決定性對照:關掉 → 一個 ✂️ 都沒有、每檔金額回到 100 萬', !/✂️|data-tododd|data-todotrim|每檔只買一半/.test(P.dOffH) && /每檔約 <b class="font-mono">100 萬<\/b>/.test(P.dOffH), P.dOff);
 ok('④ 讀不到 / 沒更新要明講(⛔ 跟全額長得一樣)', /data-tododdhalf="nodata"/.test(P.dNoH) && /data-tododdhalf="stale"/.test(P.dStaleH), P.dNoH.slice(0, 300));
 ok('④ 規則那一段有「跌 20% 收一半(開著)」+ 一鍵關掉', /data-leaddd="off"/.test(P.dTrimH) && !/data-leaddd="off"/.test(P.dOffH));
+// ④b 💵 V82.2.6 賣一半拿回來的錢
+const nowBox = h => String(h || '').split('data-todo="buy"')[0];
+ok('④b 有買的那天 → 「停 0050(今天要買股票的錢先扣掉)」(決定性對照)', /停 0050<\/b>\(今天要買股票的錢先扣掉\)/.test(P.pkBuyH), nowBox(P.pkBuyH).slice(-600));
+ok('④b 空頭不買那天 → ⛔「今天要買股票的錢先扣掉」(11/13 截圖)、賣一半照講', /賣一半拿回來的錢/.test(P.pkBearH) && !/今天要買股票的錢先扣掉/.test(P.pkBearH), nowBox(P.pkBearH).slice(-600));
+ok('④b 帳戶總資金過期(10 萬 < 手上 65 萬)→ 賣一半拿回來的錢照算(1001 30 萬 + 1003 15 萬 的一半 = 22.5 萬)、另外叫你改總資金',
+    P.pkStale === 'stale' && /賣一半拿回來的錢約 <b class="font-mono">22\.5 萬<\/b>/.test(P.pkStaleH) && /比手上的股票 \+ 0050/.test(P.pkStaleH), nowBox(P.pkStaleH).slice(-700));
+// ④c ⏰ 10:00 以後改口
+ok('④c 換倉那天 10:30 → 賣 / 賣一半那兩行改成「13:00 起尾盤賣(開盤時段已過…)」、⛔「開盤賣」',
+    P.latePh === 'act' && (nowBox(P.lateH).match(/data-todolate="sell"/g) || []).length === 2 && /13:00<\/span> 起尾盤賣/.test(P.lateH) && !/開盤賣/.test(nowBox(P.lateH)), nowBox(P.lateH).slice(0, 900));
+ok('④c ⭐ 決定性對照:10:00 那一分鐘(= auto_trade 還在時段內)/ 09:05 → 照舊「開盤賣」、⛔ data-todolate',
+    !/data-todolate/.test(P.at10H) && /開盤賣/.test(nowBox(P.at10H)) && !/data-todolate/.test(P.earlyH) && /開盤賣/.test(nowBox(P.earlyH)), nowBox(P.earlyH).slice(0, 600));
+ok('④c 全部開盤模式 10:30 → 買的那一行也改口(還沒買的等下一次換倉;自動下單錯過開盤也是跳過)、split 的 13:25 買照舊',
+    /data-todolate="buy"/.test(P.lateOpenH) && !/data-todolate="buy"/.test(P.lateH) && /13:25<\/span> 買/.test(nowBox(P.lateH)), nowBox(P.lateOpenH).slice(0, 900));
 
 // ⑤ 換倉提醒
 const a5 = R5;
@@ -249,6 +288,10 @@ const op = (a5.open[0] || {}).b || '';
 ok('⑥ 開盤提醒:賣一半跟賣出同一個時段(現在開盤賣一半 / 開盤跌 3% 以上等到 09:30~10:00)、新買的寫每檔只買一半',
     /現在開盤賣一半/.test(op) && /等到 09:30~10:00 再賣一半/.test(op) && /每檔只買一半/.test(op), op);
 ok('⑥ 13:20 那一則:補回跟買進同一個時段(13:25 補回)', a5.top1320.some(f => /13:25 補回/.test(f.b)), JSON.stringify(a5.top1320));
+const ol = a5.openLate || [], olB = ol.map(f => f.b).join('\n');
+ok('⑥b 過了 10:00 才第一次跳 → 標題「還沒做的事」、賣 / 賣一半寫「開盤時段已過 → 13:00 起尾盤」、⛔「現在開盤…」、13:25 買照舊',
+    ol.length === 1 && /還沒做的事/.test(ol[0].t) && /開盤時段已過 → 還沒賣的 13:00 起尾盤賣:/.test(olB) && /開盤時段已過 → 還沒賣一半的 13:00 起尾盤賣一半:/.test(olB)
+    && !/現在開盤/.test(olB) && /下午 13:25 再買/.test(olB), JSON.stringify(ol));
 
 // ⑦ 設定 + ⑧ Telegram / 策略變更 + ⑨ 不存 dd%
 const R7 = await page.evaluate(() => {
