@@ -62,3 +62,6 @@ chips_deep/
 
 # 📦 V76.1.8 財報三表深歷史(7.8 MB,只活在 fin_deep 分支與本機測試;切片走 data/fin/)
 fin_deep/
+
+# 🧪 測試在 repo 根目錄暫時產生的 index.html 複本(跑完會自己刪;同源才讀得到 data/)—— ⛔ 進版控
+/.test_*.html
