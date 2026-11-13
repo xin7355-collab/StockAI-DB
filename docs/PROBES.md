@@ -64,6 +64,8 @@
 - `scripts/hot_wf_probe.mjs` + `.github/workflows/hot_wf.yml`(🧭 V82.2.4 新,EXP-20261112-05):🔥 / 🅿️ Walk-forward —— Actions 手動派,12 組一組一個 job
   (pin job 先釘住 data / klines_deep / stock_deep 版本 → research_pack d16 → 這一組自己的交易快取 4 片 → 名單前 60 → list_trig 4 片 → 17 條 WARMUPS → `years`),
   最後 analyze job 照登記的挑法串起來(Step Summary + artifact `hot-wf-result`)。⚠️ 交易快取 ⛔ 共用(只留過門檻那天的 🧬,門檻不同內容不同)。
+  📎 V82.2.7 `b0050 <研究資料包> <out>`(0050 含息每年報酬,同一支 yearRets)+ `analyze <資料夾> <out> <b0050>` 多一塊 `b0050`(每年贏幾年、整段贏幾組、2011~2013 各變幾倍;事後補看,⛔ 判定)。
+  結果(EXP-20261112-05)存 `research/hot_wf_20261113/`(12 組逐年中位 + analyze + meta),`embed_evolve.mjs --wf-hot` 寫進 `_EVOLVE.wfHot`。
   本機小測:同一套指令 40 檔(快取 2 片 155 秒、名單 3 秒、判觸發 32 秒、17 條 8 秒)。失敗的組用 `only=R85_V60,…` 補跑。
 - `scripts/news_runup_probe.mjs`(📰 V82.2.0 新):`NEWS_CNT=<news_factor.py 的 news_cnt.json> DATA_DIR=<d16> node --max-old-space-size=8000 scripts/news_runup_probe.mjs out.json`
   → 新聞暴增前已先漲 vs 沒先漲(EXP-20261112-04)。news_cnt:`NEWS_DIR=<news_deep 解開> DATA_DIR=<d16> NAMES=stock_names.json OUT=news_cnt.json python3 scripts/news_factor.py`(約 15 分)。

@@ -9,13 +9,18 @@
  *   跟現行 85/60 同一段年份比 → 膨脹率 = 1 − WF / 現行(現行那組的最後財富有多少 % 是事後挑來的);滾動 3 年只描述。
  *   ⛔ 看結果改網格 / 改挑法(要改就重新登記)。
  *
+ * 📎 V82.2.7 `b0050` + analyze 第 3 個參數:跟 0050 含息比(事後補看,⛔ 不是登記的判定;結果出來後才加的描述)——
+ *   0050 每年報酬用同一支 yearRets(每年最後一天 ÷ 前一年最後一天;2011 起跑日在 1~3 月,🅿️ 那年不是整年)。
+ *
  * 跑法:node scripts/hot_wf_probe.mjs years <eq 資料夾(eq_{W}.json)> <組名 R85_V60> <out.json>
- *       node scripts/hot_wf_probe.mjs analyze <放 12 個組名.json 的資料夾> [out.json]
+ *       node scripts/hot_wf_probe.mjs b0050 <研究資料包 d16(_bench0050 + _div0050)> <out.json>
+ *       node scripts/hot_wf_probe.mjs analyze <放 12 個組名.json 的資料夾> [out.json] [b0050 那個 out.json]
  *       node scripts/hot_wf_probe.mjs --selftest(WF_INJECT=peek = 拿當年挑 → ② 必紅)
  */
 import fs from 'fs';
 import path from 'path';
 import { yearRets, chain } from './lead_wf_probe.mjs';
+import { trSeries } from './lib_totalreturn.mjs';
 
 export const GRID = { RANK_MIN: [75, 80, 85, 90], VOLAT_MIN: [50, 60, 70] };
 export const CUR = 'R85_V60';
@@ -68,6 +73,30 @@ export function analyzeHot(table) {
     return out;
 }
 
+/** 📎 跟 0050 含息比(事後補看):b = {年: 0050 含息當年報酬(小數)};A = analyzeHot 的輸出(拿它的挑法) */
+export function vs0050(table, A, b) {
+    const years = Object.keys(table[CUR]).filter(y => Object.values(table).every(t => Number.isFinite(t[y])) && Number.isFinite(b[y])).sort();
+    const testY = years.filter(y => +y >= FIRST_TEST), preY = years.filter(y => +y < FIRST_TEST), nY = testY.length;
+    // ⛔ 0050 少一年還硬比:測試期年數要跟 analyze 一樣
+    if (nY !== A.meta.n) throw new Error(`0050 的年份對不上(測試期 ${nY} 年 ≠ analyze 的 ${A.meta.n} 年)`);
+    const bw = chain(b, testY, 0), pk = m => Object.fromEntries(A[m].picks.map(p => [p.Y, p.k]));
+    const beat = rOf => testY.filter(y => rOf(y) > b[y]).length, E = pk('exp'), R3 = pk('roll3');
+    return { cagr: r2(cagr(bw, nY)), w: r2(bw), n: nY,
+        beatY: { cur: beat(y => table[CUR][y]), exp: beat(y => (table[E[y]] || {})[y]), roll3: beat(y => (table[R3[y]] || {})[y]) },
+        beatAll: Object.keys(table).filter(k => chain(table[k], testY, 0) > bw).length,
+        pre: preY.length ? { from: preY[0], to: preY.at(-1), cur: r2(chain(table[CUR], preY, 0)), b: r2(chain(b, preY, 0)) } : null };
+}
+
+/** 研究資料包的 0050(收盤 + 除息日收盤再投入,lib_totalreturn 同一套)→ {年: 報酬};股利太少 = 不含息 → ⛔ 寫 */
+export function b0050Years(dir) {
+    const bars = JSON.parse(fs.readFileSync(path.join(dir, '_bench0050.json'), 'utf8')).map(r => ({ d: String(r.date).replace(/\//g, '-').slice(0, 10), c: +r.close })).filter(x => x.c > 0);
+    const raw = JSON.parse(fs.readFileSync(path.join(dir, '_div0050.json'), 'utf8'));
+    const d50 = Array.isArray(raw) ? raw : (raw.h || ((raw.d || raw)['0050'] || {}).h || []);
+    if (d50.length < 10) throw new Error(`0050 股利只有 ${d50.length} 筆 → 不含息,⛔ 拿來比`);
+    const tr = trSeries(bars, d50);
+    return { from: tr.d[0], to: tr.d.at(-1), divs: d50.length, years: yearRets(tr.v, tr.d) };
+}
+
 function selftest() {
     let ok = 0, bad = 0; const t = (c, m) => { console.log((c ? '  ✅ ' : '  ❌ ') + m); c ? ok++ : bad++; };
     // ① yearsOf:3 條起點、每年 +10% / +20% / +30% → 中位 +20%
@@ -90,6 +119,13 @@ function selftest() {
     // ④ 膨脹率:WF 挑到比現行差 → 正的;⑤ 注入偷看當年 → 一定挑到 R90_V70(2014、2015 最好)
     const A = analyzeHot(T);
     t(A.exp.inflate > 0 && A.cur.k === 'R85_V60', `④ 膨脹率 = 1 − WF / 現行 → ${A.exp.inflate}%`);
+    // ⑤ 跟 0050 比:2014 / 2015 0050 各 +15% → 現行(+10%)兩年都輸、WF 挑的 2014 輸(−20%)2015 贏(+50%);
+    //    整段贏 0050(1.3225)的只有 R90_V70(2.25);2011~2013 現行 1.331、0050 1.0×1.0×1.0
+    const B = { 2011: 0, 2012: 0, 2013: 0, 2014: 0.15, 2015: 0.15 }, V = vs0050(T, A, B);
+    t(V.beatY.cur === 0 && V.beatY.exp === 1 && V.beatAll === 1 && V.pre.cur === 1.33 && V.pre.b === 1 && V.w === 1.32 && V.n === 2,
+        `⑤ 跟 0050 比:每年贏幾年 / 整段贏幾組 / 2011~2013 各變幾倍 → ${JSON.stringify(V)}`);
+    let thr = false; try { vs0050(T, A, { 2011: 0, 2012: 0, 2013: 0, 2014: 0.15 }); } catch (_) { thr = true; }
+    t(thr, '⑤b 0050 少一年 → 拒絕(⛔ 少比一年還寫結果)');
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     fs.rmSync(dir, { recursive: true, force: true });
     return bad ? 1 : 0;
@@ -109,8 +145,14 @@ if (process.argv[1] && process.argv[1].endsWith('hot_wf_probe.mjs')) {
         console.log(`組數 ${files.length}(${Object.keys(table).sort().join(' ')})`);
         if (files.length < 12) console.log(`⚠️ 少了 ${12 - files.length} 組(看哪一個 job 失敗)—— 照有的算,但 ⛔ 當正式結果`);
         const A = analyzeHot(table);
+        if (c) { const B = JSON.parse(fs.readFileSync(c, 'utf8')); A.b0050 = vs0050(table, A, B.years); A.b0050.src = { from: B.from, to: B.to, divs: B.divs }; }
         console.log(`測試期 ${A.meta.test}(${A.meta.n} 年)・現行 ${CUR} ×${A.cur.w}(年化 ${A.cur.cagr}%,12 組第 ${A.cur.rank})・全樣本最好 ${A.best.k} ×${A.best.w}・中位 ${A.median.k} ×${A.median.w}`);
         for (const m of ['exp', 'roll3']) console.log(`${m === 'exp' ? '⭐ 擴張窗(判定)' : '滾動 3 年(只描述)'}:WF ×${A[m].w}(年化 ${A[m].cagr}%)→ 膨脹率 ${A[m].inflate}%・年化差 ${A[m].cagrGap}pp・挑到現行 ${A[m].hitCur} 年・${A[m].picks.map(p => `${p.Y}:${p.k}`).join(' ')}`);
+        if (A.b0050) { const V = A.b0050; console.log(`📎 跟 0050 含息比(事後補看,不是登記的判定):0050 ×${V.w}(年化 ${V.cagr}%)・每年贏 0050:現行 ${V.beatY.cur} / 擴張窗 ${V.beatY.exp} / 滾動 ${V.beatY.roll3}(共 ${V.n} 年)・整段贏 0050 ${V.beatAll} 組` + (V.pre ? `・${V.pre.from}~${V.pre.to} 現行 ×${V.pre.cur} vs 0050 ×${V.pre.b}` : '')); }
         if (b) fs.writeFileSync(b, JSON.stringify(A, null, 1));
+    } else if (cmd === 'b0050') {
+        const B = b0050Years(a);
+        fs.writeFileSync(b, JSON.stringify(B));
+        console.log(`✅ 0050 含息 ${B.from}~${B.to}(股利 ${B.divs} 筆):${Object.entries(B.years).map(([y, r]) => `${y} ${r2(r * 100)}%`).join(' ・')}`);
     } else { console.error('用法見檔頭'); process.exit(1); }
 }

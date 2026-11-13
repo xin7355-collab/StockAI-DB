@@ -1,0 +1,6 @@
+{
+ "run": "https://github.com/xin7355-collab/StockAI-DB/actions/runs/43327327135",
+ "pin": "data f0d488cd / klines_deep 5bbb9f9a / stock_deep e2cbe2b5(2026-11-12 23:15 UTC 釘住)",
+ "src": "12 組各自 job 印出的逐年中位數(取到 0.01%)重建 → hot_wf_probe analyze;Actions 原始輸出膨脹率 7.01%、滾動 3 年年化差 2.93pp(重建的差在最後一位:7.02 / 2.94)",
+ "b0050": "研究資料包 79f39eda3ffc5d28(2026-11-12 建,0050 到 2026-11-12)的 _bench0050 + _div0050 → hot_wf_probe.mjs b0050 → b0050.json → analyze 第 3 個參數;📎 事後補看,不是 EXP-20261112-05 登記的判定"
+}
