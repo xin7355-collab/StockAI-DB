@@ -1,0 +1,8 @@
+{
+ "run": "https://github.com/xin7355-collab/StockAI-DB/actions/runs/43397562917",
+ "mode": "size",
+ "code": "a01d2a22(V82.2.8)",
+ "pin": "data 6f9d2058 / klines_deep 5bbb9f9a / stock_deep e2cbe2b5(2026-11-13 08:59 UTC 釘住)",
+ "src": "analyze.txt = Actions analyze job 的輸出原文;BASE / BIG / SMALL / RAND.json 與 cap.txt 從各組 job log 抄下來(逐年中位數到 0.01%);artifact 原檔(含 finals / inv / 每筆成交)這台機器的 proxy 擋下載;recheck.txt = 本機用逐年中位數重算 ① ② ③ ⑤,跟 Actions 一字不差",
+ "note": "BASE 的 16 年逐年中位數跟 11/13 hot_wf R85_V60(run 43327327135,data f0d488cd)一模一樣 → 兩次資料版本不同、結果可重現"
+}
