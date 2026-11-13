@@ -213,6 +213,20 @@ const T = await page.evaluate(() => {
       R.revDecFav = ids(run({ bars: new Map([['2454', kFlat]]), fav: ['2454'], fy: { 2454: { mrh: dn } } }));
       R.revDecNoCtx = ids(run(H));
       R.revDecEtf = ids(run({ held: new Map([['0050', { cost: 0 }]]), bars: new Map([['0050', kFlat]]), fy: { '0050': { mrh: dn } } })); }
+    // 🧾 V82.3.2 insider_sell:庫存 / 正在看的這一檔,最近 5 個交易日董監 / 大股東申報「在市場上賣」(類別是採礦端算好的)
+    { const H = { held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]) };
+      const isoD = r => String(r.date).replace(/\//g, '-').slice(0, 10), d5 = isoD(tw[tw.length - 5]), d6 = isoD(tw[tw.length - 6]);
+      const I = rows => ({ cols: ['s', 'n', 'd', 'role', 'rc', 'method', 'mc', 'sh', 'chg', 'mk'], rows });
+      const row = (s, d, role, rc, method, mc) => [s, 'x', d, role, rc, method, mc, 1621000, '', 'sii'];
+      R.ins = ids(run({ ...H, ins: I([row('2330', d5, '董事本人', 'dir', '一般交易(每日得轉讓股數限制)', 'mkt')]) }));
+      R.insWhy = run({ ...H, ins: I([row('2330', d5, '董事本人', 'dir', '一般交易(每日得轉讓股數限制)', 'mkt')]) }).filter(h => h.id === 'insider_sell').map(h => h.why); R.insD5 = app._dW(d5);
+      R.insBig = ids(run({ ...H, ins: I([row('2330', d5, '大股東本人', 'big', '鉅額逐筆交易', 'mkt')]) }));
+      R.insOld = ids(run({ ...H, ins: I([row('2330', d6, '董事本人', 'dir', '一般交易(每日得轉讓股數限制)', 'mkt')]) }));
+      R.insMgr = ids(run({ ...H, ins: I([row('2330', d5, '經理人本人', 'mgr', '一般交易(每日得轉讓股數限制)', 'mkt')]) }));
+      R.insGift = ids(run({ ...H, ins: I([row('2330', d5, '大股東本人', 'big', '信託', 'gift')]) }));
+      R.insFav = ids(run({ bars: new Map([['2454', kFlat]]), fav: ['2454'], ins: I([row('2454', d5, '董事本人', 'dir', '一般交易(每日得轉讓股數限制)', 'mkt')]) }));
+      R.insNoCtx = ids(run(H));
+      R.insEtf = ids(run({ held: new Map([['0050', { cost: 0 }]]), bars: new Map([['0050', kFlat]]), ins: I([row('0050', d5, '董事本人', 'dir', '一般交易(每日得轉讓股數限制)', 'mkt')]) })); }
     // 大盤:先漲後急跌 → 剛轉空頭;一路跌 → 早就是空頭(⛔ 不算剛轉)
     const up = mkK(120, '2026-10-16'); up.forEach((r, i) => { const c = i < 110 ? 100 + i : 210 - (i - 109) * 12; Object.assign(r, { open: c, high: c, low: c, close: c }); });
     const dn = mkK(120, '2026-10-16'); dn.forEach((r, i) => { const c = 300 - i; Object.assign(r, { open: c, high: c, low: c, close: c }); });
@@ -332,6 +346,10 @@ ok('③f4 📉 rev_decline:庫存月營收近 3 個月比去年同期少而且�
     has(T.revDec, 'rev_decline') && /9 月營收:近 3 個月比去年同期 -15\.0%/.test(String(T.revDecWhy[0] || '')) && !has(T.revDecUp, 'rev_decline') && !has(T.revDecOld, 'rev_decline')
     && !has(T.revDecShort, 'rev_decline') && !has(T.revDecFav, 'rev_decline') && !has(T.revDecNoCtx, 'rev_decline') && !has(T.revDecEtf, 'rev_decline'),
     JSON.stringify([T.revDec, T.revDecWhy, T.revDecUp, T.revDecOld, T.revDecShort, T.revDecFav, T.revDecNoCtx, T.revDecEtf]));
+ok('③f5 🧾 insider_sell:庫存最近 5 個交易日董事 / 大股東申報在市場上賣 → 亮(寫日期 + 身分 + 方式 + 預定張數);第 6 個交易日以前 / 經理人 / 信託 / 只在自選 / ctx 沒給 / ETF → 不亮',
+    has(T.ins, 'insider_sell') && has(T.insBig, 'insider_sell') && String(T.insWhy[0] || '').includes(T.insD5) && /董事本人申報在市場上賣[^]*1,621 張/.test(String(T.insWhy[0] || ''))
+    && !has(T.insOld, 'insider_sell') && !has(T.insMgr, 'insider_sell') && !has(T.insGift, 'insider_sell') && !has(T.insFav, 'insider_sell') && !has(T.insNoCtx, 'insider_sell') && !has(T.insEtf, 'insider_sell'),
+    JSON.stringify([T.ins, T.insWhy, T.insBig, T.insOld, T.insMgr, T.insGift, T.insFav, T.insNoCtx, T.insEtf]));
 ok('③g 大盤剛轉空頭 → bear_on;一直是空頭 → 沒有', has(T.bearFlip, 'bear_on') && !has(T.bearLong, 'bear_on'), JSON.stringify([T.bearFlip, T.bearLong]));
 ok('③h 第三個星期三 → settle;第二個 → 沒有', has(T.settle, 'settle') && !has(T.settleNo, 'settle'), JSON.stringify([T.settle, T.settleNo]));
 ok('③i 休市前最後一個交易日 → holiday_pre;前兩天 → 沒有', has(T.pre, 'holiday_pre') && !has(T.preNo, 'holiday_pre'), JSON.stringify([T.pre, T.preNo]));
