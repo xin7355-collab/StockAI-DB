@@ -222,8 +222,8 @@ export function fwdRet(S, e, x) {
     return (S.c[x] * f / S.o[e] - 1) * 100;
 }
 
-/** 第 i 天收盤時,這一檔過去 n 個交易日的報酬 %(含息) */
-function pastRet(S, i, n) {
+/** 第 i 天收盤時,這一檔過去 n 個交易日的報酬 %(含息)—— 📉 V82.2.9 rev_decline_probe 也 import(⛔ 第二份) */
+export function pastRet(S, i, n) {
     const a = S.c[i - n], b = S.c[i]; if (!(a > 0 && b > 0)) return null;
     if (S.cliff[i + 1] - S.cliff[i - n + 1] > 0) return null;
     let f = 1; for (let k = i - n + 1; k <= i; k++) f *= S.divf[k];

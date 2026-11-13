@@ -8,12 +8,19 @@ name: 🧾 🔥 名單層濾網疊加 + 安慰劑 (hot_ccwin)
 #   事件清單在 job 裡從釘住的 insider_deep 產(insider_event_probe EVENTS_OUT EV_M=mkt EV_T=0 EV_R=all = 研究與 2019 那次同一組)。
 #   BASE / INS 跑 16 年(WARMUP 251+3k)+ 近 4 年(3125+3k)各 17 條;安慰劑只跑 16 年。
 #   判定 = scripts/ccwin_overlay_probe.mjs(條件照登記寫死,結果在 Step Summary + artifact)。
+#   📉 src=revdec(EXP-20261113-05):事件換成「營收衰退中」(rev_decline_probe EVENTS_OUT,釘住的 stock_deep/rev),其他一模一樣。
 # ⛔ 排程(手動才跑,一次約 3~4 小時);⛔ 寫任何分支;自己的 concurrency(⛔ 跟 hot_wf 同一個 group —— 同一個 group 只留一個排隊中的,
 #   後派的會把對方排隊中的那輪取消掉)。
 
 on:
   workflow_dispatch:
     inputs:
+      src:
+        description: 'insider = 申報轉讓(EXP-20261113-03)・revdec = 營收衰退中(EXP-20261113-05)'
+        required: false
+        default: 'insider'
+        type: choice
+        options: [insider, revdec]
       only:
         description: '只跑這幾組(例 BASE,INS;空白 = BASE INS S1 S2 S3 全跑)'
         required: false
@@ -98,17 +105,27 @@ jobs:
           set -o pipefail
           node scripts/research_pack.mjs /tmp/rp 2>&1 | tail -8
 
-      - name: 🧾 申報轉讓事件清單(BASE 不用)
+      - name: 🧾 事件清單(BASE 不用)
         if: steps.sel.outputs.run == '1' && env.CC != ''
         env:
           INS_REF: ${{ needs.pin.outputs.ins }}
+          SD_REF: ${{ needs.pin.outputs.sd }}
+          SRC: ${{ inputs.src }}
         run: |
           set -eo pipefail
-          git fetch -q origin "$INS_REF"
-          mkdir -p /tmp/ins /tmp/none
-          git archive "$INS_REF" insider_deep | tar -x -C /tmp/ins
-          echo "📦 insider_deep $(echo "$INS_REF" | cut -c1-10):$(ls /tmp/ins/insider_deep/*.json.gz | wc -l) 個月"
-          INSIDER_DIR=/tmp/ins/insider_deep DATA_DIR=/tmp/rp/d16 SHARE_DIR=/tmp/none EVENTS_OUT=/tmp/ev.json EV_M=mkt EV_T=0 EV_R=all python3 scripts/insider_event_probe.py | tail -4
+          if [ "$SRC" = revdec ]; then
+            git fetch -q origin "$SD_REF"
+            mkdir -p /tmp/sd
+            git archive "$SD_REF" stock_deep/rev | tar -x -C /tmp/sd
+            echo "📦 stock_deep/rev $(echo "$SD_REF" | cut -c1-10):$(ls /tmp/sd/stock_deep/rev/*.json.gz | wc -l) 檔"
+            DATA_DIR=/tmp/rp/d16 REV_DIR=/tmp/sd/stock_deep/rev EVENTS_OUT=/tmp/ev.json node --max-old-space-size=8000 scripts/rev_decline_probe.mjs | tail -3
+          else
+            git fetch -q origin "$INS_REF"
+            mkdir -p /tmp/ins /tmp/none
+            git archive "$INS_REF" insider_deep | tar -x -C /tmp/ins
+            echo "📦 insider_deep $(echo "$INS_REF" | cut -c1-10):$(ls /tmp/ins/insider_deep/*.json.gz | wc -l) 個月"
+            INSIDER_DIR=/tmp/ins/insider_deep DATA_DIR=/tmp/rp/d16 SHARE_DIR=/tmp/none EVENTS_OUT=/tmp/ev.json EV_M=mkt EV_T=0 EV_R=all python3 scripts/insider_event_probe.py | tail -4
+          fi
           if [ "$CC" = real ]; then cp /tmp/ev.json /tmp/ccwin.json
           else python3 scripts/ccwin_build.py /tmp/ev.json /tmp/ccwin.json --shuffle "$CC"; fi
           [ -s /tmp/ccwin.json ] || { echo "::error::$K 事件清單是空的"; exit 1; }
@@ -201,6 +218,8 @@ jobs:
           merge-multiple: true
           path: /tmp/all
       - name: 🧮 verdict
+        env:
+          SRC: ${{ inputs.src }}
         run: |
           set -o pipefail
           mkdir -p /tmp/v
@@ -212,7 +231,8 @@ jobs:
           ls /tmp/v
           node scripts/ccwin_overlay_probe.mjs verdict /tmp/v /tmp/v/verdict.json | tee /tmp/v/verdict.txt
           if [ -d /tmp/all/BASE/taken16 ] && [ -d /tmp/all/INS/taken16 ]; then node scripts/ccwin_overlay_probe.mjs tail /tmp/all/BASE/taken16 /tmp/all/INS/taken16 | tee /tmp/v/tail.txt; fi
-          { echo '### 🧾 申報轉讓疊到 🔥(EXP-20261113-03)'; echo; echo '```'; cat /tmp/v/verdict.txt; [ -f /tmp/v/tail.txt ] && tail -1 /tmp/v/tail.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SRC" = revdec ]; then T='### 📉 營收衰退中疊到 🔥(EXP-20261113-05)'; else T='### 🧾 申報轉讓疊到 🔥(EXP-20261113-03)'; fi
+          { echo "$T"; echo; echo '```'; cat /tmp/v/verdict.txt; [ -f /tmp/v/tail.txt ] && tail -1 /tmp/v/tail.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
