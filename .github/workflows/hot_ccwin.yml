@@ -1,0 +1,222 @@
+name: 🧾 🔥 名單層濾網疊加 + 安慰劑 (hot_ccwin)
+
+# 🧾 V82.2.9 EXP-20261113-03(跑之前登記):申報轉讓(董監 / 大股東 / 經理人申報在市場上賣)那天起 20 個交易日先不買,
+#   疊到 🔥 / 🅿️ 看板設定(85 / 60・chand2・MAXD 20・空頭照買・照平均排・斷崖・1,200 天・個股破線不買・停 0050・收盤成交・含息)。
+#   每一組照 hot_wf.yml 同一套 ①~④(research_pack d16 → 交易快取 4 片 → 名單前 60 → list_trig 4 片 → 17 條起點),
+#   差別只有 ② 名單與 ④ 回測帶 CCWIN(CCWIN_PRE=0 CCWIN_POST=19 = 事件日起 20 個交易日不買;被擋的⛔ 佔名額、下一檔遞補):
+#     BASE = 現行(不擋)・INS = 真的申報事件・S1 S2 S3 = 同一份事件整份配給別檔(ccwin_build --shuffle 1 / 2 / 3,安慰劑)
+#   事件清單在 job 裡從釘住的 insider_deep 產(insider_event_probe EVENTS_OUT EV_M=mkt EV_T=0 EV_R=all = 研究與 2019 那次同一組)。
+#   BASE / INS 跑 16 年(WARMUP 251+3k)+ 近 4 年(3125+3k)各 17 條;安慰劑只跑 16 年。
+#   判定 = scripts/ccwin_overlay_probe.mjs(條件照登記寫死,結果在 Step Summary + artifact)。
+# ⛔ 排程(手動才跑,一次約 3~4 小時);⛔ 寫任何分支;自己的 concurrency(⛔ 跟 hot_wf 同一個 group —— 同一個 group 只留一個排隊中的,
+#   後派的會把對方排隊中的那輪取消掉)。
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: '只跑這幾組(例 BASE,INS;空白 = BASE INS S1 S2 S3 全跑)'
+        required: false
+        default: ''
+
+concurrency:
+  group: hot-ccwin
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pin:
+    name: 📌 釘住資料版本
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      data: ${{ steps.p.outputs.data }}
+      kd: ${{ steps.p.outputs.kd }}
+      sd: ${{ steps.p.outputs.sd }}
+      ins: ${{ steps.p.outputs.ins }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        run: |
+          set -e
+          for b in data klines_deep stock_deep insider_deep; do
+            s=$(git ls-remote origin "refs/heads/$b" | cut -f1)
+            [ -n "$s" ] || { echo "::error::找不到 $b 分支"; exit 1; }
+            echo "$b → $s"
+            case $b in data) echo "data=$s" >> "$GITHUB_OUTPUT";; klines_deep) echo "kd=$s" >> "$GITHUB_OUTPUT";; stock_deep) echo "sd=$s" >> "$GITHUB_OUTPUT";; insider_deep) echo "ins=$s" >> "$GITHUB_OUTPUT";; esac
+          done
+
+  combo:
+    name: 🧾 ${{ matrix.g }}
+    needs: pin
+    runs-on: ubuntu-latest
+    # ⏱️ 330 分:資料包 3~5 分 + 交易快取 4 片約 70 分 + 名單 / 判觸發約 30~60 分 + 17~34 條約 30~60 分;job 上限 360
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        g: [BASE, INS, S1, S2, S3]
+    env:
+      K: ${{ matrix.g }}
+    steps:
+      - name: 🎯 這組要不要跑
+        id: sel
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          if [ -z "$ONLY" ] || echo ",$ONLY," | grep -q ",$K,"; then echo "run=1" >> "$GITHUB_OUTPUT"; else echo "run=0" >> "$GITHUB_OUTPUT"; echo "⏭️ $K 不在 only 清單"; fi
+          # CC:空 = 不擋;real = 真的事件;1 / 2 / 3 = 安慰劑種子。W4=1 → 也跑近 4 年(安慰劑只跑 16 年)
+          case "$K" in
+            BASE) CC= ; W4=1 ;;
+            INS) CC=real; W4=1 ;;
+            S1) CC=1; W4=0 ;;
+            S2) CC=2; W4=0 ;;
+            S3) CC=3; W4=0 ;;
+            *) echo "::error::不認得的組 $K"; exit 1 ;;
+          esac
+          { echo "CC=$CC"; echo "W4=$W4"; } >> "$GITHUB_ENV"
+          echo "🎯 $K:事件 ${CC:-不擋}・近 4 年 $W4"
+
+      - uses: actions/checkout@v4
+        if: steps.sel.outputs.run == '1'
+
+      - name: 🌐 playwright(list_trig 跑 App 自己的偵測器)
+        if: steps.sel.outputs.run == '1'
+        run: |
+          npm i -D playwright@1.49.1
+          npx playwright install --with-deps chromium
+
+      - name: 📦 研究資料包 d16(版本釘住)
+        if: steps.sel.outputs.run == '1'
+        env:
+          DATA_REF: ${{ needs.pin.outputs.data }}
+          KD_REF: ${{ needs.pin.outputs.kd }}
+          SD_REF: ${{ needs.pin.outputs.sd }}
+        run: |
+          set -o pipefail
+          node scripts/research_pack.mjs /tmp/rp 2>&1 | tail -8
+
+      - name: 🧾 申報轉讓事件清單(BASE 不用)
+        if: steps.sel.outputs.run == '1' && env.CC != ''
+        env:
+          INS_REF: ${{ needs.pin.outputs.ins }}
+        run: |
+          set -eo pipefail
+          git fetch -q origin "$INS_REF"
+          mkdir -p /tmp/ins /tmp/none
+          git archive "$INS_REF" insider_deep | tar -x -C /tmp/ins
+          echo "📦 insider_deep $(echo "$INS_REF" | cut -c1-10):$(ls /tmp/ins/insider_deep/*.json.gz | wc -l) 個月"
+          INSIDER_DIR=/tmp/ins/insider_deep DATA_DIR=/tmp/rp/d16 SHARE_DIR=/tmp/none EVENTS_OUT=/tmp/ev.json EV_M=mkt EV_T=0 EV_R=all python3 scripts/insider_event_probe.py | tail -4
+          if [ "$CC" = real ]; then cp /tmp/ev.json /tmp/ccwin.json
+          else python3 scripts/ccwin_build.py /tmp/ev.json /tmp/ccwin.json --shuffle "$CC"; fi
+          [ -s /tmp/ccwin.json ] || { echo "::error::$K 事件清單是空的"; exit 1; }
+          echo "CCF=/tmp/ccwin.json" >> "$GITHUB_ENV"
+
+      - name: 💼 交易快取 → 名單 → 判觸發 → 17 條起點
+        if: steps.sel.outputs.run == '1'
+        env:
+          DATA_DIR: /tmp/rp/d16
+          DIV_TRADES: /tmp/rp/d16/_div16.json
+          DIV: /tmp/rp/d16/_div0050.json
+          BENCH0050: /tmp/rp/d16/_bench0050.json
+          LOT: '150000'
+          STOPFILL: close
+          EXIT: chand2
+          MAXD: '20'
+          RANK_MIN: '85'
+          VOLAT_MIN: '60'
+        run: |
+          set -o pipefail
+          fail () { echo "::error::$K $1"; exit 1; }
+          T0=$(date +%s); tsec () { echo "$(( $(date +%s) - T0 ))s"; }
+          echo "🖥️ $(nproc) 核心・記憶體 $(free -m | awk '/Mem:/{print $2}') MB"
+          if [ -n "$CC" ] && [ ! -s "$CCF" ]; then fail "要擋事件但沒有事件清單"; fi
+          # ① 交易快取:4 片平行(⛔ 帶 CCWIN —— 快取是全部觸發,濾網只在名單 ② 與回測 ④)
+          pids=""
+          for k in 0 1 2 3; do
+            SELF=high+hivolat ALLFIRE=1 WARMUP=251 SHARD=$k/4 TRADES_CACHE=/tmp/tc.s$k.ndjson node --max-old-space-size=3500 scripts/portfolio_backtest.mjs 9999 2 > /tmp/tc.s$k.log 2>&1 &
+            pids="$pids $!"
+          done
+          rc=0; for p in $pids; do wait $p || rc=1; done
+          for k in 0 1 2 3; do echo "── 片 $k"; tail -c 400 /tmp/tc.s$k.log; echo; done
+          [ "$rc" -eq 0 ] || fail "交易快取有一片失敗"
+          node --max-old-space-size=6000 scripts/merge_trades_cache.mjs /tmp/tc.ndjson /tmp/tc.s0.ndjson /tmp/tc.s1.ndjson /tmp/tc.s2.ndjson /tmp/tc.s3.ndjson | tail -3 || fail "交易快取合併失敗"
+          rm -f /tmp/tc.s0.ndjson /tmp/tc.s1.ndjson /tmp/tc.s2.ndjson /tmp/tc.s3.ndjson
+          echo "🧱 交易快取 $(du -h /tmp/tc.ndjson | cut -f1)・$(tsec)"
+          export TRADES_CACHE=/tmp/tc.ndjson ALLFIRE=1 GATE=lb CLIFF=20 STATS_WIN=1200 MIN_MKT_N=0 MIN_N=8 LB_Z=0 LB_TOP=99 LISTK=2 FILTER=
+          if [ -n "$CC" ]; then export CCWIN="$CCF" CCWIN_PRE=0 CCWIN_POST=19; fi
+          # ② 每一晚的名單(前 60 筆、單一起點、空頭照買;有 CCWIN = 被擋的拿掉、下一檔遞補)
+          SELF=high+hivolat+nobear PARK= LIST_DUMP=/tmp/dump.ndjson LIST_DUMP_N=60 WARMUP=251 node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -6
+          [ -s /tmp/dump.ndjson ] || fail "名單沒產出"
+          echo "🧾 名單 $(wc -l < /tmp/dump.ndjson) 晚・$(tsec)"
+          # ③ 判明天會不會觸發(App 自己的偵測器,4 片;TOPN 一定要 60)
+          pids=""
+          for k in 0 1 2 3; do
+            HTML_DIR=. TOPN=60 SHARD=$k/4 node scripts/list_trig.mjs /tmp/dump.ndjson /tmp/trig.s$k.ndjson > /tmp/trig.s$k.log 2>&1 &
+            pids="$pids $!"
+          done
+          rc=0; for p in $pids; do wait $p || rc=1; done
+          for k in 0 1 2 3; do tail -c 300 /tmp/trig.s$k.log; echo; done
+          [ "$rc" -eq 0 ] || fail "判觸發有一片失敗"
+          cat /tmp/trig.s0.ndjson /tmp/trig.s1.ndjson /tmp/trig.s2.ndjson /tmp/trig.s3.ndjson > /tmp/trig.ndjson
+          echo "🎯 判了 $(wc -l < /tmp/trig.ndjson) 筆・$(tsec)"
+          # ④ 17 條起點(🅿️ 閒錢停 0050 = App 預設);BASE / INS 再加近 4 年 17 條
+          mkdir -p /tmp/eq /tmp/out/$K/eq16 /tmp/out/$K/eq4 /tmp/out/$K/taken16
+          W=$(node -e "const a=Array.from({length:17},(_,k)=>251+3*k);if(process.env.W4==='1')for(let k=0;k<17;k++)a.push(3125+3*k);console.log(a.join(','))")
+          SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson PARK=idle WARMUPS="$W" EQUITY_OUT='/tmp/eq/eq_{W}.json' SUMMARY_OUT='/tmp/eq/sum_{W}.json' TAKEN_OUT='/tmp/eq/taken_{W}.json' \
+            node --max-old-space-size=7000 scripts/portfolio_backtest.mjs 9999 2 | tail -24
+          for w in $(echo "$W" | tr ',' ' '); do
+            if [ "$w" -lt 3000 ]; then d=16; else d=4; fi
+            if [ ! -s "/tmp/eq/eq_$w.json" ]; then fail "起點 $w 沒有逐日淨值"; fi
+            mv "/tmp/eq/eq_$w.json" "/tmp/out/$K/eq$d/"
+            if [ -s "/tmp/eq/sum_$w.json" ]; then mv "/tmp/eq/sum_$w.json" "/tmp/out/$K/eq$d/"; fi
+            if [ "$d" = 16 ] && [ -s "/tmp/eq/taken_$w.json" ]; then mv "/tmp/eq/taken_$w.json" "/tmp/out/$K/taken16/"; fi
+          done
+          node scripts/ccwin_overlay_probe.mjs eq "/tmp/out/$K/eq16" "/tmp/out/$K/${K}16.json" || fail "16 年 17 條沒齊"
+          if [ "$W4" = 1 ]; then node scripts/ccwin_overlay_probe.mjs eq "/tmp/out/$K/eq4" "/tmp/out/$K/${K}4.json" || fail "近 4 年 17 條沒齊"; fi
+          echo "💼 完成・$(tsec)"
+
+      - name: ⬆️ 上傳這一組
+        if: steps.sel.outputs.run == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccwin-${{ env.K }}
+          path: /tmp/out/
+          retention-days: 14
+          if-no-files-found: error
+
+  analyze:
+    name: 🧮 照登記的規則判定
+    needs: combo
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ccwin-*
+          merge-multiple: true
+          path: /tmp/all
+      - name: 🧮 verdict
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/v
+          # 組名對到判定要的鍵:INS → FILT;安慰劑 S1 → S1_16
+          for f in /tmp/all/*/*.json; do
+            b=$(basename "$f" .json)
+            case "$b" in INS16) cp "$f" /tmp/v/FILT16.json;; INS4) cp "$f" /tmp/v/FILT4.json;; BASE16|BASE4) cp "$f" /tmp/v/;; S?16) cp "$f" "/tmp/v/${b%16}_16.json";; esac
+          done
+          ls /tmp/v
+          node scripts/ccwin_overlay_probe.mjs verdict /tmp/v /tmp/v/verdict.json | tee /tmp/v/verdict.txt
+          if [ -d /tmp/all/BASE/taken16 ] && [ -d /tmp/all/INS/taken16 ]; then node scripts/ccwin_overlay_probe.mjs tail /tmp/all/BASE/taken16 /tmp/all/INS/taken16 | tee /tmp/v/tail.txt; fi
+          { echo '### 🧾 申報轉讓疊到 🔥(EXP-20261113-03)'; echo; echo '```'; cat /tmp/v/verdict.txt; [ -f /tmp/v/tail.txt ] && tail -1 /tmp/v/tail.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hot-ccwin-result
+          path: |
+            /tmp/v/
+          retention-days: 30

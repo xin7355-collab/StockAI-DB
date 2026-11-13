@@ -108,6 +108,7 @@ def remote_has(rem, br, path):
 CASES = [
     ('trump_posts.yml', 'trump', ['trump_posts.json'], 'data/trump_posts.json'),
     ('news_premarket.yml', 'news', ['radar_news.json', 'global_news.json'], 'data/radar_news.json'),
+    ('mops_daily.yml', 'mopsd', ['mops_recent.json', 'insider_recent.json'], 'data/mops_recent.json'),
 ]
 OLD = ('git fetch origin "$BR" 2>/dev/null || true\n',
        'git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }\n')

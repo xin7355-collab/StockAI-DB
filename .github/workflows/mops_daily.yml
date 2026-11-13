@@ -1,0 +1,143 @@
+name: 📢 每天的重大訊息 + 申報轉讓 (mops_daily)
+
+# 📢 V82.2.9(使用者 11/13 選「兩份都收」):公開資訊觀測站「重大訊息」+「股權轉讓事前申報」每天那一份
+#   ① scripts/mops_daily.py 抓「今天 + 前一個平日」× 上市 / 上櫃(解析 / 分類一律 import backfill 與研究那幾支,⛔ 第二份)
+#   ② data/mops_recent.json + data/insider_recent.json(最近 14 天)→ gh-pages + data 兩邊都推(陷阱 #41:只在 gh-pages 的檔
+#      下一輪 daily_miner 的 orphan 部署會讓它消失)
+#   ③ 今天以前那幾天併進研究分支 mops_deep / insider_deep(用 backfill 的月檔存法;推不上去 → 重抓分支再併,⛔ rebase 二進位檔)
+# ⏰ 什麼時候跑:⛔ 不吃排程配額(V75.2.0)—— 跟在每日採礦後面(那支由 Cloudflare worker 台北 17:00 叫醒,實測跑得到);
+#   只跟「每天那一輪」(排程 / worker 叫醒 / 手動),⛔ push 那輪、被取消 / 整個 skipped 的那輪不跟。
+#   一輪約 14 次請求(每次間隔 1.2 秒以上;被擋第 3 次就收工)。⛔ 不加自己的 cron(會跟採礦那輪重複打 MOPS)。
+# ⛔ 只描述:App 只把這兩份當「事實」列出來(週報的本週重點、觸發專欄),⛔ 不產生買賣訊號。
+
+on:
+  workflow_run:
+    workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      back:
+        description: '抓幾個平日(含今天;預設 2,漏了好幾天才調大,最多 10)'
+        required: false
+        default: '2'
+
+permissions:
+  contents: write
+
+concurrency:
+  # ⛔ 不進共用 gh-pages-push(V73.7.9:會把排隊中的明日清單擠掉);推送靠下面的 5 次重試
+  group: mops-daily
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    name: 📢 重大訊息 + 申報轉讓 → mops_recent / insider_recent
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion != 'cancelled' && github.event.workflow_run.conclusion != 'skipped' &&
+       contains(fromJSON('["schedule","repository_dispatch","workflow_dispatch"]'), github.event.workflow_run.event))
+    timeout-minutes: 20
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests --quiet
+
+      - name: 📚 拿上一份(data 分支)
+        run: |
+          mkdir -p data
+          git fetch --depth=1 origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null || true
+          for f in mops_recent.json insider_recent.json; do
+            # ⚠️ 先寫到暫存檔、有內容才搬過去(⛔ `>` 失敗會留下 0 bytes,陷阱 #18/#20)
+            if git show "origin/data:data/$f" > "/tmp/prev_$f" 2>/dev/null && [ -s "/tmp/prev_$f" ]; then
+              mv "/tmp/prev_$f" "data/$f"; echo "上一份 $f:$(wc -c < "data/$f") bytes"
+            else
+              rm -f "/tmp/prev_$f"; echo "上一份 $f:沒有(第一次跑)"
+            fi
+          done
+
+      - name: 📢 抓重大訊息 + 申報轉讓
+        id: run
+        env:
+          MD_BACK: ${{ github.event.inputs.back }}
+          MD_OUT: data
+        run: |
+          python3 scripts/mops_daily.py --selftest
+          python3 scripts/mops_daily.py
+          # 切分支之前把要推的東西與程式搬到 /tmp(研究分支上沒有 scripts/)
+          mkdir -p /tmp/mopsd/code
+          for f in mops_recent.json insider_recent.json mops_daily_patch.json; do
+            if [ -s "data/$f" ]; then cp "data/$f" "/tmp/mopsd/$f"; fi
+          done
+          cp -a scripts /tmp/mopsd/code/scripts && cp lib_jsonsafe.py /tmp/mopsd/code/
+
+      - name: 🚀 部署到 gh-pages + data
+        if: steps.run.outputs.push == '1'
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+            # ⛔ 不可寫成 git checkout -f "$BR":gh-pages 的工作區有 data/ 資料夾 → 「data」會被當成檔名(陷阱 #64)
+            git fetch --depth=1 origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || { echo "::warning::抓不到 $BR 分支,跳過"; return 0; }
+            git checkout -f -B "$BR" "origin/$BR" || { echo "::warning::切不到 $BR 分支,跳過"; return 0; }
+            mkdir -p data
+            for f in mops_recent.json insider_recent.json; do
+              if [ -s "/tmp/mopsd/$f" ]; then cp "/tmp/mopsd/$f" "data/$f"; git add -f "data/$f"; fi
+            done
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "📢 重大訊息 + 申報轉讓 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            # ⛔ 這個 retry 迴圈不可拿掉(沒有共用部署鎖,撞到別支就靠它)
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功"; return 0; fi
+              if [ "$i" -eq 5 ]; then echo "❌ $BR push 連 5 次失敗"; return 1; fi
+              sleep $((i*5)); git fetch --depth=1 origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || true; git reset --hard -q "origin/$BR" 2>/dev/null || true
+              for f in mops_recent.json insider_recent.json; do
+                if [ -s "/tmp/mopsd/$f" ]; then cp "/tmp/mopsd/$f" "data/$f"; git add -f "data/$f"; fi
+              done
+              git commit -q -m "📢 重大訊息 + 申報轉讓 $(date -u '+%Y-%m-%d %H:%M UTC')" 2>/dev/null || true
+            done
+          }
+          deploy_branch gh-pages
+          deploy_branch data
+
+      - name: 📚 併進研究分支(mops_deep / insider_deep)
+        if: steps.run.outputs.deep == '1'
+        run: |
+          set -e
+          [ -s /tmp/mopsd/mops_daily_patch.json ] || { echo "沒有 patch → 不推"; exit 0; }
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          push_deep () {
+            local BR="$1" KIND="$2"
+            for i in 1 2 3 4 5; do
+              git reset --hard -q 2>/dev/null || true
+              git clean -fdq 2>/dev/null || true
+              git fetch --depth=1 origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || { echo "::warning::抓不到 $BR 分支,跳過(研究分支要先由 backfill 建好)"; return 0; }
+              git checkout -f -B "$BR" "origin/$BR" || { echo "::warning::切不到 $BR 分支,跳過"; return 0; }
+              old=$(find "$BR" -name '*.json.gz' | wc -l)
+              # ⭐ 每一次都在剛抓下來的分支上重新併(⛔ 對二進位月檔 git pull --rebase)
+              MD_DEEP_MOPS="$BR" MD_DEEP_INS="$BR" python3 /tmp/mopsd/code/scripts/mops_daily.py --apply-deep /tmp/mopsd/mops_daily_patch.json --only "$KIND"
+              new=$(find "$BR" -name '*.json.gz' | wc -l)
+              # 🚧 只增不減:月份變少 → 有東西不對,⛔ 推
+              if [ "$new" -lt "$old" ]; then echo "::error::$BR 月份變少($old → $new)→ 不推"; return 1; fi
+              git add -f "$BR"
+              if git diff --cached --quiet; then echo "ℹ️ $BR 沒有新東西"; return 0; fi
+              git commit -q -m "📢 每天的 $KIND $(date -u '+%Y-%m-%d %H:%M UTC')"
+              if git push origin "$BR"; then echo "✅ $BR push 成功(第 $i 次)"; return 0; fi
+              sleep $((i*5))
+            done
+            echo "::error::$BR 連 5 次推不上去"; return 1
+          }
+          push_deep mops_deep mops
+          push_deep insider_deep insider

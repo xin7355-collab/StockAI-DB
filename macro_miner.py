@@ -2729,6 +2729,14 @@ def fetch_usdtwd():
     return _fetch_fx("TWD=X", "USD/TWD")
 
 
+def fetch_copper():
+    """🟠 V82.2.9 銅價(COMEX 銅期貨 HG=F,美元 / 磅)→ (價, 1 日%, 5 日%, err)。
+    週報「AI 伺服器材料鏈」那一段只描述(CCL / 銅箔的原料;⛔ 拿它算分數、⛔ 給方向)。
+    走 _fetch_fx 同一套(1 個月日線 → 最後一根 vs 前一根 / 前 5 根);⚠️ 期貨日線最後一根在美股盤中 = 這一盤到現在(陷阱 #13),
+    只拿來講「這週漲跌」,⛔ 當作今天的結算價。"""
+    return _fetch_fx("HG=F", "銅價 HG=F")
+
+
 def fetch_fear_greed():
     """CNN 恐懼與貪婪指數（0-100，需瀏覽器 UA 否則 418）"""
     try:
@@ -3424,6 +3432,7 @@ def main():
         "usdtwd_chg_5d":  None,   # 💱 V57.8 台幣 5 日變化%(正=連貶=外資提款風向)
         "krw": None, "krw_chg_pct": None, "krw_chg_5d": None, "krw_error": None,   # 💱 V57.9 韓元(亞幣競貶)
         "cny": None, "cny_chg_pct": None, "cny_chg_5d": None, "cny_error": None,   # 💱 V57.9 人民幣(中國資金外逃)
+        "copper": None, "copper_chg_pct": None, "copper_chg_5d": None, "copper_error": None,   # 🟠 V82.2.9 銅價(週報材料鏈,只描述)
         "fear_greed":       None,
         "fear_greed_label": None,
         "fear_greed_error": None,
@@ -3520,6 +3529,12 @@ def main():
         if _apply_fx(out, _key, _fx, _fx1, _fx5, _fxerr, _YF_LAST_DATE.get(_tk), _prev_json):
             print(f"     ⏭️ {_nm} 抓到 {_YF_LAST_DATE.get(_tk)} 的舊資料(已存 {_prev_json.get(f'{_key}_date')})→ 保留上一份,不倒退")
         print(f"     → {_nm}: {out[_key]}（1日 {out[f'{_key}_chg_pct']}% / 5日 {out[f'{_key}_chg_5d']}%, {out.get(f'{_key}_date')}, err={out[f'{_key}_error']}）")
+
+    # 🟠 V82.2.9 銅價(週報「AI 伺服器材料鏈」那一段;只描述)—— 同一套「日期不可倒退」守門
+    cu, cu1, cu5, cuerr = fetch_copper()
+    if _apply_fx(out, "copper", cu, cu1, cu5, cuerr, _YF_LAST_DATE.get("HG=F"), _prev_json):
+        print(f"     ⏭️ 銅價抓到 {_YF_LAST_DATE.get('HG=F')} 的舊資料(已存 {_prev_json.get('copper_date')})→ 保留上一份,不倒退")
+    print(f"     → 銅價 {out['copper']} 美元/磅(1日 {out['copper_chg_pct']}% / 5日 {out['copper_chg_5d']}%, {out.get('copper_date')}, err={out['copper_error']})")
 
     print("[6/8] 抓取 CNN 恐懼與貪婪指數…")
     fg, fglabel, fgerr = fetch_fear_greed()
@@ -3744,6 +3759,7 @@ def main():
                         "usdtwd", "usdtwd_chg_pct", "usdtwd_chg_5d",
                         "krw", "krw_chg_pct", "krw_chg_5d", "cny", "cny_chg_pct", "cny_chg_5d",
                         "usdtwd_date", "krw_date", "cny_date",   # 💱 V79.5.2 匯率日期(下一輪守門要比)
+                        "copper", "copper_chg_pct", "copper_chg_5d", "copper_date",   # 🟠 V82.2.9 銅價(抓不到那輪沿用上一份)
                         "fear_greed", "fear_greed_label",
                         "retail_ls_pct", "taifex_backwardation",
                         # 🌍 全球巨頭脈動 10 指標斷崖防護(V21 加 SP500/NASDAQ)

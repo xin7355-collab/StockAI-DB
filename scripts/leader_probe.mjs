@@ -1802,6 +1802,7 @@ function main() {
     // 🚧 V78.0.5 空過守門:要事件 / 產業 / 財報 / 法人的變體,沒給資料 → ⛔ 不跑(否則會安靜地變成「什麼都沒做」= 跟基準一樣)
     const need = (k, has, what) => { if (SETS.some(([, c]) => c[k]) && !has) { console.error(`🚨 有變體用到 ${k} 但沒給 ${what},拒跑`); process.exit(1); } };
     need('dispNow', ctx.dper, 'DISP_PERIODS'); need('dispOracle', ctx.dper, 'DISP_PERIODS'); need('attSell', ctx.att, 'ATT_EVENTS');
+    need('noAtt', ctx.att, 'ATT_EVENTS'); need('noDisp', ctx.disp, 'DISP_EVENTS');   // 🧾 V82.2.9 以前 noAtt / noDisp 沒給事件檔會安靜地等於沒設
     need('indCap', ctx.ind, 'IND_MAP'); need('finAcc', ctx.fin, 'FIN_DEEP'); need('accAvoid', ctx.accHi, 'FIN_DEEP + IND_MAP'); need('fsync', ctx.meta.flows, 'FLOWS=1');
     if (SETS.some(([, c]) => c.bearIdx && c.bearIdx !== 'twii') && !ctx.bearOtc) { console.error('🚨 有變體用到 bearIdx 但 DATA_DIR 沒有 ^TWOII.json(≥60 根),拒跑'); process.exit(1); }
     if (SETS.some(([, c]) => c.pick === 'rel') && !ctx.ind) { console.error('🚨 有變體用到 pick:rel 但沒給 IND_MAP,拒跑'); process.exit(1); }

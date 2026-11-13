@@ -190,6 +190,17 @@ const T = await page.evaluate(() => {
       // 「今天」從 ctx 來:同一份清單、今天改成 10/12 → 10/22 是 8 個交易日後 → 不亮
       R.ccToday = ids(run({ ...H, today: { tdy: '2026-10-12', wk: 1, weekday: true }, cc: { upcoming: [{ s: '2330', d: '2026-10-22' }], recent: [] } }));
       app._confcallCache = ccS; app._macroRiskCache = mr; app._upcomingMacroEvents = ue; app._tradingDaysUntil = tdu; }
+    // 📢 V82.2.9 mops_avoid:庫存 / 正在看的這一檔,最近 5 個交易日公告「減資彌補虧損 / 庫藏股買完」(類別是採礦端算好的)
+    { const H = { held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]) };
+      const isoD = r => String(r.date).replace(/\//g, '-').slice(0, 10), d5 = isoD(tw[tw.length - 5]), d6 = isoD(tw[tw.length - 6]);   // 邊界:第 5 個交易日算、第 6 個不算
+      const M = rows => ({ cols: ['s', 'n', 'd', 't', 'sub', 'mk', 'cat'], avoid: { cap_red_loss: '減資彌補虧損', buyback_end: '庫藏股買完 / 期滿 / 註銷' }, rows });
+      R.mops = ids(run({ ...H, mops: M([['2330', '台積電', d5, '15:00:00', '公告本公司董事會決議減資彌補虧損', 'sii', 'cap_red_loss']]) }));
+      R.mopsWhy = run({ ...H, mops: M([['2330', '台積電', d5, '15:00:00', '公告本公司董事會決議減資彌補虧損', 'sii', 'cap_red_loss']]) }).filter(h => h.id === 'mops_avoid').map(h => h.why); R.mopsD5 = app._dW(d5);
+      R.mopsOld = ids(run({ ...H, mops: M([['2330', '台積電', d6, '15:00:00', '公告本公司董事會決議減資彌補虧損', 'sii', 'cap_red_loss']]) }));
+      R.mopsOther = ids(run({ ...H, mops: M([['2330', '台積電', d5, '15:00:00', '公告本公司董事會通過合併財務報告', 'sii', 'finrep']]) }));
+      R.mopsFav = ids(run({ bars: new Map([['2454', kFlat]]), fav: ['2454'], mops: M([['2454', '聯發科', d5, '15:00:00', '公告庫藏股買回期滿', 'sii', 'buyback_end']]) }));
+      R.mopsNoCtx = ids(run(H));
+      R.mopsEtf = ids(run({ held: new Map([['0050', { cost: 0 }]]), bars: new Map([['0050', kFlat]]), mops: M([['0050', '元大台灣50', d5, '15:00:00', '公告減資彌補虧損', 'sii', 'cap_red_loss']]) })); }
     // 大盤:先漲後急跌 → 剛轉空頭;一路跌 → 早就是空頭(⛔ 不算剛轉)
     const up = mkK(120, '2026-10-16'); up.forEach((r, i) => { const c = i < 110 ? 100 + i : 210 - (i - 109) * 12; Object.assign(r, { open: c, high: c, low: c, close: c }); });
     const dn = mkK(120, '2026-10-16'); dn.forEach((r, i) => { const c = 300 - i; Object.assign(r, { open: c, high: c, low: c, close: c }); });
@@ -301,6 +312,10 @@ ok('③f 除息 4 天後 → exdiv;15 天後 → 沒有', has(T.div, 'exdiv') &&
 ok('③f2 📞 法說會 3 個交易日後 → cc_soon;一個月後 / 別檔的 → 沒有;延期的照新日期(寫「延期後」);自選的也提醒(scope fav);ctx 沒給一覽表 → 不判(⛔ 讀全域);「今天」照 ctx',
     has(T.cc, 'cc_soon') && !has(T.ccFar, 'cc_soon') && !has(T.ccOther, 'cc_soon') && T.ccMv.length === 1 && /延期/.test(T.ccMv[0]) && JSON.stringify(T.ccFav) === '["fav"]' && !has(T.ccNoCtx, 'cc_soon') && !has(T.ccToday, 'cc_soon'),
     JSON.stringify([T.cc, T.ccFar, T.ccOther, T.ccMv, T.ccFav, T.ccNoCtx, T.ccToday]));
+ok('③f3 📢 mops_avoid:庫存最近 5 個交易日公告減資彌補虧損 → 亮(寫日期 + 主旨 + 類別);第 6 個交易日以前 / 別的類別 / 只在自選 / ctx 沒給 / ETF → 不亮',
+    has(T.mops, 'mops_avoid') && /減資彌補虧損/.test(String(T.mopsWhy[0] || '')) && String(T.mopsWhy[0] || '').includes(T.mopsD5) && !has(T.mopsOld, 'mops_avoid') && !has(T.mopsOther, 'mops_avoid')
+    && !has(T.mopsFav, 'mops_avoid') && !has(T.mopsNoCtx, 'mops_avoid') && !has(T.mopsEtf, 'mops_avoid'),
+    JSON.stringify([T.mops, T.mopsWhy, T.mopsOld, T.mopsOther, T.mopsFav, T.mopsNoCtx, T.mopsEtf]));
 ok('③g 大盤剛轉空頭 → bear_on;一直是空頭 → 沒有', has(T.bearFlip, 'bear_on') && !has(T.bearLong, 'bear_on'), JSON.stringify([T.bearFlip, T.bearLong]));
 ok('③h 第三個星期三 → settle;第二個 → 沒有', has(T.settle, 'settle') && !has(T.settleNo, 'settle'), JSON.stringify([T.settle, T.settleNo]));
 ok('③i 休市前最後一個交易日 → holiday_pre;前兩天 → 沒有', has(T.pre, 'holiday_pre') && !has(T.preNo, 'holiday_pre'), JSON.stringify([T.pre, T.preNo]));

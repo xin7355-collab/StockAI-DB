@@ -316,4 +316,19 @@ assert '_apply_big_player(out, key, key_alias' in _main and '_apply_fx(out, "usd
 assert '"usdtwd_date", "krw_date", "cny_date"' in _msrc, '㉗ 匯率日期要進斷崖防護清單(下一輪守門要比)'
 print('✅ ㉗ main 接線:上一份在匯率之前讀好、全球指標與三個匯率都走守門、匯率日期進斷崖防護')
 
-print('\n🎉 V79.5.2 上一份讀已發佈的 + 匯率日期守門 全過(合計 27 項)')
+# ㉘ 🟠 V82.2.9 銅價(HG=F)走同一套:_fetch_fx 讀 5 日變化、_apply_fx 日期不可倒退、抓不到那輪沿用上一份
+_csrc = inspect.getsource(mm.fetch_copper)
+assert '_fetch_fx("HG=F"' in _csrc, '㉘ 銅價要走 _fetch_fx(同一套 1 日 / 5 日變化 + 記日期)'
+_i_cu = _main.find('fetch_copper()')
+assert 0 <= _i_load < _i_cu and '_apply_fx(out, "copper"' in _main, ('㉘ 銅價要在上一份讀好之後、走 _apply_fx 守門', _i_load, _i_cu)
+assert '"copper", "copper_chg_pct", "copper_chg_5d", "copper_date"' in _msrc, '㉘ 銅價要進斷崖防護清單'
+_PUBC = {'copper': 4.81, 'copper_chg_pct': 0.5, 'copper_chg_5d': 2.1, 'copper_date': '2026-11-12'}
+_out = {}
+assert mm._apply_fx(_out, 'copper', 4.70, -0.2, 1.0, None, '2026-11-11', dict(_PUBC)) is True \
+    and _out['copper'] == 4.81 and _out['copper_chg_5d'] == 2.1 and _out['copper_date'] == '2026-11-12', _out
+_out = {}
+assert mm._apply_fx(_out, 'copper', 4.90, 1.9, 3.0, None, '2026-11-13', dict(_PUBC)) is False \
+    and _out['copper'] == 4.90 and _out['copper_chg_5d'] == 3.0 and _out['copper_date'] == '2026-11-13', _out
+print('✅ ㉘ 銅價:走 _fetch_fx + _apply_fx(比上一份舊 → 保留;較新 → 寫入並記日期)、進斷崖防護')
+
+print('\n🎉 V79.5.2 上一份讀已發佈的 + 匯率日期守門 + V82.2.9 銅價 全過(合計 28 項)')
