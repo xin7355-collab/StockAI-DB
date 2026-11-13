@@ -6,6 +6,7 @@
  *   node scripts/embed_profit_board.mjs --gene gene.json   ← 只換 🧬 那幾列(V78.1.0,gene_board.mjs 產物)
  *   … board.json board2.json small.json --keep-gene  ← V79.4.6 👑 換新、🧬 那幾列沿用舊的並標 `old`(畫面寫「舊資料」;0050 起點對不上就 exit 1)
  *   node scripts/embed_profit_board.mjs --gene gene.json --keep-don  ← V79.4.8 🔥 / 🅿️ 換新、🐢(已換掉的那套)沿用舊的並標 `old`
+ *   node scripts/embed_profit_board.mjs --stats-gene <bst 資料夾>   ← 🟥 接在 --gene 後面:只補 🔥 / 🅿️ 的每筆三個數(👑 照舊)+ 記 `geneNolock`
  *     board.json  = ETFS=… 那一輪(`etf[窗口]` 每檔 17 個起點的含息中位 / 最差)
  *     board2.json = CAPITAL=1000000 的四種領頭羊做法(`cap.fin / worstFin`)
  *     small.json  = 10萬/30萬/100萬 × 每月加碼 × 三種打法(`cap`)
@@ -46,6 +47,8 @@ if (geneArg && !bf) {
     W.rows = W.rows.filter(r => r.grp !== 'gene').concat(geneRows(G, wk, W.from, e50.fin, die0), oldDon);
   }
   cur.geneSrc = G.src;
+  // 🟥 新換上的 🔥 / 🅿️ 列還沒對過 SUMMARY 的設定 → 舊的「收盤鎖漲停不算」標記先拿掉(⛔ 留著 = 新數字掛舊口徑);接著跑 --stats / --stats-gene 會重記
+  delete cur.geneNolock;
   const ln = '  _PROFIT_BOARD: ' + JSON.stringify(cur) + ',';
   fs.writeFileSync(P0, h0.replace(RE_LINE, () => ln));
   const back = JSON.parse(fs.readFileSync(P0, 'utf8').match(RE_LINE)[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
@@ -58,22 +61,29 @@ if (geneArg && !bf) {
 //   👑 那幾列 = leader_probe 同一份產物的 trades / win / avg(17 條起點的中間值);交叉驗證 cap.fin == 看板 fin(差 ≤ 1,000 元)
 //   🔥 / 🅿️ = portfolio_backtest 同看板設定 17 條的 TAKEN_OUT,只算看板截止日(B.to)以前賣掉的那幾筆,取 17 條的中間值;
 //       交叉驗證:不截日時每一條的筆數 / 勝率 / 每筆平均 == 它自己的 SUMMARY_OUT(⛔ 自己另算一份對不上就 exit 1)
-const statsArg = process.argv.includes('--stats');
+//   🟥 只換 🔥 / 🅿️(👑 列照舊,⛔ 不用重跑 leader_probe):node scripts/embed_profit_board.mjs --stats-gene <bst 資料夾>
+//       同一套算法、同一道對帳;👑 那幾列一定要本來就有三個數(⛔ 不可留空)。
+//   🟥 兩種模式都把 🔥 / 🅿️ 那幾條 SUMMARY 的 cfg.nolock(訊號那天收盤鎖漲停 = 當成買不到)記成看板的 `geneNolock`
+//       → 畫面上「怎麼算的」那句照它寫(⛔ 寫死);同一張看板有的開、有的沒開 → exit 1(⛔ 兩把尺)
+const statsGene = process.argv.includes('--stats-gene');
+const statsArg = process.argv.includes('--stats') || statsGene;
 if (statsArg) {
-  const [lf, cf, bdir] = process.argv.slice(process.argv.indexOf('--stats') + 1);
+  const [lf, cf, bdir] = statsGene ? [null, null, process.argv[process.argv.indexOf('--stats-gene') + 1]] : process.argv.slice(process.argv.indexOf('--stats') + 1);
   const die = m => { console.error('❌ ' + m); process.exit(1); };
-  if (!lf || !cf || !bdir) die('用法:--stats <board2.json> <leadcash.json> <bst 資料夾>');
+  if (!bdir || (!statsGene && (!lf || !cf))) die('用法:--stats <board2.json> <leadcash.json> <bst 資料夾> ・只換 🔥🅿️:--stats-gene <bst 資料夾>');
   const P0 = 'pro.html', h0 = fs.readFileSync(P0, 'utf8'), m0 = h0.match(RE_LINE); if (!m0) die('pro.html 沒有 _PROFIT_BOARD 那一行');
   const cur = JSON.parse(m0[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
   const med = a => { const b = a.slice().sort((x, y) => x - y); const k = b.length >> 1; return b.length % 2 ? b[k] : (b[k - 1] + b[k]) / 2; };
   const r1 = x => Math.round(x * 10) / 10, r2 = x => Math.round(x * 100) / 100;
-  const LS = [...JSON.parse(fs.readFileSync(lf, 'utf8')).sets, ...JSON.parse(fs.readFileSync(cf, 'utf8')).sets];
+  const LS = statsGene ? null : [...JSON.parse(fs.readFileSync(lf, 'utf8')).sets, ...JSON.parse(fs.readFileSync(cf, 'utf8')).sets];
   const COST = 0.44, net = t => t.ret + (t.dv || 0) - COST;
   const stat = T => ({ tN: T.length, tWin: T.length ? 100 * T.filter(t => net(t) > 0).length / T.length : null, tPer: T.length ? T.reduce((a, t) => a + net(t), 0) / T.length : null });
   let nL = 0, nG = 0;
+  const nlock = new Set();   // 🟥 🔥 / 🅿️ 每一條 SUMMARY 的 cfg.nolock(0 / 1)
   for (const [wk, W] of Object.entries(cur.wins)) {
     for (const r of W.rows) {
       if (r.grp === 'lead') {
+        if (!LS) { if (r.tN == null || r.tWin == null || r.tPer == null) die(`${wk} ${r.k}:👑 這一列本來就沒有每筆三個數 → 要用 --stats 跟 leader 產物一起跑(--stats-gene 不碰 👑)`); continue; }
         const s = LS.find(x => x.name === r.n && x.from === W.from); if (!s) die(`${wk} ${r.k} 在 leader 產物找不到(名稱 / 起點對不上)`);
         const fin = s.cap && typeof s.cap === 'object' ? s.cap.fin : s.cap; if (Math.abs(fin - r.fin) > 1000) die(`${wk} ${r.k} leader 產物 ${fin} ≠ 看板 ${r.fin}(不是同一份)`);
         Object.assign(r, { tN: Math.round(s.trades), tWin: r1(s.win), tPer: r2(s.avg) }); nL++;
@@ -85,18 +95,22 @@ if (statsArg) {
           const T = JSON.parse(fs.readFileSync(`${bdir}/tk/${f}`, 'utf8')), S = JSON.parse(fs.readFileSync(`${bdir}/sum/${f}`, 'utf8'));
           const all = stat(T);
           if (all.tN !== S.n || Math.abs(r1(all.tWin) - S.win) > 0.11 || Math.abs(r2(all.tPer) - S.per) > 0.011) die(`${wk} ${r.k} ${f}:自己算的 ${JSON.stringify(all)} ≠ SUMMARY ${JSON.stringify({ n: S.n, win: S.win, per: S.per })}`);
+          nlock.add(S.cfg && S.cfg.nolock ? 1 : 0);
           per.push(stat(T.filter(t => String(t.outD || '') <= cur.to)));
         }
         Object.assign(r, { tN: Math.round(med(per.map(x => x.tN))), tWin: r1(med(per.map(x => x.tWin))), tPer: r2(med(per.map(x => x.tPer))) }); nG++;
       }
     }
   }
+  if (statsGene && !nG) die('看板上沒有任何 🔥 / 🅿️ 列可以補(⛔ 空跑當成功)');
+  if (nlock.size > 1) die('🔥 / 🅿️ 的 SUMMARY 有的開 NOLOCK、有的沒開(⛔ 同一張看板兩把尺)→ 全部用同一組設定重跑');
+  if (nlock.has(1)) cur.geneNolock = 1; else delete cur.geneNolock;
   cur.statSrc = `👑 leader_probe trades/win/avg ・🔥🅿️ portfolio_backtest TAKEN_OUT(${cur.to} 以前賣掉的)・17 條中間值`;
   const ln = '  _PROFIT_BOARD: ' + JSON.stringify(cur) + ',';
   fs.writeFileSync(P0, h0.replace(RE_LINE, () => ln));
   const back = JSON.parse(fs.readFileSync(P0, 'utf8').match(RE_LINE)[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
   if (JSON.stringify(back) !== JSON.stringify(cur)) die('讀回來不一樣');
-  console.log(`✅ 每筆三個數已嵌入:👑 ${nL} 列・🔥🅿️ ${nG} 列`);
+  console.log(`✅ 每筆三個數已嵌入:👑 ${statsGene ? '照舊(--stats-gene)' : nL + ' 列'}・🔥🅿️ ${nG} 列${cur.geneNolock ? '・🟥 收盤鎖漲停那天不算(NOLOCK=1)' : ''}`);
   for (const [wk, W] of Object.entries(cur.wins)) console.log('  ' + wk + ' ' + W.rows.filter(r => r.tN != null).map(r => `${r.k} ${r.tWin}%/${r.tPer >= 0 ? '+' : ''}${r.tPer}%/${r.tN}筆`).join(' ・'));
   process.exit(0);
 }

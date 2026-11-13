@@ -44,6 +44,11 @@ name: 🔁 每週自動回測 (weekly_backtest)
 # 🧾 V79.5.1 成績單改成全市場 + 照 App「前一晚名單」買(使用者 10/22:放棄尾盤掃描、每週回測照樣改全市場、改用名單買法):
 #   以前抽 600 檔 + 舊買法(一筆接一筆、當天觸發的裡面挑最好)→ 跟 App 的金額對不起來(陷阱 #55 / #58)。
 #   第二趟「不挑 🧬」在名單買法下做不到 → 換成「💵 錢放現金」;build_backtest_edge.mjs 多兩道守門(名單有接上判觸發、判得夠深)。
+#
+# 🟥 2026-11-13 兩趟都加 NOLOCK=1(使用者核准:App 的 🔥 / 🅿️ 成績一律這樣量):
+#   訊號那天收盤停在漲停價 → 收盤競價掛漲停多半排不到 → 當成買不到(EXP-20261113-02 BASE 那組 🅿️ 1,107 筆裡 22.1% 是這種)。
+#   ⛔ 只加在兩趟買的那兩行(交易快取 / 名單 / 判觸發不受影響,⛔ 加到 step env);作戰室看板 `_PROFIT_BOARD.geneNolock` 也是同一個口徑。
+#   summary cfg 多 `nolock: 1` → build_backtest_edge.mjs 的 DECK_SIG 有 nolock → 第一次跑會「換設定、重新起算守門基準」(⛔ 不跟舊口徑比 80%,絕對下限照樣要過)。
 on:
   workflow_run:
     workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
@@ -209,9 +214,10 @@ jobs:
           echo "🎯 判了 $(wc -l < /tmp/trig.ndjson) 筆 ・$(tsec)"
 
           # 💼 ④ 兩趟:🅿️ 停 0050(= App 預設)/ 💵 錢放現金(⛔ 不挑 🧬 那趟在名單買法下做不到 → 拿掉)
-          SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson SUMMARY_OUT=/tmp/summary_gene.json node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -25
+          #    🟥 NOLOCK=1:訊號那天收盤鎖漲停 = 當成買不到(同作戰室看板的口徑;⛔ 拿掉 = 每週成績又把買不到的單算進去,test_backtest_edge ③i2)
+          NOLOCK=1 SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson SUMMARY_OUT=/tmp/summary_gene.json node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -25
           rc1=$?
-          SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson PARK= SUMMARY_OUT=/tmp/summary_cash.json node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -12
+          NOLOCK=1 SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson PARK= SUMMARY_OUT=/tmp/summary_cash.json node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -12
           echo "💼 兩趟 ・$(tsec)"
           [ "$rc1" -eq 0 ] && [ -s /tmp/summary_gene.json ] || fail "🅿️ 那趟沒有成績單(rc=$rc1)"
           echo "deck_rc=0" >> "$GITHUB_OUTPUT"

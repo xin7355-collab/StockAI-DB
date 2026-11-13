@@ -40,8 +40,10 @@ export function build(PB, YB) {
         return { k, bk, yid, y, e, to: s.yb[YRS[YRS.length - 1]].to, fin: b.fin, mdd: b.mdd, tWin: b.tWin, tPer: b.tPer, tN: b.tN };
     });
     const e0 = gL('0050');
+    // 🟥 看板 🔥 / 🅿️ 是不是「收盤鎖漲停當成買不到」量的(`geneNolock`)→ 照抄,散戶那一塊的說明照它寫(⛔ 自己判斷 / 寫死)
     return { from: L.from, to: PB.to, paths: PB.paths, years: YRS, cols: ['r', 'n', 'w', 'dd'],
         src: 'scripts/embed_strat_yearly.mjs ← pro _YEARLY_BT(每年 1 月重新放 100 萬)+ _PROFIT_BOARD(16 年一路滾)',
+        ...(PB.geneNolock ? { nolock: 1 } : {}),
         e50: { fin: e0.fin, mdd: e0.mdd }, rows };
 }
 
@@ -61,6 +63,7 @@ if (process.argv[2] === '--selftest') {
     t(/tWin/.test(threw), '④ 看板還沒有勝率 → 拒絕(⛔ 靜默寫空的)');
     threw = ''; try { const Y2 = JSON.parse(JSON.stringify(YB)); delete Y2.strats[1].y['2012']; build(PB, Y2); } catch (e) { threw = e.message; }
     t(/沒有值/.test(threw), '⑤ 少一年 → 拒絕');
+    t(!('nolock' in o) && build({ ...PB, geneNolock: 1 }, YB).nolock === 1, '⑥ 🟥 看板標了「收盤鎖漲停不算」才照抄(⛔ 沒標的看板也寫上去)');
     console.log(`${bad ? '❌' : '✅'} embed_strat_yearly selftest ${ok}/${ok + bad}`);
     process.exit(bad ? 1 : 0);
 }

@@ -107,6 +107,18 @@ ok('②i 絕對下限有合理數值(成績單 ≥100 筆 —— 🧾 V79.5.1 �
     ok('②l 🅿️ 跟嵌入版比用「股票 + 0050」合計:股票一半 + 0050 0.55 倍 → 不算差異;同一個股票數字沒有 0050 → 算差異(⛔ 拿只算股票的 cum 跟合計比)',
        !withPark.diff.some(d => d.k === 'deck.gene') && noPark.diff.some(d => d.k === 'deck.gene'), JSON.stringify([withPark.diff.filter(d => d.k === 'deck.gene'), noPark.diff.filter(d => d.k === 'deck.gene')]));
     ok('②k 💵 第二趟「錢放現金」寫進 deck.cash(⛔ 不再有 deck.plain)', rc.deck.cash && rc.deck.cash.cum === 1234567 && !('plain' in rc.deck), JSON.stringify(Object.keys(rc.deck)));
+    // 🟥 ②m 2026-11-13 兩趟加 NOLOCK=1(收盤鎖漲停當成買不到)→ 筆數一定變少:上一版沒開、這一版開 = 換設定 → 這一次重新起算(⛔ 跟舊口徑比 80%)
+    //   ⭐ 決定性對照:同一個筆數、兩版都開 → 照擋(80%);絕對下限照樣要過
+    const LK = { k: 2, days, trig: 1, loose: 1, unk: 0, inexact: 0 };
+    const pNo = { run_at: '2026-11-06', signal: { n: same.signal.n }, deck: { gene: { n: 1000, win: 30, cfg: CFG_LIST } } };
+    const pNl = { run_at: '2026-11-06', signal: { n: same.signal.n }, deck: { gene: { n: 1000, win: 30, cfg: { ...CFG_LIST, nolock: 1 } } } };
+    const gNl = { ...gene, n: 700, cfg: { ...CFG_LIST, nolock: 1 }, listk: LK };
+    const tryP = (g, p) => { try { return { r: build({ sig: mkSig(), gene: g, embedded: emb, prev: p }) }; } catch (e) { return { e }; } };
+    const m1 = tryP(gNl, pNo), m2 = tryP(gNl, pNl), m3 = tryP({ ...gNl, n: FLOOR.deckN - 1 }, pNo);
+    ok('②m 🟥 第一次開 NOLOCK(上一版沒開)→ 換設定、重新起算放行;兩版都開 → 照擋 80%;開了但低於絕對下限 → 照擋',
+       DECK_SIG.includes('nolock') && !m1.e && m1.r.rebase && m1.r.rebase.deck && /nolock=\|/.test(m1.r.rebase.deck.from + '|') && /nolock=1/.test(m1.r.rebase.deck.to)
+       && m2.e && m2.e.gate && /80%/.test(m2.e.message) && m3.e && m3.e.gate && /絕對下限/.test(m3.e.message),
+       [m1, m2, m3].map(x => x.e ? x.e.message : JSON.stringify(x.r.rebase)).join(' | ').slice(0, 300));
 }
 // ③ workflow
 ok('③a 掛 daily_miner 的 workflow_run,host 名字逐字相同(差一字永遠不觸發且零訊息)', WF.includes(`workflows: ["${HOST}"]`), HOST);
@@ -166,6 +178,12 @@ ok('③f 還原上一版產物當守門基準(PREV=data/backtest_edge.json)', /P
        && /LIST_DUMP_N:\s*'60'/.test(WF) && /TOPN=60 SHARD=\$k\/4 node scripts\/list_trig\.mjs/.test(WF)
        && passes === 2 && /LIST_TRIG=\/tmp\/trig\.ndjson PARK= SUMMARY_OUT=\/tmp\/summary_cash\.json/.test(WF) && /SUMMARY_CASH=\/tmp\/summary_cash\.json/.test(WF)
        && tm >= 90, JSON.stringify({ runs, waits, passes, tm }));
+    // 🟥 ③i2 2026-11-13 兩趟買的那兩行都要 NOLOCK=1(訊號那天收盤鎖漲停 = 當成買不到)—— 跟作戰室看板 `_PROFIT_BOARD.geneNolock` 同一個口徑
+    //   ⛔ 放進 step env(會連交易快取 / 名單那幾步一起帶,意思就不清楚了);⛔ 看板沒標 geneNolock(兩邊口徑不一樣)
+    const nlPasses = (WF.match(/NOLOCK=1 SELF=high\+hivolat\+nobear LIST_TRIG=\/tmp\/trig\.ndjson /g) || []).length;
+    let PBnl = null; try { PBnl = JSON.parse((fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8').match(/^  _PROFIT_BOARD: (\{.*\}),$/m) || [])[1]).geneNolock; } catch (_) {}
+    ok('③i2 🟥 兩趟買的那兩行都有 NOLOCK=1(⛔ 放 step env)・作戰室看板 🔥 / 🅿️ 也是同一個口徑(geneNolock)',
+       nlPasses === 2 && !/^\s+NOLOCK:/m.test(WF) && PBnl === 1, JSON.stringify({ nlPasses, board: PBnl }));
 }
 ok('③g 兩支回測都是「本機絕對路徑 / CI node_modules」雙來源載 playwright(⛔ 寫死沙箱路徑 = CI 一定炸)', ['scripts/portfolio_backtest.mjs', 'scripts/signal_backtest.mjs'].every(f => { const c = fs.readFileSync(path.join(ROOT, f), 'utf8'); return /catch \(_\) \{ \(\{ chromium \} = await import\('playwright'\)\); \}/.test(c) && /fs\.existsSync\(_exec\)/.test(c); }), '');
 // ④⑤ App

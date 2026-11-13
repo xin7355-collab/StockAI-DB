@@ -3,6 +3,25 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🟥 V82.3.9(2026-11-13)App 的 🔥 / 🅿️ 成績改成「訊號那天收盤鎖漲停 = 買不到」重算(`NOLOCK=1`,使用者核准)
+- **為什麼**:EXP-20261113-02 BASE 那組 🅿️ 1,107 筆實際買進裡 22.1% 在收盤鎖漲停那天(`lib_limit.upLimitClose`)—— 收盤競價掛漲停價多半排不到,以前照買到算 → 看板 / 逐年 / 逐月 / 每週回測都偏樂觀。
+- **資料**:`research_pack.mjs` d16 hash `79f39eda3ffc5d28`(到 2026-11-12、2,534 檔;data 1062b9cc / klines_deep 5bbb9f9a / stock_deep e2cbe2b5)。
+- **跑法**(照 `hot_wf.yml` combo job;共同 `DATA_DIR=<d16> DIV_TRADES=<d16>/_div16.json DIV=<d16>/_div0050.json BENCH0050=<d16>/_bench0050.json LOT=150000 STOPFILL=close EXIT=chand2 MAXD=20 RANK_MIN=85 VOLAT_MIN=60`):
+  ① 交易快取 `SELF=high+hivolat ALLFIRE=1 WARMUP=251 SHARD=k/4` 4 片 → `merge_trades_cache.mjs`(3,253,665 筆;本機 4 核又跟另一個工作階段搶 CPU → 107 分)
+  ② 名單 `TRADES_CACHE=… ALLFIRE=1 GATE=lb CLIFF=20 STATS_WIN=1200 MIN_MKT_N=0 LISTK=2 FILTER= SELF=high+hivolat+nobear PARK= LIST_DUMP_N=60 WARMUP=240`(⭐ 從 240 起 = 逐年 `--cont` 的起點也有名單;名單跟起點無關,看板 / 逐年格子讀到的那幾晚逐位相同)
+  ③ `HTML_DIR=. TOPN=60 SHARD=k/4 list_trig.mjs`(231,335 筆;看板那幾條 `listk.inexact` 6 / 約 1,000 晚)
+  ④ 看板:同 ② + `NOLOCK=1 LIST_TRIG=<trig>`,🔥 `PARK=` / 🅿️ `PARK=idle` × 兩個窗口 `WARMUPS`(4 年 3125+3k、16 年 251+3k,k = 0~16;資料包日曆)、`EQUITY_OUT=<eq>/<ai|long>_<hot|park>_{W}.json`、`SUMMARY_OUT` / `TAKEN_OUT=<bst>/{sum,tk}/<hot|park>_<ai|long>_{W}.json`
+     → `gene_board.mjs gene.json --eq <eq> --bench <d16> --to 2026-09-24 --sets hot,park` → `embed_profit_board.mjs --gene gene.json --keep-don` → `embed_profit_board.mjs --stats-gene <bst>`(🟥 新模式:只補 🔥 / 🅿️ 的每筆三個數、👑 照舊;17 條 SUMMARY 的 `cfg.nolock` 記成看板 `geneNolock`)
+  ⑤ 逐年:`SET=long ONLY=now949,now949c YB_BATCH=1 YB_SYMS=9999 ALLFIRE=1 LISTK=2 LIST_TRIG=<trig> GATE=lb CLIFF=20 STATS_WIN=1200 yearly_bt.mjs`(+ `--cont` / `--collect both.json`;now949 / now949c 的 env 已寫 `NOLOCK: '1'`)→ `embed_yearly_bt.mjs --replace-now both.json` → `embed_strat_yearly.mjs`
+  ⑥ 逐月:`EQ_GLOB=<eq>/ai_hot_*.json EQ_IDLE_GLOB=<eq>/ai_park_*.json DATA_DIR=<只放 0050.json(= d16 的 _bench0050.json)+ ^TWII.json> DIV=<d16>/_div0050.json month_probe.mjs` → `embed_monthly_bt.mjs`(⚠️ d16 的 0050.json 只從 2023-06 起 → 一定要換成 _bench0050;0050 月報酬跟舊的 48 個月只有 3 個七月差 ≤ 0.03pp)
+  ⑦ index `_STRAT_RANK` park / gene 照看板手抄(`test_stratrank` ① 對)
+- **對照組**(同一條流水線、⛔ 不開 NOLOCK)先重現現在嵌的數字:🅿️ 16 年 2,045.5 萬(嵌 2,045.3)・4 年 619.0(嵌 620.5)・🔥 464.7(嵌 471.4)/ 282.0(嵌 289.6)、筆數 1,085 / 287(嵌 1,089 / 286)→ 下面的差距幾乎都是 NOLOCK 本身。
+- **結果(舊嵌入 → 新;16 年 / 近 4 年,截到 2026-09-24、17 條中位)**:🅿️ 2,045 → 1,503 萬 / 620 → 638 萬(回撤 −37.21 → −35.89% / −27.7 → −25.5%,17/17 贏 0050 照舊)・🔥 471 → 384 萬 / 290 → 269 萬(0/17 照舊)・每筆:16 年 1,089 → 903 筆、勝率 32.4 → 31.6%、每筆 +2.23 → +2.04%;4 年 286 → 246 筆。⭐ 16 年少的那一截幾乎都是鎖漲停那幾筆(V79.4.9 舊資料量過 1,407 萬,這次 1,503 萬);近 4 年拿掉那幾筆反而多一點(V79.4.9 也是 +502 → +510)。
+- **逐年 now949(🅿️)**:每年 1 月放 100 萬的格子 2011~2025 加起來 463.5 → 408.2 萬;2026 那格 +139.5% → +86.7%(⚠️ 其中 +139.5 → +105.0 是資料多了 10/08~11/12 那段跌勢、+105.0 → +86.7 才是 NOLOCK);一路滾 17 條淨賺 1,998 → 1,241 萬(同樣拆開:資料 1,998 → 1,743、NOLOCK 1,743 → 1,241;起點從 2011-01-06 變 2010-12-21 = 資料包的加權日曆比舊的早開始)。now949c(📈):2011~2025 合計 317.8 → 264.5 萬、2026 +69.3 → +45.9%、一路滾 377 → 282 萬。
+- **逐月 `_MONTHLY_BT`**(到 2026-11,完整月 47 → 48):🔥 贏 0050 的月份 41.7 → 41.7%、持有 12 個月贏 0050 37.1 → 29.7%;🅿️ 55.3 → 54.2% / 55.6 → 67.6%。
+- 每週回測(`weekly_backtest.yml`)兩趟加 `NOLOCK=1` → `DECK_SIG` 有 nolock → 第一次跑重新起算守門基準(`test_backtest_edge ②m / ③i2`)。
+- ⛔ 沒動(手抄的研究常數、沒有產生腳本,仍是 V79.4.9 沒開 NOLOCK 的數字):index `_DECK_TRACK49` / `_BEAR_GATE_EDGE` / `_IDLE0050_EDGE`、pro `_SIG_DEEP` / `_STOPFILL_NOTE`;`_HEALTH_BASE`(封存)、`hot_wf.yml` / `hot_ccwin.yml`(登記過的實驗)、LAB 舊條目。
+
 ### 📉 V82.3.1(2026-11-13)第二次上線:營收衰退 / 產業營收加速 / 銅價 / 說到做到完整版
 - `scripts/rev_decline_probe.mjs`(✅ EXP-04)/ `scripts/copper_chain_probe.mjs`(⛔ EXP-06)/ `scripts/sector_rev_probe.mjs`(⛔ EXP-07)/ `confcall_guidance.py --grade / --price` 研究模式(A ✅ B ⛔,EXP-08)—— 跑法見下面表格各列;結果在 `research/{rev_decline,copper_chain,sector_rev,confcall_full}_20261113/`。
 - `scripts/trade_lead_probe.mjs` 多 export `gate` / `lagOf` / `loadRevDir`(sector_rev_probe 用;本身行為不變,selftest 照過)。`scripts/fin_slice.mjs` 多 `NQ=` 環境變數(研究用切出全部季數;每天的切片照舊 12 季)。

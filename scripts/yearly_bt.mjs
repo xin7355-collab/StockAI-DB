@@ -39,9 +39,10 @@ export const STRATS = [
     // 🔁 V78.0.8 現行換成 V78.0.7 那一組(修好日 K 之後用 `ONLY=now807` 單獨重跑,再用 embed_yearly_bt.mjs --merge 併進去)
     // 🔥 V79.4.9 現行換成「每一招照平均排(lib_hotrule 預設)+ 空頭也照買 + 閒錢停 0050」,照 App 實際買法(LISTK / LIST_TRIG 由外面的 env 給)
     //   SELF 多 nobear(這一檔自己破 20/60 日線不買 = App `_deckBuyOf`)、MIN_MKT_N=0(App 沒有全市場樣本門檻)—— A0 對齊檢查量到的兩個差
-    { g: 'now',  id: 'now949',     t: '⭐ 決策台現行(V79.4.9 起):🧬 位階 ≥85 ・每一招照平均排 ・吊燈 ATR 2 倍出場 ・最長抱 20 天 ・空頭也照買 ・沒用到的錢停 0050', env: { EXIT: 'chand2', MAXD: '20', RANK_MIN: '85', PARK: 'idle', SELF: 'high+hivolat+nobear', MIN_MKT_N: '0' } },
+    // 🟥 2026-11-13(使用者核准)NOLOCK=1:訊號那天收盤鎖漲停 = 收盤競價多半排不到 → 當成買不到(= 作戰室看板 `geneNolock`、每週回測兩趟同一個口徑)
+    { g: 'now',  id: 'now949',     t: '⭐ 決策台現行(V79.4.9 起):🧬 位階 ≥85 ・每一招照平均排 ・吊燈 ATR 2 倍出場 ・最長抱 20 天 ・空頭也照買 ・沒用到的錢停 0050 ・收盤鎖漲停那天買不到(不算)', env: { EXIT: 'chand2', MAXD: '20', RANK_MIN: '85', PARK: 'idle', SELF: 'high+hivolat+nobear', MIN_MKT_N: '0', NOLOCK: '1' } },
     // 💵 V81.0.0 同一套但錢放現金(⛔ 不停 0050)= 設定裡的 📈 符合進場;使用者 11/03 要看每一套每年賺多少
-    { g: 'now',  id: 'now949c',    t: '💵 決策台現行・錢放現金:同上一列,只差沒用到的錢⛔ 不停 0050(= 設定裡的 📈 符合進場)', env: { EXIT: 'chand2', MAXD: '20', RANK_MIN: '85', SELF: 'high+hivolat+nobear', MIN_MKT_N: '0' } },
+    { g: 'now',  id: 'now949c',    t: '💵 決策台現行・錢放現金:同上一列,只差沒用到的錢⛔ 不停 0050(= 設定裡的 📈 符合進場)', env: { EXIT: 'chand2', MAXD: '20', RANK_MIN: '85', SELF: 'high+hivolat+nobear', MIN_MKT_N: '0', NOLOCK: '1' } },
     { g: 'prev', id: 'now807',     t: '⏮️ 上一任(V78.0.7~V79.4.8):🧬 位階 ≥85 ・吊燈 ATR 2 倍出場 ・最長抱 20 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'chand2', MAXD: '20', FILTER: 'bear60', RANK_MIN: '85' } },
     { g: 'prev', id: 'now765',     t: '⏮️ 上一任(V77.6.5~V77.7.5):🧬 ・唐奇安 40 日出場 ・最長抱 40 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'don40', MAXD: '40', FILTER: 'bear60' } },
     { g: 'prev', id: 'base',       t: '📤 舊預設(V77.6.5 以前):🧬 ・唐奇安 20 日出場 ・最長抱 20 天 —— 下面每一條都是在它上面只換一件事', env: {} },
