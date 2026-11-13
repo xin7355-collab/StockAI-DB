@@ -116,13 +116,17 @@ const R = await page.evaluate(async () => {
     try { out.pickBare = await app._orModel('k', { force: true }); } catch (e) { out.pickBare = 'THREW:' + e.message; }
 
     // ── ④ 404 自我修復:清快取 → 重挑 → 換模型再打一次 ────────────
+    // 🚦 2026-11-13:回應要「明確說」模型不存在才算下架(OpenRouter 真的格式:No endpoints found for …);
+    //    空的 / HTML 的 404 = 網址錯(中間的 Proxy)→ ⛔ 換模型、⛔ 作廢快取(見 ④d)
+    const gone404 = (m) => ({ ok: false, status: 404, json: async () => ({ error: { message: `No endpoints found for ${m}.`, code: 404 } }) });
+    try { localStorage.removeItem('aiCool_v1'); } catch (_) {}
     reset();
     // 先讓它快取到「舊的」那個
     lg = stub(['deepseek/deepseek-r1:free']);
     await app._orModel('k');
     // 之後官方清單換成新的,而舊模型會回 404
     lg = stub(['deepseek/deepseek-r1-0528:free'], (body) => {
-        if (body.model === 'deepseek/deepseek-r1:free') return { ok: false, status: 404, json: async () => ({}) };
+        if (body.model === 'deepseek/deepseek-r1:free') return gone404(body.model);
         return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'OK' } }] }) };
     });
     const res = await app._orChat('k', { messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 }, {});
@@ -131,9 +135,17 @@ const R = await page.evaluate(async () => {
 
     // ── ④b 換了新模型仍 404 → 誠實回失敗,⛔ 不可無限重試 ─────────
     reset();
-    lg = stub(['deepseek/deepseek-r1-0528:free'], () => ({ ok: false, status: 404, json: async () => ({}) }));
+    lg = stub(['deepseek/deepseek-r1-0528:free'], (body) => gone404(body.model));
     const res2 = await app._orChat('k', { messages: [], max_tokens: 5 }, {});
     out.hardFail = { ok: res2.ok, status: res2.status, tries: lg.chat.length };
+
+    // ── ④d 🚦 404 但回應沒說是模型(空的 / 網址錯)→ ⛔ 換模型、⛔ 作廢快取(以前任何 404 都當下架)──
+    reset();
+    lg = stub(['deepseek/deepseek-r1-0528:free']);
+    await app._orModel('k');
+    lg = stub(['deepseek/deepseek-r1-0528:free', 'deepseek/deepseek-r1'], () => ({ ok: false, status: 404, json: async () => ({}) }));
+    const res3 = await app._orChat('k', { messages: [], max_tokens: 5 }, {});
+    out.cfg404 = { ok: res3.ok, tries: lg.chat.length, kept: app._orModelMem, kind: (app._aiInfoOf(res3) || {}).kind };
 
     // ── ⑤ 錯誤訊息要人話 ────────────────────────────────────────
     out.err = { 404: app._orErr(404), 401: app._orErr(401), 402: app._orErr(402), 429: app._orErr(429), 500: app._orErr(500), 418: app._orErr(418) };
@@ -162,6 +174,8 @@ ok('④b 而且真的打了兩次、用**不同**模型(⛔ 不是原封不動�
     R.healTried.length === 2 && R.healTried[0] !== R.healTried[1], JSON.stringify(R.healTried));
 ok('④c 換了還是 404 → 誠實回失敗,⛔ 不可無限重試(最多 2 次)',
     R.hardFail.ok === false && R.hardFail.status === 404 && R.hardFail.tries <= 2, JSON.stringify(R.hardFail));
+ok('④d 🚦 404 但回應沒說是模型(網址錯)→ 只打 1 次、⛔ 作廢模型快取、分類是 config',
+    R.cfg404.ok === false && R.cfg404.tries === 1 && R.cfg404.kept === 'deepseek/deepseek-r1-0528:free' && R.cfg404.kind === 'config', JSON.stringify(R.cfg404));
 
 const noJargon = s => !/HTTP\s*\d|status\s*\d|\bAPI\b/i.test(s);
 ok('⑤ 404 的訊息要講「模型被下架」而不是 `HTTP 404`',

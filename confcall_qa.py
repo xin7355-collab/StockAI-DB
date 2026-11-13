@@ -291,7 +291,7 @@ class AI:
             return None, 'budget'
         if self.dead:
             return None, 'dead'
-        from groq_common import groq_model, groq_apply, invalidate
+        from groq_common import groq_model, groq_apply, invalidate, classify_response, cool_model, cooling_left
         pick = self.pick or (lambda keys, avoid: groq_model(keys, 'light', avoid=avoid))
         if self.post is None:
             import requests
@@ -310,14 +310,26 @@ class AI:
             try:
                 if not self.model:
                     self.model = pick(self.keys, self.tried)
+                if cooling_left(self.model) > 0:
+                    why = 'quota'           # 🚦 每個模型今天的額度都用完了 → 這題先不打(⛔ 白打到時限)
+                    self.model = None
+                    break
                 groq_apply(payload, self.model, MAX_TOKENS)
                 r = self.post(url='https://api.groq.com/openai/v1/chat/completions', json=payload,
                               headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}, timeout=40)
-                if r.status_code == 404 and len(self.tried) < 3:
+                # 🚦 讀回應內容分類(groq_common.classify_response):回應說模型不存在才換模型(⛔ 空的 404 = 網址錯);
+                #    今天額度用完 → 只冷卻這個模型、換下一個(⛔ 照每分鐘限流的秒數等,等完還是用完)
+                info = classify_response(r) if r.status_code != 200 else {'kind': '', 'delay': None}
+                if info['kind'] == 'missing' and len(self.tried) < 3:
                     self.tried.add(self.model)
                     invalidate('light', self.model)
                     self.model = None
                     why = 'HTTP 404'
+                    continue
+                if info['kind'] == 'quota':
+                    cool_model(self.model, 'quota', info['delay'])
+                    self.model = None
+                    why = 'quota'
                     continue
                 if r.status_code == 429:
                     why = 'HTTP 429'

@@ -26,6 +26,7 @@
 """
 import io
 import os
+import time
 import re
 import sys
 import contextlib
@@ -281,12 +282,22 @@ sys.modules.pop('universal_radar', None)
 import universal_radar as U2  # noqa: E402
 U2.GROQ_API_KEYS = [SECRET, SECRET + 'B']
 U2.SKIP_AI = False
-U2._groq_key_cooldown.update({0: 9e18, 1: 9e18})     # 兩把都冷卻
+U2._groq_key_cooldown.update({0: time.time() + 7200, 1: time.time() + 7300})   # 兩把都冷卻(約 2 小時)
 with contextlib.redirect_stdout(io.StringIO()):
     r5 = U2.analyze_sentiment('t', 's')
 ok('⑫c 🔍 全部金鑰冷卻時,原因要說出「用量到上限」(⛔ 不可只寫「暫時無法分析」)',
    '用量到上限' in r5[1], r5[1])
-ok('⑫d 而且要講得出「幾把 / 多久恢復」', '2 把' in r5[1] and '小時' in r5[1], r5[1])
+ok('⑫d 而且要講得出「幾把 / 多久恢復」', '2 把' in r5[1] and '2 小時' in r5[1], r5[1])
+# 🚦 2026-11-13 限流現在照對方說的秒數冷卻(沒說 1 分鐘)→ 說明也要照實際時間(⛔ 寫死「約 1 小時」叫人白等)
+U2._groq_key_cooldown.update({0: time.time() + 50, 1: time.time() + 300})
+with contextlib.redirect_stdout(io.StringIO()):
+    r5b = U2.analyze_sentiment('t', 's')
+ok('⑫e 只冷卻 50 秒時要說「秒」,⛔ 說成「小時」', '秒後恢復' in r5b[1] and '小時' not in r5b[1], r5b[1])
+U2._groq_key_cooldown.update({0: 9e18, 1: 9e18})
+with contextlib.redirect_stdout(io.StringIO()):
+    r5c = U2.analyze_sentiment('t', 's')
+ok('⑫f 冷卻超過一天要說「超過一天」,⛔ 印出一長串數字', '超過一天' in r5c[1] and not re.search(r'\d{4,}', r5c[1]), r5c[1])
+U2._groq_key_cooldown.clear()
 
 # ── ⑬ V79.5.8:Groq 把 llama 全下架(10/22 #637 部署 log 那份真清單)──────────────
 # 🚨 舊偏好序全是 llama → 每一則先白打一次 404 → 清快取 → 從**亂序**清單拿第一個(1/4 是阿拉伯文的 allam)
@@ -381,6 +392,72 @@ _r7, models7, _ = run_real()
 G._PREFS.clear(); G._PREFS.update(_old[0]); G._LEGACY.clear(); G._LEGACY.update(_old[1])
 ok('⑬h 決定性對照:舊偏好 + 舊硬清單 → 第一發是已下架的 llama(404)', models7[:1] == ['llama-3.1-8b-instant'] and len(models7) >= 2, models7)
 ok('⑬h2 而且新偏好序換回來之後又是一次中', run_real()[1] == ['qwen/qwen3.8-27b'])
+
+# ── ⑭ 🚦 2026-11-13 失敗分類(groq_common.classify_response,規則同 index.html 的 _AIR)──
+#   以前 429 一律「整把金鑰冷卻」(沒給 Retry-After 就 1 小時)、404 一律「模型下架」。
+#   ① 今天額度用完(TPD)只冷卻那一個模型 → 同一把金鑰換下一個模型;下一則直接用沒冷卻的(⛔ 再白打一次)
+#   ② 404 但回應沒說是模型(網址錯)→ ⛔ 換模型、⛔ 作廢模型快取
+#   ③ 每個模型都在冷卻 → 這則⛔ 再打,原因說「今天額度用完」
+import json  # noqa: E402
+TPD = json.dumps({'error': {'message': 'Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_x` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199515, Requested 1015. Please try again in 7m26.4s.', 'type': 'tokens', 'code': 'rate_limit_reached'}})
+seen4 = []
+
+
+class _SessQuota:
+    def __init__(self, bad):
+        self.bad = bad
+
+    def post(self, url, json=None, headers=None, timeout=None):
+        m = (json or {}).get('model')
+        seen4.append(m)
+        if m in self.bad:
+            return FakeResp(429, {}, self.bad[m])
+        return FakeResp(200, {'choices': [{'message': {'content': '{"sentiment":"利多","reason":"r","title_zh":"翻好了","important":true}'}}]})
+
+
+def run_q(bad, n=2):
+    seen4.clear()
+    sys.modules.pop('universal_radar', None)
+    import universal_radar as U4  # noqa: E402
+    U4.GROQ_API_KEYS = [SECRET]; U4.SKIP_AI = False
+    U4.http_session = _SessQuota(bad)
+    reset(); stub_models(ids=REAL); G.reset_cooldowns()
+    out = []
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _ in range(n):
+            out.append(U4.analyze_sentiment('Nvidia beats earnings', 'blah'))
+    return out, list(seen4), dict(U4._groq_key_cooldown)
+
+
+o14, s14, kc14 = run_q({'qwen/qwen3.8-27b': TPD})
+ok('⑭a ⭐ qwen 今天額度用完 → 同一把金鑰馬上換 gpt-oss-20b(⛔ 整把金鑰冷卻)',
+   s14[:2] == ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b'] and o14[0][2] == '翻好了' and not kc14, (s14, kc14))
+ok('⑭b 下一則直接用 gpt-oss-20b(⛔ 再白打一次 qwen)', s14[2:] == ['openai/gpt-oss-20b'], s14)
+ok('⑭c qwen 冷卻照 Groq 說的 7m26.4s(至少 5 分鐘)', 440 < G.cooling_left('qwen/qwen3.8-27b') <= 447, G.cooling_left('qwen/qwen3.8-27b'))
+o15, s15, _ = run_q({m: TPD for m in REAL_CHAT if m != 'allam-2-7b'})
+ok('⑭d 每個模型都用完 → 第二則一個請求都不送,原因說「今天額度用完」',
+   len(s15) == 3 and '今天額度用完' in (o15[1][1] or ''), (s15, [o[1] for o in o15]))
+
+
+class _Sess404Url:
+    def post(self, url, json=None, headers=None, timeout=None):
+        seen4.append((json or {}).get('model'))
+        return FakeResp(404, {}, '<html><h1>404 Not Found</h1></html>')
+
+
+seen4.clear()
+sys.modules.pop('universal_radar', None)
+import universal_radar as U5  # noqa: E402
+U5.GROQ_API_KEYS = [SECRET]; U5.SKIP_AI = False
+U5.http_session = _Sess404Url()
+reset(); stub_models(ids=REAL); G.reset_cooldowns()
+with contextlib.redirect_stdout(io.StringIO()):
+    U5.analyze_sentiment('t', 's')
+    r16 = U5.analyze_sentiment('t', 's')
+ok('⑭e 404 但回應沒說是模型(網址錯 / Proxy 的 HTML)→ ⛔ 換模型(每則只打 1 次)、模型快取沒被作廢',
+   seen4 == ['qwen/qwen3.8-27b', 'qwen/qwen3.8-27b'] and G._cache['ids'] is not None, (seen4, G._cache['ids']))
+ok('⑭f 而且原因要說是網址,⛔ 說成模型下架', '網址' in (r16[1] or '') and not (r16[1] or '').startswith(G.groq_reason(404)), r16[1])
+G.reset_cooldowns()
 
 print()
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ GROQMODEL_PASS(全部通過)')

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.3.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.3.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.3.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.3.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1217,6 +1217,12 @@
                         <p class="text-[10px] text-gray-500 leading-snug">選「自動」維持原本智慧切換;選特定引擎則<b class="text-blue-300">全部分析強制走它</b>,可比較哪個 AI 較準、或避開撞 429 的金鑰。</p>
                         <button id="aiKeyTestBtn" onclick="app.testAllAiKeys()" class="mt-0.5 px-3 py-1.5 bg-blue-900/40 border border-blue-700/60 hover:bg-blue-800/50 text-blue-200 text-xs font-bold rounded transition-colors">🩺 測試所有金鑰</button>
                         <div id="aiKeyTestResult"></div>
+                        <!-- 📡 AI 現在狀態:哪一家 / 哪個模型正在休息(額度用完、太頻繁、餘額不足)、還要多久;「現在再試」清掉那一筆(app._renderAICoolList) -->
+                        <div class="pt-2 border-t border-[#30363d]">
+                            <div class="text-xs font-bold text-blue-300">📡 AI 現在狀態</div>
+                            <p class="text-[10px] text-gray-500 leading-snug">額度用完或太頻繁的 AI 會先休息、時間到自動恢復,這段時間改用其他的;確定已經好了可以按「現在再試」。</p>
+                            <div id="aiCoolList" class="mt-1"></div>
+                        </div>
                     </div>
                     <!-- 🔎 V41.24 — 免費查公司引擎(不耗自家 AI 額度,開外部免費 AI 網頁帶問題) -->
                     <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-amber-700/40 rounded">
@@ -3582,7 +3588,7 @@
     </main>
 
     <!-- ⚡ AI 狀態 chip:浮動 navbar 上方,即時顯示「現在用哪條 AI 鏈 + 第幾把 key」 -->
-    <div id="aiStatusChip" class="hidden fixed bottom-20 right-2 z-50 border rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm border-gray-600 bg-gray-900/95 text-gray-200" onclick="app.openSettings()" style="cursor:pointer" title="點擊開設定頁">
+    <div id="aiStatusChip" class="hidden fixed bottom-20 right-2 z-50 border rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm border-gray-600 bg-gray-900/95 text-gray-200" onclick="app._openAIStatus()" style="cursor:pointer" title="點一下看 AI 現在狀態">
         <span id="aiStatusChipText">⚡ AI 待命</span>
     </div>
     <div class="nav-fixed w-full">
@@ -8968,10 +8974,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.3.6',
+    _APP_VERSION: 'V82.3.7',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.3.7', d: [
+            '🚦 AI 被擋時講清楚是哪一種:「太頻繁,幾秒後再試」「今天額度用完,約幾點恢復」「帳戶餘額不足 → 去帳單頁看看」;同一家還有別的模型能用就自動換,不再整家一起停',
+            '📡 設定 →「🔑 金鑰與 AI」多一個「AI 現在狀態」:哪一把、哪個模型在休息、還要多久,也可以按「現在再試」;點右下角的 AI 小標籤會直接打開這裡',
+            '🖐️ 同一個 AI 按鈕連點兩下只會問一次(不會多用一次額度)',
+        ], dt: '2026-11-13' },
         { v: 'V82.3.6', d: [
             '🏛️ 背景資料更新:美國公債殖利率改抓美國財政部的官方資料,加權 / 櫃買指數的長歷史改用證交所與既有資料接續(App 的用法不變)',
         ], dt: '2026-11-13' },
@@ -9298,9 +9309,6 @@ ${list}
             '🏭 產業作戰室「專欄」:每一篇的結果一律寫成百分比(📈),會發生的比例另外一顆(🎲),每放 100 萬會差多少由百分比換算 —— 不再有的寫錢、有的寫 %',
             '🔀 專欄加排序:🆕 更新日 / 🏆 名次 / ⭐ 可信度 / 📈 影響大小 / 🎲 發生率,同一顆再按一次反過來',
         ], dt: '2026-10-25' },
-        { v: 'V79.8.4', d: [
-            '🏭 設定連點版本號 5 次 →「🔓 進階功能」多一個「🏭 產業 pro」:打開後左上角 🤖 左邊多一顆「產」,點了直接開產業作戰室;不想要就取消勾,那顆就不見',
-        ], dt: '2026-10-25' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -9561,6 +9569,7 @@ ${list}
         document.getElementById('exportAreaContainer').classList.add('hidden');
         // 📊 渲染今日 AI key 使用統計(Q4:回答「哪把 key 撞 429」)
         this._renderAIKeyStats();
+        try { this._renderAICoolList(); } catch (_) {}   // 📡 AI 現在狀態(誰在休息、還要多久)
         try { this._setGrpSummaries(); } catch (_) {}   // 🧹 V78.1.1 四組收起來的設定,summary 寫一行現況
         const modal = document.getElementById('settingsModal');
         modal.classList.remove('hidden'); modal.style.display = 'flex';
@@ -9757,7 +9766,9 @@ ${list}
         const pFull  = promptFull   || prompt || promptSimple || '';
         if (engine === 'gemini1' || engine === 'gemini2') {
             const idx = engine === 'gemini2' ? 1 : 0;
-            const content = await this._callGemini({ prompt: pShort, systemInstruction, max_tokens, temperature, model: 'gemini-2.5-flash', forceKeyIndex: idx });
+            let content;
+            try { content = await this._callGemini({ prompt: pShort, systemInstruction, max_tokens, temperature, model: 'gemini-2.5-flash', forceKeyIndex: idx }); }
+            catch (e) { if (e && e.aiInfo) this._setAIStatus('gemini', idx + 1, 'fail', e.aiInfo); throw e; }
             if (!content) throw new Error('Gemini 回應為空');
             this._setAIStatus('gemini', idx + 1, 'success');
             return content;
@@ -9767,9 +9778,14 @@ ${list}
             if (!key) throw new Error('Groq 金鑰未填寫');
             const _msgs = systemInstruction ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: pShort }] : [{ role: 'user', content: pShort }];
             this._setAIStatus('groq', 1, 'trying');
-            // 🤖 V78.5.6 走共用入口 `_groqFetch`(模型名先問官方清單,下架自動換)
+            // 🤖 V78.5.6 走共用入口 `_groqFetch`(模型名先問官方清單,下架自動換;🚦 額度用完的模型自動換同一家下一個)
             const res = await this._groqFetch(key, { model: 'llama-3.3-70b-versatile', messages: _msgs, max_tokens, temperature }, { timeout: 60000, maxRetries: 1 });
-            if (!res.ok) { this._recordAIFail('groq', 1, res.status); this._setAIStatus('groq', 1, 'rate-limited'); throw new Error(this._aiErr('groq', res.status)); }
+            if (!res.ok) {
+                const info = this._aiInfoOf(res) || this._aiKindOfStatus(res.status);
+                if (!info.skipped) this._recordAIFail('groq', 1, res.status);
+                this._setAIStatus('groq', 1, 'fail', info);
+                throw this._aiError('groq', info);
+            }
             const data = await res.json();
             const content = data?.choices?.[0]?.message?.content;
             if (!content) throw new Error('Groq 回應為空');
@@ -9783,7 +9799,12 @@ ${list}
             this._setAIStatus('openrouter', 1, 'trying');
             // 🚀 V73.8.0 走共用入口(模型名由官方清單解析 + 404 自動換模型重試)
             const res = await this._orChat(key, { messages: _msgs, max_tokens, temperature }, { timeout: 90000, maxRetries: 1 });
-            if (!res.ok) { this._recordAIFail('openrouter', 1, res.status); this._setAIStatus('openrouter', 1, 'rate-limited'); throw new Error(this._orErr(res.status)); }
+            if (!res.ok) {
+                const info = this._aiInfoOf(res) || this._aiKindOfStatus(res.status);
+                if (!info.skipped) this._recordAIFail('openrouter', 1, res.status);
+                this._setAIStatus('openrouter', 1, 'fail', info);
+                const e = new Error(this._orErr(info)); e.aiInfo = { ...info, provider: 'openrouter' }; throw e;
+            }
             const data = await res.json();
             const content = data?.choices?.[0]?.message?.content;
             if (!content) throw new Error('OpenRouter 回應為空');
@@ -9809,23 +9830,25 @@ ${list}
             return;
         }
         const rows = [];
+        // 🚦 失敗原因改成白話(今天額度用完(約 14:05 恢復)…)會比以前長 → 多留字數、右邊那格可以換行(⛔ 截在半句)
         for (const t of targets) {
-            try { await t.fn(); rows.push(`<div class="flex items-center justify-between py-0.5"><span class="text-gray-300">${t.name}</span><span class="text-green-400 font-bold">✅ 正常</span></div>`); }
-            catch (e) { rows.push(`<div class="flex items-center justify-between py-0.5"><span class="text-gray-300">${t.name}</span><span class="text-red-400 font-bold">❌ ${String(e.message || e).slice(0, 28)}</span></div>`); }
+            try { await t.fn(); rows.push(`<div class="flex items-center justify-between gap-2 py-0.5"><span class="text-gray-300 flex-shrink-0">${t.name}</span><span class="text-green-400 font-bold">✅ 正常</span></div>`); }
+            catch (e) { rows.push(`<div class="flex items-center justify-between gap-2 py-0.5"><span class="text-gray-300 flex-shrink-0">${t.name}</span><span class="text-red-400 font-bold min-w-0 text-right">❌ ${String(e.message || e).slice(0, 60).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))}</span></div>`); }
         }
         if (box) box.innerHTML = `<div class="text-[10px] space-y-0.5">${rows.join('')}</div>`;
         if (btn) { btn.disabled = false; btn.textContent = '🩺 測試所有金鑰'; btn.classList.remove('opacity-60'); }
+        this._renderAICoolList();   // 測試過程中記下的冷卻(或成功後解除的)馬上反映在「AI 現在狀態」
     },
     async _pingGroqKey(key) {
         // 🤖 V78.5.6 金鑰健檢也要走自我修復,否則模型下架會被誤報成「金鑰壞了」
         const res = await this._groqFetch(key, { model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: '回OK' }], max_tokens: 5 }, { timeout: 20000, maxRetries: 0 });
-        if (!res.ok) throw new Error(this._aiErr('groq', res.status));
+        if (!res.ok) throw this._aiError('groq', this._aiInfoOf(res) || res.status);
         return true;
     },
     async _pingOpenRouterKey(key) {
         // 🚀 V73.8.0 走共用入口:金鑰健檢也要能自我修復,否則模型下架時會誤報「金鑰壞了」
         const res = await this._orChat(key, { messages: [{ role: 'user', content: '回OK' }], max_tokens: 5 }, { timeout: 30000, maxRetries: 0 });
-        if (!res.ok) throw new Error(this._orErr(res.status));
+        if (!res.ok) throw new Error(this._orErr(this._aiInfoOf(res) || res.status));
         return true;
     },
 
@@ -9890,35 +9913,58 @@ ${list}
         // ⛔ 最後才用舊 slug —— 保證不會比改版前更糟
         return this._OR_MODEL_LEGACY;
     },
-    // 🔁 OpenRouter 對話(全 App 唯一入口)—— 404 會自動重挑模型再試一次
+    // 🔁 OpenRouter 對話(全 App 唯一入口)—— 回應說模型不存在會自動重挑模型再試一次
     //    ⛔ 別在別處自己 fetch openrouter chat/completions(陷阱 #37:寫死的 slug 一改就漏一處)
+    //    🚦 失敗照「AI 失敗分類」處理(見 _AIR):這把金鑰 / 這個模型在冷卻 → 不送;每分鐘限流 ≤20 秒 → 等一下再試一次。
+    //       ⛔ 額度用完時**不自動換別的模型**:偏好序裡有付費的 R1,免費的用完就換付費的 = 偷偷花使用者的錢;
+    //       而且 OpenRouter 免費模型的每日上限是整個帳號一起算的,換模型也沒用。
     async _orChat(key, body, opt = {}) {
         const H = { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/', 'X-Title': 'StockAI-DB' };
         // ⚠️ 呼叫端可以指定模型(如 `_callAI` 第三鏈用輕量 8b);沒指定才去解析
         const pinned = body && body.model;
         let model = pinned || await this._orModel(key);
+        const cool = this._aiCoolGet('openrouter', key, '*') || this._aiCoolGet('openrouter', key, model);
+        if (cool) return this._aiSkipRes('openrouter', cool);
+        const o2 = { ...opt, raw429: true };
         let res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions',
-            { method: 'POST', headers: H, body: JSON.stringify({ ...body, model }) }, opt);
-        if (res.status === 404) {
-            // 🚑 自我修復:這個 slug 已經被下架 → 重新問一次官方,換一個再試
-            console.warn(`[OpenRouter] 模型 ${model} 回 404(多半是下架/改名),重新解析中…`);
-            if (!pinned) this._orModelClear();   // 只有「自己解析出來的」才需要作廢快取
-            const m2 = await this._orModel(key, { force: !pinned });
-            if (m2 && m2 !== model) {
+            { method: 'POST', headers: H, body: JSON.stringify({ ...body, model }) }, o2);
+        if (!res.ok) {
+            const info = await this._aiFail('openrouter', key, model, res);
+            let m2 = null;
+            if (info.kind === 'missing') {
+                // 🚑 自我修復:回應說這個 slug 不存在(No endpoints found for …)→ 重新問一次官方,換一個再試
+                //    ⚠️ 404 但回應沒說是模型(網址錯 / 中間的 Proxy)= config → ⛔ 不作廢快取、⛔ 不換模型
+                console.warn(`[OpenRouter] 模型 ${model} 不存在(多半是下架/改名),重新解析中…`);
+                if (!pinned) this._orModelClear();   // 只有「自己解析出來的」才需要作廢快取
+                m2 = await this._orModel(key, { force: !pinned });
+                if (m2 === model || this._aiCoolGet('openrouter', key, m2)) m2 = null;
+            } else if (info.kind === 'rate' && info.wait != null) {
+                this._setAIStatus('openrouter', null, 'wait', info);
+                await new Promise(r => setTimeout(r, Math.ceil(info.wait * 1000)));
+                m2 = model;
+            }
+            if (m2) {
                 res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions',
-                    { method: 'POST', headers: H, body: JSON.stringify({ ...body, model: m2 }) }, opt);
-                if (res.ok) console.info(`[OpenRouter] 已自動改用 ${m2}`);
+                    { method: 'POST', headers: H, body: JSON.stringify({ ...body, model: m2 }) }, o2);
+                if (res.ok && m2 !== model) console.info(`[OpenRouter] 已自動改用 ${m2}`);
+                model = m2;
+                if (!res.ok) await this._aiFail('openrouter', key, model, res, { canWait: false });
             }
         }
+        if (res.ok) this._aiCoolDel('openrouter', key, model);
         return res;
     },
     // 🗣️ 把光禿禿的狀態碼翻成人話(V26.18 鐵則:UI 不可只丟 `HTTP 404` 這種術語)
     //    ⚠️ 使用者截圖那次就是只顯「OpenRouter HTTP 404」→ 完全看不出是模型下架還是金鑰壞了
+    //    ⚠️ 參數名 `status` 別改:test_ormodel ⑥ 拿 `_orErr(status) {` 當 `_orChat` 區塊的結尾記號。
+    //    🚦 status 也可以是 _aiInfoOf(res) 的分類結果 → 照分類講(今天額度用完(約 14:05 恢復)/ 帳戶餘額不足 …)
     _orErr(status) {
+        if (status && typeof status === 'object') return this._aiErr('openrouter', status);
         const s = Number(status);
         if (s === 404) return 'AI 供應商把這個模型下架了(已自動試著換一個仍不成功),稍後再試或改用其他 AI 引擎';
         if (s === 401 || s === 403) return 'AI 金鑰無效或沒有權限 → 設定中心 → OpenRouter 重新填一次';
-        if (s === 402) return 'AI 額度用完了(免費模型有每日上限),明天再試或改用其他引擎';
+        // 402 = 帳戶餘額不足(⛔ 不是每日上限:那是 429),等到明天也不會好
+        if (s === 402) return 'AI 帳戶餘額(額度)不足 → 去 OpenRouter 帳單頁看看,儲值後再試';
         if (s === 429) return 'AI 用量到上限,等幾分鐘再試';
         if (s >= 500) return 'AI 供應商伺服器忙碌,稍後再試';
         return `AI 暫時無法使用(代碼 ${s})`;
@@ -10016,15 +10062,12 @@ ${list}
         return pick;
     },
     // 這個回應是不是「模型不存在 / 已下架」(⛔ 不是金鑰或額度問題)
+    //   🚦 只有回應**明確說**模型不存在才算(_AIR.classify 的 missing):以前任何 404 都算 →
+    //      網址錯 / 中間的 Proxy 回 404 時,會把每個模型都當成下架、一路換下去
     async _aiModelGone(res) {
         if (!res || res.ok) return false;
-        if (res.status === 404) return true;
-        if (res.status !== 400) return false;
-        try {
-            const t = typeof res.clone === 'function' ? await res.clone().text()
-                : (typeof res.text === 'function' ? await res.text() : JSON.stringify(await res.json()));
-            return /model_(decommissioned|not_found)|decommissioned|does not exist|is not found|not supported for generateContent/i.test(t || '');
-        } catch (_) { return false; }
+        const body = await this._aiErrBody(res);
+        return this._AIR.classify(Number(res.status) || 0, body).kind === 'missing';
     },
     // 🧠 V79.5.8 每個模型要帶的參數不一樣 —— 跟 groq_common.py 的 groq_extra / groq_budget 同一份規則
     //    (test_ai_model_pick.mjs 跨語言比對):qwen 明寫不思考;gpt-oss 低強度、不回傳思考、額度 +400
@@ -10048,38 +10091,447 @@ ${list}
     },
     // 🔁 Groq 對話(全 App 唯一入口)—— 模型不存在會自動重挑再試一次
     //    ⛔ 別在別處自己 fetch groq chat/completions(陷阱 #37)
+    //    🚦 失敗照「AI 失敗分類」處理(見 _AIR):每日額度用完 → 只冷卻那一個模型、馬上換同一家下一個;
+    //       每分鐘限流 → 對方說 ≤20 秒就等一下再試同一個,更久 / 沒說 → 冷卻那個模型、換下一個;
+    //       餘額 / 金鑰被拒 → 整把金鑰冷卻,交給呼叫端換下一把。冷卻中的不送(回 _aiSkipRes,⛔ 不算一次失敗)。
+    //    一次最多送 3 次(原本 1 次 + 換模型 / 等完重試 2 次),⛔ 不會越打越多。
     async _groqFetch(key, body, opt = {}) {
         const URL = 'https://api.groq.com/openai/v1/chat/completions';
         const H = { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' };
         const want = (body && body.model) || 'llama-3.1-8b-instant';
-        const model = await this._aiModel('groq', want, key);
-        let res = await this.safeFetch(URL, { method: 'POST', headers: H, body: JSON.stringify(this._groqBody(body, model)) }, opt);
-        if (await this._aiModelGone(res)) {
-            console.warn(`[Groq] 模型 ${model} 不存在或已下架,重新問官方清單…`);
-            this._aiModelClear('groq');
-            const m2 = await this._aiModel('groq', want, key, { force: true, avoid: [model] });
-            if (m2 && m2 !== model) {
-                res = await this.safeFetch(URL, { method: 'POST', headers: H, body: JSON.stringify(this._groqBody(body, m2)) }, opt);
-                if (res.ok) console.info(`[Groq] 已自動改用 ${m2}`);
+        const kc = this._aiCoolGet('groq', key, '*');
+        if (kc) return this._aiSkipRes('groq', kc);
+        // 冷卻中的模型放進 avoid;每個候選都在冷卻(pick 回 null)才整家這把跳過
+        const pick = async (extra = [], force = false) => {
+            const m = await this._aiModel('groq', want, key, { force, avoid: [...this._aiCoolModels('groq', key), ...extra] });
+            return (await this._aiAllCool('groq', key, want, m, extra)) ? null : m;
+        };
+        let model = await pick();
+        if (!model) return this._aiSkipRes('groq', this._aiCoolSoonest('groq', key));
+        const send = m => this.safeFetch(URL, { method: 'POST', headers: H, body: JSON.stringify(this._groqBody(body, m)) }, { ...opt, raw429: true });
+        let res = await send(model), healed = false, waited = false;
+        const used = [];
+        for (let hop = 0; hop < 2 && !res.ok; hop++) {
+            const info = await this._aiFail('groq', key, model, res, { canWait: !waited });
+            let next = null;
+            if (info.kind === 'missing' && !healed) {
+                healed = true;
+                console.warn(`[Groq] 模型 ${model} 不存在或已下架,重新問官方清單…`);
+                this._aiModelClear('groq');
+                next = await pick([...used, model], true);
+            } else if (info.kind === 'quota' || (info.kind === 'rate' && info.until)) {
+                next = await pick([...used, model]);
+            } else if (info.kind === 'rate' && info.wait != null) {
+                waited = true;
+                this._setAIStatus('groq', null, 'wait', info);
+                await new Promise(r => setTimeout(r, Math.ceil(info.wait * 1000)));
+                next = model;
             }
+            if (!next) break;
+            if (next !== model) used.push(model);
+            model = next;
+            res = await send(model);
+            if (res.ok && healed) console.info(`[Groq] 已自動改用 ${model}`);
         }
+        if (res.ok) { this._aiCoolDel('groq', key, model); return res; }
+        const info = this._aiInfoOf(res) || await this._aiFail('groq', key, model, res, { canWait: false });
+        // 每個候選都在冷卻了 → 告訴使用者「最快幾點恢復」(⛔ 只講最後打的那一個:它可能是最晚恢復的)
+        if (info.until && !(await pick())) { const s = this._aiCoolSoonest('groq', key); info.until = s.u; info.kind = s.k; info.model = s.m; }
         return res;
     },
-    // 🗣️ Gemini / Groq 的狀態碼翻成人話(V26.18)
+    // 🗣️ AI 失敗翻成人話(V26.18)
+    //   ⚠️ 參數名 `status` 別改:test_ai_model_pick ③a 拿 `_aiErr(provider, status)` 當 `_groqFetch` 區塊的結尾記號。
+    //   status 可以是狀態碼(只知道狀態碼的舊呼叫),也可以是 _aiInfoOf(res) 的分類結果 —— 有分類就照分類講:
+    //   「Groq 今天額度用完(約 14:05 恢復)」「Gemini 太頻繁,20 秒後再試」「OpenRouter 帳戶餘額不足 → 去帳單頁看看」
     _aiErr(provider, status) {
-        const s = Number(status), n = provider === 'gemini' ? 'Gemini' : 'Groq';
-        if (s === 404) return `${n} 的 AI 模型可能已下架(已自動試著換一個仍不成功)→ 設定 → 🩺 測試所有金鑰`;
-        if (s === 400) return `${n} 拒絕這次請求(內容太長或格式不符)→ 換個引擎或稍後再試`;
-        if (s === 401 || s === 403) return `${n} 金鑰無效或沒有權限 → 設定中心重新填一次`;
-        if (s === 429) return `${n} 用量到上限,等幾分鐘再試`;
-        if (s >= 500) return `${n} 伺服器忙碌,稍後再試`;
-        return `${n} 暫時無法使用(代碼 ${s})`;
+        const n = this._AI_NAME[provider] || provider;
+        const info = status && typeof status === 'object' ? status : this._aiKindOfStatus(Number(status));
+        return `${n} ${this._aiPlain(info)}`;
+    },
+    _aiError(provider, info) {
+        const e = new Error(this._aiErr(provider, info));
+        e.aiInfo = info && typeof info === 'object' ? { ...info, provider } : { ...this._aiKindOfStatus(Number(info)), provider };
+        return e;
+    },
+    // 只拿得到狀態碼(沒讀到回應內容)時的保守對應:404 照舊當下架(舊呼叫的語意),429 當限流(不知道要等多久)
+    _aiKindOfStatus(s) {
+        if (s === 404) return { kind: 'missing' };
+        if (s === 400) return { kind: 'other' };
+        if (s === 401 || s === 403) return { kind: 'auth' };
+        if (s === 402) return { kind: 'billing' };
+        if (s === 429) return { kind: 'rate', delay: null };
+        if (s === 0 || s >= 500) return { kind: 'server' };
+        return { kind: '?', status: s };
     },
 
-    // [AI 狀態追蹤] V14.16 — 擴充為「每次 attempt / 429 / switch / success / failed」5 狀態都更新
-    // provider:'openrouter' | 'gemini' | 'groq';keyIdx:1 或 2
-    // state:'trying' | 'rate-limited' | 'switching' | 'success' | 'failed' (預設 'success' 兼容舊呼叫)
-    _setAIStatus(provider, keyIdx, state = 'success') {
+    // ═══ 🚦 AI 失敗分類 + 冷卻(2026-11-13)══════════════════════════════
+    // 🐛 以前每一個 429 都當成同一件事:等 2~5 秒換下一把,整家供應商冷卻 30 秒,畫面寫「撞 429」。
+    //    但 429 有三種,處理方式完全不同:
+    //    ① 每分鐘限流 —— 等幾秒就好;② 每日 / 每月額度用完 —— 等幾秒不會好,而且**只有那一個模型**用完
+    //    (Groq / Gemini 的額度是每個模型分開算的);③ 餘額 / 帳單問題 —— 等多久都不會自己好。
+    //    混成一種的後果:額度用完的模型每 30 秒又被打一次、同一家其他還有額度的模型被一起擋掉、
+    //    使用者看不出要等多久、要不要去處理。另外錯誤回應的內容以前完全沒讀(只看 res.status)。
+    // ⭐ 分類規則照抄 skl(同一位使用者的 repo,MIT)的 ai-model-router:
+    //    xin-toolkit/skills/ai-model-router/assets/model_router.js(commit 2dc9408)的
+    //    parseDelay / textDelay / resetDelay / flat / geminiDetails / metaReset / withHeaders / classify 與那幾個常數。
+    //    ⛔ 改規則兩邊一起改:這裡 + groq_common.py(採礦端,照 skl 的 scripts/model_router.py 抄)。
+    //    兩邊的測試跑同一份案例 scripts/fixtures/ai_router_cases.json(= skl 的 assets/router_cases.json 原檔):
+    //    scripts/test_ai429.mjs / python3 groq_common.py --selftest。
+    _AIR: (() => {
+        // 回應「明確說」模型不存在 / 下架才算:只看 404 會把網址打錯也當成模型下架
+        const MODEL_MISSING = /model_not_found|model_decommissioned|decommissioned|\bmodels?\b[\s\S]{0,160}?(?:does not exist|not found|no longer (?:available|supported)|has been (?:deprecated|retired|removed))|not_found_error[\s\S]{0,80}?\bmodel\b|not a valid model|no endpoints found for/i;
+        // 餘額 / 帳單。⛔ 不能只比對 billing、credits:Groq、Gemini 的限流訊息、OpenRouter 的每日上限訊息都有這些字
+        const BILLING = /insufficient[_\s-]?(?:balance|credits?|funds|quota)|credit balance is too low|(?:out of|no remaining|not enough) credits?|requires more credits|can only afford|credits? (?:are |have been )?(?:depleted|exhausted)|prepayment|payment required|(?:billing|spend(?:ing)?) (?:hard )?limit|exceeded (?:your |the )?(?:monthly )?(?:budget|spend(?:ing)?)\b|reached your specified (?:api )?usage limits?|billing[_\s]not[_\s]active|billing account[\s\S]{0,60}?(?:disabled|closed|suspended)|account[_\s](?:is[_\s])?(?:deactivated|suspended|inactive|not[_\s]active)|arrears/i;
+        // 每日 / 每週 / 每月額度(Groq TPD/RPD、OpenRouter free-models-per-day、Gemini quotaId 的 PerDay);「today」不算
+        const LONG_WINDOW = /per[\s_-]?(?:day|week|month)|\b(?:rpd|tpd)\b|\b(?:daily|weekly|monthly)\b/i;
+        const TEXT_DELAY = /(?:try again|retry)\s+(?:in|after)\s+((?:\d+(?:\.\d+)?(?:ms|h|m|s))+|\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)?/i;
+        const NUMBER = /^\d+(?:\.\d+)?$/;
+        const DURATION = /^(?:\d+(?:\.\d+)?(?:ms|h|m|s))+$/i;
+        const DUR_PART = /(\d+(?:\.\d+)?)(ms|h|m|s)/gi;
+        const UNIT = { ms: 0.001, h: 3600, m: 60, s: 1 };
+        // 先比對 HTTP 日期格式再交給 Date.parse:Date.parse 連「test 1」都當成 2001 年
+        const HTTP_DATE = /^(?:[A-Za-z]{3},\s*)?\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{2}:\d{2}(?::\d{2})?\s*(?:GMT|UTC|[+-]\d{4})$/;
+        const HEADER_KEYS = [['retry-after', '_retry_after'], ['x-ratelimit-reset', '_ratelimit_reset']];
+        // 「要等多久」換成秒數;看不懂回 null。"5m"=300 秒(⛔ 不是 5 秒)、"520ms"、"1m30s"、"1h2m3s"、HTTP 日期
+        const parseDelay = (v, nowSec) => {
+            if (v == null || typeof v === 'boolean') return null;
+            if (typeof v === 'number') return v >= 0 && isFinite(v) ? v : null;
+            const s = String(v).trim();
+            if (NUMBER.test(s)) return parseFloat(s);
+            if (DURATION.test(s)) {
+                let total = 0;
+                for (const m of s.matchAll(DUR_PART)) total += parseFloat(m[1]) * UNIT[m[2].toLowerCase()];
+                return total;
+            }
+            if (HTTP_DATE.test(s)) {
+                const ms = Date.parse(s);
+                if (isNaN(ms)) return null;
+                return Math.max(0, ms / 1000 - (nowSec == null ? Date.now() / 1000 : nowSec));
+            }
+            return null;
+        };
+        // 訊息裡的等待時間(try again in 7m26.4s / Please retry in 17.3s / retry after 30 seconds)
+        const textDelay = (text) => {
+            const m = String(text || '').match(TEXT_DELAY);
+            if (!m) return null;
+            const num = m[1], unit = (m[2] || '').toLowerCase();
+            if (!NUMBER.test(num)) return parseDelay(num);
+            const mult = unit.startsWith('min') ? 60 : (unit.startsWith('hour') || unit.startsWith('hr')) ? 3600 : 1;
+            return parseFloat(num) * mult;
+        };
+        // x-ratelimit-reset 是「恢復的時間點」(OpenRouter 用毫秒時間戳);不像時間戳的不猜
+        const resetDelay = (v, nowSec) => {
+            let x = Number(v);
+            if (x > 1e12) x /= 1000;
+            return x > 1e9 ? Math.max(0, x - nowSec) : null;
+        };
+        // 錯誤回應裡所有字串值串成一行(用 | 隔開,避免把兩個欄位接成一句話誤判)
+        const flat = (body, limit) => {
+            const out = [];
+            const walk = (v, depth) => {
+                if (depth > 20) return;
+                if (typeof v === 'string') out.push(v);
+                else if (Array.isArray(v)) v.forEach(x => walk(x, depth + 1));
+                else if (v && typeof v === 'object') Object.values(v).forEach(x => walk(x, depth + 1));
+            };
+            walk(body, 0);
+            return out.join(' | ').slice(0, limit || 4000);
+        };
+        // Gemini 的 error.details:QuotaFailure 的 quotaId(PerMinute / PerDay)、quotaValue 是不是 0,以及 RetryInfo 的 retryDelay
+        const geminiDetails = (b) => {
+            const err = b && b.error && typeof b.error === 'object' ? b.error : null;
+            const ids = [];
+            let retry = null, zero = false;
+            for (const d of err && Array.isArray(err.details) ? err.details : []) {
+                if (!d || typeof d !== 'object') continue;
+                const kind = String(d['@type'] || '');
+                if (kind.endsWith('QuotaFailure')) {
+                    for (const v of Array.isArray(d.violations) ? d.violations : []) {
+                        if (v && typeof v === 'object' && v.quotaId) { ids.push(String(v.quotaId)); zero = zero || String(v.quotaValue) === '0'; }
+                    }
+                } else if (kind.endsWith('RetryInfo') && retry == null) retry = d.retryDelay;
+            }
+            return [ids, retry, zero];
+        };
+        // OpenRouter 把限流標頭放在 error.metadata.headers 裡(例如 X-RateLimit-Reset)
+        const metaReset = (b) => {
+            const h = b && b.error && b.error.metadata && b.error.metadata.headers;
+            if (h && typeof h === 'object' && !Array.isArray(h)) for (const k of Object.keys(h)) if (k.toLowerCase() === 'x-ratelimit-reset') return h[k];
+            return null;
+        };
+        const first = (...vals) => { for (const v of vals) if (v != null) return v; return null; };
+        // 把判斷限流要用的回應標頭放進 body(_retry_after、_ratelimit_reset);名稱不分大小寫,body 已有的不覆蓋
+        const withHeaders = (body, headers) => {
+            if (!body || typeof body !== 'object' || Array.isArray(body) || !headers) return body;
+            const get = typeof headers.get === 'function' ? (n) => headers.get(n)
+                : (n) => { const k = Object.keys(headers).find((x) => x.toLowerCase() === n); return k == null ? null : headers[k]; };
+            for (const [name, field] of HEADER_KEYS) {
+                const v = get(name);
+                if (v != null && v !== '' && !(field in body)) body[field] = String(v);
+            }
+            return body;
+        };
+        // 回 { kind, delay }:billing / missing / config / auth / quota / rate / server / other
+        const classify = (status, body, nowSec) => {
+            const now = nowSec == null ? Date.now() / 1000 : nowSec;
+            const b = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+            const text = flat(body);
+            if (status === 402 || ([400, 401, 403, 429].includes(status) && BILLING.test(text))) return { kind: 'billing', delay: null };
+            if ((status === 400 || status === 404) && MODEL_MISSING.test(text)) return { kind: 'missing', delay: null };
+            if (status === 404) return { kind: 'config', delay: null };
+            if (status === 401 || status === 403) return { kind: 'auth', delay: null };
+            if (status !== 429 && status !== 0 && status < 500) return { kind: 'other', delay: null };
+            const [ids, retry, zero] = geminiDetails(b);
+            // quotaValue 是 0(limit: 0):這個方案根本沒有這個模型的額度,等多久都不會好;retryDelay 沒意義,當成沒說
+            if (status === 429 && zero) return { kind: 'quota', delay: null };
+            const delay = first(parseDelay(b._retry_after, now), parseDelay(retry, now), textDelay(text),
+                resetDelay(b._ratelimit_reset, now), resetDelay(metaReset(b), now));
+            if (status === 429) {
+                // Gemini 有結構化的 quotaId 就只看它:每分鐘限流的訊息也寫「exceeded your current quota」
+                const longWindow = ids.length ? ids.some((i) => LONG_WINDOW.test(i)) : LONG_WINDOW.test(text);
+                return { kind: longWindow ? 'quota' : 'rate', delay };
+            }
+            return { kind: 'server', delay };
+        };
+        return { MODEL_MISSING, BILLING, LONG_WINDOW, TEXT_DELAY, parseDelay, textDelay, resetDelay, flat, geminiDetails, metaReset, withHeaders, classify };
+    })(),
+    // 讀失敗回應的內容(每個回應只讀一次,記在 WeakMap):真的 fetch 回應用 clone() 讀 → 原本的 body 還留給呼叫端;
+    // 不是 JSON 的錯誤頁(HTML / 純文字)放進 _raw,classify 看得到;Retry-After / X-RateLimit-Reset 標頭併進來
+    async _aiErrBody(res) {
+        if (!res || typeof res !== 'object') return {};
+        const memo = this._aiBodyMemo || (this._aiBodyMemo = new WeakMap());
+        if (memo.has(res)) return memo.get(res);
+        let body = {}, raw = null;
+        try {
+            if (typeof res.clone === 'function') raw = await res.clone().text();
+            else if (typeof res.json === 'function') {
+                try { body = await res.json(); } catch (_) { raw = typeof res.text === 'function' ? await res.text() : ''; }
+            } else if (typeof res.text === 'function') raw = await res.text();
+            if (raw != null) { try { body = raw ? JSON.parse(raw) : {}; } catch (_) { body = { _raw: String(raw).slice(0, 500) }; } }
+        } catch (_) { body = {}; }
+        if (!body || typeof body !== 'object' || Array.isArray(body)) body = { _raw: String(JSON.stringify(body) ?? '').slice(0, 500) };
+        // 複製一份再併標頭:⛔ 不改到呼叫端之後 res.json() 拿到的那個物件
+        body = this._AIR.withHeaders({ ...body }, res.headers);
+        memo.set(res, body);
+        return body;
+    },
+    // 每個失敗回應的分類結果(呼叫端用 _aiInfoOf(res) 拿):{ provider, model, kind, delay, until, wait, skipped, status }
+    _aiTag(res, info) { if (res && typeof res === 'object') (this._aiResInfo || (this._aiResInfo = new WeakMap())).set(res, info); return info; },
+    _aiInfoOf(res) { return (res && typeof res === 'object' && this._aiResInfo && this._aiResInfo.get(res)) || null; },
+    // 失敗回應 → 分類 + 記冷卻:
+    //   quota → 只冷卻這個模型;rate → 對方說 ≤20 秒回 wait(呼叫端等一下再試同一個),更久 / 沒說 / 已經等過 → 冷卻這個模型;
+    //   billing / auth → 冷卻整把金鑰(model '*');missing / config / server / other → 不記冷卻
+    async _aiFail(provider, key, model, res, { canWait = true } = {}) {
+        const status = Number(res && res.status) || 0;
+        const c = this._AIR.classify(status, await this._aiErrBody(res));
+        const info = { provider, model, kind: c.kind, delay: c.delay, status };
+        if (c.kind === 'quota') info.until = this._aiCoolSet(provider, key, model, 'quota', c.delay).u;
+        else if (c.kind === 'rate') {
+            if (canWait && c.delay != null && c.delay <= this._AI_COOL.wait) info.wait = c.delay;
+            else info.until = this._aiCoolSet(provider, key, model, 'rate', c.delay).u;
+        } else if (c.kind === 'billing' || c.kind === 'auth') info.until = this._aiCoolSet(provider, key, '*', c.kind, null).u;
+        return this._aiTag(res, info);
+    },
+    // 正在冷卻 → ⛔ 不送請求,回一個「假的失敗回應」:呼叫端照一般失敗處理,但 skipped=true(⛔ 不算一次失敗)
+    _aiSkipRes(provider, c) {
+        const res = { ok: false, status: 0, headers: { get: () => null }, json: async () => ({}), text: async () => '' };
+        this._aiTag(res, { provider, model: c.m, kind: c.k, until: c.u, skipped: true, status: 0 });
+        return res;
+    },
+
+    // ── 冷卻紀錄(localStorage `aiCool_v1`)── 一筆 =(供應商, 金鑰指紋, 模型)→ 到期時間 + 原因;模型 '*' = 整把金鑰
+    //   ⭐ 記在模型上:Groq 的 qwen 今天額度用完,同一把金鑰的 gpt-oss 照用(以前整家冷卻 30 秒,兩個一起擋)
+    //   ⭐ 分金鑰記:多把金鑰通常是不同帳號,額度分開算;⛔ 不存金鑰本身,只存 8 個字的指紋
+    //   多久(秒)跟 skl model_router 一樣:額度用完沒說何時恢復先避開 1 小時;說「幾秒後再試」不可信
+    //   (Gemini 每日額度也附幾秒的 retryDelay,照等還是 429)→ 至少 5 分鐘;怪異的 Retry-After 最多一天。
+    //   限流沒說多久 → 1 分鐘(每分鐘的窗口);帳單 / 金鑰被拒 → 整把 1 小時(改了金鑰 = 指紋不同,馬上就會再試)
+    _AI_COOL: { quotaDefault: 3600, quotaMin: 300, max: 86400, rateDefault: 60, wait: 20, key: 3600 },
+    _AI_COOL_LS: 'aiCool_v1',
+    _AI_NAME: { groq: 'Groq', gemini: 'Gemini', openrouter: 'OpenRouter' },
+    _aiCoolSecs(kind, delay) {
+        const C = this._AI_COOL, d = delay == null || !isFinite(delay) ? null : Math.max(0, Number(delay));
+        const s = kind === 'quota' ? (d == null ? C.quotaDefault : Math.max(d, C.quotaMin))
+            : kind === 'rate' ? (d == null ? C.rateDefault : d) : C.key;
+        return Math.min(C.max, Math.max(1, s));
+    },
+    // 金鑰指紋(FNV-1a 32 位元 = 8 個十六進位字;跟 skl model_router 的 fingerprint 同一個算法)
+    _aiKh(key) {
+        let h = 0x811c9dc5;
+        for (const b of new TextEncoder().encode(String(key || ''))) h = Math.imul(h ^ b, 0x01000193) >>> 0;
+        return h.toString(16).padStart(8, '0');
+    },
+    _aiCoolId(provider, key, model) { return `${provider}|${this._aiKh(key)}|${model || '*'}`; },
+    _aiCoolAll() {
+        // 舊版「整家冷卻 30 秒」留下的 aiCooldown_* 已經沒有人讀 → 順手清掉(每次開 App 一次)
+        if (!this._aiCoolOldGone) { this._aiCoolOldGone = true; try { ['groq', 'gemini', 'openrouter'].forEach(p => localStorage.removeItem(`aiCooldown_${p}`)); } catch (_) {} }
+        const all = this._lsJson(this._AI_COOL_LS, {});
+        const out = all && typeof all === 'object' && !Array.isArray(all) ? all : {};
+        const now = Date.now(); let dirty = out !== all;
+        for (const id of Object.keys(out)) { const c = out[id]; if (!c || !(c.u > now) || !c.p || !c.h) { delete out[id]; dirty = true; } }
+        if (dirty) this._aiCoolSave(out);
+        return out;
+    },
+    _aiCoolSave(all) {
+        try { if (Object.keys(all).length) localStorage.setItem(this._AI_COOL_LS, JSON.stringify(all)); else localStorage.removeItem(this._AI_COOL_LS); } catch (_) {}
+    },
+    _aiCoolGet(provider, key, model) { return this._aiCoolAll()[this._aiCoolId(provider, key, model)] || null; },
+    _aiCoolModels(provider, key) {
+        const kh = this._aiKh(key);
+        return Object.values(this._aiCoolAll()).filter(c => c.p === provider && c.h === kh && c.m !== '*').map(c => c.m);
+    },
+    // 挑出來的 m 是不是「每個候選都在冷卻」:m 本身在冷卻 / 避開名單上 → 是;
+    //   ⚠️ 清單上配得到的都在冷卻時,_aiPickModel 會退回呼叫端原本要的名字(可能根本不在清單上)→ 也算,
+    //      ⛔ 不然會白打一個不存在的模型(404)才發現
+    async _aiAllCool(provider, key, want, m, extra = []) {
+        const cool = this._aiCoolModels(provider, key), av = [...cool, ...extra];
+        if (av.includes(m)) return true;
+        if (!cool.length) return false;
+        const ids = (await this._aiModelList(provider, key)).map(x => String(x || '').replace(/^models\//, ''));
+        return ids.length > 0 && !ids.includes(m) && av.includes(this._aiPickModel(provider, ids, want, extra));
+    },
+    _aiCoolSoonest(provider, key) {
+        const kh = this._aiKh(key);
+        const xs = Object.values(this._aiCoolAll()).filter(c => c.p === provider && c.h === kh).sort((a, b) => a.u - b.u);
+        return xs[0] || { p: provider, h: kh, m: '*', k: 'rate', u: Date.now() + this._AI_COOL.rateDefault * 1000 };
+    },
+    _aiCoolSet(provider, key, model, kind, delay) {
+        const now = Date.now(), until = now + this._aiCoolSecs(kind, delay) * 1000;
+        const all = this._aiCoolAll(), id = this._aiCoolId(provider, key, model), old = all[id];
+        if (!old || old.u < until) all[id] = { p: provider, h: this._aiKh(key), m: model || '*', k: kind, u: until, t: now };   // 已經有更久的冷卻就不縮短
+        this._aiCoolSave(all);
+        try { this._renderAICoolList(); } catch (_) {}
+        return all[id];
+    },
+    // 成功了 → 這個模型的冷卻作廢(對方比我們估的早恢復)
+    _aiCoolDel(provider, key, model) {
+        const all = this._aiCoolAll(), id = this._aiCoolId(provider, key, model);
+        if (all[id]) { delete all[id]; this._aiCoolSave(all); try { this._renderAICoolList(); } catch (_) {} }
+    },
+    // 設定頁「現在再試」:清掉那一筆(使用者確定已經儲值 / 換好方案,不想等到恢復時間)
+    _aiCoolRetry(id) {
+        const all = this._aiCoolAll();
+        if (all[id]) { delete all[id]; this._aiCoolSave(all); }
+        this._renderAICoolList();
+        try { this._setGrpSummaries(); } catch (_) {}
+        try { this.showToast('✅ 已解除,下次用 AI 會再試這一個'); } catch (_) {}
+    },
+
+    // ── 白話 ──
+    // 「約 14:05 恢復」:台北時間(台灣沒有日光節約,固定 +8);不是今天就加「明天」(冷卻最多一天)
+    _aiClock(ms) {
+        const tw = x => new Date(x + 8 * 3600e3), t = tw(ms), now = tw(Date.now());
+        const hm = `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`;
+        return (t.getUTCDate() !== now.getUTCDate() ? '明天 ' : '') + hm;
+    },
+    _aiSecsTxt(sec) {
+        const s = Math.max(1, Math.ceil(Number(sec) || 0));
+        if (s < 90) return `${s} 秒`;
+        const min = Math.round(s / 60);
+        if (min < 90) return `約 ${min} 分鐘`;
+        const h = Math.floor(min / 60), m = min % 60;
+        return m ? `約 ${h} 小時 ${m} 分` : `約 ${h} 小時`;
+    },
+    // 一句白話原因(⛔ 不寫狀態碼、⛔ 不寫「撞 429」;前面的供應商名稱由呼叫端加)
+    _aiPlain(info) {
+        const k = info && info.kind;
+        const left = info && info.until ? (info.until - Date.now()) / 1000 : (info && info.wait != null ? info.wait : info && info.delay);
+        if (k === 'quota') return info.until ? `今天額度用完(約 ${this._aiClock(info.until)} 恢復)` : '今天額度用完,晚一點再試';
+        if (k === 'rate') return `太頻繁,${this._aiSecsTxt(left != null ? left : this._AI_COOL.rateDefault)}後再試`;
+        if (k === 'billing') return '帳戶餘額不足 → 去帳單頁看看';
+        if (k === 'auth') return '金鑰無效或沒有權限 → 設定中心重新填一次';
+        if (k === 'missing') return '的 AI 模型可能已下架(已自動試著換一個仍不成功)→ 設定 → 🩺 測試所有金鑰';
+        if (k === 'config') return '找不到 AI 服務的網址(不是模型下架)→ 先改用其他 AI,一直這樣請回報';
+        if (k === 'server') return '伺服器忙碌,稍後再試';
+        if (k === 'other') return '拒絕這次請求(內容太長或格式不符)→ 換個引擎或稍後再試';
+        return info && info.status ? `暫時無法使用(代碼 ${info.status})` : '暫時無法使用,稍後再試';
+    },
+    // 一家供應商這次失敗的好幾筆(多把金鑰)裡挑最有用的一筆:有恢復時間的挑最快恢復的,否則最後一筆
+    _aiBestNote(notes) {
+        const cool = notes.filter(n => n && n.until).sort((a, b) => a.until - b.until);
+        return cool[0] || notes[notes.length - 1] || null;
+    },
+    _aiSummary(notes) {
+        const by = {};
+        for (const n of notes || []) if (n && n.provider) (by[n.provider] = by[n.provider] || []).push(n);
+        const parts = Object.keys(by).map(p => {
+            const b = this._aiBestNote(by[p]);
+            if (!(b && b.msg && !b.kind)) return this._aiErr(p, b);
+            // 沒有分類的(例外訊息):逾時講白話(⛔ 把一長串網址印給使用者看),其他留前 40 字
+            return `${this._AI_NAME[p] || p} ${/逾時|timeout|abort/i.test(b.msg) ? '回應太慢(逾時),稍後再試' : String(b.msg).slice(0, 40)}`;
+        });
+        return parts.length ? `AI 暫時都不能用:${parts.join(';')}` : 'AI 暫時都不能用,稍後再試';
+    },
+    _aiChainError(notes) { const e = new Error(this._aiSummary(notes)); e.aiNotes = notes; return e; },
+    // chip「Groq 今天額度用完(約 14:05 恢復)→ 已改用 Gemini」要用的那一筆(最後一家失敗的)
+    _aiWhy(notes) {
+        const last = (notes || []).filter(n => n && n.provider && n.kind).slice(-1)[0];
+        return last ? this._aiBestNote(notes.filter(n => n && n.provider === last.provider && n.kind)) : null;
+    },
+    // 🖐️ 同一題連點兩下(或兩個地方同時要同一題):第一個還沒回來就交同一個 Promise,⛔ 不再打一次 API。
+    //    ⛔ 只在進行中:回來(成功或失敗)就從表上拿掉 —— 不另外快取結果(各功能自己有快取)。
+    _aiOnce(kind, args, run) {
+        let k;
+        try { k = JSON.stringify([kind, args, this.settings?.aiEngine || null, this.settings?.aiPreferGroq !== false]); }
+        catch (_) { return run(); }   // 參數有循環參照之類的怪東西 → 不去重,照舊呼叫
+        const m = this._aiInflight || (this._aiInflight = new Map());
+        if (m.has(k)) return m.get(k);
+        const p = Promise.resolve().then(run);
+        m.set(k, p);
+        const drop = () => { if (m.get(k) === p) m.delete(k); };
+        p.then(drop, drop);
+        return p;
+    },
+    // 📡 設定 → 🔑 金鑰與 AI →「AI 現在狀態」:每一列 = 一筆正在冷卻的(供應商・第幾把金鑰・模型)+ 原因 + 還要多久 +「現在再試」
+    //   ⛔ 只顯示「第幾把」,不顯示金鑰;金鑰已經刪掉 / 換掉的那幾筆順手清掉(指紋對不到任何一把)
+    _renderAICoolList() {
+        const box = document.getElementById('aiCoolList');
+        if (!box) return;
+        const all = this._aiCoolAll(), now = Date.now();
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const ORDER = ['groq', 'gemini', 'openrouter'], EMO = { groq: '💜', gemini: '🤖', openrouter: '🚀' };
+        const keyNo = c => this._keyArr(c.p).findIndex(r => r && (r.k || '').trim() && this._aiKh((r.k || '').trim()) === c.h);
+        let pruned = false;
+        const rows = [];
+        for (const id of Object.keys(all)) {
+            const c = all[id], i = keyNo(c);
+            if (i < 0) { delete all[id]; pruned = true; continue; }
+            rows.push({ id, c, i });
+        }
+        if (pruned) this._aiCoolSave(all);
+        rows.sort((a, b) => (ORDER.indexOf(a.c.p) - ORDER.indexOf(b.c.p)) || (a.c.u - b.c.u));
+        if (!rows.length) { box.innerHTML = '<div class="text-[11px] text-gray-400 py-1" data-aicool-empty>✅ 每一家 AI 現在都可以用(沒有在休息的)</div>'; return; }
+        const WHY = { quota: '⏳ 今天額度用完', rate: '⏳ 太頻繁(每分鐘有上限)', billing: '⚠️ 帳戶餘額不足 → 去帳單頁看看', auth: '⚠️ 金鑰無效或沒有權限 → 上面重新填一次' };
+        box.innerHTML = rows.map(({ id, c, i }) => {
+            const lt = this._aiSecsTxt((c.u - now) / 1000), clock = esc(this._aiClock(c.u));
+            // 帳單 / 金鑰問題等多久都不會自己好 → ⛔ 寫「幾點恢復」(會讓人以為等一下就好),只講幾點會自動再試一次
+            const when = c.k === 'billing' || c.k === 'auth' ? `・${esc(lt)}後自動再試一次(${clock})`
+                : `・還要${lt.startsWith('約') ? '' : ' '}${esc(lt)}(${clock} 恢復)`;
+            return `<div data-aicool-row class="flex items-center gap-2 py-1.5 border-b border-[#21262d]">
+                <div class="min-w-0 flex-1 text-[11px] leading-snug" style="overflow-wrap:anywhere">
+                    <div class="font-bold text-gray-200">${EMO[c.p] || '⚡'} ${esc(this._AI_NAME[c.p] || c.p)} 第 ${i + 1} 把・${c.m === '*' ? '整把金鑰' : esc(c.m)}</div>
+                    <div class="text-amber-200">${WHY[c.k] || '⏳ 休息中'}${when}</div>
+                </div>
+                <button type="button" data-aicool="${esc(id)}" onclick="app._aiCoolRetry(this.dataset.aicool)" class="flex-shrink-0 px-2 rounded border border-blue-700/60 bg-blue-900/40 text-blue-200 text-[11px] font-bold" style="min-width:44px;min-height:44px">現在再試</button>
+            </div>`;
+        }).join('');
+    },
+    // 右下角 chip 點下去:開設定、打開「🔑 金鑰與 AI」那一組、捲到「AI 現在狀態」(⛔ 收起來的話使用者找不到)
+    _openAIStatus() {
+        this.openSettings();
+        try {
+            const d = document.querySelector('details[data-setgrp="keys"]'); if (d) d.open = true;
+            const el = document.getElementById('aiCoolList'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+        } catch (_) {}
+    },
+
+    // [AI 狀態追蹤] 右下角 chip
+    // provider:'openrouter' | 'gemini' | 'groq';keyIdx:第幾把(1 起算;不知道就 null)
+    // state:'trying' | 'wait' | 'fail' | 'switching' | 'success' | 'failed'(預設 'success' 兼容舊呼叫)
+    // info:_aiInfoOf(res) 的分類結果('failed' 時是整串 notes)
+    // 🚦 失敗一律講白話原因(今天額度用完(約 14:05 恢復)/ 太頻繁,20 秒後再試 / 帳戶餘額不足 → 去帳單頁看看),
+    //    ⛔ 不寫「撞 429」;⛔ 不用紅綠(燈號鐵則:紅綠只講漲跌)→ 失敗 / 等待一律琥珀、橘色。
+    //    文字變長了 → 限寬、可以換行(⛔ 手機上超出螢幕左邊被切掉)
+    _setAIStatus(provider, keyIdx, state = 'success', info = null) {
         if (state === 'success') {
             this._currentAIProvider = provider;
             this._currentAIKeyIdx = keyIdx;
@@ -10090,13 +10542,15 @@ ${list}
         if (!chip || !txt) return;
         chip.classList.remove('hidden');
         clearTimeout(this._aiStatusDimTimer);
+        chip.style.maxWidth = 'calc(100vw - 16px)';
+        chip.style.overflowWrap = 'anywhere';
+        const BASE = 'fixed bottom-20 right-2 z-50 border rounded-2xl px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm';
+        const WARN = 'border-amber-600 bg-amber-950/95 text-amber-100';
 
         if (state === 'failed' || !provider) {
-            const fails = this._getRecentAIFailures(60);
-            const failTxt = fails.length ? fails.map(f => `${f.provider}#${f.keyIdx}`).join('·') : '';
-            txt.textContent = failTxt ? `⚠️ ${failTxt} 撞 429` : '⚠️ 三鏈全忙(429)';
-            chip.className = 'fixed bottom-20 right-2 z-50 bg-red-900/95 border border-red-600 rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm text-red-200 cursor-pointer';
-            this._aiStatusDimTimer = setTimeout(() => { chip.classList.add('hidden'); }, 5000);  // 失敗 5 秒可見
+            txt.textContent = `⚠️ ${this._aiSummary(Array.isArray(info) ? info : [])}`;
+            chip.className = `${BASE} ${WARN} cursor-pointer`;
+            this._aiStatusDimTimer = setTimeout(() => { chip.classList.add('hidden'); }, 8000);  // 失敗 8 秒可見(字變多了)
             chip.style.opacity = '1';
             return;
         }
@@ -10107,28 +10561,18 @@ ${list}
         };
         const m = map[provider] || { emoji: '⚡', name: provider, cls_success: 'border-gray-600 bg-gray-900/95 text-gray-200', cls_trying: 'border-gray-700 bg-gray-950/80 text-gray-400 animate-pulse' };
 
+        const why = info ? this._aiPlain(info) : '';
+        const from = info && info.provider && info.provider !== provider ? (this._AI_NAME[info.provider] || info.provider) : '';
         let label, cls, hideMs;
-        if (state === 'trying')           { label = `⏳ ${m.emoji} ${m.name} #${keyIdx} 嘗試中...`;        cls = m.cls_trying;  hideMs = 0; }
-        else if (state === 'rate-limited'){ label = `⚠️ ${m.emoji} ${m.name} #${keyIdx} 撞 429`;            cls = 'border-orange-600 bg-orange-950/95 text-orange-200'; hideMs = 3000; }
-        else if (state === 'switching')   { label = `🔄 切換至 ${m.emoji} ${m.name} #${keyIdx}`;           cls = 'border-blue-600 bg-blue-950/95 text-blue-200 animate-pulse'; hideMs = 0; }
-        else                              { label = `✅ ${m.emoji} ${m.name} #${keyIdx}`;                 cls = m.cls_success; hideMs = 1500; }
+        if (state === 'trying')         { label = `⏳ ${m.emoji} ${m.name} #${keyIdx} 嘗試中...`; cls = m.cls_trying; hideMs = 0; }
+        else if (state === 'wait')      { label = `⏳ ${m.name} ${why}`; cls = WARN; hideMs = 0; }
+        else if (state === 'fail')      { label = `⚠️ ${m.name}${keyIdx ? ` #${keyIdx}` : ''} ${why}`; cls = 'border-orange-600 bg-orange-950/95 text-orange-200'; hideMs = 4000; }
+        else if (state === 'switching') { label = from && why ? `🔄 ${from} ${why}→ 已改用 ${m.name}` : `🔄 切換至 ${m.emoji} ${m.name} #${keyIdx || 1}`; cls = 'border-blue-600 bg-blue-950/95 text-blue-200'; hideMs = 0; }
+        else                            { label = `✅ ${m.emoji} ${m.name} #${keyIdx}`; cls = m.cls_success; hideMs = 1500; }
         txt.textContent = label;
-        chip.className = `fixed bottom-20 right-2 z-50 border rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm ${cls}`;
+        chip.className = `${BASE} ${cls}`;
         chip.style.opacity = '1';
         if (hideMs > 0) this._aiStatusDimTimer = setTimeout(() => { chip.classList.add('hidden'); }, hideMs);
-    },
-
-    // V14.16 — provider 級 429 cooldown(避免剛撞 429 又馬上試同一 provider)
-    _isProviderCoolingDown(provider) {
-        try {
-            const until = parseInt(localStorage.getItem(`aiCooldown_${provider}`) || '0');
-            return until > Date.now();
-        } catch(_) { return false; }
-    },
-    _markProviderCoolingDown(provider, seconds = 30) {
-        try {
-            localStorage.setItem(`aiCooldown_${provider}`, String(Date.now() + seconds * 1000));
-        } catch(_) {}
     },
 
     // 📊 AI key 使用統計:localStorage 紀錄每日每 key 成功/失敗次數,僅保留今天 + 昨天
@@ -10162,12 +10606,6 @@ ${list}
         this._recordAIKeyStat(provider, keyIdx, false);
     },
 
-    // 🔍 最近 N 秒內的 AI key 失敗紀錄(回給 chip 顯示)
-    _getRecentAIFailures(seconds) {
-        if (!this._aiFailureTrace) return [];
-        const cutoff = Date.now() - seconds * 1000;
-        return this._aiFailureTrace.filter(f => f.ts >= cutoff);
-    },
 
     // 📊 渲染「AI 使用統計」到設定頁(每次 openSettings 重新計算)
     /** 🧹 V78.1.1 設定收起來的四組:summary 寫一行「現在是什麼狀態」(⛔ 收起來 ≠ 看不到有沒有事) */
@@ -10179,7 +10617,8 @@ ${list}
         try { const C = (this._ALERT_CATS || []).filter(c => (!c.lead || this._isLead?.()) && (!c.adv || !!S.stratUnlock)), off = S.alertOff || {}; cats = C.length ? `${C.filter(c => c.lock || off[c.k] !== true).length}/${C.length} 類通知會跳出來` : ''; } catch (_) {}
         put('notify', [cats, tg, S.watchlistAlert ? '盤中即時警報開' : '盤中即時警報關'].filter(Boolean).join('・'));
         const nf = nKey(S.fugleKeys), nm = nKey(S.finmindKeys), na = nKey(S.groqKeys) + nKey(S.openrouterKeys) + nKey(S.geminiKeys);
-        put('keys', `Fugle ${nf} 把・FinMind ${nm} 把・AI ${na} 把`);
+        let nCool = 0; try { nCool = Object.keys(this._aiCoolAll()).length; } catch (_) {}   // 📡 收起來也看得到「有 AI 在休息」
+        put('keys', `Fugle ${nf} 把・FinMind ${nm} 把・AI ${na} 把${nCool ? `・${nCool} 個 AI 休息中` : ''}`);
         let hid = 0; try { const sh = this._deckShow(), st = this._strat(); hid = (this._DECK_SECTIONS || []).filter(d => !(d.st && d.st !== st) && !sh[d.k]).length; } catch (_) {}
         put('tools', `決策台收起 ${hid} 塊${S.premktAuto !== false ? '・早上先到盤前' : ''}${this._labMode() ? '・自訂回測・盲測練習' : ''}`);
     },
@@ -10218,6 +10657,8 @@ ${list}
     _aiFriendlyError(rawMsg) {
         const m = (rawMsg || '').toString();
         if (!m) return '請稍後再試,或至 ⚙️ 設定補充更多 AI key';
+        // 🚦 _aiChainError 的白話總結(每一家為什麼不能用、幾點恢復都在裡面)→ 照原句,⛔ 不再改寫成籠統的「全部撞限流」
+        if (/^AI 暫時都不能用/.test(m)) return `⚠️ ${m}`;
         if (/429|quota|rate.?limit|tpd|rpm/i.test(m) || /所有 key|皆呼叫失敗|三鏈|全忙/.test(m)) {
             return '⚠️ AI 三鏈(OpenRouter + Gemini + Groq)全部撞限流,請稍後 1-2 分鐘再試;或至 ⚙️ 設定補一把新 key(任一條鏈即可)';
         }
@@ -10285,60 +10726,94 @@ ${list}
         }
         let lastErr = null;
         // 🤖 V78.5.6 模型名先問官方清單(呼叫端要的還在就照用;下架了換同級最新的 flash)
+        //   🚦 每一把金鑰各自避開自己正在冷卻的模型(Gemini 免費額度是每個專案、每個模型分開算);
+        //      挑出來的還在冷卻 = 這把的候選全部在冷卻 → 不送,換下一把
         const _want = model;
-        model = await this._aiModel('gemini', _want, keys[this._geminiKeyIdx % keys.length]);
+        const gone = [];    // 這次確定不存在的模型(換下一把金鑰也不再挑它)
+        const pickFor = async (key, force = false) => {
+            const m = await this._aiModel('gemini', _want, key, { force, avoid: [...this._aiCoolModels('gemini', key), ...gone] });
+            return (await this._aiAllCool('gemini', key, _want, m, gone)) ? null : m;
+        };
+        const notes = [];   // 每一把沒成功的原因 → 最後的錯誤訊息講得出「今天額度用完(約 14:05 恢復)」
         let _reMod = false;
         for (let attempt = 0; attempt < keys.length; attempt++) {
             const idx = (this._geminiKeyIdx + attempt) % keys.length;
             const key = keys[idx];
-            // 🔐 V77.5.5 金鑰走 x-goog-api-key 標頭 ⛔ 不放網址(網址會進錯誤訊息 / 代理紀錄;test_key_header.py 釘住)
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-            let res;
-            try {
-                res = await this.safeFetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-                    body: JSON.stringify(reqBody)
-                }, { timeout: 60000, maxRetries: 1 });
-            } catch (e) { lastErr = e; continue; }
-            if (res.ok) {
-                const data = await res.json().catch(() => ({}));
-                const text = data?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join('') || '';
-                // V19.3 — 若仍被 safety 攔(理論上 BLOCK_NONE 不該再撞)記錄到 console 方便 debug
-                const finishReason = data?.candidates?.[0]?.finishReason;
-                if (!text && finishReason && finishReason !== 'STOP') {
-                    console.warn(`[_callGemini] 無內容,finishReason=${finishReason}`, data?.promptFeedback);
+            const kc = this._aiCoolGet('gemini', key, '*');
+            if (kc) { notes.push({ provider: 'gemini', model: '*', kind: kc.k, until: kc.u, skipped: true }); continue; }
+            model = await pickFor(key);
+            if (!model) { const c = this._aiCoolSoonest('gemini', key); notes.push({ provider: 'gemini', model: c.m, kind: c.k, until: c.u, skipped: true }); continue; }
+            let waited = false;
+            for (let hop = 0; hop < 3; hop++) {   // 同一把金鑰最多送 3 次(換模型 / 等完重試),⛔ 不會越打越多
+                // 🔐 V77.5.5 金鑰走 x-goog-api-key 標頭 ⛔ 不放網址(網址會進錯誤訊息 / 代理紀錄;test_key_header.py 釘住)
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+                let res;
+                try {
+                    res = await this.safeFetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+                        body: JSON.stringify(reqBody)
+                    }, { timeout: 60000, maxRetries: 1, raw429: true });
+                } catch (e) { lastErr = e; break; }
+                if (res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    const text = data?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join('') || '';
+                    // V19.3 — 若仍被 safety 攔(理論上 BLOCK_NONE 不該再撞)記錄到 console 方便 debug
+                    const finishReason = data?.candidates?.[0]?.finishReason;
+                    if (!text && finishReason && finishReason !== 'STOP') {
+                        console.warn(`[_callGemini] 無內容,finishReason=${finishReason}`, data?.promptFeedback);
+                    }
+                    if (text) {
+                        this._geminiKeyIdx = idx;  // 成功後固定在這把,下次優先用
+                        this._lastGeminiKeyIndex = idx + 1;  // 給 _setAIStatus 顯示用
+                        this._aiCoolDel('gemini', key, model);
+                        console.info(`[_callGemini] Gemini Key #${idx + 1} OK (${text.length} chars, finishReason=${finishReason || 'STOP'})`);
+                        return text;
+                    }
+                    lastErr = new Error(`Gemini 回應無內容(finishReason=${finishReason || '?'})`);
+                    break;
                 }
-                if (text) {
-                    this._geminiKeyIdx = idx;  // 成功後固定在這把,下次優先用
-                    this._lastGeminiKeyIndex = idx + 1;  // 給 _setAIStatus 顯示用
-                    console.info(`[_callGemini] Gemini Key #${idx + 1} OK (${text.length} chars, finishReason=${finishReason || 'STOP'})`);
-                    return text;
+                // 🚑 V78.5.6 模型不存在 / 已下架 → 清快取、重問一次、換一個、只重試一次
+                //    (🚦 只有回應明確說模型不存在才算;404 但沒說 = 網址設定錯,⛔ 不把模型標成下架)
+                if (!_reMod && await this._aiModelGone(res)) {
+                    _reMod = true; gone.push(model);
+                    console.warn(`[Gemini] 模型 ${model} 不存在或已下架,重新問官方清單…`);
+                    this._aiModelClear('gemini');
+                    const m2 = await pickFor(key, true);
+                    if (m2) { model = m2; continue; }
                 }
-                lastErr = new Error(`Gemini 回應無內容(finishReason=${finishReason || '?'})`);
-                continue;
-            }
-            if (res.status === 429 || res.status === 403 || res.status >= 500) {
+                const info = await this._aiFail('gemini', key, model, res, { canWait: !waited });
+                if (info.kind === 'missing' || info.kind === 'config' || info.kind === 'other') {
+                    // 每一把金鑰共用同一個網址、送同一包內容 → 換金鑰也一樣,直接講原因
+                    const e = this._aiError('gemini', info);
+                    const raw = info.kind === 'other' ? String(((await this._aiErrBody(res)).error || {}).message || '').slice(0, 80) : '';
+                    if (raw) e.message += `(${raw})`;
+                    throw e;
+                }
                 this._recordAIFail('gemini', idx + 1, res.status);
-                const _jitter = Math.round(2000 + Math.random() * 3000);
-                console.warn(`[Gemini 輪動] Key #${idx + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切下一把...`);
-                await new Promise(r => setTimeout(r, _jitter));
-                lastErr = new Error(`Gemini HTTP ${res.status}`);
-                continue;
+                notes.push(info);
+                if (info.kind === 'rate' && info.wait != null) {
+                    waited = true;
+                    this._setAIStatus('gemini', idx + 1, 'wait', info);
+                    await new Promise(r => setTimeout(r, Math.ceil(info.wait * 1000)));
+                    continue;   // 等完再試同一個模型
+                }
+                if (info.kind === 'quota' || info.kind === 'rate') {
+                    // 只有這個模型用完 / 被限流 → 同一把金鑰換下一個模型(冷卻中的自動避開);沒有別的才換下一把金鑰
+                    const m2 = await pickFor(key);
+                    if (m2) { model = m2; continue; }
+                    break;
+                }
+                if (info.kind === 'server' && attempt < keys.length - 1) {
+                    const _jitter = Math.round(2000 + Math.random() * 3000);
+                    console.warn(`[Gemini 輪動] Key #${idx + 1} 伺服器忙(${res.status}),等 ${_jitter}ms 後切下一把...`);
+                    await new Promise(r => setTimeout(r, _jitter));
+                }
+                break;   // 帳單 / 金鑰被拒(整把已冷卻)/ 伺服器忙 → 換下一把金鑰
             }
-            // 🚑 V78.5.6 模型不存在 / 已下架 → 清快取、重問一次、換一個、同一把金鑰只重試一次
-            if (!_reMod && await this._aiModelGone(res)) {
-                _reMod = true;
-                console.warn(`[Gemini] 模型 ${model} 不存在或已下架,重新問官方清單…`);
-                this._aiModelClear('gemini');
-                const m2 = await this._aiModel('gemini', _want, key, { force: true, avoid: [model] });
-                if (m2 && m2 !== model) { model = m2; attempt--; continue; }
-            }
-            const err = await res.json().catch(() => ({}));
-            if (res.status === 404) throw new Error(this._aiErr('gemini', 404));
-            throw new Error(err?.error?.message || `Gemini 錯誤 HTTP ${res.status}`);
         }
-        throw lastErr || new Error('Gemini 雙 key 皆撞 429/額度耗盡(三鏈會自動 fallback 到 Groq)');
+        if (notes.length) throw this._aiError('gemini', this._aiBestNote(notes));
+        throw lastErr || new Error('Gemini 暫時無法使用,稍後再試');
     },
 
     _getFinmindToken() {
@@ -12106,7 +12581,9 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         this._finmindQueue.running = false;
     },
 
-    async safeFetch(url, options = {}, { timeout = 8000, maxRetries = 3, retry404 = null } = {}) {
+    async safeFetch(url, options = {}, { timeout = 8000, maxRetries = 3, retry404 = null, raw429 = false } = {}) {
+        // 🚦 raw429:AI 呼叫(_groqFetch / _orChat / _callGemini)自己讀回應內容分辨是哪一種 429 ——
+        //    每日額度用完時這裡的通用退避只會白等,還會跳一個看不出原因的「被限流」toast。
         let attempt = 0;
         const isFinMind = typeof url === 'string' && url.includes('api.finmindtrade.com');
         // V16.4 — 採礦中對 data/*.json 404 智慧重試(抓 force-push 30-60 秒 transient 404)
@@ -12136,6 +12613,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     continue;
                 }
 
+                if (raw429 && res.status === 429) return res;
                 // FinMind 配額耗盡會回 402（Payment Required），其他限流回 429。兩種都要輪動。
                 if (res.status === 429 || (isFinMind && res.status === 402)) {
                     if (attempt >= maxRetries) {
@@ -12709,7 +13187,12 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     // 兩者皆無 → 回傳 null，呼叫方顯示引導訊息
     // ═══════════════════════════════════════════════════════════════════
     // V14.16:max_tokens 預設 900 → 1800(防 fallback chain 截斷;與 _callDeepAI 對齊)
-    async _callAI({ prompt, systemInstruction = null, max_tokens = 1800, temperature = 0.3, model = 'llama-3.1-8b-instant', openrouter_model = 'meta-llama/llama-3.1-8b-instruct:free' }) {
+    // 🖐️ 同一題連點兩下 → 第一個還在跑就回同一個 Promise(_aiOnce;⛔ 不再打一次 API)
+    //    ⚠️ 刻意不寫 async:async 函式每次都包一個新的 Promise,「同一個」就不成立了
+    _callAI(opts = {}) {
+        return this._aiOnce('ai', opts, () => this._callAIRun(opts || {}));
+    },
+    async _callAIRun({ prompt, systemInstruction = null, max_tokens = 1800, temperature = 0.3, model = 'llama-3.1-8b-instant', openrouter_model = 'meta-llama/llama-3.1-8b-instruct:free' }) {
         const apiBase  = this._apiBase;
         const orKeys   = this._getOpenRouterKeys();
         const groqKeys = this._getGroqKeys();
@@ -12739,49 +13222,45 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             return data.content;
         }
 
-        // 🌟 第一鏈:Groq 直連(V14.16:30s 冷卻後才試,加 trying/429 chip 即時更新)
+        // 🌟 第一鏈:Groq 直連
         // V19.3 — Groq/OpenAI 格式 messages 加 system role(原本只塞 user role,模型對規矩服從度低)
         const _msgs = systemInstruction
             ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: prompt }]
             : [{ role: 'user', content: prompt }];
-        if (groqKeys.length && !this._isProviderCoolingDown('groq')) {
+        // 🚦 每一把 / 每一家失敗的白話原因:chip「Groq 今天額度用完(約 14:05 恢復)→ 已改用 Gemini」與最後的錯誤訊息都從這裡來。
+        //    以前「整家冷卻 30 秒」那層拿掉了 —— 冷卻改記在模型 / 金鑰上(_aiCool*):冷卻中的 _groqFetch / _orChat / _callGemini
+        //    自己不送(⛔ 不花一次請求),每個候選都在冷卻時才等於整家跳過。
+        const notes = [];
+        const noteOf = (provider, res) => this._aiInfoOf(res) || { provider, ...this._aiKindOfStatus(Number(res && res.status) || 0) };
+        // 換下一把:只有伺服器忙才等 2~5 秒;額度 / 限流 / 帳單 / 金鑰問題的下一把是別的帳號,⛔ 不用等
+        const jitter = () => new Promise(r => setTimeout(r, Math.round(2000 + Math.random() * 3000)));
+        if (groqKeys.length) {
             const body = { model, messages: _msgs, max_tokens, temperature };
             for (let i = 0; i < groqKeys.length; i++) {
                 const key = groqKeys[i];
                 this._setAIStatus('groq', i + 1, 'trying');   // V14.16:嘗試前即時顯示
                 let res;
                 try {
-                    // 🤖 V78.5.6 走共用入口 `_groqFetch`(模型名先問官方清單,下架自動換)
-                    res = await this._groqFetch(key, body, { timeout: 60000, maxRetries: i === 0 ? 1 : 2 });
-                } catch (e) { console.warn(`[_callAI] Groq Key #${i + 1} 例外:`, e?.message || e); continue; }
+                    // 🤖 V78.5.6 走共用入口 `_groqFetch`(模型名先問官方清單,下架自動換;額度用完的模型自動換同一家下一個)
+                    res = await this._groqFetch(key, body, { timeout: 60000, maxRetries: 1 });
+                } catch (e) { console.warn(`[_callAI] Groq Key #${i + 1} 例外:`, e?.message || e); notes.push({ provider: 'groq', kind: 'server' }); continue; }
                 if (res.ok) {
                     const data = await res.json();
                     console.info(`[_callAI] Groq Key #${i + 1} OK`);
                     this._setAIStatus('groq', i + 1, 'success');
                     return data.choices[0].message.content;
                 }
-                if ((res.status === 429 || res.status === 401)) {
-                    this._recordAIFail('groq', i + 1, res.status);
-                    this._setAIStatus('groq', i + 1, 'rate-limited');
-                    if (i < groqKeys.length - 1) {
-                        const _jitter = Math.round(2000 + Math.random() * 3000);
-                        console.warn(`[Groq 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切第 ${i + 2} 把...`);
-                        await new Promise(r => setTimeout(r, _jitter));
-                        continue;
-                    }
-                }
-                this._recordAIFail('groq', i + 1, res.status);
-                console.warn(`[_callAI] Groq Key #${i + 1} HTTP ${res.status}(可能 429/額度),fallback Gemini/OpenRouter`);
+                const info = noteOf('groq', res);
+                notes.push(info);
+                if (!info.skipped) { this._recordAIFail('groq', i + 1, res.status); this._setAIStatus('groq', i + 1, 'fail', info); }
+                console.warn(`[_callAI] Groq Key #${i + 1} ${this._aiErr('groq', info)}`);
+                if (info.kind === 'server' && i < groqKeys.length - 1) await jitter();
             }
-            this._markProviderCoolingDown('groq', 30);   // V14.16:Groq 全 key 燒完冷卻 30s
-            console.warn('[_callAI] Groq 全把都失敗,fallback Gemini/OpenRouter');
-        } else if (groqKeys.length) {
-            console.info('[_callAI] Groq 30s 冷卻中,直接跳到 Gemini');
         }
 
-        // 第二鏈:Gemini 2.5 Flash(V14.16:加 switching/trying/success chip + 30s cooldown)
-        if (this._getGeminiKeys().length && !this._isProviderCoolingDown('gemini')) {
-            this._setAIStatus('gemini', 1, 'switching');
+        // 第二鏈:Gemini 2.5 Flash
+        if (this._getGeminiKeys().length) {
+            this._setAIStatus('gemini', 1, 'switching', this._aiWhy(notes));
             try {
                 const content = await this._callGemini({ prompt, systemInstruction, max_tokens, temperature, model: 'gemini-2.5-flash' });
                 if (content) {
@@ -12790,23 +13269,18 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     return content;
                 }
             } catch (e) {
+                notes.push(e && e.aiInfo ? e.aiInfo : { provider: 'gemini', msg: String((e && e.message) || e) });
                 console.warn('[_callAI] Gemini 失敗,fallback OpenRouter:', e?.message || e);
-                this._markProviderCoolingDown('gemini', 30);
             }
-        } else if (this._getGeminiKeys().length) {
-            console.info('[_callAI] Gemini 30s 冷卻中,直接跳到 OpenRouter');
         }
 
         // 🚀 第三鏈(最後 fallback):OpenRouter free 8b 雙 key 池輪動
-        //    V14.16:加 trying chip + 30s cooldown
-        if (orKeys.length && this._isProviderCoolingDown('openrouter')) {
-            console.info('[_callAI] OpenRouter 30s 冷卻中,跳過');
-        } else
         for (let i = 0; i < orKeys.length; i++) {
             const orKey = orKeys[i];
             try {
-                this._setAIStatus('openrouter', i + 1, 'trying');
-                // 🚀 V73.8.0 走共用入口 `_orChat`:這裡指定輕量 8b,但它 404(下架)時會自動換一個
+                const why = i === 0 ? this._aiWhy(notes) : null;
+                this._setAIStatus('openrouter', i + 1, why ? 'switching' : 'trying', why);
+                // 🚀 V73.8.0 走共用入口 `_orChat`:這裡指定輕量 8b,但它下架時會自動換一個
                 //    ⛔ 別改回自己 fetch —— 那個寫死的 slug 正是 404 的來源(陷阱 #37)
                 const res = await this._orChat(orKey, {
                     model: openrouter_model,
@@ -12823,25 +13297,22 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     }
                     console.warn(`[_callAI] OpenRouter Key #${i + 1} 回應無 content`);
                 } else {
-                    this._recordAIFail('openrouter', i + 1, res.status);
-                    this._setAIStatus('openrouter', i + 1, 'rate-limited');
-                    console.warn(`[_callAI] OpenRouter Key #${i + 1} HTTP ${res.status}(可能 429/額度)`);
-                    if ((res.status === 429 || res.status === 401 || res.status >= 500) && i < orKeys.length - 1) {
-                        const _jitter = Math.round(2000 + Math.random() * 3000);
-                        console.warn(`[OpenRouter 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切第 ${i + 2} 把...`);
-                        await new Promise(r => setTimeout(r, _jitter));
-                    }
+                    const info = noteOf('openrouter', res);
+                    notes.push(info);
+                    if (!info.skipped) { this._recordAIFail('openrouter', i + 1, res.status); this._setAIStatus('openrouter', i + 1, 'fail', info); }
+                    console.warn(`[_callAI] OpenRouter Key #${i + 1} ${this._aiErr('openrouter', info)}`);
+                    if (info.kind === 'server' && i < orKeys.length - 1) await jitter();
                 }
             } catch (e) {
+                notes.push({ provider: 'openrouter', msg: String((e && e.message) || e) });
                 console.warn(`[_callAI] OpenRouter Key #${i + 1} 例外:`, e?.message || e);
             }
         }
-        if (orKeys.length) this._markProviderCoolingDown('openrouter', 30);  // V14.16
 
         // 三鏈全失敗(或全沒設定 key)
         if (orKeys.length || groqKeys.length || this._getGeminiKeys().length) {
-            this._setAIStatus(null, null, 'failed');  // 顯示「🔴 N 把撞 429」chip
-            throw new Error('三鏈 AI 全忙(Gemini + Groq + OpenRouter 均已撞 429 或無 key)');
+            this._setAIStatus(null, null, 'failed', notes);   // chip:「AI 暫時都不能用:Groq 今天額度用完(約 14:05 恢復);…」
+            throw this._aiChainError(notes);
         }
         return null;
     },
@@ -13041,7 +13512,11 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     //    用於盤前速報、首席五維、籌碼/技術深度分析等重型 prompt
     //    雙 prompt 支援:R1 推理強用 full;Gemini/Groq 用 simple(較短、減 AI 思考負擔)
     //    舊呼叫只傳 prompt 仍向下相容(full=simple=prompt)
-    async _callDeepAI({ prompt, prompts, systemInstruction = null, max_tokens = 1800, temperature = 0.4, chain = 'auto' }) {
+    // 🖐️ 同一題連點兩下 → 第一個還在跑就回同一個 Promise(_aiOnce;⛔ 不再打一次 API;⚠️ 刻意不寫 async,同 _callAI)
+    _callDeepAI(opts = {}) {
+        return this._aiOnce('deep', opts, () => this._callDeepAIRun(opts || {}));
+    },
+    async _callDeepAIRun({ prompt, prompts, systemInstruction = null, max_tokens = 1800, temperature = 0.4, chain = 'auto' }) {
         // 解析雙 prompt:優先取 prompts.full / prompts.simple,沒給則退回單一 prompt
         // 🔥 注入 AI 自律條款(禁用模糊詞,強迫鐵血決策)
         const promptFull = this._injectDisciplineClause(prompts?.full ?? prompt);
@@ -13057,10 +13532,17 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: promptFull }]
             : [{ role: 'user', content: promptFull }];
 
+        // 🚦 每一家失敗的白話原因(同 _callAIRun):chip「→ 已改用 …」與最後的錯誤訊息從這裡來
+        const notes = [];
+        const noteOf = (provider, res) => this._aiInfoOf(res) || { provider, ...this._aiKindOfStatus(Number(res && res.status) || 0) };
+        const jitter = () => new Promise(r => setTimeout(r, Math.round(2000 + Math.random() * 3000)));
         // 🧠 三條鏈的獨立 try 函式(便於 chain 參數任意組合)
         const tryGemini = async () => {
             if (!this._getGeminiKeys().length) throw new Error('Gemini 雙 key 未設定');
-            const content = await this._callGemini({ prompt: promptSimple, systemInstruction, max_tokens, temperature, model: 'gemini-2.5-flash' });
+            if (notes.length) this._setAIStatus('gemini', 1, 'switching', this._aiWhy(notes));
+            let content;
+            try { content = await this._callGemini({ prompt: promptSimple, systemInstruction, max_tokens, temperature, model: 'gemini-2.5-flash' }); }
+            catch (e) { notes.push(e && e.aiInfo ? e.aiInfo : { provider: 'gemini', msg: String((e && e.message) || e) }); throw e; }
             if (content) {
                 console.info('[_callDeepAI] Gemini 2.5 Flash OK');
                 this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1);
@@ -13080,7 +13562,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             let lastErr;
             for (let i = 0; i < groqKeys.length; i++) {
                 try {
-                    // 🤖 V78.5.6 走共用入口 `_groqFetch`(模型名先問官方清單,下架自動換)
+                    this._setAIStatus('groq', i + 1, 'trying');
+                    // 🤖 V78.5.6 走共用入口 `_groqFetch`(模型名先問官方清單,下架自動換;額度用完的模型自動換同一家下一個)
                     const res = await this._groqFetch(groqKeys[i], body, { timeout: 60000, maxRetries: 1 });
                     if (res.ok) {
                         const data = await res.json();
@@ -13092,14 +13575,13 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                         }
                         lastErr = new Error('Groq 回應為空');
                     } else {
-                        this._recordAIFail('groq', i + 1, res.status);
-                        lastErr = new Error(this._aiErr('groq', res.status));
-                        if ((res.status === 429 || res.status === 401) && i < groqKeys.length - 1) {
-                            await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
-                            continue;
-                        }
+                        const info = noteOf('groq', res);
+                        notes.push(info);
+                        if (!info.skipped) { this._recordAIFail('groq', i + 1, res.status); this._setAIStatus('groq', i + 1, 'fail', info); }
+                        lastErr = this._aiError('groq', info);
+                        if (info.kind === 'server' && i < groqKeys.length - 1) await jitter();
                     }
-                } catch (e) { lastErr = e; }
+                } catch (e) { lastErr = e; notes.push({ provider: 'groq', msg: String((e && e.message) || e) }); }
             }
             throw lastErr || new Error('Groq 雙 key 全失敗');
         };
@@ -13110,8 +13592,10 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             for (let i = 0; i < orKeys.length; i++) {
                 const orKey = orKeys[i];
                 try {
-                    this._setAIStatus('openrouter', i + 1);
-                    // 🚀 V73.8.0 走共用入口 `_orChat`(模型名由官方清單解析 + 404 自動換模型重試)
+                    // ⚠️ 以前這裡在「還沒打」就設成功 → 每打一次都記一筆成功統計;改成先「嘗試中」、拿到內容才算成功
+                    const why = i === 0 && notes.length ? this._aiWhy(notes) : null;
+                    this._setAIStatus('openrouter', i + 1, why ? 'switching' : 'trying', why);
+                    // 🚀 V73.8.0 走共用入口 `_orChat`(模型名由官方清單解析 + 模型不存在自動換模型重試)
                     //    ⛔ 別改回自己 fetch + 寫死 slug —— 那正是 404 出現的原因(陷阱 #37)
                     const res = await this._orChat(orKey, {
                         messages: _msgsFull,   // V19.3 — 含 system role
@@ -13120,19 +13604,17 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     if (res.ok) {
                         const data = await res.json();
                         const content = data?.choices?.[0]?.message?.content;
-                        if (content) { console.info(`[_callDeepAI] OpenRouter R1 Key #${i + 1} OK`); return content; }
+                        if (content) { console.info(`[_callDeepAI] OpenRouter R1 Key #${i + 1} OK`); this._setAIStatus('openrouter', i + 1, 'success'); return content; }
                         console.warn(`[_callDeepAI] OpenRouter R1 Key #${i + 1} 回應無 content`);
                         lastErr = new Error('OpenRouter 回應為空');
                     } else {
-                        this._recordAIFail('openrouter', i + 1, res.status);
-                        lastErr = new Error(this._orErr(res.status));
-                        if ((res.status === 429 || res.status === 401 || res.status >= 500) && i < orKeys.length - 1) {
-                            const _jitter = Math.round(2000 + Math.random() * 3000);
-                            console.warn(`[OpenRouter 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms 切第 ${i + 2} 把...`);
-                            await new Promise(r => setTimeout(r, _jitter));
-                        }
+                        const info = noteOf('openrouter', res);
+                        notes.push(info);
+                        if (!info.skipped) { this._recordAIFail('openrouter', i + 1, res.status); this._setAIStatus('openrouter', i + 1, 'fail', info); }
+                        lastErr = new Error(this._orErr(info)); lastErr.aiInfo = { ...info, provider: 'openrouter' };
+                        if (info.kind === 'server' && i < orKeys.length - 1) await jitter();
                     }
-                } catch (e) { lastErr = e; }
+                } catch (e) { lastErr = e; notes.push({ provider: 'openrouter', msg: String((e && e.message) || e) }); }
             }
             throw lastErr || new Error('OpenRouter 雙 key 全失敗');
         };
@@ -13141,41 +13623,50 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         const _forced = this._forcedEngine();
         if (_forced) return await this._callForcedEngine(_forced, { promptSimple, promptFull, systemInstruction, max_tokens, temperature });
 
-        // ⭐ V35.1 — item2:深度分析「全面優先 Groq」(使用者要求);Groq 撞 429/失敗才依原 chain 走 Gemini/OpenRouter 備援
-        //   只在「自動」模式(無強制引擎)且 settings.aiPreferGroq !== false(預設開)時生效
-        if (this.settings?.aiPreferGroq !== false && this._getGroqKeys().length && !this._isProviderCoolingDown('groq')) {
-            try { return await tryGroq(); }
-            catch (e) { this._markProviderCoolingDown('groq', 30); console.warn('[_callDeepAI] Groq 優先失敗,改走原 chain 備援:', e?.message || e); }
-        }
+        try {
+            // ⭐ V35.1 — item2:深度分析「全面優先 Groq」(使用者要求);Groq 失敗才依原 chain 走 Gemini/OpenRouter 備援
+            //   只在「自動」模式(無強制引擎)且 settings.aiPreferGroq !== false(預設開)時生效
+            //   🚦 以前 Groq 一失敗就整家冷卻 30 秒;現在冷卻記在模型 / 金鑰上,全部在冷卻時 tryGroq 一個請求都不會送
+            if (this.settings?.aiPreferGroq !== false && this._getGroqKeys().length) {
+                try { return await tryGroq(); }
+                catch (e) { console.warn('[_callDeepAI] Groq 優先失敗,改走原 chain 備援:', e?.message || e); }
+            }
 
-        // 🎯 依 chain 參數路由(使用者要求各功能用不同鏈,避免 Groq 撞 429 影響重要分析)
-        if (chain === 'gemini-only') {
-            // 純 Gemini:撞 429 直接 throw(不偷偷 fallback,使用者明確要求)
-            return await tryGemini();
-        }
-        if (chain === 'groq-only') {
-            return await tryGroq();
-        }
-        if (chain === 'openrouter-gemini') {
-            // OpenRouter 優先,撞 429 fallback Gemini(跳過 Groq)
-            try { return await tryOpenRouter(); }
-            catch (e) { console.warn('[_callDeepAI openrouter-gemini] OpenRouter 失敗,fallback Gemini:', e?.message || e); }
-            return await tryGemini();
-        }
-        if (chain === 'gemini-openrouter') {
-            // Gemini 優先(2 組 key 輪動),撞 429/空 fallback OpenRouter(完全跳過 Groq)
-            // 使用者要求:首席 AI 全盤分析 / 朱家泓技術審計 / AI 籌碼解析 / X 光機 一律走此鏈
-            try { return await tryGemini(); }
-            catch (e) { console.warn('[_callDeepAI gemini-openrouter] Gemini 失敗,fallback OpenRouter:', e?.message || e); }
-            return await tryOpenRouter();
-        }
+            // 🎯 依 chain 參數路由(使用者要求各功能用不同鏈,避免 Groq 用量影響重要分析)
+            if (chain === 'gemini-only') {
+                // 純 Gemini:失敗直接 throw(不偷偷 fallback,使用者明確要求)
+                return await tryGemini();
+            }
+            if (chain === 'groq-only') {
+                return await tryGroq();
+            }
+            if (chain === 'openrouter-gemini') {
+                // OpenRouter 優先,失敗 fallback Gemini(跳過 Groq)
+                try { return await tryOpenRouter(); }
+                catch (e) { console.warn('[_callDeepAI openrouter-gemini] OpenRouter 失敗,fallback Gemini:', e?.message || e); }
+                return await tryGemini();
+            }
+            if (chain === 'gemini-openrouter') {
+                // Gemini 優先(2 組 key 輪動),失敗 / 空 fallback OpenRouter(完全跳過 Groq)
+                // 使用者要求:首席 AI 全盤分析 / 朱家泓技術審計 / AI 籌碼解析 / X 光機 一律走此鏈
+                try { return await tryGemini(); }
+                catch (e) { console.warn('[_callDeepAI gemini-openrouter] Gemini 失敗,fallback OpenRouter:', e?.message || e); }
+                return await tryOpenRouter();
+            }
 
-        // chain === 'auto'(預設,V22.4 新分工):深度任務只走 Gemini → OpenRouter,不再 fallback Groq
-        //   理由:深度判讀(首席 / 籌碼 / 板塊 / 庫存 / 處置)應由能力強的模型負責,Groq 留給新聞輕量任務
-        try { return await tryGemini(); } catch (e) {
-            console.warn('[_callDeepAI auto] Gemini 失敗,fallback OpenRouter R1:', e?.message || e);
+            // chain === 'auto'(預設,V22.4 新分工):深度任務只走 Gemini → OpenRouter,不再 fallback Groq
+            //   理由:深度判讀(首席 / 籌碼 / 板塊 / 庫存 / 處置)應由能力強的模型負責,Groq 留給新聞輕量任務
+            try { return await tryGemini(); } catch (e) {
+                console.warn('[_callDeepAI auto] Gemini 失敗,fallback OpenRouter R1:', e?.message || e);
+            }
+            return await tryOpenRouter();   // 失敗就 throw,呼叫端自行 catch + 顯失敗 UI
+        } catch (e) {
+            // 🚦 不只一家失敗 → 錯誤訊息把每一家的原因都講出來(⛔ 只剩最後一家的那句);只有一家就照它原本的白話
+            const provs = new Set(notes.map(n => n && n.provider).filter(Boolean));
+            if (notes.length) this._setAIStatus(null, null, 'failed', notes);
+            if (provs.size > 1) throw this._aiChainError(notes);
+            throw e;
         }
-        return await tryOpenRouter();   // 失敗就 throw,呼叫端自行 catch + 顯失敗 UI
     },
 
     async fetchFugleData(symbol, maxAgeMs = 60000) {

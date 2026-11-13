@@ -177,6 +177,10 @@ class Poster:
         self.calls.append({'model': json.get('model'), 'key': headers['Authorization'][-2:], 'user': json['messages'][1]['content']})
         if self.script:
             code = self.script.pop(0)
+            if code == 404:
+                # 🚦 2026-11-13 照 Groq 真的格式:回應要說「模型不存在」才算下架(⛔ 空的 404 = 網址錯,不換模型)
+                return R(404, {'error': {'message': f"The model `{json.get('model')}` does not exist or you do not have access to it.",
+                                         'type': 'invalid_request_error', 'code': 'model_not_found'}})
             if code != 200:
                 return R(code, {}, {'x-ratelimit-reset-tokens': '7.5s'} if code == 429 else None)
         return R(200, fake_answer(json['messages'][1]['content']))

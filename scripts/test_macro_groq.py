@@ -59,6 +59,10 @@ class FakeHttp:
     def post(self, url, json=None, headers=None, timeout=None):
         self.sent.append(copy.deepcopy(json))
         st, content = self.script.pop(0) if self.script else (200, '{}')
+        if st == 404:
+            # 🚦 2026-11-13 照 Groq 真的格式:回應要說「模型不存在」才算下架(⛔ 空的 404 = 網址錯,不換模型)
+            return _Resp(st, {'error': {'message': f"The model `{(json or {}).get('model')}` does not exist or you do not have access to it.",
+                                        'type': 'invalid_request_error', 'code': 'model_not_found'}})
         return _Resp(st, {'choices': [{'message': {'content': content}}]} if st == 200 else {'error': st})
 
 
@@ -147,6 +151,50 @@ try:
        isinstance(res2, dict) and res2.get('model') == QWEN, res2 and res2.get('model'))
 finally:
     mm._groq_chat_mm = _orig_chat
+
+# ⑤ 🚦 2026-11-13 失敗分類:qwen 今天額度用完(TPD)→ 只冷卻 qwen、換 gpt-oss-120b(⛔ 換金鑰再打 qwen);
+#    下一次直接用 gpt-oss-120b;⭐ 決定性對照:空的 404(網址錯)⛔ 換模型、⛔ 作廢清單
+TPD = {'error': {'message': 'Rate limit reached for model `qwen/qwen3.8-27b` in organization `org_x` service tier `on_demand` on tokens per day (TPD): Limit 500000, Used 499800, Requested 1500. Please try again in 9m12s.', 'type': 'tokens', 'code': 'rate_limit_reached'}}
+
+
+class QuotaHttp(FakeHttp):
+    def post(self, url, json=None, headers=None, timeout=None):
+        if (json or {}).get('model') == QWEN:
+            self.sent.append(copy.deepcopy(json))
+            return _Resp(429, TPD)
+        return super().post(url, json=json, headers=headers, timeout=timeout)
+
+
+import io, contextlib  # noqa: E401,E402
+G.reset_cooldowns()
+G._cache.update(ids=None, at=0.0, err='')
+G._good.clear()
+mm.GROQ_KEYS_MM = ['k1', 'k2']
+mm.http = QuotaHttp([(200, '{"summary":"q1"}'), (200, '{"summary":"q2"}')])
+with contextlib.redirect_stdout(io.StringIO()):
+    o5 = mm._groq_chat_mm([{'role': 'user', 'content': 'hi'}], label='測試')
+    o6 = mm._groq_chat_mm([{'role': 'user', 'content': 'hi'}], label='測試')
+models5 = [s.get('model') for s in mm.http.sent]
+ok('⑤ qwen 今天額度用完 → 換 gpt-oss-120b 成功;下一次直接用 gpt-oss-120b(⛔ 再打 qwen)',
+   models5 == [QWEN, OSS120, OSS120] and o5 == '{"summary":"q1"}' and o6 == '{"summary":"q2"}', models5)
+ok('⑤ qwen 冷卻照 Groq 說的 9m12s(至少 5 分鐘)', 545 < G.cooling_left(QWEN) <= 552, G.cooling_left(QWEN))
+G.reset_cooldowns()
+G._cache.update(ids=None, at=0.0, err='')
+G._good.clear()
+mm.GROQ_KEYS_MM = ['k1']
+
+
+class Url404(FakeHttp):
+    def post(self, url, json=None, headers=None, timeout=None):
+        self.sent.append(copy.deepcopy(json))
+        return _Resp(404, '<html><h1>404 Not Found</h1></html>')
+
+
+mm.http = Url404([])
+with contextlib.redirect_stdout(io.StringIO()):
+    o7 = mm._groq_chat_mm([{'role': 'user', 'content': 'hi'}], label='測試')
+ok('⑤ 空的 / HTML 的 404(網址錯)→ ⛔ 換模型、⛔ 作廢清單(每次都是 qwen)',
+   o7 is None and {s.get('model') for s in mm.http.sent} == {QWEN} and G._cache['ids'] is not None, [s.get('model') for s in mm.http.sent])
 
 print(f"\n{'❌ %d 項未過:' % len(fails) + chr(10) + '  - ' + (chr(10) + '  - ').join(fails) if fails else '✅ 全部通過'}")
 sys.exit(1 if fails else 0)

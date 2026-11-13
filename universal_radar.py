@@ -11,6 +11,7 @@
 """
 import os
 import json
+import math
 import time
 import re
 import traceback
@@ -42,6 +43,8 @@ GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions"
 #      ③ important → 失敗時預設 True → 垃圾新聞全部放行
 #    ⭐ 改成問官方「現在有哪些」+ 404 自我修復,見 groq_common.py。
 from groq_common import groq_model, groq_reason, groq_apply, invalidate as _groq_invalidate
+# 🚦 2026-11-13 失敗分類(每分鐘限流 / 今天額度用完 / 餘額不足 / 模型不存在 / 網址錯),規則同 index.html 的 _AIR
+from groq_common import classify_response, cool_model, cooling_left, RATE_COOLDOWN
 GROQ_TIER    = "light"   # 這支是「大量新聞逐則判讀 + 翻譯」→ 走輕量層
 _GROQ_SAID = set()       # 🤖 V79.5.8 這一輪用過哪些模型(每個只印一次,查 log 才知道翻譯是誰做的)
 
@@ -58,6 +61,17 @@ http_session.mount("https://", HTTPAdapter(max_retries=retry_strategy))
 _groq_key_idx = 0
 _GROQ_LAST_NONE = ""      # 🔍 V73.9.4 最後一次「回 None」的真正原因(給 _groq_json 寫進資料檔)
 _groq_key_cooldown = {}   # idx → 解除冷卻 unix_ts
+
+
+def _wait_txt(sec: float) -> str:
+    """還要等多久 → 白話(秒 / 分鐘 / 小時;超過一天就說超過一天,⛔ 印出一長串數字)。"""
+    if sec < 90:
+        return f"約 {max(1, math.ceil(sec))} 秒後恢復"
+    if sec < 90 * 60:
+        return f"約 {round(sec / 60)} 分鐘後恢復"
+    if sec <= 36 * 3600:
+        return f"約 {round(sec / 3600)} 小時後恢復"
+    return "要等超過一天"
 
 
 def _groq_active_idx(now: float):
@@ -99,16 +113,21 @@ def _call_groq_with_rotation(payload: dict, label: str = ""):
     max_attempts = len(GROQ_API_KEYS) + 4   # +4:留給「換模型」重試(⛔ 不可只留換 key 的次數)
     _tried = set()                          # 已知不存在的模型名
     _last = None                            # 最後一個非 200 的回應(次數用完時要交出去)
+    _hard = None                            # 🚦 餘額不足 / 金鑰被拒的那個回應(全部金鑰都停了要講這個,⛔ 不是「用量到上限」)
     payload = dict(payload); payload.setdefault("model", None)
     _base_max = payload.get("max_tokens")   # 🧠 V79.5.8 換模型時從原本的額度重算(⛔ 不可越疊越多)
     for _ in range(max_attempts):
         idx = _groq_active_idx(time.time())
         if idx is None:
+            if _hard is not None:
+                return _hard
             # 🔍 V73.9.4 記下「為什麼回 None」—— 舊版一律寫成籠統的「AI 暫時無法分析」,
             #    查不出是**額度用完**還是網路壞掉。實測 15 則有 13 則卡在這裡,
             #    而畫面上完全看不出真因(同「診斷要寫進 JSON 不是只印 log」那條鐵則)。
             global _GROQ_LAST_NONE
-            _GROQ_LAST_NONE = f"AI 用量到上限(全部 {len(GROQ_API_KEYS)} 把金鑰冷卻中,約 1 小時後恢復)"
+            # 🚦 還要等多久照實際冷卻算(限流現在照對方說的秒數、沒說 1 分鐘;⛔ 寫死「約 1 小時」會叫使用者白等)
+            _wait = max(0, min(_groq_key_cooldown.values(), default=time.time()) - time.time())
+            _GROQ_LAST_NONE = f"AI 用量到上限(全部 {len(GROQ_API_KEYS)} 把金鑰冷卻中,{_wait_txt(_wait)})"
             print(f"  🚫 [Groq 輪動] {label or 'call'}：全 {len(GROQ_API_KEYS)} 把 key 均冷卻中，回 None")
             return None
         headers = {
@@ -119,6 +138,11 @@ def _call_groq_with_rotation(payload: dict, label: str = ""):
             # ⭐ 模型名一律在這裡注入 —— 呼叫端只要不自己填 model,就自動吃到最新的可用模型
             #    (⛔ 三個呼叫端各寫一份 = 陷阱 #37,遲早只改到一邊)
             payload["model"] = payload.get("model") or groq_model(GROQ_API_KEYS, GROQ_TIER, avoid=_tried)
+            # 🚦 挑出來的還在冷卻 = 每個模型今天的額度都用完了 → 這則就別打(⛔ 一則一則白打,把剩下的次數燒光)
+            if cooling_left(payload["model"]) > 0:
+                _GROQ_LAST_NONE = f"AI 今天額度用完(每個模型都用完了,約 {max(1, round(cooling_left(payload['model']) / 60))} 分鐘後恢復)"
+                print(f"  ⏳ [Groq] {label or 'call'}:每個模型都在冷卻,這則先不打")
+                return _last
             # 🧠 V79.5.8 每個模型要帶的參數不一樣(qwen 明寫不思考、gpt-oss 低強度 + 額度 +400、llama 什麼都不帶)
             #    ⛔ 404 換模型時要拿掉上一個模型的參數(groq_apply 會先清再套)
             groq_apply(payload, payload["model"], _base_max)
@@ -126,21 +150,30 @@ def _call_groq_with_rotation(payload: dict, label: str = ""):
                 _GROQ_SAID.add(payload["model"])
                 print(f"  🤖 [Groq] 這輪用 {payload['model']}")
             res = http_session.post(GROQ_URL, json=payload, headers=headers, timeout=20)
-            # 🩹 自我修復:404 = 這個模型名不存在 → 清快取、換一個、再打一次
+            # 🚦 讀回應內容分類(groq_common.classify_response;⛔ 只看狀態碼分不出限流 / 今天額度用完 / 網址錯)
+            info = classify_response(res) if res.status_code != 200 else {"kind": "", "delay": None}
+            # 🩹 自我修復:回應說這個模型不存在(404 model_not_found / 400 decommissioned)→ 清快取、換一個、再打一次
             #    ⛔ 換 key 沒用(所有 key 看到的模型清單一樣),所以走的是「換模型」不是「換 key」
-            if res.status_code == 404 and len(_tried) < 3:
+            #    ⚠️ 404 但回應沒說是模型(網址錯 / 中間的 Proxy)⛔ 不換模型、不作廢快取 → 照一般失敗交出去
+            if info["kind"] == "missing" and len(_tried) < 3:
                 bad = payload.get("model")
-                print(f"  🩹 [Groq] 模型 {bad} 已下架(404),換一個重試")
+                print(f"  🩹 [Groq] 模型 {bad} 已下架(404 / 400 回應說模型不存在),換一個重試")
                 _tried.add(bad); _groq_invalidate(GROQ_TIER, bad); payload["model"] = None
                 _last = res
                 continue
-            if res.status_code == 429:
-                try:
-                    retry_after = int(res.headers.get("Retry-After", 0))
-                except Exception:
-                    retry_after = 0
-                _groq_mark_blocked(idx, retry_after)
+            if info["kind"] == "quota":
+                # 🚦 只有這個模型今天的額度用完 → 記冷卻、同一把金鑰換下一個模型(以前整把金鑰冷卻,其他模型的額度一起浪費)
+                cool_model(payload.get("model"), "quota", info["delay"])
+                payload["model"] = None
+                _last = res
+                continue
+            if res.status_code == 429 or info["kind"] in ("billing", "auth"):
+                # 每分鐘限流:照對方說的秒數(沒說 1 分鐘,⛔ 以前沒說就當 1 小時);餘額不足 / 金鑰被拒:這把這一輪不再用
+                hard = info["kind"] in ("billing", "auth")
+                _groq_mark_blocked(idx, 86400 if hard else math.ceil(info["delay"] or RATE_COOLDOWN))
                 _groq_advance()
+                if hard:
+                    _hard = res
                 continue
             if res.status_code != 200:
                 print(f"  ⚠️ Groq HTTP {res.status_code} (key #{idx + 1}): {res.text[:120]}")
@@ -193,7 +226,8 @@ def _groq_json(payload: dict, label: str = "") -> tuple:
             detail = (res.text or "")[:90].replace("\n", " ")
         except Exception:
             pass
-        return (None, (groq_reason(res.status_code) + (f" · {detail}" if detail else ""))[:120])
+        # 🚦 同一個 429 可能是限流、也可能是今天額度用完 / 餘額不足 → 照分類講(groq_reason 沒有分類時照舊看狀態碼)
+        return (None, (groq_reason(res.status_code, classify_response(res)["kind"]) + (f" · {detail}" if detail else ""))[:120])
     try:
         content = res.json()["choices"][0]["message"]["content"].strip()
         # 🧠 V79.5.8 會思考的模型萬一把思考內容放進答案(<think>…</think>)→ 先拿掉,⛔ 不然裡面的大括號會被當成 JSON

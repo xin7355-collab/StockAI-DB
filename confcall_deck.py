@@ -1481,7 +1481,7 @@ def groq_summarize(name, sym, d, feat, keys, poster=None, clock=time.time, sleep
     🐢 防拖慢:被限流(429)就換下一把金鑰(每把額度分開)、只等 1 秒;一份簡報最多 AI_DEADLINE 秒。"""
     if not keys:
         return None, None, 0
-    from groq_common import groq_model, groq_apply, invalidate
+    from groq_common import groq_model, groq_apply, invalidate, classify_response, cool_model, cooling_left
     import requests
     sys_msg, user, src = ai_prompt(name, sym, d, feat['titles'], feat['outlook'], feat['nums'])
     payload = {'model': None, 'messages': [{'role': 'system', 'content': sys_msg}, {'role': 'user', 'content': user}],
@@ -1495,10 +1495,18 @@ def groq_summarize(name, sym, d, feat, keys, poster=None, clock=time.time, sleep
         try:
             if not payload.get('model'):
                 groq_apply(payload, groq_model(keys, 'light', avoid=tried), 700)
+            if cooling_left(payload.get('model')) > 0:
+                break               # 🚦 每個模型今天的額度都用完了 → 這份先不打(⛔ 白打到時限)
             r = post(url='https://api.groq.com/openai/v1/chat/completions', json=payload,
                      headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}, timeout=30)
-            if r.status_code == 404 and len(tried) < 3:
+            # 🚦 讀回應內容分類(groq_common.classify_response):回應說模型不存在才換模型(⛔ 空的 404 = 網址錯);
+            #    今天額度用完 → 只冷卻這個模型、換下一個(⛔ 等 1 秒再打同一個)
+            kind = classify_response(r)['kind'] if r.status_code != 200 else ''
+            if kind == 'missing' and len(tried) < 3:
                 tried.add(payload.get('model')); invalidate('light', payload.get('model')); payload['model'] = None
+                continue
+            if kind == 'quota':
+                cool_model(payload.get('model'), 'quota', classify_response(r)['delay']); payload['model'] = None
                 continue
             if r.status_code == 429:
                 sleeper(1.0)            # 換下一把(⛔ 不在同一把上越等越久)

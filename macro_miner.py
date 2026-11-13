@@ -62,6 +62,8 @@ GROQ_URL_MM = "https://api.groq.com/openai/v1/chat/completions"
 #    這支目前用的 70b 還在,但**同一顆地雷**,一起拆掉(陷阱 #37:同一個修法要掃過所有地方)。
 #    行事曆解讀屬「質化判讀」→ 走 heavy 層(70b 比 8b 準)。
 from groq_common import groq_model as _groq_pick, groq_apply as _groq_apply, invalidate as _groq_invalidate
+# 🚦 2026-11-13 失敗分類(每分鐘限流 / 今天額度用完 / 模型不存在 / 網址錯),規則同 index.html 的 _AIR
+from groq_common import classify_response as _groq_kind, cool_model as _groq_cool, cooling_left as _groq_cooling
 GROQ_TIER_MM = "heavy"
 # 🏷️ V79.5.9 這一輪真的拿到回答的那個模型(寫進 macro_events_ai.model;⛔ 不再事後另外問一次解析器 ——
 #    404 換過模型時,再問一次拿到的可能不是實際回答的那個 = 同名不同義)
@@ -88,14 +90,25 @@ def _groq_chat_mm(messages, label="", max_tokens=1400, temperature=0.4):
                 # 🧠 V79.5.9 每個模型帶自己的參數(groq_common.groq_apply:qwen 不思考、gpt-oss 低強度 + 多給 400 字、
                 #    llama ⛔ 什麼都不帶);max_tokens 一律從呼叫端原本的值重算(⛔ 換模型時不可一直往上疊)
                 _groq_apply(payload, _groq_pick(GROQ_KEYS_MM, GROQ_TIER_MM, avoid=_tried), max_tokens)
+            # 🚦 挑出來的還在冷卻 = 每個模型今天的額度都用完了 → 這次別打(⛔ 白打到次數用完)
+            if _groq_cooling(payload.get("model")) > 0:
+                print(f"  ⏳ [Groq] {label}:每個模型今天的額度都用完了,這次先不打")
+                return None
             r = http.post(GROQ_URL_MM, json=payload,
                                   headers={"Authorization": f"Bearer {key}",
                                            "Content-Type": "application/json"}, timeout=45)
-            # 🩹 自我修復:404 = 模型名不存在(⛔ 換 key 沒用,所有 key 看到的清單一樣)
-            if r.status_code == 404 and len(_tried) < 3:
+            # 🚦 讀回應內容分類(⛔ 只看狀態碼分不出限流 / 今天額度用完 / 404 是模型還是網址)
+            info = _groq_kind(r) if r.status_code != 200 else {"kind": "", "delay": None}
+            # 🩹 自我修復:回應說模型不存在(404 / 400)(⛔ 換 key 沒用,所有 key 看到的清單一樣)
+            #    ⚠️ 404 但回應沒說是模型(網址錯)⛔ 不換模型、不作廢快取
+            if info["kind"] == "missing" and len(_tried) < 3:
                 bad = payload.get("model")
-                print(f"  🩹 [Groq] 模型 {bad} 已下架(404),換一個重試")
+                print(f"  🩹 [Groq] 模型 {bad} 已下架(404 / 400 回應說模型不存在),換一個重試")
                 _tried.add(bad); _groq_invalidate(GROQ_TIER_MM, bad); payload["model"] = None
+                continue
+            if info["kind"] == "quota":
+                # 只有這個模型今天額度用完 → 記冷卻、換同一家下一個模型(⛔ 換金鑰再打同一個)
+                _groq_cool(payload.get("model"), "quota", info["delay"]); payload["model"] = None
                 continue
             if r.status_code == 429:
                 print(f"  ⏳ [Groq] key#{i+1} 429,換下一把")
