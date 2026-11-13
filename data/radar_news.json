@@ -1,0 +1,216 @@
+{
+  "updated": "2026-11-13 16:50 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "中央社財經",
+      "title": "精材與台積電簽逾7年產能外包協議　2029年量產後段先進封裝",
+      "link": "https://www.cna.com.tw/news/afe/202611130329.aspx",
+      "published_time": "Fri, 13 Nov 2026 22:39:50 +0800",
+      "matched_keywords": [
+        "先進封裝"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "精材獲台積電先進封裝產能外包",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "彭博：黃樂創辦的中國公司曾取得禁止輸中輝達晶片",
+      "link": "https://www.cna.com.tw/news/aopl/202611130323.aspx",
+      "published_time": "Fri, 13 Nov 2026 22:11:36 +0800",
+      "matched_keywords": [
+        "出口管制"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "晶片外流中國恐引發更嚴出口管制",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "力晶投控集結26億買盤！鈺創、晶豪科各砸3億元",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5640107",
+      "published_time": "Fri, 13 Nov 2026 21:28:22 +0800",
+      "matched_keywords": [
+        "庫藏股"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "多家大廠斥資買入，顯示市場信心",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "兆豐金前10月大賺343億創歷年同期新高  EPS 2.31元",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5640096",
+      "published_time": "Fri, 13 Nov 2026 21:21:53 +0800",
+      "matched_keywords": [
+        "EPS",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "前10月獲利創新高，EPS達2.31元",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "因應AI終端檢測需求 耕興砸15億元擴產",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5640091",
+      "published_time": "Fri, 13 Nov 2026 21:17:55 +0800",
+      "matched_keywords": [
+        "轉單",
+        "擴產",
+        "法說",
+        "資本支出"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "擴產搶攻AI檢測與FCC新制商機",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "轉投資南山人壽業外挹注　寶成前3季淨利年增8成",
+      "link": "https://www.cna.com.tw/news/afe/202611130311.aspx",
+      "published_time": "Fri, 13 Nov 2026 21:10:08 +0800",
+      "matched_keywords": [
+        "財報",
+        "每股盈餘",
+        "EPS"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "前3季淨利年增8成，EPS達3.66元",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台積電Q3拿下各國政府補助款約1670億！前3季累計金額創新高",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5640086",
+      "published_time": "Fri, 13 Nov 2026 21:09:35 +0800",
+      "matched_keywords": [
+        "財報",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "單季政府補助款創新高，強化財務體質",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "凱基金前10月獲利394億、EPS 2.29元  雙創同期新高",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5640071",
+      "published_time": "Fri, 13 Nov 2026 21:06:41 +0800",
+      "matched_keywords": [
+        "每股盈餘",
+        "EPS",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "前10月獲利與EPS雙創同期新高",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台新新光前10月大賺692億年增141％  EPS 2.67元創新高",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5640050",
+      "published_time": "Fri, 13 Nov 2026 20:58:23 +0800",
+      "matched_keywords": [
+        "EPS",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "台新新光金控獲利年增141%，EPS創新高",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "群創第3季獲利年增約114倍　估第4季需求趨緩",
+      "link": "https://www.cna.com.tw/news/afe/202611130301.aspx",
+      "published_time": "Fri, 13 Nov 2026 20:45:46 +0800",
+      "matched_keywords": [
+        "財報",
+        "每股盈餘"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "Q3獲利年增114倍，業績大幅優於預期",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "神基奪歐美無人機大單　明年業務占比估5%至10%",
+      "link": "https://www.cna.com.tw/news/afe/202611130297.aspx",
+      "published_time": "Fri, 13 Nov 2026 20:15:37 +0800",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "獲歐美無人機大單，營收預估上修",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "黃仁勳去職和美國加強監管　危及中國逾30億美元AI計畫",
+      "link": "https://www.cna.com.tw/news/aopl/202611130290.aspx",
+      "published_time": "Fri, 13 Nov 2026 19:44:21 +0800",
+      "matched_keywords": [
+        "出口管制"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "中國AI計畫仍依賴輝達晶片，顯示管制漏洞",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "認列南山人壽收益75.54億元 寶成前三季大賺107.74億元",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5640001",
+      "published_time": "Fri, 13 Nov 2026 19:04:38 +0800",
+      "matched_keywords": [
+        "合併",
+        "營收",
+        "每股盈餘"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "前三季淨利年增80.6%，獲利大幅成長",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "貿聯-KY看旺2027年AI動能 HPC續添成長柴火",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5639974",
+      "published_time": "Fri, 13 Nov 2026 18:46:28 +0800",
+      "matched_keywords": [
+        "法說",
+        "展望"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "看旺2027年AI與HPC動能",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "技嘉AI動能旺至2027年底 明年資本支出40億元",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5639924",
+      "published_time": "Fri, 13 Nov 2026 18:07:50 +0800",
+      "matched_keywords": [
+        "法說",
+        "資本支出"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI訂單強勁，資本支出增加",
+      "important": true
+    }
+  ]
+}

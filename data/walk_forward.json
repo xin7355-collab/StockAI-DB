@@ -1,0 +1,201 @@
+{
+  "updated": "2026-11-13 16:54",
+  "train_ratio": 0.8,
+  "test_ratio": 0.2,
+  "fwd_window": 10,
+  "scanned_stocks": 1425,
+  "cost_pct": 0.785,
+  "signals": {
+    "🌅 KD黃金交叉": {
+      "train_wr": 42.9,
+      "train_samples": 45673,
+      "test_wr": 37.5,
+      "test_samples": 11971,
+      "gap": -5.4,
+      "verdict": "🟡 中性",
+      "color": "#facc15",
+      "low_confidence": false
+    },
+    "🌇 KD死亡交叉": {
+      "train_wr": 44.0,
+      "train_samples": 18261,
+      "test_wr": 36.6,
+      "test_samples": 4070,
+      "gap": -7.4,
+      "verdict": "🟡 中性",
+      "color": "#facc15",
+      "low_confidence": false
+    },
+    "🚀 爆量長紅": {
+      "train_wr": 43.4,
+      "train_samples": 22495,
+      "test_wr": 35.8,
+      "test_samples": 5405,
+      "gap": -7.6,
+      "verdict": "🟡 中性",
+      "color": "#facc15",
+      "low_confidence": false
+    },
+    "🏔️ 創60日新高": {
+      "train_wr": 48.7,
+      "train_samples": 21054,
+      "test_wr": 35.1,
+      "test_samples": 3409,
+      "gap": -13.6,
+      "verdict": "⛔ 疑似 overfit",
+      "color": "#f87171",
+      "low_confidence": false
+    },
+    "⛏️ 跌破前20日低": {
+      "train_wr": 46.4,
+      "train_samples": 31049,
+      "test_wr": 41.9,
+      "test_samples": 8358,
+      "gap": -4.5,
+      "verdict": "✅ 穩健",
+      "color": "#34d399",
+      "low_confidence": false
+    },
+    "📉 跌破季線60MA": {
+      "train_wr": 39.0,
+      "train_samples": 6916,
+      "test_wr": 37.0,
+      "test_samples": 1752,
+      "gap": -2.0,
+      "verdict": "✅ 穩健",
+      "color": "#34d399",
+      "low_confidence": false
+    },
+    "✨ 5MA黃金交叉": {
+      "train_wr": 42.3,
+      "train_samples": 32296,
+      "test_wr": 35.3,
+      "test_samples": 7848,
+      "gap": -7.0,
+      "verdict": "🟡 中性",
+      "color": "#facc15",
+      "low_confidence": false
+    },
+    "🌡️ 乖離過大+12%": {
+      "train_wr": 48.8,
+      "train_samples": 29320,
+      "test_wr": 36.9,
+      "test_samples": 7805,
+      "gap": -11.9,
+      "verdict": "⛔ 疑似 overfit",
+      "color": "#f87171",
+      "low_confidence": false
+    },
+    "😴 量縮窒息": {
+      "train_wr": 43.3,
+      "train_samples": 89403,
+      "test_wr": 35.1,
+      "test_samples": 23869,
+      "gap": -8.2,
+      "verdict": "🟡 中性",
+      "color": "#facc15",
+      "low_confidence": false
+    },
+    "⚠️ 價漲量縮背離": {
+      "train_wr": 44.1,
+      "train_samples": 83418,
+      "test_wr": 36.2,
+      "test_samples": 22052,
+      "gap": -7.9,
+      "verdict": "🟡 中性",
+      "color": "#facc15",
+      "low_confidence": false
+    },
+    "💀 大黑K摜壓": {
+      "train_wr": 49.3,
+      "train_samples": 24479,
+      "test_wr": 35.6,
+      "test_samples": 9595,
+      "gap": -13.7,
+      "verdict": "⛔ 疑似 overfit",
+      "color": "#f87171",
+      "low_confidence": false
+    },
+    "🌋 島狀反轉": {
+      "train_wr": 46.5,
+      "train_samples": 47730,
+      "test_wr": 35.3,
+      "test_samples": 15227,
+      "gap": -11.2,
+      "verdict": "⛔ 疑似 overfit",
+      "color": "#f87171",
+      "low_confidence": false
+    },
+    "🟢 法人連3日買": {
+      "train_wr": 44.8,
+      "train_samples": 88364,
+      "test_wr": 38.5,
+      "test_samples": 22836,
+      "gap": -6.3,
+      "verdict": "🟡 中性",
+      "color": "#facc15",
+      "low_confidence": false
+    },
+    "🔴 法人連3日賣": {
+      "train_wr": 41.8,
+      "train_samples": 83594,
+      "test_wr": 35.7,
+      "test_samples": 19761,
+      "gap": -6.1,
+      "verdict": "🟡 中性",
+      "color": "#facc15",
+      "low_confidence": false
+    },
+    "📈 多頭排列": {
+      "train_wr": 45.2,
+      "train_samples": 148399,
+      "test_wr": 32.5,
+      "test_samples": 34088,
+      "gap": -12.7,
+      "verdict": "⛔ 疑似 overfit",
+      "color": "#f87171",
+      "low_confidence": false
+    },
+    "🍀 朱家泓六六大順": {
+      "train_wr": 47.4,
+      "train_samples": 12472,
+      "test_wr": 33.5,
+      "test_samples": 2514,
+      "gap": -13.9,
+      "verdict": "⛔ 疑似 overfit",
+      "color": "#f87171",
+      "low_confidence": false
+    },
+    "🔥 朱家泓特別報價": {
+      "train_wr": 48.1,
+      "train_samples": 24233,
+      "test_wr": 37.9,
+      "test_samples": 7211,
+      "gap": -10.2,
+      "verdict": "⛔ 疑似 overfit",
+      "color": "#f87171",
+      "low_confidence": false
+    },
+    "🥣 朱家泓底部轉折": {
+      "train_wr": 45.7,
+      "train_samples": 558,
+      "test_wr": 32.5,
+      "test_samples": 123,
+      "gap": -13.2,
+      "verdict": "⛔ 疑似 overfit",
+      "color": "#f87171",
+      "low_confidence": false
+    },
+    "🚀 朱家泓5MA飆股": {
+      "train_wr": 47.5,
+      "train_samples": 7281,
+      "test_wr": 37.4,
+      "test_samples": 2222,
+      "gap": -10.1,
+      "verdict": "⛔ 疑似 overfit",
+      "color": "#f87171",
+      "low_confidence": false
+    }
+  },
+  "_note": "訓練/驗證 80%/20% 切資料,gap = 驗證勝率 - 訓練勝率;|gap| > 10pp 疑似 overfit。驗證樣本 < 30 統計顯著性不足。"
+}
