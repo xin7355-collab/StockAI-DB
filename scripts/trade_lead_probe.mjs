@@ -167,7 +167,7 @@ export function nwP(x, lag) {
     for (let L = 1; L <= lag; L++) { let c = 0; for (let t = L; t < n; t++) c += e[t] * e[t - L]; s += 2 * (1 - L / (lag + 1)) * c / n; }
     return pTwo(m / Math.sqrt(Math.max(s, 1e-12) / n));
 }
-const lagOf = h => Math.max(0, Math.ceil(h / 21) - 1);
+export const lagOf = h => Math.max(0, Math.ceil(h / 21) - 1);   // 🏭 V82.3.0 sector_rev_probe 也 import
 
 /** 小型最小平方法(正規方程 + 高斯消去)→ 係數;奇異回 null */
 export function ols(X, y) {
@@ -302,7 +302,8 @@ export const botBy = (f, n, rnd) => rows => {
 };
 
 const failed = g => Object.entries(g.pass).filter(([, v]) => !v).map(([k]) => k.replace(/^[①-⑥]/, '')).join('、');
-function gate(inc, H) {
+/** 六關(lib_evgate)+ 抱超過 20 天改用 Newey-West 的 p —— 🏭 V82.3.0 sector_rev_probe 也 import(⛔ 第二份) */
+export function gate(inc, H) {
     const g = gates(inc, COST, 6);
     g.pNW = nwP(inc.dm, lagOf(H));
     if (H > 20) { g.pass['⑥檢定'] = g.d > 0 && g.pNW <= 0.05; g.nPass = Object.values(g.pass).filter(Boolean).length; }
@@ -367,6 +368,23 @@ export function oosCompare(obs, minTrain = 36) {
     return { n, maeA: eA / n, maeB: eB / n, gain: n ? (1 - eB / eA) * 100 : NaN, yrs, better, per };
 }
 
+/** stock_deep/rev 每檔一個 .json.gz → Map(代號 → Map('YYYY-MM' → 營收));壞檔略過 —— 🏭 V82.3.0 sector_rev_probe 也 import(⛔ 第二份) */
+export function loadRevDir(REV) {
+    const revOf = new Map();
+    for (const f of fs.readdirSync(REV)) {
+        if (!f.endsWith('.json.gz')) continue;
+        const s = f.replace('.json.gz', '');
+        try {
+            const j = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(REV, f))).toString('utf8'));
+            const ci = j.c.indexOf('revenue'), cy = j.c.indexOf('revenue_year'), cm = j.c.indexOf('revenue_month');
+            const m = new Map();
+            for (const v of j.v || []) { const y = +v[cy], mo = +v[cm], r = +v[ci]; if (y > 1990 && mo >= 1 && mo <= 12 && r > 0) m.set(`${y}-${String(mo).padStart(2, '0')}`, r); }
+            if (m.size) revOf.set(s, m);
+        } catch (_) {}
+    }
+    return revOf;
+}
+
 // ───────────────────────── 主程式 ─────────────────────────
 function loadWorld(env) {
     const DATA = env.DATA_DIR, REV = env.REV_DIR, TRD = env.TRADE_DIR, IDX = env.IDX_LONG;
@@ -392,18 +410,7 @@ function loadWorld(env) {
         A.date = cal;
         stocks.set(s, A);
     }
-    const revOf = new Map();
-    for (const f of fs.readdirSync(REV)) {
-        if (!f.endsWith('.json.gz')) continue;
-        const s = f.replace('.json.gz', '');
-        try {
-            const j = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(REV, f))).toString('utf8'));
-            const ci = j.c.indexOf('revenue'), cy = j.c.indexOf('revenue_year'), cm = j.c.indexOf('revenue_month');
-            const m = new Map();
-            for (const v of j.v || []) { const y = +v[cy], mo = +v[cm], r = +v[ci]; if (y > 1990 && mo >= 1 && mo <= 12 && r > 0) m.set(`${y}-${String(mo).padStart(2, '0')}`, r); }
-            if (m.size) revOf.set(s, m);
-        } catch (_) {}
-    }
+    const revOf = loadRevDir(REV);
     const expTxt = zlib.gunzipSync(fs.readFileSync(path.join(TRD, 'raw', '8380all_0.csv.gz'))).toString('utf8');
     const E = loadExports(expTxt);
     const z = unzip(zlib.gunzipSync(fs.readFileSync(path.join(TRD, 'raw', '6099_1.bin.gz'))));

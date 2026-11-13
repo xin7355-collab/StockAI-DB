@@ -11,7 +11,11 @@
  *   ⑧ 材料鏈:三組照 玻纖布 → CCL → PCB、中位數 == _regimeStats(5).tmed(唯一真相)、銅價讀 macro_risk(改數字畫面跟著變;沒有 → 寫還沒抓到)
  *   ⑨ 讀不到 ≠ 沒有:重大訊息讀不到要寫出來;決定性對照:讀到但空的 → 不寫讀不到
  *   ⑩ ⛔ 研究字樣(lib_retailbad)/ ⛔ 🔴🟢;⑪ 390px 不橫捲
- * 注入(逐一確認會紅):INJECT=nogate(拿掉解鎖守門)/ nowin(公告不看窗口)/ nomiss(讀不到當成沒有)
+ *   ⑬ 🔁 V82.3.0 某一天某個市場沒抓到(檔頭 days 沒有那一格)→ ⏳ 那一行寫日期 + 市場;今天 ⛔ 算(那輪可能還沒跑);
+ *      決定性對照:每一天都有那一格 → 沒有那一行
+ *   ⑭ 📉 V82.3.0 營收衰退中:公布期那一行多一句灰字事實 + 底下說一次(每 4 檔就有 1 檔、篩子不是警報;基準讀 _REV_DEC_BASE);
+ *      決定性對照:營收在成長 → 兩個都沒有
+ * 注入(逐一確認會紅):INJECT=nogate(拿掉解鎖守門)/ nowin(公告不看窗口)/ nomiss(讀不到當成沒有)/ nogap(沒抓到當成沒有)/ nodec(拿掉營收衰退那句)
  */
 import fs from 'fs';
 import path from 'path';
@@ -25,6 +29,8 @@ const INJ = process.env.INJECT || '';
 if (INJ === 'nogate') SRC = SRC.replace('const wkOn = !!this._deckShow().week;', 'const wkOn = true;');
 if (INJ === 'nowin') SRC = SRC.replace("for (const r of mrows) if (String(r.s) === sym && r.d >= W.from && r.d <= W.to) {", 'for (const r of mrows) if (String(r.s) === sym) {');
 if (INJ === 'nomiss') SRC = SRC.replace("if (!MR.doc) miss.push(", 'if (false) miss.push(');
+if (INJ === 'nodec') SRC = SRC.replace('const dec = rd && rd.on && rd.ym === revM ?', 'const dec = false ?');
+if (INJ === 'nogap') SRC = SRC.replace("for (const mk of ['sii', 'otc']) if (x[mk] == null) out.push({ d, mk });", "for (const mk of ['sii', 'otc']) if (false) out.push({ d, mk });");
 if (INJ && SRC === ORIG) { console.log('❌ 注入沒有注進去'); process.exit(1); }
 const TMP = path.join(ROOT, '.test_week_digest.html');
 fs.writeFileSync(TMP, SRC);
@@ -116,6 +122,23 @@ try {
         app._mopsRec = { at: Date.now(), doc: MOPS([]), err: '' };
         out.mineEmpty = sec(app._weekHtml(), 'wmine');
         app._mopsRec = { at: Date.now(), doc: MOPS(mopsRows), err: '' };
+        // ⑬ 🔁 某一天某個市場沒抓到 → ⏳ 那一行;決定性對照:每一天都有那一格 → 沒有;今天沒有那一格 ⛔ 算
+        const daysFull = {}; for (const d of ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12']) daysFull[d] = { sii: 1, otc: 0 };
+        app._mopsRec = { at: Date.now(), err: '', doc: { ...MOPS(mopsRows), keep: 14, days: { ...daysFull, '2026-11-12': { sii: 2 } } } };
+        app._insRec.doc.keep = 14; app._insRec.doc.days = { ...daysFull, '2026-11-10': { otc: 0 } };
+        { const h = app._weekHtml(); const m = h.match(/data-weekgap>([^<]*)/); out.gapLine = m ? m[1] : null; }
+        app._mopsRec = { at: Date.now(), err: '', doc: { ...MOPS(mopsRows), keep: 14, days: daysFull } };
+        app._insRec.doc.days = daysFull;
+        out.gapNone = /data-weekgap/.test(app._weekHtml());
+        delete app._insRec.doc.days; delete app._insRec.doc.keep;
+        app._mopsRec = { at: Date.now(), doc: MOPS(mopsRows), err: '' };
+        // ⑭ 📉 營收衰退中:2454 的 mrh 16 個月(2025-07 ~ 2026-10),近 3 個月 90 / 85 / 80 vs 一年前 100 → −15%、上一段 −10%
+        const mk16 = tail => { const out = []; let y = 2025, m = 7; for (let k = 0; k < 12 + tail.length; k++) { out.push([`${y}-${String(m).padStart(2, '0')}`, k < 12 ? 100 : tail[k - 12]]); if (++m > 12) { m = 1; y++; } } return out; };
+        app._fundYoyGmAll.data['2454'] = { yoy: -20.0, mrh: mk16([95, 90, 85, 80]) };
+        { const h = app._weekHtml(); out.decMine = sec(h, 'wmine'); out.decNote = (h.match(/data-weekdecnote>([^<]*)/) || [])[1] || null; }
+        app._fundYoyGmAll.data['2454'] = { yoy: 20.0, mrh: mk16([105, 110, 115, 120]) };
+        { const h = app._weekHtml(); out.decUpMine = sec(h, 'wmine'); out.decUpNote = /data-weekdecnote/.test(h); }
+        delete app._fundYoyGmAll.data['2454'];
         // ⑪ 390px:放進 358px 的容器量每個元素有沒有超出
         const box = document.createElement('div');
         box.style.cssText = 'position:absolute;left:16px;top:0;width:358px;';
@@ -157,6 +180,16 @@ try {
     ok('⑩ ⛔ 研究字樣(lib_retailbad)', !bad.length, bad.join(' '));
     ok('⑩ ⛔ 🔴🟢(漲跌用字的顏色,好壞用 ✅ ⚠️)', !/[🔴🟢]/u.test((R.mine || '') + (R.chain || '')), '');
     ok('⑪ 390px:容器 358px、沒有元素超出', R.w390.boxW >= 350 && R.w390.over <= 2, JSON.stringify(R.w390));
+    const G = R.gapLine || '';
+    ok('⑬ 沒抓到 → ⏳ 那一行寫日期 + 市場(11/12 上櫃公告、11/10 上市申報轉讓),⛔ 不代表沒有', /11\/12[^、]*上櫃公告/.test(G) && /11\/10[^、]*上市申報轉讓/.test(G)
+       && !/上市公告/.test(G) && /不代表沒有/.test(G), G);
+    ok('⑬ 今天(11/13)那輪可能還沒跑 → ⛔ 算沒抓到', !/11\/13/.test(G), G);
+    ok('⑬ 決定性對照:每一天都有那一格 → 沒有那一行', R.gapNone === false, R.gapNone);
+    ok('⑭ 📉 營收衰退中:10 月營收那一行多一句灰字(近 3 個月比去年同期 -15.0%、比上個月那段更差),底下說一次「每 4 檔就有 1 檔、篩子不是警報」',
+       /📈 10 月營收[^\n]*📉 營收衰退中:近 3 個月比去年同期 -15\.0%/.test(R.decMine || '') && /每 4 檔就有 1 檔/.test(R.decNote || '') && /不是警報/.test(R.decNote || '')
+       && /照你的出場規則走/.test(R.decNote || ''), [R.decMine, R.decNote].join(' || '));
+    ok('⑭ 決定性對照:營收在成長 → 那一句與底下那段都沒有', !/營收衰退中/.test(R.decUpMine || '') && R.decUpNote === false, R.decUpMine);
+    ok('⑭ ⛔ 研究字樣 / ⚠️(四檔就有一檔 = 篩子)', !badOf((R.decMine || '') + (R.decNote || '')).length && !/⚠️[^\n]*營收衰退/.test(R.decMine || ''), badOf((R.decMine || '') + (R.decNote || '')).join(' '));
     ok('⑫ 無 pageerror', !errs.length, errs.join(' | '));
 } finally {
     await browser.close();

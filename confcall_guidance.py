@@ -518,6 +518,32 @@ def months_of(fund_row):
         return {}
 
 
+def load_rev_dir(d):
+    """📞 V82.3.0 研究用(REV_DIR):stock_deep/rev 每檔一個 .json.gz(c = 欄名、v = 列)→ {代號: {'YYYY-MM': 營收}}。
+    跟 scripts/trade_lead_probe.mjs loadRevDir 同一個讀法;壞檔略過。"""
+    import gzip
+    from pathlib import Path
+    out = {}
+    for f in Path(d).glob('*.json.gz'):
+        try:
+            j = json.loads(gzip.decompress(f.read_bytes()))
+            c = j.get('c') or []
+            ci, cy, cm = c.index('revenue'), c.index('revenue_year'), c.index('revenue_month')
+        except (OSError, ValueError, KeyError, AttributeError):
+            continue
+        m = {}
+        for v in j.get('v') or []:
+            try:
+                y, mo, r = int(v[cy]), int(v[cm]), float(v[ci])
+            except (TypeError, ValueError, IndexError):
+                continue
+            if y > 1990 and 1 <= mo <= 12 and r > 0:
+                m[f'{y}-{mo:02d}'] = r
+        if m:
+            out[f.name[:-len('.json.gz')]] = m
+    return out
+
+
 # ───────────────────────── 研究:說到做到(`--grade`)─────────────────────────
 def load_fin(src, repo='.'):
     """data/fin 季報 → {sym: {(年, 季): 那一季}}。src = 目錄(data/fin)或 git ref(origin/gh-pages / origin/data)。"""
@@ -576,10 +602,12 @@ def naive_dir(c, qs):
     return None
 
 
-def grade_all(cc_dir, fin, today, log=print):
+def grade_all(cc_dir, fin, today, log=print, months=None):
     """全部讀過的簡報 → 可以對答案的展望(同一家公司講同一句只算第一場)→ 季報對答案 + 兩個對照:
     ① 基準:同一段時間、同一個方向,拿全部公司的季報對(=「隨便一家公司這樣講會不會也對」)
-    ② naive:講的那天已經公布的數字猜(=「看最近數字猜,不用聽公司講」)"""
+    ② naive:講的那天已經公布的數字猜(=「看最近數字猜,不用聽公司講」)
+    📞 V82.3.0 months = {代號: {'YYYY-MM': 營收}}(REV_DIR)→ 營收那幾句先用月營收對答案(隔月 10 號就知道),同業對照也一樣"""
+    MO = months or {}
     from pathlib import Path
     import gzip
     import collections
@@ -618,19 +646,19 @@ def grade_all(cc_dir, fin, today, log=print):
         if not qs:
             res['沒有季報'] += 1
             continue
-        g = grade(c, qs, today=today)
+        g = grade(c, qs, today=today, months=MO.get(c['s']))
         res[g['res']] += 1
         if g['res'] not in ('hit', 'miss'):
             continue
         bh = bn = 0
-        for qq in fin.values():
-            gb = grade(c, qq, today=today)
+        for s2, qq in fin.items():
+            gb = grade(c, qq, today=today, months=MO.get(s2))
             if gb['res'] in ('hit', 'miss'):
                 bn += 1
                 bh += gb['res'] == 'hit'
         nv = naive_dir(c, qs)
         rows.append({'s': c['s'], 'd': c['d'], 'p': c['p'], 'm': c['m'], 'dir': c['dir'], 'h': c['h'], 'cmp': c.get('cmp'),
-                     'res': g['res'], 'chg': g.get('chg'), 'known': g.get('known'), 'base': round(bh / bn, 3) if bn else None,
+                     'res': g['res'], 'chg': g.get('chg'), 'known': g.get('known'), 'src': g.get('src'), 'base': round(bh / bn, 3) if bn else None,
                      'naive': nv, 't': c['t'][:T_MAX]})
     n = len(rows)
     hit = sum(r['res'] == 'hit' for r in rows)
@@ -646,6 +674,65 @@ def grade_all(cc_dir, fin, today, log=print):
     log(f"   到期 {n} 個({summ['companies']} 家):說到做到 {hit} = {hit / max(1, n):.1%} ・同一段時間隨便一家公司這樣講會對 {base:.1%}")
     log(f"   用講的那天已公布的數字猜:對 {nv_right}/{len(nv_rows)} ・公司講的跟最近數字相反的 {len(dis)} 次,公司對 {summ['disagree_hit']} 次")
     return summ, rows
+
+
+# 📞 V82.3.0 EXP-20261113-08 事先登記的判定(⛔ 跑完再改)
+A_RULE = {'n': 300, 'cos': 150, 'diff': 0.10}
+PRICE_RULE = {'min': 0.44, 'year_min_n': 10, 'year_frac': 2 / 3, 'drop': 5, 'dates': 30, 't': 2.0}
+
+
+def verdict_a(rows):
+    """A 準不準:① 到期 ≥ 300 句、≥ 150 家 ② 說到做到率 − 隨便一家公司這樣講會對 ≥ 10pp ③ 照講的日期切前後兩半,兩半的差都 > 0"""
+    rs = sorted((r for r in rows if r.get('base') is not None), key=lambda r: r['d'])
+    n, cos = len(rs), len({r['s'] for r in rs})
+
+    def diff(a):
+        return (sum(r['res'] == 'hit' for r in a) - sum(r['base'] for r in a)) / len(a) if a else None
+    d = diff(rs)
+    halves = [diff(rs[:n // 2]), diff(rs[n // 2:])]
+    c = {'c1': n >= A_RULE['n'] and cos >= A_RULE['cos'], 'c2': d is not None and d >= A_RULE['diff'],
+         'c3': all(x is not None and x > 0 for x in halves)}
+    return {'n': n, 'cos': cos, 'diff': d, 'halves': halves, 'c': c, 'pass': all(c.values())}
+
+
+def _welch_t(a, b):
+    if len(a) < 2 or len(b) < 2:
+        return None
+    ma, mb = sum(a) / len(a), sum(b) / len(b)
+    va = sum((x - ma) ** 2 for x in a) / (len(a) - 1)
+    vb = sum((x - mb) ** 2 for x in b) / (len(b) - 1)
+    se = (va / len(a) + vb / len(b)) ** 0.5
+    return (ma - mb) / se if se > 0 else None
+
+
+def price_gates(evs):
+    """B 股價:每一句 z = 自己的超額 − 沒講這句、但數字也往同一邊走的同業平均(做到 → 同業也做到的;沒做到 → 同業也沒有的);
+    差中差 = 做到那組 z 平均 − 沒做到那組 z 平均。六條全過才算(PRICE_RULE)。"""
+    H = [e for e in evs if e.get('z') is not None and e['res'] == 'hit']
+    M = [e for e in evs if e.get('z') is not None and e['res'] == 'miss']
+
+    def did(h, m):
+        return (sum(e['z'] for e in h) / len(h) - sum(e['z'] for e in m) / len(m)) if h and m else None
+    d = did(H, M)
+    allv = sorted(H + M, key=lambda e: e['known'])
+    mid = allv[len(allv) // 2]['known'] if allv else None
+    halves = [did([e for e in H if (e['known'] < mid) == f], [e for e in M if (e['known'] < mid) == f]) for f in (True, False)] if mid else [None, None]
+    yrs = {}
+    for e in H + M:
+        yrs.setdefault(e['known'][:4], {'hit': [], 'miss': []})[e['res']].append(e)
+    yr = {y: did(v['hit'], v['miss']) for y, v in sorted(yrs.items())
+          if len(v['hit']) + len(v['miss']) >= PRICE_RULE['year_min_n'] and v['hit'] and v['miss']}
+    contrib = sorted([(e['z'] / len(H), k) for k, e in enumerate(H)] + [(-e['z'] / len(M), len(H) + k) for k, e in enumerate(M)], reverse=True) if H and M else []
+    drop = {k for _, k in contrib[:PRICE_RULE['drop']]}
+    d5 = did([e for k, e in enumerate(H) if k not in drop], [e for k, e in enumerate(M) if len(H) + k not in drop])
+    nd = [len({e['ed'] for e in H}), len({e['ed'] for e in M})]
+    t = _welch_t([e['z'] for e in H], [e['z'] for e in M])
+    c = {'c1': d is not None and d >= PRICE_RULE['min'], 'c2': all(x is not None and x > 0 for x in halves),
+         'c3': bool(yr) and sum(1 for v in yr.values() if v is not None and v > 0) >= len(yr) * PRICE_RULE['year_frac'],
+         'c4': d5 is not None and d5 >= PRICE_RULE['min'], 'c5': min(nd) >= PRICE_RULE['dates'], 'c6': t is not None and t >= PRICE_RULE['t']}
+    rnd = lambda x: None if x is None else round(x, 3)
+    return {'did': rnd(d), 'n_hit': len(H), 'n_miss': len(M), 'halves': [rnd(x) for x in halves], 'years': {y: rnd(v) for y, v in yr.items()},
+            'did_drop5': rnd(d5), 'dates': nd, 't': rnd(t), 'c': c, 'pass': all(c.values())}
 
 
 # ───────────────────────── 研究第二步:做到 / 沒做到 → 之後股價(`--price`)─────────────────────────
@@ -692,12 +779,13 @@ def _stat(v):
     return {'n': len(v), 'inc': round(m, 3), 't': round(m / (sd / len(v) ** 0.5), 2) if sd else None}
 
 
-def price_step(rows, data_dir, hs=PRICE_HS, min_day=300, log=print, fin=None, today=None):
+def price_step(rows, data_dir, hs=PRICE_HS, min_day=300, log=print, fin=None, today=None, months=None):
     """--grade 的結果(rows:s / known / res)→ 答案公布之後股價:做到 vs 沒做到,減同一天所有股票同樣做法的平均。
     ⭐ 對照(fin 有給才做):同一段時間、同一個指標與方向,**沒有講這句話的其他公司**用同一把尺對答案
        (= 營收真的往那個方向走的公司之後本來就怎麼走)→ 差中差 = 「公司有講、而且做到」多出來的那一塊。
     ⚠️ 只是研究:答案公布(月營收 / 季報)那天市場也同時看到了 —— 量的是之後還有沒有後勁。"""
     from pathlib import Path
+    MO = months or {}
     Ks, DS = {}, {}
     for f in Path(data_dir).glob('*.json'):
         if re.fullmatch(r'\d{4}', f.stem):
@@ -728,9 +816,11 @@ def price_step(rows, data_dir, hs=PRICE_HS, min_day=300, log=print, fin=None, to
                 continue
             x, ed = fwd_at(Ks[r['s']], r['known'], h, DS[r['s']])
             c = ctrl(ed, h) if x is not None else None
+            ev = None
             if c is not None:
                 own[r['res']].append(x - c)
-                evs.append({'s': r['s'], 'd': r.get('d'), 'known': r['known'], 'ed': ed, 'res': r['res'], 'm': r.get('m'), 'v': round(x - c, 3)})
+                ev = {'s': r['s'], 'd': r.get('d'), 'known': r['known'], 'ed': ed, 'res': r['res'], 'm': r.get('m'), 'v': round(x - c, 3)}
+                evs.append(ev)
             if fin is None:
                 continue
             claim = {'m': r['m'], 'dir': r['dir'], 'h': r['h'], 'cmp': r.get('cmp'), 'd': r['d'], 'ok': 1}
@@ -738,7 +828,7 @@ def price_step(rows, data_dir, hs=PRICE_HS, min_day=300, log=print, fin=None, to
             for sy, qs in fin.items():
                 if sy == r['s'] or sy not in Ks:
                     continue
-                g = grade(claim, qs, today=today)
+                g = grade(claim, qs, today=today, months=MO.get(sy))
                 if g.get('res') not in ('hit', 'miss') or not g.get('known'):
                     continue
                 y, ed2 = fwd_at(Ks[sy], g['known'], h, DS[sy])
@@ -748,18 +838,24 @@ def price_step(rows, data_dir, hs=PRICE_HS, min_day=300, log=print, fin=None, to
             for k in pv:                     # 每一句只當一票(⛔ 讓某一句的 2,000 家同業淹掉其他句)
                 if pv[k]:
                     peer[k].append(sum(pv[k]) / len(pv[k]))
+            if ev is not None and pv[r['res']]:   # 📞 V82.3.0 這一句 z = 自己 − 數字也往同一邊走的同業平均(B 判定用)
+                ev['z'] = round(ev['v'] - sum(pv[r['res']]) / len(pv[r['res']]), 3)
         res = {k: _stat(v) for k, v in own.items()}
         res['ev'] = evs
         if fin is not None:
             res['peer'] = {k: _stat(v) for k, v in peer.items()}
             hi, mi, ph, pm = (res['hit']['inc'], res['miss']['inc'], res['peer']['hit']['inc'], res['peer']['miss']['inc'])
             res['did'] = round((hi - mi) - (ph - pm), 3) if None not in (hi, mi, ph, pm) else None
+            res['pc'] = price_gates(evs)
         out[h] = res
         line = (f"   抱 {h} 天:做到 n={res['hit']['n']} {res['hit']['inc']}pp(t={res['hit']['t']}) ・"
                 f"沒做到 n={res['miss']['n']} {res['miss']['inc']}pp(t={res['miss']['t']})")
         if fin is not None:
+            pc = res['pc']
             line += (f" ・沒講這句的公司:往那個方向走 {res['peer']['hit']['inc']} / 沒有 {res['peer']['miss']['inc']}"
-                     f" → 差中差 {res['did']}pp")
+                     f" → 差中差 {res['did']}pp ・逐句(減同一邊的同業){pc['did']}pp(做到 {pc['n_hit']} / 沒做到 {pc['n_miss']}、"
+                     f"前後半 {pc['halves']}、拿掉前 5 {pc['did_drop5']}、不同公布日 {pc['dates']}、t {pc['t']})"
+                     f" {'✅ 六條全過' if pc['pass'] else '❌ ' + ','.join(k for k, v in pc['c'].items() if not v)}")
         log(line)
     return out
 
@@ -1031,6 +1127,69 @@ def selftest():
     pr = price_step(prow, str(pdir), hs=(5,), min_day=5, log=lambda *_: None)
     ok('⑬ --price:做到的那半之後每天 +1% → 比同一天平均好、沒做到的比較差;公布當天的 +9% ⛔ 算進去',
        pr[5]['hit']['n'] == 6 and pr[5]['hit']['inc'] > 2 and pr[5]['miss']['inc'] < -1 and pr[5]['hit']['inc'] < 4, pr)
+    # ⑭~⑱ 📞 V82.3.0 研究模式完整版(EXP-20261113-08):月營收(REV_DIR)、兩個判定、逐句減同一邊的同業
+    rdir = _P(_tf.mkdtemp())
+    (rdir / '1111.json.gz').write_bytes(_gz.compress(json.dumps({'c': ['date', 'revenue', 'revenue_year', 'revenue_month'],
+        'v': [['2025-11-10', 300, 2025, 10], ['2025-12-10', 310, 2025, 11], ['x', 'bad', 2025, 12]]}).encode()))
+    (rdir / '9999.json.gz').write_bytes(b'not gzip')
+    RV = load_rev_dir(str(rdir))
+    ok('⑭ load_rev_dir:讀得到兩個月、壞的那一列 / 壞檔略過', RV == {'1111': {'2025-10': 300.0, '2025-11': 310.0}}, RV)
+    # ⑮ grade_all 帶月營收:季報還沒有 2025Q4(→ 還沒到期),月營收 10~12 月都有 → 用月營收對答案;同業也一樣
+    FIN2 = {'1111': mk([100, 100, 100, 100, 110, 112, 115]), '2222': mk([100, 100, 100, 100, 90, 92, 95])}
+    MOS = {'1111': {**{f'2024-{i:02d}': 100 for i in range(1, 13)}, **{f'2025-{i:02d}': (120 if i <= 9 else 130) for i in range(1, 13)}},
+           '2222': {**{f'2024-{i:02d}': 100 for i in range(1, 13)}, **{f'2025-{i:02d}': (80 if i <= 9 else 70) for i in range(1, 13)}}}
+    s0, r0 = grade_all(str(tdir), FIN2, date(2026, 2, 1), log=lambda *_: None)
+    s1, r1 = grade_all(str(tdir), FIN2, date(2026, 2, 1), log=lambda *_: None, months=MOS)
+    q4 = [r for r in r1 if r['h'] == '2025Q4']
+    ok('⑮ 季報還沒有第四季:不帶月營收 → 還沒到期;帶月營收 → 1/10 就對得到答案(第四季比第三季 +8%、src m)、同業也用月營收(基準 0.5)',
+       not any(r['h'] == '2025Q4' for r in r0) and q4 and q4[0]['src'] == 'm' and q4[0]['res'] == 'hit' and q4[0]['known'] == '2026-01-10'
+       and q4[0]['base'] == 0.5, (r0, r1))
+    # ⑯ A 判定
+    mkrows = lambda n, cos, hit1, hit2, base: [{'s': str(i % cos), 'd': f'2023-{(i * 12 // n) + 1:02d}-01', 'res': 'hit' if (i < n // 2 and i % 10 < hit1) or (i >= n // 2 and i % 10 < hit2) else 'miss',
+                                                'base': base} for i in range(n)]
+    va1, va2, va3 = verdict_a(mkrows(400, 200, 7, 7, 0.5)), verdict_a(mkrows(400, 200, 7, 4, 0.5)), verdict_a(mkrows(200, 100, 7, 7, 0.5))
+    ok('⑯ A:400 句 / 200 家、做到 70% vs 隨便一家 50% → 過;⭐ 後半只做到 40% → ③ 不過;只有 200 句 → ① 不過',
+       va1['pass'] and not va2['pass'] and not va2['c']['c3'] and not va3['pass'] and not va3['c']['c1'], (va1, va2, va3))
+    # ⑰ B 判定(逐句 z)
+    def mkev(n, zh, zm, nd=40, big=0.0):
+        out = []
+        for i in range(n):
+            res = 'hit' if i % 2 == 0 else 'miss'
+            z = (zh if res == 'hit' else zm) + ((i % 5) - 2) * 0.3
+            if big and i < 10 and res == 'hit':
+                z += big
+            out.append({'res': res, 'z': z, 'known': f'{2021 + (i * 5) // n}-{(i % 12) + 1:02d}-15', 'ed': f'd{(i // 2) % nd}'})
+        return out
+    pg1, pg2, pg3 = price_gates(mkev(300, 1.0, -1.0)), price_gates(mkev(300, 0.1, -0.1, big=40)), price_gates(mkev(300, 1.0, -1.0, nd=20))
+    ok('⑰ B:做到 +1 / 沒做到 −1 → 差中差 2、六條全過;⭐ 只靠 5 筆超大的撐起來 → ④ 不過;不同公布日只有 20 個 → ⑤ 不過',
+       pg1['pass'] and abs(pg1['did'] - 2) < 0.1 and not pg2['c']['c4'] and pg2['did'] >= 0.44 and not pg3['c']['c5'], (pg1, pg2, pg3))
+    # ⑱ price_step 帶 fin:每一句 z = 自己 − 數字也往同一邊走的同業(做到的跟做到的比、沒做到的跟沒做到的比)
+    pdir2 = _P(_tf.mkdtemp())
+    days2 = []
+    d0 = date(2025, 1, 2)
+    while len(days2) < 80:
+        if d0.weekday() < 5:
+            days2.append(d0.isoformat())
+        d0 = date.fromordinal(d0.toordinal() + 1)
+    kq = days2.index('2025-03-31')
+    FIN3 = {}
+    for k in range(12):
+        sym = str(5000 + k)
+        bump = 0.01 if k == 0 else 0.005 if 1 <= k <= 5 else -0.005 if k == 6 else 0.0
+        c, rows_k = 50.0, []
+        for i, d in enumerate(days2):
+            o = c
+            c = o * (1 + (bump if kq + 1 <= i <= kq + 5 else 0.0))
+            rows_k.append({'date': d, 'open': o, 'close': c})
+        (pdir2 / f'{sym}.json').write_text(json.dumps(rows_k), encoding='utf-8')
+        FIN3[sym] = {(2023, 4): {'p': '2023-12-31', 'pub': '2024-03-31', 'rev': 100}, (2024, 4): {'p': '2024-12-31', 'pub': '2025-03-31', 'rev': 110 if k < 6 else 90}}
+    cl = {'m': 'rev', 'dir': 'up', 'h': '2024Q4', 'cmp': 'YoY', 'd': '2025-01-15'}
+    prow2 = [dict(cl, s='5000', known='2025-03-31', res='hit'), dict(cl, s='5006', known='2025-03-31', res='miss')]
+    pr2 = price_step(prow2, str(pdir2), hs=(5,), min_day=5, log=lambda *_: None, fin=FIN3, today=date(2025, 6, 1))
+    zz = {e['s']: e.get('z') for e in pr2[5]['ev']}
+    ok('⑱ price_step 帶 fin:做到那句減「也做到的同業」(+2.5%)→ z ≈ +2.6;沒做到那句減「也沒做到的同業」(0)→ z ≈ −2.5;有算 B 判定',
+       zz.get('5000') is not None and 2.0 < zz['5000'] < 3.2 and zz.get('5006') is not None and -3.2 < zz['5006'] < -2.0
+       and pr2[5]['pc']['n_hit'] == 1 and pr2[5]['pc']['n_miss'] == 1, (zz, pr2[5].get('pc')))
     print('\n' + ('❌ confcall_guidance selftest 失敗 %d 條' % len(fails) if fails else '✅ confcall_guidance selftest 全過'))
     return 1 if fails else 0
 
@@ -1042,18 +1201,23 @@ if __name__ == '__main__':
         i = sys.argv.index('--grade')
         cc = sys.argv[i + 1] if len(sys.argv) > i + 1 else os.getenv('CC_DIR', 'cc_deep')
         fin_src = os.getenv('FIN', 'origin/gh-pages')
-        summ, rows = grade_all(cc, load_fin(fin_src), date.fromisoformat(os.getenv('TODAY') or date.today().isoformat()))
+        mo = load_rev_dir(os.environ['REV_DIR']) if os.getenv('REV_DIR') else None   # 📞 V82.3.0 月營收(研究用)
+        summ, rows = grade_all(cc, load_fin(fin_src), date.fromisoformat(os.getenv('TODAY') or date.today().isoformat()), months=mo)
+        va = verdict_a(rows)
+        print(f"🅰️ 準不準(EXP-20261113-08 登記):到期 {va['n']} 句 / {va['cos']} 家 ・說到做到 − 隨便一家 {va['diff']} ・前後兩半 {va['halves']} → "
+              + ('✅ 三條全過' if va['pass'] else '❌ ' + ','.join(k for k, v in va['c'].items() if not v)))
         if os.getenv('OUT'):
             from pathlib import Path
-            Path(os.environ['OUT']).write_text(json.dumps({'summary': summ, 'rows': rows}, ensure_ascii=False, indent=1), encoding='utf-8')
+            Path(os.environ['OUT']).write_text(json.dumps({'summary': summ, 'verdict_a': va, 'rows': rows}, ensure_ascii=False, indent=1), encoding='utf-8')
         sys.exit(0)
     if '--price' in sys.argv:
         # GRADE=--grade 的 OUT DATA_DIR=<d16> python3 confcall_guidance.py --price
         g = json.loads(open(os.environ['GRADE'], encoding='utf-8').read())
         print(f"📈 做到 / 沒做到 → 答案公布之後第一個交易日開盤進(扣 {PRICE_COST}%、減同一天所有股票)")
         fin = load_fin(os.environ['FIN']) if os.getenv('FIN') else None
+        mo = load_rev_dir(os.environ['REV_DIR']) if os.getenv('REV_DIR') else None
         out = price_step(g.get('rows') or [], os.getenv('DATA_DIR') or 'data', fin=fin,
-                         today=date.fromisoformat(os.getenv('TODAY') or date.today().isoformat()))
+                         today=date.fromisoformat(os.getenv('TODAY') or date.today().isoformat()), months=mo)
         if os.getenv('OUT'):
             open(os.environ['OUT'], 'w', encoding='utf-8').write(json.dumps(out, ensure_ascii=False, indent=1))
         sys.exit(0)

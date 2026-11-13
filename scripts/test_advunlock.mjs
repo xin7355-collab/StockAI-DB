@@ -201,6 +201,18 @@ const T = await page.evaluate(() => {
       R.mopsFav = ids(run({ bars: new Map([['2454', kFlat]]), fav: ['2454'], mops: M([['2454', '聯發科', d5, '15:00:00', '公告庫藏股買回期滿', 'sii', 'buyback_end']]) }));
       R.mopsNoCtx = ids(run(H));
       R.mopsEtf = ids(run({ held: new Map([['0050', { cost: 0 }]]), bars: new Map([['0050', kFlat]]), mops: M([['0050', '元大台灣50', d5, '15:00:00', '公告減資彌補虧損', 'sii', 'cap_red_loss']]) })); }
+    // 📉 V82.3.0 rev_decline:庫存 / 正在看的這一檔,月營收「近 3 個月比去年同期少、而且比上個月算的那段更差」(fund_yoy_gm 的 mrh 16 個月)
+    { const H = { held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]) };
+      const mk16 = (end, tail) => { const out = []; let [y, m] = end.split('-').map(Number); const n = 12 + tail.length; for (let k = n - 1; k >= 0; k--) { let mm = m - k, yy = y; while (mm < 1) { mm += 12; yy--; } out.push([`${yy}-${String(mm).padStart(2, '0')}`, k < tail.length ? tail[tail.length - 1 - k] : 100]); } return out; };
+      const dn = mk16('2026-09', [95, 90, 85, 80]), upx = mk16('2026-09', [105, 110, 115, 120]);   // 今天 10/19 → 該有 9 月
+      R.revDec = ids(run({ ...H, fy: { 2330: { mrh: dn } } }));
+      R.revDecWhy = run({ ...H, fy: { 2330: { mrh: dn } } }).filter(h => h.id === 'rev_decline').map(h => h.why);
+      R.revDecUp = ids(run({ ...H, fy: { 2330: { mrh: upx } } }));
+      R.revDecOld = ids(run({ ...H, fy: { 2330: { mrh: mk16('2026-08', [95, 90, 85, 80]) } } }));   // 最新只到 8 月(過期)→ ⛔ 判
+      R.revDecShort = ids(run({ ...H, fy: { 2330: { mrh: dn.slice(-12) } } }));                     // 只有 12 個月 → 算不出來
+      R.revDecFav = ids(run({ bars: new Map([['2454', kFlat]]), fav: ['2454'], fy: { 2454: { mrh: dn } } }));
+      R.revDecNoCtx = ids(run(H));
+      R.revDecEtf = ids(run({ held: new Map([['0050', { cost: 0 }]]), bars: new Map([['0050', kFlat]]), fy: { '0050': { mrh: dn } } })); }
     // 大盤:先漲後急跌 → 剛轉空頭;一路跌 → 早就是空頭(⛔ 不算剛轉)
     const up = mkK(120, '2026-10-16'); up.forEach((r, i) => { const c = i < 110 ? 100 + i : 210 - (i - 109) * 12; Object.assign(r, { open: c, high: c, low: c, close: c }); });
     const dn = mkK(120, '2026-10-16'); dn.forEach((r, i) => { const c = 300 - i; Object.assign(r, { open: c, high: c, low: c, close: c }); });
@@ -316,6 +328,10 @@ ok('③f3 📢 mops_avoid:庫存最近 5 個交易日公告減資彌補虧損 �
     has(T.mops, 'mops_avoid') && /減資彌補虧損/.test(String(T.mopsWhy[0] || '')) && String(T.mopsWhy[0] || '').includes(T.mopsD5) && !has(T.mopsOld, 'mops_avoid') && !has(T.mopsOther, 'mops_avoid')
     && !has(T.mopsFav, 'mops_avoid') && !has(T.mopsNoCtx, 'mops_avoid') && !has(T.mopsEtf, 'mops_avoid'),
     JSON.stringify([T.mops, T.mopsWhy, T.mopsOld, T.mopsOther, T.mopsFav, T.mopsNoCtx, T.mopsEtf]));
+ok('③f4 📉 rev_decline:庫存月營收近 3 個月比去年同期少而且越來越少 → 亮(寫月份 + 近 3 個月年增);營收在成長 / 資料過期 / 只有 12 個月 / 只在自選 / ctx 沒給 / ETF → 不亮',
+    has(T.revDec, 'rev_decline') && /9 月營收:近 3 個月比去年同期 -15\.0%/.test(String(T.revDecWhy[0] || '')) && !has(T.revDecUp, 'rev_decline') && !has(T.revDecOld, 'rev_decline')
+    && !has(T.revDecShort, 'rev_decline') && !has(T.revDecFav, 'rev_decline') && !has(T.revDecNoCtx, 'rev_decline') && !has(T.revDecEtf, 'rev_decline'),
+    JSON.stringify([T.revDec, T.revDecWhy, T.revDecUp, T.revDecOld, T.revDecShort, T.revDecFav, T.revDecNoCtx, T.revDecEtf]));
 ok('③g 大盤剛轉空頭 → bear_on;一直是空頭 → 沒有', has(T.bearFlip, 'bear_on') && !has(T.bearLong, 'bear_on'), JSON.stringify([T.bearFlip, T.bearLong]));
 ok('③h 第三個星期三 → settle;第二個 → 沒有', has(T.settle, 'settle') && !has(T.settleNo, 'settle'), JSON.stringify([T.settle, T.settleNo]));
 ok('③i 休市前最後一個交易日 → holiday_pre;前兩天 → 沒有', has(T.pre, 'holiday_pre') && !has(T.preNo, 'holiday_pre'), JSON.stringify([T.pre, T.preNo]));

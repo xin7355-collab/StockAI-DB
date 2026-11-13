@@ -142,7 +142,9 @@ if (isMain) {
     if (!fs.existsSync(FIN)) { console.log(`🚨 找不到 ${FIN}`); process.exit(1); }
     const F = JSON.parse(fs.readFileSync(FIN, 'utf8'));
     console.log(`📥 財報:${F.meta.n} 檔 ・${F.meta.quarters} 季 ・更新 ${F.meta.updated}`);
-    const { files, CUM } = sliceAll(F, N_Q, true);
+    // 📞 V82.3.0 研究用:NQ=99 → 每一檔保留全部季數(confcall_guidance --grade 拿 2018 起的季報對答案);沒設 = 照舊 12 季(App 讀的那份)
+    const NQ = Math.max(1, +(process.env.NQ || N_Q));
+    const { files, CUM } = sliceAll(F, NQ, true);
     const n = Object.keys(files).length;
     if (n < MIN_OK) { console.log(`🚨 只切出 ${n} 檔(<${MIN_OK})→ ⛔ 不寫出、不覆蓋`); process.exit(1); }
     fs.mkdirSync(OUT, { recursive: true });

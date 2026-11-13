@@ -2874,11 +2874,13 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
                 except Exception: pass
             if yoy is not None:
                 result['revenue_yoy'] = round(float(yoy), 1)
-            # 順手存 12 月歷史 → 前端可畫完整 12 月圖（取代「最新月摘要」救援）
+            # 順手存月營收歷史 → 前端可畫完整 12 月圖（取代「最新月摘要」救援）
+            # 📉 V82.3.0 12 → 18 個月(本來就抓 24 個月,⛔ 多打 API):fund_sweep 存 16 個月給「營收衰退中」
+            #   (近 3 個月年增又比上個月差要 16 個月);chips 檔與畫面照舊只用最後 12 個
             try:
                 hist = [{'ym': f"{int(r.get('revenue_year') or 0):04d}-{int(r.get('revenue_month') or 0):02d}",
                          'rev': float(r.get('revenue', 0) or 0)}
-                        for r in rows[-12:] if r.get('revenue_year') and r.get('revenue_month')]
+                        for r in rows[-18:] if r.get('revenue_year') and r.get('revenue_month')]
                 if hist:
                     result['monthly_revenue_history'] = hist
             except Exception: pass
@@ -5617,7 +5619,7 @@ def fetch_free_fundamentals():
                 'dividend_avg_fill_days':avg_days,
                 'is_record_high':     fm_fund.get('is_record_high', False),
                 'latest_revenue':     fm_fund.get('latest_revenue'),
-                'monthly_revenue_history': fm_fund.get('monthly_revenue_history', []),
+                'monthly_revenue_history': (fm_fund.get('monthly_revenue_history') or [])[-12:],   # 📉 V82.3.0 chips 檔照舊 12 個月
                 'quarterly_eps':      fm_fund.get('quarterly_eps', []),
                 'generated':          today_str,
                 'miner_version':      MINER_VERSION,   # V15.8 cache 版本標記
