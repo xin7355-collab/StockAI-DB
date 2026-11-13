@@ -5,6 +5,7 @@
  *   ⛔ 只抄「問題 / 怎麼做 / 什麼時候不靈」,⛔ 不抄數字(散戶 App 畫面不放研究數字,V78.3.4);
  *      抄之前每一句都過 `lib_retailbad.mjs`(跟 test_retail_clean 同一份清單),「怎麼做」被擋光 → exit 1。
  *   ⛔ 每個 trig id 必須在 index.html 的 `_COL_TRIG_IDS` 裡,對不上 → exit 1。
+ *   🔒 V82.3.3 沒標 👑 的專欄(標題 / 鍵沒有領頭羊字樣)⛔ 在問題 / 怎麼做 / 提醒裡提到領頭羊 → exit 1(沒選 👑 的人也看得到)。
  *   跑法:node scripts/embed_col_trig.mjs            → 寫入 index.html
  *         node scripts/embed_col_trig.mjs --check    → 只比對(test_column 用;抄本跟 pro 不一致就 exit 1)
  */
@@ -54,7 +55,10 @@ export function buildColTrig(proSrc, idxSrc) {
         const doL = (col.do || []).map(String).filter(d => !badOf(d).length);
         if (!doL.length) errs.push(`${k}:「怎麼做」全部含研究字樣,散戶 App 放不了`);
         const warn = badOf(col.warn || '').length ? '' : String(col.warn || '');
-        cols.push({ k, r, myth: col.s === '破解迷思', q, do: doL, warn, trig: col.trig, lead: leadRe.test(t) || leadRe.test(k) });
+        const lead = leadRe.test(t) || leadRe.test(k);
+        // 🔒 V82.3.3 沒標 👑 的專欄,散戶 App 沒選 👑 的人也看得到 → 問題 / 怎麼做 / 提醒 ⛔ 提到領頭羊(V82.3.1 rev-decline 那句就這樣漏出去,test_leakfree 沒觸發到那一篇所以沒抓到)
+        if (!lead) { const leak = [q, ...doL, warn].filter(x => leadRe.test(x)); if (leak.length) errs.push(`${k}:沒標 👑 的專欄提到領頭羊(${leak[0].slice(0, 40)}…)—— 沒選 👑 的人也看得到,改寫法`); }
+        cols.push({ k, r, myth: col.s === '破解迷思', q, do: doL, warn, trig: col.trig, lead });
     }
     const asof = [...proSrc.matchAll(/"u": "(\d{4}-\d{2}-\d{2})"/g)].map(m => m[1]).sort().pop() || '';
     return { obj: { asof, cols }, errs, none, ids };

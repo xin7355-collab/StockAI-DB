@@ -26,6 +26,7 @@
  *   🆕 V78.4.2 觸發式專欄(使用者:「觸發專欄有的條件就跳出來…爾後都記住,不要我想到才做」):
  *   ⑰ 每一篇 col 都寫了 `trig`(條件陣列)或 `'none'` + `trigWhy`;條件 id 都在 index.html `_COL_TRIG_IDS`
  *   ⑱ index.html 的 `_COL_TRIG` 抄本 == pro.html 現在的專欄(scripts/embed_col_trig.mjs)
+ *   ⑰b 🔒 V82.3.3 沒標 👑 的專欄 ⛔ 提到領頭羊(embed 會擋;決定性對照:塞一句進 rev-decline 的提醒 → 擋下)
  *   注入:INJECT=notrig(拿掉一篇的 trig)/ INJECT=nowhy(一篇 'none' 但沒寫為什麼)
  */
 import fs from 'fs';
@@ -222,6 +223,10 @@ ok('⑨ 390px 不橫捲 + 無 pageerror', R.scrollX <= 2 && !errs.length, `scrol
     const b = buildColTrig(SRC, IDX);
     ok('⑰ 每一篇專欄都寫了觸發條件(或「沒有」+ 為什麼),條件都在 _COL_TRIG_IDS', !b.errs.length && b.obj.cols.length + b.none.length === R.items.length, b.errs.join(' / ') || `${b.obj.cols.length}+${b.none.length} vs ${R.items.length}`);
     const cur = (IDX.match(/^    _COL_TRIG: (\{.*\}),$/m) || [])[1];
+    // 🔒 V82.3.3 決定性對照:沒標 👑 的專欄提醒句塞進「領頭羊」→ 一定要被擋(⛔ 照抄進散戶 App)
+    const leakSrc = SRC.replace('"warn": "這是 2010~2026 年全市場(含後來下市的)的平均:符合的股票之後一個月平均只比大家弱一點點', '"warn": "拿它當領頭羊的濾網試過。這是 2010~2026 年全市場(含後來下市的)的平均:符合的股票之後一個月平均只比大家弱一點點');
+    const bl = leakSrc !== SRC ? buildColTrig(leakSrc, IDX) : null;
+    ok('⑰b 🔒 沒標 👑 的專欄提到領頭羊 → 擋下(決定性對照:rev-decline 的提醒句塞一句「領頭羊」)', !!bl && bl.errs.some(e => /rev-decline:沒標 👑 的專欄提到領頭羊/.test(e)), bl ? bl.errs.join(' / ') : '注入沒注進去');
     ok('⑱ 散戶 App 的 _COL_TRIG 抄本 == pro.html 專欄(跑 embed_col_trig.mjs)', cur === JSON.stringify(b.obj), cur ? 'index 跟 pro 不一致' : 'index 找不到 _COL_TRIG');
 }
 await browser.close();
