@@ -221,7 +221,7 @@ def main():
             if filld is not None:  entry['filld'] = filld
             if isinstance(qeps, list) and qeps: entry['qeps'] = qeps[-8:]   # PEG 需 ≥6 季,存近 8 季夠且控大小
             # 📄 V75.1.2 月營收(**緊湊** [['2026-08', 百萬 int], …];現檔 1 MB,⛔ 不存元為單位的 dict)
-            # 📉 V82.3.0 12 → 16 個月:App「營收衰退中」(近 3 個月年增 < 0 而且比上個月算的那段更差)要 16 個月;畫面的長條圖照舊只畫最後 12 個
+            # 📉 V82.3.1 12 → 16 個月:App「營收衰退中」(近 3 個月年增 < 0 而且比上個月算的那段更差)要 16 個月;畫面的長條圖照舊只畫最後 12 個
             _m = [[str(h.get('ym')), int(round(float(h.get('rev') or 0) / 1e6))] for h in mrh[-16:]
                   if isinstance(h, dict) and h.get('ym') and float(h.get('rev') or 0) > 0]
             if _m: entry['mrh'] = _m

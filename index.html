@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.3.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.3.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8968,10 +8968,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.3.0',
+    _APP_VERSION: 'V82.3.1',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.3.1', d: [
+            '📉 進階功能「本週重點」與「📰 今天碰到的專欄」多一條:你的股票月營收「近 3 個月比去年同期少、而且比上個月算的那段更差」時會寫出來(只描述;手上的照你的出場規則走,要買新的或加碼先看別檔)',
+            '⏳ 本週重點會寫出哪幾天的公告沒抓到(讀不到 ≠ 沒有);每天收公告的程式連線斷掉時會多試幾次',
+            '📚 產業作戰室研究總表多四條結果:營收衰退、產業營收加速、銅價 → 銅箔基板與 PCB、法說會「公司說的展望準不準」',
+        ], dt: '2026-11-13' },
         { v: 'V82.3.0', d: [
             '📚 產業作戰室研究總表:「🅿️ 只挑比較大 / 比較小的股票」結果出來了 —— 分開挑沒有比較好(小的那一半看起來好一點,但多半是成交太少、實際買不太到的股票;散戶 App 的用法不變)',
         ], dt: '2026-11-13' },
@@ -9302,7 +9307,6 @@ ${list}
             '🧹 重複的拿掉:各套做法的比較表只留在「🏆 選哪一套」那一頁;雜訊清單收進研究那一類「⛔ 沒用」最下面;專欄每一篇收起來時只剩一行;產業估值第一次打開就先算好',
         ], dt: '2026-10-25' },
         { v: 'V79.7.9', d: ['🏷️ 選股頁「只看上市 / 只看上櫃」篩選修好了:以前上櫃股(例如中美晶、環球晶)也被算成上市,下一輪採礦跑完就分對', '🏭 個股頁「這波是誰在漲」:只有沒有官方產業分類的(興櫃、ETF、剛上市)才會寫「判斷不了」,說明文字也改對了', '🤖 AI 產業鏈的三段改叫「算力硬體 / 平台整合 / 應用軟體」(以前叫上中下游,容易跟製造的上中下游搞混)', '🔧 產業作戰室小修正:個股視窗的「💧 它的板塊」打得開了、板塊輪動頁換成最新的長期資料、左右滑不會滑進釣魚頁、下拉重整每一頁都會重抓'] },
-        { v: 'V79.7.8', d: ['📞 法說會頁「🆕 剛開完」那一格改成只數真的開完的:颱風延期還沒開的(例如延到 10/27 的南亞、欣銓)另列在清單下面「⏸️ 原訂這 7 天、延期還沒開」;上面那一格、清單、最上面那行的場數現在一致'], dt: '2026-10-25' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -22987,7 +22991,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const hit = this._recRows(ctx.mops).filter(r => String(r.s) === sym && String(r.d) >= lo && av[r.cat]).pop();
                 if (hit) add('mops_avoid', `${this._dW(hit.d)} 公告「${this._ccQuote(hit.sub, 40)}」(${av[hit.cat]})`, sym, sc);
             }
-            // 📉 V82.3.0 營收衰退中(庫存 / 正在看;⛔ ETF):月營收讀 fund_yoy_gm 的 mrh(⛔ 另抓一份);ctx.fy 沒給就不判(同其他條件只看 ctx)
+            // 📉 V82.3.1 營收衰退中(庫存 / 正在看;⛔ ETF):月營收讀 fund_yoy_gm 的 mrh(⛔ 另抓一份);ctx.fy 沒給就不判(同其他條件只看 ctx)
             if (P && !etf && ctx.fy) {
                 const r = this._revDecline((ctx.fy[sym] || {}).mrh, T.tdy);
                 if (r && r.on) add('rev_decline', `${+r.ym.slice(5)} 月營收:近 3 個月比去年同期 ${r.y3.toFixed(1)}%,而且比上個月算的那段更差`, sym, sc);
@@ -23158,7 +23162,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     fifut = this._fiFutState();
                 } catch (_) {}
                 let mops = null; try { mops = await this._loadMopsRecent(); } catch (_) {}   // 📢 V82.2.9 重大訊息避雷(只有打開專欄才會走到這裡)
-                let fy = null; try { await this._loadFundYoyGm(); fy = (this._fundYoyGmAll && this._fundYoyGmAll.data) || null; } catch (_) {}   // 📉 V82.3.0 營收衰退中
+                let fy = null; try { await this._loadFundYoyGm(); fy = (this._fundYoyGmAll && this._fundYoyGmAll.data) || null; } catch (_) {}   // 📉 V82.3.1 營收衰退中
                 const hits = this._colTrigEval({ tw, held, bars, fav, div, events, floor, premkt, sold, fifut, fiout, mops, fy, cc: this._confcallCache || null });
                 // 🔀 V81.0.0 交叉提醒打開 → 同一件事由它跳一則通知(含 🎲 比例),兩支安靜紀錄就不再記(⛔ 同一件事記兩筆)
                 const xOn = !!this._deckShow().cross;
@@ -27850,7 +27854,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ? [['毛利率', C.fen.gross_margin_trend], ['營益率', C.fen.op_margin_trend], ['淨利率', C.fen.net_margin_trend]]
                 .map(([k, v]) => this._rpRow(k, v ? this._escHtml(v) : this._rpNa('本站沒有'))).join('') + `<div class="mt-0.5">${this._dChip(C.fenDate, '採礦')}</div>`
             : (C.fy && C.fy.gmt ? this._rpRow('毛利率', this._escHtml(C.fy.gmt)) + this._rpRow('營益率 / 淨利率', this._rpNa('本站沒有(這檔不在熱門採礦名單)')) : this._rpNa('本站沒有三率資料'));
-        const mrh = Array.isArray(C.fy?.mrh) && C.fy.mrh.length ? C.fy.mrh.slice(-12) : null;   // 📉 V82.3.0 採礦存 16 個月(營收衰退中要用),長條圖照舊只畫最後 12 個
+        const mrh = Array.isArray(C.fy?.mrh) && C.fy.mrh.length ? C.fy.mrh.slice(-12) : null;   // 📉 V82.3.1 採礦存 16 個月(營收衰退中要用),長條圖照舊只畫最後 12 個
         let mrhHtml;
         if (mrh) {
             const mx = Math.max(...mrh.map(x => +x[1] || 0)) || 1;
@@ -35215,7 +35219,7 @@ ${this._reportFacts(sym)}
         // FinMind 拉不到時用採礦 monthly_revenue_history 補（schema 對齊：rev/ym → revenue/revenue_year/revenue_month）
         let rvSlice = revData.slice(-12);
         if (rvSlice.length === 0 && Array.isArray(localFund.monthly_revenue_history) && localFund.monthly_revenue_history.length > 0) {
-            rvSlice = localFund.monthly_revenue_history.slice(-12)   // 📉 V82.3.0 fund_yoy_gm 的 mrh 變 16 個月 → 圖照舊只畫最後 12 個
+            rvSlice = localFund.monthly_revenue_history.slice(-12)   // 📉 V82.3.1 fund_yoy_gm 的 mrh 變 16 個月 → 圖照舊只畫最後 12 個
                 .filter(h => h && typeof h.ym === 'string' && h.ym.includes('-') && Number(h.rev) > 0)
                 .map(h => {
                     const [y, m] = h.ym.split('-');
@@ -36569,11 +36573,11 @@ ${this._reportFacts(sym)}
         W.set(doc, a);
         return a;
     },
-    /** 📉 V82.3.0 營收衰退中的全市場基準(scripts/rev_decline_probe.mjs 的事件定義;d16 含下市 × stock_deep/rev):
+    /** 📉 V82.3.1 營收衰退中的全市場基準(scripts/rev_decline_probe.mjs 的事件定義;d16 含下市 × stock_deep/rev):
      *  2010-03 ~ 2026-09 共 341,225 個「股票·月」算得出來,85,434 個符合(25.0%)→ 篩子不是罕見警報(⛔ 掛 ⚠️)。
      *  ⛔ 手改:要更新就重算這兩個數字(算法同 rev_decline_probe 的 revSig、yoy3 < 0 且 acc3 < 0)。 */
     _REV_DEC_BASE: { pct: 25.0, ev: 85434, n: 341225, from: '2010-03', to: '2026-09', asof: '2026-11-13', src: 'scripts/rev_decline_probe.mjs' },
-    /** 📉 V82.3.0 營收衰退中(EXP-20261113-04):近 3 個月營收加總比去年同 3 個月少(yoy3 < 0),而且比上個月算的那段更差(acc3 < 0)。
+    /** 📉 V82.3.1 營收衰退中(EXP-20261113-04):近 3 個月營收加總比去年同 3 個月少(yoy3 < 0),而且比上個月算的那段更差(acc3 < 0)。
      *  ⛔ 前端抄本 —— 跟 scripts/trade_lead_probe.mjs 的 yoy3 / acc3 一字不差(test_revdecline.mjs 用亂數逐筆比);
      *  用到的 6 個月(這 3 個月 + 一年前同 3 個月,再往前一個月一組)任一缺 → null(⛔ 當成沒衰退)。
      *  today 有給:最新那個月要是「現在該有」的月份(11 號以後 = 上個月、之前 = 上上個月起算),過期 → null(fund_sweep 一晚只輪約 500 檔)。
@@ -36599,7 +36603,7 @@ ${this._reportFacts(sym)}
         const l5 = BH.slice(-5).map(b => iso(b && b.d)).filter(Boolean);
         return { from: l5.length ? l5[0] : this._colAddDays(T, -6), to: T, ahead: this._colAddDays(T, 7), days: l5 };
     },
-    /** 🔁 V82.3.0 這幾個交易日(⛔ 含今天:今天那輪可能還沒跑)哪個市場沒抓到 —— 看檔頭 days 有沒有那一格
+    /** 🔁 V82.3.1 這幾個交易日(⛔ 含今天:今天那輪可能還沒跑)哪個市場沒抓到 —— 看檔頭 days 有沒有那一格
      *  (那天抓到 0 筆也會記 0 → 有那一格;沒有那一格 = 那天那市場沒抓到,⛔ 說成那天沒有公告)。
      *  只看檔案保留天數以內的日子(更早的本來就刪掉了);檔案沒有 days → 判斷不了,回空。回 [{d, mk}] */
     _recGaps(doc, dates, today) {
@@ -36675,7 +36679,7 @@ ${this._reportFacts(sym)}
                 if (ry.v != null && ry.month === revM) {
                     const f = fy[sym] || {}, amt = +f.mrev > 0 ? ` ${(+f.mrev / 1e8).toFixed(2)} 億` : '';
                     const ytd = Number.isFinite(+f.ytd) && f.ytd !== null && f.ytd !== '' ? `、今年累計年增 ${+f.ytd > 0 ? '+' : ''}${(+f.ytd).toFixed(1)}%` : '';
-                    // 📉 V82.3.0 營收衰退中(近 3 個月比去年同期少、而且比上個月算的那段更差)→ 同一行多一句灰字事實(⛔ ⚠️:四檔就有一檔)
+                    // 📉 V82.3.1 營收衰退中(近 3 個月比去年同期少、而且比上個月算的那段更差)→ 同一行多一句灰字事實(⛔ ⚠️:四檔就有一檔)
                     const rd = this._revDecline(f.mrh, W.to);
                     const dec = rd && rd.on && rd.ym === revM ? ` <span class="text-gray-400" data-weekdec>・📉 營收衰退中:近 3 個月比去年同期 ${rd.y3.toFixed(1)}%,而且比上個月算的那段更差</span>` : '';
                     if (dec) nDec++;
@@ -36695,7 +36699,7 @@ ${this._reportFacts(sym)}
         if (!MR.doc) miss.push(`重大訊息讀不到(${esc(MR.err || '還沒讀')})`);
         if (!IR.doc) miss.push(`申報轉讓讀不到(${esc(IR.err || '還沒讀')})`);
         const missHtml = miss.length ? `<div class="text-[10px] text-gray-500 pt-1" data-weekmiss>⚠️ ${miss.join(' ・')} → 那一類先略過,⛔ 不代表這週沒有。</div>` : '';
-        // 🔁 V82.3.0 讀得到檔、但某一天某個市場沒抓到(公開資訊觀測站連線被重設之類)→ 寫出來(⛔ 不代表那天沒有)
+        // 🔁 V82.3.1 讀得到檔、但某一天某個市場沒抓到(公開資訊觀測站連線被重設之類)→ 寫出來(⛔ 不代表那天沒有)
         const gapOf = (doc, nm) => this._recGaps(doc, W.days, W.to).map(g => `${this._dW(g.d)} ${g.mk === 'otc' ? '上櫃' : '上市'}${nm}`);
         const gaps = [].concat(MR.doc ? gapOf(MR.doc, '公告') : [], IR.doc ? gapOf(IR.doc, '申報轉讓') : []);
         const gapHtml = gaps.length ? `<div class="text-[10px] text-gray-500 pt-1" data-weekgap>⏳ 這幾天沒抓到:${esc(gaps.join('、'))} —— 那幾天的事這裡看不到,⛔ 不代表沒有。</div>` : '';
@@ -36706,7 +36710,7 @@ ${this._reportFacts(sym)}
             const tips = col ? (col.do || []).filter(t => /庫藏股買完|減資彌補虧損/.test(t)) : [];
             avoidHtml = `<div class="text-[11px] text-amber-200 pt-1" data-weekavoid>⚠️ 標 ⚠️ 的那兩類公告:${tips.map(esc).join(';') || '之後通常比較弱'}。手上的照你的出場規則走(📰 專欄有寫)。</div>`;
         }
-        // 📉 V82.3.0 營收衰退中說一次就好:基準讀 _REV_DEC_BASE(⛔ 寫字面值);只描述 + 指路專欄
+        // 📉 V82.3.1 營收衰退中說一次就好:基準讀 _REV_DEC_BASE(⛔ 寫字面值);只描述 + 指路專欄
         let decHtml = '';
         if (nDec) {
             const B = this._REV_DEC_BASE, every = Math.round(100 / B.pct), yrs = +B.to.slice(0, 4) - +B.from.slice(0, 4);

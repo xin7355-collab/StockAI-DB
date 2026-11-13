@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 📉 V82.3.0 「營收衰退中」App 抄本 == 研究那一份(EXP-20261113-04)
+ * 📉 V82.3.1 「營收衰退中」App 抄本 == 研究那一份(EXP-20261113-04)
  *   ① index.html `_revDecline` 跟 scripts/trade_lead_probe.mjs 的 yoy3 / acc3(rev_decline_probe 用的同一份)用亂數逐筆比:
  *      算不算得出來一樣、近 3 個月年增 / 比上個月差多少一樣、成立與否(yoy3 < 0 且 acc3 < 0)一樣
  *   ② 過期守門:最新那個月不是「現在該有」的月份 → 不判;⭐ 決定性對照:同一份資料把今天往前挪 → 照判

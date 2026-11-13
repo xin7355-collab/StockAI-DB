@@ -167,7 +167,7 @@ export function nwP(x, lag) {
     for (let L = 1; L <= lag; L++) { let c = 0; for (let t = L; t < n; t++) c += e[t] * e[t - L]; s += 2 * (1 - L / (lag + 1)) * c / n; }
     return pTwo(m / Math.sqrt(Math.max(s, 1e-12) / n));
 }
-export const lagOf = h => Math.max(0, Math.ceil(h / 21) - 1);   // 🏭 V82.3.0 sector_rev_probe 也 import
+export const lagOf = h => Math.max(0, Math.ceil(h / 21) - 1);   // 🏭 V82.3.1 sector_rev_probe 也 import
 
 /** 小型最小平方法(正規方程 + 高斯消去)→ 係數;奇異回 null */
 export function ols(X, y) {
@@ -302,7 +302,7 @@ export const botBy = (f, n, rnd) => rows => {
 };
 
 const failed = g => Object.entries(g.pass).filter(([, v]) => !v).map(([k]) => k.replace(/^[①-⑥]/, '')).join('、');
-/** 六關(lib_evgate)+ 抱超過 20 天改用 Newey-West 的 p —— 🏭 V82.3.0 sector_rev_probe 也 import(⛔ 第二份) */
+/** 六關(lib_evgate)+ 抱超過 20 天改用 Newey-West 的 p —— 🏭 V82.3.1 sector_rev_probe 也 import(⛔ 第二份) */
 export function gate(inc, H) {
     const g = gates(inc, COST, 6);
     g.pNW = nwP(inc.dm, lagOf(H));
@@ -368,7 +368,7 @@ export function oosCompare(obs, minTrain = 36) {
     return { n, maeA: eA / n, maeB: eB / n, gain: n ? (1 - eB / eA) * 100 : NaN, yrs, better, per };
 }
 
-/** stock_deep/rev 每檔一個 .json.gz → Map(代號 → Map('YYYY-MM' → 營收));壞檔略過 —— 🏭 V82.3.0 sector_rev_probe 也 import(⛔ 第二份) */
+/** stock_deep/rev 每檔一個 .json.gz → Map(代號 → Map('YYYY-MM' → 營收));壞檔略過 —— 🏭 V82.3.1 sector_rev_probe 也 import(⛔ 第二份) */
 export function loadRevDir(REV) {
     const revOf = new Map();
     for (const f of fs.readdirSync(REV)) {

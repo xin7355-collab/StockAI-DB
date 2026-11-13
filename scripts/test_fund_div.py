@@ -85,7 +85,7 @@ fs = (ROOT / 'fund_sweep.py').read_text(encoding='utf-8')
 ok('⑧ fund_sweep 存 mrh / mrev / ytd / fd / div_win 且 __status 標 mrh_unit',
    all(k in fs for k in ["entry['mrh']", "entry['mrev']", "entry['ytd']", "entry['fd']", "entry['div_win']", "'mrh_unit': '百萬'"]))
 
-# ⑨ 📉 V82.3.0 營收衰退中要 16 個月:採礦抓的歷史 ≥ 18 個月、fund_sweep 存 16 個、chips 檔照舊 12 個(畫面一個字不變)
+# ⑨ 📉 V82.3.1 營收衰退中要 16 個月:採礦抓的歷史 ≥ 18 個月、fund_sweep 存 16 個、chips 檔照舊 12 個(畫面一個字不變)
 mi = (ROOT / 'miner.py').read_text(encoding='utf-8')
 ok('⑨ miner 月營收歷史存 18 個月(rows[-18:])、chips 檔照舊 12 個([-12:])',
    "for r in rows[-18:] if r.get('revenue_year')" in mi and "(fm_fund.get('monthly_revenue_history') or [])[-12:]" in mi)

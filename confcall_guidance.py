@@ -519,7 +519,7 @@ def months_of(fund_row):
 
 
 def load_rev_dir(d):
-    """📞 V82.3.0 研究用(REV_DIR):stock_deep/rev 每檔一個 .json.gz(c = 欄名、v = 列)→ {代號: {'YYYY-MM': 營收}}。
+    """📞 V82.3.1 研究用(REV_DIR):stock_deep/rev 每檔一個 .json.gz(c = 欄名、v = 列)→ {代號: {'YYYY-MM': 營收}}。
     跟 scripts/trade_lead_probe.mjs loadRevDir 同一個讀法;壞檔略過。"""
     import gzip
     from pathlib import Path
@@ -606,7 +606,7 @@ def grade_all(cc_dir, fin, today, log=print, months=None):
     """全部讀過的簡報 → 可以對答案的展望(同一家公司講同一句只算第一場)→ 季報對答案 + 兩個對照:
     ① 基準:同一段時間、同一個方向,拿全部公司的季報對(=「隨便一家公司這樣講會不會也對」)
     ② naive:講的那天已經公布的數字猜(=「看最近數字猜,不用聽公司講」)
-    📞 V82.3.0 months = {代號: {'YYYY-MM': 營收}}(REV_DIR)→ 營收那幾句先用月營收對答案(隔月 10 號就知道),同業對照也一樣"""
+    📞 V82.3.1 months = {代號: {'YYYY-MM': 營收}}(REV_DIR)→ 營收那幾句先用月營收對答案(隔月 10 號就知道),同業對照也一樣"""
     MO = months or {}
     from pathlib import Path
     import gzip
@@ -676,7 +676,7 @@ def grade_all(cc_dir, fin, today, log=print, months=None):
     return summ, rows
 
 
-# 📞 V82.3.0 EXP-20261113-08 事先登記的判定(⛔ 跑完再改)
+# 📞 V82.3.1 EXP-20261113-08 事先登記的判定(⛔ 跑完再改)
 A_RULE = {'n': 300, 'cos': 150, 'diff': 0.10}
 PRICE_RULE = {'min': 0.44, 'year_min_n': 10, 'year_frac': 2 / 3, 'drop': 5, 'dates': 30, 't': 2.0}
 
@@ -838,7 +838,7 @@ def price_step(rows, data_dir, hs=PRICE_HS, min_day=300, log=print, fin=None, to
             for k in pv:                     # 每一句只當一票(⛔ 讓某一句的 2,000 家同業淹掉其他句)
                 if pv[k]:
                     peer[k].append(sum(pv[k]) / len(pv[k]))
-            if ev is not None and pv[r['res']]:   # 📞 V82.3.0 這一句 z = 自己 − 數字也往同一邊走的同業平均(B 判定用)
+            if ev is not None and pv[r['res']]:   # 📞 V82.3.1 這一句 z = 自己 − 數字也往同一邊走的同業平均(B 判定用)
                 ev['z'] = round(ev['v'] - sum(pv[r['res']]) / len(pv[r['res']]), 3)
         res = {k: _stat(v) for k, v in own.items()}
         res['ev'] = evs
@@ -1127,7 +1127,7 @@ def selftest():
     pr = price_step(prow, str(pdir), hs=(5,), min_day=5, log=lambda *_: None)
     ok('⑬ --price:做到的那半之後每天 +1% → 比同一天平均好、沒做到的比較差;公布當天的 +9% ⛔ 算進去',
        pr[5]['hit']['n'] == 6 and pr[5]['hit']['inc'] > 2 and pr[5]['miss']['inc'] < -1 and pr[5]['hit']['inc'] < 4, pr)
-    # ⑭~⑱ 📞 V82.3.0 研究模式完整版(EXP-20261113-08):月營收(REV_DIR)、兩個判定、逐句減同一邊的同業
+    # ⑭~⑱ 📞 V82.3.1 研究模式完整版(EXP-20261113-08):月營收(REV_DIR)、兩個判定、逐句減同一邊的同業
     rdir = _P(_tf.mkdtemp())
     (rdir / '1111.json.gz').write_bytes(_gz.compress(json.dumps({'c': ['date', 'revenue', 'revenue_year', 'revenue_month'],
         'v': [['2025-11-10', 300, 2025, 10], ['2025-12-10', 310, 2025, 11], ['x', 'bad', 2025, 12]]}).encode()))
@@ -1201,7 +1201,7 @@ if __name__ == '__main__':
         i = sys.argv.index('--grade')
         cc = sys.argv[i + 1] if len(sys.argv) > i + 1 else os.getenv('CC_DIR', 'cc_deep')
         fin_src = os.getenv('FIN', 'origin/gh-pages')
-        mo = load_rev_dir(os.environ['REV_DIR']) if os.getenv('REV_DIR') else None   # 📞 V82.3.0 月營收(研究用)
+        mo = load_rev_dir(os.environ['REV_DIR']) if os.getenv('REV_DIR') else None   # 📞 V82.3.1 月營收(研究用)
         summ, rows = grade_all(cc, load_fin(fin_src), date.fromisoformat(os.getenv('TODAY') or date.today().isoformat()), months=mo)
         va = verdict_a(rows)
         print(f"🅰️ 準不準(EXP-20261113-08 登記):到期 {va['n']} 句 / {va['cos']} 家 ・說到做到 − 隨便一家 {va['diff']} ・前後兩半 {va['halves']} → "

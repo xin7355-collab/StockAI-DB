@@ -201,7 +201,7 @@ const T = await page.evaluate(() => {
       R.mopsFav = ids(run({ bars: new Map([['2454', kFlat]]), fav: ['2454'], mops: M([['2454', '聯發科', d5, '15:00:00', '公告庫藏股買回期滿', 'sii', 'buyback_end']]) }));
       R.mopsNoCtx = ids(run(H));
       R.mopsEtf = ids(run({ held: new Map([['0050', { cost: 0 }]]), bars: new Map([['0050', kFlat]]), mops: M([['0050', '元大台灣50', d5, '15:00:00', '公告減資彌補虧損', 'sii', 'cap_red_loss']]) })); }
-    // 📉 V82.3.0 rev_decline:庫存 / 正在看的這一檔,月營收「近 3 個月比去年同期少、而且比上個月算的那段更差」(fund_yoy_gm 的 mrh 16 個月)
+    // 📉 V82.3.1 rev_decline:庫存 / 正在看的這一檔,月營收「近 3 個月比去年同期少、而且比上個月算的那段更差」(fund_yoy_gm 的 mrh 16 個月)
     { const H = { held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]) };
       const mk16 = (end, tail) => { const out = []; let [y, m] = end.split('-').map(Number); const n = 12 + tail.length; for (let k = n - 1; k >= 0; k--) { let mm = m - k, yy = y; while (mm < 1) { mm += 12; yy--; } out.push([`${yy}-${String(mm).padStart(2, '0')}`, k < tail.length ? tail[tail.length - 1 - k] : 100]); } return out; };
       const dn = mk16('2026-09', [95, 90, 85, 80]), upx = mk16('2026-09', [105, 110, 115, 120]);   // 今天 10/19 → 該有 9 月
