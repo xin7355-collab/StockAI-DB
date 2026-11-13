@@ -346,6 +346,18 @@ def main(now=None, sess=None, sleep=time.sleep, out_dir=None):
 
 # ───────────────────────── selftest ─────────────────────────
 def selftest():
+    # ⚠️ V82.3.0:workflow 用 MD_BACK=5 手動補抓時 selftest 也在同一個環境跑 → 讀到 5 天就全紅(11/13 #2 實際踩到)
+    #    → 環境變數決定的那幾個值在這裡釘死,跑完還原(⛔ 讓測試結果跟著環境變)
+    global BACK, KEEP_DAYS
+    keep_env = (BACK, KEEP_DAYS)
+    BACK, KEEP_DAYS = 2, 14
+    try:
+        return _selftest()
+    finally:
+        BACK, KEEP_DAYS = keep_env
+
+
+def _selftest():
     import shutil
     import tempfile
     bad = []
