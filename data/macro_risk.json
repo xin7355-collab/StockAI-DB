@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-14 00:48 +0800",
+  "updated": "2026-11-14 01:38 +0800",
   "us10y_yield": 5.1,
   "us10y_error": null,
   "fi_spot_net": 288.37,
@@ -18,23 +18,23 @@
   "fi_complex_error": null,
   "us2y_yield": 4.86,
   "us2y_error": null,
-  "usdtwd": 32.883,
+  "usdtwd": 32.867,
   "usdtwd_error": null,
-  "usdtwd_chg_pct": 0.06,
-  "usdtwd_chg_5d": -0.68,
-  "krw": 1336.7,
-  "krw_chg_pct": 0.03,
-  "krw_chg_5d": -1.45,
+  "usdtwd_chg_pct": 0.02,
+  "usdtwd_chg_5d": -0.73,
+  "krw": 1336.41,
+  "krw_chg_pct": 0.01,
+  "krw_chg_5d": -1.47,
   "krw_error": null,
   "cny": 6.661,
   "cny_chg_pct": -0.14,
   "cny_chg_5d": -0.4,
   "cny_error": null,
-  "copper": 6.101,
-  "copper_chg_pct": -1.32,
-  "copper_chg_5d": -1.88,
+  "copper": 6.093,
+  "copper_chg_pct": -1.45,
+  "copper_chg_5d": -2.01,
   "copper_error": null,
-  "fear_greed": 37.5,
+  "fear_greed": 37.8,
   "fear_greed_label": "恐懼",
   "fear_greed_error": null,
   "retail_ls_pct": 22.4,
@@ -48,20 +48,20 @@
   "m1b_pct": 86.0,
   "m1b_label": "M1B年增 6.23% · 熱度 86% (過熱⚠️)",
   "m1b_note": "由 FRED M1SL 年增率換算流動性熱度;FRED 失敗時為 null",
-  "gold_usd": 3887.2,
-  "gold_chg_pct": 0.05,
+  "gold_usd": 3885.5,
+  "gold_chg_pct": 0.01,
   "gold_error": null,
-  "wti_oil": 88.61,
-  "wti_chg_pct": -0.15,
+  "wti_oil": 88.59,
+  "wti_chg_pct": -0.17,
   "wti_error": null,
-  "dxy": 103.34,
-  "dxy_chg_pct": 0.17,
+  "dxy": 103.38,
+  "dxy_chg_pct": 0.21,
   "dxy_error": null,
-  "btc_usd": 68596.57,
-  "btc_chg_pct": -3.85,
+  "btc_usd": 68856.62,
+  "btc_chg_pct": -3.49,
   "btc_error": null,
-  "vix": 20.1,
-  "vix_chg_pct": 7.49,
+  "vix": 19.97,
+  "vix_chg_pct": 6.79,
   "vix_error": null,
   "nikkei": 61142.35,
   "nikkei_chg_pct": 0.53,
@@ -72,36 +72,36 @@
   "kospi": 5290.53,
   "kospi_chg_pct": -0.98,
   "kospi_error": "來源回舊資料(2026-11-12),已保留 2026-11-13 的值",
-  "sp500": 7516.58,
-  "sp500_chg_pct": -1.0,
+  "sp500": 7538.57,
+  "sp500_chg_pct": -0.71,
   "sp500_error": null,
-  "nasdaq": 24954.48,
-  "nasdaq_chg_pct": -1.62,
+  "nasdaq": 25053.04,
+  "nasdaq_chg_pct": -1.23,
   "nasdaq_error": null,
-  "dji": 52127.54,
-  "dji_chg_pct": -0.32,
+  "dji": 52257.5,
+  "dji_chg_pct": -0.08,
   "dji_error": null,
-  "sox": 9947.7,
-  "sox_chg_pct": -5.32,
+  "sox": 10046.45,
+  "sox_chg_pct": -4.38,
   "sox_error": null,
-  "tsm": 394.07,
-  "tsm_chg_pct": -2.82,
+  "tsm": 396.02,
+  "tsm_chg_pct": -2.34,
   "tsm_error": null,
-  "asx": 34.96,
-  "asx_chg_pct": -3.68,
+  "asx": 35.22,
+  "asx_chg_pct": -2.95,
   "asx_error": null,
-  "umc": 15.21,
-  "umc_chg_pct": -3.49,
+  "umc": 15.33,
+  "umc_chg_pct": -2.73,
   "umc_error": null,
-  "es_fut": 7541.25,
+  "es_fut": 7558.75,
   "es_fut_chg_pct": null,
-  "es_fut_error": "盤中現價可信但拿不到「上一個結算」基準,刻意不給漲跌%(寧可不給方向也不給反的):盤中 7541.25 vs 日線末根 7541.25(2026-11-13),差 0.0 個基點 < 10 → 判定那根日線就是「還在跑的這一盤」",
-  "ym_fut": 52258.0,
+  "es_fut_error": "盤中現價可信但拿不到「上一個結算」基準,刻意不給漲跌%(寧可不給方向也不給反的):盤中 7558.75 vs 日線末根 7558.75(2026-11-13),差 0.0 個基點 < 10 → 判定那根日線就是「還在跑的這一盤」",
+  "ym_fut": 52300.0,
   "ym_fut_chg_pct": null,
-  "ym_fut_error": "盤中現價可信但拿不到「上一個結算」基準,刻意不給漲跌%(寧可不給方向也不給反的):盤中 52258.0 vs 日線末根 52258.0(2026-11-13),差 0.0 個基點 < 10 → 判定那根日線就是「還在跑的這一盤」",
-  "nq_fut": 27796.0,
+  "ym_fut_error": "盤中現價可信但拿不到「上一個結算」基準,刻意不給漲跌%(寧可不給方向也不給反的):盤中 52300.0 vs 日線末根 52300.0(2026-11-13),差 0.0 個基點 < 10 → 判定那根日線就是「還在跑的這一盤」",
+  "nq_fut": 27931.0,
   "nq_fut_chg_pct": null,
-  "nq_fut_error": "盤中現價可信但拿不到「上一個結算」基準,刻意不給漲跌%(寧可不給方向也不給反的):盤中 27796.0 vs 日線末根 27796.0(2026-11-13),差 0.0 個基點 < 10 → 判定那根日線就是「還在跑的這一盤」",
+  "nq_fut_error": "盤中現價可信但拿不到「上一個結算」基準,刻意不給漲跌%(寧可不給方向也不給反的):盤中 27931.0 vs 日線末根 27931.0(2026-11-13),差 0.0 個基點 < 10 → 判定那根日線就是「還在跑的這一盤」",
   "ust10y": 5.1,
   "ust10y_chg_pct": 2.41,
   "ust10y_error": null,
@@ -118,14 +118,14 @@
       "etf": "SMH",
       "name": "美半導體",
       "desc": "AI 伺服器(SMH + NVDA + SMCI 黃金比例,廣達/緯創/鴻海主旋律)",
-      "price": 478.02,
-      "chg_pct": -4.04,
+      "price": 481.88,
+      "chg_pct": -3.3,
       "components": [
         {
           "ticker": "SMH",
           "name": "美半導體",
-          "price": 478.02,
-          "chg": -4.73,
+          "price": 481.88,
+          "chg": -3.96,
           "weight": 0.4,
           "ok": true,
           "err": null
@@ -133,8 +133,8 @@
         {
           "ticker": "NVDA",
           "name": "輝達(晶片供貨體感)",
-          "price": 159.8,
-          "chg": -3.84,
+          "price": 160.85,
+          "chg": -3.21,
           "weight": 0.4,
           "ok": true,
           "err": null
@@ -142,46 +142,46 @@
         {
           "ticker": "SMCI",
           "name": "美超微(財報供應鏈指引)",
-          "price": 26.17,
-          "chg": -3.06,
+          "price": 26.41,
+          "chg": -2.17,
           "weight": 0.2,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -4.73
+      "primary_only_chg": -3.96
     },
     "power": {
       "etf": "GRID",
       "name": "美智慧電網",
       "desc": "重電基建對標 (GEV/POWL/ETN)",
-      "price": 159.32,
-      "chg_pct": -1.28,
+      "price": 159.95,
+      "chg_pct": -0.89,
       "components": [
         {
           "ticker": "GRID",
           "name": "美智慧電網",
-          "price": 159.32,
-          "chg": -1.28,
+          "price": 159.95,
+          "chg": -0.89,
           "weight": 1.0,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -1.28
+      "primary_only_chg": -0.89
     },
     "packaging": {
       "etf": "SOXX",
       "name": "半導體 SOXX",
       "desc": "先進封裝(SOXX + TSM + ASML 黃金比例,CoWoS 弘塑/辛耘/萬潤)",
-      "price": 146.42,
-      "chg_pct": -3.69,
+      "price": 147.75,
+      "chg_pct": -3.02,
       "components": [
         {
           "ticker": "SOXX",
           "name": "半導體 SOXX",
-          "price": 146.42,
-          "chg": -5.53,
+          "price": 147.75,
+          "chg": -4.67,
           "weight": 0.4,
           "ok": true,
           "err": null
@@ -189,8 +189,8 @@
         {
           "ticker": "TSM",
           "name": "台積電 ADR(資本支出)",
-          "price": 393.81,
-          "chg": -2.88,
+          "price": 395.95,
+          "chg": -2.35,
           "weight": 0.4,
           "ok": true,
           "err": null
@@ -198,27 +198,27 @@
         {
           "ticker": "ASML",
           "name": "艾司摩爾(設備拉貨)",
-          "price": 1472.4,
-          "chg": -1.65,
+          "price": 1480.9,
+          "chg": -1.08,
           "weight": 0.2,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -5.53
+      "primary_only_chg": -4.67
     },
     "cpo": {
       "etf": "MRVL",
       "name": "邁威爾(光通訊主導)",
       "desc": "CPO 光通訊(MRVL + AVGO,V23.1 糾正:原 IGV 軟體 ETF 對錯方向)",
-      "price": 153.19,
-      "chg_pct": -6.42,
+      "price": 154.47,
+      "chg_pct": -5.68,
       "components": [
         {
           "ticker": "MRVL",
           "name": "邁威爾(光通訊主導)",
-          "price": 153.19,
-          "chg": -6.85,
+          "price": 154.47,
+          "chg": -6.07,
           "weight": 0.5,
           "ok": true,
           "err": null
@@ -226,46 +226,46 @@
         {
           "ticker": "AVGO",
           "name": "博通(光通訊主導)",
-          "price": 342.54,
-          "chg": -5.99,
+          "price": 345.14,
+          "chg": -5.28,
           "weight": 0.5,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -6.85
+      "primary_only_chg": -6.07
     },
     "cooling": {
       "etf": "XLI",
       "name": "美工業",
       "desc": "散熱液冷供應鏈對標 (VRT/TT)",
-      "price": 167.9,
-      "chg_pct": -0.91,
+      "price": 168.47,
+      "chg_pct": -0.57,
       "components": [
         {
           "ticker": "XLI",
           "name": "美工業",
-          "price": 167.9,
-          "chg": -0.91,
+          "price": 168.47,
+          "chg": -0.57,
           "weight": 1.0,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -0.91
+      "primary_only_chg": -0.57
     },
     "robot": {
       "etf": "BOTZ",
       "name": "美機器人 BOTZ",
       "desc": "機器人(BOTZ + TSLA Optimus 題材外溢,所羅門/台灣精銳)",
-      "price": 31.02,
-      "chg_pct": -1.71,
+      "price": 31.14,
+      "chg_pct": -1.51,
       "components": [
         {
           "ticker": "BOTZ",
           "name": "美機器人 BOTZ",
-          "price": 31.02,
-          "chg": -1.27,
+          "price": 31.14,
+          "chg": -0.89,
           "weight": 0.5,
           "ok": true,
           "err": null
@@ -273,65 +273,65 @@
         {
           "ticker": "TSLA",
           "name": "特斯拉(Optimus 人形機器人題材)",
-          "price": 388.91,
-          "chg": -2.15,
+          "price": 389.01,
+          "chg": -2.12,
           "weight": 0.5,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -1.27
+      "primary_only_chg": -0.89
     },
     "finance": {
       "etf": "XLF",
       "name": "美金融",
       "desc": "金融避風港對標 (JPM/BAC)",
-      "price": 58.49,
-      "chg_pct": 0.47,
+      "price": 58.53,
+      "chg_pct": 0.54,
       "components": [
         {
           "ticker": "XLF",
           "name": "美金融",
-          "price": 58.49,
-          "chg": 0.47,
+          "price": 58.53,
+          "chg": 0.54,
           "weight": 1.0,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": 0.47
+      "primary_only_chg": 0.54
     },
     "leo": {
       "etf": "ITA",
       "name": "美航太",
       "desc": "低軌衛星 / 航太對標 (IRDM/RKLB)",
-      "price": 71.0,
-      "chg_pct": -1.02,
+      "price": 71.27,
+      "chg_pct": -0.64,
       "components": [
         {
           "ticker": "ITA",
           "name": "美航太",
-          "price": 71.0,
-          "chg": -1.02,
+          "price": 71.27,
+          "chg": -0.64,
           "weight": 1.0,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -1.02
+      "primary_only_chg": -0.64
     },
     "dram": {
       "etf": "MU",
       "name": "美光",
       "desc": "DRAM 記憶體(MU + 三星 + SK海力士;HBM 現貨報價待付費源)",
-      "price": 757.96,
-      "chg_pct": -2.28,
+      "price": 762.38,
+      "chg_pct": -2.06,
       "components": [
         {
           "ticker": "MU",
           "name": "美光",
-          "price": 757.96,
-          "chg": -5.07,
+          "price": 762.38,
+          "chg": -4.52,
           "weight": 0.4,
           "ok": true,
           "err": null
@@ -355,39 +355,39 @@
           "err": null
         }
       ],
-      "primary_only_chg": -5.07
+      "primary_only_chg": -4.52
     },
     "defense": {
       "etf": "PPA",
       "name": "美航太國防 ETF",
       "desc": "軍工國防對標(PPA;台股 漢翔/雷虎/龍德造船)",
-      "price": 157.57,
-      "chg_pct": -1.23,
+      "price": 158.07,
+      "chg_pct": -0.92,
       "components": [
         {
           "ticker": "PPA",
           "name": "美航太國防 ETF",
-          "price": 157.57,
-          "chg": -1.23,
+          "price": 158.07,
+          "chg": -0.92,
           "weight": 1.0,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -1.23
+      "primary_only_chg": -0.92
     },
     "wafer": {
       "etf": "SOXX",
       "name": "半導體 SOXX",
       "desc": "矽晶圓(SOXX+TSM 近似 proxy,無純美股晶圓 ETF;台股 環球晶/中美晶/合晶)",
-      "price": 146.42,
-      "chg_pct": -4.47,
+      "price": 147.75,
+      "chg_pct": -3.74,
       "components": [
         {
           "ticker": "SOXX",
           "name": "半導體 SOXX",
-          "price": 146.42,
-          "chg": -5.53,
+          "price": 147.75,
+          "chg": -4.67,
           "weight": 0.6,
           "ok": true,
           "err": null
@@ -395,46 +395,46 @@
         {
           "ticker": "TSM",
           "name": "台積電 ADR(晶圓需求)",
-          "price": 393.81,
-          "chg": -2.88,
+          "price": 395.95,
+          "chg": -2.35,
           "weight": 0.4,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -5.53
+      "primary_only_chg": -4.67
     },
     "pcb": {
       "etf": "SOXX",
       "name": "半導體 SOXX",
       "desc": "PCB/載板(SOXX 近似 proxy,載板隨半導體資本支出;台股 欣興/南電/景碩)",
-      "price": 146.42,
-      "chg_pct": -5.53,
+      "price": 147.75,
+      "chg_pct": -4.67,
       "components": [
         {
           "ticker": "SOXX",
           "name": "半導體 SOXX",
-          "price": 146.42,
-          "chg": -5.53,
+          "price": 147.75,
+          "chg": -4.67,
           "weight": 1.0,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -5.53
+      "primary_only_chg": -4.67
     },
     "asic": {
       "etf": "AVGO",
       "name": "博通(客製晶片)",
       "desc": "ASIC 矽智財(AVGO+MRVL 客製晶片需求;台股 世芯/創意/晶心科)",
-      "price": 342.54,
-      "chg_pct": -6.33,
+      "price": 345.14,
+      "chg_pct": -5.6,
       "components": [
         {
           "ticker": "AVGO",
           "name": "博通(客製晶片)",
-          "price": 342.54,
-          "chg": -5.99,
+          "price": 345.14,
+          "chg": -5.28,
           "weight": 0.6,
           "ok": true,
           "err": null
@@ -442,33 +442,33 @@
         {
           "ticker": "MRVL",
           "name": "邁威爾(客製晶片)",
-          "price": 153.19,
-          "chg": -6.85,
+          "price": 154.47,
+          "chg": -6.07,
           "weight": 0.4,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -5.99
+      "primary_only_chg": -5.28
     },
     "security": {
       "etf": "CIBR",
       "name": "美網路資安 ETF",
       "desc": "資安(CIBR;台股 安碁資訊/零壹/精誠)",
-      "price": 94.24,
-      "chg_pct": -2.3,
+      "price": 94.54,
+      "chg_pct": -1.99,
       "components": [
         {
           "ticker": "CIBR",
           "name": "美網路資安 ETF",
-          "price": 94.24,
-          "chg": -2.3,
+          "price": 94.54,
+          "chg": -1.99,
           "weight": 1.0,
           "ok": true,
           "err": null
         }
       ],
-      "primary_only_chg": -2.3
+      "primary_only_chg": -1.99
     }
   },
   "upcoming_macro_events": [
@@ -1342,37 +1342,37 @@
     }
   ],
   "macro_events_ai": {
-    "updated": "2026-11-14 00:50",
+    "updated": "2026-11-14 01:40",
     "model": "qwen/qwen3.8-27b",
-    "summary": "現在外資台指期未平倉負值近10萬口，加上標普剛跌1%、韓股也軟，市場情緒偏緊繃（恐懼貪婪38）。這兩週最大變數是11/17輝達財報與11/19 MSCI調整，這兩天波動會明顯放大，特別是要盯台積電與大型股有沒有被動資金進出的跡象。",
+    "summary": "這兩週是典型的『財報+結算+指數調整』三重夾擊週，外資目前台指期未平倉 -99,573 口，加上台幣 5 日貶值 0.73%，顯示外資態度偏防守。11/17 輝達財報與 11/18 期貨大結算、11/19 MSCI 調整連續三天爆發，波動率會顯著放大，這時候別猜方向，只看流動性有沒有被抽乾。",
     "focus": [
       {
         "date": "2026-11-17",
         "event": "輝達(NVDA)財報",
-        "impact": "直接影響AI伺服器鏈（廣達、緯創、鴻海）及台積電的市場情緒，若指引不如預期，相關族群波動會劇烈。",
-        "action": "盯財報電話會議中對2027年AI資本支出的指引，以及財報後台積電與廣達的盤中即時成交量變化。",
+        "impact": "直接決定 AI 伺服器鏈（廣達、緯創、鴻海、台積電）的短線情緒，若財報數據不如預期，相關個股波動會劇烈放大。",
+        "action": "盯 11/17 美股盤後財報電話會議中，下季度 AI 伺服器出貨指引數字是否兌現；若指引保守，次日台股相關個股開盤波動會變大。",
         "level": "⚠️"
       },
       {
         "date": "2026-11-18",
         "event": "台指期貨大結算",
-        "impact": "外資未平倉負值高，結算日容易出現短線洗盤或強制平倉，導致指數與個股波動加大。",
-        "action": "盯11/18當日台指期貨的收盤價與現貨指數的基差變化，觀察外資是否持續賣壓。",
+        "impact": "外資結算日容易出現「洗盤」現象，加上目前外資未平倉 -99,573 口，當日盤中震盪幅度通常遠大於平日。",
+        "action": "盯 11/18 當日台指期貨盤中最大單邊波動幅度，以及收盤前 30 分鐘的成交量是否異常放大，這代表結算壓力是否釋放完畢。",
         "level": "⚠️"
       },
       {
         "date": "2026-11-19",
-        "event": "MSCI季度權重調整",
-        "impact": "被動資金會根據新權重買賣大型股，導致台積電、聯發科等權值股在調整生效日前後出現機械性波動。",
-        "action": "盯11/18-11/19期間，台積電與聯發科的成交量是否異常放大，確認被動資金是否已進場。",
+        "event": "MSCI 季度權重調整",
+        "impact": "被動資金強制買賣，大型權值股（如台積電、聯發科等）當日買賣力道會激增，造成價格與基本面脫鉤的波動。",
+        "action": "盯 11/19 盤中大型權值股的「被動資金淨買賣額」數據，若出現單邊大額進出，代表調整效應正在兌現，波動會持續到收盤。",
         "level": "⚠️"
       },
       {
         "date": "2026-11-14",
-        "event": "Q3季報法定截止日",
-        "impact": "未繳交財報的公司可能被列為注意股，影響個股流動性與散戶信心。",
-        "action": "檢查手中持股是否有未繳交財報的個股，若有則需留意後續是否被正式列為注意股。",
-        "level": "✅"
+        "event": "Q3 季報法定截止日",
+        "impact": "未繳交財報的個股會被標記為「注意股」，流動性可能瞬間枯竭，容易出現異常跳空。",
+        "action": "盯 11/14 盤前公告，確認手中持股是否在「未繳交名單」中；若在名單內，當日開盤波動風險極高，需特別留意開盤前 15 分鐘的掛單情況。",
+        "level": "⛔"
       }
     ]
   },
@@ -1414,7 +1414,7 @@
     "hi_60d": 49822.55,
     "lo_60d": 39701.64,
     "date": "2026-11-13",
-    "src": "本機 ^TWII.json"
+    "src": "線上 data 分支 raw(本機沒有 ^TWII.json)"
   },
   "taifex_tx_now": {
     "price": 43178.0,
@@ -1425,17 +1425,17 @@
     "sess": "day",
     "error": null
   },
-  "jpy": 159.95,
-  "jpy_chg_pct": 0.13,
+  "jpy": 159.93,
+  "jpy_chg_pct": 0.12,
   "jpy_error": null,
-  "jpy_chg_3d": 1.25,
-  "gold_chg_3d": -3.55,
-  "wti_chg_3d": 2.91,
+  "jpy_chg_3d": 1.23,
+  "gold_chg_3d": -3.59,
+  "wti_chg_3d": 3.0,
   "blackswan": {
     "jpy_surge": false,
     "metal_oil_spike": false,
     "kospi_dump": false,
-    "us_market_dump": true,
+    "us_market_dump": false,
     "nikkei_dump": false
   },
   "m1b_yoy": 6.23,
