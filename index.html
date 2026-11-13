@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.2.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.3.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8968,10 +8968,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.2.9',
+    _APP_VERSION: 'V82.3.0',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.3.0', d: [
+            '📚 產業作戰室研究總表:「🅿️ 只挑比較大 / 比較小的股票」結果出來了 —— 分開挑沒有比較好(小的那一半看起來好一點,但多半是成交太少、實際買不太到的股票;散戶 App 的用法不變)',
+        ], dt: '2026-11-13' },
         { v: 'V82.2.9', d: [
             '📋 新的進階功能「本週重點」(連點版本號 5 次那一區,預設開):大盤 › 📰 收盤 › 📅 本週回顧 多兩段 —— 你的庫存與自選這週的公告、董監大股東申報轉讓、法說會(開完 / 要開 / 公司說的展望做到了沒)、月營收、除息、處置注意;還有 AI 伺服器材料鏈(玻纖布 → CCL → PCB)三組這週怎麼走與銅價。只放日期、來源和原文數字,不是買賣建議',
             '📢 每天收公開資訊觀測站的「重大訊息」與「股權轉讓事前申報」:你的庫存公告「減資彌補虧損」或「庫藏股買完」時,📰 今天碰到的專欄會出現那一篇(賣不賣照你原本的出場規則)',
@@ -9300,11 +9303,6 @@ ${list}
         ], dt: '2026-10-25' },
         { v: 'V79.7.9', d: ['🏷️ 選股頁「只看上市 / 只看上櫃」篩選修好了:以前上櫃股(例如中美晶、環球晶)也被算成上市,下一輪採礦跑完就分對', '🏭 個股頁「這波是誰在漲」:只有沒有官方產業分類的(興櫃、ETF、剛上市)才會寫「判斷不了」,說明文字也改對了', '🤖 AI 產業鏈的三段改叫「算力硬體 / 平台整合 / 應用軟體」(以前叫上中下游,容易跟製造的上中下游搞混)', '🔧 產業作戰室小修正:個股視窗的「💧 它的板塊」打得開了、板塊輪動頁換成最新的長期資料、左右滑不會滑進釣魚頁、下拉重整每一頁都會重抓'] },
         { v: 'V79.7.8', d: ['📞 法說會頁「🆕 剛開完」那一格改成只數真的開完的:颱風延期還沒開的(例如延到 10/27 的南亞、欣銓)另列在清單下面「⏸️ 原訂這 7 天、延期還沒開」;上面那一格、清單、最上面那行的場數現在一致'], dt: '2026-10-25' },
-        { v: 'V79.7.7', d: [
-            '📞 產業作戰室的法說會頁改版成「法說會情報中心」:最上面六格(剛開完 / 你的清單 / 接下來 14 天 / 主題雷達 / 全部場次 / 台積電問答)點了就切換;日期軸一眼看出哪天場次多,點一天只看那一天;一場一列,點了打開「公司檔案」(電腦在右邊、手機整頁),分頁看重點、數字、跟上次比、公司說明',
-            '🛰️ 新的「主題雷達」:本站讀過的一萬多份法說會簡報,每一季有幾 % 的公司提到 CPO、機器人、AI 伺服器…,跟一年前同一季比;點一個題材看每一季的數字,還有哪幾家是第一次在簡報提到(點名字直接打開那家的檔案)。只描述有幾家在講,⛔ 不是買賣訊號',
-            '🎤 台積電的分析師問答搬進公司檔案的「問答」分頁;簡報裡寫「AI伺服器」(中間沒空白)這種寫法現在也算得到;電腦上可以用 / 搜尋、j k 上下一場、Esc 關掉',
-        ], dt: '2026-10-25' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
