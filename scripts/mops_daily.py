@@ -28,6 +28,9 @@
    ⑤ 今天 ⛔ 進研究分支(今天還沒結束;這一輪在隔天傍晚跑 → 昨天已經結束);研究分支同一天同一市場這次 0 筆但原本有 → 不動
    ⑥ App 那份只收股票 / ETF 代號(4~6 碼);申報轉讓只收「目前持股 − 預定轉讓 = 轉讓後持股」對得上的列(欄位錯位就不收)
       研究分支那份照 backfill 的存法(原文、⛔ 篩)—— 兩邊同一份資料,只是用途不同
+   ⑦ 🔁 V82.3.0 連線被重設 / 逾時 → 等 5 / 15 / 30 秒再試;第一輪跑完還有沒抓到的 → 等 60 秒每個再試一次;
+      最後還是沒抓到 → log 與 Step Summary 寫是哪一天哪個市場、記進檔頭 miss、研究分支 ⛔ 標完成。
+      App 照 days 有沒有那一格判斷「那天那市場沒抓到」(⛔ 說成沒有公告)
 
 跑法:python3 scripts/mops_daily.py
       MD_DEEP_MOPS=<mops_deep 資料夾> python3 scripts/mops_daily.py --apply-deep <patch> --only mops
@@ -60,6 +63,12 @@ BACK = min(10, max(1, int(os.environ.get('MD_BACK') or '2')))  # 抓幾個平日
 KEEP_DAYS = max(2, int(os.environ.get('MD_KEEP') or '14'))      # 最近幾個日曆天
 SLEEP = float(os.environ.get('MOPS_SLEEP') or '1.2')
 BLOCK_MAX = 3
+# 🔁 V82.3.0 第一次實跑(11/13)連線被重設 4 次 → 漏了 11/13 上櫃重大訊息、11/12 上市申報轉讓,log 還沒寫是哪一天哪個市場。
+#   連線錯誤(被重設 / 逾時)→ 等 5 / 15 / 30 秒再試(一共試 4 次);第一輪跑完還有沒抓到的 → 等 60 秒、每個再試一次。
+#   退避加起來最多 WAIT_BUDGET 秒(⛔ 一直連不上時把 20 分鐘的時限吃光)。
+CONN_WAIT = (5, 15, 30)
+PASS2_WAIT = 60
+WAIT_BUDGET = 600
 MARKETS = ('sii', 'otc')
 _CODE = re.compile(r'^\d{4,6}[A-Z]?$')
 # 避雷那兩類(mops_event_probe 16 年:能當買進理由的 0 類、之後比較差的就這兩類)—— App 讀這張表顯示名字
@@ -101,31 +110,40 @@ def ins_app_rows(cells, mk):
     return out
 
 
-def merge_recent(doc, got, cols, src, today, keep=None, now=None):
+def merge_recent(doc, got, cols, src, today, keep=None, now=None, miss=None):
     """上一份 + 這一輪(got = {(日期, 市場): [列…]})→ (新的一份, 警告清單)。
-    ③ 這次 0 筆但上一份那天那市場有 → 保留上一份(⛔ 用 0 蓋掉)。"""
+    ③ 這次 0 筆但上一份那天那市場有 → 保留上一份(⛔ 用 0 蓋掉)。
+    🔁 miss = 這一輪最後還是沒抓到的 [(日期, 市場)] → 記進檔頭 miss {日期: [市場]}(以前抓到過那天那市場就不算);
+       之後哪一輪抓到了就拿掉。⛔ 沒抓到 ≠ 那天沒有公告(App 照 days 有沒有那一格判斷,這一欄給人看 log 用)。"""
     keep = KEEP_DAYS if keep is None else keep
     im = cols.index('mk')
     rows = [r for r in ((doc or {}).get('rows') or []) if isinstance(r, list) and len(r) == len(cols)]
     days = {k: dict(v) for k, v in ((doc or {}).get('days') or {}).items() if isinstance(v, dict)}
+    pm = {k: set(v) for k, v in ((doc or {}).get('miss') or {}).items() if isinstance(v, list)}
     warn = []
     for (iso, mk), new in sorted(got.items()):
+        pm.get(iso, set()).discard(mk)                 # 這一輪抓到了 → 不再算沒抓到
         old = [r for r in rows if r[2] == iso and r[im] == mk]
         if not new and old:
             warn.append(f'{iso} {mk} 這次 0 筆、上一份有 {len(old)} 筆 → 保留上一份')
             continue
         rows = [r for r in rows if not (r[2] == iso and r[im] == mk)] + new
         days.setdefault(iso, {})[mk] = len(new)
+    for iso, mk in (miss or []):
+        if (days.get(iso) or {}).get(mk) is not None:  # 以前抓到過那天那市場 → 手上有資料,不算沒抓到
+            continue
+        pm.setdefault(iso, set()).add(mk)
     lo = (today - timedelta(days=keep - 1)).isoformat()
     rows = [r for r in rows if r[2] >= lo]
     days = {k: v for k, v in days.items() if k >= lo}
+    pm = {k: sorted(v) for k, v in pm.items() if v and k >= lo}
     it = cols.index('t') if 't' in cols else None
     rows.sort(key=lambda r: (r[2], str(r[it]) if it is not None else '', r[im], r[0]))
     ds = sorted(days)
     now = now or datetime.now(TW)
     out = {'v': 1, 'updated': now.isoformat(timespec='minutes'), 'src': src, 'keep': keep,
            'from': ds[0] if ds else None, 'to': ds[-1] if ds else None,
-           'days': {k: days[k] for k in ds}, 'cols': cols, 'rows': rows}
+           'days': {k: days[k] for k in ds}, 'miss': {k: pm[k] for k in sorted(pm)}, 'cols': cols, 'rows': rows}
     if cols is MOPS_COLS:
         out['avoid'] = AVOID
     return out, warn
@@ -186,6 +204,17 @@ def _gh_out(**kv):
                 f.write(f'{k}={v}\n')
 
 
+def _gh_summary(txt):
+    """Actions 的 Step Summary(本機跑沒有這個環境變數 → 什麼都不做)。"""
+    out = os.environ.get('GITHUB_STEP_SUMMARY')
+    if out:
+        try:
+            with open(out, 'a', encoding='utf-8') as f:
+                f.write(txt + '\n')
+        except OSError:
+            pass
+
+
 # ───────────────────────── 網路(正式入口) ─────────────────────────
 def main(now=None, sess=None, sleep=time.sleep, out_dir=None):
     if sess is None:
@@ -195,12 +224,16 @@ def main(now=None, sess=None, sleep=time.sleep, out_dir=None):
     now = now or datetime.now(TW)
     today = now.date()
     days = target_days(today)
-    n = {'req': 0, 'blocks': 0, 'ok': 0}
+    n = {'req': 0, 'blocks': 0, 'ok': 0, 'err': 0, 'waited': 0}
     hdr = {**mp.UA, 'User-Agent': 'Mozilla/5.0 mops_daily/1.0', 'Referer': f'{mp.HOST}/mops/web/t05st01'}
+    ctx = {'what': ''}
 
-    def post(method, url, form):
-        """回 response 或 None(連不上 / 被擋滿 3 次)。被擋 → 退避再試;第 3 次就整輪收工。"""
-        for att in range(2):
+    def post(method, url, form, what=None):
+        """回 response 或 None(連不上 4 次 / 被擋滿 3 次)。
+        連線錯誤 → 等 5 / 15 / 30 秒再試;被擋 → 退避再試,第 3 次就整輪收工。每一則都寫是哪一天、哪個市場。"""
+        label = what or ctx['what'] or url.rsplit('/', 1)[-1]
+        att = 0
+        while True:
             if n['blocks'] >= BLOCK_MAX:
                 return None
             sleep(SLEEP)
@@ -209,64 +242,94 @@ def main(now=None, sess=None, sleep=time.sleep, out_dir=None):
                 r.encoding = r.encoding or 'utf-8'
                 n['req'] += 1
             except Exception as e:  # noqa: BLE001
-                print(f'   ⚠️ {type(e).__name__}: {str(e)[:80]}(第 {att + 1} 次)', flush=True)
-                sleep(5 * (att + 1))
+                n['err'] += 1
+                more = att < len(CONN_WAIT) and n['waited'] < WAIT_BUDGET
+                print(f'   ⚠️ {label}:{type(e).__name__} {str(e)[:80]}(第 {att + 1} 次'
+                      f'{f",等 {CONN_WAIT[att]} 秒再試" if more else ",這一輪先放棄"})', flush=True)
+                if not more:
+                    return None
+                n['waited'] += CONN_WAIT[att]
+                sleep(CONN_WAIT[att])
+                att += 1
                 continue
             if mp.is_blocked(r.text or ''):
                 n['blocks'] += 1
-                print(f'   ⛔ 被擋(第 {n["blocks"]} 次)', flush=True)
+                print(f'   ⛔ {label} 被擋(第 {n["blocks"]} 次)', flush=True)
                 if n['blocks'] >= BLOCK_MAX:
                     return None
+                n['waited'] += 60 * n['blocks']
                 sleep(60 * n['blocks'])
                 continue
             return r
-        return None
 
     raw_m, raw_i = {}, {}
-    for d in days:
-        iso = d.isoformat()
-        for mk in MARKETS:
-            r = post('POST', mp.HOST + MB.PATH, MB.form(mk, d))
-            if r is None:
-                continue
-            k = MB.classify(r.status_code, r.text or '')
-            if k in ('ok', 'empty'):
-                raw_m[(iso, mk)] = [x for x in MB.parse_rows(r.text or '', mk) if x[2] == iso] if k == 'ok' else []
-                n['ok'] += 1
-            else:
-                print(f'   ⚠️ 重大訊息 {iso} {mk}:{k}', flush=True)
-    hdr['Referer'] = f'{mp.HOST}/mops/web/index'
     fx = IB.Fetcher(sess, post)
-    for d in days:
+
+    def get_m(d, mk):
         iso = d.isoformat()
-        for mk in MARKETS:
-            if n['blocks'] >= BLOCK_MAX:
-                break
+        hdr['Referer'] = f'{mp.HOST}/mops/web/t05st01'
+        r = post('POST', mp.HOST + MB.PATH, MB.form(mk, d), what=f'重大訊息 {iso} {mk}')
+        if r is None:
+            return False
+        k = MB.classify(r.status_code, r.text or '')
+        if k in ('ok', 'empty'):
+            raw_m[(iso, mk)] = [x for x in MB.parse_rows(r.text or '', mk) if x[2] == iso] if k == 'ok' else []
+            n['ok'] += 1
+            return True
+        print(f'   ⚠️ 重大訊息 {iso} {mk}:{k}', flush=True)
+        return False
+
+    def get_i(d, mk):
+        iso = d.isoformat()
+        hdr['Referer'] = f'{mp.HOST}/mops/web/index'
+        ctx['what'] = f'申報轉讓 {iso} {mk}'
+        try:
             k, cells = fx.fetch(mk, d)
-            if k in ('ok', 'empty'):
-                raw_i[(iso, mk)] = [c for c in cells if (IB.parse_cells(c) or {}).get('date') == iso] if k == 'ok' else []
-                n['ok'] += 1
-            else:
-                print(f'   ⚠️ 申報轉讓 {iso} {mk}:{k}', flush=True)
+        finally:
+            ctx['what'] = ''
+        if k in ('ok', 'empty'):
+            raw_i[(iso, mk)] = [c for c in cells if (IB.parse_cells(c) or {}).get('date') == iso] if k == 'ok' else []
+            n['ok'] += 1
+            return True
+        print(f'   ⚠️ 申報轉讓 {iso} {mk}:{k}', flush=True)
+        return False
+
+    todo = [('mops', d, mk) for d in days for mk in MARKETS if not get_m(d, mk)]
+    todo += [('insider', d, mk) for d in days for mk in MARKETS if not get_i(d, mk)]
+    # 🔁 第二輪:第一輪跑完還有沒抓到的 → 等一下、每個再試一次(被擋滿 / 退避用完就不試)
+    if todo and PASS2_WAIT and n['blocks'] < BLOCK_MAX and n['waited'] < WAIT_BUDGET:
+        print(f'⏳ 還有 {len(todo)} 個沒抓到 → 等 {PASS2_WAIT} 秒、每個再試一次', flush=True)
+        n['waited'] += PASS2_WAIT
+        sleep(PASS2_WAIT)
+        todo = [x for x in todo if not (get_m if x[0] == 'mops' else get_i)(x[1], x[2])]
+    miss = {'mops': [(d.isoformat(), mk) for kd, d, mk in todo if kd == 'mops'],
+            'insider': [(d.isoformat(), mk) for kd, d, mk in todo if kd == 'insider']}
+    MKN = {'sii': '上市', 'otc': '上櫃'}
+    miss_txt = '、'.join(f'{"重大訊息" if kd == "mops" else "申報轉讓"} {d.isoformat()} {MKN.get(mk, mk)}' for kd, d, mk in todo)
 
     got_m = {k: mops_app_rows(v, k[1]) for k, v in raw_m.items()}
     got_i = {k: ins_app_rows(v, k[1]) for k, v in raw_i.items()}
-    print(f'📢 抓 {", ".join(d.isoformat() for d in days)} ・請求 {n["req"]} 次 ・成功 {n["ok"]} 次 ・被擋 {n["blocks"]} 次'
-          f' ・重大訊息 {sum(len(v) for v in got_m.values())} 則 ・申報 {sum(len(v) for v in got_i.values())} 筆', flush=True)
+    print(f'📢 抓 {", ".join(d.isoformat() for d in days)} ・請求 {n["req"]} 次 ・成功 {n["ok"]} 次 ・連線錯誤 {n["err"]} 次'
+          f' ・被擋 {n["blocks"]} 次 ・重大訊息 {sum(len(v) for v in got_m.values())} 則 ・申報 {sum(len(v) for v in got_i.values())} 筆', flush=True)
+    if todo:
+        print(f'⚠️ 最後還是沒抓到:{miss_txt}(研究分支 ⛔ 標完成;下一輪會再抓「今天 + 前一個平日」,更早的要手動派 back 或等 backfill)', flush=True)
+    _gh_summary(f'📢 mops_daily:請求 {n["req"]} 次 ・成功 {n["ok"]} 次 ・連線錯誤 {n["err"]} 次 ・被擋 {n["blocks"]} 次'
+                + (f'\n\n⚠️ 最後還是沒抓到:{miss_txt}' if todo else '\n\n✅ 每一天每個市場都抓到了'))
     if n['ok'] == 0:
         print('❌ 這一輪一次都沒成功 → ⛔ 不覆蓋舊檔', flush=True)
         _gh_out(push=0)
         return 1
     out_dir.mkdir(parents=True, exist_ok=True)
     wrote = 0
-    for fname, got, cols, src in ((MOPS_FILE, got_m, MOPS_COLS, SRC_MOPS), (INS_FILE, got_i, INS_COLS, SRC_INS)):
+    for fname, got, cols, src, ms in ((MOPS_FILE, got_m, MOPS_COLS, SRC_MOPS, miss['mops']),
+                                      (INS_FILE, got_i, INS_COLS, SRC_INS, miss['insider'])):
         if not got:
             print(f'   ⏭️ {fname}:這一輪沒有成功抓到 → 不動', flush=True)
             continue
         prev, can_write = load_accum(out_dir / fname, {}, what=fname)
         if not can_write:
             continue
-        doc, warn = merge_recent(prev, got, cols, src, today, now=now)
+        doc, warn = merge_recent(prev, got, cols, src, today, now=now, miss=ms)
         for w in warn:
             print(f'   ⚠️ {fname}:{w}', flush=True)
         (out_dir / fname).write_text(json.dumps(doc, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
@@ -350,11 +413,13 @@ def selftest():
     page = "<form><input name='encodeURIComponent' value='1'><input name='step' value='1'><input name='firstin' value='1'>" \
            "<input name='year'><input name='month'><input name='day'></form>"
 
-    def server_factory(blocked=False):
+    def server_factory(blocked=False, fail=None):
         calls = []
 
         def handle(method, url, data):
             calls.append((method, url.rsplit('/', 1)[-1]))
+            if fail and fail(method, url, data):
+                raise ConnectionResetError(104, 'Connection reset by peer')
             if blocked:
                 return R('因為安全性考量,您的連線已被阻擋')
             if method == 'GET':
@@ -449,6 +514,73 @@ def selftest():
         rcc = main(now=now, sess=sess2, sleep=lambda s: None, out_dir=tmp)
         ok('⑧ 申報檔讀壞 → 不寫回(壞檔留著等人修)、重大訊息照寫', (tmp / INS_FILE).read_text(encoding='utf-8') == '{"rows": [1,2'
            and rcc == 0, rcc)
+
+        # ⑨~⑫ 🔁 連線被重設(V82.3.0:11/13 第一次實跑被重設 4 次 → 漏兩段,log 沒寫是哪一天哪個市場)
+        import contextlib
+        import io
+
+        def is_pair(url, data, mk, day):
+            return url.endswith('ajax_t05st01') and bool(data) and data.get('TYPEK') == mk and int(data.get('b_date') or 0) == day
+
+        def run_main(fail, sub):
+            dd = tmp / sub
+            dd.mkdir(exist_ok=True)
+            s, c = server_factory(fail=fail)
+            buf, waits = io.StringIO(), []
+            with contextlib.redirect_stdout(buf):
+                r = main(now=now, sess=s, sleep=waits.append, out_dir=dd)
+            doc = json.loads((dd / MOPS_FILE).read_text(encoding='utf-8')) if (dd / MOPS_FILE).exists() else None
+            pt_ = json.loads((dd / PATCH_FILE).read_text(encoding='utf-8')) if (dd / PATCH_FILE).exists() else None
+            return r, doc, pt_, buf.getvalue(), c, waits
+
+        cnt = {'n': 0}
+
+        def fail_twice(method, url, data):
+            if is_pair(url, data, 'otc', 12):
+                cnt['n'] += 1
+                return cnt['n'] <= 2
+            return False
+        r9, d9, p9, log9, _, _ = run_main(fail_twice, 'r9')
+        ok('⑨ 上櫃 11/12 連線被重設兩次 → 第 3 次抓到:有資料、試了 3 次、沒有 miss', r9 == 0 and cnt['n'] == 3
+           and (d9 or {}).get('days', {}).get('2026-11-12', {}).get('otc') == 1 and (d9 or {}).get('miss') == {}
+           and '2026-11-12|otc' in (p9 or {}).get('mops', {}), (r9, cnt, (d9 or {}).get('days'), (d9 or {}).get('miss')))
+        ok('⑨ log 寫是哪一天哪個市場', '重大訊息 2026-11-12 otc' in log9 and '等 5 秒再試' in log9, log9[-400:])
+
+        def fail_always(method, url, data):
+            return is_pair(url, data, 'otc', 12)
+        r10, d10, p10, log10, c10, w10 = run_main(fail_always, 'r10')
+        ok('⑩ 一直連不上 → miss 記那一天那個市場、其他照寫', r10 == 0 and (d10 or {}).get('miss') == {'2026-11-12': ['otc']}
+           and 'otc' not in (d10 or {}).get('days', {}).get('2026-11-12', {}) and (d10 or {}).get('days', {}).get('2026-11-12', {}).get('sii') == 2,
+           (r10, (d10 or {}).get('miss'), (d10 or {}).get('days')))
+        ok('⑩ 研究分支 patch 沒有它(⛔ 標完成)', '2026-11-12|otc' not in (p10 or {}).get('mops', {}) and '2026-11-12|sii' in (p10 or {}).get('mops', {}),
+           sorted((p10 or {}).get('mops', {})))
+        ok('⑩ 第二輪有再試、最後一行列出沒抓到的(中文市場名)', '還有 1 個沒抓到' in log10 and '最後還是沒抓到:重大訊息 2026-11-12 上櫃' in log10, log10[-500:])
+        ok('⑩ 試的次數有上限(第一輪 4 次 + 第二輪 4 次)', sum(1 for m, u in c10 if u == 'ajax_t05st01') == 4 + 4 + 3, c10)
+        # 上一份那天那市場有 → 不算沒抓到、資料保留;之後抓到 → miss 拿掉
+        rr, dr, _, _, _, _ = run_main(fail_always, 'r9')
+        ok('⑩ 上一份已經有那天那市場 → 不記 miss、上一份那筆留著', rr == 0 and (dr or {}).get('miss') == {}
+           and any(r[2] == '2026-11-12' and r[5] == 'otc' for r in (dr or {}).get('rows', [])), (dr or {}).get('miss'))
+        ra, da, _, _, _, _ = run_main(None, 'r10')
+        ok('⑩ 之後哪一輪抓到了 → miss 拿掉', ra == 0 and (da or {}).get('miss') == {} and (da or {}).get('days', {}).get('2026-11-12', {}).get('otc') == 1,
+           (da or {}).get('miss'))
+
+        # ⑪ 決定性對照:退回舊的「試 2 次、沒有第二輪」→ 同一個「被重設兩次」就漏掉
+        global CONN_WAIT, PASS2_WAIT
+        keep_cw, keep_p2 = CONN_WAIT, PASS2_WAIT
+        CONN_WAIT, PASS2_WAIT = (5,), 0
+        try:
+            cnt['n'] = 0
+            r11, d11, _, _, _, _ = run_main(fail_twice, 'r11')
+        finally:
+            CONN_WAIT, PASS2_WAIT = keep_cw, keep_p2
+        ok('⑪ 決定性對照:只試 2 次、沒有第二輪 → 同一個情況會漏(miss 有它)', r11 == 0 and (d11 or {}).get('miss') == {'2026-11-12': ['otc']},
+           (r11, (d11 or {}).get('miss')))
+
+        # ⑫ 全部連不上 → exit 1、⛔ 覆蓋;退避加起來有上限(⛔ 把 20 分鐘的時限吃光)
+        r12, d12, _, log12, c12, w12 = run_main(lambda m, u, d: True, 'r12')
+        backoff = sum(x for x in w12 if x != SLEEP)
+        ok('⑫ 全部連不上 → exit 1、沒有寫檔', r12 == 1 and d12 is None, (r12, d12 is None))
+        ok('⑫ 退避加起來 ≤ 上限 + 最後一次(⛔ 一直等)', backoff <= WAIT_BUDGET + PASS2_WAIT + max(CONN_WAIT), backoff)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
