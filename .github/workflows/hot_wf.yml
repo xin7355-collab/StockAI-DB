@@ -4,13 +4,21 @@ name: 🧭 🔥 Walk-forward 12 組 (hot_wf)
 #   每組照 docs/PROBES.md「照 App 實際怎麼買」①~③,資料用 research_pack 的 d16(16 年含下市):
 #   交易快取(這一組自己的門檻;⛔ 共用 —— 快取只留過門檻那天的 🧬)→ 每一晚名單前 60 筆 → list_trig 判觸發 → 17 條起點 EQUITY_OUT
 #   → scripts/hot_wf_probe.mjs years;最後 analyze 照登記的挑法串起來(結果在 Step Summary + artifact)。
-# ⛔ 排程(手動才跑,一次約 2~4 小時);⛔ 寫任何分支;三個資料分支先在 pin job 釘住版本 → 12 組吃同一份資料。
+# 🧬 V82.2.8 mode=size:EXP-20261113-02 股性分流 4 組(BASE 不分 / BIG / SMALL / RAND,門檻都是現行 85 / 60;
+#   名單那一晚候選照 60 日平均成交金額用當晚中位數切兩半,portfolio_backtest SIZE=big|small|rand)→ hot_wf_probe size 照登記的 6 條判定。
+# ⛔ 排程(手動才跑,一次約 2~4 小時);⛔ 寫任何分支;三個資料分支先在 pin job 釘住版本 → 每一組吃同一份資料。
 
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'grid = 門檻 12 組(EXP-20261112-05)・size = 股性分流 4 組(EXP-20261113-02)'
+        required: false
+        default: 'grid'
+        type: choice
+        options: [grid, size]
       only:
-        description: '只跑這幾組(例 R85_V60,R75_V50;空白 = 12 組全跑)'
+        description: '只跑這幾組(例 R85_V60,R75_V50 或 BASE,SMALL;空白 = 這個模式全跑)'
         required: false
         default: ''
 
@@ -43,7 +51,7 @@ jobs:
           done
 
   combo:
-    name: 🔥 R${{ matrix.rank }}_V${{ matrix.volat }}
+    name: 🔥 ${{ matrix.g }}
     needs: pin
     runs-on: ubuntu-latest
     # ⏱️ 330 分:資料包 3~5 分 + 交易快取 4 片約 70 分 + 名單 / 判觸發約 30~60 分 + 17 條約 30 分;job 上限 360
@@ -51,10 +59,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rank: [75, 80, 85, 90]
-        volat: [50, 60, 70]
+        g: ${{ fromJSON(inputs.mode == 'size' && '["BASE","BIG","SMALL","RAND"]' || '["R75_V50","R75_V60","R75_V70","R80_V50","R80_V60","R80_V70","R85_V50","R85_V60","R85_V70","R90_V50","R90_V60","R90_V70"]') }}
     env:
-      K: R${{ matrix.rank }}_V${{ matrix.volat }}
+      K: ${{ matrix.g }}
     steps:
       - name: 🎯 這組要不要跑
         id: sel
@@ -62,6 +69,18 @@ jobs:
           ONLY: ${{ inputs.only }}
         run: |
           if [ -z "$ONLY" ] || echo ",$ONLY," | grep -q ",$K,"; then echo "run=1" >> "$GITHUB_OUTPUT"; else echo "run=0" >> "$GITHUB_OUTPUT"; echo "⏭️ $K 不在 only 清單"; fi
+          # 門檻 / 分流:grid 的組名就是門檻;size 一律現行 85 / 60 + 分流(BASE = 不分)。
+          #   ⚠️ 分流寫進 SZ(⛔ 叫 SIZE):交易快取那一步沒有名單模式,引擎看到 SIZE 會擋下 —— 只在 ② ④ 那兩行帶 SIZE="$SZ"
+          case "$K" in
+            R*_V*) R=${K#R}; R=${R%%_*}; V=${K##*_V}; SZ= ;;
+            BASE) R=85; V=60; SZ= ;;
+            BIG) R=85; V=60; SZ=big ;;
+            SMALL) R=85; V=60; SZ=small ;;
+            RAND) R=85; V=60; SZ=rand ;;
+            *) echo "::error::不認得的組 $K"; exit 1 ;;
+          esac
+          { echo "RANK_MIN=$R"; echo "VOLAT_MIN=$V"; echo "SZ=$SZ"; } >> "$GITHUB_ENV"
+          echo "🎯 $K:位階 ≥$R・波動 ≥$V・分流 ${SZ:-不分}"
 
       - uses: actions/checkout@v4
         if: steps.sel.outputs.run == '1'
@@ -93,8 +112,6 @@ jobs:
           STOPFILL: close
           EXIT: chand2
           MAXD: '20'
-          RANK_MIN: ${{ matrix.rank }}
-          VOLAT_MIN: ${{ matrix.volat }}
         run: |
           set -o pipefail
           fail () { echo "::error::$K $1"; exit 1; }
@@ -114,7 +131,7 @@ jobs:
           echo "🧱 交易快取 $(du -h /tmp/tc.ndjson | cut -f1)・$(tsec)"
           export TRADES_CACHE=/tmp/tc.ndjson ALLFIRE=1 GATE=lb CLIFF=20 STATS_WIN=1200 MIN_MKT_N=0 MIN_N=8 LB_Z=0 LB_TOP=99 LISTK=2 FILTER=
           # ② 每一晚的名單(前 60 筆、單一起點、空頭照買)
-          SELF=high+hivolat+nobear PARK= LIST_DUMP=/tmp/dump.ndjson LIST_DUMP_N=60 WARMUP=251 node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -4
+          SIZE="$SZ" SELF=high+hivolat+nobear PARK= LIST_DUMP=/tmp/dump.ndjson LIST_DUMP_N=60 WARMUP=251 node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -6
           [ -s /tmp/dump.ndjson ] || fail "名單沒產出"
           echo "🧾 名單 $(wc -l < /tmp/dump.ndjson) 晚・$(tsec)"
           # ③ 判明天會不會觸發(App 自己的偵測器,4 片;TOPN 一定要 60)
@@ -131,9 +148,12 @@ jobs:
           # ④ 17 條起點(🅿️ 閒錢停 0050 = App 預設)
           mkdir -p /tmp/eq /tmp/out
           W=$(node -e "console.log(Array.from({length:17},(_,k)=>251+3*k).join(','))")
-          SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson PARK=idle WARMUPS="$W" EQUITY_OUT='/tmp/eq/eq_{W}.json' SUMMARY_OUT='/tmp/eq/sum_{W}.json' \
-            node --max-old-space-size=7000 scripts/portfolio_backtest.mjs 9999 2 | tail -20
+          SIZE="$SZ" SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson PARK=idle WARMUPS="$W" EQUITY_OUT='/tmp/eq/eq_{W}.json' SUMMARY_OUT='/tmp/eq/sum_{W}.json' TAKEN_OUT='/tmp/eq/taken_{W}.json' \
+            node --max-old-space-size=7000 scripts/portfolio_backtest.mjs 9999 2 | tail -22
           node scripts/hot_wf_probe.mjs years /tmp/eq "$K" "/tmp/out/$K.json" || fail "17 條沒齊"
+          # 🧬 V82.2.8 判定 ⑥ 買得到 + 0050 含息每年報酬(同一份資料包)
+          node scripts/hot_wf_probe.mjs cap /tmp/eq "$DATA_DIR" "/tmp/out/cap_$K.json" || fail "買得到那一項算不出來"
+          node scripts/hot_wf_probe.mjs b0050 /tmp/rp/d16 "/tmp/out/b0050_$K.json" || fail "0050 含息算不出來"
           echo "💼 完成・$(tsec)"
 
       - name: ⬆️ 上傳這一組
@@ -159,11 +179,20 @@ jobs:
           merge-multiple: true
           path: /tmp/all
       - name: 🧮 analyze
+        env:
+          MODE: ${{ inputs.mode }}
         run: |
           set -o pipefail
           ls /tmp/all
-          node scripts/hot_wf_probe.mjs analyze /tmp/all /tmp/hot_wf.json | tee /tmp/hot_wf.txt
-          { echo '### 🧭 🔥 Walk-forward(EXP-20261112-05)'; echo; echo '```'; cat /tmp/hot_wf.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$MODE" = size ]; then
+            node scripts/hot_wf_probe.mjs size /tmp/all /tmp/hot_wf.json | tee /tmp/hot_wf.txt
+            T='### 🧬 股性分流(EXP-20261113-02)'
+          else
+            B=$(ls /tmp/all/b0050_*.json 2>/dev/null | head -1)
+            node scripts/hot_wf_probe.mjs analyze /tmp/all /tmp/hot_wf.json $B | tee /tmp/hot_wf.txt
+            T='### 🧭 🔥 Walk-forward(EXP-20261112-05)'
+          fi
+          { echo "$T"; echo; echo '```'; cat /tmp/hot_wf.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: hot-wf-result
