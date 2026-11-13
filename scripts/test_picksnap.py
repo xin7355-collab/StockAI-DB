@@ -82,13 +82,15 @@ with tempfile.TemporaryDirectory() as td:
             keys |= set(x)
     # 🔥 V79.4.9 `exp`(這一招平均每趟)= 新排法的排序依據,跟 `lb` 一樣是「當時名單長怎樣」的事實 → 要存(成績單照當天的規則重建名單);
     #    評分 / 結論 / 建議照樣⛔ 不存
-    banned = {'w', 'verdict', 'score', 'grade', 'advice', 'rank'}
+    # 🎯 V82.3.3 起 `w`(這一招回測勝率)/ `n`(樣本數)也存:使用者 11/13 同意,成績單比命中率用 —— 跟 exp 一樣是當時名單上的事實
+    banned = {'verdict', 'score', 'grade', 'advice', 'rank'}
     ok('④ ⛔ 不可存結論/評分(那會變成第二份真相)',
        not (keys & banned), f'存了不該存的:{sorted(keys & banned)}')
     ok('④b 該存的事實都在', {'s', 'c', 'k'} <= keys, f'keys={sorted(keys)}')
     # 📒 V76.0.4 決策台推薦成績單要用 hq / bear 重建「今天可以買的」名單(⛔ 少存 = 名單重建不出來,而且零錯誤訊息)
     ok('④c 📒 hq / bear 兩個事實旗標也要存(推薦成績單靠它重建決策台名單)', {'hq', 'bear'} <= keys, f'keys={sorted(keys)}')
     ok('④d 🔥 V79.4.9 排序要用的 exp / lb 也要存(成績單照當天的規則重建名單)', {'exp', 'lb'} <= keys, f'keys={sorted(keys)}')
+    ok('④e 🎯 V82.3.3 回測勝率 w 也要存(成績單比命中率;來源有才寫)', 'w' in keys, f'keys={sorted(keys)}')
 
 # ⑤ 累積不足要明說(⛔ 不可在樣本不夠時給績效)
 with tempfile.TemporaryDirectory() as td:
@@ -129,10 +131,12 @@ with tempfile.TemporaryDirectory() as td:
 wf = (ROOT / '.github/workflows/playbook_scan.yml').read_text(encoding='utf-8')
 ok('⑥ workflow 有呼叫 pick_snapshot.py', 'python3 pick_snapshot.py' in wf, '')
 ok('⑥b ⭐ 快照有被 cp 到 /tmp(切分支前保住)', '/tmp/pick_history.json' in wf, '')
-ok('⑥c ⭐ 快照有被 git add(⛔ 漏這步 = 存了推不出去)', 'pick_history.json' in wf.split('git add')[1][:200]
-   if 'git add' in wf else False, '')
-ok('⑥d ⭐ commit 有帶上快照路徑', 'data/pick_history.json' in wf.split('git commit')[1][:200]
-   if 'git commit' in wf else False, '')
+# 🧹 V82.3.3 舊寫法只看「第一個 git add / git commit」:V80.1.9 存證那一步(pick_ledger.tsv)排在前面之後就看錯地方 → 一直紅、
+#   但這支不在四項檢查清單裡沒人發現。改成看部署那一步:要推的檔案清單(present)裡有快照,而且 add / commit 都吃那份清單
+_pres = next((ln for ln in wf.splitlines() if ln.strip().startswith('present ()')), '')
+ok('⑥c ⭐ 快照在部署要推的清單裡,而且 git add 吃那份清單(⛔ 漏這步 = 存了推不出去)',
+   'data/pick_history.json' in _pres and 'git add -f $P' in wf, _pres[:120])
+ok('⑥d ⭐ commit 有帶上那份清單(-- $P)', '-- $P' in wf.split('git add -f $P')[1][:600] if 'git add -f $P' in wf else False, '')
 ok('⑥e 有還原檢查(印出既有幾天)', 'n_days' in wf, '')
 
 print('\n' + ('❌ %d 條失敗' % len(fails) if fails else '✅ PICKSNAP_PASS(全部通過)'))

@@ -6457,7 +6457,8 @@ const PRO = {
           const rows = await kOf(x.s);
           let i1 = -1; for (let i = rows.length - 1; i >= 0; i--) { const dd = this._dstr(rows[i].date); if (dd === F) { i1 = i; break; } if (dd < F) break; }
           const t = { sym: x.s, d: F, ld, trig, px: trig, k: `${x.k || ''}・${ld.slice(5).replace('-', '/')} 名單・觸發 ${this._px(trig)}`, st: null,
-                      kk: x.k || '', exp: Number.isFinite(+x.exp) && x.exp !== null && x.exp !== '' ? +x.exp : null, hq: +x.hq || 0 };   // 📏 V82.2.5 推薦當時的回測數字(校準用)
+                      kk: x.k || '', exp: Number.isFinite(+x.exp) && x.exp !== null && x.exp !== '' ? +x.exp : null, hq: +x.hq || 0,   // 📏 V82.2.5 推薦當時的回測數字(校準用)
+                      w: Number.isFinite(+x.w) && x.w !== null && x.w !== '' ? +x.w : null };   // 🎯 V82.3.3 推薦當時名單上寫的回測勝率 %(舊快照沒有 → null)
           if (i1 < 1) { out.noK.push(x.s); out.trades.push(t); continue; }   // ⛔ 讀不到那天的 K → 照實寫,⛔ 不猜買沒買到
           const c = +rows[i1].close;
           if (!(c >= trig)) { out.miss.push({ sym: String(x.s), ld, d: F, trig, c }); continue; }   // 收盤沒到觸發價 → 那天不買(⛔ 不追)
@@ -6499,7 +6500,8 @@ const PRO = {
   //      還在抱的另外用今天收盤算「帳面」(會變,⛔ 下結論);沒有回測數字的 ⛔ 算;筆數 < 10 ⛔ 下結論
   //   ④ 95% 區間 = 差距平均 ± 1.96 × 標準差 ÷ √筆數;整段區間都在 0 下面,才說「比回測差,而且不是運氣」
   //   ⑤ 整份名單要下載幾百檔 K 線 → 按了才算、一檔一檔排隊抓(⛔ 一次全部打出去)
-  //   ⑥ 回測的勝率沒有存在每天的名單快照裡 → 只能比每趟平均;要比勝率得讓採礦多存一欄(改採礦要先問使用者)
+  //   ⑥ 🎯 V82.3.3 起名單快照多存回測勝率 w(使用者 11/13 同意)→ 也比命中率:兩邊都是「還沒扣成本、每趟賺錢的比例」;
+  //      期望命中數 = Σ 每筆的回測勝率、變異 = Σ p(1−p) → z;之前的快照沒有 w → 那些筆只比每趟平均(⛔ 拿別的數字補)
   _CALIB_MIN: 10,
   _CALIB_START: '2026-10-21',   // 名單從這天起才有觸發價(V79.5.3 那段:之前五週都沒有)→ 再早的買不了,⛔ 硬算
   _calibSig: null, _calibTop: null, _calibAll: null, _calibProg: null,
@@ -6528,8 +6530,17 @@ const PRO = {
       const win = live.filter(v => v > 0).length;
       const verdict = mtm ? 'mtm' : (n < MIN || se == null) ? 'few' : hi < 0 ? 'worse' : lo > 0 ? 'better' : 'same';
       const bs = arr.map(t => t.st.bench).filter(v => v != null && Number.isFinite(+v)).map(Number);   // 同一段持有期間的加權(`_stlEnrich`)
+      // 🎯 命中率:只用有回測勝率 w 的那幾筆;實際也用「還沒扣成本的報酬 > 0」(跟回測勝率同一把尺,⛔ 拿扣成本後的比)
+      const WA = arr.filter(t => t.w != null && Number.isFinite(+t.w));
+      let hit = null;
+      if (WA.length) {
+        const hn = WA.length, hw = WA.filter(t => +t.st.ret > 0).length, ps = WA.map(t => Math.min(100, Math.max(0, +t.w)) / 100);
+        const ep = ps.reduce((x, v) => x + v, 0), vv = ps.reduce((x, v) => x + v * (1 - v), 0), z = vv > 0 ? (hw - ep) / Math.sqrt(vv) : null;
+        hit = { n: hn, win: hw, live: hw / hn * 100, exp: ep / hn * 100, z,
+                verdict: mtm ? 'mtm' : (hn < MIN || z == null) ? 'few' : z < -1.96 ? 'worse' : z > 1.96 ? 'better' : 'same' };
+      }
       return { n, live: lm, exp: em, diff: dm, lo, hi, win, wr: win / n * 100, ratio: em > 0 ? lm / em : null,
-               net: mean(arr.map(t => +t.st.net)), bench: bs.length ? mean(bs) : null, verdict };
+               net: mean(arr.map(t => +t.st.net)), bench: bs.length ? mean(bs) : null, verdict, hit };
     };
     const grp = (arr, mtm) => { const by = new Map(); for (const t of arr) { const k = String(t.kk || '—'); if (!by.has(k)) by.set(k, []); by.get(k).push(t); }
       return [...by.entries()].map(([k, a]) => ({ k, ...one(a, mtm) })).sort((a, b) => b.n - a.n || a.k.localeCompare(b.k)); };
@@ -6542,9 +6553,13 @@ const PRO = {
     const p = v => this._calibPct(v), MIN = this._CALIB_MIN;
     if (!A) return '<div class="note">還沒有「那天推薦的每一筆都出場了」的日子 —— 先出場的多半是碰停損的,只算它們會看起來特別差,所以等整天都出場才下結論。</div>';
     const bt = A.bench != null ? ` ・同一段期間大盤 <span class="mono ${this.cls(A.bench)}">${p(A.bench)}</span>` : '';   // 回測的平均是好壞行情混在一起的 → 這段大盤怎麼走一起寫
+    const H = A.hit;
+    const hitTxt = H ? `<br><span data-calibhit="${H.verdict}">🎯 命中率(有回測勝率的 ${H.n} 筆${H.verdict === 'mtm' ? ',帳面會變' : ''}):實際 <b class="mono">${H.live.toFixed(0)}%</b>(${H.win}/${H.n})・推薦當時回測說 <b class="mono">${H.exp.toFixed(0)}%</b>`
+        + (H.verdict === 'few' ? `(未滿 ${MIN} 筆,先不判斷)` : H.verdict === 'worse' ? ' → ⚠️ 比回測低,而且不是運氣' : H.verdict === 'better' ? ' → 比回測高' : H.verdict === 'same' ? ' → 分不出差別' : '') + '</span>'
+      : '<br><span data-calibhit="none">🎯 命中率:這幾筆推薦的時候名單還沒存回測勝率(V82.3.3 起才存),先只比每趟平均。</span>';
     const nums = `實際每趟平均 <b class="mono ${this.cls(A.live)}">${p(A.live)}</b>(扣成本後 <span class="mono ${this.cls(A.net)}">${p(A.net)}</span>)・推薦當時回測說 <b class="mono">${p(A.exp)}</b>`
-      + ` ・賺錢的 ${A.win}/${A.n} 筆${bt}`;
-    if (A.verdict === 'mtm') return `<div class="note" data-calibverdict="mtm">📌 <b>連還在抱的一起算(今天收盤的帳面,會變,⛔ 不能當結論)</b>:${A.n} 筆・平均 <b class="mono ${this.cls(A.live)}">${p(A.live)}</b>・推薦當時回測說 <b class="mono">${p(A.exp)}</b>・目前賺錢的 ${A.win}/${A.n} 筆${A.bench != null ? ` ・同一段期間大盤 <span class="mono ${this.cls(A.bench)}">${p(A.bench)}</span>` : ''}</div>`;
+      + ` ・賺錢的 ${A.win}/${A.n} 筆${bt}${hitTxt}`;
+    if (A.verdict === 'mtm') return `<div class="note" data-calibverdict="mtm">📌 <b>連還在抱的一起算(今天收盤的帳面,會變,⛔ 不能當結論)</b>:${A.n} 筆・平均 <b class="mono ${this.cls(A.live)}">${p(A.live)}</b>・推薦當時回測說 <b class="mono">${p(A.exp)}</b>・目前賺錢的 ${A.win}/${A.n} 筆${A.bench != null ? ` ・同一段期間大盤 <span class="mono ${this.cls(A.bench)}">${p(A.bench)}</span>` : ''}${H ? hitTxt : ''}</div>`;
     if (A.verdict === 'few') return `<div class="note" data-calibverdict="few">⏳ 全部出場的推薦日裡只有 <b>${A.n}</b> 筆,還太少(至少 ${MIN} 筆才判斷)。<br>${nums}</div>`;
     const ci = `差 <b class="mono">${p(A.diff)}</b>(95% 區間 <span class="mono">${p(A.lo)} ~ ${p(A.hi)}</span>)`;
     const cut = A.exp > 0 ? (A.live <= 0 ? ' → 回測說每趟賺,實際平均是賠的' : ` → 大約只剩回測說的 <b>${Math.round(A.ratio * 100)}%</b>`) : '';
@@ -6589,7 +6604,7 @@ const PRO = {
         ・兩邊都是<b>還沒扣成本</b>的 %(扣成本後另外寫)・未滿 ${this._CALIB_MIN} 筆不下結論。<br>
         ・只拿「那天推薦的每一筆都出場了」的日子下結論 —— 剛開始那幾週先出場的多半是碰到停損的、賺的還抱著,只算已出場的會看起來特別差。還在抱的另外用今天收盤算帳面(會變)。<br>
         ・「不是運氣」= 差距的 95% 區間整段在 0 下面。<br>
-        ・回測的<b>勝率</b>沒有存在每天的名單快照裡,所以這裡只能比每趟平均;要比勝率,採礦要多存一欄(改採礦要先問你)。</div></details>`;
+        ・🎯 <b>命中率</b>:推薦當時名單上寫的回測勝率(還沒扣成本、每趟賺錢的比例)對實際(同一把尺);名單從 V82.3.3 起才存這欄,之前的推薦只比每趟平均。</div></details>`;
     if (!this._calibTop) {
       this._calibTop = { busy: true };
       el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-calib="1">${head}<div class="note">⏳ 正在對每天的推薦…</div></div>`;
@@ -11229,7 +11244,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V82.3.3',
+  VER: 'V82.3.4',
   _ROT: {
     win: 20, spread: 1.95, top: 1.06, bot: -0.88,
     q1: 2.48, q2: 1.42, exBest: 1.83,

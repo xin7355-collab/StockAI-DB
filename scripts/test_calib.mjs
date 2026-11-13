@@ -27,7 +27,9 @@ const INJ = {
     cohort: ["const done = new Set([...byDay.entries()].filter(([, a]) => a.every(t => !t.st.open)).map(([d]) => d));", "const done = new Set([...byDay.keys()]);"],
     noMin: ["(n < MIN || se == null) ? 'few'", "(se == null) ? 'few'"],
     top2: ["if (src === 'pball') return this._recoAllPicks(day.pb, day.rule);", "if (src === 'pball') return this._recoPicks(day.pb, day.rule);"],
-    noExp: ["kk: x.k || '', exp: Number.isFinite(+x.exp) && x.exp !== null && x.exp !== '' ? +x.exp : null, hq: +x.hq || 0 };", "kk: x.k || '', exp: null, hq: +x.hq || 0 };"],
+    noExp: ["kk: x.k || '', exp: Number.isFinite(+x.exp) && x.exp !== null && x.exp !== '' ? +x.exp : null, hq: +x.hq || 0,", "kk: x.k || '', exp: null, hq: +x.hq || 0,"],
+    noW: ["w: Number.isFinite(+x.w) && x.w !== null && x.w !== '' ? +x.w : null };", "w: null };"],
+    netHit: ["hw = WA.filter(t => +t.st.ret > 0).length", "hw = WA.filter(t => +t.st.net > 0).length"],
     autoAll: ["    if (!A) all = `<div class=\"labbar\"", "    if (!A) { setTimeout(() => this._calibStart(), 0); } if (!A) all = `<div class=\"labbar\""],
 };
 
@@ -61,9 +63,23 @@ async function run(html) {
             const same = P._calibAgg(S);
             const B = []; for (let i = 0; i < 12; i++) B.push(mk(8 + (i % 3) * 0.3, 5));              // 都比回測好 → better
             const better = P._calibAgg(B);
-            return { few, worse, shifted, same, better, cohort, html: P._calibVerdictHtml(worse.all) + P._calibVerdictHtml(few.all) + P._calibKHtml(worse.byK) + P._calibVerdictHtml(cohort.mtm) };
+            // 🎯 V82.3.3 命中率:12 筆回測勝率 60%、還沒扣成本賺錢的 6 筆(其中 2 筆 +0.3% 扣成本後是賠的)→ 實際 50% vs 60%、分不出差別;
+            //   20 筆回測勝率 80%、只有 4 筆賺 → 比回測低而且不是運氣;沒有 w 的那筆不算進命中率
+            const hw = (ret, w, ld) => ({ ...mk(ret, 5, '招甲', false, ld), w });
+            const H1 = []; for (let i = 0; i < 12; i++) H1.push(hw(i < 2 ? 0.3 : i < 6 ? 4 : -3, 60));
+            const hit1 = P._calibAgg([...H1, mk(2, 5)]);
+            const H2 = []; for (let i = 0; i < 20; i++) H2.push(hw(i < 4 ? 3 : -2, 80));
+            const hit2 = P._calibAgg(H2);
+            return { few, worse, shifted, same, better, cohort, hit1, hit2, hHtml: P._calibVerdictHtml(hit1.all) + P._calibVerdictHtml(hit2.all), noWHtml: P._calibVerdictHtml(worse.all),
+                     html: P._calibVerdictHtml(worse.all) + P._calibVerdictHtml(few.all) + P._calibKHtml(worse.byK) + P._calibVerdictHtml(cohort.mtm) };
         });
         ok('① 未滿 10 筆 → few(⛔ 下結論)', A.few.all.verdict === 'few' && A.few.all.n === 3, JSON.stringify(A.few.all));
+        const h1 = A.hit1.all.hit, h2 = A.hit2.all.hit;
+        ok('①h 🎯 命中率只算有回測勝率的(12 筆,⛔ 算進沒有 w 的那筆)、用還沒扣成本的報酬(+0.3% 算命中)→ 50% vs 60% 分不出差別',
+           h1 && h1.n === 12 && h1.win === 6 && Math.abs(h1.exp - 60) < 1e-9 && h1.verdict === 'same' && A.hit1.all.n === 13, JSON.stringify(h1));
+        ok('①h 🎯 回測說 80%、實際 4/20 → 比回測低而且不是運氣', h2 && h2.verdict === 'worse' && h2.z < -1.96 && h2.live === 20, JSON.stringify(h2));
+        ok('①h 🎯 白話:有 w → 寫實際 / 回測說幾 %;沒有 w → 明講「名單還沒存回測勝率」(⛔ 空白)',
+           /命中率\(有回測勝率的 12 筆\)/.test(A.hHtml) && /比回測低,而且不是運氣/.test(A.hHtml) && /名單還沒存回測勝率/.test(A.noWHtml) && !/data-calibhit="none"/.test(A.hHtml), A.hHtml.slice(0, 300));
         ok('① 持有中 / 沒有回測數字各自計數、⛔ 混進結論', A.worse.all.n === 12 && A.worse.open === 1 && A.worse.noExp === 1 && A.worse.mtm.n === 13, JSON.stringify([A.worse.all.n, A.worse.open, A.worse.noExp, A.worse.mtm && A.worse.mtm.n]));
         ok('① 只拿全部出場的日子下結論:X 那天還有一筆在抱 → 整天⛔ 進結論(只剩 Y 1 筆)、帳面那行 3 筆都算',
             A.cohort.all && A.cohort.all.n === 1 && A.cohort.all.live === 2 && A.cohort.mtm.n === 3 && A.cohort.days === 2 && A.cohort.doneDays === 1 && A.cohort.mtm.verdict === 'mtm',
@@ -91,7 +107,7 @@ async function run(html) {
             const K = { A: kl(after(d1, 55)), B: kl(after(d1, 56)), C: kl(after(d1, 57)), D: kl({}), E: kl(after(d1, 60)) };
             // 名單(d0):A 🧬+、B 🧬−、C 空頭那天的、D 收盤沒到、E 同一檔兩招(只留排前面那招)
             const pb = [
-                { s: 'A', k: '招甲', exp: 6, lb: 1, r: 1, o: 1, trig: 54, hq: 1, bear: 0, c: 50 },
+                { s: 'A', k: '招甲', exp: 6, lb: 1, r: 1, o: 1, trig: 54, hq: 1, bear: 0, c: 50, w: 62.5, n: 40 },
                 { s: 'B', k: '招乙', exp: 5, lb: 1, r: 1, o: 1, trig: 54, hq: 0, bear: 0, c: 50 },
                 { s: 'C', k: '招甲', exp: 4, lb: 1, r: 1, o: 1, trig: 54, hq: 1, bear: 1, c: 50 },
                 { s: 'D', k: '招丙', exp: 3, lb: 1, r: 1, o: 1, trig: 54, hq: 1, bear: 0, c: 50 },
@@ -110,13 +126,14 @@ async function run(html) {
             const top = (P._recoPicks(pb, 'mean') || []).map(x => x.s);
             const L = await P._recoLedgerLoad('atr2', 'pball', d0);
             const T = await P._recoLedgerLoad('atr2', 'pb', d0);
-            return { all, top, L: { n: L.trades.length, miss: L.miss.length, mech: L.mech, ex: L.trades.map(t => [t.sym, t.kk, t.exp, t.st && t.st.entry]) },
+            return { all, top, L: { n: L.trades.length, miss: L.miss.length, mech: L.mech, ex: L.trades.map(t => [t.sym, t.kk, t.exp, t.st && t.st.entry]), w: L.trades.map(t => t.sym + ':' + t.w) },
                      T: { n: T.trades.length, syms: T.trades.map(t => t.sym) } };
         });
         ok('② 整份名單:每一檔都算(含 🧬 不夠、空頭那天)、同一檔只留排前面那招', R.all.join(',') === 'E:招丁,A:招甲,B:招乙,C:招甲,D:招丙', R.all.join(','));
         ok('② 實際推薦照舊:前 2 名、只收 🧬、⛔ 空頭(A、D)', R.top.join(',') === 'A,D', R.top.join(','));
         ok('③ 整份名單照 🔥 買法:收盤到觸發價才買(4 筆)、沒到的不買(D)', R.L.mech === 'trig' && R.L.n === 4 && R.L.miss === 1, JSON.stringify(R.L));
         ok('③ 每一筆帶推薦當時的回測數字與招名、成交在隔天收盤', R.L.ex.every(([s, k, e, en]) => typeof k === 'string' && k && Number.isFinite(e) && en > 0) && (R.L.ex.find(x => x[0] === 'E') || [])[2] === 7, JSON.stringify(R.L.ex));
+        ok('③h 🎯 名單上有回測勝率的那檔帶進來(A 62.5),舊格式沒有的是 null(⛔ 補 0)', R.L.w.includes('A:62.5') && R.L.w.filter(x => x.endsWith(':null')).length === R.L.n - 1, R.L.w.join(','));
         ok('③ 實際推薦那份還是前 2 名(A 買到、D 沒到)', R.T.n === 1 && R.T.syms[0] === 'A', JSON.stringify(R.T));
 
         // ── ④ 畫面 ──
