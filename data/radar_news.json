@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-13 16:50 UTC",
+  "updated": "2026-11-13 17:40 UTC",
   "count": 15,
   "data": [
     {
@@ -12,7 +12,7 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "精材獲台積電先進封裝產能外包",
+      "ai_reason": "精材獲台積電先進封裝產能外包合約",
       "important": true
     },
     {
@@ -25,7 +25,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "晶片外流中國恐引發更嚴出口管制",
+      "ai_reason": "晶片外流恐引發更嚴出口管制",
       "important": true
     },
     {
@@ -38,7 +38,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "多家大廠斥資買入，顯示市場信心",
+      "ai_reason": "多家大廠斥資26億搶購未上市股權",
       "important": true
     },
     {
@@ -68,7 +68,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "擴產搶攻AI檢測與FCC新制商機",
+      "ai_reason": "擴產因應AI檢測需求，營收有望成長",
       "important": true
     },
     {
@@ -83,7 +83,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "前3季淨利年增8成，EPS達3.66元",
+      "ai_reason": "寶成前3季淨利年增8成，EPS達3.66元",
       "important": true
     },
     {
@@ -126,7 +126,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "台新新光金控獲利年增141%，EPS創新高",
+      "ai_reason": "台新新光金控前10月獲利年增141%創新高",
       "important": true
     },
     {
@@ -140,7 +140,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "Q3獲利年增114倍，業績大幅優於預期",
+      "ai_reason": "Q3獲利年增114倍，業績大幅爆發",
       "important": true
     },
     {
@@ -166,7 +166,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "中國AI計畫仍依賴輝達晶片，顯示管制漏洞",
+      "ai_reason": "輝達晶片受限，衝擊中國AI運算計畫",
       "important": true
     },
     {
@@ -195,7 +195,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "看旺2027年AI與HPC動能",
+      "ai_reason": "看旺2027年AI與HPC成長動能",
       "important": true
     },
     {
@@ -209,7 +209,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "AI訂單強勁，資本支出增加",
+      "ai_reason": "AI訂單強勁，資本支出大增",
       "important": true
     }
   ]
