@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-13 17:40 UTC",
+  "updated": "2026-11-13 18:57 UTC",
   "count": 15,
   "data": [
     {
@@ -12,7 +12,7 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "精材獲台積電先進封裝產能外包合約",
+      "ai_reason": "精材獲台積電先進封裝產能外包，2029量產",
       "important": true
     },
     {
@@ -25,7 +25,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "晶片外流恐引發更嚴出口管制",
+      "ai_reason": "晶片外流中國恐加嚴出口管制",
       "important": true
     },
     {
@@ -52,7 +52,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "前10月獲利創新高，EPS達2.31元",
+      "ai_reason": "獲利創新高，資本市場熱絡帶動",
       "important": true
     },
     {
@@ -83,7 +83,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "寶成前3季淨利年增8成，EPS達3.66元",
+      "ai_reason": "前3季淨利年增8成，EPS達3.66元",
       "important": true
     },
     {
@@ -97,7 +97,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "單季政府補助款創新高，強化財務體質",
+      "ai_reason": "單季補助款創新高，強化財報獲利能力",
       "important": true
     },
     {
@@ -126,7 +126,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "台新新光金控前10月獲利年增141%創新高",
+      "ai_reason": "前10月淨利年增141%，EPS創新高",
       "important": true
     },
     {
@@ -140,7 +140,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "Q3獲利年增114倍，業績大幅爆發",
+      "ai_reason": "Q3獲利年增114倍，財報表現優異",
       "important": true
     },
     {
@@ -154,19 +154,6 @@
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
       "ai_reason": "獲歐美無人機大單，營收預估上修",
-      "important": true
-    },
-    {
-      "source_name": "中央社財經",
-      "title": "黃仁勳去職和美國加強監管　危及中國逾30億美元AI計畫",
-      "link": "https://www.cna.com.tw/news/aopl/202611130290.aspx",
-      "published_time": "Fri, 13 Nov 2026 19:44:21 +0800",
-      "matched_keywords": [
-        "出口管制"
-      ],
-      "cat": "🌍 地緣管制",
-      "ai_sentiment": "利空",
-      "ai_reason": "輝達晶片受限，衝擊中國AI運算計畫",
       "important": true
     },
     {
@@ -199,6 +186,22 @@
       "important": true
     },
     {
+      "source_name": "Yahoo 即時財經",
+      "title": "明年EPS衝214元！「這大廠」受惠AI伺服器成長引擎　目標價上看2500元",
+      "link": "https://tw.news.yahoo.com/%E6%98%8E%E5%B9%B4eps%E8%A1%9D214%E5%85%83-%E9%80%99%E5%A4%A7%E5%BB%A0-%E5%8F%97%E6%83%A0ai%E4%BC%BA%E6%9C%8D%E5%99%A8%E6%88%90%E9%95%B7%E5%BC%95%E6%93%8E-%E7%9B%AE%E6%A8%99%E5%83%B9%E4%B8%8A%E7%9C%8B2500%E5%85%83-180800133.html",
+      "published_time": "Fri, 13 Nov 2026 18:08:00 +0800",
+      "matched_keywords": [
+        "出貨",
+        "營收",
+        "EPS",
+        "展望"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI伺服器需求升溫，EPS與目標價上修",
+      "important": true
+    },
+    {
       "source_name": "自由財經",
       "title": "技嘉AI動能旺至2027年底 明年資本支出40億元",
       "link": "https://ec.ltn.com.tw/article/breakingnews/5639924",
@@ -209,7 +212,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "AI訂單強勁，資本支出大增",
+      "ai_reason": "AI訂單強勁，資本支出增加",
       "important": true
     }
   ]
