@@ -1,12 +1,12 @@
 {
- "updated": "2026-11-13T14:34:35Z",
+ "updated": "2026-11-14T14:34:33Z",
  "start": "2009-01",
  "months_total": 215,
- "months_complete": 152,
- "days_with_data": 3111,
+ "months_complete": 159,
+ "days_with_data": 3249,
  "fetched_this_run": 150,
  "asked_this_run": 150,
- "last_day": "20210929",
+ "last_day": "20220427",
  "stopped": "",
  "more": 1,
  "gate": {
