@@ -24,6 +24,7 @@ on:
           - td_plan # 🔎 2026-11-15 換掉 yfinance 第二階段:Twelve Data 免費方案給哪些代號(~4 分,只讀、示範金鑰、只印 log)
           - yf2_src # 🔎 2026-11-15 換掉 yfinance 第二階段:Cboe VIX / FRED / 期交所夜盤欄位 / Coinbase・Kraken 比特幣(~1 分,只讀、只印 log)
           - yf2_live # 🔎 2026-11-15 同上:Cboe 延遲報價(VIX / SPX)+ 期交所行情網夜盤(~20 秒,只讀、只印 log)
+          - yf2_cboe # 🔎 2026-11-15 同上:Cboe 延遲報價有沒有 ADR / 美股 / ETF / 其他指數(~1 分,只讀、只印 log)
 
 permissions:
   contents: read
@@ -62,9 +63,11 @@ jobs:
       # 🔎 2026-11-15 yfinance 第二階段:免金鑰的官方 / 公開來源(Cboe VIX、FRED、期交所 OpenAPI 欄位、Coinbase / Kraken)
       #   ⛔ 只讀、只印、⛔ 不用金鑰;沙箱連不到這些網站 → 只能在這裡跑。
       - name: 🔎 yfinance 第二階段免金鑰來源
-        if: ${{ inputs.which == 'yf2_src' || inputs.which == 'yf2_live' }}
+        if: ${{ inputs.which == 'yf2_src' || inputs.which == 'yf2_live' || inputs.which == 'yf2_cboe' }}
         env:
-          WHICH: ${{ inputs.which == 'yf2_live' && 'live' || '' }}
+          WHICH: ${{ (inputs.which == 'yf2_live' || inputs.which == 'yf2_cboe') && 'live' || '' }}
+          CBOE_ONLY: ${{ inputs.which == 'yf2_cboe' && '1' || '' }}
+          CBOE_SYMS: ${{ inputs.which == 'yf2_cboe' && '_SOX,_RUT,_COMP,_IXIC,TSM,ASX,UMC,NVDA,AAPL,MSFT,SPY,QQQ,SOXX,SMH,GLD,USO,BNO,CPER,UUP,FXI,EWY' || '' }}
         run: |
           python3 scripts/yf2_src_probe.py --selftest
           python3 scripts/yf2_src_probe.py

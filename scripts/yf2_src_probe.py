@@ -60,7 +60,7 @@ def tx_rows(data):
 
 
 CBOE_DQ = 'https://cdn.cboe.com/api/global/delayed_quotes/quotes/{sym}.json'
-CBOE_SYMS = ['_VIX', '_SPX', '_NDX', '_DJX']
+CBOE_SYMS = [x for x in (__import__('os').environ.get('CBOE_SYMS') or '_VIX,_SPX,_NDX,_DJX').split(',') if x]
 TAIFEX_MIS = 'https://mis.taifex.com.tw/futures/api/getQuoteList'
 
 
@@ -81,6 +81,8 @@ def live(s, H):
         except Exception as e:  # noqa: BLE001
             print(f'⑤ Cboe {sym} ❌ 連不上 / 格式不同 {type(e).__name__}')
         time.sleep(2)
+    if __import__('os').environ.get('CBOE_ONLY'):
+        return
     body = {"MarketType": "1", "SymbolType": "F", "KindID": "1", "CID": "TXF", "ExpireMonth": "",
             "RowSize": "全部", "PageNo": "", "SortColumn": "", "AscDesc": "A"}
     try:
