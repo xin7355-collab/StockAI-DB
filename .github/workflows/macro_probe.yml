@@ -22,6 +22,7 @@ on:
           - us_cycle # 🇺🇸 V81.0.2 標普 500 1928 起:大跌是不是幾年一次(研究,~1 分,只讀 Yahoo、只印 log)
           - crash_global # 🌏 V81.0.3 急跌之後多久見底:台股 1990 起 + 美日港韓德英(研究,~20 分,只讀 Yahoo / 證交所、只印 log)
           - td_plan # 🔎 2026-11-15 換掉 yfinance 第二階段:Twelve Data 免費方案給哪些代號(~4 分,只讀、示範金鑰、只印 log)
+          - yf2_src # 🔎 2026-11-15 換掉 yfinance 第二階段:Cboe VIX / FRED / 期交所夜盤欄位 / Coinbase・Kraken 比特幣(~1 分,只讀、只印 log)
 
 permissions:
   contents: read
@@ -56,6 +57,14 @@ jobs:
         run: |
           python3 scripts/twelvedata_plan_probe.py --selftest
           python3 scripts/twelvedata_plan_probe.py
+
+      # 🔎 2026-11-15 yfinance 第二階段:免金鑰的官方 / 公開來源(Cboe VIX、FRED、期交所 OpenAPI 欄位、Coinbase / Kraken)
+      #   ⛔ 只讀、只印、⛔ 不用金鑰;沙箱連不到這些網站 → 只能在這裡跑。
+      - name: 🔎 yfinance 第二階段免金鑰來源
+        if: ${{ inputs.which == 'yf2_src' }}
+        run: |
+          python3 scripts/yf2_src_probe.py --selftest
+          python3 scripts/yf2_src_probe.py
 
       # 🌏 V74.6.9 台股 vs 美日韓大盤層級對照 —— 沙箱連不到 Yahoo/stooq,只能在這裡跑。
       #   ⛔ 只讀、只印:不寫檔、不碰任何分支、不需要任何機密。
