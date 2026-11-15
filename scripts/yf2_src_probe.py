@@ -83,21 +83,23 @@ def live(s, H):
         time.sleep(2)
     if __import__('os').environ.get('CBOE_ONLY'):
         return
-    body = {"MarketType": "1", "SymbolType": "F", "KindID": "1", "CID": "TXF", "ExpireMonth": "",
-            "RowSize": "全部", "PageNo": "", "SortColumn": "", "AscDesc": "A"}
-    try:
-        r = s.post(TAIFEX_MIS, json=body, headers={**H, 'Content-Type': 'application/json'}, timeout=20)
-        st, why = classify(r.status_code, r.text[:200])
-        if st == 'ok':
-            j = r.json()
-            rows = (((j or {}).get('RtData') or {}).get('QuoteList') or [])
-            print(f"⑥ 期交所行情網(盤後)✅ RtCode={(j or {}).get('RtCode')} ・{len(rows)} 列 ・欄位 {list(rows[0].keys())[:40] if rows else []}")
-            for row in rows[:3]:
-                print('   ', json.dumps(row, ensure_ascii=False)[:500])
-        else:
-            print(f'⑥ 期交所行情網 ❌ {st}:{why} ・開頭 {r.text[:160]!r}')
-    except Exception as e:  # noqa: BLE001
-        print(f'⑥ 期交所行情網 ❌ 連不上 / 格式不同 {type(e).__name__}')
+    for mk, nm in (('1', '盤後'), ('0', '日盤')):
+        body = {"MarketType": mk, "SymbolType": "F", "KindID": "1", "CID": "TXF", "ExpireMonth": "",
+                "RowSize": "全部", "PageNo": "", "SortColumn": "", "AscDesc": "A"}
+        try:
+            r = s.post(TAIFEX_MIS, json=body, headers={**H, 'Content-Type': 'application/json'}, timeout=20)
+            st, why = classify(r.status_code, r.text[:200])
+            if st == 'ok':
+                j = r.json()
+                rows = (((j or {}).get('RtData') or {}).get('QuoteList') or [])
+                print(f"⑥ 期交所行情網({nm})✅ RtCode={(j or {}).get('RtCode')} ・{len(rows)} 列 ・欄位 {list(rows[0].keys())[:40] if rows else []}")
+                for row in rows[:3]:
+                    print('   ', json.dumps(row, ensure_ascii=False)[:500])
+            else:
+                print(f'⑥ 期交所行情網({nm})❌ {st}:{why} ・開頭 {r.text[:160]!r}')
+        except Exception as e:  # noqa: BLE001
+            print(f'⑥ 期交所行情網({nm})❌ 連不上 / 格式不同 {type(e).__name__}')
+        time.sleep(2)
 
 
 def main():
