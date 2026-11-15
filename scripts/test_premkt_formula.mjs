@@ -151,6 +151,8 @@ async function run(html, proHtml = PRO_SRC) {
     o.txDay = await runTx({ price: 23456, chg: 2.47, est: false, sess: 'day', date: '2026-10-28' });
     o.txNa = await runTx({ price: 23456, chg: 2.47, est: false });
     o.txNight = await runTx({ price: 23456, chg: 2.47, est: false, sess: 'night' });
+    // ⑥f 💱 V82.4.0 期交所行情網的真夜盤標 score: false(V42.0 那條計分沒回測過)→ 只顯示、⛔ 算分;那一格寫「只顯示、不算分」
+    o.txNightNo = await runTx({ price: 23456, chg: 2.47, est: false, sess: 'night', score: false, date: '2026-11-17' });
     // ⑨ V79.9.8 開盤發生率那一行:高分 / 低分各跑一次,三個比例跟著換
     const occOf = async extra => { A._macroRiskCache = { ...mr, ...extra }; await A.renderMarketBriefing();
       const el = document.querySelector('#marketBriefing [data-occ="premkt"]'); return { p: (A._preOpenCalc || {}).sPct, t: el ? el.textContent : '' }; };
@@ -196,6 +198,9 @@ async function run(html, proHtml = PRO_SRC) {
   const TX = { day: R.txDay && R.txDay.d, na: R.txNa && R.txNa.d, night: R.txNight && R.txNight.d, ds: R.txNight && R.txDay && R.txNight.s - R.txDay.s };
   ok('⑥d V79.9.8 台指期前一天日盤 / 不知道哪一盤 ⛔ 算分;同一個 +2.47% 換成真的夜盤才 +1.5(決定性對照)',
      TX.day === undefined && TX.na === undefined && TX.night === 1.5 && Math.abs(TX.ds - 1.5) < 1e-9, JSON.stringify(TX));
+  ok('⑥f 💱 真夜盤但 score: false → ⛔ 算分(總分跟日盤那次一樣)、那一格寫「夜盤」+「不算分」',
+     R.txNightNo && R.txNightNo.d === undefined && R.txDay && Math.abs(R.txNightNo.s - R.txDay.s) < 1e-9 && /夜盤/.test(R.txNightNo.txt) && /不算分/.test(R.txNightNo.txt),
+     JSON.stringify({ d: R.txNightNo && R.txNightNo.d, s: R.txNightNo && R.txNightNo.s, s0: R.txDay && R.txDay.s }));
   ok('⑥e 日盤那一格寫出哪一天、「日盤」、「只列出來」;⛔ 寫「夜盤走強」',
      /10\/28/.test(R.txDay.txt) && /日盤/.test(R.txDay.txt) && /只列出來/.test(R.txDay.txt) && !/夜盤走強/.test(R.txDay.txt) && !/夜盤走強/.test(R.txNa.txt),
      R.txDay.txt.slice(0, 160));
@@ -222,7 +227,7 @@ async function run(html, proHtml = PRO_SRC) {
     dji_chg_pct: num(-3, 3), nasdaq_chg_pct: num(-4, 4), sp500_chg_pct: num(-3, 3), sox_chg_pct: num(-6, 6), tsm_chg_pct: num(-6, 6),
     asx_chg_pct: num(-5, 5), umc_chg_pct: num(-5, 5), tsm_date: pick(['2026-10-21', '2026-10-21', '2026-10-20']), asx_date: pick(['2026-10-21', '2026-10-20']), umc_date: pick(['2026-10-21', '']),
     vix: num(11, 40, 0.05), nq_fut_chg_pct: num(-1.5, 1.5, 0.5), ust10y_chg_pct: num(-4, 4, 0.2),
-    taifex_tx_now: rnd() < 0.4 ? null : { chg: num(-2.5, 2.5, 0), est: rnd() < 0.2, sess: pick(['night', 'night', 'day', undefined]) },
+    taifex_tx_now: rnd() < 0.4 ? null : { chg: num(-2.5, 2.5, 0), est: rnd() < 0.2, sess: pick(['night', 'night', 'day', undefined]), ...(rnd() < 0.3 ? { score: false } : {}) },
     nikkei_chg_pct: num(-4, 4), kospi_chg_pct: num(-5, 5), hsi_chg_pct: num(-4, 4), nikkei_date: '2026-10-21', kospi_date: '2026-10-21', hsi_date: '2026-10-20',
     fear_greed: num(5, 95, 0.15), usdtwd_chg_pct: num(-0.8, 0.8, 0.1), usdtwd_chg_5d: num(-2, 2, 0.1), krw_chg_5d: num(-2, 2, 0.2), cny_chg_5d: num(-1.5, 1.8, 0.2),
     fi_total_net: 100, fi_spot_net: -50,

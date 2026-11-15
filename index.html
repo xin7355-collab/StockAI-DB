@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.3.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.3.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.4.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8974,10 +8974,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.3.9',
+    _APP_VERSION: 'V82.4.0',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.4.0', d: [
+            '💱 背景資料更新:美股指數、VIX、台積電 ADR、比特幣、日經、台指期改抓交易所 / 官方的資料;台指期夜盤早上就看得到凌晨剛收的那一盤(先只顯示,還不算進盤前分數)',
+        ], dt: '2026-11-15' },
         { v: 'V82.3.9', d: [
             '🟥 「這套策略每年賺多少」改用更保守的算法:訊號那天收盤鎖在漲停價的買進不算(收盤排隊多半買不到),🅿️ / 📈 的每年數字跟著變',
         ], dt: '2026-11-14' },
@@ -9302,11 +9305,6 @@ ${list}
             '📐 產業作戰室「🔬 研究」多一頁「量化實驗室」:KD 黃金交叉、跳空開高、帶量突破、外資連買、融資減少、均線多頭、月營收創新高、負乖離搶反彈 8 個常見買點,用同一套規則 16 年全部股票一起算,扣掉手續費和稅,跟同一天的股票、跟同一年隨便挑一天買各比一次;表頭可以排序、點一列看每一年和參數左右挪的結果',
             '🔀 「🏆 選哪一套」那張表,預設那一欄第一次點也會反過來排了',
         ], dt: '2026-10-26' },
-        { v: 'V79.8.7', d: [
-            '🎲 解鎖後的專欄:庫存、自選或正在看的股票碰到某種情況(鎖漲停、跌破月線、外資連買、融資追繳線…)時,那一則底下多一行「這檔過去碰到幾次 → 之後怎樣幾次 ・這檔平常隨便一天 ・一般股票 16 年」三個比例一起看',
-            '🎲 大盤那幾則(剛轉空頭、跌 20%、單日跌 3%)也多一行:2010 年起加權發生幾次 → 20 天後上漲幾次,旁邊放平常隨便一天的比例',
-            '📌 大部分情況「這檔自己以前的次數」猜不準下一次,畫面會直接寫出來;那一行講的是過去發生過的比例,⛔ 不是會漲或會跌',
-        ], dt: '2026-10-25' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -13086,7 +13084,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             if (localRes.status === 404) {
                 if (!apiBase && !quiet) {
                     const msg = _isIndex
-                        ? `⚠️ ${symbol} 指數 K 線採礦中(yfinance 需 2 年 ^TWII 歷史,偶遇美國假日/限流可能空白);請等下次採礦或 30 分後重試`
+                        ? `⚠️ ${symbol} 指數 K 線採礦中(證交所 / 櫃買官方歷史,休市或官方還沒公布時可能空白);請等下次採礦或 30 分後重試`
                         : `⚠️ ${symbol} 尚無採礦資料,請點 🔄 或等待每日 16:30 自動更新`;
                     this.showToast(msg);
                 }
@@ -18064,7 +18062,8 @@ const marginByDate = {};
         //   (TAIFEX OpenAPI;10/29 早上拿到的是 10/28 日盤 +2.47%)→ 那一天的漲跌台股前一天收盤早就反映了,
         //   以前當成「夜盤」+1.5 分、分析師那行寫「夜盤走強」= 講錯。⛔ 沒有 sess / 日盤 / 估算 一律不算分(pro `_premktScore` 同一條,test_premkt_formula ⑥⑧)。
         let nightChg = null;
-        if (txNight && txNight.sess === 'night' && txNight.est !== true && txNight.chg != null && Number.isFinite(+txNight.chg)) nightChg = +txNight.chg;
+        // 💱 V82.4.0 期交所行情網給的是真的夜盤,但 V42.0 那條計分沒有回測過 → 採礦標 score: false = 只顯示、⛔ 算分(等使用者決定)
+        if (txNight && txNight.sess === 'night' && txNight.est !== true && txNight.score !== false && txNight.chg != null && Number.isFinite(+txNight.chg)) nightChg = +txNight.chg;
         const _po = this._preOpenScore({
             dji: usPct('dji'), ndx: usPct('nasdaq'), spx: usPct('sp500'), sox: usPct('sox'), tsm: usPct('tsm'),
             asx: asxChg, umc: umcChg, vix, nq: mr.nq_fut_chg_pct, ust: mr.ust10y_chg_pct, night: nightChg,
@@ -18134,7 +18133,8 @@ const marginByDate = {};
         const txNightLine = (() => {
             if (!(txNight && txNight.price)) return `<span class="text-gray-500">採集中</span>`;
             const px = `<span class="font-mono ${txNight.chg > 0 ? 'text-red-300' : txNight.chg < 0 ? 'text-green-300' : 'text-gray-300'}">${(+txNight.price).toFixed(0)}${txNight.chg != null ? ` (${txNight.chg > 0 ? '+' : ''}${txNight.chg}%)` : '(估)'}</span>`;
-            if (txNight.sess === 'night') return `${px} <span class="text-gray-500 text-[10px]">夜盤</span>`;
+            if (txNight.sess === 'night') return `${px} <span class="text-gray-500 text-[10px]">夜盤${txNight.date ? ' ' + this._dW(String(txNight.date).slice(0, 10)) : ''}${txNight.score === false ? '(只顯示、不算分)' : ''}</span>`;
+            if (txNight.sess === 'live') return `${px} <span class="text-gray-500 text-[10px]" data-txsess="live">日盤盤中(開盤後的盤前分數只看開盤前那一刻)</span>`;
             const dTxt = txNight.date ? this._dW(String(txNight.date).slice(0, 10)) + ' ' : '';
             if (txNight.sess === 'day') return `<span class="text-gray-500 text-[10px]" data-txsess="day">${dTxt}日盤</span> ${px} <span class="text-gray-500 text-[10px]">(那天收盤已反映,只列出來)</span>`;
             return `${px} <span class="text-gray-500 text-[10px]" data-txsess="na">(不知道是哪一盤,只列出來)</span>`;
@@ -18601,7 +18601,7 @@ const marginByDate = {};
             const price = etf.price;
             if (price == null || chg == null) {
                 // V21.7 — Q3 修文案:從「採集中」改成更明確的「⚠️ 抓取失敗」,讓使用者知道是 yfinance 限流不是採礦未跑
-                slot.innerHTML = `<div class="text-[8px] text-amber-400/70">🇺🇸 ${etf.etf}:⚠️ yfinance 抓取失敗,下次採礦補</div>`;
+                slot.innerHTML = `<div class="text-[8px] text-amber-400/70">🇺🇸 ${etf.etf}:⚠️ 這一輪沒抓到,下次採礦補</div>`;
                 return;
             }
             const chgNum = parseFloat(chg);
@@ -55374,10 +55374,10 @@ App 會在那個時段幫你盯,到價自動提醒。
                         + (this._fiMtdStr?.() ? `(${this._fiMtdStr().txt})` : '');
         // 🌍 全球 8 巨頭脈動（macro_risk.json 新採欄位）
         const bigPlayerLines = [
-            `🪙 黃金 ${fmtMr(mr.gold)} ${fmtChg(mr.gold_chg_pct)}`,
-            `🛢️ WTI ${fmtMr(mr.wti)} ${fmtChg(mr.wti_chg_pct)}`,
+            `🪙 黃金 ${fmtMr(mr.gold_usd ?? mr.gold)} ${fmtChg(mr.gold_chg_pct)}`,
+            `🛢️ WTI ${fmtMr(mr.wti_oil ?? mr.wti)} ${fmtChg(mr.wti_chg_pct)}`,
             `💵 DXY ${fmtMr(mr.dxy)} ${fmtChg(mr.dxy_chg_pct)}`,
-            `₿ BTC ${fmtMr(mr.btc)} ${fmtChg(mr.btc_chg_pct)}`,
+            `₿ BTC ${fmtMr(mr.btc_usd ?? mr.btc)} ${fmtChg(mr.btc_chg_pct)}`,
             `😱 VIX ${fmtMr(mr.vix)} ${fmtChg(mr.vix_chg_pct)}`,
             `🇯🇵 日經 ${fmtMr(mr.nikkei)} ${fmtChg(mr.nikkei_chg_pct)}`,
             `🇭🇰 恆生 ${fmtMr(mr.hsi)} ${fmtChg(mr.hsi_chg_pct)}`,
@@ -55488,7 +55488,7 @@ App 會在那個時段幫你盯,到價自動提醒。
         if (_has(twii) || _has(twoii)) used.push('加權 / 櫃買');
         if (fi !== null) used.push('外資台指期');
         if (mr.fi_spot_net != null) used.push('外資現貨');
-        if ([mr.us10y_yield, mr.us2y_yield, mr.fear_greed, mr.retail_ls_pct, mr.usdtwd, mr.taifex_backwardation, mr.gold, mr.wti, mr.btc, mr.nikkei, mr.kospi, mr.hsi].some(v => v != null)) used.push(`總經 / 國際行情${mr.updated ? ` ${this._dW(mr.updated)}` : ''}`);
+        if ([mr.us10y_yield, mr.us2y_yield, mr.fear_greed, mr.retail_ls_pct, mr.usdtwd, mr.taifex_backwardation, mr.gold_usd ?? mr.gold, mr.wti_oil ?? mr.wti, mr.btc_usd ?? mr.btc, mr.nikkei, mr.kospi, mr.hsi].some(v => v != null)) used.push(`總經 / 國際行情${mr.updated ? ` ${this._dW(mr.updated)}` : ''}`);
         if ([dim_pv, dim_chip, dim_macro, dim_tech, dim_senti].some(_has) || riskScore != null) used.push('戰情 5 維 / 風險指數');
         if (sh.warzones || sh.sectors) used.push('板塊漲跌');
         if (_syncLines.length) used.push('台美族群同步');
@@ -55537,7 +55537,7 @@ App 會在那個時段幫你盯,到價自動提醒。
 - VIX 恐慌: ${vix} ${fmtChg(mr.vix_chg_pct)}
 - NVDA: ${nvda} ${nvdaChg}
 - 美元指數 DXY: ${dxy} ${dxyChg}
-- 黃金: ${fmtMr(mr.gold)} ${fmtChg(mr.gold_chg_pct)} / WTI 原油: ${fmtMr(mr.wti)} ${fmtChg(mr.wti_chg_pct)} / 比特幣: ${fmtMr(mr.btc)} ${fmtChg(mr.btc_chg_pct)}
+- 黃金: ${fmtMr(mr.gold_usd ?? mr.gold)} ${fmtChg(mr.gold_chg_pct)} / WTI 原油: ${fmtMr(mr.wti_oil ?? mr.wti)} ${fmtChg(mr.wti_chg_pct)} / 比特幣: ${fmtMr(mr.btc_usd ?? mr.btc)} ${fmtChg(mr.btc_chg_pct)}
 - 日經 225: ${fmtMr(mr.nikkei)} ${fmtChg(mr.nikkei_chg_pct)} / KOSPI: ${fmtMr(mr.kospi)} ${fmtChg(mr.kospi_chg_pct)} / 恆生: ${fmtMr(mr.hsi)} ${fmtChg(mr.hsi_chg_pct)}
 - 加權: ${twii} / 上櫃: ${twoii}
 - 外資台指期: ${fiLabel} / 外資現貨: ${fiSpotStr}

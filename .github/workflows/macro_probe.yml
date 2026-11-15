@@ -21,6 +21,10 @@ on:
           - trump_src # 🗽 V80.2.1 川普發文來源:CNN 存檔 CSV + trumpstruth RSS 的真實格式 / 大小 / 時區 / 304(~2 分,只讀)
           - us_cycle # 🇺🇸 V81.0.2 標普 500 1928 起:大跌是不是幾年一次(研究,~1 分,只讀 Yahoo、只印 log)
           - crash_global # 🌏 V81.0.3 急跌之後多久見底:台股 1990 起 + 美日港韓德英(研究,~20 分,只讀 Yahoo / 證交所、只印 log)
+          - td_plan # 🔎 2026-11-15 換掉 yfinance 第二階段:Twelve Data 免費方案給哪些代號(~4 分,只讀、示範金鑰、只印 log)
+          - yf2_src # 🔎 2026-11-15 換掉 yfinance 第二階段:Cboe VIX / FRED / 期交所夜盤欄位 / Coinbase・Kraken 比特幣(~1 分,只讀、只印 log)
+          - yf2_live # 🔎 2026-11-15 同上:Cboe 延遲報價(VIX / SPX)+ 期交所行情網夜盤(~20 秒,只讀、只印 log)
+          - yf2_cboe # 🔎 2026-11-15 同上:Cboe 延遲報價有沒有 ADR / 美股 / ETF / 其他指數(~1 分,只讀、只印 log)
 
 permissions:
   contents: read
@@ -47,6 +51,26 @@ jobs:
       - name: 📐 台指期順逆價差探針
         if: ${{ inputs.which == 'taifex' || inputs.which == 'both' }}
         run: python3 scripts/taifex_probe.py
+
+      # 🔎 2026-11-15 yfinance 第二階段 B(要金鑰的免費 API)選哪一家之前先量:Twelve Data 每個代號要哪個方案(show_plan)。
+      #   ⛔ 只讀、只印;⛔ 用使用者的金鑰(用官方文件公開的 demo,而且走標頭);沙箱連不到 api.twelvedata.com → 只能在這裡跑。
+      - name: 🔎 Twelve Data 免費方案代號清單
+        if: ${{ inputs.which == 'td_plan' }}
+        run: |
+          python3 scripts/twelvedata_plan_probe.py --selftest
+          python3 scripts/twelvedata_plan_probe.py
+
+      # 🔎 2026-11-15 yfinance 第二階段:免金鑰的官方 / 公開來源(Cboe VIX、FRED、期交所 OpenAPI 欄位、Coinbase / Kraken)
+      #   ⛔ 只讀、只印、⛔ 不用金鑰;沙箱連不到這些網站 → 只能在這裡跑。
+      - name: 🔎 yfinance 第二階段免金鑰來源
+        if: ${{ inputs.which == 'yf2_src' || inputs.which == 'yf2_live' || inputs.which == 'yf2_cboe' }}
+        env:
+          WHICH: ${{ (inputs.which == 'yf2_live' || inputs.which == 'yf2_cboe') && 'live' || '' }}
+          CBOE_ONLY: ${{ inputs.which == 'yf2_cboe' && '1' || '' }}
+          CBOE_SYMS: ${{ inputs.which == 'yf2_cboe' && '_SOX,_RUT,_COMP,_IXIC,TSM,ASX,UMC,NVDA,AAPL,MSFT,SPY,QQQ,SOXX,SMH,GLD,USO,BNO,CPER,UUP,FXI,EWY' || '' }}
+        run: |
+          python3 scripts/yf2_src_probe.py --selftest
+          python3 scripts/yf2_src_probe.py
 
       # 🌏 V74.6.9 台股 vs 美日韓大盤層級對照 —— 沙箱連不到 Yahoo/stooq,只能在這裡跑。
       #   ⛔ 只讀、只印:不寫檔、不碰任何分支、不需要任何機密。
@@ -120,6 +144,9 @@ jobs:
           GROQ_API_KEY:    ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
           GEMINI_API_KEY:  ${{ secrets.GEMINI_API_KEY }}
+          # 💱 V82.4.0 換掉 yfinance 第二階段:黃金現貨 + 美元指數(6 個匯率照 ICE 公式算)走 Twelve Data 免費方案;
+          #   沒設這個 Secret 也不會壞:lib_quotes.td_quote 回 nokey → 黃金 / 美元指數照舊(⛔ 發失敗通知)。金鑰只走標頭。
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
         run: python macro_miner.py || echo "⚠️ macro_miner.py 非零退出（仍印出結果）"
 
       - name: 🔎 印出 macro_risk.json（驗證每一欄）

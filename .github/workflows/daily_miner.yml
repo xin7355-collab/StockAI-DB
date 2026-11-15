@@ -501,6 +501,9 @@ jobs:
           FINMIND_TOKEN:   ${{ secrets.FINMIND_TOKEN }}
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
           GEMINI_API_KEY:  ${{ secrets.GEMINI_API_KEY }}
+          # 💱 V82.4.0 換掉 yfinance 第二階段:黃金現貨 + 美元指數(6 個匯率照 ICE 公式算)走 Twelve Data 免費方案;
+          #   沒設這個 Secret 也不會壞:lib_quotes.td_quote 回 nokey → 黃金 / 美元指數照舊(⛔ 發失敗通知)。金鑰只走標頭。
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
         run: |
           python -m pip install requests yfinance ta pandas numpy feedparser --quiet
           mkdir -p /tmp/parallel

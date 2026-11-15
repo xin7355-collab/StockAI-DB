@@ -7927,7 +7927,8 @@ const PRO = {
     const ust = N(mr.ust10y_chg_pct); if (ust != null) add('美債 10 年期', ust, ust >= 2 ? -0.5 : ust <= -2 ? 0.5 : 0);
     // 🐛 V79.9.8 只認真的夜盤(sess === 'night');採礦那份其實是前一個交易日的日盤 → 那天收盤早就反映了,⛔ 不算(同 App)
     const tx = mr.taifex_tx_now;
-    if (tx && tx.sess === 'night' && tx.est !== true && N(tx.chg) != null) { const c = +tx.chg; add('台指期夜盤', c, c >= 1 ? 1.5 : c >= 0.2 ? 1 : c <= -1 ? -2 : c <= -0.2 ? -1 : 0); }
+    // 💱 V82.4.0 同 App:score === false(真的夜盤、但計分沒回測過)= 只顯示、⛔ 算分
+    if (tx && tx.sess === 'night' && tx.est !== true && tx.score !== false && N(tx.chg) != null) { const c = +tx.chg; add('台指期夜盤', c, c >= 1 ? 1.5 : c >= 0.2 ? 1 : c <= -1 ? -2 : c <= -0.2 ? -1 : 0); }
     const fg = N(mr.fear_greed); if (fg != null) add('恐懼貪婪', fg, fg >= 80 ? -0.5 : fg <= 20 ? 0.5 : 0);
     const twd = N(mr.usdtwd_chg_pct), twd5 = N(mr.usdtwd_chg_5d), krw5 = N(mr.krw_chg_5d), cny5 = N(mr.cny_chg_5d);
     if (twd != null) add('台幣(當日)', twd, twd >= 0.4 ? -1 : twd >= 0.15 ? -0.5 : twd <= -0.4 ? 1 : twd <= -0.15 ? 0.5 : 0);
@@ -11248,7 +11249,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V82.3.9',
+  VER: 'V82.4.0',
   _ROT: {
     win: 20, spread: 1.95, top: 1.06, bot: -0.88,
     q1: 2.48, q2: 1.42, exBest: 1.83,

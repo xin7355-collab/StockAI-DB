@@ -6,16 +6,20 @@
   那份是**前一個交易日的日盤**(10/29 早上拿到 10/28 日盤 +2.47%,10/27 早上拿到 10/22 日盤),
   而且回傳時 `date: None` → 前端當成夜盤 +1.5 分、分析師那行寫「夜盤走強」= 講錯。
 
-修法:`fetch_taifex_tx_now` 每條路徑都標 `sess`('yf' 盤中 / 'day' 日線或 OpenAPI 日盤)+ 那一列自己的日期;
-前端只有 `sess === 'night'`(真的夜盤)才算分(index / pro 同一條,test_premkt_formula ⑥d ⑧)。
+修法:`fetch_taifex_tx_now` 每條路徑都標 `sess` + 那一列自己的日期;前端只有 `sess === 'night'`(真的夜盤)才算分
+(index / pro 同一條,test_premkt_formula ⑥d ⑧)。
+💱 V82.4.0 換掉 yfinance ^TXF=F → 期交所行情網(官方行情系統):日盤時段(台北 08:45~15:00,週一~五)問日盤 →
+'live'(13:45 前)/ 'day'(當天收盤);其他時間問盤後 → 'night' = 真的夜盤,但 **score: False**
+(V42.0 那條計分沒回測過 → 只顯示、⛔ 算分,等使用者決定;test_premkt_formula ⑥f)。
 
 ⛔ 釘住(走正式入口 `fetch_taifex_tx_now`,只換網路):
-  ① yfinance 兩條都失敗 → OpenAPI:sess == 'day'、date == 那一列的 Date(20261028 → 2026-10-28)、est False、漲跌 % 照算
+  ① 行情網拿不到 → OpenAPI:sess == 'day'、date == 那一列的 Date(20261028 → 2026-10-28)、est False、漲跌 % 照算
   ② OpenAPI 沒有漲跌欄 → est True,但 sess / date 照樣有
   ③ OpenAPI 那一列沒有 Date → date None(⛔ 不可編一個今天),sess 仍是 'day'
-  ④ ⭐ 決定性對照:⛔ 任何一條路徑都不可以回 sess == 'night'(現在沒有真的夜盤來源)
+  ④ 夜間(台北 08:00)行情網盤後 → sess 'night'、score False、date = 夜盤結束那天;④b 日盤時段 → 'live' / 'day'(⛔ night);
+     ④c 日盤時段但行情網停在前一天(休市)→ 退 OpenAPI;④d ⭐ 只有行情網盤後那條會回 night,而且一定 score False
   ⑤ `_taifex_openapi_tx_close_change` 回三個值(收盤, 漲跌 %, 資料日),失敗回三個 None
-  INJECT=1:拿掉 sess / 把 date 寫死 None → 必紅
+  INJECT=1:拿掉 sess / 把 date 寫死 None / 夜盤拿掉 score False / 日盤時段也標 night → 必紅
 """
 import os
 import sys
@@ -52,14 +56,25 @@ def run(src, quiet=False):
             fails.append(name)
 
     M = load(src)
+    from datetime import datetime as _RealDT, timezone as _tz, timedelta as _td
 
-    # yfinance 兩條都失敗(盤中 _fetch_yf_future + 日線 Ticker)
-    def _yf_fail(*a, **k):
-        raise RuntimeError('沙箱沒有 yfinance')
-    M._fetch_yf_future = _yf_fail
-    _fake_yf = types.ModuleType('yfinance')
-    _fake_yf.Ticker = _yf_fail
-    sys.modules['yfinance'] = _fake_yf
+    def at(y, mo, d, hh, mm):
+        """凍結「現在」(台北時間)—— fetch_taifex_tx_now 用 datetime.now(台北) 決定問日盤還是盤後。"""
+        class _DT(_RealDT):
+            @classmethod
+            def now(cls, tz=None):
+                t = _RealDT(y, mo, d, hh, mm, tzinfo=_tz(_td(hours=8)))
+                return t.astimezone(tz) if tz else t.replace(tzinfo=None)
+        M.datetime = _DT
+
+    asked = []
+
+    def mis_fail(gate, market='1'):
+        asked.append(market)
+        return None, '期交所行情網 斷路:HTTP 403'
+    M._LQ.taifex_mis = mis_fail
+    M._q_gate = lambda: None
+    at(2026, 10, 29, 8, 0)
 
     ROWS = [
         {'Contract': 'TX', 'ContractMonth(Week)': '202611', 'Date': '20261028',
@@ -85,13 +100,33 @@ def run(src, quiet=False):
     r3 = M.fetch_taifex_tx_now()
     ok('③ 那一列沒有 Date → date None(⛔ 不可編一個今天),sess 仍是 day', r3.get('date') is None and r3.get('sess') == 'day', str(r3))
 
-    # ④ 盤中那條(yfinance 30 分 K)成功 → sess 'yf';日線那條成功 → sess 'day';⛔ 任何一條都不是 'night'
-    M._fetch_yf_future = lambda *a, **k: (47000.0, -0.35, None)
-    M._YF_LAST_DATE = {'^TXF=F': '2026-10-29'}
+    # ④ 期交所行情網(盤後)= 真的夜盤 → sess 'night',但 score False(計分沒回測過,只顯示)
+    NIGHT = {'price': 47000.0, 'chg': -0.35, 'ref': 47165.0, 'date': '2026-11-17', 'time': '04:59:59', 'contract': '臺指期116'}
+    asked.clear()
+    M._LQ.taifex_mis = lambda gate, market='1': (asked.append(market), (dict(NIGHT), ''))[1]
+    at(2026, 11, 17, 8, 0)
     r4 = M.fetch_taifex_tx_now()
-    ok('④ ⭐ 盤中那條:sess == yf(⛔ 不可自稱 night)', r4.get('sess') == 'yf' and r4.get('sess') != 'night', str(r4))
-    ok('④b ⛔ 三條路徑沒有一條回 night(現在沒有真的夜盤來源 → 盤前分數這一項不計分)',
-       all((x or {}).get('sess') != 'night' for x in (r1, r2, r3, r4)), str([(x or {}).get('sess') for x in (r1, r2, r3, r4)]))
+    ok('④ 台北 08:00 → 問盤後(MarketType 1)、sess night、score False、日期 = 夜盤結束那天',
+       asked == ['1'] and r4.get('sess') == 'night' and r4.get('score') is False and r4.get('date') == '2026-11-17'
+       and r4.get('chg') == -0.35 and '盤後' in str(r4.get('src')), str(r4))
+    DAYQ = dict(NIGHT, date='2026-11-17', time='12:05:00', chg=0.4)
+    asked.clear()
+    M._LQ.taifex_mis = lambda gate, market='1': (asked.append(market), (dict(DAYQ), ''))[1]
+    at(2026, 11, 17, 12, 5)
+    r5 = M.fetch_taifex_tx_now()
+    at(2026, 11, 17, 14, 10)
+    r6 = M.fetch_taifex_tx_now()
+    ok('④b 日盤時段 → 問日盤(MarketType 0):13:45 前 live、之後 day(今天收盤);⛔ 標 night、⛔ 帶 score',
+       asked == ['0', '0'] and r5.get('sess') == 'live' and r6.get('sess') == 'day' and 'score' not in r5 and 'score' not in r6, f'{asked} {r5} {r6}')
+    M._LQ.taifex_mis = lambda gate, market='1': (dict(DAYQ, date='2026-11-16'), '')
+    M._taifex_openapi = lambda paths: (ROWS, None)
+    at(2026, 11, 17, 9, 30)
+    r7 = M.fetch_taifex_tx_now()
+    ok('④c 日盤時段但行情網停在前一天(休市 / 還沒開)→ 退 OpenAPI 日盤(⛔ 拿昨天當盤中)',
+       r7.get('sess') == 'day' and r7.get('src') == 'TAIFEX OpenAPI', str(r7))
+    ok('④d ⭐ 只有行情網盤後那條會回 night,而且一定 score False(OpenAPI 三條 ⛔ night)',
+       all((x or {}).get('sess') != 'night' for x in (r1, r2, r3, r5, r6, r7)) and r4.get('sess') == 'night' and r4.get('score') is False,
+       str([(x or {}).get('sess') for x in (r1, r2, r3, r4, r5, r6, r7)]))
 
     M._taifex_openapi = lambda paths: (None, '全失敗')
     t = M._taifex_openapi_tx_close_change()
@@ -107,7 +142,8 @@ if os.environ.get('INJECT'):
         'nosess': ('"date": off_d, "src": "TAIFEX OpenAPI", "sess": "day", "error": None}',
                    '"date": off_d, "src": "TAIFEX OpenAPI", "error": None}'),
         'nodate': ('return best_close, best_pct, best_date', 'return best_close, best_pct, None'),
-        'night':  ('"sess": "yf", "error": None}', '"sess": "night", "error": None}'),
+        'scoreon': ('**({"score": False} if sess == \'night\' else {}), ', ''),
+        'allnight': ("sess = 'night' if not _day_hours else ('live' if _hm < '1345' else 'day')", "sess = 'night'"),
     }
     bad = 0
     for k, (a, b) in INJ.items():

@@ -149,8 +149,10 @@ _src = inspect.getsource(mm)
 for fn in ('fetch_es_fut', 'fetch_ym_fut', 'fetch_nq_fut'):
     line = [l for l in _src.split('\n') if l.startswith(f'def {fn}(')][0]
     assert '_fetch_yf_future' in line, f'⑥ {fn} 應使用 _fetch_yf_future,實際:{line}'
-assert '_fetch_yf_future("^TXF=F"' in _src, '⑥ 台指期也要用 _fetch_yf_future'
-print('✅ ⑭ ES/YM/NQ 三支美股期貨 + 台指期 都確實改用盤中取法(防日後被改回日線靜默退化)')
+# 💱 V82.4.0 台指期換成期交所行情網(官方行情系統;早上 8 點就有剛收的夜盤)—— ⛔ 再退 yfinance ^TXF=F(要冒充瀏覽器、落後一個交易日)
+_txsrc = inspect.getsource(mm.fetch_taifex_tx_now)
+assert '_LQ.taifex_mis(' in _txsrc and '_fetch_yf_future(' not in _txsrc and 'yf.Ticker' not in _txsrc, '⑥ 台指期要走期交所行情網、⛔ yfinance'
+print('✅ ⑭ ES/YM/NQ 三支美股期貨確實改用盤中取法 + 台指期走期交所行情網(防日後被改回日線 / yfinance 靜默退化)')
 
 print('\n🎉 期貨盤中取價 六項測試全過(合計 14 項)')
 

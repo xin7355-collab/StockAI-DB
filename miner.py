@@ -5049,10 +5049,12 @@ _INDEX_PUB_URLS = (
     ("gh-pages", "https://xin7355-collab.github.io/StockAI-DB/data/{f}"),
 )
 # 🌐 只剩這幾格走 yfinance(沒有「趕得上早上 8 點」的免費官方來源;理由與選項見 docs/DECISIONS.md)
-_YF_MACRO_SYMBOLS = {'sp500': '^GSPC', 'nasdaq': '^IXIC', 'tsm': 'TSM',
-                     'dji': '^DJI', 'vix': '^VIX',
-                     'asx': 'ASX', 'umc': 'UMC',   # 🌅 V36.8 日月光 ADR / 聯電 ADR(盤前大盤體檢用)
-                     'sox': '^SOX', 'nvda': 'NVDA', 'aapl': 'AAPL', 'msft': 'MSFT',
+# 💱 換掉 yfinance 第二階段(docs/DECISIONS.md 的 V82.4.0 那一節):同一個東西、改 Cboe 延遲報價(免金鑰;lib_quotes.cboe_quotes)
+_CBOE_MACRO_SYMBOLS = {'sp500': '^GSPC', 'tsm': 'TSM', 'dji': '^DJI', 'vix': '^VIX',
+                       'asx': 'ASX', 'umc': 'UMC',   # 🌅 V36.8 日月光 ADR / 聯電 ADR(盤前大盤體檢用)
+                       'nvda': 'NVDA', 'aapl': 'AAPL', 'msft': 'MSFT'}
+# ⏸ 還在 yfinance:沒有一模一樣的免費合規來源(Cboe 沒有那斯達克綜合、_SOX 停住;原油 / 美元指數另議)→ 等使用者決定
+_YF_MACRO_SYMBOLS = {'nasdaq': '^IXIC', 'sox': '^SOX',
                      'ukoil': 'BZ=F',     # 布蘭特原油期貨
                      'dxy':   'DX-Y.NYB', # 美元指數
                      }
@@ -5204,9 +5206,28 @@ def _index_long_official(key, result, gate, _get=None):
         print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
 
 
-def fetch_us_macro_cache(_gate=None, _get=None):
+def _cboe_macro(result, qgate):
+    """💱 macro_cache 的美股 / ADR / VIX → Cboe 延遲報價;格式照舊 {date, close, prev, chg_pct}(prev 由收盤與漲跌%反推)。
+    拿不到 → 寫 *_error(⛔ 默默少一格;data_audit 看得到原因)。"""
+    import lib_quotes as _LQ
+    try:
+        got, bad = _LQ.cboe_quotes(qgate, list(_CBOE_MACRO_SYMBOLS.values()))
+    except Exception as e:   # ⛔ 讓整支當掉
+        got, bad = {}, {tk: f'Cboe 例外 {type(e).__name__}' for tk in _CBOE_MACRO_SYMBOLS.values()}
+    for key, tk in _CBOE_MACRO_SYMBOLS.items():
+        q = got.get(tk)
+        if not q or q.get('chg') is None:
+            result[f'{key}_error'] = f"{bad.get(tk) or 'Cboe 沒有這一格'}({tk};下一輪再試)"
+            print(f"  ⚠️ {key}: {result[f'{key}_error']}")
+            continue
+        prev = q['close'] / (1 + q['chg'] / 100) if q['chg'] > -100 else None
+        result[key] = {'date': q['date'], 'close': q['close'], 'prev': round(prev, 2) if prev else None, 'chg_pct': q['chg']}
+        print(f"  {key}: {q['close']} ({q['chg']:+.2f}%;Cboe {q['date']}{';' + q['note'] if q.get('note') else ''})")
+
+
+def fetch_us_macro_cache(_gate=None, _get=None, _qgate=None):
     """macro_cache.json(美股 / ADR / 13 週美債 / 原油 / 美元指數 / 加權 / 櫃買)+ data/^TWII.json、^TWOII.json。
-    `_gate`(lib_official 的連線)/ `_get`(讀已發佈那份)只給測試換成假的。"""
+    `_gate`(lib_official 的連線)/ `_get`(讀已發佈那份)/ `_qgate`(lib_quotes 的連線)只給測試換成假的。"""
     today = date.today()
     result = {}
     try:
@@ -5215,9 +5236,11 @@ def fetch_us_macro_cache(_gate=None, _get=None):
     except Exception as e:   # ⚠️ 不只 ImportError:curl_cffi 版本不合在 import 時就會丟別的例外
         yf, yf_why = None, f'{type(e).__name__}: {str(e)[:60]}'
     print(f"\n🌐 抓取美股昨收資料（{today}）...")
+    import lib_quotes as _LQ
+    _cboe_macro(result, _qgate or _LQ.make_gate())
     if yf is None:
-        print(f"⚠️  yfinance 載入失敗({yf_why})→ 美股那 {len(_YF_MACRO_SYMBOLS)} 格這輪沒有;"
-              f"加權 / 櫃買 / 13 週美債照常(官方)")
+        print(f"⚠️  yfinance 載入失敗({yf_why})→ 還沒換掉的那 {len(_YF_MACRO_SYMBOLS)} 格這輪沒有;"
+              f"美股 / ADR(Cboe)、加權 / 櫃買 / 13 週美債(官方)照常")
     for key, ticker in _YF_MACRO_SYMBOLS.items():
         if yf is None:
             result[f'{key}_error'] = f'yfinance 載入失敗({yf_why})→ 這一格這輪沒有(還沒有官方替代)'

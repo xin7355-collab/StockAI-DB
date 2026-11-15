@@ -784,6 +784,79 @@ def _off_gate():
     return _OFF_GATE
 
 
+# ── 💱 換掉 yfinance 第二階段(docs/DECISIONS.md 的 V82.4.0 那一節;使用者 11/15「推薦的繼續」)──────────────
+#   免金鑰、同一個東西換合規來源(App 的意思不變):
+#     VIX / 標普 500 / 道瓊 / 台積電・日月光・聯電 ADR / 板塊對標的美國上市 ETF 與個股 → Cboe 延遲報價(lib_quotes.cboe_quotes)
+#     比特幣 → Coinbase,失敗退 Kraken(交易所公開 API)・日經 225 → FRED NIKKEI225(官方)・台指期 → 期交所行情網(官方行情系統)
+#   ⏸ 還沒換(沒有一模一樣的免費合規來源,等使用者決定):那斯達克綜合、費半、原油、銅、恆生、韓股、美股期貨盤中、
+#     美元指數 / 黃金 / 匯率(等 TWELVEDATA_API_KEY)、韓股兩檔個股(板塊對標裡的 .KS)、美股財報日。
+import lib_quotes as _LQ
+_Q_GATE = None
+_CBOE_BOOK = None
+
+
+def _q_gate():
+    """一輪共用一個(斷路狀態跨請求生效);macro_cron 整個 job 只有 8 分 → 逾時 12 秒、只退避 2 / 4 秒(同 _off_gate)。"""
+    global _Q_GATE
+    if _Q_GATE is None:
+        _Q_GATE = _LQ.make_gate(timeout=12, backoff=(2, 4))
+    return _Q_GATE
+
+
+def _is_us_listed(tk):
+    """Cboe 有的 = 美國上市(⛔ .KS / .TW 這種帶交易所後綴的、⛔ =F 期貨);^ 開頭的指數另查 lib_quotes.CBOE_SYM。"""
+    tk = str(tk or '')
+    return bool(tk) and '.' not in tk and '=' not in tk and (not tk.startswith('^') or tk in _LQ.CBOE_SYM)
+
+
+def _cboe_tickers():
+    """這一輪要跟 Cboe 拿的代號 —— **一次問完**,日期守門才比得出誰停住了(例:_SOX 停在 11/04)。"""
+    big = ['^VIX', '^GSPC', '^DJI', 'TSM', 'ASX', 'UMC']
+    sec = [t['ticker'] for m in SECTOR_ETF_MAP.values() for t in [m['primary']] + list(m.get('secondary') or [])]
+    return list(dict.fromkeys(big + [t for t in sec if _is_us_listed(t)]))
+
+
+def _cboe_book():
+    global _CBOE_BOOK
+    if _CBOE_BOOK is None:
+        try:
+            _CBOE_BOOK = _LQ.cboe_quotes(_q_gate(), _cboe_tickers())
+        except Exception as e:   # ⛔ 讓整支當掉:這幾格寫 error,其他照跑
+            _CBOE_BOOK = ({}, {'*': f'Cboe 例外 {type(e).__name__}'})
+        got, bad = _CBOE_BOOK
+        print(f"  📈 Cboe 延遲報價:拿到 {len(got)} 個" + (f",沒拿到 {len(bad)} 個:" + ' ・'.join(f'{k} {v}' for k, v in list(bad.items())[:5]) if bad else ''))
+    return _CBOE_BOOK
+
+
+_TD_BOOK = None
+_TD_SYMS = ['XAU/USD'] + [p for p, _ in _LQ.DXY_W]   # 黃金現貨 + 美元指數公式的 6 個匯率 = 7 個 ≤ 免費方案每分鐘 8 個 → 一次問完
+
+
+def _td_book():
+    """💱 Twelve Data(要金鑰的免費方案):有 TWELVEDATA_API_KEY 才問、一輪只問一次;沒設定 → ('nokey', …) 安靜跳過(照舊走 yfinance)。"""
+    global _TD_BOOK
+    if _TD_BOOK is None:
+        try:
+            _TD_BOOK = _LQ.td_quote(_q_gate(), _TD_SYMS)
+        except Exception as e:
+            _TD_BOOK = ('fail', {}, f'Twelve Data 例外 {type(e).__name__}')
+        st, got, note = _TD_BOOK
+        if st != 'nokey':
+            print(f"  💱 Twelve Data:{st} 拿到 {len(got)}/{len(_TD_SYMS)}" + (f" ・{note}" if note else ''))
+    return _TD_BOOK
+
+
+def _fetch_cboe_close(ticker, name):
+    """簽章同 _fetch_yf_close → (收盤, 漲跌%, error);資料日記進 _YF_LAST_DATE[ticker](「日期不可倒退」守門照樣作用)。"""
+    got, bad = _cboe_book()
+    q = got.get(ticker)
+    if not q:
+        _YF_LAST_DATE.pop(ticker, None)
+        return None, None, f"{name}:{bad.get(ticker) or bad.get('*') or 'Cboe 沒有這一格'}(下一輪再試)"
+    _YF_LAST_DATE[ticker] = q['date']
+    return q['close'], q['chg'], q.get('note')
+
+
 def _ust_err(what, status, note):
     """兩條官方來源都拿不到時的 error:分清楚「官方還沒有值」(安靜等)跟「抓不到」(真的壞掉,要說下一步)。"""
     if status == "none":
@@ -1915,23 +1988,69 @@ def fetch_tw_vix():
         return None, None, str(e)[:80]
 
 
-def fetch_gold():     return _fetch_yf_close("GC=F",     "黃金")        # 期貨 close usd/oz
+def fetch_gold():
+    """🪙 黃金:有 Twelve Data 金鑰 → 現貨 XAU/USD(⚠️ 以前是 GC=F 期貨,差約 0.5%);沒金鑰 → 照舊 yfinance(⏸ 等使用者設 Secrets)。
+    日期鍵照舊 'GC=F'(「日期不可倒退」守門)。"""
+    st, got, note = _td_book()
+    if st == 'nokey':
+        return _fetch_yf_close("GC=F", "黃金")
+    q = got.get('XAU/USD')
+    if not q:
+        _YF_LAST_DATE.pop('GC=F', None)
+        return None, None, f'黃金:Twelve Data {note or "沒有 XAU/USD"}(下一輪再試)'
+    _YF_LAST_DATE['GC=F'] = q['date']
+    return round(q['close'], 2), q['chg'], None
 def fetch_wti_oil():  return _fetch_yf_close("CL=F",     "WTI 原油")    # usd/barrel
-def fetch_dxy():      return _fetch_yf_close("DX-Y.NYB", "美元指數")    # 美元指數
-def fetch_btc():      return _fetch_yf_close("BTC-USD",  "比特幣")      # usd
-def fetch_vix():      return _fetch_yf_close("^VIX",     "VIX 恐慌指數")
-def fetch_nikkei():   return _fetch_yf_close("^N225",    "日經 225")
+def fetch_dxy():
+    """💵 美元指數:有 Twelve Data 金鑰 → 用 ICE 公開公式拿 6 個匯率算(lib_quotes.dxy_from_fx;Twelve Data 免費方案沒有 DXY 本身);
+    沒金鑰 → 照舊 yfinance。日期鍵照舊 'DX-Y.NYB'(6 個匯率裡最舊的那天)。"""
+    st, got, note = _td_book()
+    if st == 'nokey':
+        return _fetch_yf_close("DX-Y.NYB", "美元指數")
+    now, prev, chg = _LQ.dxy_from_fx(got)
+    if now is None:
+        _YF_LAST_DATE.pop('DX-Y.NYB', None)
+        return None, None, f'美元指數:Twelve Data 匯率不齊({note or "少了某個匯率"})→ 不硬算'
+    ds = [got[p]['date'] for p, _ in _LQ.DXY_W if got.get(p, {}).get('date')]
+    _YF_LAST_DATE['DX-Y.NYB'] = min(ds) if ds else None
+    return now, chg, None
+def fetch_btc():
+    """₿ 比特幣(D 方案):Coinbase → Kraken(交易所公開 API,免金鑰;⚠️ 是交易所報價不是「官方」)。
+    UTC 日線(跟以前 Yahoo BTC-USD 同一個切法:最後一根 = 今天 UTC 還在跑的)。日期鍵照舊 'BTC-USD'。"""
+    try:
+        st, pts, src, note = _LQ.btc_daily(_q_gate())
+    except Exception as e:
+        st, pts, src, note = 'fail', None, '', f'例外 {type(e).__name__}'
+    if st != 'ok':
+        _YF_LAST_DATE.pop('BTC-USD', None)
+        return None, None, f'比特幣:{note}(交易所 API 都沒回,下一輪再試)'
+    v, chg, d = _LO.last_change(pts)
+    _YF_LAST_DATE['BTC-USD'] = d
+    return round(v, 2), chg, (note or None)
+def fetch_vix():      return _fetch_cboe_close("^VIX",   "VIX 恐慌指數")   # 💱 Cboe(VIX 本來就是 Cboe 算的)
+def fetch_nikkei():
+    """🇯🇵 日經 225 → FRED NIKKEI225(官方;約美中 07:02 更新 → 台北 08:00 那輪有前一天收盤,跟以前 Yahoo 一樣新)。"""
+    try:
+        st, pts, why = _LO.fred_series(_off_gate(), 'NIKKEI225')
+    except Exception as e:
+        st, pts, why = 'fail', None, f'例外 {type(e).__name__}'
+    if st != 'ok' or not pts or len(pts) < 2:
+        _YF_LAST_DATE.pop('^N225', None)
+        return None, None, f"日經 225:FRED {why or '沒有值'}(下一輪再試)"
+    v, chg, d = _LO.last_change(pts)
+    _YF_LAST_DATE['^N225'] = d
+    return round(v, 2), chg, None
 def fetch_hsi():      return _fetch_yf_close("^HSI",     "恆生指數")
 def fetch_kospi():    return _fetch_yf_close("^KS11",    "韓股 KOSPI")
 def fetch_jpy():      return _fetch_yf_close("JPY=X",    "日圓匯率")     # ⚠️ JPY=X = USD/JPY(每美元兌幾日圓);日圓升值=此值下跌
-def fetch_sp500():    return _fetch_yf_close("^GSPC",    "標普 500")    # 🌎 美股大盤旗艦(台股最強連動)
+def fetch_sp500():    return _fetch_cboe_close("^GSPC",  "標普 500")    # 💱 Cboe _SPX(收盤跟 FRED 官方 SP500 一字不差)
 def fetch_nasdaq():   return _fetch_yf_close("^IXIC",    "那斯達克")    # 🌎 美股科技指標(台積電/半導體連動)
 # 💡 V58.7 補齊盤前體檢美股欄(原只在 miner.py 的 macro_cache,會 stale;放進 macro_risk 每 4hr cron 保新鮮)
-def fetch_dji():      return _fetch_yf_close("^DJI",     "道瓊")
+def fetch_dji():      return _fetch_cboe_close("^DJI",   "道瓊")        # 💱 Cboe _DJX × 100(DJX = 道瓊 ÷ 100,同一個指數)
 def fetch_sox():      return _fetch_yf_close("^SOX",     "費半")        # 半導體最連動台股
-def fetch_tsm_adr():  return _fetch_yf_close("TSM",      "台積電ADR")    # NYSE:TSM
-def fetch_asx_adr():  return _fetch_yf_close("ASX",      "日月光ADR")    # NYSE:ASX(ASE Tech)
-def fetch_umc_adr():  return _fetch_yf_close("UMC",      "聯電ADR")      # NYSE:UMC
+def fetch_tsm_adr():  return _fetch_cboe_close("TSM",    "台積電ADR")    # NYSE:TSM(💱 Cboe)
+def fetch_asx_adr():  return _fetch_cboe_close("ASX",    "日月光ADR")    # NYSE:ASX(💱 Cboe)
+def fetch_umc_adr():  return _fetch_cboe_close("UMC",    "聯電ADR")      # NYSE:UMC(💱 Cboe)
 # 💡 V68.8.2 使用者要求:美股期貨(盤後即時風向,比昨收更即時)+ 美債 10 年殖利率(升=科技股壓力)
 def fetch_es_fut():   return _fetch_yf_future("ES=F",    "標普500期貨")   # 🐛 V71.5.2 改抓盤中現價(日線=上一個結算,方向會相反)
 def fetch_ym_fut():   return _fetch_yf_future("YM=F",    "道瓊期貨")     # 🐛 V71.5.2 同上
@@ -2169,7 +2288,8 @@ def fetch_sector_etfs():
         components = []
         for t in all_targets:
             try:
-                price, chg, err = _fetch_yf_close(t['ticker'], t['name'])
+                # 💱 美國上市的走 Cboe;⏸ 韓股兩檔(.KS)還在 yfinance(沒有免費合規來源,等使用者決定)
+                price, chg, err = (_fetch_cboe_close if _is_us_listed(t['ticker']) else _fetch_yf_close)(t['ticker'], t['name'])
                 ok = (price is not None) and (chg is not None)
                 components.append({
                     'ticker': t['ticker'], 'name': t['name'],
@@ -2672,34 +2792,6 @@ def _yf_chg_3d(ticker, name):
     return None
 
 
-def fetch_twii_240ma_bias():
-    """🛑 DEPRECATED (2026/06):本函式已從 main 流程移除呼叫,因 yfinance 對 GHA runner 美國 IP
-       持續抓不到 ^TWII 2 年歷史(< 240 日無法算 240MA)。保留供未來改用 TWSE 官方 API 復用。
-
-    🦅 大盤懼高症濾網:加權指數(^TWII)距 240MA(年線)乖離率%。
-    需 240 個交易日,故抓 2 年;dropna 防休市 NaN。回傳 (bias_pct, ma240, err)。"""
-    import time
-    for attempt in range(2):
-        try:
-            time.sleep(0.4 if attempt == 0 else 1.0)
-            import yfinance as yf
-            hist = yf.Ticker("^TWII").history(period="2y", auto_adjust=False)
-            if hist is None or hist.empty:
-                return None, None, "^TWII 2y 回空"
-            closes = hist["Close"].dropna()
-            if len(closes) < 240:
-                return None, None, f"^TWII 有效收盤 {len(closes)}<240(不足年線)"
-            last = float(closes.iloc[-1])
-            ma240 = float(closes.tail(240).mean())
-            if last != last or ma240 != ma240 or ma240 <= 0:
-                return None, None, "^TWII 240MA 含 NaN"
-            return round((last - ma240) / ma240 * 100, 2), round(ma240, 0), None
-        except Exception as e:
-            if attempt == 1:
-                return None, None, str(e)[:80]
-    return None, None, "重試後仍失敗"
-
-
 def _fetch_fx(ticker, name):
     """通用匯率抓取(USD/XXX)— 回 (匯率, 1日%, 5日%, err)。
     V57.9 供台幣/韓元/人民幣共用:值上升=該幣貶值;亞幣競貶=外資撤亞洲風向。"""
@@ -2851,46 +2943,32 @@ def fetch_retail_long_short():
 
 def fetch_taifex_tx_now():
     """🌃 V23.3 — 台指期 TX 近月實時點 + 日漲跌% — 給前端頂部 3 指數區顯示
-    來源:① yfinance ^TXF=F(夜盤含實時報價)→ ② V27.3 TAIFEX 官方 OpenAPI 近月收盤(可靠 fallback)
+    來源:① 💱 期交所行情網(官方行情系統;日盤時段問日盤、其他問盤後)→ ② V27.3 TAIFEX 官方 OpenAPI 近月收盤(前一個交易日日盤)
     回傳:{price, chg, est, error}(est=True 代表只有收盤價、無可靠漲跌方向 → 前端顯「估」)
     """
-    # ① yfinance ^TXF=F
-    #   🐛 V71.5.2 改用 _fetch_yf_future(盤中現價 vs 上一個結算),原本拿日線收盤
-    #      → 台指期電子盤幾乎整晚在跑,日線給的是上一個結算。實測 07/30 清晨顯 41,613(−5.17%),
-    #        真值是 39,645(−1.69%),差 1,968 點;對加權 40,039 從「正價差 +10」變成「逆價差 −394」,
-    #        而正逆價差正是判讀外資空單「真看空 vs 只是避險」的關鍵,方向反了結論會整個反過來。
+    # ① 💱 期交所行情網(官方行情系統,換掉 yfinance ^TXF=F —— 它要冒充瀏覽器,而且實測落後一個交易日)
+    #   台北 08:45~15:00(週一~五)= 日盤時段 → 問日盤:13:45 前 sess 'live'(盤中)、之後 sess 'day'(今天的日盤收盤);
+    #   其他時間 → 問盤後:sess 'night'(真的夜盤;早上 8 點就有凌晨 5 點剛收的那一盤,OpenAPI 要等下午)。
+    #   ⚠️ 夜盤 score False:V42.0 那條夜盤計分規則沒有回測過(16 年公式裡沒有夜盤歷史)→ 先只顯示,要不要算分等使用者決定
+    #      (App / pro 只有 sess === 'night' 而且 score !== false 才計分)。
+    _tw = datetime.now(timezone(timedelta(hours=8)))
+    _hm = _tw.strftime('%H%M')
+    _day_hours = _tw.weekday() < 5 and '0845' <= _hm < '1500'
     try:
-        _v, _c, _e = _fetch_yf_future("^TXF=F", "台指期TX")
-        if _v is not None and _c is not None:
-            return {"price": round(float(_v), 2), "chg": _c, "est": False,
-                    "date": _YF_LAST_DATE.get("^TXF=F"), "src": "yfinance ^TXF=F(盤中)",
-                    "sess": "yf", "error": None}
+        q, why = _LQ.taifex_mis(_q_gate(), '0' if _day_hours else '1')
     except Exception as e:
-        print(f"   ⚠️ 台指期盤中取價失敗:{str(e)[:70]} → 改試日線")
-    try:
-        import yfinance as yf
-        hist = yf.Ticker("^TXF=F").history(period="5d", auto_adjust=False)
-        if hist is not None and not hist.empty:
-            closes = hist["Close"].dropna()
-            if len(closes) >= 2:
-                last = float(closes.iloc[-1])
-                prev = float(closes.iloc[-2])
-                if last == last and prev == prev and prev != 0:
-                    chg = round((last - prev) / prev * 100, 2)
-                    # 🐛 V71.4.9 一定要回「這個價是哪一天的」:yfinance 的 ^TXF=F 實測會落後一個交易日
-                    #   (2026-07-30 04:42 抓到的還是 07/28 的 41,613),前端卻把它跟當天的加權指數並排顯示
-                    #   → 看起來像 +1,574 點的巨大正價差,而正逆價差是判讀外資空單的關鍵配套,會直接誤導。
-                    #   有日期,前端才能誠實標「07/28 收盤」而不是假裝即時。
-                    _d = None
-                    try:
-                        _d = str(closes.index[-1].date())
-                    except Exception:
-                        pass
-                    return {"price": round(last, 2), "chg": chg, "est": False,
-                            "date": _d, "src": "yfinance ^TXF=F", "sess": "day", "error": None}
-    except Exception as e:
-        print(f"   ⚠️ 台指期 yfinance 失敗:{str(e)[:80]} → 改用 TAIFEX 官方 OpenAPI")
-    # ② V27.3 — yfinance 失敗 → TAIFEX 官方 OpenAPI 近月收盤
+        q, why = None, f'例外 {type(e).__name__}'
+    if q and _day_hours and q['date'] != _tw.date().isoformat():
+        q, why = None, f"期交所行情網日盤停在 {q['date']}(今天 {_tw.date()} 還沒開盤 / 休市)"
+    if q:
+        sess = 'night' if not _day_hours else ('live' if _hm < '1345' else 'day')
+        print(f"   ✅ 台指期 期交所行情網({'盤後' if sess == 'night' else '日盤'}・{q.get('contract') or '近月'})"
+              f" {q['price']}({q['chg']:+.2f}%)・{q['date']} {q.get('time') or ''} → sess {sess}")
+        return {"price": q['price'], "chg": q['chg'], "est": False, "date": q['date'], "time": q.get('time'),
+                "src": f"期交所行情網({'盤後' if sess == 'night' else '日盤'})", "sess": sess,
+                **({"score": False} if sess == 'night' else {}), "error": None}
+    print(f"   ⚠️ 台指期 期交所行情網拿不到:{why} → 改用 OpenAPI 前一個交易日日盤")
+    # ② V27.3 — 行情網拿不到 → TAIFEX 官方 OpenAPI 近月收盤
     #   🐛 V79.9.8 OpenAPI 給的是**前一個交易日的日盤**(10/29 早上拿到的是 10/28 日盤 +2.47%,10/27 早上拿到 10/22 日盤),
     #     那一天的漲跌前一天收盤早就反映了 —— ⛔ 不是夜盤。以前標 date=None、前端當成「台指期夜盤」算進盤前分數
     #     (10/29 那天 +1.5 分、分析師那行寫「夜盤走強」= 講錯)。→ 一律標 sess='day' + 那一列自己的日期;
@@ -2907,7 +2985,7 @@ def fetch_taifex_tx_now():
                     "date": off_d, "src": "TAIFEX OpenAPI", "sess": "day", "error": None}
     except Exception as e:
         return {"price": None, "chg": None, "est": False, "error": f"both failed: {str(e)[:60]}"}
-    return {"price": None, "chg": None, "est": False, "error": "yfinance+openapi both empty"}
+    return {"price": None, "chg": None, "est": False, "error": "期交所行情網與 OpenAPI 都沒有台指期"}
 
 
 def _taifex_openapi_tx_fut_close():
@@ -2966,7 +3044,7 @@ def _taifex_openapi_tx_fut_close():
 
 def _taifex_openapi_tx_close_change():
     """V54.x — 官方 OpenAPI『期貨每日交易行情』→ TX 近月 (收盤價, 漲跌%, 資料日)。失敗回 (None, None, None)。
-    yfinance ^TXF=F 失敗時的備援。漲跌%:① 直接的百分比欄(ChangePercent/%Change/漲跌幅) ② 漲跌價 ÷ 昨收(收盤−漲跌價)。
+    期交所行情網拿不到時的備援。漲跌%:① 直接的百分比欄(ChangePercent/%Change/漲跌幅) ② 漲跌價 ÷ 昨收(收盤−漲跌價)。
     🐛 V79.9.8 這份是**前一個交易日的日盤**(⛔ 不是夜盤)→ 一定回「資料日」,呼叫端標 sess='day'。"""
     data, err = _taifex_openapi(["DailyMarketReportFut", "DailyMarketReportFutures"])
     if not data:
@@ -3046,7 +3124,7 @@ _NO_CARRY_ON_ERROR = {'taifex_backwardation', 'fi_complex_conclusion'}   # 🔁 
 
 def fetch_taifex_backwardation():
     """台指逆價差 = 臺股期貨(TX)近月收盤 − 加權指數(^TWII)現貨收盤（負值＝逆價差）
-    期貨收盤：① 官方 OpenAPI JSON ② yfinance ^TXF=F ③ TAIFEX HTML regex
+    期貨收盤：① 官方 OpenAPI JSON ② TAIFEX HTML regex(💱 第二階段拿掉 yfinance ^TXF=F)
     """
     global _LAST_TWII_SPOT
     try:
@@ -3066,44 +3144,15 @@ def fetch_taifex_backwardation():
             spot, spot_date = _rows[-1]['close'], _rows[-1]['date']
             print(f"  [台指逆價差] 現貨用證交所收盤 {spot:.0f}({spot_date}),歷史 {len(twii_by_date)} 天 ← {_src}")
         else:
-            print(f"  [台指逆價差] ^TWII 本機與已發佈的都讀不到({_src})→ 改用 yfinance(⚠️ 實測落後一個交易日)")
+            print(f"  [台指逆價差] ^TWII 本機與已發佈的都讀不到({_src})")
+        # 💱 換掉 yfinance 第二階段:⛔ 再退 yfinance ^TWII(要冒充瀏覽器、實測落後一個交易日)—— 官方那份讀不到就誠實說
         if spot is None:
-            try:
-                import yfinance as yf
-                hist = yf.Ticker("^TWII").history(period="5d", auto_adjust=False)
-                if hist is not None and not hist.empty:
-                    closes = hist["Close"].dropna()
-                    if len(closes) >= 1:
-                        v = float(closes.iloc[-1])
-                        if v == v:   # 非 NaN
-                            spot = v
-                            try:
-                                spot_date = str(closes.index[-1].date())
-                            except Exception:
-                                pass
-            except Exception as e:
-                return None, f"^TWII 取得失敗：{str(e)[:60]}"
-        if spot is None:
-            return None, "^TWII 無有效現貨收盤(休市/NaN)"
+            return None, f"^TWII 本機與已發佈的都讀不到({_src}),這輪不算價差(下一輪採礦會補)"
         _LAST_TWII_SPOT = spot   # V71.1.6 給期現比用(合約價值=指數×200)
-        # 2) 期貨收盤：① 官方 OpenAPI JSON ② yfinance ^TXF=F ③ TAIFEX HTML
+        # 2) 期貨收盤：① 官方 OpenAPI JSON ② TAIFEX HTML(💱 第二階段拿掉 yfinance ^TXF=F 那條)
         fut_close = _taifex_openapi_tx_fut_close()
         if fut_close is not None:
             print(f"  [台指逆價差] OpenAPI TX 近月收盤 = {fut_close}")
-        if fut_close is None:
-            try:
-                import yfinance as yf
-                fut_hist = yf.Ticker("^TXF=F").history(period="5d", auto_adjust=False)
-                if fut_hist is not None and not fut_hist.empty:
-                    fut_close = float(fut_hist["Close"].iloc[-1])
-                    try:
-                        globals()['_LAST_TX_FUT_DATE'] = str(fut_hist["Close"].dropna().index[-1].date())
-                    except Exception:
-                        pass
-                    print(f"  [台指逆價差] yfinance ^TXF=F 期貨收盤 = {fut_close}"
-                          f"({_LAST_TX_FUT_DATE or '日期未知'})")
-            except Exception as e:
-                print(f"  [台指逆價差] yfinance 期貨失敗，退到 TAIFEX HTML：{str(e)[:60]}")
         if fut_close is None:
             url = "https://www.taifex.com.tw/cht/3/futDailyMarketReport"
             payload = {"queryType": "2", "marketCode": "0", "commodity_id": "TX",
@@ -3649,7 +3698,7 @@ def main():
 
     # ── 🌃 V23.3 — 台指期實時點(給前端頂部 3 指數區顯示) ──
     print("─" * 50)
-    print("🌃 抓取台指期 TX 近月實時點(yfinance ^TXF=F)…")
+    print("🌃 抓取台指期 TX 近月(期交所行情網 → OpenAPI)…")
     tx_now = fetch_taifex_tx_now()
     # 🐛 V71.5.1 台指期同樣套「日期不可倒退」:實測 07/30 清晨抓到的是 07/28 的 41,613,
     #   而真值是 39,645(對加權 40,039 是逆價差 −394)。差 1,968 點、而且正逆價差方向相反 ——

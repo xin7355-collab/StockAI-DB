@@ -161,6 +161,20 @@ def make_fake_gate(twse_months_with_data=None, treasury=None, fred=None):
     return LO.make_gate(send=send, sleep=sleep, clock=lambda: t[0]), calls
 
 
+def make_fake_cboe(close=101.0, pct=1.0, ltt=None):
+    """💱 第二階段:macro_cache 的美股 / ADR / VIX 走 Cboe 延遲報價 → 假的 Cboe(每個代號回同一組收盤 / 漲跌%)。"""
+    import lib_quotes as LQ
+    seen = []
+    when = ltt or f'{T.isoformat()}T16:00:00'
+
+    def send(method, url, **kw):
+        seen.append(url)
+        sym = url.rsplit('/', 1)[-1].replace('.json', '')
+        return R(200, json.dumps({'data': {'symbol': sym, 'close': close, 'current_price': close,
+                                           'price_change_percent': pct, 'last_trade_time': when}}))
+    return LQ.make_gate(send=send, sleep=lambda s: None, clock=lambda: 0.0), seen
+
+
 # ═══════════════════════ miner.fetch_us_macro_cache ═══════════════════════
 print('🏛️ miner.fetch_us_macro_cache(走正式入口,網路全假)')
 FMTQIK_ASKED = []
@@ -189,11 +203,11 @@ def disk_twii(with_amount=True):
     return rows
 
 
-def run_macro_cache(tmp, gate, get=None):
+def run_macro_cache(tmp, gate, get=None, qgate=None):
     cwd = os.getcwd()
     os.chdir(tmp)
     try:
-        _, log = quiet(M.fetch_us_macro_cache, _gate=gate, _get=get)
+        _, log = quiet(M.fetch_us_macro_cache, _gate=gate, _get=get, _qgate=qgate or make_fake_cboe()[0])
     finally:
         os.chdir(cwd)
     mc = json.loads((Path(tmp) / 'macro_cache.json').read_text(encoding='utf-8'))
@@ -238,8 +252,9 @@ _v3, _p3 = 4.25, 4.24
 ok('③b us02y = 財政部 3 個月期,{date, close, prev, chg_pct} 形狀照舊',
    mc.get('us02y') == {'date': UST_DAYS[-1].isoformat(), 'close': _v3, 'prev': _p3,
                        'chg_pct': round((_v3 - _p3) / _p3 * 100, 2)}, mc.get('us02y'))
-ok('③c 美股那幾格照舊(sp500 = 假 Yahoo 的 101 / +1%)', mc.get('sp500', {}).get('close') == 101.0
-   and mc['sp500']['chg_pct'] == 1.0 and 'twii_error' not in mc and 'us02y_error' not in mc, mc.get('sp500'))
+ok('③c 💱 美股 / ADR / VIX 走 Cboe(sp500 = 假 Cboe 的 101 / +1%,prev 由漲跌%反推 = 100),形狀照舊',
+   mc.get('sp500') == {'date': T.isoformat(), 'close': 101.0, 'prev': 100.0, 'chg_pct': 1.0}
+   and all(k in mc for k in M._CBOE_MACRO_SYMBOLS) and 'twii_error' not in mc and 'us02y_error' not in mc, mc.get('sp500'))
 ok('③d 櫃買走 FinMind(免費層)疊在磁碟上,⛔ Yahoo', mc.get('twoii', {}).get('date') == TWOII_FM[-1]['date']
    and len(mc.get('twoii_history') or []) == 120, mc.get('twoii'))
 
@@ -264,9 +279,15 @@ finally:
     sys.modules['yfinance'] = _saved
 ok('④ 加權 / 櫃買 / us02y 照常(官方),⛔ 整支跳過', all(k in mc4 for k in ('twii', 'twoii', 'us02y', 'twii_history'))
    and tw4 and len(tw4) >= 240, sorted(mc4))
-ok('④b 美股那 13 格各寫 *_error(data_audit D3 才分得出「有交代」),⛔ 默默不見',
+ok('④b 還沒換掉的那幾格(那斯達克 / 費半 / 原油 / 美元指數)各寫 *_error(data_audit D3 才分得出「有交代」),⛔ 默默不見',
    all(f'{k}_error' in mc4 and 'yfinance 載入失敗' in mc4[f'{k}_error'] and k not in mc4 for k in M._YF_MACRO_SYMBOLS),
    [k for k in mc4 if k.endswith('_error')])
+ok('④c 💱 yfinance 壞掉不影響 Cboe 那 9 格(美股 / ADR / VIX 照常)', all(k in mc4 for k in M._CBOE_MACRO_SYMBOLS), sorted(mc4))
+print('💱 Cboe 那份停住了(跟其他差一大截)/ 整批都是兩週前')
+gate, calls = make_fake_gate()
+mc6, _, _ = run_macro_cache(tmp, gate, get=no_get, qgate=make_fake_cboe(ltt='2026-01-02T16:00:00')[0])
+ok('④d Cboe 整批停在很久以前 → 那 9 格各寫 *_error、⛔ 拿舊的當今天', all(k not in mc6 and '超過' in mc6.get(f'{k}_error', '')
+   for k in M._CBOE_MACRO_SYMBOLS), [mc6.get(f'{k}_error') for k in list(M._CBOE_MACRO_SYMBOLS)[:2]])
 
 print('📦 磁碟沒有 → 已發佈那份;都沒有 → 冷啟動')
 tmp5 = tempfile.mkdtemp(prefix='yfoff5_')
@@ -426,10 +447,10 @@ for _f in (mm.fetch_us10y_yield, mm.fetch_us2y_yield, mm.fetch_ust10y, mm.fetch_
     _hit = [w for w in ('yfinance', 'yf.Ticker', 'Chrome/', 'Safari/', 'HEADERS', '_rnd_hdrs', 'Referer') if w in _s]
     if _hit:
         _bad[_f.__name__] = _hit
-ok('⑩ 換掉的 11 個函式:⛔ yfinance、⛔ 假瀏覽器 UA / Referer(只有 fetch_us_macro_cache 還有 yfinance —— 美股那 13 格)',
+ok('⑩ 換掉的 11 個函式:⛔ yfinance、⛔ 假瀏覽器 UA / Referer(只有 fetch_us_macro_cache 還有 yfinance —— 還沒換掉的那 4 格)',
    set(_bad) <= {'fetch_us_macro_cache'} and set(_bad.get('fetch_us_macro_cache', [])) <= {'yfinance', 'yf.Ticker'}, _bad)
-ok('⑩b miner 的 yfinance 清單裡 ⛔ 指數 / 13 週美債', not {'^TWII', '^TWOII', '^IRX', '^TNX'} & set(M._YF_MACRO_SYMBOLS.values()),
-   M._YF_MACRO_SYMBOLS)
+ok('⑩b miner 的 yfinance 清單裡 ⛔ 指數 / 13 週美債,也 ⛔ 已經換 Cboe 的那 9 格', not ({'^TWII', '^TWOII', '^IRX', '^TNX', '^GSPC', '^DJI', '^VIX', 'TSM'}
+   & set(M._YF_MACRO_SYMBOLS.values())) and not (set(M._CBOE_MACRO_SYMBOLS) & set(M._YF_MACRO_SYMBOLS)), M._YF_MACRO_SYMBOLS)
 ok('⑩c macro_miner 模組層 ⛔ import yfinance', not re.search(r'(?m)^import yfinance|^from yfinance', _SRC))
 
 print()
