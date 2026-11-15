@@ -59,8 +59,52 @@ def tx_rows(data):
     return out
 
 
+CBOE_DQ = 'https://cdn.cboe.com/api/global/delayed_quotes/quotes/{sym}.json'
+CBOE_SYMS = ['_VIX', '_SPX', '_NDX', '_DJX']
+TAIFEX_MIS = 'https://mis.taifex.com.tw/futures/api/getQuoteList'
+
+
+def live(s, H):
+    """⑤ Cboe 延遲報價(官網自己在用的公開 JSON)⑥ 期交所行情網夜盤(官方行情系統)—— 趕不趕得上台北 08:00 的關鍵。
+    ⛔ 不帶 Referer / Origin、⛔ 偽裝瀏覽器;被擋(403 / 回 HTML)就記下來,⛔ 換方式再試。"""
+    for sym in CBOE_SYMS:
+        try:
+            r = s.get(CBOE_DQ.format(sym=sym), headers=H, timeout=20)
+            st, why = classify(r.status_code, r.text[:200])
+            if st == 'ok':
+                d = (r.json() or {}).get('data') or {}
+                keep = {k: d.get(k) for k in ('symbol', 'current_price', 'prev_day_close', 'price_change',
+                                              'price_change_percent', 'close', 'last_trade_time', 'tick')}
+                print(f"⑤ Cboe {sym} ✅ {json.dumps(keep, ensure_ascii=False)} ・timestamp={(r.json() or {}).get('timestamp')}")
+            else:
+                print(f'⑤ Cboe {sym} ❌ {st}:{why}')
+        except Exception as e:  # noqa: BLE001
+            print(f'⑤ Cboe {sym} ❌ 連不上 / 格式不同 {type(e).__name__}')
+        time.sleep(2)
+    body = {"MarketType": "1", "SymbolType": "F", "KindID": "1", "CID": "TXF", "ExpireMonth": "",
+            "RowSize": "全部", "PageNo": "", "SortColumn": "", "AscDesc": "A"}
+    try:
+        r = s.post(TAIFEX_MIS, json=body, headers={**H, 'Content-Type': 'application/json'}, timeout=20)
+        st, why = classify(r.status_code, r.text[:200])
+        if st == 'ok':
+            j = r.json()
+            rows = (((j or {}).get('RtData') or {}).get('QuoteList') or [])
+            print(f"⑥ 期交所行情網(盤後)✅ RtCode={(j or {}).get('RtCode')} ・{len(rows)} 列 ・欄位 {list(rows[0].keys())[:40] if rows else []}")
+            for row in rows[:3]:
+                print('   ', json.dumps(row, ensure_ascii=False)[:500])
+        else:
+            print(f'⑥ 期交所行情網 ❌ {st}:{why} ・開頭 {r.text[:160]!r}')
+    except Exception as e:  # noqa: BLE001
+        print(f'⑥ 期交所行情網 ❌ 連不上 / 格式不同 {type(e).__name__}')
+
+
 def main():
+    import os
     import requests
+    if os.environ.get('WHICH') == 'live':
+        s = requests.Session()
+        live(s, {'User-Agent': UA, 'Accept': '*/*'})
+        return 0
     s = requests.Session()
     H = {'User-Agent': UA, 'Accept': '*/*'}
     now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
