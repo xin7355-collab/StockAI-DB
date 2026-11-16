@@ -200,6 +200,32 @@ export function gatesB(s, nbs = []) {
 }
 const passAll = g => !!g && Object.values(g).every(v => v === true || v === null);
 
+// ═════════ G 空頭反彈日才放空(V82.4.1,EXP-20261116-03;PARTS 有 G 才跑)═════════
+export const PRE_G = { x: 2, grid: [1.5, 2.5], k: 1.5, kgrid: [1.25, 1.75], ma: [20, 60], gap: 10 };
+/** 嚴格空頭那天、當天大漲(o.k = 幾個 σ;沒給 k 就用 o.x %)→ 事件索引(gap 天內只算一次)。只用到當天收盤。 */
+export function bearRally(M, st, o = {}) {
+    const ev = [];
+    for (let t = 1; t < M.c.length; t++) {
+        if (!st[t]) continue;
+        const r = M.c[t] / M.c[t - 1] - 1;
+        if (o.k != null ? (Number.isFinite(M.sig[t]) && r >= o.k * M.sig[t]) : r >= (o.x ?? PRE_G.x) / 100) ev.push(t);
+    }
+    return dedup(ev, o.gap ?? PRE_G.gap);
+}
+/** 事件 vs 同一個市場「嚴格空頭裡隨便一天進反一」(⛔ 拿全部日子當對照:空頭本來就在跌) */
+export function evalBearRally(markets, o, h, opt = {}) {
+    const carry = opt.carry ?? CARRY, exclude = opt.exclude ?? HIGH_INF, rows = [];
+    for (const M of markets) {
+        if (exclude.has(M.sym)) continue;
+        const N = navOf(M, carry), st = bearState(M.c, ...PRE_G.ma), base = [];
+        for (let t = 0; t + 1 + h < N.length; t++) { if (!st[t]) continue; const e = t + 1, x = e + h; if (N[e] > 0 && N[x] > 0) base.push(N[x] / N[e] - 1 - RT); }
+        if (base.length < 30) continue;
+        const bm = mean(base);
+        for (const t of bearRally(M, st, o)) { const r = shortRun(N, t, h); if (r) rows.push({ sym: M.sym, d: M.d[t], t, ...r, x: r.ret - bm, base }); }
+    }
+    return summarize(rows, opt.seed ?? SEED, opt.sims ?? 1000);
+}
+
 // ═════════ C 星期五大跌 ═════════
 export const mondayOf = d => { const t = Date.parse(String(d).slice(0, 10) + 'T00:00:00Z'), wd = new Date(t).getUTCDay(); return new Date(t - ((wd + 6) % 7) * 864e5).toISOString().slice(0, 10); };
 export function friCollect(M, X, opt = {}) {
@@ -628,6 +654,29 @@ export async function run(env = process.env, log = console.log) {
             for (const k of Object.keys(out.E)) if (out.E[k] && out.E[k].gates) log(`  ${k} 關卡:${Object.entries(out.E[k].gates).map(([g, v]) => `${g} ${v ? '✅' : '⛔'}`).join(' ')}(高原看格子那幾行)`);
         }
     }
+    if (PARTS.includes('G')) {
+        const W = loadWorld(env.WORLD), world = worldMarkets(W, CUT);
+        const I = loadIndex(env); let n = I.d.length; while (n > 0 && I.d[n - 1] > CUT) n--;
+        const TW = prepMarket('TW', I.d.slice(0, n), Float64Array.from(I.c.slice(0, n))); TW.P = TW.c;
+        const TWtr = { ...TW, sym: 'TW含息', P: I.tr.slice(0, n).map(v => (v > 0 ? v : null)), _N: undefined, _B: undefined };
+        const pools = { world: [...world, TW], twtr: [TWtr], twpx: [TW] }, POOL = { world: '33 國(含台股價格)', twtr: '台股含息 2003~', twpx: '台股價格 2000~' };
+        out.G = { pre: PRE_G, cells: [] };
+        for (const [pk, mk] of Object.entries(pools)) {
+            log(`\n━━ G 嚴格空頭裡反彈大漲那天才放空(反一,隔天收盤進)・${POOL[pk]}(到 ${CUT})━━`);
+            const o0 = pk === 'world' ? { k: PRE_G.k } : { x: PRE_G.x }, nbo = pk === 'world' ? PRE_G.kgrid.map(k => ({ k })) : PRE_G.grid.map(x => ({ x }));
+            for (const h of HB) {
+                const s = evalBearRally(mk, o0, h), nbs = nbo.map(o => evalBearRally(mk, o, h, { sims: 0 })), g = gatesB(s, nbs);
+                out.G.cells.push({ pool: pk, h, ...s, gates: g, grid: nbs.map(z => z.mean) });
+                if (s.n >= 3) log(`  抱 ${String(h).padStart(3)} 天:n ${s.n}(${s.mkts} 市場 ${s.clusters} 群)放空 ${s.mean}%(中位 ${s.med}・賺 ${s.win}%・≤−10% ${s.l10}%・期間最多倒賠中位 ${s.maeMed}%)・比空頭裡隨便一天 ${s.ex} ・群 t ${s.t} ・前/後半 ${s.h1}/${s.h2} ・正的市場 ${s.mkPos} ・拿掉最好一群 ${s.noBest} ・鄰近門檻 ${nbs.map(z => z.mean).join(' / ')}`);
+                else log(`  抱 ${h} 天:樣本 ${s.n}`);
+            }
+        }
+        const judged = out.G.cells.filter(c => [20, 60].includes(c.h)), qs = bh(judged.map(c => (c.pT == null ? null : c.pT)));
+        judged.forEach((c, i) => { c.q = qs[i]; });
+        const cw = h => out.G.cells.find(c => c.pool === 'world' && c.h === h), ct = h => out.G.cells.find(c => c.pool === 'twtr' && c.h === h);
+        out.G.pass = [20, 60].every(h => { const c = cw(h), t = ct(h); return c && passAll(c.gates) && c.q != null && c.q <= 0.10 && t && t.mean > 0; });
+        log(`\n  G ${out.G.pass ? '✅ 過關' : '⛔ 沒過'}(33 國 20 / 60 天兩格六條全過 + BH q ≤ 0.10 + 台股含息兩格 > 0):` + [20, 60].map(h => { const c = cw(h), t = ct(h); return `${h} 天 33 國 ${c ? c.mean : '—'}%(q ${c && c.q != null ? c.q : '—'}・${c && c.gates ? Object.entries(c.gates).filter(([, v]) => v === false).map(([k]) => k).join('/') || '六條都過' : '樣本不夠'})・台股含息 ${t ? t.mean : '—'}%`; }).join(' ‖ '));
+    }
     if (PARTS.includes('F')) out.F = await runF(env, log);
     return out;
 }
@@ -696,6 +745,23 @@ function selftest() {
     // ⑩ 校正:用 carry −3% 合成的「真反一」→ 解得回 −3%
     { const d = mkDates(900, '2023-06-01'), tr = walk(900, 17, 0.0006, 0.01), inv = synthL(tr, 0, -1, -0.03).map((v, i) => ({ d: d[i], c: 30 * v }));
       const k = calibrate(inv, { d, v: tr }); ok(k && Math.abs(k.carryFit + 3) < 0.05 && k.corr > 0.999, `⑩ 用 −3%/年合成的反一 → 解出 carry ${k && k.carryFit}%/年(相關 ${k && k.corr})`); }
+    // ⑪ G 空頭反彈日:事件只落在嚴格空頭那天、而且當天真的大漲;改掉未來不影響過去;埋效果抓得到、沒埋 ≈ 只賠成本
+    { const d = mkDates(6000); const mk = cc => { const M = prepMarket('G', d, Float64Array.from(cc)); M.P = M.c; return M; };
+      const c0 = walk(6000, 11, 0.0001, 0.013), M0 = mk(c0), st = bearState(M0.c, 20, 60), ev = bearRally(M0, st, { x: 2 });
+      ok(ev.length > 10 && ev.every(t => st[t] && M0.c[t] / M0.c[t - 1] - 1 >= 0.02), `⑪a 事件 ${ev.length} 個,每一個都是嚴格空頭那天而且當天漲 ≥2%`);
+      ok(ev.every((t, i) => i === 0 || t - ev[i - 1] > 10), '⑪b 10 天內只算一次');
+      const c2 = c0.slice(); for (let i = 3000; i < 6000; i++) c2[i] *= 0.7; const M2 = mk(c2);
+      ok(bearRally(M2, bearState(M2.c, 20, 60), { x: 2 }).filter(t => t < 3000).join() === ev.filter(t => t < 3000).join(), '⑪c 改第 3000 天以後的價格 → 之前的事件一個都不變');
+      const b = evalBearRally([M0], { x: 2 }, 20, { exclude: new Set(), sims: 0 });
+      ok(b.n > 10 && b.mean < 2, `⑪d 沒埋 → 空頭反彈後放空 20 天 ${b.mean}%(不會賺)—— 注入 SI_INJECT=peek 這條的數字會變`);
+      let left = 0, sA = 100, sB = 100; const hist = [100];           // 滾動和要先放第 0 天那一筆(不然 20 / 60 日線永遠少 100)
+      const cE = walk(6000, 11, 0.0001, 0.013, (i, r) => {            // 埋:嚴格空頭那天漲 ≥2% → 之後 20 天每天再 −0.5%
+          let out = r; if (left > 0) { left--; out = r - 0.005; }
+          const p = hist[i - 1] * (1 + out); hist.push(p); sA += p; sB += p; if (i >= 20) sA -= hist[i - 20]; if (i >= 60) sB -= hist[i - 60];
+          if (i >= 60 && left === 0 && out >= 0.02 && p < sB / 60 && sA / 20 < sB / 60) left = 20;
+          return out; });
+      const a = evalBearRally([mk(cE)], { x: 2 }, 20, { exclude: new Set(), sims: 200 });
+      ok(a.n > 10 && a.mean > 3 && a.ex > 0, `⑪e 埋「空頭反彈後 20 天每天 −0.5%」→ 放空 ${a.mean}%(比空頭裡隨便一天 ${a.ex})`); }
     console.log(fail ? `❌ ${fail} 條沒過` : '✅ 全部通過');
     return fail ? 1 : 0;
 }

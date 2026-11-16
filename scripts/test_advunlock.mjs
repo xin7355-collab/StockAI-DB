@@ -314,7 +314,7 @@ const T = await page.evaluate(() => {
     // ④ 分組排序
     const G = app._colTrigGroups([{ id: 'settle', why: 'x' }, { id: 'bear_on', why: 'y' }, { id: 'lu_fav', why: 'z', sym: '2454', sc: 'fav' }, { id: 'lu_held', why: 'w', sym: '2330', sc: 'held' }, { id: 'ld_redk', why: 'a', sym: '2330', sc: 'held' }]);
     R.order = G.map(g => g.sc);
-    R.dupe = G.filter(g => g.col.k === 'ld-redk').length;
+    R.dupe = G.filter(g => g.col.k === 'ldred-port').length;      // 🕯️ V82.4.1:跌停後收紅那一篇換成 ldred-port(同時掛 ld_redk + bear_on 兩個條件,仍只列一次)
     // ⑤ 每一個條件都碰到一次 → 每一篇有觸發的專欄都畫出來,整份過研究字樣檢查
     const GA = app._colTrigGroups(app._COL_TRIG_IDS.map(x => ({ id: x.id, why: '測試', sym: x.sc === 'held' || x.sc === 'fav' ? '2330' : null, sc: x.sc })));
     R.allN = GA.length; R.colN = ((app._COL_TRIG || {}).cols || []).filter(c => !c.lead).length;

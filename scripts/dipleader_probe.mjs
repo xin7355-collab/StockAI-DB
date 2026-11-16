@@ -282,6 +282,35 @@ export function moneyGate(rep, key = 'RSlo|o|20', policy = 'one') {
     return { key, policy, gates: g, pass: Object.values(g).every(Boolean) };
 }
 
+// ───────── (E) 同時最多幾批(V82.4.1,EXP-20261116-02)─────────
+/** 每批固定 w(1 成);上限 caps[0] = 現行。回每個上限多幾 %,以及每個觸發日「這一段第幾次、現行上限下有沒有買、比 0050 多多少」 */
+export function maxbReport(rows, ir, s0, key = 'RSlo|o|40', X = 3, caps = [3, 4, 5, 99], w = 0.1) {
+    const D = dropEvents(ir, X), set = new Set([...D.set].filter(i => i >= s0)), bk = key.replace(/^[^|]+/, '0050');
+    const runs = {};
+    for (const m of caps) { const r = money(rows, set, key, { policy: 'each', maxB: m, W: w * m }); runs[m] = { extra: r3((r.v - 1) * 100), k: r.k, days: new Set(r.trades.map(t => t.d)) }; }
+    const ord = new Map(), all = [];
+    for (const r of rows) {
+        if (!set.has(r.i)) continue;
+        const st = D.ep.get(r.i), n = (ord.get(st) || 0) + 1; ord.set(st, n);            // 第幾次:照觸發日數(那一批算不出報酬也算一次)
+        const a = r.g[key], b = r.g[bk];
+        all.push({ d: r.d, ord: n, x: Number.isFinite(a) && Number.isFinite(b) ? a - b - 0.0024 : null, in0: runs[caps[0]].days.has(r.d) });
+    }
+    const blocked = all.filter(t => !t.in0 && t.x != null);
+    return { key, X, caps, runs: Object.fromEntries(caps.map(m => [m, { extra: runs[m].extra, k: runs[m].k }])), all, blocked };
+}
+/** 事先登記的四條(把上限從 3 改成 4):a = 2011~2026 那段、b = 2004~2010 那段(maxbReport 的回傳) */
+export function maxbGate(a, b) {
+    const bl = a.blocked.map(t => t.x), n = bl.length, m = n ? mean(bl) : null, pos = bl.filter(x => x > 0).length;
+    const srt = bl.slice().sort((x, y) => y - x), m1 = n > 1 ? mean(srt.slice(1)) : null;
+    const g = {
+        '被擋掉的批 ≥ 8': n >= 8,
+        '那幾批平均 > 0 且 ≥ 6 成是正的': n > 0 && m > 0 && pos >= 0.6 * n,
+        '兩段上限 4 批都 ≥ 3 批': !!b && a.runs[4].extra >= a.runs[3].extra && b.runs[4].extra >= b.runs[3].extra,
+        '拿掉最好 1 批平均仍 > 0': m1 != null && m1 > 0,
+    };
+    return { n, mean: m == null ? null : r3(m * 100), pos, mean1: m1 == null ? null : r3(m1 * 100), gates: g, pass: Object.values(g).every(Boolean) };
+}
+
 // ───────── selftest ─────────
 function synth(opt = {}) {
     const nDay = 400, cal = []; for (let k = 0; k < nDay; k++) cal.push(new Date(Date.UTC(2023, 0, 2) + k * 864e5).toISOString().slice(0, 10));
@@ -350,6 +379,22 @@ function selftest() {
     { const cx = { etf: { tr: Float64Array.from([1, 1, 1, 1]) }, b50o: Float64Array.from([NaN, 100 / 102, NaN, NaN]) };
       const v = bench(cx, 0, 2, 'o'), vc = bench(cx, 0, 2, 'c');
       ok(Math.abs(v - 0.02) < 1e-12 && Math.abs(vc) < 1e-12, `⑯ 0050 隔天開盤 100、收盤 102 → 開盤買抱到第 2 天 = +2%(${(v * 100).toFixed(3)}%)・收盤買 = 0`); }
+    // ⑰ 同時最多幾批(V82.4.1):同一段連 5 次大跌 → 上限 3 批只買前 3 次、第 4 / 5 次被擋;上限 4 多買 1 批
+    { const ir = new Float64Array(200); const dr = [10, 12, 14, 16, 18, 100]; dr.forEach(i => { ir[i] = -0.04; });
+      const mkRows = late => dr.map((i, k) => ({ i, d: `2020-${String(1 + (k >> 1)).padStart(2, '0')}-${String(10 + k).padStart(2, '0')}`, g: { 'RSlo|o|40': k === 3 || k === 4 ? late : 0.10, '0050|o|40': 0 } }));
+      const R = maxbReport(mkRows(0.20), ir, 0), bl = R.blocked;
+      ok(R.runs[3].k === 4 && R.runs[4].k === 5 && R.runs[99].k === 6, `⑰a 上限 3 批買 4 批(前 3 次 + 隔很久那次)、上限 4 買 5 批、不設買 6 批(${R.runs[3].k}/${R.runs[4].k}/${R.runs[99].k})`);
+      ok(bl.length === 2 && bl[0].ord === 4 && bl[1].ord === 5 && Math.abs(bl[0].x - (0.20 - 0.0024)) < 1e-12, '⑰b 被擋掉的是這一段第 4、5 次;超額 = 候選 − 0050 − 0050 來回成本');
+      ok(R.runs[4].extra > R.runs[3].extra, '⑰c 被擋的那批是賺的 → 上限 4 批比 3 批多');
+      const G = maxbGate(R, R);
+      ok(!G.pass && !G.gates['被擋掉的批 ≥ 8'] && G.gates['那幾批平均 > 0 且 ≥ 6 成是正的'], '⑰d 只有 2 批被擋 → 樣本不夠、不過(其他條過也不算)');
+      const many = { ...R, blocked: Array.from({ length: 9 }, (_, k) => ({ d: 'x', ord: 4, x: 0.05 + k * 0.001 })) };
+      ok(maxbGate(many, many).pass, '⑰e 9 批被擋、都是正的、兩段上限 4 ≥ 3 → 過');
+      const neg = { ...many, blocked: many.blocked.map(t => ({ ...t, x: -0.02 })) };
+      ok(!maxbGate(neg, neg).pass, '⑰f 決定性對照:同樣 9 批但都是負的 → 不過');
+      ok(!maxbGate(many, null).pass, '⑰g 第二段沒跑 → 不過(⛔ 當成過)');
+      const Rn = maxbReport(mkRows(-0.10), ir, 0);
+      ok(Rn.runs[4].extra < Rn.runs[3].extra, '⑰h 被擋的那批是賠的 → 上限 4 批比 3 批少'); }
     console.log(fail ? `❌ ${fail} 條沒過` : '✅ 全部通過'); return fail ? 1 : 0;
 }
 
@@ -372,6 +417,17 @@ function main() {
     console.log(`📂 ${ctx.stocks.length} 檔 ・${ctx.cal[s0]} ~ ${ctx.cal.at(-1)} ・事件 ${Object.entries(E).map(([k, v]) => `${k} ${v.filter(i => i >= s0).length}`).join(' ・')}`);
     const rows = table(ctx, s0);
     console.log(`⏱️ 報酬表 ${rows.length} 天(${((Date.now() - t0) / 1000).toFixed(0)} 秒)`);
+    if (process.env.DL_MAXB === '1') {                        // (E) 同時最多幾批:只跑這一段、把結果寫檔(兩段各跑一次,再用 DL_MAXB_JUDGE 判)
+        const rep = maxbReport(rows, ir, s0);
+        console.log(`\n━━ (E) 同時最多幾批(${rep.key}・加權跌 ≥${rep.X}%・每批 1 成)vs 一直放 0050 ━━`);
+        for (const m of rep.caps) console.log(`  最多 ${m === 99 ? '不設' : m} 批:多 ${rep.runs[m].extra}%(${rep.runs[m].k} 批)`);
+        console.log(`  被 3 批上限擋掉、已到期的 ${rep.blocked.length} 批:${rep.blocked.map(t => `${t.d}(第${t.ord}次)${(t.x * 100).toFixed(1)}%`).join(' ・') || '沒有'}`);
+        const byOrd = {}; for (const t of rep.all) if (t.x != null) (byOrd[Math.min(t.ord, 5)] ||= []).push(t.x);
+        console.log('  這一段第幾次大跌 → 40 天比 0050:' + Object.entries(byOrd).map(([k, a]) => `第${k}${k === '5' ? '+' : ''}次 ${(mean(a) * 100).toFixed(1)}%(${a.length} 批、${a.filter(x => x > 0).length} 批正)`).join(' ・'));
+        if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify({ from: ctx.cal[s0], to: ctx.cal.at(-1), maxb: rep }, null, 1));
+        console.log(`⏱️ ${((Date.now() - t0) / 1000).toFixed(0)} 秒`);
+        return;
+    }
     if (process.env.DL_MONEY === '1') {                       // (D) 資金版補驗:跑完就結束(⛔ 不跑後面的全表)
         const rep = moneyReport(rows, ir, s0, ctx.cal, process.env.DL_KEYS ? { keys: process.env.DL_KEYS.split(',') } : {});
         console.log('\n━━ (D) 資金版:0050 為主、加權收盤跌 ≥X% 那天拿 3 成換過去(隔天開盤買、抱 h 天)vs 一直放 0050 ━━');

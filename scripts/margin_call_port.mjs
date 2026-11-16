@@ -61,7 +61,12 @@ export function scan(dir, names, opts = {}) {
 
 // 一個帳戶:每天先賣到期的(收盤價),再用開盤價買當天的候選(照 rank 小 → 大;sham 隨機)
 export function simulate(cal, cand, closes, opts = {}) {
-  const M = opts.slots || 10, cap0 = opts.capital || 1e6, from = opts.from || '0000', R = opts.rand ? rng(opts.rand) : null;
+  const M = opts.slots || 10, cap0 = opts.capital || 1e6, from = opts.from || '0000', to = opts.to || '9999', R = opts.rand ? rng(opts.rand) : null;
+  // 🅿️ V82.4.1(ldred_port 用;不給 = 原本的行為,一個字都沒變):opts.park = park0050() → 閒錢放 0050(含息),
+  //    要買股票那天「開盤」賣 0050、股票賣掉那天「收盤」買回;這時候一天裡先買(開盤)再賣(收盤)—— 到期那檔開盤時還佔著格子。
+  //    opts.costX = 成本倍數(壓力測試);opts.to = 算到哪一天。
+  const cx = opts.costX || 1, BC = BUY_COST * cx, SC = SELL_COST * cx;
+  const P = opts.park || null, PB = P ? (P.buy == null ? 0.0007 : P.buy) * cx : 0, PS = P ? (P.sell == null ? 0.0017 : P.sell) * cx : 0;
   const byDay = new Map();
   for (const c of cand) { if (c.ed < from) continue; (byDay.get(c.ed) || byDay.set(c.ed, []).get(c.ed)).push(c); }
   const idxCache = new Map();
@@ -71,37 +76,52 @@ export function simulate(cal, cand, closes, opts = {}) {
     while (lo <= hi) { const m = (lo + hi) >> 1; if (K.dates[m] <= d) { ans = m; lo = m + 1; } else hi = m - 1; }
     return ans;
   };
-  let cash = cap0, pos = [], trades = [], eq = [], inv = 0, days = 0;
-  for (const d of cal) {
-    if (d < from) continue;
-    // ① 賣:到期日(或資料最後一天)收盤
+  let cash = cap0, pu = 0, lastPc = 0, parked = false, pos = [], trades = [], eq = [], inv = 0, days = 0;
+  const sellDue = d => {            // 賣:到期日(或資料最後一天)收盤
     const still = [];
     for (const p of pos) {
       if (d >= p.xd) {
         const K = closes.get(p.sym), px = K.c[p.xi];
-        const v = p.sh * px * (1 - SELL_COST);
-        cash += v; trades.push({ sym: p.sym, ed: p.ed, xd: p.xd, ret: v / p.cost - 1 });
+        const v = p.sh * px * (1 - SC);
+        cash += v; trades.push({ sym: p.sym, sig: p.sig, ed: p.ed, xd: p.xd, ret: v / p.cost - 1, pnl: v - p.cost, tag: p.tag });
       } else still.push(p);
     }
     pos = still;
+  };
+  for (const d of cal) {
+    if (d < from || d > to) continue;
+    const po = P ? P.po.get(d) : 0, pc = P ? P.pc.get(d) : 0;
+    if (!P) sellDue(d);             // ① 原本的順序:先賣(收盤)再買(開盤)—— 沒有 0050 那一邊時照舊
     // ② 買:開盤
     const list = (byDay.get(d) || []).filter(c => !pos.some(p => p.sym === c.sym));
     if (list.length && pos.length < M) {
       if (R) { for (let k = list.length - 1; k > 0; k--) { const j = Math.floor(R() * (k + 1)); [list[k], list[j]] = [list[j], list[k]]; } }
       else list.sort((a, b) => a.rank - b.rank);
       // 總資產用昨天收盤估(⛔ 用今天收盤 = 前視)
-      let nav = cash; for (const p of pos) { const K = closes.get(p.sym), k = idxOf(p.sym, d); nav += p.sh * K.c[Math.max(0, k - (K.dates[k] === d ? 1 : 0))]; }
+      let nav = cash + pu * lastPc; for (const p of pos) { const K = closes.get(p.sym), k = idxOf(p.sym, d); nav += p.sh * K.c[Math.max(0, k - (K.dates[k] === d ? 1 : 0))]; }
       for (const c of list) {
         if (pos.length >= M) break;
-        const alloc = Math.min(cash, nav / M);
+        const want = nav / M;
+        if (P && cash < want && pu > 0 && po > 0) {      // 現金不夠 → 開盤賣 0050 補到剛好
+          const got = Math.min(pu, (want - cash) / (po * (1 - PS)));
+          pu -= got; cash += got * po * (1 - PS);
+        }
+        const alloc = Math.min(cash, want);
         if (alloc < 1000) break;
-        const sh = alloc / (c.eo * (1 + BUY_COST));
+        const sh = alloc / (c.eo * (1 + BC));
         cash -= alloc;
-        pos.push({ sym: c.sym, ed: c.ed, xd: c.xd, xi: c.xi, sh, cost: alloc });
+        pos.push({ sym: c.sym, sig: c.sig, ed: c.ed, xd: c.xd, xi: c.xi, sh, cost: alloc, tag: c.tag });
+      }
+    }
+    if (P) {
+      sellDue(d);                   // 🅿️ 有 0050 那一邊:開盤買完才輪到收盤賣
+      if (pc > 0) {
+        if (cash > 0) { pu += cash * (parked ? 1 - PB : 1) / pc; cash = 0; parked = true; }   // 第一天進 0050 不扣成本(對照組也沒扣)
+        lastPc = pc;
       }
     }
     // ③ 收盤市值
-    let v = cash;
+    let v = cash + pu * lastPc;
     for (const p of pos) { const K = closes.get(p.sym), k = idxOf(p.sym, d); v += p.sh * (k >= 0 ? K.c[k] : 0); }
     eq.push([d, v]); days++; if (pos.length) inv++;
   }
@@ -137,6 +157,23 @@ export function bench0050(dir, cal, from) {
     out.push([d, v / base * 1e6]);
   }
   return out;
+}
+
+// 🅿️ 0050 含息的「開盤 / 收盤水位」(給 simulate 的 opts.park;除息那天起乘上還原倍數,跟 bench0050 同一條)
+export function park0050(dir, cal) {
+  let B, Dv;
+  try { B = JSON.parse(fs.readFileSync(path.join(dir, '_bench0050.json'), 'utf8')); } catch { return null; }
+  try { Dv = JSON.parse(fs.readFileSync(path.join(dir, '_div0050.json'), 'utf8')); } catch { Dv = null; }
+  const fac = new Map();
+  for (const h of (((Dv || {}).d || {})['0050'] || {}).h || []) { const [d, a, , pc] = h; if (pc > a && a > 0) fac.set(d, pc / (pc - a)); }
+  const px = new Map(B.map(r => [iso(r.date), r]));
+  const po = new Map(), pc = new Map(); let f = 1;
+  for (const d of cal) {
+    if (fac.has(d)) f *= fac.get(d);
+    const r = px.get(d); if (!r || !(+r.close > 0)) continue;
+    pc.set(d, +r.close * f); po.set(d, (+r.open > 0 ? +r.open : +r.close) * f);
+  }
+  return { po, pc, buy: 0.0007, sell: 0.0017 };
 }
 
 function fmt(x, d = 1) { return x == null || !Number.isFinite(x) ? '—' : (x * 100).toFixed(d) + '%'; }
@@ -200,6 +237,23 @@ export function selftest() {
   ok('③ 兩格 → 兩檔都買、一賺一賠 ≈ 打平扣成本', r2.trades.length === 2 && st2.mult < 1 && st2.mult > 0.98, JSON.stringify(st2));
   const st = stats([['2020-01-01', 1e6], ['2020-06-01', 1.2e6], ['2020-12-31', 0.9e6], ['2021-06-01', 1.1e6]]);
   ok('④ 中途最多賠 = 從最高點回落(1.2 → 0.9 = −25%)', Math.abs(st.mdd + 0.25) < 1e-9 && Math.abs(st.years['2020'] + 0.10) < 1e-9, JSON.stringify(st));
+  // 🅿️ 閒錢放 0050:沒有任何候選 → 帳戶 == 一直放 0050;有候選 → 開盤賣 0050、收盤買回,成本都有扣
+  {
+    const lvl = new Map(cal.map((d, i) => [d, 100 * (1 + 0.001 * i)]));        // 0050 每天 +0.1%(開盤 = 收盤)
+    const park = { po: lvl, pc: lvl, buy: 0.0007, sell: 0.0017 };
+    const r0 = simulate(cal, [], closes, { slots: 1, park });
+    const last = r0.eq[r0.eq.length - 1][1], want = 1e6 * lvl.get(cal[cal.length - 1]) / lvl.get(cal[0]);
+    ok('⑤ 🅿️ 沒有候選 → 帳戶 == 一直放 0050(第一天進場不扣成本)', Math.abs(last / want - 1) < 1e-12, `${last} vs ${want}`);
+    const flat = new Map(cal.map(d => [d, 100]));
+    const r1 = simulate(cal, [cand[0]], closes, { slots: 1, park: { po: flat, pc: flat, buy: 0.0007, sell: 0.0017 } });
+    const exp = 1e6 * (1 - 0.0017) / (1 + BUY_COST) * 1.10 * (1 - SELL_COST) * (1 - 0.0007);
+    const got = r1.eq[r1.eq.length - 1][1];
+    ok('⑥ 🅿️ 0050 不動、股票 +10%:賣 0050 → 買股票 → 賣股票 → 買回 0050,四段成本都扣', Math.abs(got / exp - 1) < 1e-9, `${got} vs ${exp}`);
+    const r2x = simulate(cal, [cand[0]], closes, { slots: 1, costX: 2, park: { po: flat, pc: flat, buy: 0.0007, sell: 0.0017 } });
+    ok('⑦ costX = 2 → 期末比較少', r2x.eq[r2x.eq.length - 1][1] < got);
+    const rT = simulate(cal, [cand[0]], closes, { slots: 1, to: cal[20] });
+    ok('⑧ opts.to → 只算到那一天', rT.eq.length === 21 && rT.eq[rT.eq.length - 1][0] === cal[20], String(rT.eq.length));
+  }
   console.log(`\n${bad.length ? '❌ 失敗:' + bad.join(', ') : '✅ margin_call_port selftest 全過'}`);
   return bad.length ? 1 : 0;
 }

@@ -20,6 +20,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { LD_FLAT, RED_BIG, SYS_DROP } from './lib_ldred.mjs';   // 🕯️ 跌停 / 大紅 / 大盤一起跌的門檻唯一一份(ldred_port.mjs 共用)
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');   // V78.4.7:可指到修好的 16 年資料
@@ -113,30 +114,30 @@ for (const f of files) {
     if (dn[i] >= 2) emit(`📉 連跌 ${Math.min(dn[i], 6)}${dn[i] >= 6 ? '+' : ''} 根`, i);
 
     // ── ③ 跌停(欣興那種)──
-    if (chg[i] <= -9.2) {
+    if (chg[i] <= LD_FLAT) {
       emit('🔻 跌停(全部)', i);
       // 「要注意什麼」= 分條件看
       emit(pos >= 60 ? '🔻 跌停 × 高位階(跌之前在高檔)' : pos <= 30 ? '🔻 跌停 × 低位階(本來就弱)' : '🔻 跌停 × 中位階', i);
       emit(vr >= 2 ? '🔻 跌停 × 爆量(≥2倍均量)' : vr <= 1 ? '🔻 跌停 × 量縮' : '🔻 跌停 × 中量', i);
       // ⭐ 這條最接近「個股利空 vs 系統性」:大盤沒事它卻跌停 = 個股自己的問題
-      if (mc != null) emit(mc > -1 ? '🔻 跌停 × 大盤沒跌(個股利空)' : '🔻 跌停 × 大盤也在跌(系統性)', i);
+      if (mc != null) emit(mc > SYS_DROP ? '🔻 跌停 × 大盤沒跌(個股利空)' : '🔻 跌停 × 大盤也在跌(系統性)', i);
       if (dn[i] >= 2) emit('🔻 跌停 × 已經連跌(不是第一根)', i);
       else emit('🔻 跌停 × 第一根(前一天還在漲/平)', i);
     }
     // ── ④ 暴跌但沒跌停 ──
-    if (chg[i] <= -7 && chg[i] > -9.2) emit('🔻 暴跌 7~9.2%(沒鎖死)', i);
+    if (chg[i] <= -7 && chg[i] > LD_FLAT) emit('🔻 暴跌 7~9.2%(沒鎖死)', i);
     // ── ⑤ 跌停後的「第一根紅K」= 止跌訊號?──
-    if (i >= 1 && chg[i] > 0 && chg[i - 1] <= -9.2) {
+    if (i >= 1 && chg[i] > 0 && chg[i - 1] <= LD_FLAT) {
       emit('🕯️ 跌停後第一根紅K', i);
       // ⭐⭐ 增量檢定:那根紅K有沒有用,要看**當初為什麼跌停**
       //    (使用者問的欣興 = 大盤沒事、它自己被爆 → 屬於「個股利空」那一格)
       const mcPrev = mktRet(R[i - 2] ? R[i - 2].d : R[i - 1].d, 1);
       if (mcPrev != null) {
-        emit(mcPrev > -1 ? '🕯️ 跌停後紅K × 當初大盤沒跌(個股利空)'
+        emit(mcPrev > SYS_DROP ? '🕯️ 跌停後紅K × 當初大盤沒跌(個股利空)'
                          : '🕯️ 跌停後紅K × 當初大盤也在跌(系統性)', i);
       }
       // 紅K本身的力道:小紅 vs 大紅
-      emit(chg[i] >= 3 ? '🕯️ 跌停後紅K × 大紅(≥3%)' : '🕯️ 跌停後紅K × 小紅(<3%)', i);
+      emit(chg[i] >= RED_BIG ? '🕯️ 跌停後紅K × 大紅(≥3%)' : '🕯️ 跌停後紅K × 小紅(<3%)', i);
     }
     // ── ⑥ 連跌之後的第一根紅K ──
     if (i >= 1 && chg[i] > 0 && dn[i - 1] >= 3) emit('🕯️ 連跌 3+ 根後第一根紅K', i);

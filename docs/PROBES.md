@@ -3,6 +3,15 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🐻 V82.4.1(2026-11-16)盤勢不好怎麼做:三個事先登記的實驗(都 ⛔)
+- **A `scripts/ldred_port.mjs`(新)+ `scripts/lib_ldred.mjs`(新,事件定義唯一一份;streak_probe 也 import)**:跌停後大紅 K 真的拿錢照做(100 萬放 0050、訊號日換股票、最多 10 檔、抱 10 天)。
+  跑法:`node --max-old-space-size=6144 scripts/ldred_port.mjs <d16> <d04>`(約 70 秒;`OUT=` 寫 JSON、`LIST=YYYY-MM-DD` 列那天以後的訊號);六條過關條件寫死在 `judge()`(EXP-20261116-01)。
+  ⛔ 別再測「跌停後紅 K 能不能照著買」—— 2011 起贏、2004~2010 輸、空頭日輸、成本加倍輸;⭐ 走完這一次空頭(2026-10 起)後可以拿這一段當新的樣本外再跑一次,⛔ 不要調參數。`--selftest` 14 條、`LD_INJECT=peek|nolock|noseq` 必紅。
+- **帳戶模擬 `margin_call_port.simulate` 多三個選項**:`opts.park = park0050(dir, cal)`(閒錢放 0050 含息、開盤賣 / 收盤買回、一天裡先買後賣)・`costX`・`to`;不給 = 原本的行為(selftest ⑤~⑧)。之後任何「事件 → 帳戶版」都用它,⛔ 再寫第二份帳戶。
+- **B `dipleader_probe.mjs` `DL_MAXB=1`**:`DATA_DIR=<d16> DIV=<d16>/_div16.json DL_MAXB=1 DL_GROUPS=RSlo DL_HS=40 node scripts/dipleader_probe.mjs out.json`(2004~2010:`DATA_DIR=<d04> FROM=2004-08-02 END=2010-12-31`)→ 同時最多 3 / 4 / 5 / 不設批、被 3 批上限擋掉的批、這一段第幾次大跌;`maxbGate(a, b)` 四條(EXP-20261116-02)。被擋掉的批累積到 ≥ 8 批再重跑,在那之前維持 3 批。
+- **D `short_inverse_probe.mjs` `PARTS=G`**:`WORLD=<world_hist.json.gz> IDX_LONG IDX_EARLY TWII_NOW CUT=2026-11-06 PARTS=G node scripts/short_inverse_probe.mjs out.json` → 嚴格空頭裡大漲那天之後才進反一(台股 +2% / 各國 +1.5σ),對照 = 空頭裡隨便一天(EXP-20261116-03)。⛔ 別再測「逢高空」;放空這題 B(大跌後)與 G(反彈後)都 0 格過關。
+- 產物:`research/bear_playbook_20261116/`。
+
 ### 🟥 V82.3.9(2026-11-13)App 的 🔥 / 🅿️ 成績改成「訊號那天收盤鎖漲停 = 買不到」重算(`NOLOCK=1`,使用者核准)
 - **為什麼**:EXP-20261113-02 BASE 那組 🅿️ 1,107 筆實際買進裡 22.1% 在收盤鎖漲停那天(`lib_limit.upLimitClose`)—— 收盤競價掛漲停價多半排不到,以前照買到算 → 看板 / 逐年 / 逐月 / 每週回測都偏樂觀。
 - **資料**:`research_pack.mjs` d16 hash `79f39eda3ffc5d28`(到 2026-11-12、2,534 檔;data 1062b9cc / klines_deep 5bbb9f9a / stock_deep e2cbe2b5)。

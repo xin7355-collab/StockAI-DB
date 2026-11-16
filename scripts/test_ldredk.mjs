@@ -72,12 +72,24 @@ const R = await page.evaluate(async () => {
     }
     // ② 大盤那格:stub _getTwiiRows → 系統性 / 個股利空 兩個分支
     document.body.insertAdjacentHTML('beforeend', '<div id="_t1"></div>');
+    A._mktBear60 = async () => ({ on: false });          // 🐻 V82.4.1:大盤狀態釘住(⛔ 讓測試去抓真的加權)
     A._twiiChgMap = null;
     A._getTwiiRows = async () => [
         { date: '2026-08-27', close: 24000 }, { date: '2026-08-28', close: 23500 }, { date: '2026-08-29', close: 23600 }];
     document.getElementById('_t1').innerHTML = '<span id="ldRedkMkt" data-sym="2409">⏳</span>';
     await A._fillLdMkt('2026-08-28', '2409');
     out.sysTxt = document.getElementById('ldRedkMkt').innerText;
+    // 🐻 V82.4.1 同一份資料、只把大盤換成嚴格空頭 → 多一行「空頭裡照著買是賠的」
+    A._mktBear60 = async () => ({ on: true });
+    document.getElementById('_t1').innerHTML = '<span id="ldRedkMkt" data-sym="2409">⏳</span>';
+    await A._fillLdMkt('2026-08-28', '2409');
+    out.bearTxt = document.getElementById('ldRedkMkt').innerText;
+    out.bearAttr = !!document.querySelector('#ldRedkMkt [data-ldbear]');
+    A._mktBear60 = async () => { throw new Error('讀不到'); };
+    document.getElementById('_t1').innerHTML = '<span id="ldRedkMkt" data-sym="2409">⏳</span>';
+    await A._fillLdMkt('2026-08-28', '2409');
+    out.bearErrTxt = document.getElementById('ldRedkMkt').innerText;
+    A._mktBear60 = async () => ({ on: false });
     // 個股利空分支(那天大盤 +0.4%)
     A._twiiChgMap = null;
     A._getTwiiRows = async () => [
@@ -130,7 +142,7 @@ ok('①b −8%(沒到跌停)/ 收黑 / 隔了一根才紅 → 都不觸發(⛔ �
 //    (含 2022 空頭重跑之後整張表都變了;寫死等於每次重跑都要改測試,而且會誤以為程式壞了)。
 // 🧹 V78.3.6 散戶 App ⛔ 不印回測數字(+x% / 勝率 / 基準搬到產業作戰室)→ 改釘:數字⛔ 不出現 + 白話「之後多半會彈」還在
 ok('④b 🧹 V78.3.6 大紅那組⛔ 不印實測數字與勝率(_LD_REDK.big / wrBig / base),只講「之後多半會彈」',
-    !R.hit.includes(`+${E.big}%`) && !R.hit.includes(`${E.wrBig}%`) && !R.hit.includes(`${E.base}%`) && /之後多半會彈/.test(R.hit),
+    !R.hit.includes(`+${E.big}%`) && !R.hit.includes(`${E.wrBig}%`) && !R.hit.includes(`${E.base}%`) && /之後短線多半會彈一下/.test(R.hit),
     R.hit.slice(0, 120));
 ok('③a 小紅要講「參考價值低很多」而且⛔不可顯大紅那組數字',
     /參考價值低/.test(R.small) && !R.small.includes(`+${E.big}%`));
@@ -148,8 +160,16 @@ ok('③c 要寫「不是進場指令」(🧹 V78.3.6 ⛔ 不再寫回測進場�
     /不是進場指令/.test(R.hit) && !/回測|實測|勝率|期望值|基準/.test(R.hit + R.small + R.sysTxt + R.idioTxt));
 
 // 🧹 V78.3.4 散戶 App ⛔ 不印回測數字(+x% 的差距搬到產業作戰室),但「先看大盤有沒有一起跌」這個做法要講
-ok('⑦a 總覽提醒:跌停後紅K 命中要出現,講「先看大盤有沒有一起跌」,⛔ 不印回測數字',
-    /昨天跌停/.test(R.ovHit) && /大盤有沒有一起跌/.test(R.ovHit) && !R.ovHit.includes(String(E.sys)) && !/實測/.test(R.ovHit), R.ovHit.slice(0, 100));
+// 🐻 V82.4.1(EXP-20261116-01 資金版沒過):⛔ 不可再把這根紅 K 講成可以進場 —— 以前釘的「先看大盤有沒有一起跌」那句等於叫人挑了再買
+ok('⑦a 總覽提醒:跌停後紅K 命中要出現,講「照著去買沒有比放 0050 好、空頭時更差、不是進場理由」,⛔ 不印回測數字',
+    /昨天跌停/.test(R.ovHit) && /沒有比把錢放 0050 好/.test(R.ovHit) && /空頭時更差/.test(R.ovHit) && /不是進場理由/.test(R.ovHit)
+    && !/才彈得動|之後常比大盤強/.test(R.ovHit) && !R.ovHit.includes(String(E.sys)) && !/實測/.test(R.ovHit), R.ovHit.slice(0, 120));
+ok('④d 🐻 K 線頁那一塊:大紅也要講「照著去買沒有比放 0050 好」+「不是進場理由」(⛔ 只講會彈)',
+    /沒有比把錢放 0050 好/.test(R.hit) && /不是進場理由/.test(R.hit) && /data-ldnobuy/.test(R.hit), R.hit.slice(0, 160));
+ok('②d 🐻 大盤嚴格空頭 → 多一行「現在大盤是空頭…不要因為它去買」', /現在大盤是空頭/.test(R.bearTxt) && /不要因為它去買/.test(R.bearTxt) && R.bearAttr, R.bearTxt.slice(-60));
+ok('②e 決定性對照:同一份資料、大盤不是空頭 → 沒有那一行;讀不到大盤狀態也不講(⛔ 當成空頭)', !/現在大盤是空頭/.test(R.sysTxt) && !/現在大盤是空頭/.test(R.bearErrTxt) && /系統性/.test(R.bearErrTxt), R.bearErrTxt.slice(0, 60));
+ok('②f 系統性那句要帶「仍不是買點」', /仍不是買點/.test(R.sysTxt), R.sysTxt.slice(0, 80));
+ok('⑨ 出場狀態的步驟 ⛔ 再叫人「等跌停後第一根紅K 進場」', !/要進場等它出現在[^`]{0,40}跌停後/.test(SRC) && /要進場等它出現在「🎯 會賺訊號」`/.test(SRC));
 ok('⑦b 總覽提醒:沒到跌停(−8%)⛔ 不可觸發', R.ovNo === 0, String(R.ovNo));
 ok('⑦c 總覽提醒:噴 ≥30% 且在官方注意股名單 → 減碼提醒(⛔ 不是放空訊號)',
     /考慮減碼/.test(R.ovAtt) && !/1\.81|實測/.test(R.ovAtt) && /不是放空訊號/.test(R.ovAtt), R.ovAtt.slice(0, 100));
