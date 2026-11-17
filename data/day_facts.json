@@ -1,0 +1,101 @@
+{
+ "src": "research/daytype_20261117/out.json",
+ "exp": "EXP-20261117-01",
+ "from": "2000-01-04",
+ "to": "2026-11-16",
+ "days": 6637,
+ "bigTh": 1.5,
+ "kinds": {
+  "post45": {
+   "type": "vol",
+   "label": "休市 4~5 天後的第一個交易日",
+   "cell": "v_post45",
+   "mult": 1.39,
+   "big": 35.5,
+   "base": 19,
+   "n": 124
+  },
+  "post6": {
+   "type": "vol",
+   "label": "休市 6 天以上後的第一個交易日",
+   "cell": "v_post6",
+   "mult": 1.75,
+   "big": 46.7,
+   "base": 19.9,
+   "n": 30
+  },
+  "pre45": {
+   "type": "none",
+   "label": "休市 4~5 天前的最後一個交易日",
+   "cell": "v_pre45"
+  },
+  "pre6": {
+   "type": "none",
+   "label": "休市 6 天以上前的最後一個交易日",
+   "cell": "v_pre6"
+  },
+  "settle": {
+   "type": "none",
+   "label": "台指期結算日",
+   "cell": "v_settle_next"
+  },
+  "wit": {
+   "type": "none",
+   "label": "美股四巫日",
+   "cell": "v_wit_next"
+  },
+  "opx": {
+   "type": "none",
+   "label": "美股每月選擇權結算",
+   "cell": "v_opx_next"
+  },
+  "fomc": {
+   "type": "maybe",
+   "label": "聯準會決議",
+   "cell": "v_fomc_next",
+   "mult": 1.17,
+   "big": 20,
+   "base": 17.9,
+   "n": 205
+  },
+  "cpi": {
+   "type": "none",
+   "label": "美國 CPI",
+   "cell": "v_cpi_next"
+  },
+  "nfp": {
+   "type": "none",
+   "label": "美國非農",
+   "cell": "v_nfp_next"
+  },
+  "rev": {
+   "type": "none",
+   "label": "月營收公布期(每月 9~11 日)",
+   "cell": "v_rev"
+  },
+  "msci": {
+   "type": "untested",
+   "label": "MSCI 調整"
+  },
+  "boj": {
+   "type": "untested",
+   "label": "日銀"
+  },
+  "cbc": {
+   "type": "untested",
+   "label": "央行理監事會"
+  },
+  "ism": {
+   "type": "untested",
+   "label": "ISM"
+  },
+  "ppi": {
+   "type": "untested",
+   "label": "PPI"
+  },
+  "earn": {
+   "type": "untested",
+   "label": "法說 / 財報"
+  }
+ }
+}

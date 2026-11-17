@@ -9,6 +9,7 @@
 ⛔ 這支要釘死的五件事(離線、不連網):
   ① 行事曆用到的聯準會日期 == research/us_cal.json 的 `fomc`(兩邊任何一邊改了另一邊沒跟上 → 紅)。
   ② 照規則湊 / 預填的日期,事件文字一定帶「日期大約」;定義上就確定的(台指期第三個星期三、美股四巫日、聯準會)⛔ 帶。
+     事件的 `approx: true` 跟文字一致;`kind`(App `_DAY_FACTS` 的鍵)照種類給、手寫事件用關鍵字推(第二階段)。
   ③ 文字只講是什麼:⛔ 舊警語、⛔ 方向 / 買賣 / 部位字、⛔ 研究字樣(過 scripts/lib_retailbad.mjs 的 badOf)。
   ④ 分級(severity)這一階段 ⛔ 變:App 紅色橫幅、風險分數、Worker 盤前簡報都還在讀;`direction` 已拿掉(沒人讀)。
   ⑤ 休市那幾筆要留「休市」兩個字(index.html `_colTrigEval` 靠它判斷休市前最後一個交易日),12/31 ⛔ 算休市。
@@ -72,8 +73,8 @@ ok('①e 2026-12 那場排在 12-09(官方 12/8~9),⛔ 12-16',
 
 # ── ② 日期大約 ────────────────────────────────────────────────
 APPROX = '日期大約'
-MUST_APPROX = {   # 照規則湊 / 預填 → 一定要標
-    'CPI': r'CPI', 'PPI': r'PPI', '非農': r'非農', 'ISM': r'ISM', 'MSCI': r'MSCI',
+MUST_APPROX = {   # 照規則湊 / 預填 / 沒對過官方 → 一定要標
+    'CPI': r'CPI', 'PPI': r'PPI', '非農': r'非農', 'ISM': r'ISM', 'MSCI': r'MSCI', '日銀': r'日銀',
     '台積電法說': r'台積電\(2330\).*法說會', '央行理監事會': r'央行理監事', '清明': r'清明',
 }
 NO_APPROX = {     # 定義上就確定 / 對過官方原文 → ⛔ 標
@@ -87,10 +88,30 @@ for k, rx in NO_APPROX.items():
     hit = [e for e in EVS if re.search(rx, e['event'])]
     bad = [e['event'] for e in hit if APPROX in e['event']]
     ok(f'②b {k}:日期是確定的 → ⛔「{APPROX}」', hit and not bad, bad[:2] or '一筆都沒掃到')
-boj = [e for e in EVS if '日銀' in e['event']]
-boj_bad = [(e['date'], e['event']) for e in boj if (e['date'] in mm.BOJ_PREFILL) != (APPROX in e['event'])]
-ok('②c 日銀:2027 預填那排標大約、2026 那排不標', boj and not boj_bad and any(e['date'] in mm.BOJ_PREFILL for e in boj),
-   boj_bad[:3])
+# ②c `approx` 欄位跟文字一致(App 靠欄位決定能不能說「明天」;只印文字的地方靠文字)
+mis = [(e['date'], e['event']) for e in EVS if bool(e.get('approx')) != (APPROX in e['event'])]
+ok('②c `approx: true` ⇔ 文字帶「日期大約」(兩者必須一致)', not mis and any(e.get('approx') for e in EVS), mis[:3])
+ok('②d `approx` 只有 true 或不給(⛔ false 混進來讓 App 退回看文字的路走不到)',
+   all(e.get('approx', True) is True for e in EVS))
+
+# ── ②k 日子種類 kind(App `_DAY_FACTS` 的鍵)──────────────────
+KIND = [   # (規則, kind)
+    (r'台指期月結算', 'settle'), (r'四巫', 'wit'), (r'FOMC', 'fomc'), (r'日銀', 'boj'), (r'CPI', 'cpi'), (r'PPI', 'ppi'),
+    (r'非農', 'nfp'), (r'ISM', 'ism'), (r'央行理監事', 'cbc'), (r'MSCI', 'msci'), (r'法說', 'earn'),
+]
+for rx, want in KIND:
+    hit = [e for e in EVS if re.search(rx, e['event'])]
+    bad = sorted({str(e.get('kind')) for e in hit if e.get('kind') != want})
+    ok(f'②k kind:{rx} → {want}', hit and not bad, bad or '一筆都沒掃到')
+nokind = [e['event'] for e in EVS if not any(re.search(rx, e['event']) for rx, _ in KIND) and 'kind' in e]
+ok('②k2 其他事件 ⛔ 亂給 kind(月營收旺季 5 日那筆不是 9~11 日那個定義、休市本身不是一種日子)', not nokind, nokind[:3])
+KINDS = {'post45', 'post6', 'pre45', 'pre6', 'settle', 'wit', 'opx', 'fomc', 'cpi', 'nfp', 'rev',
+         'msci', 'boj', 'cbc', 'ism', 'ppi', 'earn'}
+ok('②k3 kind 都是 _DAY_FACTS 認得的鍵', {e['kind'] for e in EVS if 'kind' in e} <= KINDS)
+# 手寫事件:採礦端用同一份關鍵字推(⛔ 手寫的就沒有 kind)
+ok('②k4 手寫事件的 kind 用關鍵字推', mm._kind_of_text('🔮 美股四巫日 (期權結算)') == 'wit'
+   and mm._kind_of_text('台指期貨大結算') == 'settle' and mm._kind_of_text('🚀 SpaceX IPO 上市') is None
+   and mm._kind_of_text('美國 PPI') == 'ppi' and mm._kind_of_text('美國CPI通膨') == 'cpi')
 
 # ── ③ 文字只講是什麼 ──────────────────────────────────────────
 OLD_WARN = ['提防外資結算洗盤', '波動激增', '被動資金流向', '終極利空', '終極利多', '連假前後流動性低', '前後波動大',

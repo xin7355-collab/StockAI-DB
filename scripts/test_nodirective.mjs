@@ -11,6 +11,7 @@
  * ③ V79.5.7 全檔靜態掃描:看得到的字 ⛔ 不可再叫人「分批停利 / 減量或空手 / 持股減碼 / 現金為王 / 空手觀望 / 反向操作」
  *    —— 死碼(容器早就不存在)與理論原文頁(葛蘭碧 / K 棒型態說明 / 朱老師選股說明,頁尾已講清楚本站規則)列白名單、各附理由。
  * ④ V79.5.7 永豐智慧單攻略「直接照抄」那塊:讀 `_exitDistance` 的三條出場線,⛔ 不可再有停利觸發價 / 先賣一半 / 回檔 5% / −10%。
+ * ⑩ 2026-11-17 財經行事曆「明天 / 今天」那一條(以前紅色閃爍「🚨 重大事件來襲 — 新單暫緩」)⛔ 指令、⛔ 閃爍紅框;INJECT=12 換回 → ⑩b 必須紅。
  * INJECT=1:把 CPI 的事前換回舊指令 → ① 必須紅;INJECT=2:標籤說明換回「賣 1/3 ~ 1/2」→ ② 必須紅;
  * INJECT=3:多空計分卡換回「持股分批停利」→ ③ 必須紅;INJECT=4:智慧單那塊換回「先賣一半」→ ④ 必須紅。
  * ⑤ V79.5.9 K 線頁「🗣️ 朱老師這樣看」(renderChuKbarVerdict + 主升段體檢 _mainRiseStage)⛔ 不可自己給進出指令
@@ -46,15 +47,16 @@ const BAN = /(減碼|加碼|買進|賣出|賣 ?1\/3|現金比例|Call|Put|做多
 
 let src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 let file = path.join(ROOT, 'index.html');
-if (['1', '2', '3', '4', '5', '6', '7', '8'].includes(INJ)) {
-    if (INJ === '8') src = src.replace('法說會前後股價的波動通常比較大;⛔ 別只因為「要開法說會」就買或賣', '法說前後股價常大波動(利多常「利多出盡」、財測不如預期易急殺)');
+if (['1', '2', '3', '4', '5', '6', '7', '8', '12'].includes(INJ)) {
+    if (INJ === '12') src = src.replace('<div class="text-gray-200 font-black text-[11px] mb-0.5">📅 明天 / 今天</div>', '<div class="text-red-200 font-black text-[11px] mb-1">🚨 重大事件來襲 — 新單暫緩</div>');
+    else if (INJ === '8') src = src.replace('法說會前後股價的波動通常比較大;⛔ 別只因為「要開法說會」就買或賣', '法說前後股價常大波動(利多常「利多出盡」、財測不如預期易急殺)');
     else if (INJ === '6') src = src.replace("quiet('lowbaseIgnite', '🧊 低基期起漲',", "trigger('lowbaseIgnite', '🧊 低基期起漲',")
                               .replace('(跌深後第一根大量;⛔ 不是買進訊號,要不要買照決策台)', ' → 跌深打底第一根攻擊量;鐵律:停損設今日最低,收盤跌破就走');
     else if (INJ === '7') src = src.replace('const _needFire = _lab6 && _chgNow >= 2,', 'const _needFire = _chgNow >= 2,');
     else if (INJ === '5') src = src.replace("'型態偏多 —— 要不要買照決策台(看這一檔自己的觸發價),手上的照你的出場規則走。'", "'順勢做多,買點守 5MA,跌破 5MA 先停利,別凹單。'");
     else if (INJ === '3') src = src.replace("'弱勢明顯 —— 別接刀;手上的照你的出場規則走'", "'弱勢明顯,持股分批停利、空手不接刀'");
     else if (INJ === '4') src = src.replace('<div>• ⛔ 不設停利單、⛔ 不先賣一半 —— 照上面三條走就好</div>', '<div>• 停利觸發 ≥ 120(先賣一半,剩的守月線)</div>');
-    else if (INJ === '1') src = src.replace("before: '公布前後這兩天,台股波動常常比較大;但漲跌方向沒有固定規律。',", "before: '事前 1-2 天:減碼短線部位、現金比例拉到 30%。',");
+    else if (INJ === '1') src = src.replace("before: '美國每個月公布上個月的消費者物價;台灣時間晚上公布,台股要隔天才反映。',", "before: '事前 1-2 天:減碼短線部位、現金比例拉到 30%。',");
     else src = src.replace("tip: '偏弱的單一訊號 —— ⛔ 不是賣出指令,手上的照你的出場規則走(⛔ 不用先賣一部分)'", "tip: '走弱明顯,持有者降低部位(賣 1/3 ~ 1/2)'");
     file = path.join(ROOT, '_nodirective_inject.html');
     fs.writeFileSync(file, src);
@@ -267,6 +269,24 @@ try {
     ok('①c 每一則的事後都收在「手上的照你的出場規則走」那一句', R.rows.every(r => String(r.after).includes(SAME)));
     ok('①d 彈窗標題是「事前留意 / 事後看什麼」,⛔ 不是「要做」', /事前留意/.test(R.txt) && /事後看什麼/.test(R.txt) && !/要做/.test(R.txt), R.txt.slice(0, 120));
     ok('①e 彈窗內文 ⛔ 沒有指令字', !BAN.test(R.txt.split(SAME).join('')), (R.txt.split(SAME).join('').match(BAN) || [''])[0]);
+    // 🧹 2026-11-17 `before` ⛔ 再講「公布前後台股波動常常比較大」這類沒測試撐的話(加權 26 年:結算日 / CPI / 四巫日跟平常一樣顛)
+    ok('①f 事前 ⛔ 再講「波動常常比較大 / 波動也比較大 / 常常放大 / 假突破」', !R.rows.some(r => /波動(常常|也)?比較大|常常(先)?放大|假突破|晃得越大/.test(r.before + r.after)),
+       R.rows.filter(r => /波動(常常|也)?比較大|常常(先)?放大|假突破|晃得越大/.test(r.before + r.after)).map(r => r.k).join(','));
+
+    // ⑩ 🧹 2026-11-17 財經行事曆「明天 / 今天」那一條(以前是紅色閃爍「🚨 重大事件來襲 — 新單暫緩」= 指令)
+    //    INJECT=12:換回「新單暫緩」→ ⑩b 必須紅
+    const B = await page.evaluate(() => {
+        const td = app.getTodayStr().replace(/\//g, '-');
+        const tm = (() => { const d = new Date(td + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();
+        app._renderUpcomingMacroEvents([
+            { date: tm, event: '🇹🇼 台指期月結算 (每月第三個星期三)', kind: 'settle', severity: 'high' },
+            { date: td, event: '🇺🇸 FOMC 聯準會利率決議 (台灣時間隔天凌晨公布)', kind: 'fomc', severity: 'high' },
+        ]);
+        const b = document.querySelector('#macroEventsList [data-daybanner]');
+        return { txt: b ? b.innerText.replace(/\s+/g, ' ') : '', html: b ? b.outerHTML : '' };
+    });
+    ok('⑩a 空過守門:「明天 / 今天」那一條真的畫出來(今天聯準會、明天結算)', /今天/.test(B.txt) && /明天/.test(B.txt) && /FOMC/.test(B.txt) && /台指期月結算/.test(B.txt), B.txt);
+    ok('⑩b 那一條 ⛔ 指令(新單暫緩 / 指令字)、⛔ 閃爍紅框', !/新單暫緩|重大事件來襲|暫緩/.test(B.txt) && !BAN.test(B.txt) && !/animate-pulse|bg-red-|border-red-/.test(B.html), B.txt.slice(0, 160));
 
     // ④ 永豐智慧單攻略「直接照抄」那塊 —— 讀 _exitDistance 的三條出場線(⛔ 停利觸發 / 先賣一半 / 回檔 5% / −10%)
     const G = await page.evaluate(async () => {

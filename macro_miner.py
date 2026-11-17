@@ -47,19 +47,39 @@ FOMC_SCHEDULE = [
     "2027-07-28", "2027-09-15", "2027-10-27", "2027-11-17",
 ]
 # ⚠️ 日銀的日期沒有像 us_cal.json 那樣抓過官方原文對照;2027 那排是 V17.0 預填的 →
-#    事件文字標「(日期大約)」(BOJ_PREFILL),⛔ 寫得像確定的。換成官方日期後從 BOJ_PREFILL 拿掉。
-BOJ_PREFILL = frozenset([
-    "2027-01-22", "2027-03-19", "2027-04-30", "2027-06-17",
-    "2027-07-30", "2027-09-22", "2027-10-29", "2027-12-17",
-])
+#    2026 那排也一樣沒對過(只寫了出處)→ 2026-11-17 決定:日銀全部標「(日期大約)」。
+#    換成對過官方原文的日期之後,再把 `_compute_upcoming_macro_events` 裡日銀那行的 approx 拿掉。
 BOJ_SCHEDULE = [
     "2026-01-22", "2026-03-19", "2026-04-30", "2026-06-17",
     "2026-07-31", "2026-09-18", "2026-10-30", "2026-12-18",
-] + sorted(BOJ_PREFILL)
+    "2027-01-22", "2027-03-19", "2027-04-30", "2027-06-17",
+    "2027-07-30", "2027-09-22", "2027-10-29", "2027-12-17",
+]
 
-# 日期是照規則湊的(不是官方公布的那一天)→ 事件文字一律接這個尾巴。
+# 日期是照規則湊的(不是官方公布的那一天)→ 事件文字一律接這個尾巴,而且事件帶 `approx: True`。
 # ⛔ 定義上就確定的日子(台指期第三個星期三、美股第三個星期五)不接 —— 接了反而把確定的講成不確定。
+# 文字跟欄位兩個都留:只印文字的地方(提示詞、通知)不會把大約講成確定;App 靠欄位決定能不能說「明天」。
 APPROX_TAG = " (日期大約)"
+APPROX_WORD = "日期大約"
+
+# 🗓️ 事件是哪一種日子(App `_DAY_FACTS` 的鍵,數字來源 research/daytype_20261117/out.json)。
+#    演算法產生的事件在 `_add` 直接給;data/manual_events.json 手寫的用 `_kind_of_text` 推。
+#    ⛔ 對不到就不給 —— 給錯 kind 等於把別種日子的實測結果套上去。
+#    ⚠️ 順序有意義:「美股四巫日」的文字也有「結算」,要排在台指期前面。
+_KIND_RULES = [
+    ("wit", r"四巫"), ("settle", r"台指期.*結算|台指結算"), ("fomc", r"FOMC|聯準會"), ("boj", r"日銀|BOJ"),
+    ("cpi", r"CPI"), ("ppi", r"PPI"), ("nfp", r"NFP|非農"), ("ism", r"ISM"),
+    ("cbc", r"央行理監事"), ("msci", r"MSCI"), ("earn", r"法說|財報"),
+]
+
+
+def _kind_of_text(text):
+    import re as _re
+    t = str(text or "")
+    for k, rx in _KIND_RULES:
+        if _re.search(rx, t):
+            return k
+    return None
 
 
 # ═══ 🤖 V70.3.0 Groq 輪動呼叫(採礦端 AI;財經行事曆解讀用) ═══
@@ -463,6 +483,7 @@ def fetch_us_earnings(window_days=21):
             "event": f"📊 {zh}({tk}) 財報 — 看 {chain}",
             "severity": "high" if tk in ("NVDA", "TSM", "AVGO", "MU") else "mid",
             "us_earn": True,          # ⭐ ① 旗標,⛔ 前端不可用關鍵字比對
+            "kind": "earn",           # App 日子清單:法說 / 財報類(還沒測過)
         })
     # ③ 說得出「用哪條路拿到的」,⛔ 不然分不出是 API 改了還是這台機器連不到
     print(f"  📊 [美股財報] {len(out)} 場(來源:{srcs or '無'}"
@@ -488,10 +509,16 @@ def _compute_upcoming_macro_events(today, window_days=14):
     end = today + timedelta(days=window_days)
     events = []
 
-    def _add(d, evt):
-        """單筆加事件 helper(只加 window 內事件,避免重複包 if/append)。"""
+    def _add(d, evt, kind=None):
+        """單筆加事件 helper(只加 window 內事件,避免重複包 if/append)。
+        approx 直接看文字有沒有「日期大約」—— 欄位跟文字只有一個來源,⛔ 兩邊各標各的會打架。"""
         if today < d <= end:
-            events.append({"date": d.isoformat(), "event": evt})
+            e = {"date": d.isoformat(), "event": evt}
+            if kind:
+                e["kind"] = kind
+            if APPROX_WORD in evt:
+                e["approx"] = True
+            events.append(e)
 
     # 預先算下 3 個月(避免月底逼近時漏算下個月初的事件;_add 會擋掉 window 外)
     months_to_check = []
@@ -515,11 +542,11 @@ def _compute_upcoming_macro_events(today, window_days=14):
         #    一句都沒有測試撐 —— 加權 26 年(research/daytype_20261117)這些日子方向全部不成立,
         #    結算日、四巫日的漲跌幅也跟平常一樣。測過的事實由 App 另外顯示,⛔ 再寫回事件名稱。
         third_wed = first + timedelta(days=((2 - first.weekday()) % 7) + 14)
-        _add(third_wed, "🇹🇼 台指期月結算 (每月第三個星期三)")
+        _add(third_wed, "🇹🇼 台指期月結算 (每月第三個星期三)", "settle")
 
         if month in (3, 6, 9, 12):
             third_fri = first + timedelta(days=((4 - first.weekday()) % 7) + 14)
-            _add(third_fri, "🇺🇸 美股四巫日 (季月期貨、選擇權同一天結算)")
+            _add(third_fri, "🇺🇸 美股四巫日 (季月期貨、選擇權同一天結算)", "wit")
 
         # ⚠️ CPI「每月 10~14 日第一個平日」是湊的:對 us_cal.json 2016 起 130 次只中 26 次 → 一定要標大約
         cpi_d = None
@@ -532,11 +559,11 @@ def _compute_upcoming_macro_events(today, window_days=14):
                 cpi_d = cand
                 break
         if cpi_d is not None:
-            _add(cpi_d, "🇺🇸 美國 CPI 消費者物價指數公布" + APPROX_TAG)
+            _add(cpi_d, "🇺🇸 美國 CPI 消費者物價指數公布" + APPROX_TAG, "cpi")
             ppi_d = cpi_d + timedelta(days=1)
             while ppi_d.weekday() >= 5:
                 ppi_d += timedelta(days=1)
-            _add(ppi_d, "🇺🇸 美國 PPI 生產者物價指數公布" + APPROX_TAG)
+            _add(ppi_d, "🇺🇸 美國 PPI 生產者物價指數公布" + APPROX_TAG, "ppi")
 
         # ── 🆕 新增 9 類台股關鍵事件 ───────────────────────────────────
 
@@ -548,13 +575,13 @@ def _compute_upcoming_macro_events(today, window_days=14):
 
         # 2️⃣ 非農就業 NFP:每月第一個週五(⚠️ 規則湊的,2016 起 130 次中 107 次對 → 標大約)
         first_fri = first + timedelta(days=(4 - first.weekday()) % 7)
-        _add(first_fri, "🇺🇸 美國非農就業報告 NFP (含失業率、時薪)" + APPROX_TAG)
+        _add(first_fri, "🇺🇸 美國非農就業報告 NFP" + APPROX_TAG, "nfp")
 
         # 3️⃣ ISM 製造業 PMI:每月第一個工作日(⚠️ 沒扣美國假日,例如 1/1 → 標大約)
         first_workday = first
         while first_workday.weekday() >= 5:
             first_workday += timedelta(days=1)
-        _add(first_workday, "🇺🇸 美國 ISM 製造業 PMI 公布" + APPROX_TAG)
+        _add(first_workday, "🇺🇸 美國 ISM 製造業 PMI 公布" + APPROX_TAG, "ism")
 
         # 4️⃣ 季報法定截止:5/15 (Q1)、8/14 (Q2)、11/14 (Q3)、3/31 (Q4+年報)
         season_deadlines = {3: (31, "Q4+年報"), 5: (15, "Q1"),
@@ -570,7 +597,7 @@ def _compute_upcoming_macro_events(today, window_days=14):
         qs_map = {1: "Q4", 4: "Q1", 7: "Q2", 10: "Q3"}
         if month in qs_map:
             try:
-                _add(date(year, month, 15), f"📞 {qs_map[month]} 法說旺季 (大型權值股密集召開)")
+                _add(date(year, month, 15), f"📞 {qs_map[month]} 法說旺季 (大型權值股密集召開)", "earn")
             except ValueError:
                 pass
             # 🆕 V50.6 台積電法說:Jan16/Apr17/Jul17/Oct16 → 取該月第一個 ≥ 該日的平日。
@@ -580,7 +607,7 @@ def _compute_upcoming_macro_events(today, window_days=14):
                 _d = date(year, month, _tsmc_day)
                 while _d.weekday() >= 5:   # 落到週末順延到週一
                     _d += timedelta(days=1)
-                _add(_d, f"📞 台積電(2330){qs_map[month]}法說會" + APPROX_TAG)
+                _add(_d, f"📞 台積電(2330){qs_map[month]}法說會" + APPROX_TAG, "earn")
             except ValueError:
                 pass
 
@@ -607,13 +634,13 @@ def _compute_upcoming_macro_events(today, window_days=14):
             cb_d = last_day
             while cb_d.weekday() != 3:   # Thu=3
                 cb_d -= timedelta(days=1)
-            _add(cb_d, "🇹🇼 央行理監事會 利率決議" + APPROX_TAG)
+            _add(cb_d, "🇹🇼 央行理監事會 利率決議" + APPROX_TAG, "cbc")
 
         # 9️⃣ MSCI 季度調整:2/5/8/11 月第三個週四
         #    ⚠️ 這條規則找不到出處(MSCI 官方 index review 日程沒對過)→ 標大約
         if month in (2, 5, 8, 11):
             third_thu = first + timedelta(days=((3 - first.weekday()) % 7) + 14)
-            _add(third_thu, "📊 MSCI 季度成分股調整" + APPROX_TAG)
+            _add(third_thu, "📊 MSCI 季度成分股調整" + APPROX_TAG, "msci")
 
         # 🔟 西曆固定連假(春節/端午/中秋因農曆建議寫進 manual_events.json)
         #    ⛔ 括號裡一定要留「台股休市」:index.html `_colTrigEval` 靠 /休市/ 判斷哪天不開盤(休市前最後一個交易日)。
@@ -636,13 +663,13 @@ def _compute_upcoming_macro_events(today, window_days=14):
             dd = date.fromisoformat(d_str)
         except ValueError:
             continue
-        _add(dd, "🇺🇸 FOMC 聯準會利率決議 (台灣時間隔天凌晨公布)")
+        _add(dd, "🇺🇸 FOMC 聯準會利率決議 (台灣時間隔天凌晨公布)", "fomc")
     for d_str in BOJ_SCHEDULE:
         try:
             dd = date.fromisoformat(d_str)
         except ValueError:
             continue
-        _add(dd, "🇯🇵 日銀 BOJ 利率決議" + (APPROX_TAG if d_str in BOJ_PREFILL else ""))
+        _add(dd, "🇯🇵 日銀 BOJ 利率決議" + APPROX_TAG, "boj")
 
     # ── 一次性事件:讀 data/manual_events.json(Claude 代為更新)──
     try:
@@ -654,7 +681,7 @@ def _compute_upcoming_macro_events(today, window_days=14):
                     ev_date = date.fromisoformat(e['date'])
                 except (ValueError, KeyError):
                     continue
-                _add(ev_date, e['event'])
+                _add(ev_date, e['event'], _kind_of_text(e['event']))
     except Exception as _e:
         print(f"   ⚠️ manual_events.json 讀取失敗(不影響其他):{_e}")
 

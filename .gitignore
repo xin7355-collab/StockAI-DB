@@ -15,6 +15,8 @@ inst_cache_stock.json
 # 🏅 V74.3.6 選股條件實測成績(scripts/export_scr_edge.mjs 產物,pro.html 釣魚池在讀;
 #    跟 signal_edge.json 一樣靠 daily_miner 的 git add -f data/ 上 gh-pages)
 !data/scr_edge.json
+# 📅 2026-11-17 日子清單的數字(scripts/embed_day_facts.mjs 從 research/daytype_20261117/out.json 產生;之後 Python / Worker 讀)
+!data/day_facts.json
 
 # Python 相關
 __pycache__/
