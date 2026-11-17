@@ -7,8 +7,8 @@ App 行事曆裡這三種是用規則湊的(CPI = 每月 10~14 日第一個平�
 
 來源(只從官方頁面往下一層,⛔ 猜 API 網址;陷阱 #23):
  ① 聯準會 fomccalendars.htm(近幾年)+ fomc_historical_year.htm 列出的每一年那一頁(較早)
- ② 勞工統計局(BLS)歷次新聞稿存檔索引(CPI / Employment Situation):連結檔名裡的日期 = 公布日
- ③ ② 被擋時:聖路易聯準銀行 ALFRED 的 release 頁 —— 只把頁面上真的有的「日期 / 下載」連結列出來,下一輪再接
+ ② 聖路易聯準銀行 ALFRED 的 release 頁(CPI rid=10、Employment Situation rid=50)上真的有的「下載公布日」連結
+    (第一輪試過勞工統計局 BLS 的存檔索引:回 403 Access Denied、不給自動程式抓 → ⛔ 再試、⛔ 換 UA)
 只讀:⛔ 寫任何分支 / 資料檔;⛔ 用金鑰;⛔ 偽裝瀏覽器(lib_http.Gate 的 UA 寫明是誰);被擋(401 / 403)就停、照實記。
 輸出:log 最後一段 `US_CAL|種類|日期,日期…`(每行最多 20 個)→ 人工核對每年次數後存成 research/us_cal.json。
 
@@ -23,8 +23,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 
 FED_CAL = 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm'
 FED_HIST = 'https://www.federalreserve.gov/monetarypolicy/fomc_historical_year.htm'
-BLS_ARCH = {'cpi': 'https://www.bls.gov/bls/news-release/cpi.htm', 'nfp': 'https://www.bls.gov/bls/news-release/empsit.htm'}
-BLS_TAG = {'cpi': 'cpi', 'nfp': 'empsit'}
 ALFRED = {'cpi': 'https://alfred.stlouisfed.org/release?rid=10', 'nfp': 'https://alfred.stlouisfed.org/release?rid=50'}
 FROM_YEAR = 2000
 
@@ -75,17 +73,21 @@ def parse_fomc_calendar(html):
     return out
 
 
+MON_TOK = r'[A-Z][a-z]{2,8}\.?'
 HIST_RE = re.compile(
-    r'\b(' + MON_RE + r')\s+(\d{1,2})(?:\s*-\s*(?:(' + MON_RE + r')\s+)?(\d{1,2}))?\s*,?\s*'
+    r'(?<![A-Za-z])(' + MON_TOK + r'(?:\s*/\s*' + MON_TOK + r')?)\s+(\d{1,2})(?:\s*-\s*(?:(' + MON_TOK + r')\s+)?(\d{1,2}))?\s*,?\s*'
     r'(Meeting|Conference Calls?|\(?[Uu]nscheduled\)?|Notation Votes?)\b')
 
 
 def parse_fomc_hist(html, year):
-    """較早那幾年的頁面:標題長得像「January 29-30 Meeting - 2008」「January 21 Conference Call - 2008」「July 31-August 1 Meeting - 2012」。
+    """較早那幾年的頁面:標題長得像「January 29-30 Meeting - 2008」「January 21 Conference Call - 2008」
+    「July 31-August 1 Meeting - 2012」;2017 / 2018 的跨月寫法不一樣(第一輪實跑漏了 3 次)→ 月份那一段放寬、交給 mon_no。
     只有寫 Meeting 的算排定的。"""
     out, seen = [], set()
     for m1, d1, m2, d2, kind in HIST_RE.findall(strip_tags(html)):
-        mon = MON3[(m2 or m1)[:3].lower()]
+        mon = mon_no(m2) if m2 else mon_no(m1)
+        if not mon or mon_no(m1) is None:
+            continue
         day = int(d2 or d1)
         d = f'{int(year):04d}-{mon:02d}-{day:02d}'
         sched = kind == 'Meeting'
@@ -96,15 +98,25 @@ def parse_fomc_hist(html, year):
     return out
 
 
+def merge_two_day(dates):
+    """排定的兩筆剛好差一天(2003-09-15 / 09-16:前一天是另外加開的一場,聲明在後一天)→ 只留後面那天。"""
+    ds = sorted(set(dates))
+    drop = set()
+    for a, b in zip(ds, ds[1:]):
+        from datetime import date
+        if (date.fromisoformat(b) - date.fromisoformat(a)).days == 1:
+            drop.add(a)
+    return [d for d in ds if d not in drop]
+
+
+def parse_dates_txt(text):
+    """ALFRED「下載公布日」那個檔 → 裡面所有 YYYY-MM-DD(排序、不重複)。格式第一次看,先寬鬆抓、每年次數由人核對。"""
+    return sorted({d for d in re.findall(r'(?<!\d)(\d{4}-\d{2}-\d{2})(?!\d)', text or '') if '1900' <= d[:4] <= '2099'})
+
+
 def hist_links(html):
     """fomc_historical_year.htm 裡真的有的每年那一頁 → {年: 相對網址}"""
     return {int(y): h for h, y in re.findall(r'href="([^"]*fomchistorical(\d{4})\.htm)"', html or '')}
-
-
-def parse_bls_arch(html, tag):
-    """BLS 存檔索引的連結檔名 cpi_MMDDYYYY.htm / empsit_MMDDYYYY.htm → 排序後不重複的 'YYYY-MM-DD'"""
-    ds = {f'{y}-{m}-{d}' for m, d, y in re.findall(r'archives/' + re.escape(tag) + r'_(\d{2})(\d{2})(\d{4})\.htm', html or '')}
-    return sorted(x for x in ds if '1990' <= x[:4] <= '2099' and '01' <= x[5:7] <= '12' and '01' <= x[8:10] <= '31')
 
 
 def interesting_links(html, words=('date', 'download', 'calendar')):
@@ -164,13 +176,16 @@ def selftest():
     ok('②b 電話會議 / 沒排定的 → sched=False;內文裡的日期(released March 11)⛔ 算',
        sorted(x['d'] for x in h if not x['sched']) == ['2008-01-21', '2008-03-15', '2008-10-07']
        and not any(x['d'] == '2008-03-11' for x in h), h)
+    h2 = parse_fomc_hist('<h5>Jan/Feb 31-1 Meeting - 2017</h5><h5>October/November 31-1 Meeting - 2017</h5><h5>March 14-15 Meeting - 2017</h5>'
+                         '<p>Chairman 12 Meeting notes</p><h5>Oct./Nov. 30-1 Meeting - 2017</h5>', 2017)
+    ok('②c 跨月的另一種寫法(Jan/Feb 31-1、October/November 31-1、Oct./Nov. 30-1)→ 取後面那個月;不是月份的字(Chairman 12 Meeting)⛔ 算',
+       [x['d'] for x in h2] == ['2017-02-01', '2017-11-01', '2017-03-15'], h2)
+    ok('②d 排定的兩筆差一天(2003-09-15 / 16)→ 只留後面那天;差兩天以上照留',
+       merge_two_day(['2003-09-15', '2003-09-16', '2003-10-28', '2003-10-30']) == ['2003-09-16', '2003-10-28', '2003-10-30'])
+    ok('②e 下載檔:抓出所有 YYYY-MM-DD、排序不重複;長數字裡的不算',
+       parse_dates_txt('Release Dates\n2020-01-14\n2020-01-14 x\n2019-12-11\n120200-01-145') == ['2019-12-11', '2020-01-14'], parse_dates_txt('2020-01-14'))
     idx = '<a href="/monetarypolicy/fomchistorical2008.htm">2008</a> <a href="/monetarypolicy/fomchistorical1999.htm">1999</a>'
     ok('③ 每年那一頁的連結從索引頁讀(⛔ 自己拼網址)', hist_links(idx) == {2008: '/monetarypolicy/fomchistorical2008.htm', 1999: '/monetarypolicy/fomchistorical1999.htm'})
-    bls = '<a href="/news.release/archives/cpi_02132019.htm">HTML</a><a href="/news.release/archives/cpi_02132019.pdf">PDF</a>' \
-          '<a href="/news.release/archives/cpi_01112019.htm">x</a><a href="/news.release/archives/empsit_02012019.htm">y</a>' \
-          '<a href="/news.release/archives/cpi_13452019.htm">壞的</a>'
-    ok('④ BLS 存檔連結:檔名 MMDDYYYY → 日期、排序、不重複;別的新聞稿不混進來;壞日期丟掉',
-       parse_bls_arch(bls, 'cpi') == ['2019-01-11', '2019-02-13'] and parse_bls_arch(bls, 'empsit') == ['2019-02-01'], parse_bls_arch(bls, 'cpi'))
     ok('⑤ 每年次數', per_year(['2019-01-11', '2019-02-13', '2020-01-14']) == {'2019': 2, '2020': 1})
     ok('⑥ 月份:全名 / 縮寫 / 兩個月取後面;亂字 → None', mon_no('January') == 1 and mon_no('Jan/Feb') == 2 and mon_no('September') == 9 and mon_no('xyz') is None)
     print(f'\n{"❌ " + str(len(fails)) + " 條失敗" if fails else "✅ US_CAL_SELFTEST_PASS"}({n[0]} 條)')
@@ -179,7 +194,7 @@ def selftest():
 
 def main():
     from lib_http import Gate, page_text
-    g = Gate(gaps={'www.federalreserve.gov': 2.0, 'www.bls.gov': 3.0, 'alfred.stlouisfed.org': 2.0}, backoff=(2, 4, 8), timeout=40)
+    g = Gate(gaps={'www.federalreserve.gov': 2.0, 'alfred.stlouisfed.org': 2.0}, backoff=(2, 4, 8), timeout=40)
     bad = []
 
     def fetch(url, label):
@@ -220,28 +235,45 @@ def main():
             fomc += h
             if sum(1 for x in h if x['sched']) != 8:
                 print(f'   ⚠️ {y} 排定的不是 8 次({sum(1 for x in h if x["sched"])})→ 全部:{[x["raw"] for x in h]}')
+                print('      標題原文:', re.findall(r'[A-Za-z./ ]{0,24}\d{1,2}[^A-Za-z]{0,6}[A-Za-z. ]{0,12}\d{0,2}\s*,?\s*Meeting\s*-\s*\d{4}', strip_tags(body))[:14])
                 if not h:
                     print('      頁面文字開頭:', strip_tags(body)[:500])
-    sched = sorted({x['d'] for x in fomc if x['sched']})
+    sched = merge_two_day([x['d'] for x in fomc if x['sched']])
+    print('   2026 / 2027 原文:', [x['raw'] for x in fomc if x['d'][:4] in ('2026', '2027')])
     unsched = sorted({x['d'] for x in fomc if not x['sched']})
     print(f'\n聯準會:排定 {len(sched)} 次、沒排定 / 電話會議 {len(unsched)} 次;每年排定次數:{per_year(sched)}')
     print('   沒排定的:', unsched)
 
-    # ② CPI / 非農:BLS 存檔索引;被擋 → 只把 ALFRED 那一頁真的有的連結列出來
+    # ② CPI / 非農:BLS 存檔索引第一輪實跑回 403(Access Denied:不給自動程式抓)→ ⛔ 再試、⛔ 換 UA。
+    #    改走 ALFRED release 頁上真的有的「下載公布日」連結(第一輪 log 印出來的 /release/downloaddates?rid=…);頁面上沒有那個連結就不抓
     rel = {}
     for k in ('cpi', 'nfp'):
-        body = fetch(BLS_ARCH[k], f'BLS 存檔索引({k})')
-        ds = parse_bls_arch(body, BLS_TAG[k]) if body else []
+        rel[k] = []
+        a = fetch(ALFRED[k], f'ALFRED release 頁({k})')
+        if not a:
+            bad.append(f'{k} 公布日')
+            continue
+        link = next((h for h in interesting_links(a) if 'downloaddates' in h), None)
+        if not link:
+            print('   ⚠️ 頁面上沒有下載公布日的連結 → 有的連結:', interesting_links(a))
+            bad.append(f'{k} 公布日')
+            continue
+        u = link if link.startswith('http') else 'https://alfred.stlouisfed.org' + link
+        res, why = g.get(u, expect='txt')
+        if res is None:
+            print(f'❌ ALFRED 下載公布日({k}):{why}  {u}')
+            bad.append(f'{k} 公布日')
+            continue
+        raw = res.content
+        ctype = (getattr(res, 'headers', {}) or {}).get('Content-Type', '?')
+        txt = raw.decode('utf-8', errors='replace')
+        ds = parse_dates_txt(txt)
         rel[k] = ds
-        if ds:
-            print(f'   {k}:{len(ds)} 個公布日 {ds[0]} ~ {ds[-1]};每年次數:{per_year([d for d in ds if d[:4] >= str(FROM_YEAR)])}')
-        else:
-            if body:
-                print(f'   ⚠️ {k}:頁面有回、但沒解析到連結 → 含 archives 的連結:', interesting_links(body, ('archives',))[:8], ' 文字開頭:', strip_tags(body)[:300])
-            a = fetch(ALFRED[k], f'ALFRED release 頁({k})')
-            if a:
-                print('   頁面上真的有的「日期 / 下載」連結:', interesting_links(a))
-                print('   文字開頭:', strip_tags(a)[:400])
+        print(f'✅ ALFRED 下載公布日({k}):{len(raw):,} bytes  Content-Type {ctype}  {u}')
+        print('   開頭 300 字:', repr(txt[:300]))
+        print('   結尾 120 字:', repr(txt[-120:]))
+        print(f'   {len(ds)} 個日期 {ds[0] if ds else "-"} ~ {ds[-1] if ds else "-"};{FROM_YEAR} 起每年次數:{per_year([d for d in ds if d[:4] >= str(FROM_YEAR)])}')
+        if not ds:
             bad.append(f'{k} 公布日')
 
     print('\n===US_CAL_BEGIN===')
