@@ -25,6 +25,7 @@ on:
           - yf2_src # 🔎 2026-11-15 換掉 yfinance 第二階段:Cboe VIX / FRED / 期交所夜盤欄位 / Coinbase・Kraken 比特幣(~1 分,只讀、只印 log)
           - yf2_live # 🔎 2026-11-15 同上:Cboe 延遲報價(VIX / SPX)+ 期交所行情網夜盤(~20 秒,只讀、只印 log)
           - yf2_cboe # 🔎 2026-11-15 同上:Cboe 延遲報價有沒有 ADR / 美股 / ETF / 其他指數(~1 分,只讀、只印 log)
+          - us_cal # 🗓️ 2026-11-17 聯準會開會日 / CPI / 非農 的歷史日期(官方網站;日子 / 事件補測要用,~2 分,只讀、只印 log)
 
 permissions:
   contents: read
@@ -109,6 +110,15 @@ jobs:
           python3 lib_trump.py --selftest
           python3 scripts/trump_src_probe.py --selftest
           python3 scripts/trump_src_probe.py
+
+      # 🗓️ 2026-11-17 日子 / 事件補測(使用者同意存歷史公布日期):聯準會排定的開會日、CPI、非農(就業報告)公布日
+      #   App 行事曆這三種是用規則湊的 → 回測要用官方日期;沙箱連不到聯準會 / BLS → 只能在這裡跑。
+      #   ⛔ 只讀、只印 log、不寫檔、不碰任何分支、不需要任何機密;被擋(403)就停、照實印;三種都沒拿到 → 紅燈(= 沒驗到)
+      - name: 🗓️ 聯準會開會日 / CPI / 非農 歷史日期
+        if: ${{ inputs.which == 'us_cal' }}
+        run: |
+          python3 scripts/us_cal_probe.py --selftest
+          python3 scripts/us_cal_probe.py
 
       # 🇺🇸 V81.0.2 研究:台股只有 26 年 → 拿美股近百年同一套切段方法再驗「大跌有沒有週期」
       #   ⛔ 只讀 Yahoo、只印 log、不寫檔、不碰任何分支;抓不到 → 紅燈(= 沒驗到)
