@@ -124,6 +124,25 @@ def interesting_links(html, words=('date', 'download', 'calendar')):
     return sorted({h for h in hs if any(w in h.lower() for w in words)})[:40]
 
 
+def forms_of(html):
+    """頁面上每一張表單 → 送去哪、用什麼方法、有哪些欄位(第二輪:下載公布日那個連結回的是一張表單,不是檔案 → 照它真的欄位送,⛔ 猜)"""
+    out = []
+    for fm in re.findall(r'<form\b[^>]*>.*?</form>', html or '', flags=re.S | re.I):
+        head = re.match(r'<form\b([^>]*)>', fm, flags=re.I).group(1)
+        attrs = dict(re.findall(r'([\w-]+)\s*=\s*"([^"]*)"', head))
+        fields = []
+        for tag, a in re.findall(r'<(input|select|textarea|button)\b([^>]*)>', fm, flags=re.I):
+            d = dict(re.findall(r'([\w-]+)\s*=\s*"([^"]*)"', a))
+            f = {k: d[k] for k in ('name', 'type', 'value', 'id') if k in d}
+            f['tag'] = tag.lower()
+            if 'checked' in a.lower():
+                f['checked'] = True
+            fields.append(f)
+        opts = [(v, strip_tags(t)[:30]) for v, t in re.findall(r'<option\b[^>]*value="([^"]*)"[^>]*>(.*?)</option>', fm, flags=re.S | re.I)]
+        out.append({'action': attrs.get('action'), 'method': attrs.get('method'), 'fields': fields, 'options': opts[:12]})
+    return out
+
+
 def per_year(dates):
     c = {}
     for d in dates:
@@ -186,6 +205,12 @@ def selftest():
        parse_dates_txt('Release Dates\n2020-01-14\n2020-01-14 x\n2019-12-11\n120200-01-145') == ['2019-12-11', '2020-01-14'], parse_dates_txt('2020-01-14'))
     idx = '<a href="/monetarypolicy/fomchistorical2008.htm">2008</a> <a href="/monetarypolicy/fomchistorical1999.htm">1999</a>'
     ok('③ 每年那一頁的連結從索引頁讀(⛔ 自己拼網址)', hist_links(idx) == {2008: '/monetarypolicy/fomchistorical2008.htm', 1999: '/monetarypolicy/fomchistorical1999.htm'})
+    fm = forms_of('<form action="/release/downloaddates" method="post"><input type="hidden" name="rid" value="10"><select name="ff"><option value="txt">Text</option>'
+                  '<option value="xls">Excel</option></select><input type="radio" name="sort" value="asc" checked><input type="submit" value="Download"></form>')
+    ok('④ 表單:送去哪、方法、欄位名稱與預設值、下拉選項(⛔ 猜欄位)',
+       len(fm) == 1 and fm[0]['action'] == '/release/downloaddates' and fm[0]['method'] == 'post'
+       and {'name': 'rid', 'type': 'hidden', 'value': '10', 'tag': 'input'} in fm[0]['fields'] and ('txt', 'Text') in fm[0]['options']
+       and any(f.get('checked') for f in fm[0]['fields']), fm)
     ok('⑤ 每年次數', per_year(['2019-01-11', '2019-02-13', '2020-01-14']) == {'2019': 2, '2020': 1})
     ok('⑥ 月份:全名 / 縮寫 / 兩個月取後面;亂字 → None', mon_no('January') == 1 and mon_no('Jan/Feb') == 2 and mon_no('September') == 9 and mon_no('xyz') is None)
     print(f'\n{"❌ " + str(len(fails)) + " 條失敗" if fails else "✅ US_CAL_SELFTEST_PASS"}({n[0]} 條)')
@@ -270,8 +295,12 @@ def main():
         ds = parse_dates_txt(txt)
         rel[k] = ds
         print(f'✅ ALFRED 下載公布日({k}):{len(raw):,} bytes  Content-Type {ctype}  {u}')
-        print('   開頭 300 字:', repr(txt[:300]))
-        print('   結尾 120 字:', repr(txt[-120:]))
+        if txt.lstrip()[:1] == '<':
+            for f in forms_of(txt):
+                if 'search' in str(f.get('action') or '').lower():
+                    continue
+                print('   表單:', json.dumps(f, ensure_ascii=False)[:1500])
+            print('   這一頁上跟下載有關的連結:', interesting_links(txt, ('download', 'ff=', '.txt', '.xls', '.csv', '.zip')))
         print(f'   {len(ds)} 個日期 {ds[0] if ds else "-"} ~ {ds[-1] if ds else "-"};{FROM_YEAR} 起每年次數:{per_year([d for d in ds if d[:4] >= str(FROM_YEAR)])}')
         if not ds:
             bad.append(f'{k} 公布日')
