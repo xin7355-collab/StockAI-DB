@@ -249,6 +249,75 @@ ok('④ ⭐ 風險指數吃得到那個值(⛔ 不是永遠 null)',
         app._macroRiskCache = rMR; app._marketSnapshot = rMS; app.usMacroCache = rUM;
         return o;
     });
+    // 🕐 V82.4.3 第二條寫美股那一排的路:refreshUSMarketBar(App 自己即時抓,經公開代理)
+    //   🚨 Playwright 載入線上那份實測:代理一失敗整排被寫成 --(_renderUSBar 剛畫好的收盤與「盤中」不到 1 秒就洗掉);
+    //      抓得到時,美股盤中抓到的值又照樣顯示得像收盤。
+    const Q = await p4.evaluate(async () => {
+        const o = {};
+        const at = (nowIso, tradeIso) => app._usCashIntradayAt(Date.parse(tradeIso || nowIso), Date.parse(nowIso));
+        o.t = {
+            mid: at('2026-11-17T15:00:00Z'),                                  // 美東 10:00(冬令)
+            grace: at('2026-11-17T21:15:00Z', '2026-11-17T21:00:00Z'),       // 16:15、最後成交 16:00 → 緩衝內
+            after: at('2026-11-17T21:20:00Z', '2026-11-17T21:00:00Z'),       // 16:20 起 ⛔
+            pre: at('2026-11-17T14:00:00Z'),                                  // 09:00 還沒開
+            open: at('2026-11-17T14:30:00Z'),                                 // 09:30 起算
+            stale: at('2026-11-17T15:00:00Z', '2026-11-16T20:59:00Z'),       // 最後成交是昨天的 = 昨天收盤
+            sat: at('2026-11-21T16:00:00Z'),                                  // 週六
+            dst: at('2026-07-15T13:45:00Z'),                                  // 夏令 09:45
+            dstPre: at('2026-07-15T13:15:00Z'),                               // 夏令 09:15
+            none: app._usCashIntradayAt(null, Date.parse('2026-11-17T15:00:00Z')),
+        };
+        // 不認得 hourCycle 的引擎(退回 12 小時制)→ 晚上 9:30 ⛔ 讀成 '09:30';下午 2 點要讀成 14:00
+        const RealDTF = Intl.DateTimeFormat;
+        Intl.DateTimeFormat = function (loc, opt) { const x = { ...(opt || {}) }; delete x.hourCycle; x.hour12 = true; return new RealDTF(loc, x); };
+        try {
+            o.t12 = { eve: at('2026-11-18T02:30:00Z', '2026-11-17T21:00:00Z'), aft: at('2026-11-17T19:00:00Z'),
+                      fmt: new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(Date.parse('2026-11-18T02:30:00Z'))).some(p => p.type === 'dayPeriod') };
+        } finally { Intl.DateTimeFormat = RealDTF; }
+        for (const id of ['spx', 'ukoil', 'vix']) for (const suf of ['', '_chg', '_main', '_chg_main']) {
+            const eid = `usBar_${id}${suf}`;
+            if (!document.getElementById(eid)) { const el = document.createElement('div'); el.id = eid; document.body.appendChild(el); }
+        }
+        app._updateWarRoom = () => {}; app._checkMarketAlerts = () => {}; app._renderUsFutNight = () => {}; app.renderMarketBriefing = async () => {};
+        const t = id => (document.getElementById(id) || {}).textContent || '';
+        const tagOf = sel => { const e = document.querySelector(sel); return e ? { key: e.getAttribute('data-intraday'), title: e.getAttribute('title') } : null; };
+        const NULLS = { spx: null, ndx: null, vix: null, tsm: null, dji: null, sox: null, nvda: null, aapl: null, msft: null,
+                        us02y: null, ukoil: null, dxy: null, gold: null, usdjpy: null, esf: null, nqf: null, fetchedAt: 1 };
+        const realFetch = app.fetchMassiveUSMarket, realAt = app._usCashIntradayAt;
+        // ① 採礦檔那份(11/16 收盤)先畫好 → 即時那條全部沒抓到
+        app._macroRiskCache = {};
+        for (const id of ['usBar_ukoil', 'usBar_ukoil_chg']) document.getElementById(id).textContent = '';
+        app._renderUSBar({ sp500: { date: '2026-11-16', close: 7416.59, prev: 7561.58, chg_pct: -1.92 } });
+        app.fetchMassiveUSMarket = async () => ({ ...NULLS });
+        await app.refreshUSMarketBar();
+        o.fail = { spx: t('usBar_spx'), spxChg: t('usBar_spx_chg'), ukoil: t('usBar_ukoil'), snap: app._marketSnapshot && app._marketSnapshot.sp500 };
+        // ② 即時那條在美東 10:00 抓到(盤中)
+        const NOW = Date.parse('2026-11-17T15:00:00Z');
+        app._usCashIntradayAt = (tm, now) => realAt.call(app, tm, now ?? NOW);
+        app.fetchMassiveUSMarket = async () => ({ ...NULLS,
+            spx: { price: 7450.4, changePercent: 0.45, time: NOW - 60e3 },
+            ukoil: { price: 91.2, changePercent: -0.5, time: NOW - 60e3 },
+            vix: { price: 21.5, changePercent: -6.2, time: NOW - 60e3 } });
+        await app.refreshUSMarketBar();
+        o.live = { spx: t('usBar_spx'), spxChg: t('usBar_spx_chg'), spxMain: t('usBar_spx_chg_main'), spxTag: tagOf('#usBar_spx_chg [data-intraday]'),
+                   ukoilChg: t('usBar_ukoil_chg'), ukoilTag: !!document.querySelector('#usBar_ukoil_chg [data-intraday]'),
+                   vixTag: tagOf('#usBar_vix_chg [data-intraday]'), snap: app._marketSnapshot.sp500, snapOil: app._marketSnapshot.ukoil };
+        // ③ 美東 16:30(收盤後)抓到、最後成交 16:00
+        const AFT = Date.parse('2026-11-17T21:30:00Z');
+        app._usCashIntradayAt = (tm, now) => realAt.call(app, tm, now ?? AFT);
+        app.fetchMassiveUSMarket = async () => ({ ...NULLS, spx: { price: 7460.1, changePercent: 0.59, time: Date.parse('2026-11-17T21:00:00Z') } });
+        await app.refreshUSMarketBar();
+        o.after = { spxChg: t('usBar_spx_chg'), spxMain: t('usBar_spx_chg_main'), tag: !!document.querySelector('#usBar_spx_chg [data-intraday]'), snap: app._marketSnapshot.sp500 };
+        app._usCashIntradayAt = realAt; app.fetchMassiveUSMarket = realFetch;
+        // ④ VIX 那格(_renderUSBar 走 _vixState):macro_risk 的 VIX 是盤中抓的 → 也要標
+        app._macroRiskCache = { vix: 22.4, vix_chg_pct: 3.1, vix_date: '2026-11-17', vix_intraday: '10:05' };
+        app._renderUSBar({});
+        o.vix = { chg: t('usBar_vix_chg'), tag: tagOf('#usBar_vix_chg [data-intraday]') };
+        app._macroRiskCache = { vix: 22.91, vix_chg_pct: 15.76, vix_date: '2026-11-16' };
+        app._renderUSBar({});
+        o.vix0 = { chg: t('usBar_vix_chg'), tag: tagOf('#usBar_vix_chg [data-intraday]') };
+        return o;
+    });
     await b4.close();
     ok('⑧ 🕐 macro_cache 是盤中、macro_risk 是同一天收盤 → 拿收盤(−1.92%)、intraday 空', P.a.src === 'macro_risk' && P.a.chg === -1.92 && !P.a.intraday, JSON.stringify(P.a));
     ok('⑧b ⭐ 反過來:macro_risk 是盤中、macro_cache 是同一天收盤 → 換成收盤那份(val / chg 一起換)',
@@ -262,6 +331,25 @@ ok('④ ⭐ 風險指數吃得到那個值(⛔ 不是永遠 null)',
     ok('⑧g 決定性對照:沒標的收盤 → 照舊、⛔ 盤中字樣', P.bar0.spxChg === '-1.92%' && !P.bar0.tag, JSON.stringify(P.bar0));
     ok('⑧h 標記內容怪 → 只留美東 HH:MM(⛔ 原樣塞進畫面);認不出時間 → 「—」、沒標 → null',
        P.bad.title === '美東 13:05 抓的盤中價,美股還沒收盤 —— 不是收盤價' && !P.bad.img && P.bad.at === '—' && P.bad.none === null, JSON.stringify(P.bad));
+    const TITLE = at => `美東 ${at} 抓的盤中價,美股還沒收盤 —— 不是收盤價`;
+    ok('⑨ 🕐 即時那條的盤中判斷(同採礦端):美東 10:00 是、16:15 緩衝內是、16:20 起不是、09:00 不是、09:30 起算、最後成交是昨天的不是、週六不是、夏令 09:45 是 / 09:15 不是、沒時間不是',
+       Q.t.mid === '10:00' && Q.t.grace === '16:15' && Q.t.after === null && Q.t.pre === null && Q.t.open === '09:30'
+       && Q.t.stale === null && Q.t.sat === null && Q.t.dst === '09:45' && Q.t.dstPre === null && Q.t.none === null, JSON.stringify(Q.t));
+    ok('⑨g 不認得 hourCycle 的引擎(退回 12 小時制):美東晚上 9:30 ⛔ 當成盤中(⛔ 讀成 09:30)、下午 2 點讀成 14:00',
+       Q.t12.fmt === true && Q.t12.eve === null && Q.t12.aft === '14:00', JSON.stringify(Q.t12));
+    ok('⑨b ⭐ 即時那條沒抓到(代理被擋)→ ⛔ 洗掉採礦檔那份:標普照舊 7,416.59 / −1.92%、備援那份還在;本來就空的格子才寫 --',
+       /7,416\.59/.test(Q.fail.spx) && Q.fail.spxChg === '-1.92%' && Q.fail.ukoil === '--'
+       && !!Q.fail.snap && Q.fail.snap.close === 7416.59 && Q.fail.snap.date === '2026-11-16', JSON.stringify(Q.fail));
+    ok('⑨c ⭐ 即時那條在美股盤中抓到 → 寫「盤中」(美東 10:00)、全球頁那格也寫、VIX 也標;備援那份帶 intraday',
+       Q.live.spx === '7450' && Q.live.spxChg === '+0.45%・盤中' && Q.live.spxMain === '+0.45%・盤中'
+       && !!Q.live.spxTag && Q.live.spxTag.key === 'sp500' && Q.live.spxTag.title === TITLE('10:00')
+       && !!Q.live.vixTag && Q.live.vixTag.key === 'vix' && !!Q.live.snap && Q.live.snap.intraday === '10:00', JSON.stringify(Q.live));
+    ok('⑨d 油價幾乎 24 小時在交易 → ⛔ 標盤中(備援那份也不帶)',
+       Q.live.ukoilChg === '-0.50%' && !Q.live.ukoilTag && !!Q.live.snapOil && !('intraday' in Q.live.snapOil), JSON.stringify({ c: Q.live.ukoilChg, s: Q.live.snapOil }));
+    ok('⑨e 決定性對照:收盤後(美東 16:30)抓到的 → ⛔ 標盤中', Q.after.spxChg === '+0.59%' && Q.after.spxMain === '+0.59%' && !Q.after.tag
+       && !!Q.after.snap && !Q.after.snap.intraday, JSON.stringify(Q.after));
+    ok('⑨f VIX 那格:macro_risk 的 VIX 是盤中抓的 → 也標(V82.4.2 漏了這格);收盤的 → ⛔ 標',
+       Q.vix.chg === '+3.10%・盤中' && !!Q.vix.tag && Q.vix.tag.title === TITLE('10:05') && Q.vix0.chg === '+15.76%' && !Q.vix0.tag, JSON.stringify([Q.vix, Q.vix0]));
 }
 
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ VIXSRC_PASS(全部通過)');

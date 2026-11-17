@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.4.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.4.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.4.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6690,8 +6690,11 @@ const app = {
         const data = await this.fetchMassiveUSMarket();
         if (btn) { btn.innerHTML = '🔄<br>刷新'; btn.disabled = false; }
         if (!data) return;
+        // 🕐 V82.4.3 美股現貨(這幾格)盤中抓到的要標「盤中」,同 _renderUSBar 與採礦端 —— 這條是 App 自己即時抓的,
+        //   美股開盤時抓到的就是盤中價,以前照樣顯示得像收盤。⛔ 油價 / 美元指數 / 美債幾乎 24 小時在交易,不標
+        const US_CASH = { spx: 'sp500', ndx: 'nasdaq', vix: 'vix', tsm: 'tsm', dji: 'dji', sox: 'sox', nvda: 'nvda', aapl: 'aapl', msft: 'msft' };
+        const intraOf = (id, item) => US_CASH[id] ? this._usCashIntradayAt(item && item.time) : null;
         const fmt = (item, isVix = false) => {
-            if (!item || item.price == null) return { price: '--', chg: '--', color: 'text-gray-400' };
             const price = parseFloat(item.price);
             const chgPct = parseFloat(item.changePercent);
             const color = isVix
@@ -6701,16 +6704,27 @@ const app = {
             return { price: price.toFixed(isVix ? 2 : 0), chg: chgStr, color };
         };
         const setBar = (id, item, isVix = false) => {
-            const f = fmt(item, isVix);
             const el = document.getElementById(`usBar_${id}`);
             const chgEl = document.getElementById(`usBar_${id}_chg`);
-            if (el) { el.innerText = f.price; el.className = `text-sm font-black font-mono ${f.color}`; }
-            if (chgEl) { chgEl.innerText = f.chg; chgEl.className = `text-[9px] font-bold ${f.color}`; }
-            // also update main market tab IDs directly
             const elM = document.getElementById(`usBar_${id}_main`);
             const chgM = document.getElementById(`usBar_${id}_chg_main`);
+            // 🩹 V82.4.3 這一格沒抓到(公開代理被擋 / 逾時)→ ⛔ 蓋掉採礦檔那份。以前整排寫 `--`:
+            //   實測(Playwright 載入線上那份)代理一失敗,_renderUSBar 剛畫好的收盤價和 V82.4.2 的「盤中」不到 1 秒就被洗成 --。
+            //   格子本來就空 → 才寫 `--`(看得出沒資料)
+            if (!item || item.price == null || isNaN(parseFloat(item.price))) {
+                for (const e of [el, chgEl, elM, chgM]) if (e && !e.textContent.trim()) e.innerText = '--';
+                return;
+            }
+            const f = fmt(item, isVix);
+            const intra = intraOf(id, item);
+            if (el) { el.innerText = f.price; el.className = `text-sm font-black font-mono ${f.color}`; }
+            if (chgEl) {
+                chgEl.innerText = f.chg; chgEl.className = `text-[9px] font-bold ${f.color}`;
+                if (intra) chgEl.insertAdjacentHTML('beforeend', this._intraTag(US_CASH[id], intra));
+            }
+            // also update main market tab IDs directly
             if (elM) { elM.innerText = f.price; elM.className = `text-xl font-black font-mono ${f.color}`; }
-            if (chgM) { chgM.innerText = f.chg; chgM.className = `text-xs font-bold ${f.color} mt-0.5`; }
+            if (chgM) { chgM.innerText = f.chg + (intra ? '・盤中' : ''); chgM.className = `text-xs font-bold ${f.color} mt-0.5`; }
         };
         setBar('spx', data.spx); setBar('ndx', data.ndx);
         setBar('vix', data.vix, true); setBar('tsm', data.tsm);
@@ -6723,15 +6737,24 @@ const app = {
         //   再加第三處就違反使用者的「同一件事只講一次、邏輯不打架」。
         this._checkMarketAlerts();
         // Merge Massive API data into _marketSnapshot for war room
+        // 🩹 V82.4.3 沒抓到的 ⛔ 寫進去(以前寫 null / close 0 → 把 _renderUSBar 放進來的採礦檔那份洗掉,_macroPick 的備援跟著變空);
+        //   盤中抓到的帶 `intraday`(同 macro_cache 的形狀),讀的人才分得出不是收盤
         if (data) {
-            const conv = k => data[k] ? { close: parseFloat(data[k].price ?? 0), chg_pct: parseFloat(data[k].changePercent ?? 0) } : null;
-            this._marketSnapshot = Object.assign(this._marketSnapshot || {}, {
-                sp500: conv('spx'), nasdaq: conv('ndx'), vix: conv('vix'), tsm: conv('tsm'),
-                dji: conv('dji'), sox: conv('sox'), nvda: conv('nvda'), aapl: conv('aapl'),
-                msft: conv('msft'), us02y: conv('us02y'), ukoil: conv('ukoil'), dxy: conv('dxy'),
-                gold: conv('gold'), usdjpy: conv('usdjpy'),
-                es_fut: conv('esf'), nq_fut: conv('nqf'),   // V32.7 — 美股期貨夜盤,供 _calcRiskScore 反映隔夜/週末
-            });
+            const conv = k => {
+                const it = data[k];
+                if (!it || it.price == null || isNaN(parseFloat(it.price))) return null;
+                const intra = intraOf(k, it);
+                return { close: parseFloat(it.price), chg_pct: parseFloat(it.changePercent ?? 0), ...(intra ? { intraday: intra } : {}) };
+            };
+            const got = {};
+            for (const [key, k] of [['sp500', 'spx'], ['nasdaq', 'ndx'], ['vix', 'vix'], ['tsm', 'tsm'], ['dji', 'dji'], ['sox', 'sox'],
+                                    ['nvda', 'nvda'], ['aapl', 'aapl'], ['msft', 'msft'], ['us02y', 'us02y'], ['ukoil', 'ukoil'], ['dxy', 'dxy'],
+                                    ['gold', 'gold'], ['usdjpy', 'usdjpy'],
+                                    ['es_fut', 'esf'], ['nq_fut', 'nqf']]) {   // V32.7 — 美股期貨夜盤,供 _calcRiskScore 反映隔夜/週末
+                const v = conv(k);
+                if (v) got[key] = v;
+            }
+            this._marketSnapshot = Object.assign(this._marketSnapshot || {}, got);
             this._renderUsFutNight?.();   // V32.7 — 指數列「🌙 期」夜盤顯示
             this._updateWarRoom();
         }
@@ -8974,10 +8997,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.4.2',
+    _APP_VERSION: 'V82.4.3',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.4.3', d: [
+            '🕐 美股那一排:即時那份沒抓到時不再整排變成「--」;美股開盤時抓到的也會寫「盤中」(VIX 那格也是)',
+        ], dt: '2026-11-17' },
         { v: 'V82.4.2', d: [
             '🕐 美股那一排與盤前體檢:採礦剛好在美股還沒收盤時跑到,那一格會寫「盤中」、不當成昨晚收盤算分;另一份已經有收盤的,就改顯示收盤',
         ], dt: '2026-11-17' },
@@ -9300,10 +9326,6 @@ ${list}
             '📐 16 年定案那頁多一張「兩個條件一起成立」的表(28 組),旁邊放你現在用的那一套當參考',
             '🛡️ 產業作戰室研究頁多一條:領頭羊想「少賠又不少賺」有沒有辦法(結論與可以選的做法寫在那一條)'
         ], dt: '2026-10-26' },
-        { v: 'V79.9.0', d: [
-            '🧪 產業作戰室「量化實驗室」多一個「沙盒」:可以從範本改,或自己拼條件(均線、KD、RSI、外資 / 投信、融資、跳空、成交量…),選出場方式和股票池(成交額前 60 / 150 檔 + 你的庫存自選),在手機上直接算最近 3 年;每一年的結果、買不到的次數、今天哪幾檔碰到都會列出來',
-            '⛔ 沙盒只是試試看:只有最近 3 年、只有現在還在交易的股票,試越多種越容易碰到看起來很好的 —— 旁邊一定放 16 年全市場最接近的那一支結果;看到好看的,按「送 16 年驗證」把設定複製起來交給我跑',
-        ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -12407,7 +12429,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             }
             const d = fmt(o?.close, o?.chg_pct);
             if (!d) return;
-            const tag = intra ? `<span class="text-[8px] text-gray-500" data-intraday="${key}" title="美東 ${intra} 抓的盤中價,美股還沒收盤 —— 不是收盤價">・盤中</span>` : '';
+            const tag = intra ? this._intraTag(key, intra) : '';
             const el = document.getElementById(valId); const ec = document.getElementById(chgId);
             if (el) { el.innerHTML = `<span class="${d.col}">${d.val}</span>`; }
             if (ec) { ec.innerHTML = `<span class="${d.col}">${d.chg}</span>${tag}`; }
@@ -12435,7 +12457,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const col = _vs.val > 25 ? 'text-[#f87171]' : (_vs.val < 15 ? 'text-[#4ade80]' : 'text-yellow-300');
             const vEl = document.getElementById('usBar_vix'), vcEl = document.getElementById('usBar_vix_chg');
             if (vEl) vEl.innerHTML = `<span class="${col}">${_vs.val.toFixed(2)}</span>`;
-            if (vcEl && _vs.chg != null) { const sign = _vs.chg > 0 ? '+' : ''; vcEl.innerHTML = `<span class="${col}">${sign}${_vs.chg.toFixed(2)}%</span>`; }
+            // 🕐 V82.4.3 VIX 也會是盤中抓的(Cboe 那份)→ 跟其他格一樣標(V82.4.2 漏了這格)
+            if (vcEl && _vs.chg != null) { const sign = _vs.chg > 0 ? '+' : ''; vcEl.innerHTML = `<span class="${col}">${sign}${_vs.chg.toFixed(2)}%</span>` + (_vs.intraday ? this._intraTag('vix', _vs.intraday) : ''); }
             // 🗑️ V71.4.6 這裡原本有一段 VIX 白話註解(恐慌/警戒/正常/平靜),
             //   但目標元素 usBar_vix_annotation_main 早就隨舊版全球 tab 卡片一起刪了 → 從來沒顯示過。
             //   不補回來的理由:VIX 的白話解讀在「頂部風險指數跑馬燈」與「盤前體檢」已經各講一次,
@@ -13836,7 +13859,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 const chgPct = (price != null && prev && prev !== 0)
                     ? ((price - prev) / prev * 100)
                     : (meta.regularMarketChangePercent ?? null);
-                return { ticker: label, price, changePercent: chgPct, prevClose: prev };
+                // 🕐 V82.4.3 time = 最後一筆成交(毫秒)→ refreshUSMarketBar 拿來判斷是不是盤中
+                return { ticker: label, price, changePercent: chgPct, prevClose: prev, time: meta.regularMarketTime ? meta.regularMarketTime * 1000 : null };
             };
             const result = {
                 spx: extract(spxJ, 'SPX'),
@@ -17521,6 +17545,26 @@ const marginByDate = {};
     },
     /** 🕐 V82.4.2 盤中標記 → 美東 'HH:MM'(沒標 → null;標了但格式怪 → '—')。⛔ 原樣塞進畫面(會進 innerHTML / title) */
     _intraAt(v) { if (!v) return null; const m = String(v).match(/\d{1,2}:\d{2}/); return m ? m[0] : '—'; },
+    /** 🕐 V82.4.3 App 自己即時抓到的美股(refreshUSMarketBar 那條)是不是盤中 → 美東 'HH:MM' 或 null。
+     *  規則同採礦端 `lib_quotes.us_cash_intraday`:美東平日、最後一筆成交是美東「今天」、現在 09:30~16:20(收盤後留 20 分鐘緩衝)。
+     *  ⛔ 自己推夏令時間 —— 交給 Intl 的 America/New_York;Intl 不能用 → null(寧可不標,⛔ 亂標) */
+    _usCashIntradayAt(tradeMs, nowMs = Date.now()) {
+        if (!(tradeMs > 0)) return null;
+        let f;
+        try { f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); }
+        catch (_) { return null; }
+        const parts = ms => Object.fromEntries(f.formatToParts(new Date(ms)).map(p => [p.type, p.value]));
+        const n = parts(nowMs), t = parts(tradeMs);
+        if (n.weekday === 'Sat' || n.weekday === 'Sun') return null;
+        if (`${t.year}-${t.month}-${t.day}` !== `${n.year}-${n.month}-${n.day}`) return null;
+        // ⚠️ 不認得 hourCycle 的引擎會退回 12 小時制(多一個 dayPeriod)→ 晚上 9:30 會讀成 '09:30' 被當盤中;有的引擎午夜寫 24
+        let h = parseInt(n.hour, 10) % 24;
+        if (n.dayPeriod) h = (h % 12) + (/p/i.test(n.dayPeriod) ? 12 : 0);
+        const hm = `${String(h).padStart(2, '0')}:${n.minute}`;
+        return (hm >= '09:30' && hm < '16:20') ? hm : null;
+    },
+    /** 🕐 V82.4.3 美股那一排的「・盤中」小標(三處共用)。⚠️ at 只能是 _intraAt / _usCashIntradayAt 排出來的時間(會進 innerHTML) */
+    _intraTag(key, at) { return `<span class="text-[8px] text-gray-500" data-intraday="${key}" title="美東 ${at} 抓的盤中價,美股還沒收盤 —— 不是收盤價">・盤中</span>`; },
     /** 漲跌%(⛔ 呼叫端別自己挑檔案);拿不到回 null
      *  ⚠️ 盤中值照回(風險指數要的是「現在」,本來就混用期貨盤中價);要「收盤」的地方(盤前分數、美股那一排)自己看 `_macroPick().intraday` */
     _macroChg(key) { return this._macroPick(key).chg; },
