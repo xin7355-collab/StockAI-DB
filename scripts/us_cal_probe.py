@@ -13,6 +13,7 @@ App 行事曆裡這三種是用規則湊的(CPI = 每月 10~14 日第一個平�
 輸出:log 最後一段 `US_CAL|種類|日期,日期…`(每行最多 20 個)→ 人工核對每年次數後存成 research/us_cal.json。
 
 跑法:python3 scripts/us_cal_probe.py [--selftest]
+     python3 scripts/us_cal_probe.py --build <log 摘錄.txt> research/us_cal.json <抓檔日> <run>(校驗碼對不上就不寫)
 """
 import json
 import os
@@ -162,6 +163,62 @@ def emit(kind, dates):
         print(f'US_CAL|{kind}|' + ','.join(ds[i:i + 20]))
 
 
+def regular(dates, mode, drop=()):
+    """ALFRED 給的是「這份資料有更新的每一天」→ 同一個月有兩個日期時留哪一個(只看日期的結構決定,⛔ 看股價):
+    cpi:兩個相差 7 天以內 → 留後面(前面那個是每年 2 月先公布的季節調整修正,正式的 1 月 CPI 在後面;2005 起每年 2 月都這樣);
+        超過 7 天 → 留前面(後面那個是更正,2000-09-28 那種)
+    nfp:留前面(就業報告本身;後面那個是更正 / 基準修正,2024-08-21 那種)
+    drop:抓檔那一天(ALFRED 把「今天」列成最後一個日期,不是公布日)"""
+    from datetime import date
+    by = {}
+    for d in sorted(set(dates)):
+        if d not in drop:
+            by.setdefault(d[:7], []).append(d)
+    out = []
+    for ym in sorted(by):
+        a = by[ym]
+        if len(a) == 1 or mode != 'cpi':
+            out.append(a[0])
+        else:
+            out.append(a[-1] if (date.fromisoformat(a[-1]) - date.fromisoformat(a[0])).days <= 7 else a[0])
+    return out
+
+
+def build(log_path, out_path, fetched, run):
+    """log 裡抄下來的 US_CAL / US_CAL_SHA 幾行 → research/us_cal.json。校驗碼對不上(= 抄錯)→ 不寫檔。"""
+    kinds, shas = {}, {}
+    for ln in open(log_path, encoding='utf-8'):
+        m = re.search(r'US_CAL\|(\w+)\|([\d,\-]+)\s*$', ln)
+        if m:
+            kinds.setdefault(m.group(1), []).extend(x for x in m.group(2).split(',') if x)
+        m = re.search(r'US_CAL_SHA\|(\w+)\|(\d+)\|([0-9a-f]{64})', ln)
+        if m:
+            shas[m.group(1)] = (int(m.group(2)), m.group(3))
+    for k in ('fomc', 'fomc_unsched', 'cpi', 'nfp'):
+        ds = kinds.get(k) or []
+        if k not in shas or shas[k] != (len(set(ds)), sha_of(ds)):
+            print(f'❌ {k}:校驗碼對不上(log {shas.get(k)} vs 抄下來的 {len(set(ds))} 筆 {sha_of(ds)})→ 不寫檔')
+            return 1
+    cpi, nfp = regular(kinds['cpi'], 'cpi', (fetched,)), regular(kinds['nfp'], 'nfp', (fetched,))
+    out = {
+        'about': '美國三種排定的日子的歷史日期(研究用;EXP-20261117-01 日子 / 事件補測)。⛔ 手改:重抓用 macro_probe which=us_cal,再跑 us_cal_probe.py --build',
+        'fetched': fetched, 'run': run,
+        'src': {'fomc': [FED_CAL, FED_HIST], 'cpi': ALFRED['cpi'] + ' → 頁面上的下載公布日文字檔', 'nfp': ALFRED['nfp'] + ' → 頁面上的下載公布日文字檔'},
+        'rule': {'fomc': '排定的會議、決議日 = 最後一天;排定的兩筆差一天只留後面(2003-09-15 / 16);臨時會議 / 電話會議 / 書面表決另外放 fomc_unsched',
+                 'cpi': '同一個月兩個日期:相差 7 天以內留後面(前面是 2 月的季節調整修正)、超過 7 天留前面(後面是更正);抓檔那天不算',
+                 'nfp': '同一個月兩個日期留前面(後面是更正 / 基準修正);抓檔那天不算'},
+        'sha': {k: shas[k][1] for k in shas},
+        'fomc': sorted(set(kinds['fomc'])), 'fomc_unsched': sorted(set(kinds['fomc_unsched'])),
+        'cpi': cpi, 'nfp': nfp, 'cpi_raw': sorted(set(kinds['cpi'])), 'nfp_raw': sorted(set(kinds['nfp'])),
+    }
+    with open(out_path, 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
+    print(f'✅ 寫 {out_path}:聯準會 {len(out["fomc"])}・CPI {len(cpi)}(原始 {len(out["cpi_raw"])})・非農 {len(nfp)}(原始 {len(out["nfp_raw"])})')
+    print('   CPI 每年:', per_year(cpi))
+    print('   非農每年:', per_year(nfp))
+    return 0
+
+
 def selftest():
     fails, n = [], [0]
 
@@ -218,6 +275,24 @@ def selftest():
        and {'name': 'rid', 'type': 'hidden', 'value': '10', 'tag': 'input'} in fm[0]['fields'] and ('txt', 'Text') in fm[0]['options']
        and any(f.get('checked') for f in fm[0]['fields']), fm)
     ok('④b 校驗碼:順序 / 重複不影響、改一個字就不同', sha_of(['2020-01-02', '2019-01-01']) == sha_of(['2019-01-01', '2020-01-02', '2020-01-02']) and sha_of(['2020-01-02']) != sha_of(['2020-01-03']) and len(sha_of([])) == 64)
+    ok('④c CPI 同一個月兩個日期:差 7 天以內留後面(2024-02-09 / 13 → 13)、超過 7 天留前面(2000-09-15 / 28 → 15);抓檔那天丟掉',
+       regular(['2024-01-11', '2024-02-09', '2024-02-13', '2000-09-15', '2000-09-28', '2026-11-10', '2026-11-17'], 'cpi', ('2026-11-17',))
+       == ['2000-09-15', '2024-01-11', '2024-02-13', '2026-11-10'])
+    ok('④d 非農同一個月兩個日期留前面(2024-08-02 / 21 → 02);決定性對照:用 CPI 那條規則會留錯(2013-05-03 / 06 → 06)',
+       regular(['2024-08-02', '2024-08-21', '2013-05-03', '2013-05-06'], 'nfp') == ['2013-05-03', '2024-08-02']
+       and regular(['2013-05-03', '2013-05-06'], 'cpi') == ['2013-05-06'])
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        lg, oj = os.path.join(td, 'log.txt'), os.path.join(td, 'o.json')
+        body = {'fomc': ['2020-01-29', '2020-04-29'], 'fomc_unsched': ['2020-03-15'], 'cpi': ['2020-01-14', '2020-02-11', '2020-02-13'], 'nfp': ['2020-05-08', '2020-05-11']}
+        open(lg, 'w').write(''.join(f'x US_CAL|{k}|{",".join(v)}\n' for k, v in body.items()) + ''.join(f'y US_CAL_SHA|{k}|{len(v)}|{sha_of(v)}\n' for k, v in body.items()))
+        r1 = build(lg, oj, '2020-06-01', 'selftest')
+        o = json.load(open(oj))
+        open(lg, 'w').write(''.join(f'x US_CAL|{k}|{",".join(v)}\n' for k, v in body.items()).replace('2020-04-29', '2020-04-28') + ''.join(f'y US_CAL_SHA|{k}|{len(v)}|{sha_of(v)}\n' for k, v in body.items()))
+        os.remove(oj)
+        r2 = build(lg, oj, '2020-06-01', 'selftest')
+        ok('④e 建檔:校驗碼對得上才寫(CPI 留 02-13、非農留 05-08、原始清單也存);抄錯一個字 → 不寫檔',
+           r1 == 0 and o['cpi'] == ['2020-01-14', '2020-02-13'] and o['nfp'] == ['2020-05-08'] and o['cpi_raw'][1] == '2020-02-11' and r2 == 1 and not os.path.exists(oj), o)
     ok('⑤ 每年次數', per_year(['2019-01-11', '2019-02-13', '2020-01-14']) == {'2019': 2, '2020': 1})
     ok('⑥ 月份:全名 / 縮寫 / 兩個月取後面;亂字 → None', mon_no('January') == 1 and mon_no('Jan/Feb') == 2 and mon_no('September') == 9 and mon_no('xyz') is None)
     print(f'\n{"❌ " + str(len(fails)) + " 條失敗" if fails else "✅ US_CAL_SELFTEST_PASS"}({n[0]} 條)')
@@ -338,4 +413,7 @@ def main():
 
 
 if __name__ == '__main__':
+    if '--build' in sys.argv:   # --build <log 摘錄> <out.json> <抓檔日 YYYY-MM-DD> <哪一次 run>
+        i = sys.argv.index('--build')
+        sys.exit(build(*sys.argv[i + 1:i + 5]))
     sys.exit(selftest() if '--selftest' in sys.argv else main())
