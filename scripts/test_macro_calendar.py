@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-📅 財經行事曆(macro_miner._compute_upcoming_macro_events)的日期與文字(2026-11-17,docs/PLAN_day_list.md A1 / A2)
+📅 財經行事曆(macro_miner._compute_upcoming_macro_events)的日期與文字(2026-11-17,docs/DECISIONS.md V82.5.0)
 
 背景:加權 2000~2026 實測(research/daytype_20261117),結算日 / 四巫日 / 聯準會 / CPI / 非農的方向全部不成立,
 只有「休市 ≥4 天後的第一個交易日」比平常顛。行事曆以前每一列都掛一句聽起來很有道理的警語
@@ -15,6 +15,7 @@
   ⑤ 休市那幾筆要留「休市」兩個字(index.html `_colTrigEval` 靠它判斷休市前最後一個交易日),12/31 ⛔ 算休市。
   ⑥ (第三階段)算出來的日子(calc:連休前後、月營收公布期,今天那一筆也算)+ 每個事件的 fact == day_facts.json 的 line
      (還沒測過的只給重要度高的)。三邊休市定義一致另外在 scripts/test_dayfacts.mjs ②c。
+  ⑦ (第四階段)證交所官方休市表 tw_closed:解析(有開盤的兩種 ⛔ 算休市)、抓失敗分類且 ⛔ 沿用舊的、表上有 / 沒有那一年的切換。
 
 用法:python3 scripts/test_macro_calendar.py
 """
@@ -215,6 +216,86 @@ mm._manual_events = lambda: [(date(2027, 2, d), '🧧 春節 (台股休市)') fo
 cny = {(e['date'], e['kind']) for e in mm._compute_upcoming_macro_events(date(2027, 2, 1), 14) if e.get('calc')}
 mm._manual_events = _orig
 ok('⑥i 手寫的春節休市 → 2/4 連休前(休 10 天,pre6)、2/15 連休後(post6)', ('2027-02-04', 'pre6') in cny and ('2027-02-15', 'post6') in cny, sorted(cny))
+
+# ── ⑦ 證交所官方休市表(tw_closed)──────────────────────────────
+import lib_twclosed as LT  # noqa: E402
+ROWS = [{'Name': '中華民國開國紀念日', 'Date': '1160101', 'Weekday': '五'},
+        {'Name': '國曆新年開始交易日', 'Date': '1160104', 'Weekday': '一'},          # 有開盤 → ⛔ 算休市
+        {'Name': '農曆春節前最後交易日', 'Date': '1160204', 'Weekday': '四'},        # 有開盤 → ⛔ 算休市
+        {'Name': '市場無交易，僅辦理結算交割作業', 'Date': '1160205', 'Weekday': '五'},
+        ] + [{'Name': '農曆春節', 'Date': f'11602{d:02d}', 'Weekday': ''} for d in (8, 9, 10, 11, 12)] + [
+        {'Name': '兒童節及民族掃墓節', 'Date': '1160405', 'Weekday': '一'},
+        {'Name': '壞列', 'Date': '116/10/10'}, 'not a dict']
+named = LT.parse_official_closed_named(ROWS)
+ok('⑦a 解析:放假 / 無交易收、「開始交易」「最後交易」那兩種有開盤的 ⛔ 收、壞列跳過',
+   '2027-01-04' not in named and '2027-02-04' not in named and '2027-02-05' in named and '2027-01-01' in named and len(named) == 8, sorted(named))
+ok('⑦b miner.py 用的是同一份解析(lib_twclosed;⛔ 兩邊各寫一份)',
+   'from lib_twclosed import' in open(os.path.join(ROOT, 'miner.py'), encoding='utf-8').read()
+   and 'def parse_official_closed' not in open(os.path.join(ROOT, 'miner.py'), encoding='utf-8').read()
+   and LT.parse_official_closed(ROWS) == {d.replace('-', '/') for d in named})
+
+
+class _R:
+    def __init__(self, st, body=None, bad=False):
+        self.status_code, self._b, self._bad = st, body, bad
+
+    def json(self):
+        if self._bad:
+            raise ValueError('not json')
+        return self._b
+
+
+def _fetch(resp):
+    keep = mm.http
+
+    class H:
+        sent = []
+
+        def get(self, url, headers=None, timeout=None):
+            H.sent.append((url, headers))
+            if isinstance(resp, Exception):
+                raise resp
+            return resp
+    mm.http = H()
+    try:
+        return mm.fetch_tw_closed(), H.sent
+    finally:
+        mm.http = keep
+
+
+(tc, why), sent = _fetch(_R(200, ROWS))
+ok('⑦c 抓得到 → tw_closed = {src, fetched, years, days, names}', tc and tc['years'] == [2027] and tc['days'][0] == '2027-01-01'
+   and '2027-02-05' in tc['days'] and tc['src'].startswith('https://openapi.twse.com.tw/') and why == '', (tc, why))
+ok('⑦d 寫明身分的 UA(⛔ 假冒瀏覽器)', sent and 'StockAI-DB' in sent[0][1].get('User-Agent', '') and 'Chrome/' not in sent[0][1].get('User-Agent', ''), sent)
+import requests  # noqa: E402
+r1 = _fetch(_R(403))[0]; r2 = _fetch(requests.exceptions.ConnectTimeout('x'))[0]; r3 = _fetch(_R(200, bad=True))[0]; r4 = _fetch(_R(200, []))[0]
+ok('⑦e 失敗分清楚:被擋(HTTP)/ 連不上 / 回網頁 / 回應裡沒有休市日,而且都回 None(⛔ 沿用舊的)',
+   r1[0] is None and '被擋' in r1[1] and r2[0] is None and '連不上' in r2[1] and r3[0] is None and 'JSON' in r3[1] and r4[0] is None and '沒有休市日' in r4[1],
+   [r1, r2, r3, r4])
+src_mm = open(os.path.join(ROOT, 'macro_miner.py'), encoding='utf-8').read()
+_carry = src_mm[src_mm.index('for key in ("us10y_yield"'):src_mm.index('"macro_events_ai"):')]
+ok('⑦f 抓不到那輪 ⛔ 沿用上一份 tw_closed(不在斷崖防護清單;只有抓到才寫進 out)',
+   'tw_closed' not in _carry and 'if _twc:\n            out["tw_closed"] = _twc' in src_mm and 'tw_closed=_twc)' in src_mm)
+
+# 表上有 / 沒有那一年的切換
+EV_OFF = {(e['date'], e['event']) for e in mm._compute_upcoming_macro_events(date(2027, 2, 1), 14, tc)}
+CALC_OFF = {(e['date'], e['kind']) for e in mm._compute_upcoming_macro_events(date(2027, 2, 1), 14, tc) if e.get('calc')}
+ok('⑦g 官方表有那一年 → 春節出事件「🗓️ 農曆春節 (台股休市)」,連休前 / 後照官方日子算(2/4 → 2/15)',
+   ('2027-02-08', '🗓️ 農曆春節 (台股休市)') in EV_OFF and ('2027-02-04', 'pre6') in CALC_OFF and ('2027-02-15', 'post6') in CALC_OFF, sorted(CALC_OFF))
+ok('⑦h 決定性對照:同一天沒有官方表 → 不知道春節(⛔ 連休前後)', not any(k in ('pre6', 'post6') for _, k in
+   {(e['date'], e['kind']) for e in mm._compute_upcoming_macro_events(date(2027, 2, 1), 14) if e.get('calc')}))
+Q = [e['event'] for e in mm._compute_upcoming_macro_events(date(2027, 3, 30), 14, tc) if e['date'].startswith('2027-04-0')]
+ok('⑦i 官方表有那一年 → ⛔ 再湊固定連假(清明 4/4 那筆不出現),用官方的日子(4/5,⛔ 標大約)',
+   not any('清明' in t for t in Q) and '🗓️ 兒童節及民族掃墓節 (台股休市)' in Q, Q)
+Q26 = [e['event'] for e in mm._compute_upcoming_macro_events(date(2026, 3, 30), 14, tc) if e['date'].startswith('2026-04-0')]
+ok('⑦j 官方表沒有那一年(2026)→ 照舊固定連假(清明 4/4 標大約)', any('清明' in t and '日期大約' in t for t in Q26), Q26)
+Q0 = [e['event'] for e in mm._compute_upcoming_macro_events(date(2027, 3, 30), 14) if e['date'].startswith('2027-04-0')]
+ok('⑦k 抓不到(沒有 tw_closed)→ 退回舊做法(2027 清明照湊)', any('清明' in t for t in Q0), Q0)
+_orig = mm._manual_events
+mm._manual_events = lambda: [(date(2027, 2, 8), '🧧 春節 (台股休市)')]
+dup = [e['event'] for e in mm._compute_upcoming_macro_events(date(2027, 2, 1), 14, tc) if e['date'] == '2027-02-08']
+mm._manual_events = _orig
+ok('⑦l 同一天官方表跟手寫都說休市 → 只列官方那一筆(⛔ 重複)', dup == ['🗓️ 農曆春節 (台股休市)'], dup)
 
 print()
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ MACRO_CALENDAR_PASS(全部通過)')

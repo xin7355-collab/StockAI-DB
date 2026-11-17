@@ -274,7 +274,7 @@ _M = {'upcoming_macro_events': [
 ]}
 _fri = A.day_line(_M, datetime(2027, 2, 19, 20, 0, tzinfo=TW))
 ok('⑰a 星期五晚上 → 下一個交易日是星期一(02/22 週一),印事件 + 採礦端附的 fact',
-   _fri.startswith('📅 *下一個交易日(02/22 週一)*') and ('台指期月結算:' + _DF['settle']['line']) in _fri, _fri)
+   _fri.startswith('📅 *下一個交易日(02/22 週一)*') and ('台指期月結算 —— ' + _DF['settle']['line']) in _fri and '月結算:這種日子' not in _fri, _fri)
 ok('⑰b 日期大約的 ⛔ 列(有 approx 欄位的 MSCI、只有文字的舊資料 CPI);沒有 kind 又不是重要度高的 ⛔ 列',
    'MSCI' not in _fri and 'CPI' not in _fri and '除權息' not in _fri, _fri)
 _cny = A.day_line(_M, datetime(2027, 2, 4, 14, 0, tzinfo=TW))

@@ -71,6 +71,9 @@ const R = await page.evaluate(() => {
         // 🚨 資料過期(最後一根是幾個月前)→ ⛔ 不可算成「休市 151 天」
         stale: app._calDayVol(mk(['2026-03-19', '2026-03-20'])),
         staleHol: app._calDayVol(mk(['2026-03-14', '2026-03-20'])),
+        // 🐛 2026-11-17 休 10 天的春節:開紅盤那天離最後一根是 11 天(以前新鮮度只到 10 天 → 唯一測過比較顛的那天漏掉)
+        cny11: app._calDayVol(mk([back(20), back(11)])),
+        tooOld: app._calDayVol(mk([back(30), back(13)])),
     };
 });
 
@@ -87,6 +90,11 @@ ok('②e 🚨 週一放假 → 週二才開市,gap=5 仍要命中(⛔ 不可綁�
    !!R.tueAfterHol && R.tueAfterHol.gap >= 4 && R.tueAfterHol.tags[0].mult > 1.2, JSON.stringify(R.tueAfterHol));
 ok('②f 月營收公布日前後(9~11 日)要命中', !!R.dom5 && R.dom5.tags.some(t => /營收/.test(t.t)), JSON.stringify(R.dom5 && R.dom5.tags));
 ok('②g 月中(20 日)+ 隔天 → ⛔ 完全不命中', R.dom20 === null, JSON.stringify(R.dom20));
+ok('②l 🐛 春節休 10 天(最後一根是 11 天前)→ 今天仍是「連休 10 天後的第一個交易日」(新鮮度 12 天)',
+   !!R.cny11 && R.cny11.gap === 11 && R.cny11.date === R.today && R.cny11.tags[0].t === '連休 10 天後的第一個交易日', JSON.stringify(R.cny11));
+ok('②m 「休幾天」寫實際沒開盤的天數:週末後 =「連休 2 天後」(跟財經行事曆同一個說法,⛔ 寫 gap)',
+   !!R.gap3 && R.gap3.tags[0].t === '連休 2 天後的第一個交易日', JSON.stringify(R.gap3 && R.gap3.tags));
+ok('②n 決定性對照:最後一根是 13 天前 → 算資料舊了(⛔ 當成連休 12 天)', !R.tooOld || R.tooOld.date !== R.today, JSON.stringify(R.tooOld));
 ok('②h 🚨 資料過期(最後一根是幾個月前)→ ⛔ 不可算成「休市 N 百天」,改描述資料裡的最後一天',
    R.stale === null, JSON.stringify(R.stale));
 ok('②i 🚨 過期時仍要正確描述最後一天(3/14→3/20 間隔 6 天 = 長假)',

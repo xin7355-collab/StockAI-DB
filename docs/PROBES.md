@@ -3,6 +3,15 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 📅 V82.5.0(2026-11-17)日子 / 事件看漲跌(EXP-20261117-01;LAB `cal-daytype`)
+- **`scripts/daytype_probe.mjs`(新,selftest 23 條)**:加權 2000 起「排定的日子」前後 —— 方向有沒有規律(20 格)、那一天顛不顛(12 格);對照 = 同星期幾、不是那種日子;
+  照星期幾分層隨機置換 4,000 次 + BH;選舉只描述。⚠️ 「休市 N 天」= 跟上一個交易日差 N 個日曆天(連續 N−1 天沒開盤)。
+  跑法:`IDX_LONG=data/idx_long.json IDX_EARLY=data/idx_long_early.json TWII_NOW='data/^TWII.json' US_CAL=research/us_cal.json node scripts/daytype_probe.mjs out.json`;`--selftest`。
+  結果:方向 0 / 20、顛不顛 2 / 12(連休 3~4 天後 1.39 倍、5 天以上後 1.75 倍);聯準會公布後 1.17 倍差一點(校正後 0.066)。產物 `research/daytype_20261117/out.json|out.txt`。
+  ⛔ 別再測「看日子猜漲跌」;⭐ 重跑時機:out.json 換新 → 跑 `node scripts/embed_day_facts.mjs`(App / day_facts.json 的數字只讀它)。
+- **`scripts/us_cal_probe.py`(新,資料格式,⛔ 不進 LAB)**:聯準會(federalreserve.gov)/ CPI / 非農(ALFRED 公布日)官方歷史日期 → `research/us_cal.json`;`macro_probe.yml which=us_cal` 抓原文。
+- **`scripts/embed_day_facts.mjs`(新,不是探針)**:out.json → `data/day_facts.json` + index.html `_DAY_FACTS`(type / dir / 那一句 line 都在這裡產生);`--check` 比對。
+
 ### 🐻 V82.4.1(2026-11-16)盤勢不好怎麼做:三個事先登記的實驗(都 ⛔)
 - **A `scripts/ldred_port.mjs`(新)+ `scripts/lib_ldred.mjs`(新,事件定義唯一一份;streak_probe 也 import)**:跌停後大紅 K 真的拿錢照做(100 萬放 0050、訊號日換股票、最多 10 檔、抱 10 天)。
   跑法:`node --max-old-space-size=6144 scripts/ldred_port.mjs <d16> <d04>`(約 70 秒;`OUT=` 寫 JSON、`LIST=YYYY-MM-DD` 列那天以後的訊號);六條過關條件寫死在 `judge()`(EXP-20261116-01)。

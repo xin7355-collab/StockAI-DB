@@ -332,7 +332,7 @@ def day_line(macro, now=None):
         if not e.get('kind') and e.get('severity') != 'high':
             continue
         name = _re.sub(r'\s*\([^)]*\)\s*', ' ', str(e.get('event') or '')).strip()
-        items.append(f"　▸ {name}" + (f":{e['fact']}" if e.get('fact') else ''))
+        items.append(f"　▸ {name}" + (f" —— {e['fact']}" if e.get('fact') else ''))   # 跟 Worker 同一個寫法(⛔ 兩個冒號)
     if not items:
         return ''
     return f"📅 *下一個交易日({d:%m/%d} 週{_WK[d.weekday()]})*\n" + "\n".join(items)

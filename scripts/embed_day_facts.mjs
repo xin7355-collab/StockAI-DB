@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 📅 2026-11-17 日子清單的數字:research/daytype_20261117/out.json → data/day_facts.json + index.html 的 `_DAY_FACTS`
- *   (docs/PLAN_day_list.md A4;實驗 EXP-20261117-01)
+ *   (docs/DECISIONS.md V82.5.0;實驗 EXP-20261117-01)
  *
  *   為什麼要這支:行事曆每一列下面那句「這種日子:…」的倍數 / 比例只能有一個來源。
  *   index.html 不能 import → 用這支抄一份,⛔ 手改那一行(scripts/test_dayfacts.mjs 逐格比對三邊)。

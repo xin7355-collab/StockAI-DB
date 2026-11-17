@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 📅 日子清單(2026-11-17,docs/PLAN_day_list.md A3 / A4;實驗 EXP-20261117-01)
+ * 📅 日子清單(2026-11-17,docs/DECISIONS.md V82.5.0;實驗 EXP-20261117-01)
  *
  *   財經行事曆每一列下面多一行「這種日子:…」,數字只有一個來源:research/daytype_20261117/out.json
  *   → scripts/embed_day_facts.mjs → data/day_facts.json + index.html `_DAY_FACTS`。
@@ -19,7 +19,7 @@
  *      日子提醒通知:一個交易日一則、關掉不跳、勿擾不跳。
  *
  *   注入必紅:INJECT=1 改一個倍數 / 2 把還沒測過的日子加上倍數 / 3 橫幅換回指令 / 4 日期大約的放進橫幅 / 5 把 +10 放回風險分數
- *            6 總覽那一則不只留 vol / 7 App 自己再組句子 / 8 今天那一筆不算 / 9 收盤後還講今天 / 10 通知不去重
+ *            6 總覽那一則不只留 vol / 7 App 自己再組句子 / 8 今天那一筆不算 / 9 收盤後還講今天 / 10 通知不去重 / 11 舊的去重鍵不清 / 12 App 不讀官方休市表
  *   跑法:node scripts/test_dayfacts.mjs
  */
 import fs from 'fs';
@@ -47,7 +47,9 @@ if (INJ === '6') inj("K[x.ev.kind].type === 'vol' && K[x.ev.kind].short", 'true'
 if (INJ === '7') inj("        return f.line;\n    },", "        return f.line.replace('大盤', '');\n    },");
 if (INJ === '8') inj('if (!(h.date >= today && h.date <= end)) continue;', 'if (!(h.date > today && h.date <= end)) continue;');
 if (INJ === '9') inj('if (!isOpen(T.tdy) || min >= 13 * 60 + 30) {', 'if (!isOpen(T.tdy) || min >= 24 * 60) {');
-if (INJ === '10') inj('if (localStorage.getItem(key)) return false; ', '');
+if (INJ === '10') inj('                if (localStorage.getItem(key)) return false;\n', '');
+if (INJ === '12') inj("for (const d of ((tc && Array.isArray(tc.days)) ? tc.days : []))", 'for (const d of [])');
+if (INJ === '11') inj('if (m && m[1] < old) localStorage.removeItem(k);', '');
 if (INJ) console.log(`💉 INJECT=${INJ}`);
 
 // ── ① 三邊逐格一致 ─────────────────────────────────────────────
@@ -250,7 +252,9 @@ try {
         app._macroRiskCache = Object.assign({}, app._macroRiskCache || {}, { upcoming_macro_events: ev }); app._upcomingMacroEvents = ev;
         try { Object.keys(localStorage).filter(k => k.startsWith('proTerm_dayRemind_')).forEach(k => localStorage.removeItem(k)); } catch (_) {}
         const fired = []; const keep = app._fireAlert; app._fireAlert = (t, b) => fired.push([t, b]);
+        try { localStorage.setItem('proTerm_dayRemind_2026-12-01', '1'); localStorage.setItem('proTerm_dayRemind_2027-01-20', '1'); } catch (_) {}   // 65 天前 / 15 天前
         const a1 = app._dayRemindCheck(), a2 = app._dayRemindCheck();
+        const oldGone = localStorage.getItem('proTerm_dayRemind_2026-12-01') === null, recentKept = localStorage.getItem('proTerm_dayRemind_2027-01-20') === '1';
         app._fireAlert = keep;
         const cat = app._alertCatOf(fired[0] ? fired[0][0] : '').k;
         const toasts = () => document.querySelectorAll('div[data-alert-toast]').length;
@@ -258,11 +262,25 @@ try {
             app.settings = app.settings || {}; app.settings.alertOff = off ? { dayfact: true } : {}; const q = app._inQuiet; if (quiet) app._inQuiet = () => true;
             try { Object.keys(localStorage).filter(k => k.startsWith('proTerm_dayRemind_')).forEach(k => localStorage.removeItem(k)); } catch (_) {}
             app._dayRemindCheck(); app._inQuiet = q; app.settings.alertOff = {}; return toasts(); };
-        return { a1, a2, fired, cat, on: pop(false, false), off: pop(true, false), quiet: pop(false, true) };
+        return { a1, a2, fired, cat, oldGone, recentKept, on: pop(false, false), off: pop(true, false), quiet: pop(false, true) };
     }, EVF);
     ok('⑥h1 收盤後有項目 → 發一則「📅 日子提醒」,分類是 dayfact,內文 == 那一句', N.a1 === true && N.fired.length === 1 && /^📅 日子提醒｜下一個交易日 02\/15 週一$/.test(N.fired[0][0]) && N.cat === 'dayfact' && N.fired[0][1].includes(F.kinds.post6.line), JSON.stringify(N.fired));
     ok('⑥h2 同一個交易日 ⛔ 再發第二則', N.a2 === false && N.fired.length === 1, JSON.stringify(N));
+    ok('⑥h4 去重鍵:發的時候清掉 30 天以前的(⛔ 無限累積),30 天內的留著', N.oldGone && N.recentKept, JSON.stringify([N.oldGone, N.recentKept]));
     ok('⑥h3 開著 → 跳出來;關掉這一類 / 勿擾時段 → ⛔ 跳(只進鈴鐺)', N.on === 1 && N.off === 0 && N.quiet === 0, `${N.on} / ${N.off} / ${N.quiet}`);
+    // ⑦ 證交所官方休市表(macro_risk.json `tw_closed`):行事曆裡沒有春節,只有官方表 → 一樣知道 2/4 是連休前、2/15 是連休後
+    const TC = await page.evaluate(() => {
+        const keep = app._macroRiskCache;
+        const tc = { src: 'x', years: [2027], days: ['2027-02-05', '2027-02-08', '2027-02-09', '2027-02-10', '2027-02-11', '2027-02-12'] };
+        app._macroRiskCache = Object.assign({}, keep || {}, { tw_closed: tc, upcoming_macro_events: [] });
+        const withTc = app._appDayEvents([], '2027-02-01', 14).map(e => e.date + ':' + e.kind);
+        app._macroRiskCache = Object.assign({}, keep || {}, { upcoming_macro_events: [] }); delete app._macroRiskCache.tw_closed;
+        const noTc = app._appDayEvents([], '2027-02-01', 14).map(e => e.date + ':' + e.kind);
+        app._macroRiskCache = keep;
+        return { withTc, noTc };
+    });
+    ok('⑦a App 讀官方休市表(tw_closed.days):行事曆裡沒寫春節也知道 2/4 連休前、2/15 連休後', TC.withTc.includes('2027-02-04:pre6') && TC.withTc.includes('2027-02-15:post6'), JSON.stringify(TC.withTc));
+    ok('⑦b 決定性對照:舊資料沒有 tw_closed → 照舊只靠行事曆(這一組不知道春節),⛔ 壞掉', !TC.noTc.some(x => /pre6|post6/.test(x)), JSON.stringify(TC.noTc));
     // ⑥i 個股層級的舊倍數(_calDayVol / _HOLIDAY_EDGE)畫面上標「個股」,⛔ 讀起來跟大盤那一句打架
     ok('⑥i 個股頁的連假提醒寫「個股」、實驗室那段寫「個股層級」', /這種日子個股通常比較顛/.test(src) && /個股層級 \$\{H\.vol\.x\.toFixed\(2\)\}x/.test(src) && !/—— 這種日子通常比較顛<\/div>/.test(src));
     ok('⑥ 沒有 pageerror', !errsP.length, errsP.slice(0, 3).join(' | '));

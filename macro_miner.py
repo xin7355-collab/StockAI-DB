@@ -281,10 +281,13 @@ def build_macro_events_ai(out):
         return None
     # 只餵「宏觀核彈事件」(法說會逐檔太多、前端另有折疊區),最多 12 筆
     import re as _re
-    macro_evs = [e for e in evs if not _re.search(r"法說|法人說明會", str(e.get("event", "")))][:12]
+    # 🗓️ 2026-11-17 採礦端算的日子(calc:連休前後、月營收公布期)⛔ 餵 —— 那不是新聞事件,餵了 AI 會替它編「影響」
+    macro_evs = [e for e in evs if not e.get("calc") and not _re.search(r"法說|法人說明會", str(e.get("event", "")))][:12]
     if not macro_evs:
         return None
-    ev_lines = "\n".join(f"- {e['date']} {e['event']}(重要度 {e.get('severity', 'low')})" for e in macro_evs)
+    # 有測過的日子把那一句(fact = data/day_facts.json 的 line)附在同一行,AI 才不會講出跟測試相反的話
+    ev_lines = "\n".join(f"- {e['date']} {e['event']}(重要度 {e.get('severity', 'low')})"
+                          + (f" —— {e['fact']}" if e.get('fact') else '') for e in macro_evs)
     # 市場現況(數字全部後端算好,AI 不准自己算)
     def _n(k, unit="", d=1):
         v = out.get(k)
@@ -307,10 +310,11 @@ def build_macro_events_ai(out):
         "鐵則:①只解讀事件對台股的影響,絕對不要自己計算或杜撰任何數字(所有數字我已給你,直接引用)。"
         "②不確定的事就說不確定,不要編造「市場預期 X%」這種假數據。"
         "③台股慣例紅漲綠跌,燈號只用 ✅(可照常操作)⚠️(留意)⛔(避開/降部位),不要用紅綠燈符號表示危險。"
-        "④🚨 只講『那幾天波動會不會變大』與『要盯哪個數字看它有沒有兌現』,"
+        "④🚨 只講『這是什麼事件』與『要盯哪個數字看它有沒有兌現』,"
         "⛔ 絕對不要給多空方向、⛔ 不要給部位成數(幾成)、⛔ 不要說「減碼/出清/加碼/留倉」——"
-        "本站用 37 種財經行事曆日做過逐檔回測(含期外驗證):**能講的方向一個都不成立**,"
-        "唯一量得到的是『那幾天波動比較大』。給方向或部位就是在編一個沒有證據的東西。"
+        "本站用 37 種財經行事曆日做過逐檔回測(含期外驗證):**能講的方向一個都不成立**。給方向或部位就是在編一個沒有證據的東西。"
+        "⑤事件那一行後面若附了「這種日子:…」,那是加權指數 26 年實際量過的結果:"
+        "⛔ 不可講跟那一句相反的話(例如它寫「沒有比平常顛」,你就不可說那天會比較顛、波動會變大);沒附的日子也不要自己說會比較顛。"
     )
     user_msg = (
         f"【未來 14 日台股相關事件】\n{ev_lines}\n\n"
@@ -523,12 +527,60 @@ def _day_facts():
         return {}
 
 
-def _closed_days(start, end):
-    """start ~ end 之間不開盤的平日:固定連假 + manual_events.json 裡寫「休市」的(週末另外算)。
-    ⚠️ 跟 App `_appDayEvents` 同一個做法(repo 沒有官方休市表的資料檔);往回也算 → 今天那一筆才算得出來。"""
+def fetch_tw_closed(now=None):
+    """🗓️ 2026-11-17 證交所官方休市表 → (tw_closed 或 None, 原因)。
+    tw_closed = {src, fetched, years:[表上有的年份], days:['YYYY-MM-DD'…], names:{日期: 官方名稱}}。
+    ⭐ macro_cron 是乾淨的 checkout,拿不到 miner.py 那份(miner 只在記憶體用)→ 這裡自己抓;解析共用 lib_twclosed。
+    ⛔ 失敗就回 None(這一輪沒有 tw_closed,行事曆退回固定連假 + manual_events),⛔ 把舊的日期寫成新的。
+    原因分三種印出來:被擋(HTTP 4xx/5xx、回網頁)/ 連不上(逾時、連線錯誤)/ 回應裡沒有休市日。"""
+    from lib_twclosed import TW_HOLIDAY_URL, HONEST_UA, parse_official_closed_named
+    try:
+        r = http.get(TW_HOLIDAY_URL, headers={'User-Agent': HONEST_UA}, timeout=15)
+    except Exception as e:  # noqa: BLE001
+        return None, f'連不上({type(e).__name__})'
+    if r.status_code != 200:
+        return None, f'被擋或伺服器錯誤(HTTP {r.status_code})'
+    try:
+        rows = r.json()
+    except Exception:  # noqa: BLE001
+        return None, '回應不是 JSON(可能被擋、回了網頁)'
+    named = parse_official_closed_named(rows)
+    if not named:
+        return None, '回應裡沒有休市日'
+    days = sorted(named)
+    return {'src': TW_HOLIDAY_URL, 'fetched': (now or datetime.now()).strftime('%Y-%m-%d %H:%M'),
+            'years': sorted({int(d[:4]) for d in days}), 'days': days, 'names': {d: named[d] for d in days}}, ''
+
+
+def _official_by_year(tw_closed):
+    """tw_closed → ({年份}, {date: 名稱})。格式不對 → 空的(= 全部照舊)。"""
     from datetime import date
-    closed = set()
+    try:
+        years = {int(y) for y in (tw_closed or {}).get('years') or []}
+        names = (tw_closed or {}).get('names') or {}
+        days = {}
+        for d in (tw_closed or {}).get('days') or []:
+            try:
+                dd = date.fromisoformat(str(d))
+            except ValueError:
+                continue
+            if dd.year in years:
+                days[dd] = str(names.get(d) or '台股休市')
+        return years, days
+    except Exception:  # noqa: BLE001
+        return set(), {}
+
+
+def _closed_days(start, end, tw_closed=None):
+    """start ~ end 之間不開盤的平日(週末另外算)。往回也算 → 今天那一筆才算得出來。
+    ⭐ 官方休市表(tw_closed)上有的年份 → 用官方的日子(那一年 ⛔ 再用固定連假湊;春節 / 端午 / 中秋 / 補假都在表上);
+       表上沒有的年份(這張表只有今年)→ 照舊:固定連假 + manual_events.json 寫「休市」的。manual 一律併進來(颱風假不在官方表)。"""
+    from datetime import date
+    off_years, off_days = _official_by_year(tw_closed)
+    closed = set(off_days)
     for y in range(start.year, end.year + 1):
+        if y in off_years:
+            continue
         for hm, hd, _n, _t in FIXED_HOLIDAYS:
             try:
                 closed.add(date(y, hm, hd))
@@ -552,11 +604,11 @@ def _holiday_kinds(open_days):
     return out
 
 
-def _calc_day_events(today, end):
+def _calc_day_events(today, end, tw_closed=None):
     """today ~ end 的「算出來的日子」→ 事件(`calc: True`)。文字跟 App 同一個說法(連休天數 = 實際沒開盤的天數 gap − 1)。"""
     from datetime import timedelta
     lo, hi = today - timedelta(days=30), end + timedelta(days=30)
-    closed = _closed_days(lo, hi)
+    closed = _closed_days(lo, hi, tw_closed)
     open_days, d = [], lo
     while d <= hi:
         if d.weekday() < 5 and d not in closed:
@@ -577,7 +629,7 @@ def _calc_day_events(today, end):
     return sorted(out, key=lambda x: x["date"])
 
 
-def _compute_upcoming_macro_events(today, window_days=14):
+def _compute_upcoming_macro_events(today, window_days=14, tw_closed=None):
     """演算法計算未來 N 天的全球重大財經事件,純函式無 IO,絕對不會拋例外。
     14 天視窗(2026/06 起,從 7 → 14 涵蓋更多籌備期事件)。
     涵蓋類別:
@@ -594,6 +646,7 @@ def _compute_upcoming_macro_events(today, window_days=14):
         today = date.today()
     end = today + timedelta(days=window_days)
     events = []
+    _off_years, _off_days = _official_by_year(tw_closed)
 
     def _add(d, evt, kind=None):
         """單筆加事件 helper(只加 window 內事件,避免重複包 if/append)。
@@ -734,7 +787,7 @@ def _compute_upcoming_macro_events(today, window_days=14):
         #       App 會在 12/30 講「明天休市」→ 拿掉(真的遇到補假那年寫進 manual_events.json)。
         #    清明連假每年落在 4/3~4/6 不一定 → 標大約;元旦、國慶是固定日期。
         for hm, hd, name, tail in FIXED_HOLIDAYS:
-            if hm == month:
+            if hm == month and year not in _off_years:   # 官方休市表有這一年 → 用官方的(下面),⛔ 再湊
                 try:
                     _add(date(year, hm, hd), f"{name} (台股休市{tail})")
                 except ValueError:
@@ -755,8 +808,16 @@ def _compute_upcoming_macro_events(today, window_days=14):
             continue
         _add(dd, "🇯🇵 日銀 BOJ 利率決議" + APPROX_TAG, "boj")
 
+    # ── 🗓️ 官方休市表(平日那幾天;週末本來就沒開盤,不列)──
+    for dd, nm in sorted(_off_days.items()):
+        if dd.weekday() < 5:
+            _add(dd, f"🗓️ {nm} (台股休市)")
+
     # ── 一次性事件:讀 data/manual_events.json(Claude 代為更新)──
+    #    官方表已經寫休市的那一天,手寫的「休市」那筆不再重複列(官方的優先)
     for ev_date, ev_text in _manual_events():
+        if '休市' in ev_text and ev_date in _off_days:
+            continue
         _add(ev_date, ev_text, _kind_of_text(ev_text))
 
     # 去重 + 依日期升冪排序
@@ -794,7 +855,7 @@ def _compute_upcoming_macro_events(today, window_days=14):
     # 🗓️ 2026-11-17 算出來的日子也當事件(`calc: True`):連休前最後一個交易日、連休後第一個交易日、月營收公布期。
     #    為什麼採礦端也算:Telegram / Worker 這些只印文字的通道不該各自再算一次休市(⛔ 各算各的就會兜不攏)。
     #    App 自己用大盤實際的交易日算一份(`_appDayEvents`),所以 App 一律略過 calc 事件,⛔ 同一天出現兩次。
-    for e in _calc_day_events(today, end):
+    for e in _calc_day_events(today, end, tw_closed):
         e['severity'] = _severity(e['event'])
         uniq.append(e)
     uniq.sort(key=lambda x: x["date"])
@@ -4087,7 +4148,14 @@ def main():
     try:
         from datetime import date as _date
         _warn_schedule_expiry(_date.today())   # 📅 V71.3.9 硬編碼 FOMC/BOJ 排程快用完就大聲喊
-        out["upcoming_macro_events"] = _compute_upcoming_macro_events(_date.today(), window_days=14)
+        # 🗓️ 2026-11-17 證交所官方休市表(抓不到 → 這一輪沒有 tw_closed,行事曆退回固定連假 + manual_events;⛔ 沿用舊的)
+        _twc, _twc_why = fetch_tw_closed()
+        if _twc:
+            out["tw_closed"] = _twc
+            print(f"  🗓️ 官方休市表:{len(_twc['days'])} 天(年份 {_twc['years']})")
+        else:
+            print(f"  ⚠️ 官方休市表抓不到:{_twc_why} → 這一輪休市日只靠固定連假(1/1、4/4、10/10)+ manual_events.json")
+        out["upcoming_macro_events"] = _compute_upcoming_macro_events(_date.today(), window_days=14, tw_closed=_twc)
         # 📞 併入 TWSE 法說會逐檔日期(失敗回 [] 不影響演算法事件)
         try:
             _ec = fetch_earnings_calls(window_days=14)

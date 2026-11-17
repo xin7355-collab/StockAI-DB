@@ -3078,27 +3078,9 @@ def _twii_calendar(path=None):
     return set(ds), ds[0], ds[-1], ''
 
 
-_TW_HOLIDAY_URL = 'https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule'
-# ⛔ 不偽裝瀏覽器(V80.1.6 決策):V80.1.9 探針用這種寫明身分的 UA 實測休市表 HTTP 200
-_HONEST_UA = 'Mozilla/5.0 (compatible; StockAI-DB miner/1.0; +https://github.com/xin7355-collab/stockai-db)'
-
-
-def parse_official_closed(rows) -> set:
-    """🗓️ V80.1.9 證交所官方休市表 → {'YYYY/MM/DD', ...}(只收「沒有交易」的日子)。純函式。
-    ⚠️ 這張表也列「國曆新年開始交易日」「農曆春節前最後交易日」—— 那兩種日子**有**交易 → 名字有
-       「開始交易」「最後交易」的 ⛔ 收。「市場無交易,僅辦理結算交割作業」= 沒交易 → 收。
-    週末那幾列(例:和平紀念日 2/28 是週六)收進來也無害,週末本來就沒有 K 棒。日期是民國 1150101 這種。"""
-    out = set()
-    for r in rows if isinstance(rows, list) else []:
-        if not isinstance(r, dict):
-            continue
-        name = str(r.get('Name') or '')
-        if '開始交易' in name or '最後交易' in name:
-            continue
-        m = re.fullmatch(r'(\d{3})(\d{2})(\d{2})', str(r.get('Date') or '').strip())
-        if m:
-            out.add(f'{int(m.group(1)) + 1911:04d}/{m.group(2)}/{m.group(3)}')
-    return out
+# 🗓️ 官方休市表的網址 / UA / 解析搬到 lib_twclosed.py(2026-11-17:macro_miner 也要用同一份解析,⛔ 兩邊各寫一份)。
+#    這裡照舊用 `_TW_HOLIDAY_URL` / `_HONEST_UA` / `parse_official_closed` 這三個名字(別處與測試都讀這幾個)。
+from lib_twclosed import TW_HOLIDAY_URL as _TW_HOLIDAY_URL, HONEST_UA as _HONEST_UA, parse_official_closed  # noqa: E402
 
 
 def _official_closed_days():

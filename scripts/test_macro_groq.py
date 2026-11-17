@@ -196,5 +196,27 @@ with contextlib.redirect_stdout(io.StringIO()):
 ok('⑤ 空的 / HTML 的 404(網址錯)→ ⛔ 換模型、⛔ 作廢清單(每次都是 qwen)',
    o7 is None and {s.get('model') for s in mm.http.sent} == {QWEN} and G._cache['ids'] is not None, [s.get('model') for s in mm.http.sent])
 
+# ⑥ 📅 2026-11-17 行事曆 AI:採礦端算的日子(calc)⛔ 餵;有 fact 的事件把那一句附在那一行;規則:⛔ 講跟那一句相反的話
+_F = '這種日子:大盤方向沒有規律,也沒有比平常顛。'
+EV6 = {'upcoming_macro_events': [
+    {'date': '2026-12-16', 'event': '🇹🇼 台指期月結算 (每月第三個星期三)', 'kind': 'settle', 'severity': 'high', 'fact': _F},
+    {'date': '2026-12-31', 'event': '🗓️ 連休前最後一個交易日(接著休 3 天)', 'kind': 'pre45', 'calc': True, 'severity': 'low', 'fact': _F},
+    {'date': '2026-12-18', 'event': '🇯🇵 日銀 BOJ 利率決議 (日期大約)', 'kind': 'boj', 'severity': 'high', 'approx': True},
+], 'vix': 18.2}
+G._cache.update(ids=None, at=0.0, err='')
+G._good.clear()
+mm.GROQ_KEYS_MM = ['k1']
+mm.http = FakeHttp([(200, '{"summary":"x","focus":[]}')])
+mm.build_macro_events_ai(EV6)
+_msgs = (mm.http.sent[0] or {}).get('messages') or [] if mm.http.sent else []
+_sys = next((m['content'] for m in _msgs if m.get('role') == 'system'), '')
+_usr = next((m['content'] for m in _msgs if m.get('role') == 'user'), '')
+ok('⑥a 空過守門:真的送出了提示詞', bool(_sys) and '台指期月結算' in _usr, _usr[:200])
+ok('⑥b 採礦端算的日子(calc)⛔ 餵給 AI', '連休前最後一個交易日' not in _usr, _usr[:300])
+ok('⑥c 有 fact 的事件:那一句附在同一行', ('台指期月結算 (每月第三個星期三)(重要度 high) —— ' + _F) in _usr, _usr[:300])
+ok('⑥d 沒有 fact 的事件照舊只有事件(⛔ 自己補一句)', '日銀 BOJ 利率決議 (日期大約)(重要度 high)\n' in _usr + '\n' and '日銀 BOJ 利率決議 (日期大約)(重要度 high) ——' not in _usr, _usr)
+ok('⑥e 規則:⛔ 講跟那一句相反的話(例如會比較顛);⛔ 再說「唯一量得到的是那幾天波動比較大」',
+   '不可講跟那一句相反的話' in _sys and '會比較顛' in _sys and '唯一量得到的是『那幾天波動比較大』' not in _sys, _sys[-300:])
+
 print(f"\n{'❌ %d 項未過:' % len(fails) + chr(10) + '  - ' + (chr(10) + '  - ').join(fails) if fails else '✅ 全部通過'}")
 sys.exit(1 if fails else 0)

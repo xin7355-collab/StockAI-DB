@@ -4,6 +4,39 @@
 
 
 
+## V82.5.0(2026-11-17)📅 日子清單 + 前一天提醒:行事曆每一種日子只講「大盤測過是怎樣」(加權 26 年:方向 20 格 0 過、只有連休後第一天比較顛)・「🚨 重大事件來襲 — 新單暫緩」與風險分數 +10 拿掉・日期湊的標「(日期大約)」・接證交所官方休市表
+
+**由來**:使用者 11/17「我想做一個反彈或易跌機率日期告警系統(結算見轉折、固定利多時間、星期幾、選舉…)」→ 評估紀錄 57 → 「依照你推薦都做」。
+
+**問題**(做之前的樣子):
+- 行事曆事件名稱掛著「提防外資結算洗盤」「波動激增」「終極利空/利多」這類警語,沒有一條有測試撐;`direction`(利多 / 利空)是關鍵字湊的、沒人讀。
+- 日期:聯準會 2026-12 寫 12/16(官方 12/8~9)、2027 預填 8 個錯 4 個;CPI / 非農 / MSCI / 台積電法說 / 央行 / ISM / PPI / 日銀是規則湊的卻寫得像確定的(CPI 規則 2016 起 130 次只中 26 次);「12/31 跨年 台股休市」是錯的。
+- 今天 / 明天有重要度高的事件 → 紅色閃爍「🚨 重大事件來襲 — 新單暫緩」(指令)+ 風險分數 +10(一年約 100 個交易日;實量 52 → 62 會從「警戒備戰」跨到「高度風險」)。
+- 總覽、📚 劇本、AI 提示詞、Worker 盤前簡報都寫「那幾天波動會變大」。
+- 休市只認得 1/1、4/4、10/10 與 manual_events.json,春節 / 端午 / 中秋 / 補假都漏。
+
+**根本原因**:「重要度高」被當成「風險高」用;日期與警語都是手寫的,沒有任何東西拿官方資料或實測結果去對;句子散在各通道各寫各的。
+
+**補測(EXP-20261117-01,`scripts/daytype_probe.mjs`,LAB `cal-daytype`)**:加權 2000-01-04 ~ 2026-11-16(6,637 天),對照 = 同星期幾、不是那種日子,照星期幾分層隨機置換 + BH。
+方向 20 格 0 格過關;顛不顛 12 格過 2 格 —— 連休 3~4 天後第一個交易日 1.39 倍、5 天以上 1.75 倍(漲跌超過 1.5%:35.5% / 46.7% vs 約 19%);聯準會公布後 1.17 倍差一點(校正後 0.066);結算見轉折 42.1% vs 48.3%(反而少)。
+⚠️ 定義:探針的「休市 N 天」= 跟上一個交易日差 N 個日曆天(連續 N−1 天沒開盤);App 一律寫實際沒開盤的天數(「連休 3 天」)。
+
+**怎麼做**:
+1. **數字與句子只有一個來源**:`scripts/embed_day_facts.mjs` 從 `research/daytype_20261117/out.json` 照規則算每種日子的 type(vol / maybe / none / untested)、dir(有沒有測過方向)、那一句 `line` 與總覽短句 `short` → `data/day_facts.json` + index.html `_DAY_FACTS`。四種寫法:「大盤比平常顛 X 倍(…);會漲還是會跌沒有規律」/「大盤方向沒有規律,也沒有比平常顛」(沒測過方向的月營收公布期只寫「大盤沒有比平常顛」)/「大盤方向沒有規律;公布後第一個交易日可能稍微顛一點(1.17 倍),還不算確定」/「還沒測過」(只給重要度高的)。
+2. **採礦端(macro_miner)**:聯準會日期照 `research/us_cal.json`(官方原文);湊的日期標「(日期大約)」+ `approx: true`;事件帶 `kind` 與 `fact`(= line);連休前後、月營收公布期也當事件(`calc: true`);拿掉警語與 `direction`;證交所官方休市表(`lib_twclosed.py`,miner.py 共用同一份解析)→ `tw_closed`,表上有的年份用官方日子;行事曆 AI 不餵 calc 事件、有 fact 的附在那一行、⛔ 講跟那一句相反的話。
+3. **App**:行事曆每一列下面「這種日子:…」;App 用大盤實際的交易日自己算連休前後(今天那一筆也算);「明天 / 今天」那一條不閃、不紅、沒有指令、⛔ 日期大約;重要度小標灰階;總覽第一眼只留測過比較顛的日子;決策台「📅 下一個交易日」那一列;通知新增可關的「📅 日子提醒」(一個交易日一則、照勿擾);`_calcRiskScore` 拿掉事件日 +10;📚 劇本 / AI 提示詞 / Perplexity 提示詞不再講方向與「波動會變大」;個股層級的舊倍數標「個股」;「休幾天」全 App 統一成實際沒開盤的天數;`_calDayVol` 新鮮度 10 → 12 天(休 10 天的春節開紅盤那天不再漏)。
+4. **Telegram / Worker**:尾盤那則與手動作戰清單加「📅 下一個交易日」一行;Worker 盤前簡報改成「事件 —— 那一句」,日期大約的 ⛔ 寫成今天 / 明天。
+5. **實測總表 / 專欄**:`cal-daytype`(⛔,含結算見轉折的數字)+ 專欄「連休前買、開市後賣,賺得到嗎?」(觸發 holiday_pre);`calendar-filter` 的 holiday_pre 觸發改指到這篇、settle 留著(⚠️ 一個實驗只能掛一條條目、一條條目只有一篇專欄 —— test_exp_registry ⑧ —— 所以「結算日常常是轉折點嗎?」那篇先沒有上架);`holiday-vol` 補大盤 26 年的數字並註明跟個股層級是兩件事。
+
+**怎麼換回**:
+- 句子 / 數字:改 `scripts/embed_day_facts.mjs` 的 `lineOf` / `typeOf` 後重跑(⛔ 手改 `_DAY_FACTS` / day_facts.json,test_dayfacts 會紅)。
+- 官方休市表:macro_miner `fetch_tw_closed()` 回 None 就等於舊做法(固定連假 + manual_events);要整個拿掉 → 刪 main 裡那幾行與 `_closed_days` 的 `tw_closed` 參數,App `_dayOpenFn` 讀不到 `tw_closed` 照樣能用。miner.py 改回自己的 `parse_official_closed` = 把 `lib_twclosed.py` 那段搬回去。
+- 風險分數 +10、紅色橫幅:舊碼在 commit d39b4e45 之前(⛔ 建議換回:沒有測試撐)。
+
+**驗證**:test_macro_calendar / test_dayfacts(Playwright 載入真的 App;三邊休市定義同一組日期比對)/ test_tgalert / test_mktwarn / test_dupnum / test_promptaudit / test_nodirective / test_calvol / test_macro_groq / test_holiday_ghost / test_alertcat / test_audit / embed_day_facts --check / embed_col_trig --check / check_lab_coverage;每一條修正都做過注入必紅。
+
+**沒驗到**:Telegram / Worker 實際送出(要等合併後部署與下一輪採礦);官方休市表實際抓取(沙箱連不到 openapi.twse.com.tw,只用樣本測解析與切換);線上 macro_risk.json 要重採一輪才有 kind / approx / fact / calc / tw_closed(在那之前 App 照樣顯示那一句、Worker / Telegram 退回只列事件名);真機顏色(沙箱沒有 Tailwind);晚上那則 Telegram 從 V82.0.5 起本來就不發,所以「下一個交易日」那一行只在尾盤有買點那天(或手動作戰清單)才送得出去。
+
 ## V82.4.3(2026-11-17)🩹 美股那一排還有第二個寫入點:App 自己即時抓的那條抓不到時 ⛔ 整排洗成「--」;美股開盤時抓到的也寫「盤中」;VIX 那格也標
 
 **由來**:V82.4.2 上線後用 Playwright 載入**線上那份**(gh-pages 壓縮版 + 線上資料;外網全擋,只在傳輸途中改 macro_cache / macro_risk 注入盤中標記)實測:
