@@ -491,6 +491,92 @@ def fetch_us_earnings(window_days=21):
     return sorted(out, key=lambda x: x["date"])
 
 
+# 🔟 西曆固定連假(春節 / 端午 / 中秋因農曆寫進 manual_events.json)。行事曆事件與「算出來的日子」共用這一份。
+FIXED_HOLIDAYS = [(1, 1, "🎊 元旦", ""), (4, 4, "🌸 清明節", ";日期大約"), (10, 10, "🇹🇼 雙十國慶", "")]
+DAY_FACTS_FILE = Path(__file__).parent / 'data' / 'day_facts.json'
+
+
+def _manual_events():
+    """data/manual_events.json → [(date, event)];讀不到回 [](印原因,⛔ 擋住整個行事曆)。"""
+    from datetime import date
+    out = []
+    try:
+        manual_file = Path(__file__).parent / 'data' / 'manual_events.json'
+        if manual_file.exists():
+            for e in json.loads(manual_file.read_text(encoding='utf-8')).get('events', []):
+                try:
+                    out.append((date.fromisoformat(e['date']), str(e['event'])))
+                except (ValueError, KeyError, TypeError):
+                    continue
+    except Exception as _e:
+        print(f"   ⚠️ manual_events.json 讀取失敗(不影響其他):{_e}")
+    return out
+
+
+def _day_facts():
+    """data/day_facts.json 的 kinds(⚠️ 這個檔進 git,macro_cron 的乾淨 checkout 也讀得到)。讀不到 → {} 並印出來
+    (事件照樣有,只是少了 fact;⛔ 擋住行事曆)。"""
+    try:
+        return (json.loads(DAY_FACTS_FILE.read_text(encoding='utf-8')) or {}).get('kinds') or {}
+    except Exception as _e:
+        print(f"   ⚠️ day_facts.json 讀不到({type(_e).__name__})→ 行事曆事件不附 fact")
+        return {}
+
+
+def _closed_days(start, end):
+    """start ~ end 之間不開盤的平日:固定連假 + manual_events.json 裡寫「休市」的(週末另外算)。
+    ⚠️ 跟 App `_appDayEvents` 同一個做法(repo 沒有官方休市表的資料檔);往回也算 → 今天那一筆才算得出來。"""
+    from datetime import date
+    closed = set()
+    for y in range(start.year, end.year + 1):
+        for hm, hd, _n, _t in FIXED_HOLIDAYS:
+            try:
+                closed.add(date(y, hm, hd))
+            except ValueError:
+                pass
+    for d, t in _manual_events():
+        if '休市' in t:
+            closed.add(d)
+    return {d for d in closed if start <= d <= end}
+
+
+def _holiday_kinds(open_days):
+    """一串交易日(升冪)→ [(date, kind, gap)]。⚠️ 定義 = scripts/daytype_probe.mjs `buildSets` = App `_holidayKinds`
+    (gap = 跟上一個交易日差幾個日曆天;4~5 → 45、≥ 6 → 6);scripts/test_dayfacts.mjs 拿同一組日期比對三邊。"""
+    out = []
+    for i in range(1, len(open_days)):
+        g = (open_days[i] - open_days[i - 1]).days
+        if g >= 4:
+            out.append((open_days[i], 'post6' if g >= 6 else 'post45', g))
+            out.append((open_days[i - 1], 'pre6' if g >= 6 else 'pre45', g))
+    return out
+
+
+def _calc_day_events(today, end):
+    """today ~ end 的「算出來的日子」→ 事件(`calc: True`)。文字跟 App 同一個說法(連休天數 = 實際沒開盤的天數 gap − 1)。"""
+    from datetime import timedelta
+    lo, hi = today - timedelta(days=30), end + timedelta(days=30)
+    closed = _closed_days(lo, hi)
+    open_days, d = [], lo
+    while d <= hi:
+        if d.weekday() < 5 and d not in closed:
+            open_days.append(d)
+        d += timedelta(days=1)
+    out = []
+    for d, kind, g in _holiday_kinds(open_days):
+        if not (today <= d <= end):
+            continue
+        txt = (f"🗓️ 連休 {g - 1} 天後的第一個交易日" if kind.startswith('post')
+               else f"🗓️ 連休前最後一個交易日(接著休 {g - 1} 天)")
+        out.append({"date": d.isoformat(), "event": txt, "kind": kind, "calc": True})
+    seen_m = set()
+    for d in open_days:   # 月營收公布期:每月 9~11 日的交易日(= daytype_probe `rev`),每個月只列第一天
+        if today <= d <= end and 9 <= d.day <= 11 and (d.year, d.month) not in seen_m:
+            seen_m.add((d.year, d.month))
+            out.append({"date": d.isoformat(), "event": "📊 月營收公布期(每月 9~11 日)", "kind": "rev", "calc": True})
+    return sorted(out, key=lambda x: x["date"])
+
+
 def _compute_upcoming_macro_events(today, window_days=14):
     """演算法計算未來 N 天的全球重大財經事件,純函式無 IO,絕對不會拋例外。
     14 天視窗(2026/06 起,從 7 → 14 涵蓋更多籌備期事件)。
@@ -647,9 +733,7 @@ def _compute_upcoming_macro_events(today, window_days=14):
         #    🐛 以前還有一筆「12/31 跨年 台股休市」—— 12/31 平常有開盤(data/^TWII.json:2024-12-31、2025-12-31 都有收盤),
         #       App 會在 12/30 講「明天休市」→ 拿掉(真的遇到補假那年寫進 manual_events.json)。
         #    清明連假每年落在 4/3~4/6 不一定 → 標大約;元旦、國慶是固定日期。
-        holidays = [(1, 1, "🎊 元旦", ""), (4, 4, "🌸 清明節", ";日期大約"),
-                    (10, 10, "🇹🇼 雙十國慶", "")]
-        for hm, hd, name, tail in holidays:
+        for hm, hd, name, tail in FIXED_HOLIDAYS:
             if hm == month:
                 try:
                     _add(date(year, hm, hd), f"{name} (台股休市{tail})")
@@ -672,18 +756,8 @@ def _compute_upcoming_macro_events(today, window_days=14):
         _add(dd, "🇯🇵 日銀 BOJ 利率決議" + APPROX_TAG, "boj")
 
     # ── 一次性事件:讀 data/manual_events.json(Claude 代為更新)──
-    try:
-        manual_file = Path(__file__).parent / 'data' / 'manual_events.json'
-        if manual_file.exists():
-            manual_data = json.loads(manual_file.read_text(encoding='utf-8'))
-            for e in manual_data.get('events', []):
-                try:
-                    ev_date = date.fromisoformat(e['date'])
-                except (ValueError, KeyError):
-                    continue
-                _add(ev_date, e['event'], _kind_of_text(e['event']))
-    except Exception as _e:
-        print(f"   ⚠️ manual_events.json 讀取失敗(不影響其他):{_e}")
+    for ev_date, ev_text in _manual_events():
+        _add(ev_date, ev_text, _kind_of_text(ev_text))
 
     # 去重 + 依日期升冪排序
     seen = set()
@@ -695,11 +769,10 @@ def _compute_upcoming_macro_events(today, window_days=14):
         seen.add(sig)
         uniq.append(e)
 
-    # 🚨 事件分級:依關鍵字標 severity(high / mid / low)。
-    #    high 的讀者:App 行事曆 D-1/D-0 紅色橫幅、`_calcRiskScore` 迫近 +10 分、Worker 盤前簡報那一行;
-    #    mid / low 只影響行事曆那顆「高 / 中 / 低」小標。
-    #    ⚠️ high 只代表「大家都在看的事件」,⛔ 不代表測過比較顛(26 年實測只有長假後第一天比較顛)——
-    #    拆成兩件事要跟 App 一起改(docs/PLAN_day_list.md A2/A3),這裡先 ⛔ 動分級結果。
+    # 🚨 事件分級:依關鍵字標 severity(high / mid / low)= 「大家關注的程度」,⛔ 不是風險高低。
+    #    high 的讀者:App 行事曆「明天 / 今天」那一條、決策台「下一個交易日」那一列、Worker 盤前簡報那一行;
+    #    還沒測過的日子只有 high 才附那一句(fact)。mid / low 只影響行事曆那顆小標。
+    #    ⚠️ high ⛔ 代表測過比較顛(26 年實測只有長假後第一天比較顛 → 那是 `kind` / `fact` 的事)。
     #    ⚠️ 改事件文字時關鍵字要跟著對(`scripts/test_macro_calendar.py` ④ 釘住每一種事件的分級)。
     # 🧹 2026-11-17 拿掉 `direction`(利多 / 利空 / 震盪):是關鍵字湊的、沒有任何測試,而且全 repo 沒有人讀。
     HIGH_KW   = ['FOMC', '聯準會', 'BOJ', '日銀', 'CPI', '通膨', 'NFP', '非農', '台指期月結算',
@@ -717,6 +790,25 @@ def _compute_upcoming_macro_events(today, window_days=14):
 
     for e in uniq:
         e['severity'] = _severity(e['event'])
+
+    # 🗓️ 2026-11-17 算出來的日子也當事件(`calc: True`):連休前最後一個交易日、連休後第一個交易日、月營收公布期。
+    #    為什麼採礦端也算:Telegram / Worker 這些只印文字的通道不該各自再算一次休市(⛔ 各算各的就會兜不攏)。
+    #    App 自己用大盤實際的交易日算一份(`_appDayEvents`),所以 App 一律略過 calc 事件,⛔ 同一天出現兩次。
+    for e in _calc_day_events(today, end):
+        e['severity'] = _severity(e['event'])
+        uniq.append(e)
+    uniq.sort(key=lambda x: x["date"])
+
+    # 每種日子測過的那一句(`fact`)= data/day_facts.json 的 `line`(scripts/embed_day_facts.mjs 產的,⛔ 這裡再組一次字串)
+    #   還沒測過的只給重要度高的(跟 App `_dayFactLine` 同一條規則)
+    facts = _day_facts()
+    for e in uniq:
+        f = facts.get(e.get('kind') or '')
+        if not f or not f.get('line'):
+            continue
+        if f.get('type') == 'untested' and e.get('severity') != 'high':
+            continue
+        e['fact'] = f['line']
     return uniq
 
 # Retry-equipped session（任何 5xx / 連線錯誤自動重試 3 次）

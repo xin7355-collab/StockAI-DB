@@ -13,6 +13,9 @@
  *     none     = 其餘有測過的
  *     untested = out.json 裡沒有那種日子
  *   ⛔ 方向那幾格只要有一格過關 → exit 1:那時候「方向沒有規律」這句就是錯的,要先改句子再說。
+ *   dir = out.json 裡有沒有那種日子的方向格(rev 只測了顛不顛)→ 沒測過方向的 ⛔ 講方向。
+ *   line = 畫面 / 通知 / Telegram / Worker 印的那一句,**只在這裡產生**(lineOf);short = 總覽那一則用的短句(只有 vol)。
+ *   「還沒測過的只在重要度高時顯示」留在讀的那一端(要看事件的 severity)。
  *
  *   跑法:node scripts/embed_day_facts.mjs          → 寫 data/day_facts.json 與 index.html
  *         node scripts/embed_day_facts.mjs --check  → 只比對(兩邊跟 out.json 算出來的不一樣就 exit 1)
@@ -46,6 +49,16 @@ export const UNTESTED = { msci: 'MSCI 調整', boj: '日銀', cbc: '央行理監
 
 const r2 = v => Math.round(v * 100) / 100, r1 = v => Math.round(v * 10) / 10;
 
+/** 那種日子的那一句(⛔ 講會漲會跌、⛔ 🔴🟢、⛔ 買賣與部位;數字是加權指數量的 → 一律講「大盤」) */
+export function lineOf(o, bigTh) {
+    const p1 = v => (+v).toFixed(1);
+    if (o.type === 'vol') return `這種日子:大盤比平常顛 ${o.mult} 倍(一天漲跌超過 ${bigTh}% 的機率 ${p1(o.big)}%,平常 ${p1(o.base)}%);會漲還是會跌沒有規律。`;
+    if (o.type === 'maybe') return `這種日子:大盤方向沒有規律;公布後第一個交易日可能稍微顛一點(${o.mult} 倍),還不算確定。`;
+    if (o.type === 'none') return o.dir ? '這種日子:大盤方向沒有規律,也沒有比平常顛。' : '這種日子:大盤沒有比平常顛。';
+    return '這種日子:還沒測過。';
+}
+export const shortOf = o => (o.type === 'vol' ? `大盤比平常顛 ${o.mult} 倍,會漲還是會跌沒有規律。` : '');
+
 /** 一格顛不顛的判定 → type(⛔ 這裡寫死任何一種日子的答案) */
 export function typeOf(c) {
     if (c.verdict === 'wild') return 'vol';
@@ -66,13 +79,17 @@ export function buildDayFacts(out) {
         if (dirPass.length) errs.push(`${k}:方向那格過關了(${dirPass.map(c => c.id)})→「方向沒有規律」這句不成立,先改句子`);
         // 一種日子有好幾格顛不顛(結算日當天 / 隔天)→ 取判定最強的那格;同級取倍數大的
         const best = vols.map(c => ({ c, t: typeOf(c) })).sort((a, b) => (RANK[b.t] - RANK[a.t]) || (b.c.ratio - a.c.ratio))[0];
-        const o = { type: best.t, label: m.label, cell: best.c.id };
+        const o = { type: best.t, dir: m.dir.length > 0, label: m.label, cell: best.c.id };
         if (best.t === 'vol' || best.t === 'maybe') Object.assign(o, { mult: r2(best.c.ratio), big: r1(best.c.big), base: r1(best.c.bigBase), n: best.c.n });
+        // vol / maybe 的句子會講「方向沒有規律」→ 沒測過方向就 ⛔ 這樣講,要先改句子
+        if (!o.dir && o.type !== 'none') errs.push(`${k}:${o.type} 但沒測過方向 → 句子會講到方向,先改 lineOf`);
         kinds[k] = o;
     }
-    for (const [k, label] of Object.entries(UNTESTED)) kinds[k] = { type: 'untested', label };
+    for (const [k, label] of Object.entries(UNTESTED)) kinds[k] = { type: 'untested', dir: false, label };
     const meta = out.meta || {};
     if (!meta.from || !meta.to) errs.push('out.json 沒有 meta.from / meta.to');
+    const bigTh = (meta.rule || {}).BIG;
+    for (const o of Object.values(kinds)) { o.line = lineOf(o, bigTh); const sh = shortOf(o); if (sh) o.short = sh; }
     return { obj: { src: SRC, exp: EXP, from: meta.from, to: meta.to, days: meta.days, bigTh: (meta.rule || {}).BIG, kinds }, errs };
 }
 

@@ -1501,12 +1501,28 @@ function buildFalconMap(radar) {
     return map;
 }
 
-/** 📅 V79.3.5 今天 / 明天的高重要性事件 → 盤前簡報一行(⛔ 只講波動、⛔ 不給方向與部位)*/
-export function premarketEventLine(macro) {
-    const t = buildMacroAlert(macro);
-    if (!t) return '';
-    const names = t.split('\n').map(x => x.replace(/^⚠️\s*/, '').trim()).filter(Boolean).slice(0, 3);
-    return names.length ? `📅 重大事件:${names.join('、')} → 那幾天波動會變大,⛔ 不預設漲跌` : '';
+/** 📅 V79.3.5 今天 / 明天的事件 → 盤前簡報幾行(⛔ 不給方向與部位)
+ *  🧹 2026-11-17 以前一律寫「那幾天波動會變大」—— 加權 26 年測過,結算日 / CPI / 非農跟平常一樣顛 →
+ *  改成只列事件 + 採礦端附的 `fact`(= data/day_facts.json 的 line,⛔ 這裡再組句子);沒有 fact(舊資料)就只列事件。
+ *  日期大約的(`approx`,舊資料退回看文字)⛔ 寫成「今天 / 明天」。名單 = 重要度高的 + 採礦端算的連休後第一天(唯一測過比較顛的)。 */
+export function premarketEventLine(macro, now) {
+    const evs = (macro && (macro.upcoming_macro_events || macro.events)) || [];
+    if (!Array.isArray(evs) || !evs.length) return '';
+    const tpe = new Date((now ? +now : Date.now()) + 8 * 3600e3);
+    const today = tpe.toISOString().slice(0, 10), tmr = new Date(+tpe + 86400e3).toISOString().slice(0, 10);
+    const approx = e => e.approx === true || (e.approx == null && /日期大約/.test(String(e.event || '')));
+    const hi = e => { const sev = String(e.severity || e.level || ''); return sev.includes('高') || /high/i.test(sev); };
+    const out = [];
+    for (const e of evs) {
+        if (!e || approx(e)) continue;
+        const d = String(e.date || '').slice(0, 10);
+        if (d !== today && d !== tmr) continue;
+        if (!hi(e) && !(e.calc && /^post/.test(String(e.kind || '')))) continue;
+        const name = String(e.event || e.name || '').replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+        out.push(`📅 ${d === today ? '今天' : '明天'}:${name}${e.fact ? ` —— ${e.fact}` : ''}`);
+        if (out.length >= 3) break;
+    }
+    return out.join('\n');
 }
 
 /** 🏦 V79.3.5 外資台指期 5 日增減(口)—— 跟 App `_fiFutState()` 同一條:risk_history 最後一筆 − 往前第 5 筆;
@@ -1520,23 +1536,6 @@ export function fiFutChg5(hist) {
 /** 🔕 V79.3.5 主力出貨指數的那句話 → 只描述(⛔「主力可能殺出」這種預告;燈號鐵則:🔴🟢 只講漲跌)*/
 export function mmVerdictOf(mmIndex) {
     return mmIndex >= 70 ? '⚠️ 外面壓力很高' : mmIndex >= 40 ? '⚠️ 外面壓力偏高' : '➖ 平穩';
-}
-
-function buildMacroAlert(macro) {
-    if (!macro) return null;
-    const events = macro.upcoming_macro_events || macro.events || [];
-    if (!Array.isArray(events) || !events.length) return null;
-    const today = new Date().toISOString().slice(0, 10);
-    const hot = events.filter(e => {
-        if (!e) return false;
-        const sev = (e.severity || e.level || '').toString();
-        const isHi = sev.includes('高') || /high/i.test(sev);
-        const days = Number(e.days_until ?? e.days);
-        const isDDay = e.date === today || (Number.isFinite(days) && days <= 1);
-        return isHi && isDDay;
-    });
-    if (!hot.length) return null;
-    return hot.map(e => `⚠️ ${e.date || '今日'} ${e.event || e.name || ''}`).join('\n');
 }
 
 async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCache, elapsed) {

@@ -46,18 +46,15 @@ if (!fs.existsSync(path.join(ROOT, 'data', `${SYM}.json`))) { console.log(`❌ �
     ok('ⓑs 空過守門:抓得到緊急警示那一段', s.length > 800, `len=${s.length}`);
     // ⚠️ 斷言範圍只框「行事曆那一則」—— 同一段裡的 `riskS >= 68`(本站自己的風險指數)與
     //   「反彈減碼」(你自己的停損紀律)**是合法的**,⛔ 不可因為含「減碼」兩個字就一起擋掉。
-    // 🧹 2026-11-17 名單改讀 `_imminentMacroEvents()`(跟財經行事曆「明天 / 今天」同一份),文字改成「今天 / 明天:事件 + 那種日子測過的那一句」
-    const one = (s.match(/_imminentMacroEvents\(\)[\s\S]{0,700}?不預設漲跌。`\);/) || [''])[0];
-    ok('ⓑs2a 空過守門:抓得到行事曆那一則的 push', /今天 \/ 明天/.test(one) && /_dayFactLine/.test(one), one.slice(0, 120));
+    // 🧹 2026-11-17(第三階段)總覽這一則只留「測過比較顛」的日子:`_dayVolNotes()`(今天 / 明天、日期確定、type = vol;短句讀 _DAY_FACTS)
+    const one = (s.match(/for \(const t of this\._dayVolNotes\(\)[^\n]*/) || [''])[0];
+    ok('ⓑs2a 空過守門:抓得到行事曆那一則的 push(讀 `_dayVolNotes`)', /emgNote\.push/.test(one), one.slice(0, 120));
     const bad = (one.match(/部位先收|裸壓|減碼|出清|留倉|加碼|偏多|偏空/g) || []);
     ok('ⓑs2 行事曆那一則⛔ 不可出現部位/方向指令(實測行事曆方向 0 個成立)', bad.length === 0, bad.join(','));
     ok('ⓑs3 行事曆那則⛔ 不可放在 `emg` 紅框(它不是今天已經發生的事)→ 要走 `emgNote`',
-       /emgNote\.push\(['`]📅/.test(s) && !/emg\.push\(['`]📅/.test(s), '');   // V77.5.1 改成 template literal(要寫出事件名稱)→ 兩種引號都收
-    // 🧹 V78.3.6 「實測 37 種行事曆日方向 0 個成立」那句研究說明不再印給散戶 → 只留白話「不預設漲跌」
-    const oneAll = (() => { const i = s.indexOf('emgNote.push(`📅'); if (i < 0) return ''; const j = s.indexOf('\n', i); return j > i ? s.slice(i, j) : s.slice(i, i + 900); })();   // 整則 push(那一整行;內含巢狀 template literal,⛔ 不可用第一個 `); 當結尾)
-    ok('ⓑs4 那則要明講「本站不預設漲跌」(🧹 V78.3.6 ⛔ 不再附實測說明)', /今天 \/ 明天/.test(oneAll) && /不預設漲跌/.test(oneAll) && !/實測|0 個成立|calendar_stock_probe|回測/.test(oneAll), oneAll.slice(-160));
-    // 🧹 2026-11-17 「那幾天波動會變大」沒有測試撐(加權 26 年:結算日 / CPI / 非農跟平常一樣顛)→ ⛔ 再寫
-    ok('ⓑs5 那則 ⛔ 再一律寫「那幾天波動會變大」(改附那種日子測過的那一句)', !/波動會變大/.test(oneAll), oneAll.slice(-160));
+       /emgNote\.push/.test(one) && !/emg\.push\(this\._dayVolNotes|emg\.push\(t\)/.test(s), '');
+    // 🧹 V78.3.6 研究說明(實測 / 回測)不印給散戶;2026-11-17「那幾天波動會變大」沒有測試撐 → ⛔ 再寫
+    ok('ⓑs4 那則 ⛔ 研究字樣、⛔「那幾天波動會變大」', !/實測|0 個成立|calendar_stock_probe|回測|波動會變大/.test(s.slice(s.indexOf('_dayVolNotes'), s.indexOf('_dayVolNotes') + 400)), one);
 }
 {   // ⓒs 毛利率 / 自由現金流
     const g = seg('    _gmLatest(C) {', '    _rpIndustryFacts(sym) {');
@@ -139,30 +136,32 @@ await page.waitForTimeout(2500);
        JSON.stringify(r));
 }
 
-// ⓑ2 行事曆那則:⛔ 不可進紅框 `emg`,而且文字只講波動
+// ⓑ2 行事曆那則:⛔ 不可進紅框 `emg`;只留「測過比較顛」的日子(連休後第一天),結算日這種測過跟平常一樣的 ⛔ 佔第一眼
 {
-    const r = await page.evaluate(() => {
-        const keep = app._imminentMacroEvents;
+    const run = kind => page.evaluate(k => {
+        const keep = app._appDayEvents, keepU = app._upcomingMacroEvents;
         const td = app.getTodayStr().replace(/\//g, '-');
-        app._imminentMacroEvents = () => [{ date: td, event: '🇹🇼 台指期月結算 (每月第三個星期三)', kind: 'settle', severity: 'high' }];   // 強迫觸發那一則
+        app._upcomingMacroEvents = k === 'settle' ? [{ date: td, event: '🇹🇼 台指期月結算 (每月第三個星期三)', kind: 'settle', severity: 'high' }] : [];
+        app._appDayEvents = () => k === 'post6' ? [{ date: td, kind: 'post6', app: true, name: '連休 10 天後的第一個交易日', event: '🗓️ 連休 10 天後的第一個交易日' }] : [];   // 強迫觸發那一則
         // ⛔ 這裡刻意走 `_regaugeStrip` 的同一條路(用存下來的參數重算),⛔ 不另寫一份呼叫
         const a = app._gaugeArgs;
         if (a && String(a.sym) === String(app.currentSymbolId)) app._overallGaugeHtml(a.ind, a.last, a.C, a.trend, a.big, a.cost);
         const html = app._ovEmergencyBar();
         const emg = (app._lastGauge && Array.isArray(app._lastGauge.emg)) ? app._lastGauge.emg.slice() : null;
-        app._imminentMacroEvents = keep;
+        app._appDayEvents = keep; app._upcomingMacroEvents = keepU;
         const d = document.createElement('div'); d.innerHTML = html;
         const note = d.querySelector('[data-emgnote]');
         const red = d.querySelector('.animate-pulse');
-        return { emg, noteTxt: note ? (note.innerText || '').replace(/\s+/g, ' ') : null,
+        return { emg, noteTxt: note ? (note.innerText || '').replace(/\s+/g, ' ') : '',
                  redTxt: red ? (red.innerText || '').replace(/\s+/g, ' ') : '' };
-    });
-    ok('ⓑ2 空過守門:那一則真的渲染得出來(而且是在「只講波動」那一區)',
-       !!r.noteTxt && /今天 \/ 明天:/.test(r.noteTxt) && /台指期月結算/.test(r.noteTxt), JSON.stringify(r).slice(0, 220));
-    ok('ⓑ2b 畫面上⛔ 不可出現部位/方向指令', !!r.noteTxt && !/部位先收|裸壓|減碼|出清|留倉/.test(r.noteTxt), String(r.noteTxt).slice(0, 200));
-    ok('ⓑ2c 它附那種日子測過的那一句(結算日:沒有規律)+「本站不預設漲跌」,⛔「波動會變大」', !!r.noteTxt && /方向沒有規律,也沒有比平常顛/.test(r.noteTxt) && /不預設漲跌/.test(r.noteTxt) && !/波動會變大/.test(r.noteTxt), String(r.noteTxt).slice(0, 200));
+    }, kind);
+    const r = await run('post6'), r0 = await run('settle');
+    ok('ⓑ2 空過守門:今天是連休後第一天 → 那一則真的渲染得出來',
+       /📅 今天是連休 10 天後的第一個交易日:大盤比平常顛 1\.75 倍,會漲還是會跌沒有規律。/.test(r.noteTxt), JSON.stringify(r).slice(0, 220));
+    ok('ⓑ2b 畫面上⛔ 不可出現部位/方向指令', !/部位先收|裸壓|減碼|出清|留倉|波動會變大/.test(r.noteTxt), String(r.noteTxt).slice(0, 200));
+    ok('ⓑ2c ⭐ 決定性:今天只有結算日(測過跟平常一樣顛)→ 總覽 ⛔ 出現', !/台指期月結算|今天是/.test(r0.noteTxt), String(r0.noteTxt).slice(0, 200));
     ok('ⓑ2d ⭐ 決定性:⛔ 不可進 `_lastGauge.emg`,也⛔ 不可出現在 🚨 紅框裡',
-       Array.isArray(r.emg) && !r.emg.some(x => /台指期月結算/.test(x)) && !/台指期月結算/.test(r.redTxt),
+       Array.isArray(r.emg) && !r.emg.some(x => /連休/.test(x)) && !/連休/.test(r.redTxt),
        JSON.stringify(r.emg));
 }
 

@@ -13,6 +13,8 @@
   ③ 文字只講是什麼:⛔ 舊警語、⛔ 方向 / 買賣 / 部位字、⛔ 研究字樣(過 scripts/lib_retailbad.mjs 的 badOf)。
   ④ 分級(severity)這一階段 ⛔ 變:App 紅色橫幅、風險分數、Worker 盤前簡報都還在讀;`direction` 已拿掉(沒人讀)。
   ⑤ 休市那幾筆要留「休市」兩個字(index.html `_colTrigEval` 靠它判斷休市前最後一個交易日),12/31 ⛔ 算休市。
+  ⑥ (第三階段)算出來的日子(calc:連休前後、月營收公布期,今天那一筆也算)+ 每個事件的 fact == day_facts.json 的 line
+     (還沒測過的只給重要度高的)。三邊休市定義一致另外在 scripts/test_dayfacts.mjs ②c。
 
 用法:python3 scripts/test_macro_calendar.py
 """
@@ -53,7 +55,10 @@ while _d <= date(2027, 12, 31):
     for e in mm._compute_upcoming_macro_events(_d, 14):
         SWEEP[(e['date'], e['event'])] = e
     _d += timedelta(days=1)
-EVS = list(SWEEP.values())
+ALL = list(SWEEP.values())
+# 算出來的日子(calc)另外驗(⑥);①~⑤ 只看行事曆事件本身
+CALC = [e for e in ALL if e.get('calc')]
+EVS = [e for e in ALL if not e.get('calc')]
 ok('⓪ 掃得到事件(⛔ 空掃算綠)', len(EVS) > 200, len(EVS))
 
 # ── ① 聯準會日期 ──────────────────────────────────────────────
@@ -178,6 +183,38 @@ ok('⑤a 休市那幾筆留著「休市」(index.html _colTrigEval 靠 /休市/ 
    [e['event'] for e in hol if '休市' not in e['event']][:2])
 dec31 = [e['event'] for e in EVS if e['date'].endswith('-12-31') and '休市' in e['event']]
 ok('⑤b 12/31 ⛔ 算休市(平常有開盤:^TWII 2024-12-31、2025-12-31 都有收盤)', not dec31, dec31[:2])
+
+# ── ⑥ 算出來的日子(calc)與 fact ───────────────────────────────
+DF = json.load(open(os.path.join(ROOT, 'data', 'day_facts.json'), encoding='utf-8'))['kinds']
+ok('⑥a 空過守門:掃得到算出來的日子(連休前 / 後、月營收公布期都有;6 天以上的長假要靠手寫的春節,見 ⑥i)',
+   {'rev', 'pre45', 'post45'} <= {e['kind'] for e in CALC}, sorted({e['kind'] for e in CALC}))
+bad_c = [e for e in CALC if e.get('kind') not in ('post45', 'post6', 'pre45', 'pre6', 'rev') or e.get('approx') or e.get('severity') != 'low']
+ok('⑥b calc 事件:kind 只有連休前後 / 月營收、⛔ 日期大約、重要度低', not bad_c, bad_c[:2])
+ok('⑥c calc 的文字 ⛔ 含「休市」(App `_colTrigEval` 靠 /休市/ 判斷哪天不開盤,算出來的日子不是休市日)',
+   not any('休市' in e['event'] for e in CALC))
+rev_bad = [e['date'] for e in CALC if e['kind'] == 'rev' and not (9 <= int(e['date'][8:10]) <= 11)]
+ok('⑥d 月營收公布期落在 9~11 日', not rev_bad, rev_bad[:3])
+# fact == day_facts.json 的 line(⛔ 採礦端再組一次字串);還沒測過的只給重要度高的
+fbad = []
+for e in ALL:
+    f = DF.get(e.get('kind') or '')
+    want = None if not f else (None if (f['type'] == 'untested' and e.get('severity') != 'high') else f['line'])
+    if e.get('fact') != want:
+        fbad.append((e['date'], e['event'], e.get('fact'), want))
+ok('⑥e 每個事件的 fact == day_facts.json 那種日子的 line(還沒測過的只給重要度高的;沒有 kind 不給)', not fbad, fbad[:2])
+ok('⑥f 空過守門:有 vol 的 fact、也有還沒測過的 fact', any('比平常顛' in str(e.get('fact')) for e in ALL) and any('還沒測過' in str(e.get('fact')) for e in ALL))
+# 決定性對照:2026-12-28 那天看出去 → 12/31(四)連休前最後一天(元旦 + 週末 = 休 3 天)、2027-01-04(一)連休後第一天
+c28 = {(e['date'], e['kind']) for e in mm._compute_upcoming_macro_events(date(2026, 12, 28), 14) if e.get('calc')}
+ok('⑥g 元旦:12/31 連休前最後一天、1/4 連休後第一天(post45)', ('2026-12-31', 'pre45') in c28 and ('2027-01-04', 'post45') in c28, sorted(c28))
+# 今天那一筆也算得出來(往回看得到休市日):2027-01-04 當天跑 → 今天就是連休後第一天
+c04 = {(e['date'], e['kind']) for e in mm._compute_upcoming_macro_events(date(2027, 1, 4), 14) if e.get('calc')}
+ok('⑥h 今天是連休後第一天 → 今天那一筆也列出來(往回看得到元旦)', ('2027-01-04', 'post45') in c04, sorted(c04))
+# 手寫的休市(manual_events.json)也算進去:用暫時的手寫清單餵一次
+_orig = mm._manual_events
+mm._manual_events = lambda: [(date(2027, 2, d), '🧧 春節 (台股休市)') for d in (5, 8, 9, 10, 11, 12)]
+cny = {(e['date'], e['kind']) for e in mm._compute_upcoming_macro_events(date(2027, 2, 1), 14) if e.get('calc')}
+mm._manual_events = _orig
+ok('⑥i 手寫的春節休市 → 2/4 連休前(休 10 天,pre6)、2/15 連休後(post6)', ('2027-02-04', 'pre6') in cny and ('2027-02-15', 'post6') in cny, sorted(cny))
 
 print()
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ MACRO_CALENDAR_PASS(全部通過)')

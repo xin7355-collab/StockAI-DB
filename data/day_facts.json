@@ -8,94 +8,130 @@
  "kinds": {
   "post45": {
    "type": "vol",
+   "dir": true,
    "label": "休市 4~5 天後的第一個交易日",
    "cell": "v_post45",
    "mult": 1.39,
    "big": 35.5,
    "base": 19,
-   "n": 124
+   "n": 124,
+   "line": "這種日子:大盤比平常顛 1.39 倍(一天漲跌超過 1.5% 的機率 35.5%,平常 19.0%);會漲還是會跌沒有規律。",
+   "short": "大盤比平常顛 1.39 倍,會漲還是會跌沒有規律。"
   },
   "post6": {
    "type": "vol",
+   "dir": true,
    "label": "休市 6 天以上後的第一個交易日",
    "cell": "v_post6",
    "mult": 1.75,
    "big": 46.7,
    "base": 19.9,
-   "n": 30
+   "n": 30,
+   "line": "這種日子:大盤比平常顛 1.75 倍(一天漲跌超過 1.5% 的機率 46.7%,平常 19.9%);會漲還是會跌沒有規律。",
+   "short": "大盤比平常顛 1.75 倍,會漲還是會跌沒有規律。"
   },
   "pre45": {
    "type": "none",
+   "dir": true,
    "label": "休市 4~5 天前的最後一個交易日",
-   "cell": "v_pre45"
+   "cell": "v_pre45",
+   "line": "這種日子:大盤方向沒有規律,也沒有比平常顛。"
   },
   "pre6": {
    "type": "none",
+   "dir": true,
    "label": "休市 6 天以上前的最後一個交易日",
-   "cell": "v_pre6"
+   "cell": "v_pre6",
+   "line": "這種日子:大盤方向沒有規律,也沒有比平常顛。"
   },
   "settle": {
    "type": "none",
+   "dir": true,
    "label": "台指期結算日",
-   "cell": "v_settle_next"
+   "cell": "v_settle_next",
+   "line": "這種日子:大盤方向沒有規律,也沒有比平常顛。"
   },
   "wit": {
    "type": "none",
+   "dir": true,
    "label": "美股四巫日",
-   "cell": "v_wit_next"
+   "cell": "v_wit_next",
+   "line": "這種日子:大盤方向沒有規律,也沒有比平常顛。"
   },
   "opx": {
    "type": "none",
+   "dir": true,
    "label": "美股每月選擇權結算",
-   "cell": "v_opx_next"
+   "cell": "v_opx_next",
+   "line": "這種日子:大盤方向沒有規律,也沒有比平常顛。"
   },
   "fomc": {
    "type": "maybe",
+   "dir": true,
    "label": "聯準會決議",
    "cell": "v_fomc_next",
    "mult": 1.17,
    "big": 20,
    "base": 17.9,
-   "n": 205
+   "n": 205,
+   "line": "這種日子:大盤方向沒有規律;公布後第一個交易日可能稍微顛一點(1.17 倍),還不算確定。"
   },
   "cpi": {
    "type": "none",
+   "dir": true,
    "label": "美國 CPI",
-   "cell": "v_cpi_next"
+   "cell": "v_cpi_next",
+   "line": "這種日子:大盤方向沒有規律,也沒有比平常顛。"
   },
   "nfp": {
    "type": "none",
+   "dir": true,
    "label": "美國非農",
-   "cell": "v_nfp_next"
+   "cell": "v_nfp_next",
+   "line": "這種日子:大盤方向沒有規律,也沒有比平常顛。"
   },
   "rev": {
    "type": "none",
+   "dir": false,
    "label": "月營收公布期(每月 9~11 日)",
-   "cell": "v_rev"
+   "cell": "v_rev",
+   "line": "這種日子:大盤沒有比平常顛。"
   },
   "msci": {
    "type": "untested",
-   "label": "MSCI 調整"
+   "dir": false,
+   "label": "MSCI 調整",
+   "line": "這種日子:還沒測過。"
   },
   "boj": {
    "type": "untested",
-   "label": "日銀"
+   "dir": false,
+   "label": "日銀",
+   "line": "這種日子:還沒測過。"
   },
   "cbc": {
    "type": "untested",
-   "label": "央行理監事會"
+   "dir": false,
+   "label": "央行理監事會",
+   "line": "這種日子:還沒測過。"
   },
   "ism": {
    "type": "untested",
-   "label": "ISM"
+   "dir": false,
+   "label": "ISM",
+   "line": "這種日子:還沒測過。"
   },
   "ppi": {
    "type": "untested",
-   "label": "PPI"
+   "dir": false,
+   "label": "PPI",
+   "line": "這種日子:還沒測過。"
   },
   "earn": {
    "type": "untested",
-   "label": "法說 / 財報"
+   "dir": false,
+   "label": "法說 / 財報",
+   "line": "這種日子:還沒測過。"
   }
  }
 }

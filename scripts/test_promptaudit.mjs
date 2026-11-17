@@ -4,6 +4,7 @@
 //     ⛔ AI 不自己寫壓力/支撐點數(禁 AI 算數)、⛔ 🟢 不可當「偏多/進攻」(燈號鐵則)、⛔「可加碼」
 //  ② 總經深度分析 _deepAnalyzeMacro:⛔ 不給部位成數(行事曆日方向實測 0 個成立)、VIX 走 _vixState、外資期走 _fiFutState
 //  ③ 事件影響 askEventImpactAI:⛔ 不問利多利空、⛔ 不叫 App 內 AI 寫股票代號、輸出掛「🤖 AI 推測」、舊快取換鍵
+//  ⑤ 2026-11-17 行事曆點事件名的外部 AI 提示詞 _openEventPerplexity:⛔ 問方向 / 進場 / 減碼 / 守停損
 //  ⚠️ 原始碼斷言一律先剝掉 // 註解(本 repo 第三次:被自己寫的註解救活 = 假綠燈)
 // 跑法:node scripts/test_promptaudit.mjs
 import fs from 'fs';
@@ -52,6 +53,15 @@ ok('④ 自律條款找得到(⛔ 空字串 = 假綠燈)', DC.length > 200, DC.l
 ok('④b ⛔ 不可要 AI 自己給具體點位 / 下操作指令', !/必須給出具體點位|必須直接下達操作指令/.test(DC), (DC.match(/必須[^\n]{0,20}/) || [])[0]);
 ok('④c 價位只能引用資料裡算好的數字', /價位一律引用上面資料裡已經算好的數字/.test(DC) && /不可自己算或編/.test(DC), '');
 ok('④d 燈號只講方向(⛔ 🔴=可以買、🟢=賣出 這種把燈號當指令)', !/🔴\(可以買|🟢\(賣出/.test(DC), '');
+
+// ⑤ 📅 2026-11-17 財經行事曆點事件名 → 外部 AI(Perplexity)的提示詞 _openEventPerplexity:
+//    ⛔ 再叫外部 AI 講「影響方向」「散戶該如何因應(進場 / 減碼 / 守停損)」;只問是什麼、看哪個數字、預估值與前值
+const PX = (() => { const i = SRC.indexOf('    _openEventPerplexity(evName) {'); if (i < 0) return ''; const j = SRC.indexOf('\n    },', i);
+    return SRC.slice(i, j).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n'); })();
+ok('⑤ 找得到 _openEventPerplexity(⛔ 空字串 = 假綠燈)', PX.length > 100 && /_freeAiOpen\(/.test(PX), PX.length);
+ok('⑤b ⛔ 問方向 / 進場 / 減碼 / 守停損 / 怎麼因應', !/影響方向|進場|減碼|守停損|如何因應|利多|利空(?!、)/.test(PX.replace('⛔ 不要判斷利多利空', '')), (PX.match(/影響方向|進場|減碼|守停損|如何因應/) || [])[0]);
+ok('⑤c 只問「是什麼事件、市場看哪個數字、預估值與前值」,而且明講 ⛔ 不要判斷利多利空、⛔ 不要給買賣或部位建議',
+   /是什麼事件/.test(PX) && /看哪個數字/.test(PX) && /預估值與前值/.test(PX) && /不要判斷利多利空/.test(PX) && /不要給買賣或部位建議/.test(PX), '');
 
 console.log(FAIL.length ? `❌ ${FAIL.length} 條沒過` : '✅ 全部通過');
 process.exit(FAIL.length ? 1 : 0);

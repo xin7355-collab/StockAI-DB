@@ -71,8 +71,23 @@ ok('⑤ worker 盤前簡報有重大事件那一行、主力出貨指數兩處�
 {
     const W = await import(pathToFileURL(path.join(ROOT, 'cloud-worker/worker.js')).href);
     const today = new Date().toISOString().slice(0, 10);
-    const ev = W.premarketEventLine({ upcoming_macro_events: [{ date: today, event: 'FOMC 利率決議', severity: '高' }] });
-    ok('⑤ 重大事件那一行:只講波動、⛔ 不預設漲跌、⛔ 不給部位', /FOMC/.test(ev) && /波動/.test(ev) && /不預設漲跌/.test(ev) && !/減|賣|空手|成/.test(ev.replace('不預設漲跌', '')), ev);
+    // 📅 2026-11-17 那一行改成「事件 + 採礦端附的 fact」(⛔「那幾天波動會變大」;日期大約的 ⛔ 寫成今天 / 明天;舊資料沒有 fact 只列事件)
+    const NOW = Date.parse('2027-02-15T00:00:00Z');   // 台北 2027-02-15(一)08:00
+    const DF = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/day_facts.json'), 'utf8')).kinds;
+    const EVW = { upcoming_macro_events: [
+        { date: '2027-02-15', event: '🗓️ 連休 10 天後的第一個交易日', kind: 'post6', calc: true, severity: 'low', fact: DF.post6.line },
+        { date: '2027-02-15', event: '🗓️ 連休前最後一個交易日(接著休 3 天)', kind: 'pre45', calc: true, severity: 'low', fact: DF.pre45.line },   // 測過跟平常一樣 → 不列
+        { date: '2027-02-16', event: '🇹🇼 台指期月結算 (每月第三個星期三)', kind: 'settle', severity: 'high', fact: DF.settle.line },
+        { date: '2027-02-16', event: '📊 MSCI 季度成分股調整 (日期大約)', kind: 'msci', severity: 'high', approx: true, fact: DF.msci.line },
+        { date: '2027-02-15', event: '🇺🇸 美國 CPI 消費者物價指數公布 (日期大約)', kind: 'cpi', severity: 'high' },   // 舊資料:沒有 approx 欄位
+        { date: '2027-02-15', event: 'FOMC 利率決議', severity: '高' },                                                   // 舊資料:沒有 fact
+        { date: '2027-02-18', event: '🇺🇸 FOMC 聯準會利率決議 (台灣時間隔天凌晨公布)', kind: 'fomc', severity: 'high', fact: DF.fomc.line },   // 後天 → 不列
+    ] };
+    const ev = W.premarketEventLine(EVW, NOW);
+    ok('⑤ 重大事件那幾行:今天 / 明天 + 採礦端附的 fact(連休後第一天、結算日)', ev.includes(`📅 今天:🗓️ 連休 10 天後的第一個交易日 —— ${DF.post6.line}`) && ev.includes(`📅 明天:🇹🇼 台指期月結算 —— ${DF.settle.line}`), ev);
+    ok('⑤b 日期大約的 ⛔ 寫成今天 / 明天(有欄位的 MSCI、只有文字的舊資料 CPI);後天的 ⛔ 列;測過跟平常一樣的 calc(連休前)⛔ 列', !/MSCI|CPI|聯準會利率決議|連休前/.test(ev), ev);
+    ok('⑤c 舊資料沒有 fact → 只列事件名,⛔ 壞掉', /📅 今天:FOMC 利率決議$/m.test(ev), ev);
+    ok('⑤d ⛔「那幾天波動會變大」、⛔ 部位 / 方向字', !/波動會變大|減|賣|空手|偏多|偏空|利多|利空/.test(ev), ev);
     ok('⑤ 沒有重大事件 → 那一行整個不出現', W.premarketEventLine({ upcoming_macro_events: [] }) === '' && W.premarketEventLine(null) === '');
     ok('⑤ 主力出貨指數的那句話 ⛔ 不可用 🔴🟢(燈號鐵則)、⛔ 不可預告', [0, 45, 80].every(x => !/🔴|🟢|殺出|託盤/.test(W.mmVerdictOf(x))) && /⚠️/.test(W.mmVerdictOf(80)), [0, 45, 80].map(W.mmVerdictOf).join(' / '));
     ok('⑤ `fiFutChg5`:不夠 6 筆 → null(⛔ 不硬判)', W.fiFutChg5([{ fi_futures_net: -80000 }]) === null && W.fiFutChg5(null) === null);

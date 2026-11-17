@@ -19,6 +19,7 @@ App 內的提醒是**前端定時器**,完全關掉 App 就收不到 → 這條�
   📲 V82.0.5:作戰清單(台北 08:00)與尾盤買點(13:15)改由 Cloudflare Worker 叫醒 tg_push.yml
      (排程那兩輪常常晚好幾小時才跑 → ALERT_MODE=none ⛔ 不發);早上那輪講「今天」、名單是今天的 ⛔ 不發;
      尾盤那輪名單太舊也 ⛔ 不發;ALERT_MODE=none 一則都不發;股名讀 stock_names.json。
+  ⑰ 📅 2026-11-17 A5「下一個交易日」那一行(day_line):讀採礦產物的 event + fact(含 calc),日期大約的不列,舊資料沒有 fact 不壞。
 """
 import importlib.util
 import json
@@ -258,6 +259,35 @@ ok('🧪 決定性對照:美股與 VIX 照樣決定方向(三項都偏空 → �
    A._market_direction({'sp500_chg_pct': -1, 'nasdaq_chg_pct': -1, 'vix': 31})[1] == '偏空' and _d0[1] == '偏多')
 _all = ' '.join(A._market_direction(m)[2] for m in (_base, {'sp500_chg_pct': -1, 'nasdaq_chg_pct': -1, 'vix': 31}, {}))
 ok('🧪 對策只講開盤 ⛔ 接刀 / 續抱 / 順勢 / 昨高', not re.search(r'接刀|續抱|順勢|昨高|昨低', _all), _all)
+
+# ── 📅 2026-11-17 A5「下一個交易日」那一行(day_line;讀採礦產物的 event + fact,⛔ 自己組句子 / 算連休)──────
+_F_SET = '這種日子:大盤方向沒有規律,也沒有比平常顛。'
+_DF = json.loads((ROOT / 'data' / 'day_facts.json').read_text(encoding='utf-8'))['kinds']
+_M = {'upcoming_macro_events': [
+    {'date': '2027-02-22', 'event': '🇹🇼 台指期月結算 (每月第三個星期三)', 'kind': 'settle', 'severity': 'high', 'fact': _DF['settle']['line']},
+    {'date': '2027-02-22', 'event': '📊 MSCI 季度成分股調整 (日期大約)', 'kind': 'msci', 'severity': 'high', 'approx': True, 'fact': _DF['msci']['line']},
+    {'date': '2027-02-22', 'event': '🇺🇸 美國 CPI 消費者物價指數公布 (日期大約)', 'kind': 'cpi', 'severity': 'high'},          # 舊資料:沒有 approx 欄位
+    {'date': '2027-02-22', 'event': '💰 除權息高峰期', 'severity': 'mid'},                                                     # 沒有 kind、重要度不高 → 不列
+    {'date': '2027-02-15', 'event': '🗓️ 連休 10 天後的第一個交易日', 'kind': 'post6', 'calc': True, 'severity': 'low', 'fact': _DF['post6']['line']},
+] + [{'date': f'2027-02-{d:02d}', 'event': '🧧 春節 (台股休市)', 'severity': 'low'} for d in (5, 8, 9, 10, 11, 12)] + [
+    {'date': '2027-03-01', 'event': '🇺🇸 FOMC 聯準會利率決議 (台灣時間隔天凌晨公布)', 'kind': 'fomc', 'severity': 'high'},    # 舊資料:沒有 fact
+]}
+_fri = A.day_line(_M, datetime(2027, 2, 19, 20, 0, tzinfo=TW))
+ok('⑰a 星期五晚上 → 下一個交易日是星期一(02/22 週一),印事件 + 採礦端附的 fact',
+   _fri.startswith('📅 *下一個交易日(02/22 週一)*') and ('台指期月結算:' + _DF['settle']['line']) in _fri, _fri)
+ok('⑰b 日期大約的 ⛔ 列(有 approx 欄位的 MSCI、只有文字的舊資料 CPI);沒有 kind 又不是重要度高的 ⛔ 列',
+   'MSCI' not in _fri and 'CPI' not in _fri and '除權息' not in _fri, _fri)
+_cny = A.day_line(_M, datetime(2027, 2, 4, 14, 0, tzinfo=TW))
+ok('⑰c 行事曆寫休市的日子要跳過:2/4 收盤後 → 2/15(採礦端算的 calc 連休後那筆、帶倍數)',
+   '02/15 週一' in _cny and '連休 10 天後的第一個交易日' in _cny and '1.75 倍' in _cny, _cny)
+_old = A.day_line(_M, datetime(2027, 2, 26, 20, 0, tzinfo=TW))
+ok('⑰d 舊資料沒有 fact → 只列事件名,⛔ 壞掉', '聯準會利率決議' in _old and '這種日子' not in _old, _old)
+ok('⑰e 沒有任何一件 → 回空字串(那一行整個不加)', A.day_line(_M, datetime(2027, 3, 3, 20, 0, tzinfo=TW)) == '' and A.day_line({}) == '' and A.day_line(None) == '')
+ok('⑰f 那一行 ⛔ 買賣 / 部位 / 方向字', not re.search(r'買|賣|部位|減碼|加碼|偏多|偏空|利多|利空|會跌(?!沒有規律)', _fri + _cny + _old), _fri + _cny)
+_eod = SRC.split('def build_eod_triggers')[1].split('\ndef ')[0]
+_pb = SRC.split('def build_playbook_brief')[1].split('\ndef ')[0]
+ok('⑰g 尾盤那輪與晚上(手動)那輪作戰清單都接這一行;早上那輪 ⛔ 接(那輪講今天)',
+   'day_line(load_json("macro_risk.json"), now)' in _eod and "'' if am else day_line(" in _pb)
 
 print()
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ TGALERT_PASS(全部通過)')

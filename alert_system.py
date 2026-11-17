@@ -298,6 +298,46 @@ def _pick_line(p, i):
     return t
 
 
+_WK = '一二三四五六日'
+
+
+def _ev_approx(e):
+    """日期是湊的嗎:先看採礦端的 approx 欄位;舊資料沒有 → 退回看文字(⛔ 把大約的講成「下一個交易日」)。"""
+    if e.get('approx') is True:
+        return True
+    if e.get('approx') is False:
+        return False
+    return '日期大約' in str(e.get('event') or '')
+
+
+def day_line(macro, now=None):
+    """📅 2026-11-17 A5「下一個交易日」那一行(macro_risk.json 的 upcoming_macro_events,含採礦端算的 calc 日子)。
+    ⭐ 句子直接印事件的 `fact`(= data/day_facts.json 的 line,採礦端附好的),⛔ 這裡再組字串、⛔ 再算連休。
+    下一個交易日 = 今天之後第一個「平日、而且行事曆沒寫休市」的日子(星期五 → 星期一)。
+    名單 = 日期確定的事件裡有 kind 或重要度高的;一件都沒有 → 回 ''(那一行整個不加)。"""
+    import re as _re
+    from datetime import timedelta
+    evs = [e for e in ((macro or {}).get('upcoming_macro_events') or []) if isinstance(e, dict)]
+    closed = {str(e.get('date'))[:10] for e in evs if '休市' in str(e.get('event') or '')}
+    d = (now or _tpe_now()).date()
+    for _ in range(20):
+        d += timedelta(days=1)
+        if d.weekday() < 5 and d.isoformat() not in closed:
+            break
+    target = d.isoformat()
+    items = []
+    for e in evs:
+        if str(e.get('date'))[:10] != target or _ev_approx(e):
+            continue
+        if not e.get('kind') and e.get('severity') != 'high':
+            continue
+        name = _re.sub(r'\s*\([^)]*\)\s*', ' ', str(e.get('event') or '')).strip()
+        items.append(f"　▸ {name}" + (f":{e['fact']}" if e.get('fact') else ''))
+    if not items:
+        return ''
+    return f"📅 *下一個交易日({d:%m/%d} 週{_WK[d.weekday()]})*\n" + "\n".join(items)
+
+
 def build_playbook_brief(am=False):
     """【A】推作戰清單 —— 讓使用者不用自己記得開 App 看。
     am=False:盤後那一輪(「明天的作戰清單」;手動跑 playbook 才會用到)
@@ -336,6 +376,9 @@ def build_playbook_brief(am=False):
            + f"⭐ *跟 App 決策台同一份:一天最多 2 檔*\n\n")
     for i, p in enumerate(top, 1):
         msg += _pick_line(p, i) + "\n"
+    dl = '' if am else day_line(load_json("macro_risk.json"))   # 📅 早上那輪講今天,⛔ 接「下一個交易日」
+    if dl:
+        msg += dl + "\n\n"
     msg += (f"{SEP2}\n"
             f"⛔ *不是叫你{day}一開盤就買* —— 要「漲過那個價,而且撐到*尾盤 13:00~13:25* 還站得住」才進場。\n"
             f"⚠️ 這是*全市場*排序,雲端看不到你的自選/庫存 —— App 裡的清單會把你手上的排前面。\n"
@@ -417,6 +460,9 @@ def build_eod_triggers():
     for i, p in enumerate(hit, 1):
         msg += _pick_line(p, i)
         msg += f"   ▸ *現在 {p['_px']}*(已站上觸發價)\n\n"
+    dl = day_line(load_json("macro_risk.json"), now)   # 📅 下一個交易日是什麼日子(A5 前一天提醒)
+    if dl:
+        msg += dl + "\n\n"
     msg += (f"{SEP2}\n"
             f"⏰ 現在約 {now:%H:%M} —— 收盤前(*13:00~13:28*)確認還站得住再進;停損照上面那個價,收盤跌破就走。\n"
             f"⚠️ 這是*全市場*排序,雲端看不到你的自選/庫存。\n"

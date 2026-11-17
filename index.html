@@ -6160,6 +6160,9 @@ const app = {
           d: '加權離一年最高點跌到 10% / 25 天內跌 15% / 跌到 20% / 這一段結束 —— 每一段每一種只跳一次,附過去發生過的比例。只講已經發生的事,⛔ 不是叫你賣。' },
         { k: 'dip',    n: '📉 大跌撿便宜',        re: /📉 大跌撿便宜/,
           d: '加權收盤跌 3% 以上那天晚上:明天 09:00 要開盤買的那 10 檔出來了(決策台 📉 那塊)。不做這一套就可以關掉;你有買的那一批「抱滿 40 天」那天的提醒在 👜 你的部位(關不掉)。' },
+        // 📅 2026-11-17 日子提醒(A5 前一天提醒):收盤後,下一個交易日有日子才發一則(連休前後、結算日、聯準會…+ 測過是怎樣的那一句)
+        { k: 'dayfact', n: '📅 日子提醒',         re: /📅 日子提醒/,
+          d: '收盤後提醒一次:下一個交易日是什麼日子(連休前後、台指期結算、聯準會…)+ 那種日子大盤測過是怎樣。一個交易日最多一則;只講會不會晃,⛔ 不是叫你買或賣。' },
         // 🔀 V81.0.0 交叉提醒(進階區;標題一律「🔀 交叉提醒｜…」)—— ⚠️ 排在 🌡️ 大盤前面:大盤那則標題有「大盤」兩個字
         { k: 'cross',  n: '🔀 交叉提醒',          re: /🔀 交叉提醒/, adv: 1,
           d: '你的庫存 / 自選今天碰到好幾件事時合成一則(一天每檔最多一則,大盤一則)。只在「🔓 進階功能 › 🔀 交叉提醒」打開時才有。' },
@@ -7174,6 +7177,7 @@ ${list}
     },
 
     _checkMarketAlerts() {
+        try { this._dayRemindCheck(); } catch (_) {}   // 📅 日子提醒:跟大盤風險檢查同一個節奏(App 開著就會檢查到;一個交易日最多一則)
         const score = this._calcRiskScore() ?? 0;
         // V32.3 — 大盤風險主動推播(每日每級一次);V32.8 門檻改使用者自訂(set_riskAlertThreshold,預設 60)
         // 🔕 V79.3.5 改成**只進 🔔 鈴鐺、⛔ 不跳通知**,文案只描述(使用者:「回測沒過的推播拿掉、改成只描述」)——
@@ -21928,6 +21932,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         open: { n: 35, gapMed: 0.11, intraMed: 0.21, upPct: 60, baseUp: 56 },
         cost: 0.44,
     },
+    // 🏷️ 2026-11-17 `_calDayVol` / `_HOLIDAY_EDGE` 的倍數(1.32 / 1.11 / 1.12 / 1.39)是**個股層級**(calendar_stock_probe 逐檔),
+    //   財經行事曆「這種日子」那一句是**大盤**(加權指數,_DAY_FACTS)—— 畫面上一律標「個股」,⛔ 讀起來像兩個數字在打架。數字不動。
     _calDayVol(data) {
         try {
             const d = Array.isArray(data) ? data : [];
@@ -21963,7 +21969,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!v) return '';                       // ⛔ 沒命中整條不顯示(不留空殼)
         const t = v.top, up = Math.round((t.mult - 1) * 100);
         return `<div class="bg-[#0d1117] border-l-4 border-[#8b949e] pl-2.5 py-1.5 rounded-r mt-1.5">
-            <div class="text-[11px] text-gray-200 font-bold leading-relaxed">📅 今天是<b>${t.t}</b> —— 這種日子通常比較顛</div>
+            <div class="text-[11px] text-gray-200 font-bold leading-relaxed">📅 今天是<b>${t.t}</b> —— 這種日子個股通常比較顛</div>
             <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${t.why}。<b>波動大不等於會漲、也不等於會跌</b> —— 只代表比較顛:停損容易被掃到,<b>部位放小一點</b>、停損拉遠一點。</div>
             ${v.tags.length > 1 ? `<div class="text-[9px] text-gray-500 mt-0.5">今天同時也是「${v.tags[1].t}」</div>` : ''}
             ${v.gap >= 4 && this._labMode() ? this._holidayEdgeHtml() : ''}
@@ -21996,7 +22002,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             </div>
             <div class="text-[9px] text-gray-500 leading-snug mt-1.5">
                 ⚠️ p 值高代表<b>量不到</b>,⛔ <b>不是量到反向</b> —— 別倒過來拿它去放空。
-                唯一站得住的只有上面那個<b>波動</b>(${H.vol.x.toFixed(2)}x)。
+                唯一站得住的只有上面那個<b>個股波動</b>(個股層級 ${H.vol.x.toFixed(2)}x;大盤的數字看財經行事曆「這種日子」那一句)。
                 來源:<span class="font-mono">${H.src}</span>
             </div></details>`;
     },
@@ -23735,6 +23741,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 if (syms.length && this._confcallCache === undefined) { try { await this._loadEarningsCalls(syms[0]); } catch (_) {} }
                 let events = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || null, mrF = null;
                 if (!events) { try { const r = await fetch(new URL('data/macro_risk.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); if (r.ok) { mrF = (await r.json()) || {}; events = mrF.upcoming_macro_events || []; } } catch (_) {} }
+                events = this._macroEvents(events);   // ⛔ 採礦端算的日子(calc)不算休市日、App 自己算一份
                 // 🏧 V80.2.1 外資提款機:只讀已經抓好的 macro_risk(⛔ 為了它多打一次網路)
                 const mrX = this._macroRiskCache || mrF;
                 const fiout = mrX ? { spot: mrX.fi_spot_net, spotD: mrX.fi_spot_date, twd: mrX.usdtwd_chg_pct, twdD: mrX.usdtwd_date } : null;
@@ -27632,7 +27639,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 }
                 if (hit) return { text: hit, days: hitDays, date: hitDate, src: 'confcall', moved };
             }
-            const events = 'events' in O ? (O.events || []) : ((this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || this._upcomingMacroEvents || []);
+            const events = 'events' in O ? (O.events || []) : this._macroEvents((this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || this._upcomingMacroEvents || []);
             if (!Array.isArray(events) || !events.length) return null;
             const name = (this.getStockName(sym) || '').replace(/-KY|\*|　/g, '').trim();
             for (const ev of events) {
@@ -28990,7 +28997,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         }
         // ③ 法說會 / ④ 除息:落在基準日與今天之間
         try {
-            const events = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || this._upcomingMacroEvents || [];
+            const events = this._macroEvents((this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || this._upcomingMacroEvents || []);
             const name = (this.getStockName(C.sym) || '').replace(/-KY|\*|　/g, '').trim();
             const hit = (Array.isArray(events) ? events : []).find(ev => /法說|法人說明會/.test(String(ev && ev.event || '')) && ((name && String(ev.event).includes(name)) || String(ev.event).includes(String(C.sym))) && String(ev.date || '').slice(0, 10) > asof && String(ev.date || '').slice(0, 10) <= today);
             if (hit) out.reasons.push(`法說會 ${this._dW(String(hit.date).slice(0, 10))} 已開過`);
@@ -30381,7 +30388,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const _G = this._lastGauge;
         L.push(`- 五個面向(0~100,越高越有底氣;⛔ 不要自己加總成一個總分):${(_G && String(_G.sym) === String(sym) && Array.isArray(_G.dims) && _G.dims.length) ? _G.dims.map(d => `${d.name} ${Math.round(d.score)}(${(this._GAUGE_SPEC[d.name] || {}).tip || ''})`).join(' / ') : '—'}`);
         const _me = (() => { try {
-            const a = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || [];
+            const a = this._macroEvents(this._macroRiskCache && this._macroRiskCache.upcoming_macro_events);
             const t0 = new Date().toISOString().slice(0, 10);
             return a.filter(x => x && x.date >= t0 && !/法說|法人說明會/.test(String(x.event || '')))
                     .slice(0, 5).map(x => { const nm = this._evName(x);   // 括號拿掉,但「(日期大約)」留著(⛔ 把湊的日期講成確定的)
@@ -30798,7 +30805,7 @@ ${this._reportFacts(sym)}
         try { const up = C.div && C.div.up && C.div.up[0]; if (up) push(up[0], '除息', 1); } catch (_) {}
         try { const e = this._findEarningsEvent(sym, 60); if (e) push(e.date, '法說會', 1); } catch (_) {}
         try {
-            const me = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || [];
+            const me = this._macroEvents(this._macroRiskCache && this._macroRiskCache.upcoming_macro_events);
             for (const x of me) if (!/法說|法人說明會/.test(String(x.event || ''))) push(x.date, this._evName(x), 0);   // 「(日期大約)」留著
         } catch (_) {}
         const today = new Date().toISOString().slice(0, 10);
@@ -33295,9 +33302,11 @@ ${this._reportFacts(sym)}
 
     // 🔎 V52.x — 財經行事曆「單一事件」→ Perplexity 深查(點事件名觸發;帶事件名 + 固定提示詞)
     _openEventPerplexity(evName) {
-        const t = String(evName || '').replace(/^[\s\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}]+/u, '').trim(); // 去掉開頭 emoji/國旗
+        const t = this._evName(String(evName || '')).replace(/^[\s\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}]+/u, '').trim(); // 去掉開頭 emoji/國旗;括號說明拿掉、「(日期大約)」留著
         if (!t) return;
-        this._freeAiOpen(`「${t}」是什麼?最近一次的市場預期值、前值與實際公布結果各為何?公布後對「台股大盤」與「半導體 / AI 族群」的影響方向,以及散戶該如何因應(進場 / 減碼 / 守停損)?請用白話條列,並附日期與來源`);
+        // 🧹 2026-11-17 ⛔ 再叫外部 AI 講「影響方向」「進場 / 減碼 / 守停損」—— 行事曆日方向一個都不成立(加權 26 年、個股 37 種),
+        //   部位指令更不該由事件來給 → 只問這是什麼、市場看哪個數字、預估值與前值(test_promptaudit ⑤ 釘住)
+        this._freeAiOpen(`「${t}」是什麼事件?公布時市場主要看哪個數字?最近一次的市場預估值與前值各是多少(已經公布的話也附實際值)?請用白話條列,附日期與來源;⛔ 不要判斷利多利空、⛔ 不要給買賣或部位建議。`);
         this.vibrate?.(20);
     },
 
@@ -37226,7 +37235,7 @@ ${this._reportFacts(sym)}
         const fy = (this._fundYoyGmAll && this._fundYoyGmAll.data) || {};
         const div = this._divFileCache && this._divFileCache.data;
         const CC = this._confcallCache || null;
-        const evs = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || [];
+        const evs = this._macroEvents(this._macroRiskCache && this._macroRiskCache.upcoming_macro_events);
         // 📈 月營收:窗口裡有 1~12 號(法定 10 號前公布,遇假日往後)才算「這週公布的」,該公布的是那個月的前一個月
         let revM = null;
         for (let d = W.from; d <= W.to; d = this._colAddDays(d, 1)) if (+d.slice(8, 10) <= 12) {
@@ -38157,7 +38166,7 @@ ${this._reportFacts(sym)}
         if (btn) { btn.disabled = true; btn.textContent = '🧠 深度分析中…(約 10-20 秒)'; btn.className = btn.className.replace('hover:bg-purple-800/50', '') + ' opacity-60'; }
         try {
             const mr = this._macroRiskCache || {};
-            const evs = (mr.upcoming_macro_events || []).slice(0, 12)
+            const evs = this._macroEvents(mr.upcoming_macro_events).slice(0, 12)
                 .map(e => `・${e.date} ${e.event}(重要度 ${e.level || '中'}${e.days != null ? `,還有 ${e.days} 天` : ''})`).join('\n');
             if (!evs) { this.showToast?.('⚠️ 目前沒有近期事件可分析'); return; }
             const N = v => (v == null || isNaN(+v)) ? '—' : (+v);
@@ -38176,7 +38185,7 @@ ${this._reportFacts(sym)}
             const rb = this._reboundVerdict ? `反攻條件雷達:${this._reboundVerdict.txt}(${this._reboundVerdict.passN}/${this._reboundVerdict.total} 條通過)` : '';
             // 🗂️ 「這段用到」:只記上面真的有值的(值是「—」的⛔ 算)
             const ok = v => v != null && !isNaN(+v), _ff = this._fiFutState();
-            const used = [`財經行事曆 ${Math.min(12, (mr.upcoming_macro_events || []).length)} 件`];
+            const used = [`財經行事曆 ${Math.min(12, this._macroEvents(mr.upcoming_macro_events).length)} 件`];
             if (+this._taiexToday > 0) used.push('加權指數');   // 提示詞那格是 `N(…) || '—'`:0 也印成「—」
             if (ok(this._vixState()?.val)) used.push('VIX');
             if (ok(mr.kospi_chg_pct) || ok(mr.nikkei_chg_pct)) used.push('日韓股市');
@@ -38206,7 +38215,7 @@ ${this._reportFacts(sym)}
         if (!list) return;
         if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
         // 暫存全列表(總覽「今天 / 明天」那一則、法說會提醒讀它)
-        this._upcomingMacroEvents = Array.isArray(events) ? events : [];
+        this._upcomingMacroEvents = this._macroEvents(events);
         // 🤖 V70.3.0 後端 Groq 解讀(macro_risk.json.macro_events_ai;沒有就隱藏,前端不打 AI 不耗你的額度)
         try {
             const aiBox = document.getElementById('macroEventsAi');
@@ -38242,8 +38251,12 @@ ${this._reportFacts(sym)}
             }
         } catch (_) {}
         const todayIso = this.getTodayStr().replace(/\//g, '-');
-        const appDays = this._appDayEvents(events, todayIso);
-        this._appDays = appDays;
+        events = this._macroEvents(events);   // ⛔ 採礦端算的日子(calc)—— App 自己算一份,兩份一起列會重複
+        this._upcomingMacroEvents = events;
+        const twRows = this._twiiKlineCache && this._twiiKlineCache.rows;
+        // 今天是不是連休後第一天要看大盤實際的交易日 → 還沒載到就先畫,載到再畫一次(只補一次,⛔ 無限重畫)
+        if (!twRows && !this._dayRowsKick) { this._dayRowsKick = true; this._getTwiiRows().then(r => { if (r) this._renderUpcomingMacroEvents(events); }).catch(() => {}); }
+        const appDays = this._appDayEvents(events, todayIso, 14, twRows);
         const note = document.getElementById('macroEventsNote');
         if (note) note.innerHTML = this._dayFactsNoteHtml();
         if ((!Array.isArray(events) || events.length === 0) && !appDays.length) {
@@ -38270,10 +38283,12 @@ ${this._reportFacts(sym)}
                 ${items}
             </div>`;
         }
+        // 🧹 2026-11-17 重要度小標改灰階:紅 / 橘會被讀成「風險高」,而它只是大家關注的程度(結算日測過跟平常一樣顛,一樣是「高」)
         const sevBadge = sev => {
-            if (sev === 'high') return '<span class="text-[8px] font-black text-red-300 bg-red-900/40 border border-red-700 px-1 rounded">高</span>';
-            if (sev === 'mid')  return '<span class="text-[8px] font-black text-yellow-300 bg-yellow-900/40 border border-yellow-700 px-1 rounded">中</span>';
-            return '<span class="text-[8px] font-black text-gray-400 bg-gray-800/60 border border-gray-700 px-1 rounded">低</span>';
+            const tt = ' title="大家關注的程度,⛔ 不是風險高低" data-sev="' + (sev === 'high' || sev === 'mid' ? sev : 'low') + '"';
+            if (sev === 'high') return '<span class="text-[8px] font-black text-gray-100 bg-gray-700/60 border border-gray-500 px-1 rounded"' + tt + '>高</span>';
+            if (sev === 'mid')  return '<span class="text-[8px] font-black text-gray-300 bg-gray-800/60 border border-gray-600 px-1 rounded"' + tt + '>中</span>';
+            return '<span class="text-[8px] font-black text-gray-500 bg-gray-900/60 border border-gray-700 px-1 rounded"' + tt + '>低</span>';
         };
         // 📅 V50.9 — 法說會單獨折疊:財經行事曆常有一堆法說會把核彈事件淹沒,把「法說」類收進 <details>,主列表只留宏觀核彈事件
         // 🚨 V73.9.1 美股巨頭財報**不可跟台股法說會一起摺疊** ——
@@ -38352,7 +38367,7 @@ ${this._reportFacts(sym)}
     //   ⛔ 手改下面那一行 —— 由 `node scripts/embed_day_facts.mjs` 從 research/daytype_20261117/out.json 抄進來
     //   (同一份也寫到 data/day_facts.json;scripts/test_dayfacts.mjs 逐格比對三邊)。
     // ══════════════════════════════════════════════════════════════
-    _DAY_FACTS: {"src":"research/daytype_20261117/out.json","exp":"EXP-20261117-01","from":"2000-01-04","to":"2026-11-16","days":6637,"bigTh":1.5,"kinds":{"post45":{"type":"vol","label":"休市 4~5 天後的第一個交易日","cell":"v_post45","mult":1.39,"big":35.5,"base":19,"n":124},"post6":{"type":"vol","label":"休市 6 天以上後的第一個交易日","cell":"v_post6","mult":1.75,"big":46.7,"base":19.9,"n":30},"pre45":{"type":"none","label":"休市 4~5 天前的最後一個交易日","cell":"v_pre45"},"pre6":{"type":"none","label":"休市 6 天以上前的最後一個交易日","cell":"v_pre6"},"settle":{"type":"none","label":"台指期結算日","cell":"v_settle_next"},"wit":{"type":"none","label":"美股四巫日","cell":"v_wit_next"},"opx":{"type":"none","label":"美股每月選擇權結算","cell":"v_opx_next"},"fomc":{"type":"maybe","label":"聯準會決議","cell":"v_fomc_next","mult":1.17,"big":20,"base":17.9,"n":205},"cpi":{"type":"none","label":"美國 CPI","cell":"v_cpi_next"},"nfp":{"type":"none","label":"美國非農","cell":"v_nfp_next"},"rev":{"type":"none","label":"月營收公布期(每月 9~11 日)","cell":"v_rev"},"msci":{"type":"untested","label":"MSCI 調整"},"boj":{"type":"untested","label":"日銀"},"cbc":{"type":"untested","label":"央行理監事會"},"ism":{"type":"untested","label":"ISM"},"ppi":{"type":"untested","label":"PPI"},"earn":{"type":"untested","label":"法說 / 財報"}}},
+    _DAY_FACTS: {"src":"research/daytype_20261117/out.json","exp":"EXP-20261117-01","from":"2000-01-04","to":"2026-11-16","days":6637,"bigTh":1.5,"kinds":{"post45":{"type":"vol","dir":true,"label":"休市 4~5 天後的第一個交易日","cell":"v_post45","mult":1.39,"big":35.5,"base":19,"n":124,"line":"這種日子:大盤比平常顛 1.39 倍(一天漲跌超過 1.5% 的機率 35.5%,平常 19.0%);會漲還是會跌沒有規律。","short":"大盤比平常顛 1.39 倍,會漲還是會跌沒有規律。"},"post6":{"type":"vol","dir":true,"label":"休市 6 天以上後的第一個交易日","cell":"v_post6","mult":1.75,"big":46.7,"base":19.9,"n":30,"line":"這種日子:大盤比平常顛 1.75 倍(一天漲跌超過 1.5% 的機率 46.7%,平常 19.9%);會漲還是會跌沒有規律。","short":"大盤比平常顛 1.75 倍,會漲還是會跌沒有規律。"},"pre45":{"type":"none","dir":true,"label":"休市 4~5 天前的最後一個交易日","cell":"v_pre45","line":"這種日子:大盤方向沒有規律,也沒有比平常顛。"},"pre6":{"type":"none","dir":true,"label":"休市 6 天以上前的最後一個交易日","cell":"v_pre6","line":"這種日子:大盤方向沒有規律,也沒有比平常顛。"},"settle":{"type":"none","dir":true,"label":"台指期結算日","cell":"v_settle_next","line":"這種日子:大盤方向沒有規律,也沒有比平常顛。"},"wit":{"type":"none","dir":true,"label":"美股四巫日","cell":"v_wit_next","line":"這種日子:大盤方向沒有規律,也沒有比平常顛。"},"opx":{"type":"none","dir":true,"label":"美股每月選擇權結算","cell":"v_opx_next","line":"這種日子:大盤方向沒有規律,也沒有比平常顛。"},"fomc":{"type":"maybe","dir":true,"label":"聯準會決議","cell":"v_fomc_next","mult":1.17,"big":20,"base":17.9,"n":205,"line":"這種日子:大盤方向沒有規律;公布後第一個交易日可能稍微顛一點(1.17 倍),還不算確定。"},"cpi":{"type":"none","dir":true,"label":"美國 CPI","cell":"v_cpi_next","line":"這種日子:大盤方向沒有規律,也沒有比平常顛。"},"nfp":{"type":"none","dir":true,"label":"美國非農","cell":"v_nfp_next","line":"這種日子:大盤方向沒有規律,也沒有比平常顛。"},"rev":{"type":"none","dir":false,"label":"月營收公布期(每月 9~11 日)","cell":"v_rev","line":"這種日子:大盤沒有比平常顛。"},"msci":{"type":"untested","dir":false,"label":"MSCI 調整","line":"這種日子:還沒測過。"},"boj":{"type":"untested","dir":false,"label":"日銀","line":"這種日子:還沒測過。"},"cbc":{"type":"untested","dir":false,"label":"央行理監事會","line":"這種日子:還沒測過。"},"ism":{"type":"untested","dir":false,"label":"ISM","line":"這種日子:還沒測過。"},"ppi":{"type":"untested","dir":false,"label":"PPI","line":"這種日子:還沒測過。"},"earn":{"type":"untested","dir":false,"label":"法說 / 財報","line":"這種日子:還沒測過。"}}},
     /** 日期是湊的嗎:先看採礦端的 `approx` 欄位;線上舊資料還沒有這個欄位 → 退回看文字(⛔ 把大約的講成確定的) */
     _evApprox(ev) {
         if (!ev) return false;
@@ -38365,16 +38380,16 @@ ${this._reportFacts(sym)}
         const t = String((ev && (ev.event != null ? ev.event : ev)) || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
         return this._evApprox(typeof ev === 'object' ? ev : { event: String(ev || '') }) ? `${t}(日期大約)` : t;
     },
-    /** 那種日子測過的那一句(只有四種寫法;⛔ 講會漲會跌、⛔ 🔴🟢、⛔ 買賣與部位) —— 沒有 kind 不給;還沒測過的只給重要度高的 */
+    /** 財經行事曆事件,但拿掉採礦端算出來的日子(`calc: true`)—— App 用大盤實際的交易日自己算一份(`_appDayEvents`),
+     *  ⛔ 兩份一起列 = 同一天出現兩次。讀 upcoming_macro_events 的地方一律先過這裡。 */
+    _macroEvents(list) { return (Array.isArray(list) ? list : []).filter(e => e && !e.calc); },
+    /** 那種日子測過的那一句 —— 句子只在 scripts/embed_day_facts.mjs 產生(`_DAY_FACTS.kinds[kind].line`),⛔ 這裡再組字串。
+     *  沒有 kind 不給;還沒測過的只給重要度高的(讀的這一端的規則,採礦端 `fact` 同一條)。 */
     _dayFactLine(ev) {
         const K = this._DAY_FACTS && this._DAY_FACTS.kinds, f = ev && ev.kind && K ? K[ev.kind] : null;
-        if (!f) return '';
-        const p1 = v => (+v).toFixed(1);
-        if (f.type === 'vol') return `這種日子:比平常顛 ${f.mult} 倍(一天漲跌超過 ${this._DAY_FACTS.bigTh}% 的機率 ${p1(f.big)}%,平常 ${p1(f.base)}%);會漲還是會跌沒有規律。`;
-        if (f.type === 'maybe') return `這種日子:方向沒有規律;公布後台股第一個交易日可能稍微顛一點(${f.mult} 倍),還不算確定。`;
-        if (f.type === 'none') return '這種日子:方向沒有規律,也沒有比平常顛。';
-        if (f.type === 'untested') return ev.severity === 'high' ? '這種日子:還沒測過。' : '';
-        return '';
+        if (!f || !f.line) return '';
+        if (f.type === 'untested' && ev.severity !== 'high') return '';
+        return f.line;
     },
     _dayFactsNoteHtml() {
         const F = this._DAY_FACTS;
@@ -38382,8 +38397,8 @@ ${this._reportFacts(sym)}
         return `<div class="text-[9px] text-gray-500 mt-1.5 leading-snug" data-dayfactnote>「這種日子」那一句:拿加權指數 ${this._escHtml(F.from)} ~ ${this._escHtml(F.to)} 每一天去量,跟同星期幾的平常日子比;只講會不會晃,⛔ 不預測漲跌。</div>`;
     },
     /** 一串交易日 → 哪幾天是休市前最後一天 / 休市後第一天。
-     *  ⚠️ 定義必須跟 scripts/daytype_probe.mjs `buildSets` 同一條(gap = 跟上一個交易日差幾個日曆天;4~5 → 45、≥6 → 6),
-     *     數字才對得上那一種日子;scripts/test_dayfacts.mjs 拿同一組日期餵兩邊比對。 */
+     *  ⚠️ 定義必須跟 scripts/daytype_probe.mjs `buildSets`、macro_miner `_holiday_kinds` 同一條
+     *     (gap = 跟上一個交易日差幾個日曆天;4~5 → 45、≥6 → 6);scripts/test_dayfacts.mjs 拿同一組日期餵三邊比對。 */
     _holidayKinds(open) {
         const out = [];
         const gapAt = i => Math.round((Date.parse(open[i] + 'T00:00:00Z') - Date.parse(open[i - 1] + 'T00:00:00Z')) / 86400000);
@@ -38396,28 +38411,39 @@ ${this._reportFacts(sym)}
         }
         return out;
     },
-    /** 未來 14 天 App 自己算得出來的日子:休市前最後一個交易日、休市後第一個交易日、月營收公布期。
-     *  哪天休市:週末 + 財經行事曆裡寫「休市」的那幾天(跟 `_colTrigEval` 同一個做法;repo 沒有官方休市表的資料檔)。 */
-    _appDayEvents(events, today, win = 14) {
+    /** 這一天開不開盤:週末 + 財經行事曆裡寫「休市」的那幾天(跟 `_colTrigEval` 同一個做法;repo 沒有官方休市表的資料檔)。 */
+    _dayOpenFn(events) {
+        const closed = new Set(this._macroEvents(events).filter(e => /休市/.test(String(e.event || ''))).map(e => String(e.date || '').slice(0, 10)));
+        return d => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return w !== 0 && w !== 6 && !closed.has(d); };
+    },
+    /** 今天起 win 天 App 自己算得出來的日子:休市前最後一個交易日、休市後第一個交易日、月營收公布期。
+     *  過去那一段用大盤實際的交易日(`rows` = data/^TWII.json,跟 `holiday_post` 觸發的 `_calDayVol` 同一個假設:
+     *  最後一根之後、今天之前的平日 = 沒開盤)→ 今天是連休後第一天也算得出來(過去的休市日不在行事曆裡)。
+     *  大盤日 K 拿不到或最後一根離今天超過 12 天(`_calDayVol` 的 `gap <= 12` 那道上限;⚠️ 不用它的 10 天新鮮度 ——
+     *  休 10 天的春節,開紅盤那天離最後一根就是 11 天)→ 退回只用週末 + 行事曆(今天那一筆可能少算)。 */
+    _appDayEvents(events, today, win = 14, rows) {
         try {
-            const add = (d, n) => this._colAddDays(d, n);
-            const closed = new Set((Array.isArray(events) ? events : []).filter(e => e && /休市/.test(String(e.event || ''))).map(e => String(e.date || '').slice(0, 10)));
-            const isOpen = d => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return w !== 0 && w !== 6 && !closed.has(d); };
-            // 前後多留 14 天:窗口頭尾那幾天也找得到上一個 / 下一個交易日
-            const open = []; for (let i = -14; i <= win + 14; i++) { const d = add(today, i); if (isOpen(d)) open.push(d); }
+            const add = (d, n) => this._colAddDays(d, n), iso = x => String(x || '').replace(/\//g, '-').slice(0, 10);
+            const isOpen = this._dayOpenFn(events);
+            const lo = add(today, -30), hi = add(today, win + 14);
+            const real = (Array.isArray(rows) ? rows : []).map(r => iso(r && r.date)).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= lo && d <= today).sort();
+            const lastReal = real.length ? real[real.length - 1] : null;
+            const fresh = !!lastReal && Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(lastReal + 'T00:00:00Z')) / 86400000) <= 12;
+            const open = fresh ? real.slice() : [];
+            for (let d = fresh ? (lastReal === today ? add(today, 1) : today) : add(today, -14); d <= hi; d = add(d, 1)) if (isOpen(d)) open.push(d);
             const end = add(today, win), out = [];
             for (const h of this._holidayKinds(open)) {
-                if (!(h.date > today && h.date <= end)) continue;
+                if (!(h.date >= today && h.date <= end)) continue;
                 const post = h.kind.startsWith('post');
-                out.push({ date: h.date, kind: h.kind, app: true,
-                    event: post ? `🗓️ 連休 ${h.gap - 1} 天後的第一個交易日` : `🗓️ 連休前最後一個交易日(接著休 ${h.gap - 1} 天)` });
+                const name = post ? `連休 ${h.gap - 1} 天後的第一個交易日` : `連休前最後一個交易日(接著休 ${h.gap - 1} 天)`;
+                out.push({ date: h.date, kind: h.kind, app: true, name, event: `🗓️ ${name}` });
             }
             // 月營收公布期:每月 9~11 日的交易日(跟 daytype_probe `rev` 同一條)→ 每個月只列第一天,⛔ 一個月洗三列
             const seenM = new Set();
             for (const d of open) {
-                if (!(d > today && d <= end)) continue;
+                if (!(d >= today && d <= end)) continue;
                 const dom = +d.slice(8, 10);
-                if (dom >= 9 && dom <= 11 && !seenM.has(d.slice(0, 7))) { seenM.add(d.slice(0, 7)); out.push({ date: d, kind: 'rev', app: true, event: '📊 月營收公布期(每月 9~11 日)' }); }
+                if (dom >= 9 && dom <= 11 && !seenM.has(d.slice(0, 7))) { seenM.add(d.slice(0, 7)); out.push({ date: d, kind: 'rev', app: true, name: '月營收公布期(每月 9~11 日)', event: '📊 月營收公布期(每月 9~11 日)' }); }
             }
             return out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
         } catch (_) { return []; }
@@ -38425,7 +38451,7 @@ ${this._reportFacts(sym)}
     /** 今天 / 明天那一條要列哪幾件:日期確定(⛔ 日期大約)+(重要度高,或測過比較顛的日子) */
     _dayBannerItems(events, appDays, today) {
         const out = [];
-        for (const ev of [].concat(Array.isArray(events) ? events : [], Array.isArray(appDays) ? appDays : [])) {
+        for (const ev of [].concat(this._macroEvents(events), Array.isArray(appDays) ? appDays : [])) {
             if (!ev || this._evApprox(ev)) continue;
             const diff = Math.round((Date.parse(String(ev.date || '').slice(0, 10) + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / 86400000);
             if (!(diff === 0 || diff === 1)) continue;
@@ -38434,12 +38460,63 @@ ${this._reportFacts(sym)}
         }
         return out;
     },
-
-    // 📅 今天 / 明天的事件(總覽那一則用;跟行事曆那一條同一份 `_dayBannerItems`)
-    _imminentMacroEvents() {
+    /** 📅 總覽那一則(第一眼):只留「測過比較顛」的日子(type = vol)、今天 / 明天、日期確定。
+     *  測過跟平常一樣的日子 ⛔ 佔第一眼(第一眼有 ≤600 字的預算,test_gauge ⑨);短句讀 `_DAY_FACTS.kinds[kind].short`。 */
+    _dayVolNotes() {
         const today = this.getTodayStr().replace(/\//g, '-');
-        const evs = this._upcomingMacroEvents || [];
-        return this._dayBannerItems(evs, this._appDayEvents(evs, today), today).map(x => x.ev);
+        const evs = this._upcomingMacroEvents || [], K = (this._DAY_FACTS && this._DAY_FACTS.kinds) || {};
+        const rows = this._twiiKlineCache && this._twiiKlineCache.rows;
+        return this._dayBannerItems(evs, this._appDayEvents(evs, today, 14, rows), today)
+            .filter(x => K[x.ev.kind] && K[x.ev.kind].type === 'vol' && K[x.ev.kind].short)
+            .map(x => `📅 ${x.diff === 0 ? '今天' : '明天'}是${x.ev.name || this._evName(x.ev)}:${K[x.ev.kind].short}`);
+    },
+    /** 📅 決策台「下一個交易日」那一列(A5 前一天提醒;通知也讀這一份)。
+     *  台北 13:30 以前、今天有開盤 → 講「今天」;收盤後或今天沒開盤 → 講下一個交易日(星期五晚上 → 星期一,跳過休市)。
+     *  名單 = 日期確定的事件裡有 kind 或重要度高的 + App 算的日子;一件都沒有 → items 是空的(那一列整個不畫)。 */
+    _dayNextInfo() {
+        const T = this._colToday();
+        const events = this._macroEvents(this._upcomingMacroEvents && this._upcomingMacroEvents.length ? this._upcomingMacroEvents
+            : (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events));
+        const isOpen = this._dayOpenFn(events);
+        const hm = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+        const min = (+hm.slice(0, 2)) * 60 + (+hm.slice(3, 5));
+        let target = T.tdy, mode = 'today';
+        if (!isOpen(T.tdy) || min >= 13 * 60 + 30) {
+            mode = 'next';
+            let d = this._colAddDays(T.tdy, 1), k = 0;
+            while (!isOpen(d) && k++ < 20) d = this._colAddDays(d, 1);
+            target = d;
+        }
+        const appDays = this._appDayEvents(events, T.tdy, 14, this._twiiKlineCache && this._twiiKlineCache.rows);
+        const items = [];
+        for (const ev of [].concat(events, appDays)) {
+            if (!ev || String(ev.date || '').slice(0, 10) !== target || this._evApprox(ev)) continue;
+            if (!ev.kind && ev.severity !== 'high') continue;
+            items.push({ name: ev.name || this._evName(ev), line: this._dayFactLine(ev), kind: ev.kind || '' });
+        }
+        const md = `${target.slice(5, 7)}/${target.slice(8, 10)} 週${'日一二三四五六'[new Date(target + 'T00:00:00Z').getUTCDay()]}`;
+        return { mode, target, md, items, label: mode === 'today' ? '今天' : `下一個交易日(${md})` };
+    },
+    _dayNextRowHtml(info) {
+        const I = info || this._dayNextInfo();
+        if (!I.items.length) return '';
+        const rows = I.items.map(x => `<div class="mt-0.5"><span class="text-[11px] text-gray-200">${this._escHtml(x.name)}</span>`
+            + (x.line ? `<div class="text-[10px] text-gray-400 leading-snug" data-dayfact>${this._escHtml(x.line)}</div>` : '') + '</div>').join('');
+        return `<div class="mt-2 pt-1.5 border-t border-[#30363d]" data-daynext="${I.mode}"><div class="text-[11px] font-bold text-gray-300">📅 ${this._escHtml(I.label)}:</div>${rows}</div>`;
+    },
+    /** 🔔 日子提醒(通知分類 `dayfact`,可關、照勿擾時段):收盤後 / 沒開盤的日子,下一個交易日有項目才發;
+     *  同一個交易日只發一則(localStorage 記目標日;⛔ 星期五晚上發過、星期六又發一次)。 */
+    _dayRemindCheck() {
+        try {
+            // 行事曆還沒載到 → ⛔ 發(不知道哪天休市、也不知道有沒有結算日,發了會講錯「下一個交易日」)
+            if (!(this._macroRiskCache && Array.isArray(this._macroRiskCache.upcoming_macro_events))) return false;
+            const I = this._dayNextInfo();
+            if (I.mode !== 'next' || !I.items.length) return false;
+            const key = `proTerm_dayRemind_${I.target}`;
+            try { if (localStorage.getItem(key)) return false; localStorage.setItem(key, '1'); } catch (_) { return false; }
+            this._fireAlert(`📅 日子提醒｜下一個交易日 ${I.md}`, I.items.map(x => x.line ? `${x.name}:${x.line}` : x.name).join('\n'));
+            return true;
+        } catch (_) { return false; }
     },
 
     // 📊 路徑 D:市場狀態切換器 — 偵測「多頭/空頭/盤整」
@@ -39156,7 +39233,7 @@ ${this._reportFacts(sym)}
                 else if (st && st.includes('注意')) alerts.push({ ic: '⚠️', t: '官方注意股', sub: '前 5 日已噴 ≥30% 又被掛注意 → 之後常比大盤弱,手上有的可以考慮減碼' });
             } catch (_) {}
             try {   // 📅 法說會/重大事件(⛔ 只讀既有的財經行事曆快取,不另外抓)
-                const evs = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || this._upcomingMacroEvents || [];
+                const evs = this._macroEvents((this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || this._upcomingMacroEvents || []);
                 const nm = String(this.getStockName(sym) || '').replace(/-KY|\*|　/g, '').trim();
                 if (nm && Array.isArray(evs)) {
                     const hit = evs.find(e => this._nameInTitle(nm, e.title || e.event));   // 🏷️ V79.0.7 三星≠Samsung
@@ -40283,12 +40360,9 @@ ${this._reportFacts(sym)}
             // 🔕 V79.3.5 風險指數 ≥68 ⛔ 不再進「緊急警示」紅框、⛔ 不叫人減碼(沒有一種大盤警示回測過關)→ 降成描述
             if (Number.isFinite(riskS) && riskS >= 68) emgNote.push(`🌍 大盤外部壓力偏高(風險指數 ${Math.round(riskS)})— 只描述外面的壓力,⛔ 不是賣出訊號;手上的照你的出場規則走`);
             // 📅 V77.1.4 行事曆那一則只走 `emgNote`(⛔ 紅框 `emg`:那格講的是**今天已經發生的事**),⛔ 不給部位 / 方向。
-            //   🧹 2026-11-17 以前一律寫「那幾天波動會變大」—— 加權 26 年測過,結算日 / CPI / 非農這些日子跟平常一樣顛
-            //   (research/daytype_20261117)→ 每一件改附「那種日子測過的那一句」(`_dayFactLine`,跟財經行事曆同一份);
-            //   名單同行事曆那一條(`_dayBannerItems`:⛔ 日期大約的)。
-            const _mev = this._imminentMacroEvents().slice(0, 3);
-            if (_mev.length)
-                emgNote.push(`📅 今天 / 明天:${_mev.map(e => { const f = this._dayFactLine(e); return `<b>${this._escHtml(this._evName(e).slice(0, 28))}</b>(${this._dW(e.date, { rel: 1 })})${f ? ' ' + this._escHtml(f) : ''}`; }).join('、')};⛔ 不預設漲跌。`);
+            //   🧹 2026-11-17 只留「測過比較顛」的日子(`_dayVolNotes`:今天 / 明天、日期確定、type = vol)——
+            //   結算日 / CPI / 非農這些測過跟平常一樣顛的日子 ⛔ 佔第一眼(第一眼 ≤600 字,test_gauge ⑨);它們照樣列在財經行事曆。
+            for (const t of this._dayVolNotes().slice(0, 2)) emgNote.push(this._escHtml(t));
         } catch (_) {}
         // 🗑️ V77.5.2 這裡原本有四行「依舊卡 big 字串」推的出場警示(−10% 立刻出場 / 已破舊停損 / 反彈再出 / 停利出場)——
         //   ⛔ 它們吃的是舊的朱家泓劇本,會跟主卡(`_ovDecide` 三條出場)打架;出場警示一律由主卡的 🚨 預警列給。
@@ -52607,7 +52681,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try {
             head.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
                 <div class="text-base font-black text-gray-100">🎯 今天要做的事</div>${this._isLead() ? `<div id="deckTodoLead" class="mt-1.5" data-decktodo="loading">${this._leadTodo || '<div class="text-[11px] text-gray-500">⏳ 名單計算中…</div>'}</div>` : ''}
+                <div id="deckDayNext"></div>
             </div>`;
+            // 📅 2026-11-17 A5「下一個交易日」那一列(收盤後 / 沒開盤講下一個交易日,收盤前講今天;沒有項目整列不畫)。
+            //   ⛔ 卡住決策台其他區塊:行事曆 / 大盤日 K 沒載過才去抓,抓到再補畫 → 順便檢查要不要發「📅 日子提醒」通知。
+            (async () => {
+                try {
+                    if (!(this._macroRiskCache && Array.isArray(this._macroRiskCache.upcoming_macro_events))) await this._loadMacroRiskCache();
+                    try { await this._getTwiiRows(); } catch (_) {}
+                    const el = document.getElementById('deckDayNext');
+                    if (el) el.innerHTML = this._dayNextRowHtml();
+                    this._dayRemindCheck();
+                } catch (_) {}
+            })();
             const st = await this._deckState();
             // 🚧 每一列「量薄」標註要讀全市場快照(領頭羊區本來就會載,這裡先載好免得第一次畫的時候還沒到)
             if (this._scrData == null) { try { await this._loadScreener(); } catch (_) {} }
