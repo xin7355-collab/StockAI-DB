@@ -529,10 +529,10 @@ def _day_facts():
 
 def fetch_tw_closed(now=None):
     """🗓️ 2026-11-17 證交所官方休市表 → (tw_closed 或 None, 原因)。
-    tw_closed = {src, fetched, years:[表上有的年份], days:['YYYY-MM-DD'…], names:{日期: 官方名稱}}。
+    tw_closed = {src, fetched, years:[表上有的年份], days:['YYYY-MM-DD'…], names:{日期: 官方名稱}}(只有這一輪抓到的)。
     ⭐ macro_cron 是乾淨的 checkout,拿不到 miner.py 那份(miner 只在記憶體用)→ 這裡自己抓;解析共用 lib_twclosed。
-    ⛔ 失敗就回 None(這一輪沒有 tw_closed,行事曆退回固定連假 + manual_events),⛔ 把舊的日期寫成新的。
-    原因分三種印出來:被擋(HTTP 4xx/5xx、回網頁)/ 連不上(逾時、連線錯誤)/ 回應裡沒有休市日。"""
+    ⚠️ 這張表只有一個年度,而且 11 月中就換成隔年 → 寫進 macro_risk.json 之前一定要過 `merge_tw_closed`(按年份跟上一份合併)。
+    失敗回 None;原因分三種印出來:被擋(HTTP 4xx/5xx、回網頁)/ 連不上(逾時、連線錯誤)/ 回應裡沒有休市日。"""
     from lib_twclosed import TW_HOLIDAY_URL, HONEST_UA, parse_official_closed_named
     try:
         r = http.get(TW_HOLIDAY_URL, headers={'User-Agent': HONEST_UA}, timeout=15)
@@ -548,8 +548,54 @@ def fetch_tw_closed(now=None):
     if not named:
         return None, '回應裡沒有休市日'
     days = sorted(named)
-    return {'src': TW_HOLIDAY_URL, 'fetched': (now or datetime.now()).strftime('%Y-%m-%d %H:%M'),
+    return {'src': TW_HOLIDAY_URL, 'fetched': (now or datetime.now(timezone(timedelta(hours=8)))).strftime('%Y-%m-%d %H:%M'),
             'years': sorted({int(d[:4]) for d in days}), 'days': days, 'names': {d: named[d] for d in days}}, ''
+
+
+def merge_tw_closed(new, prev, this_year):
+    """🗓️ 官方休市表按年份保存 → (合併後的 tw_closed 或 None, 說明)。
+    🐛 2026-11-17 上線第一輪實測:官方表只給一個年度,11 月中就換成隔年(那一輪回 2027 年 26 列)→ 當年剩下的休市日
+       (例:2026-12-25 行憲紀念日)整份被新的一年蓋掉。一年的官方休市日公布後不會變 → 按年份合併:
+       ・這一輪有的年份 → 用新的(fetched_by_year 記這一輪的時間)
+       ・這一輪沒有、上一份有、而且 ≥ 今年(台北)→ 留著,時間照舊(⛔ 把舊的寫成新的)
+       ・< 今年 → 丟掉(⛔ 無限長大)
+    這一輪抓不到(new=None)→ 上一份 ≥ 今年的那幾年整份沿用;兩邊都沒有 → None(退回固定連假 + manual_events)。
+    最上層 years / days / names 維持原本的形狀(= 留下來的各年聯集),App 不用改。上一份格式壞掉 → 當作沒有,⛔ 讓採礦當掉。"""
+    def split(tc, default_at):
+        out = {}
+        try:
+            if not isinstance(tc, dict):
+                return out
+            names = tc.get('names') if isinstance(tc.get('names'), dict) else {}
+            fby = tc.get('fetched_by_year') if isinstance(tc.get('fetched_by_year'), dict) else {}
+            years = {int(y) for y in (tc.get('years') or []) if str(y).isdigit()}
+            for d in tc.get('days') or []:
+                d = str(d)
+                if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', d) or int(d[:4]) not in years:
+                    continue
+                y = int(d[:4])
+                o = out.setdefault(y, {'days': {}, 'at': str(fby.get(str(y)) or fby.get(y) or tc.get('fetched') or default_at)})
+                o['days'][d] = str(names.get(d) or '台股休市')
+        except Exception:  # noqa: BLE001
+            return {}
+        return out
+    got = split(new, '')
+    old = split(prev, '(時間不明)')
+    keep = {y: v for y, v in old.items() if y >= this_year and y not in got}
+    allm = {**keep, **got}
+    if not allm:
+        return None, '這一輪沒抓到、上一份也沒有可用的年份'
+    days = sorted(d for v in allm.values() for d in v['days'])
+    names = {d: n for v in allm.values() for d, n in v['days'].items()}
+    fby = {str(y): allm[y]['at'] for y in sorted(allm)}
+    src = (new or {}).get('src') if isinstance(new, dict) else None
+    out = {'src': src or (prev or {}).get('src') or '', 'fetched': (new or {}).get('fetched') if new else (prev or {}).get('fetched'),
+           'years': sorted(allm), 'days': days, 'names': names, 'fetched_by_year': fby}
+    note = (f"這一輪 {sorted(got)}" if got else '這一輪抓不到') + (f"、沿用上一份 {sorted(keep)}" if keep else '')
+    dropped = sorted(y for y in old if y < this_year)
+    if dropped:
+        note += f"、丟掉已過的 {dropped}"
+    return out, note
 
 
 def _official_by_year(tw_closed):
@@ -4148,13 +4194,18 @@ def main():
     try:
         from datetime import date as _date
         _warn_schedule_expiry(_date.today())   # 📅 V71.3.9 硬編碼 FOMC/BOJ 排程快用完就大聲喊
-        # 🗓️ 2026-11-17 證交所官方休市表(抓不到 → 這一輪沒有 tw_closed,行事曆退回固定連假 + manual_events;⛔ 沿用舊的)
-        _twc, _twc_why = fetch_tw_closed()
+        # 🗓️ 2026-11-17 證交所官方休市表:按年份跟上一份合併(這張表只給一個年度、11 月中就換成隔年 → ⛔ 整份被新的一年蓋掉)
+        #    抓不到 → 上一份 ≥ 今年的年份整份沿用(各年時間照舊);兩邊都沒有 → 沒有 tw_closed,退回固定連假 + manual_events
+        _twc_new, _twc_why = fetch_tw_closed()
+        _twc, _twc_note = merge_tw_closed(_twc_new, (_prev_json or {}).get("tw_closed"),
+                                          datetime.now(timezone(timedelta(hours=8))).year)
+        if _twc_new is None:
+            print(f"  ⚠️ 官方休市表這一輪抓不到:{_twc_why}")
         if _twc:
             out["tw_closed"] = _twc
-            print(f"  🗓️ 官方休市表:{len(_twc['days'])} 天(年份 {_twc['years']})")
+            print(f"  🗓️ 官方休市表:{len(_twc['days'])} 天(年份 {_twc['years']};{_twc_note})")
         else:
-            print(f"  ⚠️ 官方休市表抓不到:{_twc_why} → 這一輪休市日只靠固定連假(1/1、4/4、10/10)+ manual_events.json")
+            print(f"  ⚠️ 官方休市表沒有可用的年份({_twc_note})→ 這一輪休市日只靠固定連假(1/1、4/4、10/10)+ manual_events.json")
         out["upcoming_macro_events"] = _compute_upcoming_macro_events(_date.today(), window_days=14, tw_closed=_twc)
         # 📞 併入 TWSE 法說會逐檔日期(失敗回 [] 不影響演算法事件)
         try:

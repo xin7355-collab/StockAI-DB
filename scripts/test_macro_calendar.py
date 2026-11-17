@@ -15,7 +15,8 @@
   ⑤ 休市那幾筆要留「休市」兩個字(index.html `_colTrigEval` 靠它判斷休市前最後一個交易日),12/31 ⛔ 算休市。
   ⑥ (第三階段)算出來的日子(calc:連休前後、月營收公布期,今天那一筆也算)+ 每個事件的 fact == day_facts.json 的 line
      (還沒測過的只給重要度高的)。三邊休市定義一致另外在 scripts/test_dayfacts.mjs ②c。
-  ⑦ (第四階段)證交所官方休市表 tw_closed:解析(有開盤的兩種 ⛔ 算休市)、抓失敗分類且 ⛔ 沿用舊的、表上有 / 沒有那一年的切換。
+  ⑦ (第四階段)證交所官方休市表 tw_closed:解析(有開盤的兩種 ⛔ 算休市)、抓失敗分類、表上有 / 沒有那一年的切換;
+     (上線後)官方表只給一個年度、11 月中換年 → 按年份跟上一份合併、抓不到沿用、2026-12-25 靠 manual_events。
 
 用法:python3 scripts/test_macro_calendar.py
 """
@@ -274,8 +275,42 @@ ok('⑦e 失敗分清楚:被擋(HTTP)/ 連不上 / 回網頁 / 回應裡沒有�
    [r1, r2, r3, r4])
 src_mm = open(os.path.join(ROOT, 'macro_miner.py'), encoding='utf-8').read()
 _carry = src_mm[src_mm.index('for key in ("us10y_yield"'):src_mm.index('"macro_events_ai"):')]
-ok('⑦f 抓不到那輪 ⛔ 沿用上一份 tw_closed(不在斷崖防護清單;只有抓到才寫進 out)',
-   'tw_closed' not in _carry and 'if _twc:\n            out["tw_closed"] = _twc' in src_mm and 'tw_closed=_twc)' in src_mm)
+# ⑦f 2026-11-18 改:官方表只給一個年度、11 月中就換成隔年 → 每一輪跟上一份(_load_prev_macro 那份)按年份合併;
+#     抓不到 → 上一份 ≥ 今年的年份整份沿用(各年時間照舊)。tw_closed 仍 ⛔ 進斷崖防護清單(那條會整份照抄、不分年份)。
+ok('⑦f 主程式:抓到的跟上一份按年份合併(merge_tw_closed),合併結果才寫進 out;⛔ 走斷崖防護整份照抄',
+   'tw_closed' not in _carry and 'merge_tw_closed(_twc_new, (_prev_json or {}).get("tw_closed")' in src_mm
+   and 'if _twc:\n            out["tw_closed"] = _twc' in src_mm and 'tw_closed=_twc)' in src_mm)
+_ys = lambda tc: sorted({int(d[:4]) for d in (tc or {}).get('days') or []})
+P26 = {'src': 'x', 'fetched': '2026-06-01 08:00', 'years': [2026], 'days': ['2026-01-01', '2026-10-09', '2026-10-26'],
+       'names': {'2026-01-01': '開國紀念日', '2026-10-09': '國慶日補假', '2026-10-26': '光復節補假'}}
+N27, _ = (lambda r: (r[0][0], r[1]))(_fetch(_R(200, ROWS)))
+M1, n1 = mm.merge_tw_closed(N27, P26, 2026)
+ok('⑦m 換年:上一份有 2026、這一輪回 2027 → 兩年都在;2026 那年的時間照舊、2027 是這一輪的',
+   M1 and M1['years'] == [2026, 2027] and _ys(M1) == [2026, 2027] and '2026-10-26' in M1['days'] and '2027-02-05' in M1['days']
+   and M1['fetched_by_year'] == {'2026': '2026-06-01 08:00', '2027': N27['fetched']} and M1['names']['2026-10-26'] == '光復節補假', (M1, n1))
+M2, n2 = mm.merge_tw_closed(N27, M1, 2027)
+ok('⑦n 隔年 1 月:上一份有 2026 + 2027 → 已過的 2026 丟掉(⛔ 無限長大)', M2 and M2['years'] == [2027] and _ys(M2) == [2027] and '已過' in n2, (M2 and M2['years'], n2))
+M3, n3 = mm.merge_tw_closed(None, M1, 2026)
+ok('⑦o 這一輪抓不到 → 上一份整份沿用,各年時間 ⛔ 被改成新的', M3 and M3['years'] == [2026, 2027] and M3['fetched_by_year'] == M1['fetched_by_year']
+   and M3['days'] == M1['days'] and '抓不到' in n3, (M3 and M3['fetched_by_year'], n3))
+M4, n4 = mm.merge_tw_closed(None, None, 2026)
+ok('⑦p 沒有上一份又抓不到 → 沒有 tw_closed(退回固定連假 + manual_events)', M4 is None, n4)
+bad_prev = [{'days': 'x'}, 'garbage', {'years': ['a'], 'days': [1, None, '2026-13-99x']}, {'days': ['2026-12-25'], 'years': None}, 123]
+okb = all(mm.merge_tw_closed(None, bp, 2026)[0] is None and mm.merge_tw_closed(N27, bp, 2026)[0]['years'] == [2027] for bp in bad_prev)
+ok('⑦q 上一份格式壞掉 → 當作沒有,⛔ 讓採礦當掉', okb)
+ok('⑦r 官方名稱結尾的句號拿掉(⛔「…交割作業。 (台股休市)」)',
+   LT.parse_official_closed_named([{'Name': '市場無交易，僅辦理結算交割作業。', 'Date': '1160202'}]) == {'2027-02-02': '市場無交易，僅辦理結算交割作業'})
+# 2026-12-25 行憲紀念日:官方表只剩 2027 → 靠 manual_events.json 那一筆
+X = mm._compute_upcoming_macro_events(date(2026, 12, 15), 14, N27)
+xs = {(e['date'], e.get('kind'), e['event']) for e in X}
+f45 = [e for e in X if e['date'] == '2026-12-28' and e.get('kind') == 'post45']
+ok('⑦s 12/25(五)行憲紀念日休市 → 12/24 連休前最後一個交易日、12/28 連休 3 天後的第一個交易日(帶 fact)',
+   any(d == '2026-12-25' and '休市' in t for d, k, t in xs) and ('2026-12-24', 'pre45') in {(d, k) for d, k, t in xs}
+   and len(f45) == 1 and f45[0]['event'] == '🗓️ 連休 3 天後的第一個交易日' and '1.39 倍' in str(f45[0].get('fact')), sorted(xs)[:20])
+_me = json.load(open(os.path.join(ROOT, 'data', 'manual_events.json'), encoding='utf-8'))
+_e25 = [e for e in _me['events'] if e.get('date') == '2026-12-25']
+ok('⑦t manual_events.json 那一筆:不標日期大約、有寫依據(why),而且 _manual_events 只讀 date / event 不受多一個欄位影響',
+   len(_e25) == 1 and '日期大約' not in _e25[0]['event'] and _e25[0].get('why') and (date(2026, 12, 25), '🗓️ 行憲紀念日 (台股休市)') in mm._manual_events(), _e25)
 
 # 表上有 / 沒有那一年的切換
 EV_OFF = {(e['date'], e['event']) for e in mm._compute_upcoming_macro_events(date(2027, 2, 1), 14, tc)}

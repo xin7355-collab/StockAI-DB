@@ -3,7 +3,8 @@
 用的人:miner.py(K 棒「假日幽靈列」判斷,V80.1.9)、macro_miner.py(財經行事曆的休市日 / 連休前後,2026-11-17)。
 ⛔ 兩邊各寫一份解析:這張表有「開始交易」「最後交易」兩種**有開盤**的列,漏一邊就會把開盤日當休市。
 ⛔ 不偽裝瀏覽器(V80.1.6 決策):V80.1.9 探針用這種寫明身分的 UA 實測 HTTP 200。
-⚠️ 這張表只有「今年」(V80.1.9 實測 2026 年 27 列);颱風假不在表上。
+⚠️ 這張表只有**一個年度**,而且 11 月中就換成隔年(V80.1.9 實測 2026 年 27 列;2026-11-17 上線後實測已經回 2027 年 26 列、
+   2026 年剩下的休市日抓不到了)→ macro_miner 按年份跟上一份合併(merge_tw_closed)。颱風假不在表上。
 """
 import re
 
@@ -19,7 +20,7 @@ def parse_official_closed_named(rows) -> dict:
     for r in rows if isinstance(rows, list) else []:
         if not isinstance(r, dict):
             continue
-        name = str(r.get('Name') or '').strip()
+        name = str(r.get('Name') or '').strip().rstrip('。.').strip()   # 官方名稱結尾常帶句號(「…結算交割作業。」)→ 拿掉,事件名才不會「。 (台股休市)」
         if '開始交易' in name or '最後交易' in name:
             continue
         m = re.fullmatch(r'(\d{3})(\d{2})(\d{2})', str(r.get('Date') or '').strip())
