@@ -143,6 +143,12 @@ def forms_of(html):
     return out
 
 
+def sha_of(dates):
+    """日期清單的校驗碼(排序、不重複、逗號接起來的 SHA-256)—— log 裡的日期抄進 repo 之後用它逐字核對"""
+    import hashlib
+    return hashlib.sha256(','.join(sorted(set(dates))).encode()).hexdigest()
+
+
 def per_year(dates):
     c = {}
     for d in dates:
@@ -211,6 +217,7 @@ def selftest():
        len(fm) == 1 and fm[0]['action'] == '/release/downloaddates' and fm[0]['method'] == 'post'
        and {'name': 'rid', 'type': 'hidden', 'value': '10', 'tag': 'input'} in fm[0]['fields'] and ('txt', 'Text') in fm[0]['options']
        and any(f.get('checked') for f in fm[0]['fields']), fm)
+    ok('④b 校驗碼:順序 / 重複不影響、改一個字就不同', sha_of(['2020-01-02', '2019-01-01']) == sha_of(['2019-01-01', '2020-01-02', '2020-01-02']) and sha_of(['2020-01-02']) != sha_of(['2020-01-03']) and len(sha_of([])) == 64)
     ok('⑤ 每年次數', per_year(['2019-01-11', '2019-02-13', '2020-01-14']) == {'2019': 2, '2020': 1})
     ok('⑥ 月份:全名 / 縮寫 / 兩個月取後面;亂字 → None', mon_no('January') == 1 and mon_no('Jan/Feb') == 2 and mon_no('September') == 9 and mon_no('xyz') is None)
     print(f'\n{"❌ " + str(len(fails)) + " 條失敗" if fails else "✅ US_CAL_SELFTEST_PASS"}({n[0]} 條)')
@@ -289,18 +296,30 @@ def main():
             print(f'❌ ALFRED 下載公布日({k}):{why}  {u}')
             bad.append(f'{k} 公布日')
             continue
+        page = res.content.decode('utf-8', errors='replace')
+        # 第三輪實跑:這一頁是 HTML,上面有兩個真的下載連結(…&ff=txt / …&ff=xlsx)+ 一張留 email 的表單(不需要)→ 抓文字檔那個
+        tlink = next((h for h in interesting_links(page, ('ff=txt',))), None)
+        if not tlink:
+            print('   ⚠️ 下載頁上沒有文字檔連結 → 有的連結:', interesting_links(page, ('download', 'ff=')))
+            bad.append(f'{k} 公布日')
+            continue
+        tu = (tlink if tlink.startswith('http') else 'https://alfred.stlouisfed.org' + tlink).replace('&amp;', '&')
+        res, why = g.get(tu, expect='txt')
+        if res is None:
+            print(f'❌ ALFRED 公布日文字檔({k}):{why}  {tu}')
+            bad.append(f'{k} 公布日')
+            continue
         raw = res.content
         ctype = (getattr(res, 'headers', {}) or {}).get('Content-Type', '?')
         txt = raw.decode('utf-8', errors='replace')
+        if txt.lstrip()[:1] == '<':
+            print(f'❌ ALFRED 公布日文字檔({k}):要文字檔卻回 HTML  {tu}  開頭:{strip_tags(txt)[:200]}')
+            bad.append(f'{k} 公布日')
+            continue
         ds = parse_dates_txt(txt)
         rel[k] = ds
-        print(f'✅ ALFRED 下載公布日({k}):{len(raw):,} bytes  Content-Type {ctype}  {u}')
-        if txt.lstrip()[:1] == '<':
-            for f in forms_of(txt):
-                if 'search' in str(f.get('action') or '').lower():
-                    continue
-                print('   表單:', json.dumps(f, ensure_ascii=False)[:1500])
-            print('   這一頁上跟下載有關的連結:', interesting_links(txt, ('download', 'ff=', '.txt', '.xls', '.csv', '.zip')))
+        print(f'✅ ALFRED 公布日文字檔({k}):{len(raw):,} bytes  Content-Type {ctype}  {tu}')
+        print('   開頭 400 字:', repr(txt[:400]))
         print(f'   {len(ds)} 個日期 {ds[0] if ds else "-"} ~ {ds[-1] if ds else "-"};{FROM_YEAR} 起每年次數:{per_year([d for d in ds if d[:4] >= str(FROM_YEAR)])}')
         if not ds:
             bad.append(f'{k} 公布日')
@@ -311,6 +330,8 @@ def main():
     emit('cpi', [d for d in rel['cpi'] if d[:4] >= str(FROM_YEAR)])
     emit('nfp', [d for d in rel['nfp'] if d[:4] >= str(FROM_YEAR)])
     print('===US_CAL_END===')
+    for kind, ds in (('fomc', sched), ('fomc_unsched', unsched), ('cpi', [d for d in rel['cpi'] if d[:4] >= str(FROM_YEAR)]), ('nfp', [d for d in rel['nfp'] if d[:4] >= str(FROM_YEAR)])):
+        print(f'US_CAL_SHA|{kind}|{len(set(ds))}|{sha_of(ds)}')
     print(json.dumps({'stats': g.stats, 'open': g.open, 'missing': bad}, ensure_ascii=False))
     # 三種都沒拿到 = 沒驗到 → 紅燈;拿到一部分 → 綠燈、缺的寫在 missing(⛔ 默默當成功)
     return 1 if (not sched and not rel['cpi'] and not rel['nfp']) else 0
