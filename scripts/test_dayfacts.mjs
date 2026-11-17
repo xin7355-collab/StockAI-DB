@@ -19,7 +19,7 @@
  *      日子提醒通知:一個交易日一則、關掉不跳、勿擾不跳。
  *
  *   注入必紅:INJECT=1 改一個倍數 / 2 把還沒測過的日子加上倍數 / 3 橫幅換回指令 / 4 日期大約的放進橫幅 / 5 把 +10 放回風險分數
- *            6 總覽那一則不只留 vol / 7 App 自己再組句子 / 8 今天那一筆不算 / 9 收盤後還講今天 / 10 通知不去重 / 11 舊的去重鍵不清 / 12 App 不讀官方休市表
+ *            6 總覽那一則不只留 vol / 7 App 自己再組句子 / 8 今天那一筆不算 / 9 收盤後還講今天 / 10 通知不去重 / 11 舊的去重鍵不清 / 12 App 不讀官方休市表 / 13 通知不只留比較顛的日子
  *   跑法:node scripts/test_dayfacts.mjs
  */
 import fs from 'fs';
@@ -48,6 +48,7 @@ if (INJ === '7') inj("        return f.line;\n    },", "        return f.line.re
 if (INJ === '8') inj('if (!(h.date >= today && h.date <= end)) continue;', 'if (!(h.date > today && h.date <= end)) continue;');
 if (INJ === '9') inj('if (!isOpen(T.tdy) || min >= 13 * 60 + 30) {', 'if (!isOpen(T.tdy) || min >= 24 * 60) {');
 if (INJ === '10') inj('                if (localStorage.getItem(key)) return false;\n', '');
+if (INJ === '13') inj("const vol = I.items.filter(x => K[x.kind] && K[x.kind].type === 'vol');", 'const vol = I.items;');
 if (INJ === '12') inj("for (const d of ((tc && Array.isArray(tc.days)) ? tc.days : []))", 'for (const d of [])');
 if (INJ === '11') inj('if (m && m[1] < old) localStorage.removeItem(k);', '');
 if (INJ) console.log(`💉 INJECT=${INJ}`);
@@ -266,6 +267,29 @@ try {
     }, EVF);
     ok('⑥h1 收盤後有項目 → 發一則「📅 日子提醒」,分類是 dayfact,內文 == 那一句', N.a1 === true && N.fired.length === 1 && /^📅 日子提醒｜下一個交易日 02\/15 週一$/.test(N.fired[0][0]) && N.cat === 'dayfact' && N.fired[0][1].includes(F.kinds.post6.line), JSON.stringify(N.fired));
     ok('⑥h2 同一個交易日 ⛔ 再發第二則', N.a2 === false && N.fired.length === 1, JSON.stringify(N));
+    // ⑥h5 只發「測過比較顛」的日子:下一個交易日只有結算日(none)→ 不發、去重鍵不寫;同一天有連休後第一天 + 結算日 → 內容只有連休那一件
+    const V = await (async () => {
+        await page.clock.setFixedTime(new Date('2027-02-19T12:00:00Z'));   // 星期五 20:00 → 下一個交易日 2/22(只有結算日)
+        const r1 = await page.evaluate(ev => {
+            app._macroRiskCache = Object.assign({}, app._macroRiskCache || {}, { upcoming_macro_events: ev }); app._upcomingMacroEvents = ev;
+            try { Object.keys(localStorage).filter(k => k.startsWith('proTerm_dayRemind_')).forEach(k => localStorage.removeItem(k)); } catch (_) {}
+            const fired = []; const keep = app._fireAlert; app._fireAlert = (t, b) => fired.push([t, b]);
+            const r = app._dayRemindCheck(); app._fireAlert = keep;
+            return { r, fired, key: localStorage.getItem('proTerm_dayRemind_2027-02-22'), rowItems: app._dayNextInfo().items.length };
+        }, EVF);
+        await page.clock.setFixedTime(new Date('2027-02-04T06:00:00Z'));   // 2/4 收盤後 → 2/15(連休後第一天 + 也放一筆結算日)
+        const r2 = await page.evaluate(ev => {
+            ev = ev.concat([{ date: '2027-02-15', event: '🇹🇼 台指期月結算 (每月第三個星期三)', kind: 'settle', severity: 'high' }]);
+            app._macroRiskCache = Object.assign({}, app._macroRiskCache || {}, { upcoming_macro_events: ev }); app._upcomingMacroEvents = ev;
+            try { Object.keys(localStorage).filter(k => k.startsWith('proTerm_dayRemind_')).forEach(k => localStorage.removeItem(k)); } catch (_) {}
+            const fired = []; const keep = app._fireAlert; app._fireAlert = (t, b) => fired.push([t, b]);
+            const r = app._dayRemindCheck(); app._fireAlert = keep;
+            return { r, fired, rowItems: app._dayNextInfo().items.length };
+        }, EVF);
+        return { r1, r2 };
+    })();
+    ok('⑥h5 下一個交易日只有結算日(測過跟平常一樣)→ ⛔ 發通知、⛔ 寫去重鍵;決策台那一列照樣列', V.r1.r === false && V.r1.fired.length === 0 && V.r1.key === null && V.r1.rowItems >= 1, JSON.stringify(V.r1));
+    ok('⑥h6 連休後第一天 + 結算日同一天 → 發一則,內容只有連休那一件(⛔ 結算日)', V.r2.r === true && V.r2.fired.length === 1 && V.r2.fired[0][1] === '連休 10 天後的第一個交易日:' + F.kinds.post6.line && V.r2.rowItems === 2, JSON.stringify(V.r2));
     ok('⑥h4 去重鍵:發的時候清掉 30 天以前的(⛔ 無限累積),30 天內的留著', N.oldGone && N.recentKept, JSON.stringify([N.oldGone, N.recentKept]));
     ok('⑥h3 開著 → 跳出來;關掉這一類 / 勿擾時段 → ⛔ 跳(只進鈴鐺)', N.on === 1 && N.off === 0 && N.quiet === 0, `${N.on} / ${N.off} / ${N.quiet}`);
     // ⑦ 證交所官方休市表(macro_risk.json `tw_closed`):行事曆裡沒有春節,只有官方表 → 一樣知道 2/4 是連休前、2/15 是連休後

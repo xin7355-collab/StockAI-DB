@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.4.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.5.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.4.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6162,7 +6162,7 @@ const app = {
           d: '加權收盤跌 3% 以上那天晚上:明天 09:00 要開盤買的那 10 檔出來了(決策台 📉 那塊)。不做這一套就可以關掉;你有買的那一批「抱滿 40 天」那天的提醒在 👜 你的部位(關不掉)。' },
         // 📅 2026-11-17 日子提醒(A5 前一天提醒):收盤後,下一個交易日有日子才發一則(連休前後、結算日、聯準會…+ 測過是怎樣的那一句)
         { k: 'dayfact', n: '📅 日子提醒',         re: /📅 日子提醒/,
-          d: '收盤後提醒一次:下一個交易日是什麼日子(連休前後、台指期結算、聯準會…)+ 那種日子大盤測過是怎樣。一個交易日最多一則;只講會不會晃,⛔ 不是叫你買或賣。' },
+          d: '下一個交易日是大盤測過比較顛的日子(連休後第一個交易日)才提醒,收盤後一則 + 測過是怎樣。結算日這類測過跟平常一樣的日子不跳(照樣列在決策台與財經行事曆)。一個交易日最多一則;只講會不會晃,⛔ 不是叫你買或賣。' },
         // 🔀 V81.0.0 交叉提醒(進階區;標題一律「🔀 交叉提醒｜…」)—— ⚠️ 排在 🌡️ 大盤前面:大盤那則標題有「大盤」兩個字
         { k: 'cross',  n: '🔀 交叉提醒',          re: /🔀 交叉提醒/, adv: 1,
           d: '你的庫存 / 自選今天碰到好幾件事時合成一則(一天每檔最多一則,大盤一則)。只在「🔓 進階功能 › 🔀 交叉提醒」打開時才有。' },
@@ -9003,10 +9003,17 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.4.3',
+    _APP_VERSION: 'V82.5.0',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.5.0', d: [
+            '📅 財經行事曆每個日子下面多一句「這種日子:…」—— 拿加權指數 2000 年到現在每一天去量:連休後第一個交易日大盤比平常顛,結算日、CPI、非農這些日子跟平常一樣;只講會不會晃,⛔ 不預測漲跌',
+            '🚨 行事曆那條紅色閃爍的「重大事件來襲 — 新單暫緩」拿掉了,改成不閃的「📅 明天 / 今天」;大盤風險指數也不再因為明天有結算日、CPI 這類事件就自動多 10 分',
+            '🗓️ 行事曆日期修正:聯準會 12 月是 12/8~9(以前寫成 12/16);日期只是大約的事件(CPI、非農、MSCI、日銀…)會標「(日期大約)」,而且不會再被說成「明天」;12/31 平常有開盤,不再寫成休市',
+            '🔔 決策台多一列「📅 下一個交易日」是什麼日子(收盤前講今天);通知多一類「📅 日子提醒」:下一個交易日是連休後第一個交易日(大盤比平常顛)才提醒,可以關、一個交易日最多一則',
+            '🧹 事件名稱後面那些「提防外資結算洗盤」「波動激增」之類的話拿掉了,只講這是什麼日子;春節、端午、中秋這些連休改讀證交所公布的休市表',
+        ], dt: '2026-11-17' },
         { v: 'V82.4.3', d: [
             '🕐 美股那一排:即時那份沒抓到時不再整排變成「--」;美股開盤時抓到的也會寫「盤中」(VIX 那格也是)',
         ], dt: '2026-11-17' },
@@ -9324,13 +9331,6 @@ ${list}
             '📶 手機網路不穩時,選股頁、自選、觀察清單、AI 股神這些「一次抓很多檔」的背景掃描不再連跳好幾個「⚠️ 無法載入 XXXX 資料」紅框:抓不到的那幾檔會自己再試一次,還是不行就在那張卡底下寫一行灰字「有 N 檔這次沒抓到,下次打開會再抓」',
             '📶 離開選股頁時,背景那個逐檔算「今日觸發」小標籤的迴圈會立刻停,不會再把紅框跳到決策台上',
             '🔍 你自己點開的那一檔抓不到時,照舊會跳紅框告訴你',
-        ], dt: '2026-10-26' },
-        { v: 'V79.9.1', d: [
-            '🔀 左上角「產」搬到 🤖 右邊(🔍 → 🤖 → 產)',
-            '🧪 產業作戰室「量化實驗室」沙盒:每跑一次都會記下來(📚 跑過的紀錄:表頭可排序、點一列載回那組設定、勾兩筆看差多少、單筆刪除),換範本或改條件不會再把上一次的結果丟掉',
-            '🔁 沙盒多一顆「全部交叉跑一次」:每個範本 × 4 種出場,再加上範本兩兩一起成立,一次跑完、全部記進紀錄;試越多種越容易碰到看起來很好的,表上會寫純運氣大約會有幾種',
-            '📐 16 年定案那頁多一張「兩個條件一起成立」的表(28 組),旁邊放你現在用的那一套當參考',
-            '🛡️ 產業作戰室研究頁多一條:領頭羊想「少賠又不少賺」有沒有辦法(結論與可以選的做法寫在那一條)'
         ], dt: '2026-10-26' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -38512,15 +38512,19 @@ ${this._reportFacts(sym)}
             + (x.line ? `<div class="text-[10px] text-gray-400 leading-snug" data-dayfact>${this._escHtml(x.line)}</div>` : '') + '</div>').join('');
         return `<div class="mt-2 pt-1.5 border-t border-[#30363d]" data-daynext="${I.mode}"><div class="text-[11px] font-bold text-gray-300">📅 ${this._escHtml(I.label)}:</div>${rows}</div>`;
     },
-    /** 🔔 日子提醒(通知分類 `dayfact`,可關、照勿擾時段):收盤後 / 沒開盤的日子,下一個交易日有項目才發;
+    /** 🔔 日子提醒(通知分類 `dayfact`,可關、照勿擾時段):收盤後 / 沒開盤的日子,下一個交易日是大盤測過比較顛的日子(vol)才發;
      *  同一個交易日只發一則(localStorage 記目標日;⛔ 星期五晚上發過、星期六又發一次)。 */
     _dayRemindCheck() {
         try {
             // 行事曆還沒載到 → ⛔ 發(不知道哪天休市、也不知道有沒有結算日,發了會講錯「下一個交易日」)
             if (!(this._macroRiskCache && Array.isArray(this._macroRiskCache.upcoming_macro_events))) return false;
             const I = this._dayNextInfo();
-            if (I.mode !== 'next' || !I.items.length) return false;
-            const key = `proTerm_dayRemind_${I.target}`;
+            // 🔔 只發「大盤測過比較顛」的日子(type = vol:連休後第一個交易日)。結算日這種測過跟平常一樣的日子
+            //    每個月跳一次通知說「沒什麼不一樣」= 雜訊 → 照樣列在決策台那一列與財經行事曆,⛔ 跳通知
+            const K = (this._DAY_FACTS && this._DAY_FACTS.kinds) || {};
+            const vol = I.items.filter(x => K[x.kind] && K[x.kind].type === 'vol');
+            if (I.mode !== 'next' || !vol.length) return false;
+            const key = `proTerm_dayRemind_${I.target}`;   // 只在真的要發的時候才寫
             try {
                 if (localStorage.getItem(key)) return false;
                 localStorage.setItem(key, '1');
@@ -38528,7 +38532,7 @@ ${this._reportFacts(sym)}
                 const old = this._colAddDays(this._colToday().tdy, -30);
                 for (const k of Object.keys(localStorage)) { const m = k.match(/^proTerm_dayRemind_(\d{4}-\d{2}-\d{2})$/); if (m && m[1] < old) localStorage.removeItem(k); }
             } catch (_) { return false; }
-            this._fireAlert(`📅 日子提醒｜下一個交易日 ${I.md}`, I.items.map(x => x.line ? `${x.name}:${x.line}` : x.name).join('\n'));
+            this._fireAlert(`📅 日子提醒｜下一個交易日 ${I.md}`, vol.map(x => `${x.name}:${x.line}`).join('\n'));
             return true;
         } catch (_) { return false; }
     },

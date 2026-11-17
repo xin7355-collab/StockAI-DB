@@ -9,6 +9,7 @@
  *   ① 頂端列高度跟滑鼠版(pointer: fine)一模一樣(⛔ 為了放大按鈕把頂端撐高)
  *   ② ⭐ 決定性對照:同一頁換成滑鼠(pointer: fine)→ 頂端那幾顆一定有點不到的(證明是那段 CSS 讓它過的)
  *   ③ 空過守門:觸控那一輪 matchMedia('(pointer: coarse)') 一定要成立;每一組至少量到一顆
+ *   ④ 2026-11-17 量之前先清掉通知橫幅(div[data-toast]);決定性對照:跳一則橫幅不清就量 → 一定有點不到的
  *   INJECT=nocss → 拿掉那段 @media → ⓐ 必紅
  */
 import fs from 'fs';
@@ -52,7 +53,10 @@ async function probe(touch) {
             const cs = getComputedStyle(el);
             return { w: Math.round(r.width), h: Math.round(r.height), mbox: Math.round(r.height + parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0)), miss };
         };
-        const take = (key, els) => { out.groups[key] = els.filter(vis).map(el => ({ t: (el.id || el.getAttribute('title') || el.textContent || '').trim().slice(0, 12), ...hitOK(el) })); };
+        // 🔔 2026-11-17 量之前先清掉畫面上的通知橫幅(div[data-toast]:固定在上方、停幾秒):那天剛好有通知(日子提醒 / 大盤風險…)
+        //    就會蓋住按鈕 → 量到的是「橫幅擋住」不是按鈕本身太小(④ 決定性對照證明這一步有作用)
+        const clearToasts = () => document.querySelectorAll('div[data-toast]').forEach(e => e.remove());
+        const take = (key, els, keepToasts) => { if (!keepToasts) clearToasts(); out.groups[key] = els.filter(vis).map(el => ({ t: (el.id || el.getAttribute('title') || el.textContent || '').trim().slice(0, 12), ...hitOK(el) })); };
         const hdr = document.querySelector('.header-fixed header');
         out.headH = Math.round(hdr.getBoundingClientRect().height);
         const pro = document.getElementById('hdrProBtn'); if (pro) pro.style.display = 'flex';   // 產 那顆預設藏著,打開量一次
@@ -63,6 +67,10 @@ async function probe(touch) {
         await new Promise(r => setTimeout(r, 400));
         take('消息面分頁', [...document.querySelectorAll('[data-newspane]')]);
         take('大盤子分頁', [...document.querySelectorAll('button[onclick^="app.switchMarketSubTab("]')]);
+        // ④ 決定性對照:真的跳一則通知橫幅(App 自己的 _alertToast)、⛔ 清就量 → 一定有點不到的
+        try { app._alertToast('📅 日子提醒｜測試', '連休 10 天後的第一個交易日'); } catch (_) {}
+        take('對照:橫幅沒清', [...document.querySelectorAll('button[onclick^="app.switchMarketSubTab("]')], true);
+        clearToasts();
         app.switchAppTab('diag');
         await new Promise(r => setTimeout(r, 400));
         take('個股子分頁', [...document.querySelectorAll('.sub-tab-btn')]);
@@ -101,6 +109,10 @@ ok('② ⭐ 決定性對照:滑鼠模式個股頂端一定有點不到的(☆ 18
 {
     const mb = (M.groups['頂端'] || []).filter(x => x.miss.length);
     ok('② ⭐ 決定性對照:滑鼠(pointer: fine)頂端一定有點不到的(是那段 CSS 讓觸控過的)', mb.length > 0, JSON.stringify(M.groups['頂端']));
+}
+{
+    const C = T.groups['對照:橫幅沒清'] || [];
+    ok('④ ⭐ 決定性對照:通知橫幅留著不清就量 → 一定有點不到的(證明「量之前清掉橫幅」那一步有作用)', C.length > 0 && C.some(x => x.miss.length), JSON.stringify(C));
 }
 await browser.close();
 console.log(fails ? `\n❌ ${fails} 條沒過` : '\n✅ 全部通過');
