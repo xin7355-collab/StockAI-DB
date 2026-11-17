@@ -16,7 +16,7 @@ V82.3.6)換掉有官方來源的美債 / 加權長歷史;使用者 11/15「推�
 import math
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 UA = 'Mozilla/5.0 (compatible; StockAI-DB/1.0; +https://github.com/xin7355-collab/stockai-db)'
 COINBASE_DAILY = 'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400'
@@ -250,6 +250,37 @@ def cboe_quotes(gate, tickers, today=None, max_age_days=5):
     return got, bad
 
 
+def _et_offset_hours(now_utc):
+    """美東跟 UTC 差幾小時:夏令 −4、平常 −5。美國 2007 起:3 月第二個星期日 02:00(= 07:00 UTC)~ 11 月第一個星期日 02:00(= 06:00 UTC)。
+    ⛔ 不靠 zoneinfo(有的機器沒有時區資料庫 → 例外,這一格就整個不判);純函式。"""
+    y = now_utc.year
+
+    def nth_sunday(month, n):
+        first = (6 - datetime(y, month, 1).weekday()) % 7   # weekday():星期一 0 … 星期日 6
+        return 1 + first + 7 * (n - 1)
+    start = datetime(y, 3, nth_sunday(3, 2), 7, tzinfo=timezone.utc)
+    end = datetime(y, 11, nth_sunday(11, 1), 6, tzinfo=timezone.utc)
+    return -4 if start <= now_utc < end else -5
+
+
+US_CASH_OPEN, US_CASH_GRACE_END = '09:30', '16:20'
+
+
+def us_cash_intraday(bar_date, now_utc=None):
+    """美股現貨(指數 / 個股 / ADR)這一格「美股還沒收盤」嗎?→ 美東 'HH:MM'(是;抓的時候美東幾點)或 ''(不是)。純函式(now 可注入)。
+    規則:美東現在是平日、這一格的日期 == 美東今天、而且 09:30 ≤ 美東現在 < 16:20(延遲報價晚 15 分 + 5 分緩衝)。
+    為什麼:2026-11-16 每日採礦機的排程晚了快 7 小時(台北 02:42 才跑,美股還在交易)→ macro_cache 寫進美東 13:28 的
+      盤中價、日期 11/16,App 當成收盤(標普 −1.81%,收盤其實 −1.92%;台積電 ADR −5.70% vs −6.34%)。
+    ⛔ 只給美股現貨:期貨 / 原油 / 匯率幾乎 24 小時在交易,這條規則不適用(那幾格本來就是「現在」的價)。
+    ⚠️ 半天市(感恩節隔天等 13:00 收)收完到 16:20 之間會被當成盤中 → 寧可說「還不是收盤」也 ⛔ 把盤中價說成收盤。"""
+    now = now_utc or datetime.now(timezone.utc)
+    et = now + timedelta(hours=_et_offset_hours(now))
+    if et.weekday() >= 5 or str(bar_date or '')[:10] != et.strftime('%Y-%m-%d'):
+        return ''
+    hm = et.strftime('%H:%M')
+    return hm if US_CASH_OPEN <= hm < US_CASH_GRACE_END else ''
+
+
 def parse_taifex_night(j):
     """期交所行情網(盤後)→ 台指期近月夜盤 {price, chg, ref, date, time, contract} 或 None。純函式。
     近月 = 成交量最大的那個月份(⛔ 現貨 TXF-P);漲跌% = 最後成交 vs 參考價(= 前一個日盤結算)。
@@ -444,6 +475,22 @@ def selftest():
        q and q['price'] == 43834.0 and q['chg'] == 1.64 and q['date'] == '2026-11-13', q)
     only_spot = {'RtData': {'QuoteList': [dayrows['RtData']['QuoteList'][0]]}}
     ok('⑪h 只剩現貨那列 → None(⛔ 硬拿現貨)', parse_taifex_night(only_spot) is None)
+
+    # 🕐 V82.4.2 美股還沒收盤(盤中)的判斷 —— 時間一律注入(⛔ 看機器現在幾點)
+    U = lambda *a: datetime(*a, tzinfo=timezone.utc)
+    ok('⑫a 11/16(平常時間 −5)18:28 UTC = 美東 13:28、同一天那格 → 盤中 13:28(11/16 每日採礦機延遲那一輪)',
+       us_cash_intraday('2026-11-16', U(2026, 11, 16, 18, 28)) == '13:28', us_cash_intraday('2026-11-16', U(2026, 11, 16, 18, 28)))
+    ok('⑫b 收完 + 緩衝:美東 16:10 還算盤中、16:25 就不是(11/17 台北 05:25 那輪 = 收盤)',
+       us_cash_intraday('2026-11-16', U(2026, 11, 16, 21, 10)) == '16:10' and us_cash_intraday('2026-11-16', U(2026, 11, 16, 21, 25)) == '')
+    ok('⑫c 美東開盤前(09:00)那格是前一天 → 不是盤中;同一天那格開盤前也不是',
+       us_cash_intraday('2026-11-16', U(2026, 11, 17, 14, 0)) == '' and us_cash_intraday('2026-11-17', U(2026, 11, 17, 14, 0)) == '')
+    ok('⑫d 週末 → 不是盤中(美股沒開)', us_cash_intraday('2026-11-14', U(2026, 11, 14, 18, 0)) == '')
+    ok('⑫e 夏令(−4):7/15 17:28 UTC = 美東 13:28 → 盤中;13:00 UTC = 09:00 → 還沒開',
+       us_cash_intraday('2026-07-15', U(2026, 7, 15, 17, 28)) == '13:28' and us_cash_intraday('2026-07-15', U(2026, 7, 15, 13, 0)) == '')
+    ok('⑫f 夏令交界:2026 是 3/8 07:00 UTC 開始、11/1 06:00 UTC 結束(差 1 分鐘就換)',
+       _et_offset_hours(U(2026, 3, 8, 6, 59)) == -5 and _et_offset_hours(U(2026, 3, 8, 7, 0)) == -4
+       and _et_offset_hours(U(2026, 11, 1, 5, 59)) == -4 and _et_offset_hours(U(2026, 11, 1, 6, 0)) == -5)
+    ok('⑫g 沒有日期 → 不判(⛔ 例外)', us_cash_intraday(None, U(2026, 11, 16, 18, 28)) == '' and us_cash_intraday('', U(2026, 11, 16, 18, 28)) == '')
 
     # 美元指數
     fx = {'EUR/USD': {'close': 1.16, 'prev': 1.17}, 'USD/JPY': {'close': 150.0, 'prev': 149.0}, 'GBP/USD': {'close': 1.33, 'prev': 1.34},

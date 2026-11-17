@@ -289,6 +289,67 @@ mc6, _, _ = run_macro_cache(tmp, gate, get=no_get, qgate=make_fake_cboe(ltt='202
 ok('④d Cboe 整批停在很久以前 → 那 9 格各寫 *_error、⛔ 拿舊的當今天', all(k not in mc6 and '超過' in mc6.get(f'{k}_error', '')
    for k in M._CBOE_MACRO_SYMBOLS), [mc6.get(f'{k}_error') for k in list(M._CBOE_MACRO_SYMBOLS)[:2]])
 
+print('🕐 V82.4.2 美股還在交易時抓的 → macro_cache 那一格多 intraday(App 寫「盤中」、⛔ 當收盤;11/16 每日採礦機延遲那輪)')
+# Cboe 那份的日期要在 5 天內(cboe_quotes 拿真的今天量)→ 用最近一個平日;「現在」釘在那天美東盤中 / 收盤後
+from datetime import datetime as _dt, timezone as _tz   # noqa: E402
+_wd = T
+while _wd.weekday() >= 5:
+    _wd -= timedelta(days=1)
+_MID = _dt(_wd.year, _wd.month, _wd.day, 18, 28, tzinfo=_tz.utc)   # 美東 13:28(平常)/ 14:28(夏令)→ 都在 09:30~16:20
+_AFT = _dt(_wd.year, _wd.month, _wd.day, 21, 25, tzinfo=_tz.utc)   # 美東 16:25 / 17:25 → 收完了
+
+
+class _T2:
+    def __init__(self, d):
+        self.d = d
+
+    def date(self):
+        return self.d
+
+
+class _R2(dict):
+    def __init__(self, d, c):
+        super().__init__(Close=c)
+        self.name = _T2(d)
+
+
+class _H2:
+    def __init__(self, rows):
+        self.iloc, self.empty = rows, not rows
+
+    def __len__(self):
+        return len(self.iloc)
+
+
+_YF_TODAY = types.ModuleType('yfinance')   # 最後一根 = 那個平日(美股盤中那根)
+_YF_TODAY.Ticker = lambda t: types.SimpleNamespace(history=lambda **kw: _H2([_R2(_wd - timedelta(days=1), 100.0), _R2(_wd, 98.0)]))
+
+
+def run_mc_at(now, cboe_time):
+    _saved, cwd = sys.modules.get('yfinance'), os.getcwd()
+    sys.modules['yfinance'] = _YF_TODAY
+    os.chdir(tmp)
+    try:
+        quiet(M.fetch_us_macro_cache, _gate=make_fake_gate()[0], _get=no_get,
+              _qgate=make_fake_cboe(ltt=f'{_wd.isoformat()}T{cboe_time}')[0], _now=now)
+    finally:
+        sys.modules['yfinance'] = _saved
+        os.chdir(cwd)
+    return json.loads((Path(tmp) / 'macro_cache.json').read_text(encoding='utf-8'))
+
+
+mcA, mcB, mcC = run_mc_at(_MID, '13:28:05'), run_mc_at(_AFT, '13:28:05'), run_mc_at(_MID, '16:00:00')
+_marked = lambda mc: sorted(k for k, v in mc.items() if isinstance(v, dict) and 'intraday' in v)   # noqa: E731
+ok('④e 🕐 美股還在交易(Cboe 成交 13:28)→ Cboe 那 9 格多 intraday = 13:28,其他欄位照舊',
+   all(mcA.get(k, {}).get('intraday') == '13:28' for k in M._CBOE_MACRO_SYMBOLS)
+   and set(mcA.get('sp500', {})) == {'date', 'close', 'prev', 'chg_pct', 'intraday'} and mcA['sp500']['close'] == 101.0, mcA.get('sp500'))
+ok('④f yfinance 的那斯達克 / 費半(美股現貨)同一條 → intraday = 抓的時候美東幾點;原油 / 美元指數(幾乎 24 小時在交易)⛔ 標',
+   all(re.fullmatch(r'\d\d:\d\d', mcA.get(k, {}).get('intraday') or '') for k in ('nasdaq', 'sox'))
+   and all(k in mcA and 'intraday' not in mcA[k] for k in ('ukoil', 'dxy')), {k: mcA.get(k) for k in ('nasdaq', 'ukoil')})
+ok('④g ⭐ 決定性對照:同一批資料、美股收完才抓 → 一格都 ⛔ 標', not _marked(mcB) and 'sp500' in mcB and 'nasdaq' in mcB, _marked(mcB))
+ok('④h Cboe 那份已經是收盤(16:00)→ 就算在盤中時段抓也 ⛔ 標(收盤就是收盤)',
+   not [k for k in M._CBOE_MACRO_SYMBOLS if 'intraday' in mcC.get(k, {})], _marked(mcC))
+
 print('📦 磁碟沒有 → 已發佈那份;都沒有 → 冷啟動')
 tmp5 = tempfile.mkdtemp(prefix='yfoff5_')
 (Path(tmp5) / 'data').mkdir()

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.4.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.4.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8974,10 +8974,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.4.1',
+    _APP_VERSION: 'V82.4.2',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.4.2', d: [
+            '🕐 美股那一排與盤前體檢:採礦剛好在美股還沒收盤時跑到,那一格會寫「盤中」、不當成昨晚收盤算分;另一份已經有收盤的,就改顯示收盤',
+        ], dt: '2026-11-17' },
         { v: 'V82.4.1', d: [
             '🕯️ 個股頁碰到「昨天跌停、今天收紅」:說明改成「短線常會彈一下,但照著去買並沒有比把錢放 0050 好,不是進場理由」;大盤空頭時多提醒一行',
             '📰 解鎖後的專欄:大盤空頭、或你的股票跌停後收紅時,跳出來的那一篇換成「盤勢不好的時候,跌停隔天收大紅 K 可以進場搶反彈嗎?」—— 答案是不要,並寫了空頭時怎麼做',
@@ -9300,10 +9303,6 @@ ${list}
         { v: 'V79.9.0', d: [
             '🧪 產業作戰室「量化實驗室」多一個「沙盒」:可以從範本改,或自己拼條件(均線、KD、RSI、外資 / 投信、融資、跳空、成交量…),選出場方式和股票池(成交額前 60 / 150 檔 + 你的庫存自選),在手機上直接算最近 3 年;每一年的結果、買不到的次數、今天哪幾檔碰到都會列出來',
             '⛔ 沙盒只是試試看:只有最近 3 年、只有現在還在交易的股票,試越多種越容易碰到看起來很好的 —— 旁邊一定放 16 年全市場最接近的那一支結果;看到好看的,按「送 16 年驗證」把設定複製起來交給我跑',
-        ] },
-        { v: 'V79.8.9', d: [
-            '📐 你的庫存或自選今天出現「跳空開高走高」「帶量突破 20 日新高」「融資減少、站上月線」這 3 種常見買點時,🔔 通知會安靜記一筆、決策台的專欄那一格也會出現:這種買點照著追通常不划算,⛔ 別因為這個就買;手上的照你的出場規則走。⛔ 不會跳窗(要先在「🔓 進階功能 › 📰 專欄」打開)',
-            '🎲 那一則附發生率:這檔碰過幾次,以及一般股票碰到這種買點、隔天收盤買照出場規則抱,扣完手續費和稅還比同一天所有股票好的比例 —— 跟同一檔同一年隨便挑一天買的比例放在一起看',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -12399,15 +12398,23 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             return { val: val.toLocaleString(), chg: `${sign}${chg.toFixed(2)}%`, col };
         };
         const set = (id, valId, chgId, key) => {
-            const d = fmt(m[key]?.close, m[key]?.chg_pct);
+            // 🕐 V82.4.2 這一格是美股盤中抓的(macro_cache 的 `intraday`):另一份有同一天(或更新)的收盤 → 顯示收盤;
+            //   沒有 → 照顯示、旁邊寫「盤中」(⛔ 讓盤中價看起來像收盤;11/16 那輪標普寫 −1.81%,收盤 −1.92%)
+            let o = m[key], intra = this._intraAt(o && o.intraday) || '';
+            if (intra) {
+                const p = this._macroPick(key);
+                if (p.val != null && p.chg != null && !p.intraday && (!o.date || !p.date || String(p.date) >= String(o.date))) { o = { close: p.val, chg_pct: p.chg }; intra = ''; }
+            }
+            const d = fmt(o?.close, o?.chg_pct);
             if (!d) return;
+            const tag = intra ? `<span class="text-[8px] text-gray-500" data-intraday="${key}" title="美東 ${intra} 抓的盤中價,美股還沒收盤 —— 不是收盤價">・盤中</span>` : '';
             const el = document.getElementById(valId); const ec = document.getElementById(chgId);
             if (el) { el.innerHTML = `<span class="${d.col}">${d.val}</span>`; }
-            if (ec) { ec.innerHTML = `<span class="${d.col}">${d.chg}</span>`; }
+            if (ec) { ec.innerHTML = `<span class="${d.col}">${d.chg}</span>${tag}`; }
             // also write directly to 全球 tab
             const elM = document.getElementById(`${valId}_main`); const ecM = document.getElementById(`${chgId}_main`);
             if (elM) { elM.innerText = d.val; elM.className = `text-xl font-black font-mono ${d.col}`; }
-            if (ecM) { ecM.innerText = d.chg; ecM.className = `text-xs font-bold mt-0.5 ${d.col}`; }
+            if (ecM) { ecM.innerText = d.chg + (intra ? '・盤中' : ''); ecM.className = `text-xs font-bold mt-0.5 ${d.col}`; }
         };
         set(null, 'usBar_spx', 'usBar_spx_chg', 'sp500');
         set(null, 'usBar_ndx', 'usBar_ndx_chg', 'nasdaq');
@@ -17320,14 +17327,22 @@ const marginByDate = {};
         const _dz = v => { const n = N(v); return n != null && Math.abs(Math.round(n * 100) / 100) < this._PREMKT_DEAD; };
         const _sd = (t, v) => _dz(v) ? 0 : sign(t);
         const _dn = (t, v) => !t ? '沒有資料' : (_dz(v) ? `${t}・太小不計分` : t);
-        _add('🇺🇸 道瓊', _sd(djiChg, x.dji), _dn(djiChg, x.dji));
-        _add('🇺🇸 那斯達克', _sd(ndxChg, x.ndx), _dn(ndxChg, x.ndx));
-        _add('🇺🇸 S&P500', _sd(spxChg, x.spx), _dn(spxChg, x.spx));
-        _add('💾 費半', _sd(soxChg, x.sox) * 1.5, _dn(soxChg, x.sox));
+        // 🕐 V82.4.2 x.intra = { dji|nasdaq|sp500|sox|tsm|asx|umc|vix: { at: 美東 'HH:MM', v } }:美股還沒收盤時抓的
+        //   → 照樣列出來、寫「美股盤中・還不是收盤」、0 分(⛔ 把盤中價當昨晚收盤;同「資料舊了」的處置)。
+        //   回測探針(premkt_app_probe)餵的是收盤 → 沒有 intra,算法一個字沒變。pro `_premktScore` 同一條(test_premkt_formula ⑪)。
+        const intra = x.intra || {};
+        const _mid = (q, v) => `${v || '—'}・美股盤中(美東 ${q.at}),還不是收盤`;
+        const _us = (nm, k, t, v, w) => intra[k] ? _info(nm, _mid(intra[k], pctStr(N(intra[k].v)))) : _add(nm, _sd(t, v) * w, _dn(t, v));
+        _us('🇺🇸 道瓊', 'dji', djiChg, x.dji, 1);
+        _us('🇺🇸 那斯達克', 'nasdaq', ndxChg, x.ndx, 1);
+        _us('🇺🇸 S&P500', 'sp500', spxChg, x.spx, 1);
+        _us('💾 費半', 'sox', soxChg, x.sox, 1.5);
         if (stale.tsm) _info('🏭 台積電 ADR', _old('tsm', tsmChg));
+        else if (intra.tsm) _info('🏭 台積電 ADR', _mid(intra.tsm, pctStr(N(intra.tsm.v))));
         else _add('🏭 台積電 ADR', _sd(tsmChg, x.tsm) * 2, _dn(tsmChg, x.tsm));
         const vixN = parseFloat(String(x.vix == null ? '' : x.vix).replace(/[^0-9.]/g, ''));
-        if (Number.isFinite(vixN)) _add('😱 VIX', vixN < 20 ? 1 : vixN > 30 ? -2 : vixN > 25 ? -1 : 0, `${vixN}`);
+        if (intra.vix) _info('😱 VIX', _mid(intra.vix, `${N(intra.vix.v)}`));
+        else if (Number.isFinite(vixN)) _add('😱 VIX', vixN < 20 ? 1 : vixN > 30 ? -2 : vixN > 25 ? -1 : 0, `${vixN}`);
         // 🏦 V71.1.6 相對水位(舊絕對門檻天天成立 → 這條等於固定 -2 分)
         { const _f5 = x.fut || {};
           if (_f5.chg5 != null) _info('🏦 外資台指期(5日增減)', `${Math.round(_f5.chg5).toLocaleString()} 口`);
@@ -17337,7 +17352,9 @@ const marginByDate = {};
         if (N(x.fiSpot) != null) _info('🏦 外資現貨買賣超', `${(+x.fiSpot).toFixed(0)} 億`);
         const asxChg = N(x.asx), umcChg = N(x.umc);
         if (asxChg != null) { if (stale.asx) _info('🔌 日月光 ADR', _old('asx', `${asxChg}%`)); else _add('🔌 日月光 ADR', asxChg > 0 ? 0.5 : asxChg < 0 ? -0.5 : 0, `${asxChg}%`); }
+        else if (intra.asx) _info('🔌 日月光 ADR', _mid(intra.asx, `${N(intra.asx.v)}%`));
         if (umcChg != null) { if (stale.umc) _info('🔌 聯電 ADR', _old('umc', `${umcChg}%`)); else _add('🔌 聯電 ADR', umcChg > 0 ? 0.5 : umcChg < 0 ? -0.5 : 0, `${umcChg}%`); }
+        else if (intra.umc) _info('🔌 聯電 ADR', _mid(intra.umc, `${N(intra.umc.v)}%`));
         // 💡 V68.8.2 美股期貨(盤後即時,比昨收更新;那指最連動半導體)+ 美債 10Y 殖利率(飆升=科技股壓力)
         const _nqFutC = (x.nq != null && !isNaN(x.nq)) ? +x.nq : null;
         if (_nqFutC != null) _add('🔮 那指期夜盤', _nqFutC > 0.3 ? 1 : _nqFutC < -0.3 ? -1 : 0, `${_nqFutC}%`);
@@ -17485,14 +17502,27 @@ const marginByDate = {};
         //   → 判斷「這份檔認不認得這個 key」要**兩個欄位任一有值**,
         //   ⛔ 只看價位的話黃金會整個掉到備援、而備援根本沒有 gold → 又變回 null(第一版就是這樣)。
         //   ⭐ 但**一旦認定用哪一份,val 與 chg 就一起從那一份拿**(⛔ 不可一半新一半舊)。
+        // 🕐 V82.4.2 `intraday` = 這個值是美股還在交易時抓的(美東 'HH:MM'),⛔ 是收盤:
+        //   macro_risk 寫扁平的 `${key}_intraday`、macro_cache 寫 `{…, intraday}`(採礦端 lib_quotes.us_cash_intraday 判)。
+        //   🚨 2026-11-16 每日採礦機排程晚了快 7 小時,美東 13:28 的盤中價被當成 11/16 收盤(標普 −1.81%,收盤 −1.92%)。
+        //   ⭐ 同一格一份是盤中、另一份是同一天(或更新)的收盤 → 用收盤那份(val / chg 一起換,⛔ 一半一半)。
         const a = N(mr[key]), ac = N(mr[`${key}_chg_pct`]);
-        if (a != null || ac != null) return { val: a, chg: ac, date: mr[`${key}_date`] || null, src: 'macro_risk' };
         const o = m[key];
         const b = N(o && o.close);
-        if (b != null) return { val: b, chg: N(o && o.chg_pct), date: (o && o.date) || null, src: 'macro_cache' };
-        return { val: null, chg: null, date: null, src: null };
+        const bIn = this._intraAt(o && o.intraday), bd = (o && o.date) || null;
+        if (a != null || ac != null) {
+            const aIn = this._intraAt(mr[`${key}_intraday`]), ad = mr[`${key}_date`] || null;
+            if (aIn && b != null && !bIn && bd && (!ad || String(bd) >= String(ad)))
+                return { val: b, chg: N(o.chg_pct), date: bd, src: 'macro_cache', intraday: null };
+            return { val: a, chg: ac, date: ad, src: 'macro_risk', intraday: aIn };
+        }
+        if (b != null) return { val: b, chg: N(o && o.chg_pct), date: bd, src: 'macro_cache', intraday: bIn };
+        return { val: null, chg: null, date: null, src: null, intraday: null };
     },
-    /** 漲跌%(⛔ 呼叫端別自己挑檔案);拿不到回 null */
+    /** 🕐 V82.4.2 盤中標記 → 美東 'HH:MM'(沒標 → null;標了但格式怪 → '—')。⛔ 原樣塞進畫面(會進 innerHTML / title) */
+    _intraAt(v) { if (!v) return null; const m = String(v).match(/\d{1,2}:\d{2}/); return m ? m[0] : '—'; },
+    /** 漲跌%(⛔ 呼叫端別自己挑檔案);拿不到回 null
+     *  ⚠️ 盤中值照回(風險指數要的是「現在」,本來就混用期貨盤中價);要「收盤」的地方(盤前分數、美股那一排)自己看 `_macroPick().intraday` */
     _macroChg(key) { return this._macroPick(key).chg; },
 
     // 💰 V71.2.2 融資去槓桿進度(唯一真相來源,別在別處再算一次)
@@ -17994,15 +18024,28 @@ const marginByDate = {};
         //   偵測:兩檔 sp500 漲跌不一致 = macro_cache 是較舊的交易日 → 過期。
         //   ① sp500/nasdaq/vix/dji/sox/tsm/asx/umc 一律優先讀 macro_risk 的新鮮值(採礦端 V58.7 已補齊)
         //   ② macro_risk 尚無該欄(等採礦)且 macro_cache 過期 → 回 null(顯「採集中」、不採計開盤分數,不用舊崩盤誤導)
-        const _usStale = (mr.sp500_chg_pct != null && usm.sp500?.chg_pct != null
+        //   🕐 V82.4.2 任一邊是盤中抓的 → 差一點是抓的時間不同、⛔ 是舊交易日(誰新誰舊交給下面 usPct 照日期挑)
+        const _usStale = (!mr.sp500_intraday && !usm.sp500?.intraday && mr.sp500_chg_pct != null && usm.sp500?.chg_pct != null
                           && Math.abs(+mr.sp500_chg_pct - +usm.sp500.chg_pct) > 0.02);
         const _MR_US = { sp500: 'sp500_chg_pct', nasdaq: 'nasdaq_chg_pct', dji: 'dji_chg_pct',
                          sox: 'sox_chg_pct', tsm: 'tsm_chg_pct', asx: 'asx_chg_pct', umc: 'umc_chg_pct' };
+        // 🕐 V82.4.2 美股盤中抓的(`_intraday`)⛔ 當昨晚收盤算分:另一份有同一天(或更新)的收盤 → 用收盤;
+        //   沒有 → 記進 _usIntra、回 null,由 `_preOpenScore` 照樣列出來寫「盤中・還不是收盤」、0 分(同「資料舊了」那種處置)
+        const _usIntra = {};
         const usPct = k => {
             const mk = _MR_US[k];
-            if (mk && mr[mk] != null && !isNaN(mr[mk])) return +mr[mk];   // 新鮮檔優先
+            if (mk && mr[mk] != null && !isNaN(mr[mk])) {   // 新鮮檔優先
+                const ia = this._intraAt(mr[`${k}_intraday`]);
+                if (!ia) return +mr[mk];
+                const c = usm[k];
+                if (c && !c.intraday && c.chg_pct != null && !isNaN(c.chg_pct) && c.date && (!mr[`${k}_date`] || String(c.date) >= String(mr[`${k}_date`]))) return +c.chg_pct;
+                _usIntra[k] = { at: ia, v: +mr[mk] };
+                return null;
+            }
             if (_usStale && ['dji', 'sox', 'tsm', 'asx', 'umc'].includes(k)) return null;   // 舊檔過期 → 不用崩盤舊值
-            const c = usm[k]?.chg_pct; return (c == null || isNaN(c)) ? null : +c;
+            const c = usm[k]?.chg_pct; if (c == null || isNaN(c)) return null;
+            if (_MR_US[k] && usm[k].intraday) { _usIntra[k] = { at: this._intraAt(usm[k].intraday), v: +c }; return null; }
+            return +c;
         };
         const pctStr = v => (v == null) ? null : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
         // 🔢 V69.8.0 千分位(使用者要求:數字倒數第三位加逗號,同會計格式):43634 → 43,634
@@ -18025,7 +18068,8 @@ const marginByDate = {};
         // 🐛 V58.7 VIX 也優先讀新鮮的 macro_risk(macro_cache 停 07-07 顯 18.41,實際 16.9)
         // 😱 V75.2.3 優先序抽成 `_vixState()`(⛔ 這裡原本是同一段判斷式的第一份實作)
         const _vs2 = this._vixState();
-        const vix = (_vs2.val != null && (_vs2.src === 'macro_risk' || !_usStale)) ? _vs2.val.toFixed(2) : '';
+        let vix = (_vs2.val != null && (_vs2.src === 'macro_risk' || !_usStale)) ? _vs2.val.toFixed(2) : '';
+        if (vix && _vs2.intraday) { _usIntra.vix = { at: _vs2.intraday, v: +vix }; vix = ''; }   // 🕐 V82.4.2 盤中的 VIX 水位 ⛔ 算分
         const fi = this.fiShortQty;
         const fiSpot = mr.fi_spot_net;     // 外資現貨買賣超(億)
         const fiTrust = mr.fi_trust_net;   // 投信(億)
@@ -18070,6 +18114,7 @@ const marginByDate = {};
             nk: mr.nikkei_chg_pct, ks: mr.kospi_chg_pct, hs: mr.hsi_chg_pct, fg: mr.fear_greed,
             twd: mr.usdtwd_chg_pct, twd5: mr.usdtwd_chg_5d, krw5: mr.krw_chg_5d, cny5: mr.cny_chg_5d,
             stale: _age.stale, fut: { chg5: _f5.chg5, pct: _f5.pct }, fiSpot, fiTotal, tech: tech ? (tech.verdict || '') : null,
+            intra: _usIntra,
         });
         const s = _po.s, sPct = _po.sPct;
         const { fg: _fgN, twd: _twdC, twd5: _twd5, krw5: _krw5, cny5: _cny5, fxDump: _asiaFxDump } = _po.v;

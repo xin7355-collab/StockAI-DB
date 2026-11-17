@@ -19,7 +19,10 @@
  *   ⑥d ⑥e V79.9.8 台指期只有真的夜盤(sess 'night')才算分:前一天日盤 / 不知道哪一盤 → 0 分,那一格寫日期 +「日盤」+「只列出來」(決定性對照:同一個 +2.47% 換成夜盤 → +1.5)
  *   ⑩ V79.9.9 美股四項 + 台積電 ADR 漲跌太小(|%| < 0.4)算 0 分:門檻 App == pro、邊界 0.39 → 0 / 0.4 → 照算;注入「拿掉門檻」必紅
  *   ⑨ V79.9.8 開盤發生率(`_PREMKT_OCC`)== 產業作戰室 `_PREMKT`;高分 / 低分那一行三個比例跟著換、⛔ 研究字樣
- *   INJECT=1:漲跌太小也算分 / 台積電權重 ×2→×1 / 恐懼貪婪 null 退回 `+x.fg` / 呼叫端把那斯達克跟 S&P 接反 / 亞股又算分 / 日盤又算分(App 或只改產業作戰室那份)/ 只改產業作戰室台積電權重 → 每一種都要紅
+ *   ⑪ V82.4.2 美股還沒收盤時抓的(`_intraday`)→ 照樣列出來寫「美股盤中(美東 幾點),還不是收盤」、0 分;macro_cache 有同一天收盤 → 改用收盤;
+ *      ⑧ 那 300 組有一半帶盤中標記,兩邊照樣逐一相同(產業作戰室那份同一條)
+ *   INJECT=1:漲跌太小也算分 / 台積電權重 ×2→×1 / 恐懼貪婪 null 退回 `+x.fg` / 呼叫端把那斯達克跟 S&P 接反 / 亞股又算分 / 日盤又算分(App 或只改產業作戰室那份)/ 只改產業作戰室台積電權重
+ *            / 盤中標記算分那支看不到 / 呼叫端沒擋 macro_risk 的盤中值 / 只有產業作戰室把盤中值算分 → 每一種都要紅
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -37,12 +40,16 @@ const INJ = {
   txday: ["if (txNight && txNight.sess === 'night' && txNight.est !== true", "if (txNight && txNight.est !== true"],
   occ: ['hi: { n: 1738, up: 50.7,', 'hi: { n: 1738, up: 99.9,'],
   dead: ["const _dz = v => { const n = N(v); return n != null && Math.abs(Math.round(n * 100) / 100) < this._PREMKT_DEAD; };", "const _dz = v => false;"],
+  // 🕐 V82.4.2 盤中標記:算分那支看不到 / 呼叫端沒擋下 macro_risk 的盤中值
+  intraOff: ['const intra = x.intra || {};', 'const intra = {};'],
+  usIntraOff: ['if (!ia) return +mr[mk];', 'return +mr[mk];'],
 };
 const PRO_SRC = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 // ⑧ 注入在 pro 那一份(只改一邊 → 兩邊對不上要紅)
 const INJ_PRO = { proTsm: ["if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, dz(tsm) ? 0 : sg(tsm) * 2);", "if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, dz(tsm) ? 0 : sg(tsm) * 1.5);"],
                   proDead: ["const DEAD = 0.4, dz = v => Math.abs(Math.round(v * 100) / 100) < DEAD;", "const DEAD = 0.4, dz = v => false;"],
-                  proTxDay: ["if (tx && tx.sess === 'night' && tx.est !== true", "if (tx && tx.est !== true"] };
+                  proTxDay: ["if (tx && tx.sess === 'night' && tx.est !== true", "if (tx && tx.est !== true"],
+                  proIntraOff: ["const intra = k => !!mr[k + '_intraday'];", 'const intra = k => false;'] };
 
 const fnBody = html => {
   const i = html.indexOf('    _preOpenScore(x) {');
@@ -153,6 +160,25 @@ async function run(html, proHtml = PRO_SRC) {
     o.txNight = await runTx({ price: 23456, chg: 2.47, est: false, sess: 'night' });
     // ⑥f 💱 V82.4.0 期交所行情網的真夜盤標 score: false(V42.0 那條計分沒回測過)→ 只顯示、⛔ 算分;那一格寫「只顯示、不算分」
     o.txNightNo = await runTx({ price: 23456, chg: 2.47, est: false, sess: 'night', score: false, date: '2026-11-17' });
+    // ⑪ 🕐 V82.4.2 美股還沒收盤時抓的(`intra`)→ 照樣列出來、寫「盤中」、0 分;決定性對照:同一組值沒有 intra → 照算
+    const IM = { dji: { at: '13:28', v: 1 }, sox: { at: '13:28', v: 2 }, tsm: { at: '13:26', v: 1 }, vix: { at: '13:28', v: 15 }, asx: { at: '13:28', v: 1 } };
+    const im = F({ intra: IM }), ctl = F({ dji: 1, sox: 2, tsm: 1, vix: 15, asx: 1 });
+    o.intra = { s: im.s, sCtl: ctl.s, dji: d(im, '🇺🇸 道瓊'), djiN: note(im, '🇺🇸 道瓊'), sox: d(im, '💾 費半'), soxN: note(im, '💾 費半'),
+                tsm: d(im, '🏭 台積電 ADR'), tsmN: note(im, '🏭 台積電 ADR'), vix: d(im, '😱 VIX'), vixN: note(im, '😱 VIX'), asx: d(im, '🔌 日月光 ADR'), asxN: note(im, '🔌 日月光 ADR') };
+    // ⑪b 接線(實跑 renderMarketBriefing):macro_risk 那格標 `_intraday` → 0 分;macro_cache 有同一天的收盤 → 改用收盤;那份比較舊 → ⛔ 拿
+    const runI = async (mrX, usmX) => { A._macroRiskCache = { ...mr, ...mrX }; A.usMacroCache = usmX; A._marketSnapshot = usmX; await A.renderMarketBriefing();
+      const c = A._preOpenCalc || {}; const pick = nm => (c.parts || []).find(q => q.nm === nm) || {};
+      return { d: pick('🇺🇸 S&P500').d, note: pick('🇺🇸 S&P500').note, vd: pick('😱 VIX').d, vnote: pick('😱 VIX').note, s: c.s }; };
+    o.wI = await runI({ sp500_chg_pct: 1.5, sp500_intraday: '13:28' }, { dji: { close: 1 } });
+    o.wC = await runI({ sp500_chg_pct: 1.5, sp500_intraday: '13:28' }, { dji: { close: 1 }, sp500: { date: '2026-10-21', close: 5000, chg_pct: -1.2 } });
+    o.wO = await runI({ sp500_chg_pct: 1.5, sp500_intraday: '13:28' }, { dji: { close: 1 }, sp500: { date: '2026-10-20', close: 5000, chg_pct: -1.2 } });
+    o.wN = await runI({ sp500_chg_pct: 1.5 }, { dji: { close: 1 } });
+    o.wCI = await runI({ sp500_chg_pct: null }, { dji: { close: 1 }, sp500: { date: '2026-10-21', close: 5000, chg_pct: -1.2, intraday: '13:28' } });
+    o.wV = await runI({ vix: 26.5, vix_intraday: '13:28' }, { dji: { close: 1 } });
+    // 兩份都在、macro_risk 是盤中 → VIX 換成 macro_cache 同一天的收盤 18(< 20 → +1);⛔ 被「兩檔標普對不上 = macro_cache 過期」那條擋掉
+    o.wVC = await runI({ sp500_chg_pct: 1.5, sp500_intraday: '13:28', vix: 26.5, vix_intraday: '13:28' },
+                       { dji: { close: 1 }, sp500: { date: '2026-10-21', close: 5000, chg_pct: -1.2 }, vix: { date: '2026-10-22', close: 18, chg_pct: -3 } });
+    A.usMacroCache = { dji: { close: 1 } }; A._marketSnapshot = A.usMacroCache;
     // ⑨ V79.9.8 開盤發生率那一行:高分 / 低分各跑一次,三個比例跟著換
     const occOf = async extra => { A._macroRiskCache = { ...mr, ...extra }; await A.renderMarketBriefing();
       const el = document.querySelector('#marketBriefing [data-occ="premkt"]'); return { p: (A._preOpenCalc || {}).sPct, t: el ? el.textContent : '' }; };
@@ -205,6 +231,18 @@ async function run(html, proHtml = PRO_SRC) {
      /10\/28/.test(R.txDay.txt) && /日盤/.test(R.txDay.txt) && /只列出來/.test(R.txDay.txt) && !/夜盤走強/.test(R.txDay.txt) && !/夜盤走強/.test(R.txNa.txt),
      R.txDay.txt.slice(0, 160));
   ok('⑥c 恐懼貪婪抓不到 → 分析師那段 ⛔ 不可寫「極度恐慌」', !/極度恐慌|恐懼貪婪 0\)/.test(R.wire.txt), R.wire.txt.slice(0, 200));
+  const I = R.intra, midRe = /美股盤中\(美東 13:2[68]\),還不是收盤 ・不計分$/;
+  ok('⑪ 🕐 美股盤中抓的五項(道瓊 / 費半 / 台積電 / VIX / 日月光)照樣列出來、寫「美股盤中(美東 幾點),還不是收盤」、0 分;同一組值沒標 → 照算 6 分(決定性對照)',
+     I.s === 0 && I.sCtl === 6 && I.dji === 0 && I.sox === 0 && I.tsm === 0 && I.vix === 0 && I.asx === 0
+     && /^\+1\.00%/.test(I.djiN) && midRe.test(I.djiN) && /^\+2\.00%/.test(I.soxN) && /美東 13:26/.test(I.tsmN) && /^15・/.test(I.vixN) && /^1%・/.test(I.asxN)
+     && [I.soxN, I.tsmN, I.vixN, I.asxN].every(n => midRe.test(n)), JSON.stringify(I));
+  const W2 = { wI: R.wI, wC: R.wC, wO: R.wO, wN: R.wN, wCI: R.wCI, wV: R.wV, wVC: R.wVC };
+  ok('⑪b 接線:macro_risk 的標普標盤中 → 0 分寫「盤中」;macro_cache 有同一天收盤 → 改用收盤(−1.2% → −1);那份比較舊 → ⛔ 拿;沒標 → 照算 +1;只有 macro_cache 而且是盤中 → 0 分;VIX 盤中 → 0 分',
+     W2.wI.d === 0 && midRe.test(W2.wI.note || '') && /^\+1\.50%/.test(W2.wI.note) && W2.wC.d === -1 && W2.wC.note === '-1.20%'
+     && W2.wO.d === 0 && midRe.test(W2.wO.note || '') && W2.wN.d === 1 && W2.wN.note === '+1.50%'
+     && W2.wCI.d === 0 && /^-1\.20%・美股盤中/.test(W2.wCI.note || '') && W2.wV.vd === 0 && /^26\.5・美股盤中/.test(W2.wV.vnote || ''), JSON.stringify(W2));
+  ok('⑪d 兩份都在、macro_risk 是盤中 → VIX 換成 macro_cache 同一天的收盤 18 照算 +1(⛔ 被「標普對不上 = 過期」那條擋成沒有)',
+     W2.wVC.vd === 1 && W2.wVC.vnote === '18' && W2.wVC.d === -1, JSON.stringify(W2.wVC));
   ok('⑦ V79.5.4 亞股三項照樣列出來(看得到漲跌)但 0 分:日經 +5% / 韓股 −1% / 恆指 +1% 都是 0,說明寫「不計分」',
      W.nk5 === 0 && W.ksm1 === 0 && W.hs1 === 0 && R.empty.names.includes('🇯🇵 日經') && R.empty.names.includes('🇭🇰 恆指')
      && /不計分/.test(R.empty.notes[R.empty.names.indexOf('🇯🇵 日經')] || ''), JSON.stringify({ nk5: W.nk5, ksm1: W.ksm1, hs1: W.hs1 }));
@@ -232,6 +270,11 @@ async function run(html, proHtml = PRO_SRC) {
     fear_greed: num(5, 95, 0.15), usdtwd_chg_pct: num(-0.8, 0.8, 0.1), usdtwd_chg_5d: num(-2, 2, 0.1), krw_chg_5d: num(-2, 2, 0.2), cny_chg_5d: num(-1.5, 1.8, 0.2),
     fi_total_net: 100, fi_spot_net: -50,
   });
+  // 🕐 V82.4.2 一部分加上盤中標記(另一個亂數種子 → 上面那 300 組的值一個都沒變)
+  let seed2 = 20261117;
+  const rnd2 = () => { seed2 = (seed2 * 1103515245 + 12345) & 0x7fffffff; return seed2 / 0x7fffffff; };
+  for (const m of fx) for (const k of ['sp500', 'nasdaq', 'dji', 'sox', 'tsm', 'vix', 'asx', 'umc']) if (rnd2() < 0.08) m[`${k}_intraday`] = '13:28';
+  const nIntraFx = fx.filter(m => Object.keys(m).some(k => k.endsWith('_intraday'))).length;
   const appS = await page.evaluate(async F => {
     const A = app, out = [];
     A._getTwiiRows = async () => null; A.fetchFugleData = async () => null; A._bubbleCache = {}; A._riskHistCache = [];
@@ -262,6 +305,7 @@ async function run(html, proHtml = PRO_SRC) {
   const diff = both.filter(([a, b]) => a !== b);
   ok('⑧ 產業作戰室 `PRO._premktScore` == App(300 組隨機 macro_risk,兩邊都有分數的那幾組逐一相同)',
      both.length >= 250 && diff.length === 0, `比到 ${both.length} 組、不同 ${diff.length} 組:${JSON.stringify(diff.slice(0, 5))}`);
+  ok('⑪c 🕐 ⑧ 那 300 組裡 ≥ 100 組帶盤中標記(⛔ 沒有就測不到兩邊一起不算)', nIntraFx >= 100, `${nIntraFx} 組`);
   await browser.close();
   return fails;
 }

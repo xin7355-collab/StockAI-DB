@@ -196,5 +196,73 @@ ok('④ ⭐ 風險指數吃得到那個值(⛔ 不是永遠 null)',
        /夜盤 --/.test(F.none) && !/無漲跌基準/.test(F.none), F.none);
 }
 
+
+// ══ 🕐 V82.4.2 美股還沒收盤時抓的(`intraday`)⛔ 當收盤 ══
+//   🚨 2026-11-16 每日採礦機排程晚了快 7 小時(台北 02:42 才跑、美股還在交易)→ macro_cache 寫進美東 13:28 的盤中價、
+//      日期 11/16,美股那一排照樣當收盤顯示(標普 −1.81%,收盤其實 −1.92%;台積電 ADR −5.70% vs −6.34%)。
+//   ⭐ `_macroPick`:同一格一份盤中、另一份同一天(或更新)的收盤 → 用收盤(val / chg 一起換);只剩盤中那份 → 帶 `intraday` 出去
+//   ⭐ 美股那一排:有收盤就顯示收盤;沒有 → 照顯示、旁邊寫「盤中」(⛔ 讓盤中價看起來像收盤)
+{
+    const b4 = await chromium.launch({
+        executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+        args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
+    });
+    const p4 = await b4.newPage();
+    await p4.addInitScript(() => {
+        const inst = new Proxy({}, { get: (_t, k) => (k === 'getWidth' || k === 'getHeight') ? (() => 300) : (() => inst) });
+        Object.defineProperty(window, 'echarts', {
+            value: new Proxy({}, { get: (_t, k) => k === 'init' ? (() => inst) : (k === 'graphic' ? {} : () => inst) }),
+            writable: true, configurable: true,
+        });
+    });
+    await p4.goto(pathToFileURL(path.join(ROOT, 'index.html')).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await p4.waitForFunction(() => typeof app !== 'undefined' && !!app._macroPick && !!app._renderUSBar, null, { timeout: 25000 });
+    const P = await p4.evaluate(() => {
+        const rMR = app._macroRiskCache, rMS = app._marketSnapshot, rUM = app.usMacroCache;
+        const o = {};
+        const pick = (mr, ms, k) => { app._macroRiskCache = mr; app._marketSnapshot = ms; return app._macroPick(k); };
+        const CLOSE = { sp500: 7416.59, sp500_chg_pct: -1.92, sp500_date: '2026-11-16' };
+        const MID = { sp500: { date: '2026-11-16', close: 7424.72, prev: 7561.58, chg_pct: -1.81, intraday: '13:28' } };
+        o.a = pick(CLOSE, MID, 'sp500');                                                                  // macro_cache 盤中、macro_risk 收盤 → 收盤
+        o.b = pick({ ...CLOSE, sp500_chg_pct: -1.81, sp500: 7424.72, sp500_intraday: '13:28' },
+                   { sp500: { date: '2026-11-16', close: 7416.59, chg_pct: -1.92 } }, 'sp500');           // 反過來 → 換成 macro_cache 的收盤
+        o.c = pick({ ...CLOSE, sp500_intraday: '13:28' }, { sp500: { date: '2026-11-13', close: 7561.58, chg_pct: -0.41 } }, 'sp500');   // 收盤那份比較舊 → ⛔ 換
+        o.d = pick({}, { nvda: { date: '2026-11-16', close: 155.63, chg_pct: -4.43, intraday: '13:26' } }, 'nvda');   // 只有盤中那份
+        o.e = pick(CLOSE, { sp500: { date: '2026-11-16', close: 7416.59, chg_pct: -1.92 } }, 'sp500');   // 都沒標 → 照舊(⛔ 多出 intraday)
+        // 美股那一排(實跑 _renderUSBar;元素沒有就補)
+        for (const id of ['usBar_spx', 'usBar_spx_chg', 'usBar_nvda', 'usBar_nvda_chg', 'usBar_spx_chg_main', 'usBar_nvda_chg_main']) {
+            if (!document.getElementById(id)) { const el = document.createElement('div'); el.id = id; document.body.appendChild(el); }
+        }
+        app._updateWarRoom = () => {}; app.renderMarketBriefing = async () => {};
+        app._macroRiskCache = CLOSE;
+        app._renderUSBar({ ...MID, nvda: { date: '2026-11-16', close: 155.63, prev: 162.84, chg_pct: -4.43, intraday: '13:26' } });
+        const t = id => (document.getElementById(id) || {}).textContent || '';
+        o.bar = { spx: t('usBar_spx'), spxChg: t('usBar_spx_chg'), spxMain: t('usBar_spx_chg_main'), nvdaChg: t('usBar_nvda_chg'), nvdaMain: t('usBar_nvda_chg_main'),
+                  nvdaTag: !!document.querySelector('#usBar_nvda_chg [data-intraday="nvda"]'), spxTag: !!document.querySelector('#usBar_spx_chg [data-intraday]') };
+        app._macroRiskCache = {};
+        app._renderUSBar({ sp500: { date: '2026-11-16', close: 7416.59, prev: 7561.58, chg_pct: -1.92 } });
+        o.bar0 = { spxChg: t('usBar_spx_chg'), tag: !!document.querySelector('#usBar_spx_chg [data-intraday]') };
+        // 標記內容怪(⛔ 原樣進 innerHTML / title)→ 只留 HH:MM
+        app._renderUSBar({ sp500: { date: '2026-11-16', close: 7424.72, chg_pct: -1.81, intraday: '"><img src=x onerror=alert(1)>13:05' } });
+        const tg = document.querySelector('#usBar_spx_chg [data-intraday]');
+        o.bad = { title: tg ? tg.getAttribute('title') : null, img: !!document.querySelector('#usBar_spx_chg img'), at: app._intraAt('x'), none: app._intraAt('') };
+        app._macroRiskCache = rMR; app._marketSnapshot = rMS; app.usMacroCache = rUM;
+        return o;
+    });
+    await b4.close();
+    ok('⑧ 🕐 macro_cache 是盤中、macro_risk 是同一天收盤 → 拿收盤(−1.92%)、intraday 空', P.a.src === 'macro_risk' && P.a.chg === -1.92 && !P.a.intraday, JSON.stringify(P.a));
+    ok('⑧b ⭐ 反過來:macro_risk 是盤中、macro_cache 是同一天收盤 → 換成收盤那份(val / chg 一起換)',
+       P.b.src === 'macro_cache' && P.b.val === 7416.59 && P.b.chg === -1.92 && !P.b.intraday, JSON.stringify(P.b));
+    ok('⑧c 收盤那份比較舊(11/13)→ ⛔ 換,照用盤中那份、帶 intraday 出去', P.c.src === 'macro_risk' && P.c.intraday === '13:28', JSON.stringify(P.c));
+    ok('⑧d 只剩盤中那份 → 照給、帶 intraday', P.d.val === 155.63 && P.d.intraday === '13:26', JSON.stringify(P.d));
+    ok('⑧e 都沒標 → 照舊(intraday 空)', P.e.src === 'macro_risk' && P.e.chg === -1.92 && !P.e.intraday, JSON.stringify(P.e));
+    ok('⑧f 美股那一排:標普有同一天收盤 → 顯示收盤 −1.92%、⛔ 標盤中;NVDA 只有盤中那份 → −4.43% 旁邊寫「盤中」',
+       /7,416\.59/.test(P.bar.spx) && P.bar.spxChg === '-1.92%' && P.bar.spxMain === '-1.92%' && !P.bar.spxTag
+       && P.bar.nvdaTag && /^-4\.43%・盤中$/.test(P.bar.nvdaChg) && P.bar.nvdaMain === '-4.43%・盤中', JSON.stringify(P.bar));
+    ok('⑧g 決定性對照:沒標的收盤 → 照舊、⛔ 盤中字樣', P.bar0.spxChg === '-1.92%' && !P.bar0.tag, JSON.stringify(P.bar0));
+    ok('⑧h 標記內容怪 → 只留美東 HH:MM(⛔ 原樣塞進畫面);認不出時間 → 「—」、沒標 → null',
+       P.bad.title === '美東 13:05 抓的盤中價,美股還沒收盤 —— 不是收盤價' && !P.bad.img && P.bad.at === '—' && P.bad.none === null, JSON.stringify(P.bad));
+}
+
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ VIXSRC_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

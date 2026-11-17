@@ -14,7 +14,9 @@
   ⑤ 板塊對標:美國上市的走 Cboe、韓股(.KS)還在舊路(⏸ 等使用者決定);加權平均照舊
   ⑥ 靜態:換掉的函式 ⛔ yfinance;Cboe 清單 ⛔ 帶交易所後綴的代號
   ⑦ App 接線:macro_miner key_alias 寫的 gold_usd / wti_oil / btc_usd,AI 提示詞那幾行讀得到
-  INJECT=1:拿掉 Cboe 日期守門 / fetch_vix 換回 yfinance / App 鍵名改回 gold → 必紅
+  ⑨ 🕐 V82.4.2 美股還沒收盤時抓的(Cboe 成交時間早於 15:59 + 美東還在 09:30~16:20;yfinance 的美股現貨指數同一條)
+     → `{key}_intraday` = 美東 HH:MM;收盤後同一批 ⛔ 標(決定性對照);保留上一份時標記跟著走;原油期貨 ⛔ 套
+  INJECT=1:拿掉 Cboe 日期守門 / fetch_vix 換回 yfinance / App 鍵名改回 gold / 四種盤中標記拿掉 → 必紅
 """
 import inspect
 import io
@@ -187,6 +189,94 @@ def run(src, lqsrc, html, quiet=False):
     ok('⑦ App AI 提示詞讀得到採礦寫的鍵(gold_usd / wti_oil / btc_usd;⛔ 只讀 gold / wti / btc)',
        need == ['gold_usd', 'wti_oil', 'btc_usd'] and all(f'mr.{k}' in html for k in need)
        and all(html.count(f'fmtMr(mr.{k}') >= 2 or html.count(f'fmtMr(mr.{k} ') >= 2 for k in need), need)
+
+    # ⑨ 🕐 V82.4.2 美股還沒收盤時抓的 → _INTRADAY → `{key}_intraday`(App 才知道 ⛔ 當收盤;11/16 每日採礦機延遲那輪)
+    from datetime import datetime as _dt, timezone as _tz
+    M2, LQ2 = load(src, lqsrc)
+    clock = [_dt(2026, 11, 16, 18, 28, tzinfo=_tz.utc)]          # 美東 13:28(11/16 是平常時間 −5)
+    real_ui, real_cq2 = LQ2.us_cash_intraday, LQ2.cboe_quotes
+    LQ2.us_cash_intraday = lambda d, now_utc=None: real_ui(d, now_utc or clock[0])
+    LQ2.cboe_quotes = lambda g, t, today=None, max_age_days=5: real_cq2(g, t, today=_date(2026, 11, 16), max_age_days=max_age_days)
+    ltt = {'_SPX': (7424.72, -1.81, '2026-11-16T13:28:05'), 'TSM': (376.0, -5.70, '2026-11-16T13:26:00'),
+           '_VIX': (23.04, 19.38, '2026-11-16T13:28:00'), 'ASX': (32.91, -7.43, '2026-11-16T16:00:00')}   # ASX 那份已是收盤
+
+    def send2(method, url, **kw):
+        sym = url.rsplit('/', 1)[-1].replace('.json', '')
+        c, p, t = ltt.get(sym, (100.0, 1.0, '2026-11-16T13:28:00'))
+        return cq(c, p, t)
+    gate2 = LQ2.make_gate(send=send2, sleep=lambda s: None, clock=lambda: 0.0)
+    M2._q_gate = lambda: gate2
+
+    def intra_run():
+        M2._CBOE_BOOK = None
+        with redirect_stdout(io.StringIO()):
+            got = {k: f() for k, f in (('sp500', M2.fetch_sp500), ('tsm', M2.fetch_tsm_adr), ('vix', M2.fetch_vix), ('asx', M2.fetch_asx_adr))}
+        out = {}
+        tk = {'sp500': '^GSPC', 'tsm': 'TSM', 'vix': '^VIX', 'asx': 'ASX'}
+        for k, (v, c, e) in got.items():
+            M2._apply_big_player(out, k, {k: k}, v, c, e, M2._YF_LAST_DATE.get(tk[k]), {}, M2._INTRADAY.get(tk[k]))
+        return out
+    o1 = intra_run()
+    ok('⑨ 🕐 美股還在交易(美東 13:28)抓的 → `sp500_intraday` / `tsm_intraday` / `vix_intraday` = Cboe 成交時間,值照給、error 寫「方向待確認」',
+       o1.get('sp500_intraday') == '13:28' and o1.get('tsm_intraday') == '13:26' and o1.get('vix_intraday') == '13:28'
+       and o1.get('sp500') == 7424.72 and '方向待確認' in (o1.get('sp500_error') or ''), {k: v for k, v in o1.items() if k.startswith(('sp500', 'tsm_'))})
+    ok('⑨b 同一輪裡已經是收盤的那一檔(ASX 16:00)⛔ 標盤中', 'asx_intraday' not in o1 and o1.get('asx') == 32.91, o1.get('asx_intraday'))
+    clock[0] = _dt(2026, 11, 16, 21, 25, tzinfo=_tz.utc)          # 美東 16:25 = 收完了(11/17 台北 05:25 那輪)
+    o2 = intra_run()
+    ok('⑨c ⭐ 決定性對照:同一批 Cboe(成交時間一樣早)、換成收盤後才抓 → ⛔ 標盤中(半天市收完那種是真的收盤)',
+       not [k for k in o2 if k.endswith('_intraday')] and o2.get('sp500') == 7424.72, [k for k in o2 if k.endswith('_intraday')])
+    out3 = {}
+    kept = M2._apply_big_player(out3, 'sp500', {'sp500': 'sp500'}, 7400.0, -1.0, None, '2026-11-15',
+                                {'sp500': 7424.72, 'sp500_chg_pct': -1.81, 'sp500_date': '2026-11-16', 'sp500_intraday': '13:28'}, None)
+    ok('⑨d 這輪抓到比較舊的 → 保留上一份時,盤中標記跟著那一份(⛔ 保留下來就變成收盤)', kept and out3.get('sp500_intraday') == '13:28', out3)
+
+    class _TS:
+        def __init__(self, d):
+            self.d = d
+
+        def date(self):
+            return self.d
+
+    class _S:
+        def __init__(self, vals, days):
+            self.iloc, self.index = vals, [_TS(d) for d in days]
+
+        def dropna(self):
+            return self
+
+        def __len__(self):
+            return len(self.iloc)
+
+    class _H:
+        empty = False
+
+        def __init__(self, s):
+            self.s = s
+
+        def __getitem__(self, k):
+            return self.s
+    yfmod = types.ModuleType('yfinance')
+    yfmod.Ticker = lambda t: types.SimpleNamespace(history=lambda **kw: _H(_S([100.0, 98.0], [_date(2026, 11, 13), _date(2026, 11, 16)])))
+    _saved_yf = sys.modules.get('yfinance')
+    sys.modules['yfinance'] = yfmod
+    try:
+        clock[0] = _dt(2026, 11, 16, 18, 28, tzinfo=_tz.utc)
+        ix = M2._fetch_yf_close('^IXIC', '那斯達克')
+        ix_ia = M2._INTRADAY.get('^IXIC')
+        bz = M2._fetch_yf_close('BZ=F', '布蘭特')
+        bz_ia = M2._INTRADAY.get('BZ=F')
+        clock[0] = _dt(2026, 11, 16, 21, 25, tzinfo=_tz.utc)
+        ix2 = M2._fetch_yf_close('^IXIC', '那斯達克')
+        ix2_ia = M2._INTRADAY.get('^IXIC')
+    finally:
+        if _saved_yf is None:
+            sys.modules.pop('yfinance', None)
+        else:
+            sys.modules['yfinance'] = _saved_yf
+    ok('⑨e yfinance 的那斯達克(美股現貨)在美股盤中 → 標盤中 + error 寫美東幾點、「方向待確認」;收盤後同一根 → ⛔ 標',
+       ix_ia == '13:28' and ix[0] == 98.0 and '美東 13:28' in (ix[2] or '') and '方向待確認' in (ix[2] or '')
+       and ix2_ia is None and ix2[2] is None, (ix, ix_ia, ix2, ix2_ia))
+    ok('⑨f 原油期貨(幾乎 24 小時在交易)⛔ 套美股盤中規則', bz_ia is None and bz[2] is None, (bz, bz_ia))
     return fails
 
 
@@ -195,6 +285,11 @@ if os.environ.get('INJECT'):
         'noguard': ('lqsrc', "        elif q['date'] < ref:\n            bad[tk] = f\"Cboe 停在 {q['date']}(其他的已到 {ref})\"\n            del got[tk]\n", ''),
         'vixyf': ('src', 'def fetch_vix():      return _fetch_cboe_close("^VIX",   "VIX 恐慌指數")', 'def fetch_vix():      return _fetch_yf_close("^VIX",   "VIX 恐慌指數")'),
         'appkey': ('html', '`🪙 黃金 ${fmtMr(mr.gold_usd ?? mr.gold)}', '`🪙 黃金 ${fmtMr(mr.gold)}'),
+        # 🕐 V82.4.2:Cboe 盤中不標 / yfinance 美股現貨盤中不標 / 寫檔時不寫 `_intraday` / 保留上一份時標記沒跟著走
+        'nointra': ('src', "        _INTRADAY[ticker] = q['time'][:5]\n", "        pass\n"),
+        'yfintra': ('src', "            _ia = _LQ.us_cash_intraday(_YF_LAST_DATE.get(ticker)) if ticker in _US_CASH_YF else ''", "            _ia = ''"),
+        'nowrite': ('src', '    if intraday and val is not None:\n        out[f"{key}_intraday"] = intraday\n', ''),
+        'nokeep': ('src', '        if _prev_json.get(f"{key}_intraday"):\n            out[f"{key}_intraday"] = _prev_json[f"{key}_intraday"]\n', ''),
     }
     bad = 0
     for k, (which, a, b) in INJ.items():

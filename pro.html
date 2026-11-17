@@ -7915,13 +7915,17 @@ const PRO = {
     const add = (label, v, d) => { s += d; n++; parts.push({ label, v, d }); };
     // 🧪 V79.9.9 漲跌太小(|%| < 0.4)算 0 分 —— 同 App `_PREMKT_DEAD`(test_premkt_formula ⑧ ⑩ 跨檔比對)
     const DEAD = 0.4, dz = v => Math.abs(Math.round(v * 100) / 100) < DEAD;
+    // 🕐 V82.4.2 同 App `_preOpenScore` 的 intra:美股還沒收盤時抓的(`${k}_intraday`)⛔ 當昨晚收盤算分
+    //   (App 會先拿 macro_cache 同一天的收盤補;這裡只有 macro_risk 一份 → 直接不算,test_premkt_formula ⑪ 跨檔比對)
+    const intra = k => !!mr[k + '_intraday'];
+    const nIntra = ['dji', 'nasdaq', 'sp500', 'sox', 'tsm', 'asx', 'umc'].filter(k => intra(k) && N(mr[k + '_chg_pct']) != null).length + (intra('vix') && N(mr.vix) != null ? 1 : 0);
     for (const [k, lab, w] of [['dji_chg_pct', '道瓊', 1], ['nasdaq_chg_pct', '那斯達克', 1], ['sp500_chg_pct', '標普500', 1], ['sox_chg_pct', '費城半導體', 1.5]]) {
-      const v = N(mr[k]); if (v != null) add(lab, v, dz(v) ? 0 : sg(v) * w);
+      const v = intra(k.replace('_chg_pct', '')) ? null : N(mr[k]); if (v != null) add(lab, v, dz(v) ? 0 : sg(v) * w);
     }
-    const tsm = N(mr.tsm_chg_pct); if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, dz(tsm) ? 0 : sg(tsm) * 2);
-    const vx = N(mr.vix); if (vx != null) { const v = parseFloat(vx.toFixed(2)); add('VIX 水位', v, v < 20 ? 1 : v > 30 ? -2 : v > 25 ? -1 : 0); }
+    const tsm = intra('tsm') ? null : N(mr.tsm_chg_pct); if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, dz(tsm) ? 0 : sg(tsm) * 2);
+    const vx = intra('vix') ? null : N(mr.vix); if (vx != null) { const v = parseFloat(vx.toFixed(2)); add('VIX 水位', v, v < 20 ? 1 : v > 30 ? -2 : v > 25 ? -1 : 0); }
     for (const [k, lab] of [['asx', '日月光 ADR'], ['umc', '聯電 ADR']]) {
-      const v = N(mr[k + '_chg_pct']); if (v != null && !stale(k)) add(lab, v, v > 0 ? 0.5 : v < 0 ? -0.5 : 0);
+      const v = intra(k) ? null : N(mr[k + '_chg_pct']); if (v != null && !stale(k)) add(lab, v, v > 0 ? 0.5 : v < 0 ? -0.5 : 0);
     }
     const nq = N(mr.nq_fut_chg_pct); if (nq != null) add('那指期夜盤', nq, nq > 0.3 ? 1 : nq < -0.3 ? -1 : 0);
     const ust = N(mr.ust10y_chg_pct); if (ust != null) add('美債 10 年期', ust, ust >= 2 ? -0.5 : ust <= -2 ? 0.5 : 0);
@@ -7936,22 +7940,22 @@ const PRO = {
     if (twd5 != null && twd5 >= 0.8 && krw5 != null && krw5 >= 0.8) add('亞幣競貶', krw5, -1);
     if (cny5 != null && cny5 >= 1.2) add('人民幣急貶', cny5, -0.5);
     // 🚧 用到的成分太少就不給結論(⛔ 半套分數不可拿來對照歷史數字)
-    if (n < 5) return { na: true, n };
+    if (n < 5) return { na: true, n, intra: nIntra };
     s = Math.round(s * 10) / 10;
-    return { s, sPct: Math.max(0, Math.min(100, Math.round(50 + s * 5))), n, parts };
+    return { s, sPct: Math.max(0, Math.min(100, Math.round(50 + s * 5))), n, parts, intra: nIntra };
   },
   _premktHtml(mr) {
     const P = this._PREMKT, r = this._premktScore(mr);
     if (!r) return `<div class="warnbox">⏳ <b>今天的盤前資料還沒到</b>(<code>data/macro_risk.json</code>)——
       它每天採礦時更新。⛔ 不是這個功能壞掉。</div>`;
     if (r.na) return `<div class="warnbox">⚠️ <b>今天只抓到 ${r.n} 項海外資料(要 5 項以上才算得準)</b> →
-      ⛔ 不硬給分數。可能是某個資料源今天沒回應。</div>`;
+      ⛔ 不硬給分數。${r.intra ? `其中 ${r.intra} 項是美股還沒收盤時抓的盤中價(⛔ 當收盤算),等美股收盤後那一輪採礦就會補上。` : '可能是某個資料源今天沒回應。'}</div>`;
     const hi = r.sPct >= 65, lo = r.sPct <= 35;
     const b = hi ? P.hi : lo ? P.lo : P.mid;
     const face = hi ? '開高偏多' : lo ? '開低偏空' : '中性';
     return `<div class="signote">
       <div class="sighead">🌅 今天的盤前分數:<b class="mono" style="font-size:15px">${r.sPct}</b> / 100(${face})
-        <span class="sigtag">= 散戶救星盤前體檢同一條 ・用了 ${r.n} 項</span></div>
+        <span class="sigtag">= 散戶救星盤前體檢同一條 ・用了 ${r.n} 項${r.intra ? `・美股盤中抓的 ${r.intra} 項不算` : ''}</span></div>
       <div class="note">
         📊 ${P.from} 年起 <b>${b.n.toLocaleString()}</b> 個同樣「${face}」的日子,0050 開盤:<b>開高 ${b.up}%</b> ・開平 ${b.flat}% ・<b>開低 ${b.dn}%</b>
         (隨便挑一天:開高 ${P.all.up}% / 開低 ${P.all.dn}%)。
@@ -11250,7 +11254,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V82.4.1',
+  VER: 'V82.4.2',
   _ROT: {
     win: 20, spread: 1.95, top: 1.06, bot: -0.88,
     q1: 2.48, q2: 1.42, exBest: 1.83,

@@ -850,10 +850,14 @@ def _fetch_cboe_close(ticker, name):
     """簽章同 _fetch_yf_close → (收盤, 漲跌%, error);資料日記進 _YF_LAST_DATE[ticker](「日期不可倒退」守門照樣作用)。"""
     got, bad = _cboe_book()
     q = got.get(ticker)
+    _INTRADAY.pop(ticker, None)
     if not q:
         _YF_LAST_DATE.pop(ticker, None)
         return None, None, f"{name}:{bad.get(ticker) or bad.get('*') or 'Cboe 沒有這一格'}(下一輪再試)"
     _YF_LAST_DATE[ticker] = q['date']
+    # 🕐 V82.4.2 成交時間早於 15:59 + 美東現在還在交易 = 盤中 → 標起來(半天市收完那幾小時不算:那是真的收盤)
+    if q.get('note') and q.get('time') and _LQ.us_cash_intraday(q['date']):
+        _INTRADAY[ticker] = q['time'][:5]
     return q['close'], q['chg'], q.get('note')
 
 
@@ -1312,6 +1316,9 @@ def fetch_us2y_yield():
 
 # ════════ 🌍 全球巨頭脈動採集（8 大國際資金真實流向）════════
 _YF_LAST_DATE: dict = {}   # V71.5.1 來源鍵(yfinance ticker 或官方來源,如 UST10Y_SRC)→ 該筆收盤的資料日期(擋「成功但過期」的覆蓋)
+# 🕐 V82.4.2 來源鍵 → 美東 'HH:MM'(這一格是美股還在交易時抓的盤中價)→ 寫成 `{key}_intraday`,App 寫「盤中」、⛔ 當收盤
+_INTRADAY: dict = {}
+_US_CASH_YF = ('^IXIC', '^SOX', '^GSPC', '^DJI')   # 美股現貨指數(⛔ 期貨 / 原油 / 匯率:幾乎 24 小時在交易,規則不適用)
 
 
 def _fetch_yf_future(ticker, name):
@@ -1498,6 +1505,9 @@ PREMKT_SNAP_KEYS = (
     "fear_greed", "usdtwd_chg_pct", "usdtwd_chg_5d", "krw_chg_5d", "cny_chg_5d",
     "nikkei_chg_pct", "kospi_chg_pct", "hsi_chg_pct", "nikkei_date", "kospi_date", "hsi_date",
     "taiex_date", "fi_three_date",
+    # 🕐 V82.4.2 盤中標記(_premktScore 看到就不算那一格;⛔ 沒存的話回頭看「早上那份」會把盤中價算進去)
+    "dji_intraday", "nasdaq_intraday", "sp500_intraday", "sox_intraday",
+    "tsm_intraday", "asx_intraday", "umc_intraday", "vix_intraday",
 )
 PREMKT_WIN = (5 * 60, 9 * 60)   # 台北 05:00~08:59:美股收盤之後、台股開盤之前
 PREMKT_RECENT_N = 5             # macro_risk.json 裡只留最近 5 天(約 4KB;晚上那輪漏跑一兩天也補得回來)
@@ -1600,19 +1610,25 @@ def _premkt_log_write(recent, path=None, now_tw=None):
         return f"⚠️ premkt_log 寫入失敗(不影響其他):{str(e)[:80]}"
 
 
-def _apply_big_player(out, key, key_alias, val, chg, err, _new_d, _prev_json):
-    """V71.5.1 / V79.5.2 寫入一個全球指標,套「日期不可倒退」;回 True = 這次抓到的比上一份舊、保留上一份。"""
+def _apply_big_player(out, key, key_alias, val, chg, err, _new_d, _prev_json, intraday=None):
+    """V71.5.1 / V79.5.2 寫入一個全球指標,套「日期不可倒退」;回 True = 這次抓到的比上一份舊、保留上一份。
+    🕐 V82.4.2 `intraday` = 這一格是美股盤中抓的(美東 'HH:MM')→ 寫 `{key}_intraday`;保留上一份時標記跟著那一份走。"""
     _old_d = _prev_json.get(f"{key}_date")
     _old_v = _prev_json.get(key_alias[key])
+    out.pop(f"{key}_intraday", None)
     if _should_keep_old(val, _new_d, _old_v, _old_d):
         out[key_alias[key]]   = _old_v
         out[f"{key}_chg_pct"] = _prev_json.get(f"{key}_chg_pct")
         out[f"{key}_date"]    = _old_d
         out[f"{key}_error"]   = f"來源回舊資料({_new_d}),已保留 {_old_d} 的值"
+        if _prev_json.get(f"{key}_intraday"):
+            out[f"{key}_intraday"] = _prev_json[f"{key}_intraday"]
         return True
     out[key_alias[key]]      = val
     out[f"{key}_chg_pct"]    = chg
     out[f"{key}_error"]      = err
+    if intraday and val is not None:
+        out[f"{key}_intraday"] = intraday
     if _new_d:
         out[f"{key}_date"]   = _new_d
     elif _old_d and val is None:
@@ -1642,6 +1658,7 @@ def _fetch_yf_close(ticker, name):
     而非固定 iloc[-1]/[-2](日股港股假日多,最後一格常是 NaN)。
     退階重試:5d 取不到 → 拉長 1mo 再試,涵蓋連假。含防 429:呼叫前小睡。"""
     import time
+    _INTRADAY.pop(ticker, None)   # 🕐 V82.4.2 先清掉(這輪沒抓到 → ⛔ 留著上一次的盤中標記)
     last_err = f"{name} 重試後仍失敗"
     periods = ["5d", "1mo"]   # 退階:5 日不夠就拉 1 個月,確保連假後仍有 2 個有效交易日
     for attempt, period in enumerate(periods):
@@ -1675,6 +1692,12 @@ def _fetch_yf_close(ticker, name):
                 _YF_LAST_DATE[ticker] = str(closes.index[-1].date())
             except Exception:
                 _YF_LAST_DATE.pop(ticker, None)
+            # 🕐 V82.4.2 美股現貨指數在美股還在交易時,最後一根 = 今天到現在 → 標盤中 + error 寫「方向待確認」
+            #   (data_audit 認得這幾個字 = 有交代的降級;值照給、App 只顯示、⛔ 當收盤算分)
+            _ia = _LQ.us_cash_intraday(_YF_LAST_DATE.get(ticker)) if ticker in _US_CASH_YF else ''
+            if _ia:
+                _INTRADAY[ticker] = _ia
+                return round(last, 2), chg_pct, f"{name}:美東 {_ia} 抓的,美股還沒收盤(盤中價,方向待確認)"
             return round(last, 2), chg_pct, None
         except Exception as e:
             last_err = str(e)[:100]
@@ -3662,7 +3685,7 @@ def main():
         val, chg, err = fn()
         _tk = _ticker_of.get(key)
         _new_d = _YF_LAST_DATE.get(_tk) if _tk else None
-        if _apply_big_player(out, key, key_alias, val, chg, err, _new_d, _prev_json):
+        if _apply_big_player(out, key, key_alias, val, chg, err, _new_d, _prev_json, _INTRADAY.get(_tk) if _tk else None):
             # 這次抓到的比上次存的還舊 → 不覆蓋
             _old_d = _prev_json.get(f"{key}_date")
             _stale_kept.append(f"{name}({_new_d}<{_old_d})")
@@ -3853,6 +3876,9 @@ def main():
                 if out.get(key) is None and prev.get(key) is not None:
                     out[key] = prev[key]
                     patched.append(key)
+                    # 🕐 V82.4.2 沿用的那一份是盤中抓的 → 標記一起沿用(⛔ 沿用之後就看起來像收盤)
+                    if prev.get(f"{key}_intraday") and not out.get(f"{key}_intraday"):
+                        out[f"{key}_intraday"] = prev[f"{key}_intraday"]
             # 📅 V71.6.1 月累計的斷崖防護只能在「同一個月內」沿用。
             #    跨月了還沿用上個月的累計 → 8/3 會顯示「7月累計 −7,582 億」,月份對但語意錯
             #    (使用者要的是「這個月賣多少」)。跨月且本輪沒抓到 → 整組清空,卡片自己隱藏。

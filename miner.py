@@ -5058,6 +5058,9 @@ _YF_MACRO_SYMBOLS = {'nasdaq': '^IXIC', 'sox': '^SOX',
                      'ukoil': 'BZ=F',     # 布蘭特原油期貨
                      'dxy':   'DX-Y.NYB', # 美元指數
                      }
+# 🕐 V82.4.2 美股現貨指數(美東 16:00 收)→ 美股還在交易時抓的那格標 intraday;
+#   ⛔ 原油期貨 / 美元指數幾乎 24 小時在交易,「今天那根」本來就是現在的價 → 不套(lib_quotes.us_cash_intraday 的規則只給美股現貨)
+_YF_US_CASH = ('nasdaq', 'sox')
 
 
 def _trim_years(rows, years=INDEX_HIST_YEARS, today=None):
@@ -5206,9 +5209,11 @@ def _index_long_official(key, result, gate, _get=None):
         print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
 
 
-def _cboe_macro(result, qgate):
+def _cboe_macro(result, qgate, now_utc=None):
     """💱 macro_cache 的美股 / ADR / VIX → Cboe 延遲報價;格式照舊 {date, close, prev, chg_pct}(prev 由收盤與漲跌%反推)。
-    拿不到 → 寫 *_error(⛔ 默默少一格;data_audit 看得到原因)。"""
+    拿不到 → 寫 *_error(⛔ 默默少一格;data_audit 看得到原因)。
+    🕐 V82.4.2 美股還在交易時抓到的(Cboe 成交時間早於 15:59 + 美東現在還在 09:30~16:20)→ 多一個 `intraday: '美東 HH:MM'`;
+       App 看到就寫「盤中」、⛔ 當收盤用。以前那句「盤中價,方向待確認」只印在 log,檔案裡看不出來(11/16 那輪就是這樣)。"""
     import lib_quotes as _LQ
     try:
         got, bad = _LQ.cboe_quotes(qgate, list(_CBOE_MACRO_SYMBOLS.values()))
@@ -5222,12 +5227,15 @@ def _cboe_macro(result, qgate):
             continue
         prev = q['close'] / (1 + q['chg'] / 100) if q['chg'] > -100 else None
         result[key] = {'date': q['date'], 'close': q['close'], 'prev': round(prev, 2) if prev else None, 'chg_pct': q['chg']}
-        print(f"  {key}: {q['close']} ({q['chg']:+.2f}%;Cboe {q['date']}{';' + q['note'] if q.get('note') else ''})")
+        if q.get('note') and q.get('time') and _LQ.us_cash_intraday(q['date'], now_utc):
+            result[key]['intraday'] = q['time'][:5]
+        print(f"  {key}: {q['close']} ({q['chg']:+.2f}%;Cboe {q['date']}{';' + q['note'] if q.get('note') else ''}"
+              f"{';🕐 標成盤中' if result[key].get('intraday') else ''})")
 
 
-def fetch_us_macro_cache(_gate=None, _get=None, _qgate=None):
+def fetch_us_macro_cache(_gate=None, _get=None, _qgate=None, _now=None):
     """macro_cache.json(美股 / ADR / 13 週美債 / 原油 / 美元指數 / 加權 / 櫃買)+ data/^TWII.json、^TWOII.json。
-    `_gate`(lib_official 的連線)/ `_get`(讀已發佈那份)/ `_qgate`(lib_quotes 的連線)只給測試換成假的。"""
+    `_gate`(lib_official 的連線)/ `_get`(讀已發佈那份)/ `_qgate`(lib_quotes 的連線)/ `_now`(現在的 UTC 時間)只給測試換成假的。"""
     today = date.today()
     result = {}
     try:
@@ -5237,7 +5245,7 @@ def fetch_us_macro_cache(_gate=None, _get=None, _qgate=None):
         yf, yf_why = None, f'{type(e).__name__}: {str(e)[:60]}'
     print(f"\n🌐 抓取美股昨收資料（{today}）...")
     import lib_quotes as _LQ
-    _cboe_macro(result, _qgate or _LQ.make_gate())
+    _cboe_macro(result, _qgate or _LQ.make_gate(), _now)
     if yf is None:
         print(f"⚠️  yfinance 載入失敗({yf_why})→ 還沒換掉的那 {len(_YF_MACRO_SYMBOLS)} 格這輪沒有;"
               f"美股 / ADR(Cboe)、加權 / 櫃買 / 13 週美債(官方)照常")
@@ -5260,7 +5268,11 @@ def fetch_us_macro_cache(_gate=None, _get=None, _qgate=None):
                 'chg_pct': round((float(last['Close']) - float(prev['Close'])) /
                                   float(prev['Close']) * 100, 2),
             }
-            print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
+            # 🕐 V82.4.2 美股還在交易時,yfinance 最後一根就是「今天到現在」→ 同 Cboe 那幾格標 intraday(⛔ 當收盤)
+            _ia = _LQ.us_cash_intraday(result[key]['date'], _now) if key in _YF_US_CASH else ''
+            if _ia:
+                result[key]['intraday'] = _ia
+            print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%{f';🕐 美東 {_ia} 盤中' if _ia else ''})")
         except Exception as e:
             result[f'{key}_error'] = f'yfinance 例外 {type(e).__name__}({ticker})'
             print(f"  ⚠️  {ticker}: {e}")
