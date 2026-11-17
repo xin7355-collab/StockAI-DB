@@ -1,6 +1,6 @@
 {
   "_note": "一次性事件人工編輯區。Claude 可代為更新。系統會自動讀取此檔合併進 macro_risk.json 的 upcoming_macro_events,前端在【即將引爆】卡會顯示。",
-  "_format": "events array,每筆需有 date (YYYY-MM-DD) 與 event(含 emoji 與簡述)",
+  "_format": "events array,每筆需有 date (YYYY-MM-DD) 與 event(含 emoji 與簡述;只講是什麼日子,⛔ 寫會漲會跌、波動激增這類沒測過的警語 —— scripts/test_macro_calendar.py 會掃)",
   "events": [
     {
       "date": "2026-06-12",
@@ -8,7 +8,7 @@
     },
     {
       "date": "2026-06-19",
-      "event": "🔮 美股四巫日 (期權結算疊加,波動激增)"
+      "event": "🇺🇸 美股四巫日 (季月期貨、選擇權同一天結算)"
     }
   ]
 }
