@@ -30,6 +30,9 @@
  *   INJECT=nodedup     連點不去重                               → ⑥ 紅
  *   INJECT=nobody      ⛔ 讀回應內容(= 舊行為只看 res.status)    → ① ② 紅
  * ⚠️ 沙箱連不到三家 API → 一律 stub `safeFetch`(回真的 Response 物件);每組都有空過守門(stub 真的被叫到)。
+ * 🔕 2026-11-17 財經行事曆的背景預載(askEventImpactAI auto=true)在這支測試裡擋掉 —— 有事件的日子它會落進 ⑥ / ⑦ 的量測窗口
+ *    (多打一次 API、改掉 chip)。⑥ / ⑦ 每次都把預載「強迫」落進窗口一次(決定性,⛔ 靠負載):
+ *    AI429_NOBGFIX=1 不擋 → ⑥a ⑥b 必紅(證明擋那一步有作用);⑦ 那邊強迫時 chip 沒被改到,⑦⓪b 只證明預載確實落進窗口。
  */
 import fs from 'fs';
 import path from 'path';
@@ -169,7 +172,26 @@ await page.evaluate((C) => {
         A.settings.geminiKeys = m.map(k => ({ k, on: true }));
         A.settings.openrouterKeys = o.map(k => ({ k, on: true }));
     };
-}, C);
+    // 🔕 2026-11-17 財經行事曆的「背景預載」關掉:今天 / 明天有重要事件時,`_renderUpcomingMacroEvents` 會 setTimeout 3 秒後
+    //    自動問一次 AI(`askEventImpactAI(…, auto=true)` → `_callDeepAI` → 我們的假 safeFetch)。那一次跟這支測的東西無關,
+    //    但它落在 ⑥ 數 API 次數 / ⑦ 量 chip 的那一小段時間裡,就會多一次呼叫(posts 4 / 5)、把 chip 改掉 → 有事件的日子、機器忙時才紅。
+    //    ⭐ 只擋 auto=true 那一條(背景預載);使用者自己點 🔍 的那條(auto 沒給)照常走,⛔ 動 App 本身,⛔ 放寬 ⑥ / ⑦ 的判斷。
+    //    擋下來的次數記在 S.bgAsk,⑥⓪ / ⑦⓪ 拿它證明「強迫預載落進量測窗口」那一步真的有發生(⛔ 空過)。
+    S.bgAsk = 0;
+    if (!C.__noBgFix) {
+        const ask = A.askEventImpactAI.bind(A);
+        A.askEventImpactAI = function (ev, idx, auto) { if (auto) { S.bgAsk++; return Promise.resolve(); } return ask(ev, idx, auto); };
+    }
+    // 決定性重現:把行事曆的背景預載「強迫」落進量測窗口(延遲 3,000ms 那個 setTimeout 改成 0,其他照舊)——
+    //    ⛔ 靠機器負載碰運氣;明天是台指期結算(重要度高、日期確定)= 線上真的會預載的那種日子
+    S.forceBgPrefetch = () => {
+        const st = window.setTimeout, td = A.getTodayStr().replace(/\//g, '-');
+        const tm = (() => { const d = new Date(td + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();
+        window.setTimeout = (f, ms, ...a) => st(f, ms === 3000 ? 0 : ms, ...a);
+        try { A._renderUpcomingMacroEvents([{ date: tm, event: '🇹🇼 台指期月結算 (每月第三個星期三)', kind: 'settle', severity: 'high' }]); }
+        finally { window.setTimeout = st; }
+    };
+}, { ...C, __noBgFix: !!process.env.AI429_NOBGFIX });
 
 // ── ① 共用案例(JS)──
 const R1 = await page.evaluate(async (C) => {
@@ -403,7 +425,9 @@ const R6 = await page.evaluate(async () => {
     const p2 = A._callAI({ prompt: '⑥ 同一題', max_tokens: 300 });
     const p3 = A._callAI({ prompt: '⑥ 不同題', max_tokens: 300 });
     o.same = p1 === p2; o.diff = p1 !== p3;
+    const bg0 = S.bgAsk; S.forceBgPrefetch();   // 行事曆背景預載強迫落在這裡(量測窗口裡)
     await new Promise(r => setTimeout(r, 50));
+    o.bgHit = S.bgAsk - bg0;
     open(); S.gate = null;
     const [a, b, c] = await Promise.all([p1, p2, p3]);
     o.vals = [a, b, c];
@@ -428,6 +452,7 @@ const R6 = await page.evaluate(async () => {
     o.inflightAfter = A._aiInflight ? A._aiInflight.size : 0;
     return o;
 });
+if (!process.env.AI429_NOBGFIX) ok('⑥⓪ 空過守門:行事曆背景預載真的落進 ⑥ 的量測窗口(被擋下來 ≥ 1 次)', R6.bgHit >= 1, JSON.stringify(R6));
 ok('⑥a ⭐ 連點兩下同一題 → 兩個拿到同一個 Promise、API 只打一次(不同題照打)',
     R6.same && R6.diff && R6.posts1 === 2 && R6.vals[0] === R6.vals[1], JSON.stringify(R6));
 ok('⑥b 回來之後再問 → 照常再打(⛔ 快取結果)', R6.posts2 === 3, JSON.stringify(R6));
@@ -473,7 +498,9 @@ const R7 = await page.evaluate(async () => {
     A._setAIStatus(null, null, 'failed', [
         { provider: 'groq', kind: 'quota', until: Date.now() + 3600e3 }, { provider: 'gemini', kind: 'rate', until: Date.now() + 40e3 },
         { provider: 'openrouter', kind: 'billing', until: Date.now() + 3600e3 }]);
+    const bg0 = S.bgAsk; S.forceBgPrefetch();   // 行事曆背景預載強迫落在 chip 畫好、量之前
     await new Promise(r => setTimeout(r, 100));
+    const bgHit = S.bgAsk - bg0;
     const box = document.getElementById('aiCoolList');
     box.scrollIntoView({ block: 'center' });
     window.scrollTo(80, 0); const sx = Math.round(window.scrollX); window.scrollTo(0, 0);
@@ -490,8 +517,9 @@ const R7 = await page.evaluate(async () => {
     const chip = document.getElementById('aiStatusChip');
     const cr = chip.getBoundingClientRect();
     if (cr.right > W + 1 || cr.left < -1) out.push(`chip 超出螢幕 L${Math.round(cr.left)} R${Math.round(cr.right)}`);
-    return { sx, out, n: els.length, w: Math.round(box.getBoundingClientRect().width), W, chipW: Math.round(cr.width), chipTxt: chip.innerText };
+    return { sx, out, n: els.length, w: Math.round(box.getBoundingClientRect().width), W, chipW: Math.round(cr.width), chipTxt: chip.innerText, bgHit };
 });
+if (!process.env.AI429_NOBGFIX) ok('⑦⓪b 空過守門:行事曆背景預載真的落進 ⑦ 的量測窗口(被擋下來 ≥ 1 次)', R7.bgHit >= 1, R7.bgHit);
 ok(`⑦a 390px:「AI 現在狀態」${R7.n} 個元素 + chip ⛔ 超出(逐元素跟父層 / 螢幕比)`, R7.n >= 10 && R7.out.length === 0, R7.out.join(' | '));
 ok('⑦b 真的去捲:⛔ 能橫向捲動', R7.sx <= 2, R7.sx);
 ok(`⑦c 空過守門:列表真的有寬度(${R7.w}px / 螢幕 ${R7.W}px)、chip 有內容`, R7.w >= 250 && R7.chipW > 50 && /AI 暫時都不能用/.test(R7.chipTxt), JSON.stringify(R7));
