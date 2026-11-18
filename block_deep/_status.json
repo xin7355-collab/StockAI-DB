@@ -1,18 +1,17 @@
 {
- "updated": "2026-11-17T13:50:08Z",
+ "updated": "2026-11-18T14:35:06Z",
  "start": "2009-01",
  "months_total": 215,
- "months_complete": 174,
- "days_with_data": 3553,
- "fetched_this_run": 25,
- "asked_this_run": 26,
- "last_day": "20230726",
- "stopped": "20230727 斷路:要 JSON 卻回 HTML(擋頁)",
- "more": 0,
+ "months_complete": 181,
+ "days_with_data": 3691,
+ "fetched_this_run": 150,
+ "asked_this_run": 150,
+ "last_day": "20240221",
+ "stopped": "",
+ "more": 1,
  "gate": {
-  "sent": 26,
+  "sent": 150,
   "retried": 0,
-  "tripped": 1
- },
- "blocked_page": "網站維護中 - 臺灣證券交易所"
+  "tripped": 0
+ }
 }
