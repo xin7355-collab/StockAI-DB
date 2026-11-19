@@ -10,22 +10,52 @@
  *     同期 0050 扣 ETF 成本;缺買進日 / 賣在買之前 / 沒有 K 線 → null
  *  ④ 鏡子實際打開:最上面有熔斷 + 總風險,背景抓 K 線後 📐 那塊填進來;⛔ 不改使用者存的交易紀錄
  *  ⑤ 熔斷了 → 標題列那顆鈕看得到燈
- *  ⑥ 新增持倉視窗:填了成本股數才算、超過單筆風險設定要說、沒填帳戶要說出來
+ *  ⑥ 新增持倉視窗(真的入口 ➕ 手動新增):填了成本股數才算、超過單筆風險設定要說、沒填帳戶要說出來
  *  ⑦ 新的字 ⛔ 🔴🟢(燈號鐵則)、⛔ 研究字樣(散戶 App 鐵則,跟 test_retail_clean 同一份清單)
  *  ⑩ V82.0.9 總風險只算有停損線的(👑 名單上 / 大跌撿便宜 / ETF ⛔ 算進「碰到停損」,另寫一行;決定性對照:集合清空 → 照舊算)
  *  ⑪ V82.2.6 帳戶總資金過期(`_acctBase`:總資金 < 股票 + 0050 × 0.98 = _leadSlot 同一條)→ 熔斷 / 總風險 / 該買幾張 / 新增持倉 ⛔ 給 %、
  *     ⛔ 🟠、鏡子鈕 ⛔「先停手」;決定性對照:只把總資金改 100 萬 → 照舊算;有算到的都已經在停損下面 → ⛔「賠 0 元」
  *  ⑧ V80.0.9 決策台「🧯 你的風控」一行:大盤三種狀態(嚴格空頭 / 跌破 60 日線但還不算 / 在上面)讀 `_mktBear60` 那份、
  *     你的空頭守門設定跟著變(決定性對照:同一份大盤改設定)、有記賣出才顯示熔斷、總風險同 ②;⛔ 🔴🟢、⛔ 研究字樣;登記在 `_DECK_SECTIONS`
- * 跑法:node scripts/test_discipline.mjs
+ * 跑法:node scripts/test_discipline.mjs ・INJECT=1 node scripts/test_discipline.mjs(V82.5.1:四種改壞各自要紅,⛔ 動到真的 index.html)
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
 import { badOf } from './lib_retailbad.mjs';
+import os from 'os';
+import { spawnSync } from 'child_process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// 🧪 V82.5.1 注入驗證:每一種改壞都寫到暫存資料夾的一份 index.html(data/ 用捷徑接回來),開子程序跑同一支測試,要紅才算數
+const INJ = {
+    // 兩格都填了也不自動展開 → 又變成「有做但沒人看得到」
+    noauto: ["if (det && cost > 0 && sh > 0 && !S._preOpened) { S._preOpened = 1; if (!det.open) det.open = true; }", ""],
+    // 你收起來之後,再打一個字又自己打開
+    reopen: ["if (det && cost > 0 && sh > 0 && !S._preOpened) {", "if (det && cost > 0 && sh > 0) {"],
+    // 賠多少又自己寫一份(不看手續費折數、最低手續費)
+    oldfee: ["const loss = _np == null ? (cost - stop) * sh : -_np;", "const loss = (cost - stop) * sh + cost * sh * 0.001425 * 2 + stop * sh * 0.003;"],
+    // 打不開的舊視窗復活
+    dead: ["<!-- 🧹 V82.5.1 舊的「新增持倉」視窗 invModal 已刪", "<div id=\"invModal\" class=\"hidden\"></div><!-- 🧹 V82.5.1 舊的「新增持倉」視窗 invModal 已刪"],
+};
+if (process.env.INJECT) {
+    const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    let missed = 0;
+    for (const [k, [from, to]] of Object.entries(INJ)) {
+        if (!src.includes(from)) { console.log(`❌ 注入 ${k}:原始碼找不到要換的那一段(程式改了?)`); missed++; continue; }
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'disc-inj-'));
+        fs.writeFileSync(path.join(dir, 'index.html'), src.replace(from, to));
+        try { if (fs.existsSync(path.join(ROOT, 'data'))) fs.symlinkSync(path.join(ROOT, 'data'), path.join(dir, 'data')); } catch (_) {}
+        const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], { env: { ...process.env, INJECT: '', DISC_SRC: path.join(dir, 'index.html') }, encoding: 'utf8', timeout: 600000 });
+        const red = (r.stdout || '').split('\n').filter(l => l.startsWith('❌'));
+        console.log(`${r.status !== 0 && red.length ? '✅' : '❌'} 注入 ${k} → ${red.length ? `紅 ${red.length} 條(${red.slice(0, 2).map(x => x.slice(2, 60)).join(' / ')})` : `⛔ 沒有任何一條紅(rc=${r.status})`}`);
+        if (!(r.status !== 0 && red.length)) missed++;
+        try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_) {}
+    }
+    process.exit(missed ? 1 : 0);
+}
+const SRC_HTML = process.env.DISC_SRC || path.join(ROOT, 'index.html');
 const FAIL = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + String(e).slice(0, 300)}`); if (!c) FAIL.push(n); };
 const exe = process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -33,7 +63,7 @@ const browser = await chromium.launch({ ...(fs.existsSync(exe) ? { executablePat
 const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
 const errs = [];
 page.on('pageerror', e => { const t = (e && e.message) || String(e); if (!/Failed to load|net::ERR_|CORS/i.test(t)) errs.push(t); });
-await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
+await page.goto('file://' + SRC_HTML, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof app !== 'undefined' && typeof app._acctBreaker === 'function', null, { timeout: 60000 });
 await page.waitForTimeout(1500);
 
@@ -105,21 +135,32 @@ const R = await page.evaluate(async () => {
     localStorage.setItem('proTerminalTradeLog', JSON.stringify([{ symbol: 'X', cost: 100, sellPrice: 101, shares: 1, date: today, net: 1 }]));
     out.btnOk = A._tradeMirrorBtnHtml();
     localStorage.removeItem('proTerminalTradeLog');
-    // ⑥ 新增持倉視窗
-    const m = document.getElementById('invModal'); m.classList.remove('hidden'); m.style.display = 'flex';
+    // ⑥ 新增持倉:走真的入口(➕ 手動新增那個視窗)。🧹 V82.5.1 以前這裡是自己把一個打不開的舊視窗 invModal 掀開來測 → 一直綠、使用者卻從來看不到
+    A._invEditDraft = A._invEditDraft || [];
+    A._addEmptyInvEditDraft();
     const det = document.getElementById('invPreTrade');
-    out.hasDrawer = !!det && !!document.getElementById('invPreTradeBody');
+    out.hasDrawer = !!det && !!document.getElementById('invPreTradeBody') && !!det.closest('#invManualAddModal');
+    out.preClosed0 = det.open === false;                 // 還沒填 → 不自動打開
     det.open = true; A._invPreTradeRender();
     out.preEmpty = document.getElementById('invPreTradeBody').textContent;
-    document.getElementById('invCostInput').value = '100';
-    document.getElementById('invSharesInput').value = '1000';
-    document.getElementById('invCostInput').dispatchEvent(new Event('input'));
+    det.open = false;
+    const ci = document.getElementById('manualAddCostInput'), si = document.getElementById('manualAddSharesInput');
+    ci.value = '100'; ci.dispatchEvent(new Event('input'));
+    out.preHalf = det.open === false;                    // 只填成本 → 還不打開
+    si.value = '1000'; si.dispatchEvent(new Event('input'));
+    out.preAuto = det.open === true;                     // 成本和股數都填了 → 自動打開(走輸入框自己的 oninput)
     out.preOne = document.getElementById('invPreTradeBody').innerHTML;
+    out.preLossWant = Math.round(-A._netPL(100, 95, 1000)).toLocaleString();   // 💰 V82.5.1 賠多少要跟全 App 同一支(_netPL)
+    det.open = false; si.value = '2000'; si.dispatchEvent(new Event('input'));
+    out.preStay = det.open === false;                    // 你自己收起來之後 ⛔ 再自動打開
+    si.value = '1000'; si.dispatchEvent(new Event('input')); det.open = true;
+    out.deadGone = !document.getElementById('invModal') && typeof A.confirmAddInventory === 'undefined' && typeof A.closeInvModal === 'undefined' && typeof A.handleInvSearchInput === 'undefined';
     A.settings.accountSize = 3e5; A._invPreTradeRender();
     out.preOver = document.getElementById('invPreTradeBody').textContent;
     A.settings.accountSize = 0; A._invPreTradeRender();
     out.preNoAcc = document.getElementById('invPreTradeBody').textContent;
     out.allNew = [out.brkHtml, out.riskHtml, out.riskHtmlNoAcc, out.newHtml, out.preOne, out.preOver, document.getElementById('invPreTrade').textContent].join('\n');
+    A._closeManualAddModal();
     return out;
 });
 
@@ -151,9 +192,12 @@ ok('④ 鏡子最上面有熔斷 + 總風險', R.hasRisk);
 ok('④ 背景抓完 K 線,📐 那塊填進來(2 筆)', R.xcN === 2 && /平均每筆/.test(R.mirrorTxt) && /0050/.test(R.mirrorTxt), R.mirrorTxt.slice(-400));
 ok('④ ⛔ 不改使用者存的交易紀錄', R.logSame);
 ok('⑤ 今天賠 3% → 鈕上看得到 🟡', /🟡 今天先停手/.test(R.btn) && !/先停手/.test(R.btnOk), R.btn.slice(-120));
-ok('⑥ 新增持倉視窗有「買之前看一眼」', R.hasDrawer);
+ok('⑥ 「買之前看一眼」在真的新增持倉視窗裡(➕ 手動新增)', R.hasDrawer);
+ok('⑥ 還沒填 / 只填成本 → 不自動打開;成本和股數都填了 → 自動打開一次;自己收起來之後不再打開', R.preClosed0 && R.preHalf && R.preAuto && R.preStay, JSON.stringify([R.preClosed0, R.preHalf, R.preAuto, R.preStay]));
+ok('⑥ 打不開的舊視窗 invModal 與它的函式都刪掉了(⛔ 留著 = 測試又會去測一個沒人看得到的東西)', R.deadGone);
 ok('⑥ 沒填成本股數 → 說要填什麼', /填了成本和股數/.test(R.preEmpty));
 ok('⑥ 填了 → 停損 95、這一筆碰到停損會賠多少', /data-pretrade="one"/.test(R.preOne) && /停損 95\.00/.test(R.preOne) && /買完之後/.test(R.preOne), R.preOne.slice(0, 300));
+ok('⑥ 那個賠多少 = _netPL(成本, 停損, 股數)(含你的手續費折數與最低手續費;⛔ 自己另寫一份)', R.preOne.includes('賠 <b>' + R.preLossWant + ' 元</b>'), R.preLossWant + ' | ' + R.preOne.slice(0, 260));
 ok('⑥ 帳戶 30 萬 → 超過單筆風險設定要說', /超過你設定的單筆/.test(R.preOver), R.preOver.slice(0, 300));
 ok('⑥ 沒填帳戶 → ⛔ 佔帳戶幾 %、要說出來', !/佔帳戶 \d/.test(R.preNoAcc) && /還沒填帳戶資金/.test(R.preNoAcc), R.preNoAcc.slice(0, 300));
 ok('⑦ 新的字 ⛔ 🔴🟢(燈號只代表漲跌)', R.newHtml.length > 200 && !/[🔴🟢]/u.test(R.allNew));
@@ -272,9 +316,9 @@ const V = await page.evaluate(() => {
         o.btn = A._tradeMirrorBtnHtml();
         o.deck = A._deckRiskHtml({ mkt: { on: true, c: 40000, ma20: 42000, ma60: 43000, d: '2026-11-12' } });
         o.lots = A._lotsForPlaybook(100, 95); o.lotsR = A._lotsForRisk(100, 95); o.cta = A._acctCta();
-        // 新增持倉視窗
-        const m = document.getElementById('invModal'); m.classList.remove('hidden'); m.style.display = 'flex'; m.dataset.editIdx = '-1';
-        document.getElementById('invCostInput').value = '100'; document.getElementById('invSharesInput').value = '1000';
+        // 新增持倉視窗(真的入口)
+        A._invEditDraft = A._invEditDraft || []; A._addEmptyInvEditDraft();
+        A._manualAddState.cost = 100; A._manualAddState.shares = 1000;
         A._invPreTradeRender(); o.pre = document.getElementById('invPreTradeBody').textContent;
         // ⭐ 決定性對照:同一份紀錄 / 持股,只把總資金改成 100 萬 → 照舊算出 % 與張數、鈕上照舊亮燈
         A.settings.accountSize = 1000000;
@@ -288,6 +332,7 @@ const V = await page.evaluate(() => {
         o.allBelow = A._totalRiskHtml(A._totalRisk([{ symbol: '9999', cost: 100, shares: 1, currentPrice: 90 }], 1e6));
         o.partBelow = A._totalRiskHtml(A._totalRisk([{ symbol: '9999', cost: 100, shares: 1, currentPrice: 90 }, { symbol: '8888', cost: 100, shares: 1, currentPrice: 110 }], 1e6));
     } finally {
+        try { A._closeManualAddModal(); } catch (_) {}
         A.inventory = keep.inv; A.settings.accountSize = keep.acc; A._deckQuoteOf = keep.q; A._tradeLogNet = keep.tl; A._leaderMine = keep.L; A._dipMine = keep.D; A._isLead = keep.I;
     }
     return o;

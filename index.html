@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.5.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.5.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1675,7 +1675,7 @@
         </div>
     </div>
 
-    <div id="invModal" class="modal-base hidden" data-edit-idx="-1" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="invModalTitle" class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" oninput="app._invPreTradeRender()" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有股數</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：1000 (股)" min="1" step="1" oninput="app._invPreTradeRender()" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><details id="invPreTrade" class="w-full mb-3 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5" ontoggle="if(this.open)app._invPreTradeRender()"><summary class="text-[12px] font-bold text-gray-200 cursor-pointer list-none">🧭 買之前看一眼 <span class="text-[10px] text-gray-500 font-normal">停損・這筆最多賠多少・總風險</span></summary><div id="invPreTradeBody" class="mt-1.5"></div></details><div class="flex justify-end gap-2"><button onclick="app.closeInvModal()" class="px-4 py-2 text-gray-400 border border-gray-700 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button id="invModalConfirmBtn" onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
+    <!-- 🧹 V82.5.1 舊的「新增持倉」視窗 invModal 已刪:全檔沒有任何地方打得開它(V80.0.4 的「買之前看一眼」掛在這裡 = 從來沒人看得到)。現在那一塊在真的新增流程 invManualAddModal 裡 -->
 
     <!-- 🤖 V44.8 — AI 股神(庫存純公式全解析,對標籌碼App;輸入問題→免費查引擎,零 API 額度)
          V45.5:移到 header-fixed 之外(個股頁隱藏 header 時,此彈窗才不會被一起 display:none) -->
@@ -4857,7 +4857,6 @@ const app = {
 
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#searchContainer')) document.getElementById('searchDropdown')?.classList.add('hidden');
-            if (!e.target.closest('#invSearchInputWrapper')) document.getElementById('invSearchDropdown')?.classList.add('hidden');
             if (!e.target.closest('#favEditAddRow')) document.getElementById('favSearchDropdown')?.classList.add('hidden');
         });
 
@@ -5558,6 +5557,64 @@ const app = {
             } catch (__) {}
             return fallback;
         }
+    },
+    // 🛟 V82.5.1 使用者自己的紀錄(賣出紀錄;之後還有心情日誌)專用的讀法 —— ⛔ 走上面那支 _lsJson:
+    //   _lsJson 讀不出來會把那個鍵刪掉(快取可以重建,你的紀錄不行)。以前觸發專欄就是用它讀賣出紀錄、
+    //   賣出時讀不出來又當成空的寫回去 → 壞一次,整本勝率鏡子就沒了,而且沒有任何訊息。
+    //   回 { arr, bad, saved }:
+    //     沒有 / 空的          → { arr: [], bad: false }
+    //     讀得出來的陣列        → { arr, bad: false }
+    //     讀不出來 / 不是陣列   → { arr: 救得回來的那幾筆(可能 0 筆), bad: true, saved: 原文有沒有另外留住 }
+    //   ⛔ 這支不改原本那個鍵;只在 bad 時把原文另存到 key + '_bad'(已經有一份不一樣的 → 存到 '_bad2',⛔ 蓋掉最早那份)。
+    _userLogBadKey(key) { return key + '_bad'; },
+    /** 半截的 JSON 陣列(寫到一半)→ 從後面往前找最後一筆完整的,補上 ] 再讀;救不回回 null。純函式 */
+    _jsonArrSalvage(raw) {
+        const s = String(raw == null ? '' : raw).trim();
+        if (s[0] !== '[') return null;
+        let cut = s.length;
+        for (let i = 0; i < 400; i++) {
+            cut = s.lastIndexOf('}', cut - 1);
+            if (cut < 0) break;
+            try { const v = JSON.parse(s.slice(0, cut + 1) + ']'); if (Array.isArray(v)) return v; } catch (_) {}
+        }
+        return null;
+    },
+    _userLogRead(key) {
+        let raw = null;
+        try { raw = localStorage.getItem(key); } catch (_) { return { arr: [], bad: false }; }
+        if (raw == null || raw === '') return { arr: [], bad: false };
+        try { const v = JSON.parse(raw); if (Array.isArray(v)) return { arr: v, bad: false }; } catch (_) {}
+        let saved = false;
+        try {
+            const bk = this._userLogBadKey(key), old = localStorage.getItem(bk);
+            if (old == null || old === '') { localStorage.setItem(bk, raw); saved = true; }
+            else if (old === raw) saved = true;
+            else { localStorage.setItem(bk + '2', raw); saved = true; }
+        } catch (_) {}
+        return { arr: this._jsonArrSalvage(raw) || [], bad: true, saved };
+    },
+    /** 賣出紀錄:**全檔唯一的寫入點**(test_selllog ⑤b)。存不進去回 false,⛔ 丟例外 */
+    _tradeLogWrite(arr) {
+        try { localStorage.setItem('proTerminalTradeLog', JSON.stringify(Array.isArray(arr) ? arr : [])); return true; } catch (_) { return false; }
+    },
+    /** 兩筆賣出紀錄是不是同一筆(備份還原合併用):代號 + 買進日 + 賣出日 + 賣價 + 股數 */
+    _tradeLogKey(t) { return [t && t.symbol, t && t.buyDate, t && t.date, t && t.sellPrice, t && t.shares].map(x => (x == null ? '' : String(x).replace(/-/g, '/'))).join('|'); },
+    /** 把備份裡的賣出紀錄併進現有的:已經有的不重複加、⛔ 蓋掉現有的;有加才照賣出日排一次(同一天照原順序)。純函式 */
+    _tradeLogMerge(cur, add) {
+        const out = Array.isArray(cur) ? cur.slice() : [], seen = new Set(out.map(t => this._tradeLogKey(t)));
+        let added = 0;
+        for (const t of (Array.isArray(add) ? add : [])) {
+            if (!t || typeof t !== 'object' || Array.isArray(t) || !t.symbol) continue;
+            const k = this._tradeLogKey(t);
+            if (seen.has(k)) continue;
+            seen.add(k); out.push(t); added++;
+        }
+        if (added) {
+            const dk = t => { const m = String((t && t.date) || '').match(/^(\d{4})\D(\d{1,2})\D(\d{1,2})/); return m ? +m[1] * 10000 + +m[2] * 100 + +m[3] : 0; };
+            const ix = new Map(out.map((t, i) => [t, i]));
+            out.sort((a, b) => dk(a) - dk(b) || ix.get(a) - ix.get(b));
+        }
+        return { arr: out, added };
     },
 
 
@@ -9003,10 +9060,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.5.0',
+    _APP_VERSION: 'V82.5.1',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.5.1', d: [
+            '🛟 你的賣出紀錄(庫存頁「勝率鏡子」靠它算)現在會跟著設定裡的「📤 一鍵備份」一起存;還原時是跟手機上現有的合併,不會蓋掉、也不會重複',
+            '🩹 補掉兩個會讓賣出紀錄整本不見的洞:資料存到一半壞掉時,以前會被當成空的再蓋回去;現在救得回幾筆算幾筆,讀不出來的那一段另外留一份,鏡子上會講一聲',
+            '🧭 新增持倉的「買之前看一眼」(這筆碰到停損會賠多少、佔帳戶多少、買完之後的總風險)以前其實打不開;現在就在新增持倉那個視窗裡,成本和股數填好會自己展開',
+            '📲 換手機或重灌之前,記得先按一次「📤 一鍵備份」—— 雲端同步只送自選和庫存,賣出紀錄只在這支手機和備份檔裡',
+        ], dt: '2026-11-18' },
         { v: 'V82.5.0', d: [
             '📅 財經行事曆每個日子下面多一句「這種日子:…」—— 拿加權指數 2000 年到現在每一天去量:連休後第一個交易日大盤比平常顛,結算日、CPI、非農這些日子跟平常一樣;只講會不會晃,⛔ 不預測漲跌',
             '🚨 行事曆那條紅色閃爍的「重大事件來襲 — 新單暫緩」拿掉了,改成不閃的「📅 明天 / 今天」;大盤風險指數也不再因為明天有結算日、CPI 這類事件就自動多 10 分',
@@ -9326,11 +9389,6 @@ ${list}
             '🗑️ 渣男賽車那條「大盤跌破 5 日線,追突破訊號已自動過濾」的提示跟著拿掉;Telegram 盤後總結也不再列朱家泓今日選股',
             '🔀 設定裡的策略拿掉「📈 錢放現金」:選它的人會自動換成「🅿️ 閒錢停 0050」(同一份名單、同樣的買法,只差沒買股票的錢停在 0050),第一次打開會跳一次窗說明,可以一鍵換回',
             '👑 領頭羊不換(沒有別的做法比它好);自動下單沒有動',
-        ], dt: '2026-10-26' },
-        { v: 'V79.9.2', d: [
-            '📶 手機網路不穩時,選股頁、自選、觀察清單、AI 股神這些「一次抓很多檔」的背景掃描不再連跳好幾個「⚠️ 無法載入 XXXX 資料」紅框:抓不到的那幾檔會自己再試一次,還是不行就在那張卡底下寫一行灰字「有 N 檔這次沒抓到,下次打開會再抓」',
-            '📶 離開選股頁時,背景那個逐檔算「今日觸發」小標籤的迴圈會立刻停,不會再把紅框跳到決策台上',
-            '🔍 你自己點開的那一檔抓不到時,照舊會跳紅框告訴你',
         ], dt: '2026-10-26' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -11044,10 +11102,12 @@ ${list}
         const favN = Object.keys(this.favGroups || {}).length;
         const nowISO = new Date().toISOString();
         let data, fnamePart, descPart, keyN = 0;
+        // 🛟 V82.5.1 你自己的紀錄(賣出紀錄)也進備份 —— 以前沒有 → 換手機 / 清瀏覽器,整本勝率鏡子就沒了。只備份金鑰那一種不帶。
+        const _logs = this._backupLogs(), _logDesc = _logs.n ? ` / ${_logs.n} 筆賣出紀錄` : '';
         if (scope === 'holdings') {
             // 🚫 不含 set → 還原時完全不動你的金鑰/設定
-            data = { inv: this.inventory, favGroups: this.favGroups, _meta: { scope: 'holdings', exported_at: nowISO, version: 'V69.6.0', inv_count: invN, fav_groups_count: favN } };
-            fnamePart = '持股自選'; descPart = `${invN} 檔持股 / ${favN} 自選(不含金鑰,可安心分享)`;
+            data = { inv: this.inventory, favGroups: this.favGroups, ..._logs.data, _meta: { scope: 'holdings', exported_at: nowISO, version: 'V69.6.0', inv_count: invN, fav_groups_count: favN, trade_count: _logs.n } };
+            fnamePart = '持股自選'; descPart = `${invN} 檔持股 / ${favN} 自選${_logDesc}(不含金鑰,可安心分享)`;
         } else if (scope === 'keys') {
             const keySet = {};
             this._KEY_FIELDS.forEach(k => { if (this.settings[k] !== undefined) keySet[k] = this.settings[k]; });
@@ -11056,8 +11116,8 @@ ${list}
             data = { set: keySet, _meta: { scope: 'keys', exported_at: nowISO, version: 'V69.6.0', key_count: keyN } };
             fnamePart = 'API金鑰'; descPart = `${keyN} 把 API 金鑰/連線設定(敏感,單獨保管)`;
         } else {
-            data = { inv: this.inventory, favGroups: this.favGroups, set: this.settings, _meta: { scope: 'all', exported_at: nowISO, version: 'V69.6.0', inv_count: invN, fav_groups_count: favN } };
-            fnamePart = '完整'; descPart = `${invN} 檔持股 / ${favN} 自選 + 金鑰設定`;
+            data = { inv: this.inventory, favGroups: this.favGroups, set: this.settings, ..._logs.data, _meta: { scope: 'all', exported_at: nowISO, version: 'V69.6.0', inv_count: invN, fav_groups_count: favN, trade_count: _logs.n } };
+            fnamePart = '完整'; descPart = `${invN} 檔持股 / ${favN} 自選${_logDesc} + 金鑰設定`;
         }
         // 🔒 V69.6.2 有填密碼 → AES 真加密;沒填 → V48.4 輕混淆(一般人打不開)
         const pwd = this._getBackupPwd();
@@ -11096,6 +11156,28 @@ ${list}
             this._downloadBackupFile(encoded, fileName);
             _copyPromise.then(copied => this.showToast((copied ? '✅ 已下載 .txt 備份 + 複製剪貼簿・' : '✅ 已下載 .txt 備份・') + `${descPart}・已加密`, 'info'));
         }
+    },
+    /** 🛟 V82.5.1 備份要帶走的「你自己的紀錄」:賣出紀錄(救得回來的)+ 讀不出來那一段的原文(有才帶) */
+    _backupLogs() {
+        const rd = this._userLogRead('proTerminalTradeLog'), data = {};
+        if (rd.arr.length) data.tradeLog = rd.arr;
+        try { const b = localStorage.getItem(this._userLogBadKey('proTerminalTradeLog')); if (b) data.tradeLogBad = b; } catch (_) {}
+        return { data, n: rd.arr.length };
+    },
+    /** 🛟 還原:賣出紀錄是**合併**(已經有的不重複、⛔ 蓋掉現有的)。回 { added, note }(note 接在還原完成那句後面) */
+    _restoreLogs(data) {
+        const out = { added: 0, note: '' };
+        try {
+            const add = Array.isArray(data && data.tradeLog) ? data.tradeLog : [];
+            if (!add.length) return out;
+            const rd = this._userLogRead('proTerminalTradeLog');
+            if (rd.bad && !rd.saved) { out.note = '・⚠️ 賣出紀錄沒有併進來(現有的讀不出來,也沒有空間另外留一份)'; return out; }
+            const mg = this._tradeLogMerge(rd.arr, add);
+            if ((mg.added || rd.bad) && !this._tradeLogWrite(mg.arr)) { out.note = '・⚠️ 賣出紀錄寫不進去(手機空間不足)'; return out; }
+            out.added = mg.added;
+            out.note = mg.added ? `・賣出紀錄併進 ${mg.added} 筆` : '・賣出紀錄本來就都有了';
+        } catch (e) { console.warn('[restore logs]', e); out.note = '・⚠️ 賣出紀錄沒有併進來'; }
+        return out;
     },
     _downloadBackupFile(encoded, fileName) {
         // 💾 V77.0.2 改走唯一入口 _saveBlob(⛔ 不再自己寫一份)。
@@ -11152,14 +11234,16 @@ ${list}
         const hasInv = data?.inv !== undefined || data?.favGroups !== undefined;
         const hasSet = data?.set !== undefined && data.set && Object.keys(data.set).length > 0;
         const keyN = hasSet ? this._countBackupKeys(data.set) : 0;
+        const logN = Array.isArray(data?.tradeLog) ? data.tradeLog.filter(t => t && typeof t === 'object' && t.symbol).length : 0;   // 🛟 V82.5.1
         const scope = data?._meta?.scope || (hasInv && hasSet ? 'all' : hasInv ? 'holdings' : 'keys');
         const exportedAt = data?._meta?.exported_at ? data._meta.exported_at.slice(0, 10) : '未知日期';
         const items = [];
         if (hasInv) { items.push(`• ${invN} 檔持股`); items.push(`• ${favN} 個自選群組`); }
         if (hasSet) items.push(keyN > 0 ? `• 設定 / ${keyN} 把 API 金鑰` : '• App 設定');
+        if (logN) items.push(`• ${logN} 筆賣出紀錄(跟現有的合併,不會蓋掉)`);
         if (!items.length) { this.showToast('❌ 這個備份檔沒有可還原的內容'); return; }
         const scopeLbl = scope === 'holdings' ? '(只還原持股/自選,不會動你的金鑰)' : scope === 'keys' ? '(只還原 API 金鑰,不會動你的持股)' : '(完整備份)';
-        const previewMsg = `即將還原 ${exportedAt} 的備份 ${scopeLbl}:\n\n${items.join('\n')}\n\n會覆蓋上述項目,確定還原嗎?`;
+        const previewMsg = `即將還原 ${exportedAt} 的備份 ${scopeLbl}:\n\n${items.join('\n')}\n\n會覆蓋上述項目${logN ? '(賣出紀錄除外,那是合併)' : ''},確定還原嗎?`;
 
         this.showConfirm(previewMsg, () => {
             try {
@@ -11179,11 +11263,13 @@ ${list}
                 localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
                 this.activeGroupName = Object.keys(this.favGroups)[0] || "自選清單";
                 localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
+                const _lr = this._restoreLogs(data);   // 🛟 V82.5.1 賣出紀錄:合併,⛔ 蓋掉現有的
+                try { this.renderTradeJournal?.(); } catch (_) {}
 
                 // V16.8 — 不關閉 settings modal(避免「跳掉」),只收起還原面板 + toast 確認
                 document.getElementById('exportAreaContainer').classList.add('hidden');
                 area.value = '';
-                this.showToast(`✅ 還原完成!${items.join(' / ').replace(/•\s*/g, '')} 已復原`, 'info');
+                this.showToast(`✅ 還原完成!${items.filter(x => !/賣出紀錄/.test(x)).join(' / ').replace(/•\s*/g, '')}${items.some(x => !/賣出紀錄/.test(x)) ? ' 已復原' : ''}${_lr.note}`, 'info');
                 // V16.9 — 重抓 in-memory 衍生資料(剛剛清空),確保年線乖離/市場 stats 即時新算
                 this._loadMacroRiskCache?.();
                 this._loadMarketStats?.();
@@ -12160,16 +12246,6 @@ ${list}
             dd.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="app._addToGroup('${m.stock_id}', app.activeGroupName); document.getElementById('favDirectInput').value=''; document.getElementById('favSearchDropdown').classList.add('hidden'); app._favEditRerender && app._favEditRerender();"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span><span class="ml-1 font-bold text-sm">${m.stock_name}</span>${this._renderAttentionBadge(m.stock_id)}</li>`).join('');
             dd.classList.remove('hidden');
         } else dd.classList.add('hidden');
-    },
-
-    handleInvSearchInput(event) {
-        const val = event.target.value.trim().toLowerCase(), dropdown = document.getElementById('invSearchDropdown');
-        if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
-        const matches = this._filterStockList(val, 5);
-        if (matches.length > 0) {
-            dropdown.innerHTML = matches.map(m => `<li class="px-3 py-2 border-b border-[#30363d] text-white cursor-pointer hover:bg-orange-600 text-sm flex items-center transition-colors" onclick="document.getElementById('invModalInput').value='${m.stock_id}'; document.getElementById('invSearchDropdown').classList.add('hidden');"><span class="font-bold text-orange-200 w-16">${m.stock_id}</span> <span class="ml-1">${m.stock_name}</span>${this._renderAttentionBadge(m.stock_id)}</li>`).join('');
-            dropdown.classList.remove('hidden');
-        } else dropdown.classList.add('hidden');
     },
 
     triggerApiLock() {
@@ -23723,7 +23799,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const syms = [...held.keys(), ...fav].filter(s => /^\d{4,6}[A-Z]?$/.test(s)).slice(0, 40);
                 // 🔁 V79.3.3 近 30 天賣掉、現在沒在庫存的(交易日誌;每檔取最近一筆;最多多抓 5 檔,⛔ 不並發)
                 const sold = new Map(), lim30 = this._colAddDays(this._colToday().tdy, -30);
-                for (const t of (this._lsJson('proTerminalTradeLog', []) || [])) {
+                for (const t of this._userLogRead('proTerminalTradeLog').arr) {   // 🛟 V82.5.1 ⛔ 走 _lsJson(讀壞了會把整本刪掉)
                     const s = String((t && t.symbol) || ''), d = iso(t && t.date), px = +(t && t.sellPrice);
                     if (!/^\d{4,6}[A-Z]?$/.test(s) || held.has(s) || !(px > 0) || !d || d < lim30) continue;
                     const o = sold.get(s); if (!o || d > o.date) sold.set(s, { date: d, px });
@@ -49365,7 +49441,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             //   ⭐ 為什麼要有:填了買進日,K線圖與出場卡才會用**你真正的進場點**算 ATR 追蹤停利
             //      (跟回測的 chand2 一字不差);沒填就只能退回「近 20 日最高收盤」的代理版。
             //   🚨 舊部位多半是空的(自動填今天那條路是後來才加的),而**在這之前完全補不回來** ——
-            //      建倉 modal `invModal` 是死 UI(全檔沒有任何地方打得開它),
+            //      舊的建倉視窗 invModal 當時就是死 UI(全檔沒有任何地方打得開它;V82.5.1 已刪),
             //      而這個全頁編輯器只給 cost / shares 兩個框。
             //   ⚠️ 存進去的一律正規化成 `YYYY-MM-DD`(`<input type="date">` 只吃這種),
             //      而 `_exitLines` 兩種格式都吃得下(它有 replace(/\//g,'-'))。
@@ -49529,7 +49605,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         <div class="flex flex-col gap-0.5 min-w-0">
                             <div class="flex items-center gap-1">
                                 <button onclick="app._adjManualShares(-1000)" class="bg-[#21262d] hover:bg-gray-700 text-white px-2 py-2 rounded text-lg font-bold flex-shrink-0 w-10">−</button>
-                                <input type="number" id="manualAddSharesInput" placeholder="填股數,例 1000" min="0" step="1000" oninput="app._manualAddState.shares = +this.value || 0; app._updateManualLotHint();" class="flex-1 min-w-0 bg-[#0d1117] text-white text-center px-1 py-2 rounded border border-[#30363d] outline-none focus:border-blue-500 font-mono text-base">
+                                <input type="number" id="manualAddSharesInput" placeholder="填股數,例 1000" min="0" step="1000" oninput="app._manualAddState.shares = +this.value || 0; app._updateManualLotHint(); app._invPreTradeRender();" class="flex-1 min-w-0 bg-[#0d1117] text-white text-center px-1 py-2 rounded border border-[#30363d] outline-none focus:border-blue-500 font-mono text-base">
                                 <button onclick="app._adjManualShares(1000)" class="bg-[#21262d] hover:bg-gray-700 text-white px-2 py-2 rounded text-lg font-bold flex-shrink-0 w-10">+</button>
                                 <span class="text-gray-400 text-sm font-bold flex-shrink-0">股</span>
                             </div>
@@ -49540,12 +49616,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <div class="grid items-center gap-2" style="grid-template-columns:80px minmax(0,1fr)">
                         <label class="text-sm text-gray-300 font-bold">成本均價</label>
                         <div class="flex items-center gap-1">
-                            <input type="number" id="manualAddCostInput" placeholder="填入成本均價" min="0" step="0.01" oninput="app._manualAddState.cost = +this.value || 0;" class="flex-1 bg-[#0d1117] text-white px-3 py-2 rounded border border-[#30363d] outline-none focus:border-blue-500 font-mono text-base text-right">
+                            <input type="number" id="manualAddCostInput" placeholder="填入成本均價" min="0" step="0.01" oninput="app._manualAddState.cost = +this.value || 0; app._invPreTradeRender();" class="flex-1 bg-[#0d1117] text-white px-3 py-2 rounded border border-[#30363d] outline-none focus:border-blue-500 font-mono text-base text-right">
                             <span class="text-gray-400 text-sm font-bold ml-1">元</span>
                         </div>
                     </div>
                 </div>
-                <button onclick="app._confirmManualAdd()" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 mt-5 rounded-lg text-base font-black transition-colors">確定</button>
+                <details id="invPreTrade" class="keepbox mt-4 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5" style="background:#0d1117" ontoggle="if(this.open)app._invPreTradeRender()"><summary class="text-[12px] font-bold text-gray-200 cursor-pointer list-none">🧭 買之前看一眼 <span class="text-[10px] text-gray-500 font-normal">停損・這筆最多賠多少・總風險</span></summary><div id="invPreTradeBody" class="mt-1.5"></div></details>
+                <button onclick="app._confirmManualAdd()" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 mt-3 rounded-lg text-base font-black transition-colors">確定</button>
             </div>
         `;
         // focus 輸入框
@@ -49572,6 +49649,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const dropdown = document.getElementById('manualAddSymDropdown');
         if (dropdown) dropdown.classList.add('hidden');
         document.getElementById('manualAddSharesInput')?.focus();
+        this._invPreTradeRender();
     },
 
     _adjManualShares(delta) {
@@ -49580,6 +49658,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const input = document.getElementById('manualAddSharesInput');
         if (input) input.value = this._manualAddState.shares;
         this._updateManualLotHint();
+        this._invPreTradeRender();
     },
     // 💡 V51.8 即時把「股數」換算成「張」給使用者看,避免股/張搞混(1 張 = 1000 股;零股照顯小數)
     _updateManualLotHint() {
@@ -49759,8 +49838,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (_w0 || _wL) log.why = _w0 || _wL;
             if (_wL || (_w0 && item.whyLate)) log.whyLate = 1;   // 上次賣一部分時才補的,剩下那筆再賣也還是補的
             if (item.planStop === true || item.planStop === false || log.why) log.planStop = item.planStop === true ? 1 : 0;
-            let tradeLog = [];
-            try { const raw = JSON.parse(localStorage.getItem('proTerminalTradeLog') || '[]'); if (Array.isArray(raw)) tradeLog = raw; } catch (_) { tradeLog = []; }   // 壞掉就重建(V68.4.8)
+            // 🛟 V82.5.1 以前的紀錄讀不出來 ⛔ 當成空的再寫回去(那會把整本蓋掉):原文先另外留一份、救得回幾筆算幾筆;
+            //   連另外留一份都存不下(手機空間滿了)→ 這次先不寫,講清楚為什麼。
+            const _rd = this._userLogRead('proTerminalTradeLog');
+            if (_rd.bad && !_rd.saved) { msg('<span class="text-yellow-300">⚠️ 以前的賣出紀錄讀不出來,手機也沒有空間另外留一份 → 這次先不記,免得把舊的蓋掉。請先到設定做一次「📤 一鍵備份」或清出一點空間再試。</span>'); return false; }
+            const tradeLog = _rd.arr.slice();
             tradeLog.push(log);
             const rest = own - shares;
             // 真正的庫存:同步這一列在草稿裡的成本/買進日,再扣股數
@@ -49768,7 +49850,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (rest > 0) nextInv[oi] = { ...orig, cost: item.cost, buyDate: item.buyDate, shares: rest / 1000,
                 ...(this._whyOk(log.why) ? { why: log.why, ...(log.whyLate ? { whyLate: 1 } : {}) } : {}), ...(typeof item.planStop === 'boolean' ? { planStop: item.planStop } : {}) };
             else nextInv.splice(oi, 1);
-            localStorage.setItem('proTerminalTradeLog', JSON.stringify(tradeLog));
+            if (!this._tradeLogWrite(tradeLog)) throw new Error('賣出紀錄寫不進去');
             localStorage.setItem('proTerminalInv', JSON.stringify(nextInv));
             this.inventory = nextInv;
             // 草稿跟著改,並重排 _oi(拿掉一筆後後面的原始索引要往前)
@@ -49798,45 +49880,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     
-    closeInvModal() {
-        const m = document.getElementById('invModal');
-        if (m) { m.classList.add('hidden'); m.style.display = ''; }
-    },
-
-    confirmAddInventory() {
-        const rawSym = document.getElementById('invModalInput').value.trim();
-        const date = document.getElementById('invBuyDateInput').value.replace(/-/g, '/');
-        if(!rawSym) return;
-        const cost = parseFloat(document.getElementById('invCostInput').value) || 0;
-        const sharesInput = parseFloat(document.getElementById('invSharesInput').value) || 0;
-        const shares = sharesInput / 1000; // convert 股 to 張 for internal storage
-
-        const modal = document.getElementById('invModal');
-        const editIdx = parseInt(modal.dataset.editIdx ?? '-1', 10);
-
-        if (editIdx >= 0 && this.inventory[editIdx]) {
-            // Edit mode: update existing entry
-            const found = this.allStockList.find(s => s.stock_id === rawSym || s.stock_name === rawSym);
-            const sym = found ? found.stock_id : rawSym;
-            this.inventory[editIdx].symbol = sym;
-            this.inventory[editIdx].cost = cost;
-            if (shares > 0) this.inventory[editIdx].shares = shares;
-            this.inventory[editIdx].buyDate = date;
-        } else {
-            // Add mode: push new entry
-            const found = this.allStockList.find(s => s.stock_id === rawSym || s.stock_name === rawSym);
-            const sym = found ? found.stock_id : rawSym;
-            this.inventory.push({ symbol: sym, cost, shares, buyDate: date });
-        }
-
-        localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
-        document.getElementById('invCostInput').value = '';
-        document.getElementById('invSharesInput').value = '';
-        modal.dataset.editIdx = '-1';
-        modal.classList.add('hidden'); modal.style.display='none';
-        this.refreshInventoryPrices();
-    },
-
     _invKlineCache: {},
     _invPrevPrices: {},   // 🔄 V45.13 上次渲染的每檔現價,用來偵測變動→價格跳動 flash
     _invPollTimer: null,
@@ -50302,10 +50345,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return { ntd: net, pct: +(net / (cost * sh) * 100).toFixed(2) };
     },
     _tradeLogNet() {
-        let log = [];
-        try { log = JSON.parse(localStorage.getItem('proTerminalTradeLog') || '[]'); } catch (_) { log = []; }
-        if (!Array.isArray(log)) return [];
-        return log.map(t => { const p = this._tradePnl(t); return { ...t, pnlNTD: p.ntd, pnlPct: p.pct }; });
+        const log = this._userLogRead('proTerminalTradeLog').arr;   // 🛟 V82.5.1 讀壞了也救得回幾筆算幾筆(原文另外留著)
+        return log.filter(t => t && typeof t === 'object').map(t => { const p = this._tradePnl(t); return { ...t, pnlNTD: p.ntd, pnlPct: p.pct }; });
     },
     // 🧭 V80.0.4 交易紀律三件事(使用者「推薦都做」—— 14 個股票專案評估:claude-trading-skills 的部位 / 日誌那類)
     //   ① 帳戶熔斷:已實現的虧損今天 / 本週 / 本月到帳戶幾 % → 亮燈提醒先別開新倉(⛔ 不自動做任何事)
@@ -50731,29 +50772,34 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             + lines.map(l => `<div class="text-[10px] text-gray-300 leading-snug mb-0.5">・${l}</div>`).join('')
             + fly + det;
     },
-    /** 🧭 新增持倉視窗的「買之前看一眼」:熔斷 + 這一筆最多賠多少 + 買完的總風險(⛔ 不擋你按確認) */
+    /** 🧭 新增持倉的「買之前看一眼」:熔斷 + 這一筆最多賠多少 + 買完的總風險(⛔ 不擋你按確定)。
+     *  🧹 V82.5.1 改讀真的新增流程(`_manualAddState`:代號 / 股數 / 成本)—— 以前讀的是一個打不開的舊視窗,等於沒人看得到。
+     *  成本和股數都填了會自動打開一次(之後你自己收起來就不再打開)。 */
     _invPreTradeRender() {
         const body = document.getElementById('invPreTradeBody');
         if (!body) return;
+        const S = this._manualAddState || {};
         const B = this._acctBase(), acc = B.st === 'ok' ? B.acc : 0, riskPct = this.settings?.riskPct ?? 1;   // 💵 V82.2.6 過期 → ⛔ 當分母
-        const cost = parseFloat(document.getElementById('invCostInput')?.value) || 0;
-        const sh = parseFloat(document.getElementById('invSharesInput')?.value) || 0;
-        const sym = (document.getElementById('invModalInput')?.value || '').trim();
+        const cost = +S.cost || 0, sh = +S.shares || 0;
+        const sym = String(S.symbol || '').trim().toUpperCase().split(/\s+/)[0];
         let h = this._acctBreakerHtml(this._acctBreaker(this._tradeLogNet(), B));
         if (cost > 0 && sh > 0) {
             const stop = this._floorTick ? this._floorTick(cost * 0.95) : +(cost * 0.95).toFixed(2);
-            const loss = (cost - stop) * sh + cost * sh * 0.001425 * 2 + stop * sh * 0.003;
+            // 💰 V82.5.1 賠多少一律走 _netPL(你的手續費折數 + 最低手續費 + 證交稅)—— 以前這裡自己寫一份(不看折數、零股少扣),
+            //   跟賣出面板算出來的會差幾十元;這一塊現在真的看得到了,數字要跟別處對得起來
+            const _np = this._netPL(cost, stop, sh);
+            const loss = _np == null ? (cost - stop) * sh : -_np;
             const pct = acc > 0 ? loss / acc * 100 : null;
             h += `<div class="text-[11px] text-gray-300 leading-snug mt-1.5" data-pretrade="one">🛑 停損 ${stop.toFixed(2)}(成本 −5%;買進當天最低比它低就用那個,收盤確認才賣)→ 這一筆碰到停損 ≈ 賠 <b>${Math.round(loss).toLocaleString()} 元</b>`
                 + (pct == null ? (B.st === 'stale' ? '(帳戶總資金要先更新,才算得出佔幾 %)' : '') : `,佔帳戶 ${pct.toFixed(1)}%${pct > riskPct ? `<span class="text-orange-300">,超過你設定的單筆 ${riskPct}%</span>` : ''}`) + '</div>';
-            const editIdx = parseInt(document.getElementById('invModal')?.dataset.editIdx ?? '-1', 10);
-            const inv = this._getInventory().filter((_, i) => i !== editIdx);
-            h += this._totalRiskHtml(this._totalRisk(inv, B, { symbol: sym, cost, shares: sh / 1000 }), '買完之後');
+            h += this._totalRiskHtml(this._totalRisk(this._getInventory(), B, { symbol: sym, cost, shares: sh / 1000 }), '買完之後');
         } else {
             h += `<div class="text-[10px] text-gray-500 mt-1.5">填了成本和股數,這裡會算出這一筆碰到停損會賠多少、買完之後全部持股的總風險</div>`;
         }
-        h += `<div class="text-[10px] text-gray-400 leading-snug mt-1.5">✍️ 按確認之前問自己三句:① 停損價寫下來了嗎 ② 這一檔是照你原本的買點進的嗎(⛔ 看新聞、看別人喊)③ 跌到停損那天,你真的會賣嗎</div>`;
+        h += `<div class="text-[10px] text-gray-400 leading-snug mt-1.5">✍️ 按確定之前問自己三句:① 停損價寫下來了嗎 ② 這一檔是照你原本的買點進的嗎(⛔ 看新聞、看別人喊)③ 跌到停損那天,你真的會賣嗎</div>`;
         body.innerHTML = h;
+        const det = document.getElementById('invPreTrade');
+        if (det && cost > 0 && sh > 0 && !S._preOpened) { S._preOpened = 1; if (!det.open) det.open = true; }
     },
     _tradeJournalHtml() {
         const box = { className: '', innerHTML: '', classList: { remove() {}, add() {} } };
@@ -50762,7 +50808,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             box.className = 'mx-2 mt-2 bg-[#161b22] border border-[#30363d] rounded-lg p-3';
             box.innerHTML = `<div class="text-[12px] font-black text-gray-100 mb-1">📓 交易日誌 · 你的真實勝率</div>
                 <div class="text-[11px] text-gray-400 leading-relaxed">還沒有賣出紀錄。到庫存頁按 <b class="text-gray-200">✏️ 編輯庫存</b>,在那一檔按「🎯 賣出」填賣價和股數,系統會自動記一筆,幫你算出<b>你本人</b>的勝率、平均賺賠、賺短賠長等——這是唯一能讓你進步的鏡子。</div>`;
-            return box.innerHTML + this._mirrorRiskHtml();   // ⛔ 不可回 undefined —— 這條是「還沒有平倉紀錄」的教學文字,正是最該顯示的時候
+            return box.innerHTML + this._tradeLogBadNote() + this._mirrorRiskHtml();   // ⛔ 不可回 undefined —— 這條是「還沒有平倉紀錄」的教學文字,正是最該顯示的時候
         }
         const n = log.length;
         const pnls = log.map(t => +t.pnlNTD || 0);
@@ -50819,7 +50865,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <details><summary class="text-[10px] text-gray-500 cursor-pointer list-none">📜 最近 5 筆 · 獲利因子 ${profitFactor >= 99 ? '∞' : profitFactor.toFixed(2)} · 最大單筆虧損 ${_nf(maxLoss)}</summary><div class="mt-1">${recent}</div></details>
             <div class="text-[9px] text-gray-600 mt-1.5">💡 只算在編輯庫存按「🎯 賣出」的單,損益已扣買賣手續費與證交稅。純刪除不計入。這面鏡子照的是你自己——比任何訊號都重要。</div>
             <div id="mirrorXc" class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5"></div>`;
-        return this._mirrorRiskHtml(log) + box.innerHTML;
+        return this._mirrorRiskHtml(log) + this._tradeLogBadNote() + box.innerHTML;
+    },
+    /** 🛟 V82.5.1 以前的賣出紀錄有一段讀不出來(原文另外留著)→ 鏡子裡講一聲;沒有這回事就一個字都不印 */
+    _tradeLogBadNote() {
+        let has = false;
+        try { has = !!localStorage.getItem(this._userLogBadKey('proTerminalTradeLog')); } catch (_) {}
+        return has ? `<div class="text-[10px] text-amber-200/90 leading-snug mb-1.5" data-tradelogbad="1">⚠️ 以前有一段賣出紀錄讀不出來(手機空間不足時只寫到一半)。救得回來的已經在下面;讀不出來的原文還留著,做「📤 一鍵備份」會一起帶走。</div>` : '';
     },
     /** 🧭 V82.2.5 照「為什麼買」分組(純函式,測試直接打)→ { n, filled, late, groups:[{k,label,n,win,wr,avgPct,sum}], plan:{yes,no} }
      *   ⛔ 沒填的單獨一組「未填」(⛔ 不猜);停損那兩組只算有記 planStop 的(舊紀錄 ⛔ 當成沒想好)。 */
@@ -50907,6 +50959,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _clearTradeLog() {
         this.showConfirm('清空所有交易日誌紀錄?(不影響庫存)', () => {
             try { localStorage.removeItem('proTerminalTradeLog'); } catch (_) {}
+            try { const bk = this._userLogBadKey('proTerminalTradeLog'); localStorage.removeItem(bk); localStorage.removeItem(bk + '2'); } catch (_) {}
             this.renderTradeJournal();
             try { const b = document.getElementById('updateLogBody'); if (b) b.innerHTML = this._tradeJournalHtml(); } catch (_) {}
         });
