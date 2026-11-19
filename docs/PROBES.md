@@ -3,13 +3,17 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 💱 V82.5.6(2026-11-20)人性頁第 6 期:FRED 每日歷史(匯率 / 美債 / 信用利差 / 比特幣)
+- **`scripts/fred_hist_miner.py`(新,資料格式,⛔ 不進 LAB)**:`PREV=data/fred_hist.json python3 scripts/fred_hist_miner.py`(`--selftest` 16 條;`ONLY=usdtwd,baa10y` 只跑幾條)。workflow `fred_hist.yml`(跟在每日採礦後面 + 手動),只推 data 分支。11/20 第一次實跑(run 44608641300):9 條都拿到、src_error 0 —— 台幣 6,733 天(2000-01-03 ~ 11-13)、信用利差 10,219 天(1986 起)、比特幣 4,327 天(2015 起)。
+  ⚠️ FRED 匯率一週才更新一次(週一補上一週)→ 只當歷史基準;今天的值照舊用總經風險檔、先比同一把尺。⛔ 油價:FRED 是現貨、App 是期貨近月(實測差 7%)→ 不接。
+
 ### 🧠 V82.5.5(2026-11-20)人性:恐慌賣的代價(EXP-20261119-02 ⛔)・恐慌 / 貪婪先不買(EXP-20261119-01)・人性頁的數字
 - **`portfolio_backtest.mjs` `PANIC_SELL=<門檻 %>` / `PANIC_SHIFT=K`(V82.5.5 新開關)**:加權收盤跌到門檻那天的下一個交易日開盤把手上個股全賣、之後照名單規則再買(0050 停車照規則);
   SHIFT = 同一份賣的日子循環平移(安慰劑)。⛔ 不進 CACHE_KEY、不設 == 原本逐位相同(`test_panicsell`)。TAKEN_OUT 每筆被提早賣的多一個 `pan:{d,ret,dv}`。
 - **`hot_ccwin.yml` `src=panic` / `src=psych`**:同一套 BASE / INS / S1~S3 五組 → `ccwin_overlay_probe verdict`;src=panic 另印 `ccwin_overlay_probe panic`(恐慌賣那幾筆:開盤賣 − 照規則賣、拿掉最大 3 筆、兩段)。
   **`from_run=<run id>`** = 只重算判定:讀那個 run 的產物、⛔ 重跑回測(第一次跑的描述被 `tail` 切掉、產物下載又被沙箱擋時用這個;run 44599156819 就是這樣補出逐筆)。
   結果:第 1 題 ⛔(16 年 17 條全輸、中位數 1,469% vs 1,543%、回撤只淺 0.7pp;66 筆裡 42 筆賣完還在跌,虧在少數大反彈,拿掉最大 3 筆剩 −0.56%)→ LAB `panic-sell`。
-  ⛔ 別再測「大跌隔天全賣」的同一種門檻;⭐ 要測就測**另一題**(`next-fri-drop-sell`「週五收盤賣、隔天買回」還在推薦欄)。第 2 題(src=psych)結果見 LAB `psych-state`。
+  ⛔ 別再測「大跌隔天全賣」的同一種門檻;⭐ 要測就測**另一題**(`next-fri-drop-sell`「週五收盤賣、隔天買回」還在推薦欄)。第 2 題 src=psych(run 44524067130)⛔:16 年 17 條全輸、中位數 1,350% vs 1,543%、安慰劑 1,509~1,545% 都比它好、近 4 年 305% vs 398% → LAB `psych-state`。⛔ 別再拿心理狀態去擋買(同一份規則);⭐ 狀態機規則換了才值得重跑。
 - **`scripts/ccwin_overlay_probe.mjs panic <組目錄>...`(V82.5.5)**:讀 `eq16/sum_*.json` 與 `taken16/taken_*.json`,17 條取中位數與範圍;一筆都沒賣 → exit 1。selftest ⑩。
 - **`scripts/mood_build.mjs`(新,不是探針;每晚 playbook_scan)**:`node scripts/mood_build.mjs <data 目錄> data/mood.json data/mood_hist.json`(`--selftest` 23 條)→ 產業作戰室「🧠 人性」頁。
   今天的值只讀每天會更新的檔、長歷史只排名次(`rankPct`:同分算一半 + 真的比較低 / 高的比例 lo / hi,MIN_N 20)、兩份接起來之前 `sameUnit` 比重疊那段;排不出來 → `miss`。⛔ 拿它的量條直接當訊號 —— 每一條的結論讀 LAB 那個主題鍵(沒測過就是沒測過)。

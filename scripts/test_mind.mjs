@@ -52,10 +52,13 @@ const mk = (stk, zh) => ({
         g('pcr', '選擇權賣權 ÷ 買權(未平倉)', 61.6, '%', '2026-10-19', 0.68, 4115, '2010-01-04', '2026-10-19', 'pcr-largetrader', { stale: true }),
         g('conc', '成交集中在前 10 檔', 35.1, '%', today, null, 1, null, null, null),
     ],
-    seats: { fi: [g('fis', '外資現貨買賣超(今天)', -243.12, '億', today, 20.24, 751, '2023-09-14', '2026-10-19', 'fi-outflow'), { k: 'fim', name: '外資本月累計', v: -8303.2, unit: '億', d: today, lab: 'fi-follow', note: '月報' }],
+    seats: { fi: [g('fis', '外資現貨買賣超(今天)', -243.12, '億', today, 20.24, 751, '2023-09-14', '2026-10-19', 'fi-outflow'), { k: 'fim', name: '外資本月累計', v: -8303.2, unit: '億', d: today, lab: 'fi-follow', note: '月報' },
+        { k: 'usdtw', name: '這一波:用台幣算 vs 用美元算', v: -26.5, unit: '%', d: today, lab: null, note: '離近一年高點:用台幣算 −22.87%(高點 2026-10-06)、用美元算 −26.5%(高點 2026-10-06);同一段台幣貶 4.9%' }],
         trust: [], retail: [{ ref: 'mg20' }], insider: [{ k: 'ins', name: '董監 / 大股東申報在市場上賣', v: 9, unit: '家', d: today, lab: 'insider-sell', list: ['某公司 1234'], note: '近 5 個交易日' }],
         gov: [{ k: 'nsf', name: '國安基金', v: null, d: '2026-11-06', lab: 'nsf-entry', note: '還在執行' }] },
-    fx: [{ k: 'usdtwd', name: '美元 / 台幣', v: 33, c1: 0.27, c5: 0.42, c20: null, pos: null, d: today, note: '' }, { k: 'dxy', name: '美元指數', v: 103.82, c1: -0.03, c5: null, d: today }, { k: 'gold_usd', name: '黃金', v: 3691.6, c1: null, c5: null, d: null, upd: today + ' 01:43 +0800' }],
+    fx: [{ k: 'usdtwd', name: '美元 / 台幣', v: 33, c1: 0.27, c5: 0.42, c20: 1.23, pos: { pct: 80.5, lo: 80, hi: 19, n: 250, from: '2025-11-20', to: '2026-11-19' }, hs: 'FRED DEXTAUS(到 2026-11-14)', d: today, note: '' },
+        { k: 'dxy', name: '美元指數', v: 103.82, c1: -0.03, c5: null, c20: null, pos: { pct: null, n: 6, from: '2026-11-13', to: today }, hs: 'App 自己每天存的(5 天)', d: today },
+        { k: 'gold_usd', name: '黃金', v: 3691.6, c1: null, c5: null, c20: null, pos: null, hwhy: '還沒有歷史(App 從 11/20 開始每天存)', d: null, upd: today + ' 01:43 +0800' }],
     wind: [{ k: 'upr', name: '上漲家數比例', v: 6.8, unit: '%', d: today, note: '漲 152・跌 2084', lab: null }],
     miss: [{ k: 'credit', name: '美國信用利差', why: '⏳ 第 6 期(FRED)' }],
 });
@@ -108,6 +111,14 @@ try {
             o.seatRetail = [...document.querySelectorAll('[data-mind-seat="retail"] [data-mind-row]')].map(e => e.dataset.mindRow);
             PRO.mindSel('fx'); await new Promise(r => setTimeout(r, 30));
             o.fxTxt = T('tabMind'); o.fxRows = [...document.querySelectorAll('[data-mind-list="fx"] [data-mind-fx]')].map(e => e.dataset.mindFx); o.sxFx = sx();
+            o.fxPos = (document.querySelector('[data-mind-fx="usdtwd"] [data-mind-pos]') || {}).innerText || '';
+            o.fxDxyPos = (document.querySelector('[data-mind-fx="dxy"] [data-mind-pos]') || {}).innerText || '';
+            o.fxUsd = (document.querySelector('[data-mind-fx="usdtwd"]') || {}).innerText || '';
+            o.fxGold = (document.querySelector('[data-mind-fx="gold_usd"]') || {}).innerText || '';
+            o.fxBars = [...document.querySelectorAll('[data-mind-list="fx"] [data-mind-bar]')].map(e => getComputedStyle(e).backgroundImage + '|' + getComputedStyle(e.querySelector('i')).backgroundColor);
+            PRO.mindFxSortBy('pos'); await new Promise(r => setTimeout(r, 30));
+            o.fxPosOrd = [...document.querySelectorAll('[data-mind-list="fx"] [data-mind-fx]')].map(e => e.dataset.mindFx);
+            PRO._mindFxSort = null;
             PRO.mindFxSortBy('c1'); await new Promise(r => setTimeout(r, 30));
             o.fxC1 = [...document.querySelectorAll('[data-mind-list="fx"] [data-mind-fx]')].map(e => e.dataset.mindFx);
             PRO.mindFxSortBy('c1'); await new Promise(r => setTimeout(r, 30));
@@ -145,6 +156,11 @@ try {
         ok('② 外資與大戶:五個座位 + 風向;散戶那一格轉述群眾的融資那一條', JSON.stringify(R.seats) === '["fi","trust","retail","insider","gov"]' && JSON.stringify(R.seatRetail) === '["mg20"]', JSON.stringify([R.seats, R.seatRetail]));
         ok('② 座位寫出限制;本月累計 ⛔ 寫成「還在累積」', /他的限制/.test(R.seatTxt) && !/外資本月累計[\s\S]{0,40}還在累積/.test(R.seatTxt), R.seatTxt.slice(0, 160));
         ok('② 匯率:三列、沒有自己日期的只寫「檔案」更新時間;20 日 / 一年位置寫 ⏳', JSON.stringify(R.fxRows) === '["usdtwd","dxy","gold_usd"]' && /檔案 \d\d-\d\d/.test(R.fxTxt) && /20 日 ⏳/.test(R.fxTxt) && /一年位置 ⏳/.test(R.fxTxt), R.fxTxt.slice(0, 200));
+        ok('⑧ 匯率 20 日 / 一年位置:照 mood.json 印(+1.23%、比近一年 80% 的日子高)、寫出歷史來源、一年位置的尺是灰階', /20 日 \+1\.23%/.test(R.fxUsd) && R.fxPos === '一年位置 比近一年 80% 的日子高'
+            && /歷史:FRED DEXTAUS/.test(R.fxUsd) && R.fxBars.length === 1 && !/255, 93, 93|61, 220, 132/.test(R.fxBars[0]), JSON.stringify([R.fxPos, R.fxUsd.slice(0, 160), R.fxBars]));
+        ok('⑧ 還在累積寫天數;沒有歷史寫原因(⛔ 空白)', /還在累積\(6 天\)/.test(R.fxDxyPos) && /還沒有歷史/.test(R.fxGold), JSON.stringify([R.fxDxyPos, R.fxGold.slice(0, 160)]));
+        ok('⑧ 照一年位置排:有位置的在前、排不出來的排最後', R.fxPosOrd[0] === 'usdtwd' && R.fxPosOrd.length === 3, JSON.stringify(R.fxPosOrd));
+        ok('⑧ 外資座位有「用台幣算 vs 用美元算」那一行', /用台幣算 vs 用美元算/.test(R.seatTxt) && /用美元算 −26\.5%/.test(R.seatTxt), R.seatTxt.slice(0, 200));
         ok('② 匯率照 1 日排、再點一次反向(讀不到的排最後)', JSON.stringify(R.fxC1) === '["usdtwd","dxy","gold_usd"]' && JSON.stringify(R.fxC1b) === '["dxy","usdtwd","gold_usd"]', JSON.stringify([R.fxC1, R.fxC1b]));
         ok('⑦ 同分:今天 0 家而且很多天也是 0 → 「近一年最低(跟 76% 的日子一樣)」,⛔「比 76% 的日子高」', R.tieLow === '近一年最低(跟 76% 的日子一樣)' && !/的日子高/.test(R.tieLow), R.tieLow);
         ok('⑦ 中間有同分 → 只講真的比較低的比例 + 跟幾 % 一樣', R.tieMid === '比近一年 40% 的日子高(跟 30% 的日子一樣)', R.tieMid);
