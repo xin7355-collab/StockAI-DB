@@ -31,19 +31,27 @@ on:
         description: '只跑這幾組(例 BASE,INS;空白 = BASE INS S1 S2 S3 全跑)'
         required: false
         default: ''
+      from_run:
+        description: '只重算判定:填上一輪 hot_ccwin 的 run 編號 → ⛔ 重跑回測,只讀那一輪的產物重算判定與逐筆(幾分鐘);src 要跟那一輪一樣'
+        required: false
+        default: ''
 
 # 🧵 2026-11-19 每一種來源各自一個 group:不同題目可以同時跑(各自只讀分支、只上傳 artifact,⛔ 寫任何分支);
 #   同一種來源照舊只留一個排隊中的。⚠️ 兩題同時跑 = 10 個 job,避開台北 16:30~18:00 每日採礦那段(它自己就要 20 個)。
+#   📥 只重算判定(from_run)另外一個 group:⛔ 把同一種來源排隊中的真回測擠掉。
 concurrency:
-  group: hot-ccwin-${{ inputs.src || 'insider' }}
+  group: hot-ccwin-${{ inputs.src || 'insider' }}${{ inputs.from_run && '-report' || '' }}
   cancel-in-progress: false
 
+# 📥 actions: read = 只重算判定時讀上一輪的 artifact(download-artifact run-id)
 permissions:
   contents: read
+  actions: read
 
 jobs:
   pin:
     name: 📌 釘住資料版本
+    if: ${{ inputs.from_run == '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -66,6 +74,7 @@ jobs:
   combo:
     name: 🧾 ${{ matrix.g }}
     needs: pin
+    if: ${{ inputs.from_run == '' }}
     runs-on: ubuntu-latest
     # ⏱️ 330 分:資料包 3~5 分 + 交易快取 4 片約 70 分 + 名單 / 判觸發約 30~60 分 + 17~34 條約 30~60 分;job 上限 360
     timeout-minutes: 330
@@ -246,13 +255,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
+        if: ${{ inputs.from_run == '' }}
         with:
           pattern: ccwin-*
           merge-multiple: true
           path: /tmp/all
+      - name: 📥 上一輪的產物(只重算判定)
+        if: ${{ inputs.from_run != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ccwin-*
+          merge-multiple: true
+          path: /tmp/all
+          run-id: ${{ inputs.from_run }}
+          github-token: ${{ github.token }}
       - name: 🧮 verdict
         env:
           SRC: ${{ inputs.src }}
+          FROM_RUN: ${{ inputs.from_run }}
         run: |
           set -o pipefail
           mkdir -p /tmp/v
@@ -264,8 +284,14 @@ jobs:
           ls /tmp/v
           node scripts/ccwin_overlay_probe.mjs verdict /tmp/v /tmp/v/verdict.json | tee /tmp/v/verdict.txt
           if [ -d /tmp/all/BASE/taken16 ] && [ -d /tmp/all/INS/taken16 ]; then node scripts/ccwin_overlay_probe.mjs tail /tmp/all/BASE/taken16 /tmp/all/INS/taken16 | tee /tmp/v/tail.txt; fi
+          # 😱 恐慌賣:每組賣幾天幾筆、鎖跌停延後、每筆「開盤賣 − 照規則賣」(拿掉最大 3 筆、兩段);⛔ 影響判定
+          if [ "$SRC" = panic ]; then
+            G=$(for g in INS S1 S2 S3; do if [ -d "/tmp/all/$g/taken16" ]; then echo "/tmp/all/$g"; fi; done)
+            if [ -n "$G" ]; then node scripts/ccwin_overlay_probe.mjs panic $G | tee /tmp/v/panic.txt || echo "::warning::恐慌賣逐筆沒算出來(⛔ 影響判定)"; fi
+          fi
           if [ "$SRC" = revdec ]; then T='### 📉 營收衰退中疊到 🔥(EXP-20261113-05)'; elif [ "$SRC" = psych ]; then T='### 🌡️ 恐慌 / 貪婪那幾天先不買疊到 🔥(EXP-20261119-01)'; elif [ "$SRC" = panic ]; then T='### 😱 大跌隔天開盤全賣 vs 照規則(恐慌賣的代價,EXP-20261119-02)'; else T='### 🧾 申報轉讓疊到 🔥(EXP-20261113-03)'; fi
-          { echo "$T"; echo; echo '```'; cat /tmp/v/verdict.txt; [ -f /tmp/v/tail.txt ] && tail -1 /tmp/v/tail.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$FROM_RUN" ] && T="$T(只重算判定:讀 run $FROM_RUN 的產物)"
+          { echo "$T"; echo; echo '```'; cat /tmp/v/verdict.txt; [ -f /tmp/v/tail.txt ] && tail -1 /tmp/v/tail.txt; [ -f /tmp/v/panic.txt ] && cat /tmp/v/panic.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

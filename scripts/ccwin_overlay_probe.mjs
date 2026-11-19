@@ -15,6 +15,7 @@
  *   node scripts/ccwin_overlay_probe.mjs eq <逐日淨值目錄> <out.json>         一組 → finals / mdd / 兩段(要 17 條)
  *   node scripts/ccwin_overlay_probe.mjs verdict <目錄> [out.json]              目錄裡要有 BASE16 FILT16 S1_16 S2_16 S3_16 BASE4 FILT4 .json
  *   node scripts/ccwin_overlay_probe.mjs tail <現行 TAKEN 目錄> <濾網 TAKEN 目錄>  🔥 逐筆:只有一邊有的成交 → 差在哪幾筆
+ *   node scripts/ccwin_overlay_probe.mjs panic <組目錄>...                        😱 恐慌賣(EXP-20261119-02):每組 eq16/sum_*.json + taken16/ → 賣幾天幾筆、鎖跌停延後、每筆「開盤賣 − 照規則賣」
  *   node scripts/ccwin_overlay_probe.mjs --selftest
  */
 import fs from 'fs';
@@ -83,6 +84,22 @@ export function verdict(G) {
         range16: [G.BASE16.from, G.BASE16.to], range4: [G.BASE4.from, G.BASE4.to], desc };
 }
 
+/** 😱 EXP-20261119-02 恐慌賣:一個起點的 TAKEN_OUT 裡被提早賣掉的那幾筆(有 pan 欄)→ 每筆「開盤賣 − 照規則賣」(含息,%)
+ *  u = (pan.ret + pan.dv) −(ret + dv);平均 / 中位數 / 比照規則差的筆數 / 拿掉往同方向推最大的 k 筆後的平均(同 tailOf 的拿法)/ 兩段 */
+export function panicOf(rows, k = 3, splitYear = RULE.splitYear) {
+    const P = (rows || []).filter(t => t && t.pan).map(t => ({ d: String(t.pan.d), u: ((+t.pan.ret || 0) + (+t.pan.dv || 0)) - ((+t.ret || 0) + (+t.dv || 0)) }));
+    const n = P.length;
+    if (!n) return { n: 0 };
+    const us = P.map(x => x.u), sum = us.reduce((s, x) => s + x, 0), sgn = Math.sign(sum);
+    const rest = us.slice().sort((x, y) => sgn >= 0 ? y - x : x - y).slice(k);
+    const restSum = rest.reduce((s, x) => s + x, 0);
+    const mOf = a => a.length ? r2(a.reduce((s, x) => s + x.u, 0) / a.length) : null;
+    const A = P.filter(x => x.d < splitYear), B = P.filter(x => x.d >= splitYear);
+    return { n, days: new Set(P.map(x => x.d)).size, mean: r2(sum / n), med: r2(med(us)), worse: us.filter(x => x < 0).length,
+             restMean: rest.length ? r2(restSum / rest.length) : null, holds: sum !== 0 && rest.length > 0 && Math.sign(restSum) === sgn,
+             a: { n: A.length, mean: mOf(A) }, b: { n: B.length, mean: mOf(B) } };
+}
+
 /** 🔥 逐筆:每個起點只有一邊有的成交(代號 + 進場日)→ 報酬加總差多少、拿掉影響最大 3 筆後同號嗎 */
 export function tailOf(baseRows, filtRows, k = 3) {
     const key = t => `${t.sym}|${t.d}`;
@@ -136,6 +153,14 @@ function selftest() {
     const T1 = tailOf(bR, fR, 1), T2 = tailOf(bR, fR, 2);
     ok('⑧ 逐筆:兩邊都有的不算、差 = +30 −(−10)= +40;拿掉最大 1 筆還 +10(同號)、拿掉 2 筆 0(不算同號)',
         T1.onlyBase === 1 && T1.onlyFilt === 1 && T1.diff === 40 && T1.rest === 10 && T1.holds && !T2.holds, JSON.stringify([T1, T2]));
+    // ⑩ panicOf:A 照規則 +10 → 開盤賣 +2(u −8)・B −5 + 息 1 → −2(u +2)・C +3 → +1 + 息 0.5(u −1.5)・D 沒被提早賣 ⛔ 算
+    const pR = [{ ret: 10, dv: 0, pan: { d: '2015-08-24', ret: 2, dv: 0 } }, { ret: -5, dv: 1, pan: { d: '2020-03-12', ret: -2, dv: 0 } },
+                { ret: 3, dv: 0, pan: { d: '2020-03-12', ret: 1, dv: 0.5 } }, { ret: 4, dv: 0 }];
+    const Q = panicOf(pR, 1);
+    ok('⑩ 恐慌賣逐筆:3 筆、2 天、平均 −2.5、中位數 −1.5、比照規則差 2 筆、2011~2018 −8(1 筆)、2019~ +0.25(2 筆)',
+        Q.n === 3 && Q.days === 2 && Q.mean === -2.5 && Q.med === -1.5 && Q.worse === 2 && Q.a.n === 1 && Q.a.mean === -8 && Q.b.n === 2 && Q.b.mean === 0.25, JSON.stringify(Q));
+    ok('⑩ 決定性對照:拿掉往同方向推最大的 1 筆(−8)→ 剩 −1.5 + 2 = +0.5、平均 +0.25 → 翻號(⛔ 算同號)', Q.restMean === 0.25 && !Q.holds, JSON.stringify(Q));
+    ok('⑩ 沒有任何一筆被提早賣 → n = 0(⛔ 當成平均 0)', panicOf([{ ret: 4, dv: 0 }]).n === 0 && panicOf([]).n === 0);
     // ⑨ eqDir 讀真的檔(暫存目錄),鍵 = 檔名數字、照數字排序
     const tmp = fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'ccov_'));
     try {
@@ -173,5 +198,30 @@ if (_isMain) {
         const T = ks.map(f => ({ k: f, ...tailOf(JSON.parse(fs.readFileSync(path.join(a, f), 'utf8')), JSON.parse(fs.readFileSync(path.join(b, f), 'utf8'))) }));
         for (const t of T) console.log(`${t.k}:只有現行 ${t.onlyBase} 筆・只有濾網 ${t.onlyFilt} 筆 ・報酬加總差 ${t.diff} ・拿掉最大 3 筆 ${t.rest} ${t.holds ? '同號' : '⚠️ 翻號 / 0'}`);
         console.log(`⇒ ${T.length} 個起點裡拿掉最大 3 筆還同號 ${T.filter(t => t.holds).length} 個`);
+    } else if (cmd === 'panic') {
+        // 😱 每一組(INS / S1 / S2 / S3)的 eq16/sum_*.json(引擎 summary.panic)+ taken16/taken_*.json(逐筆 pan)→ 17 條取中位數、不一樣就印範圍
+        const dirs = process.argv.slice(3);
+        if (!dirs.length) { console.error('🚨 panic 要給至少一個組的目錄(裡面有 eq16/ 與 taken16/)'); process.exit(1); }
+        const rg = a => { const b = a.filter(Number.isFinite); if (!b.length) return '—'; const lo = Math.min(...b), hi = Math.max(...b), m = r2(med(b)); return lo === hi ? `${m}` : `${m}(${r2(lo)}~${r2(hi)})`; };
+        let shown = 0;
+        for (const g of dirs) {
+            const tk = path.join(g, 'taken16'), eq = path.join(g, 'eq16');
+            if (!fs.existsSync(tk)) { console.log(`${path.basename(g)}:沒有 taken16/(這一組沒有逐筆)`); continue; }
+            const fs16 = fs.readdirSync(tk).filter(f => /^taken_\d+\.json$/.test(f)).sort();
+            const P = fs16.map(f => {
+                const w = f.match(/\d+/)[0], q = panicOf(JSON.parse(fs.readFileSync(path.join(tk, f), 'utf8')));
+                const sf = path.join(eq, `sum_${w}.json`);
+                const s = fs.existsSync(sf) ? (JSON.parse(fs.readFileSync(sf, 'utf8')).panic || null) : null;
+                return { ...q, eDays: s ? s.days : null, lock: s ? s.lock : null, stuck: s ? s.stuck : null };
+            });
+            const col = k => P.map(p => p[k]), sub = (k, j) => P.map(p => p[k] ? p[k][j] : null);
+            if (!P.some(p => p.n > 0)) { console.log(`${path.basename(g)}:${P.length} 條、一筆都沒有被提早賣(⛔ 當成 0)`); continue; }
+            shown++;
+            console.log(`${path.basename(g)}(${P.length} 條,中位數・範圍):開盤要賣 ${rg(col('eDays'))} 天 ・賣掉 ${rg(col('n'))} 筆(${rg(col('days'))} 天)・鎖跌停延後 ${rg(col('lock'))} 次 ・停牌延後 ${rg(col('stuck'))} 次`
+                + ` ・「開盤賣 − 照規則賣」每筆平均 ${rg(col('mean'))}%、中位數 ${rg(col('med'))}% ・比照規則差 ${rg(col('worse'))} 筆`
+                + ` ・拿掉往同方向推最大 3 筆後平均 ${rg(col('restMean'))}%(${P.filter(p => p.holds).length}/${P.length} 條同號)`
+                + ` ・2011~2018 ${rg(sub('a', 'mean'))}%(${rg(sub('a', 'n'))} 筆)・2019~ ${rg(sub('b', 'mean'))}%(${rg(sub('b', 'n'))} 筆)`);
+        }
+        if (!shown) { console.error('🚨 每一組都沒有被提早賣的成交 → 沒生效(⛔ 當成「沒差別」)'); process.exit(1); }
     } else { console.error('用法見檔頭'); process.exit(1); }
 }
