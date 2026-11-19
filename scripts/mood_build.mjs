@@ -333,7 +333,7 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
                 const ddT = r2((twNow.c / hiT[1] - 1) * 100), ddU = r2((lastU[1] / hiU[1] - 1) * 100);
                 const fxAtHi = (usd.find(x => x[0] === hiT[0]) || [])[2], fxChg = fxAtHi ? r2((lastU[2] / fxAtHi - 1) * 100) : null;
                 const pc = x => (x < 0 ? '−' : x > 0 ? '+' : '') + Math.abs(x) + '%';
-                seats.fi.push({ k: 'usdtw', name: '這一波:用台幣算 vs 用美元算', v: ddU, unit: '%', d: twNow.d, lab: null, ddT, fxChg,
+                seats.fi.push({ k: 'usdtw', name: '這一波:用台幣算 vs 用美元算', v: ddU, unit: '%', d: twNow.d, lab: 'usd-dd', ddT, fxChg,
                     note: `離近一年高點:用台幣算 ${pc(ddT)}(高點 ${hiT[0]})、用美元算 ${pc(ddU)}(高點 ${hiU[0]})` + (fxChg != null ? `;同一段台幣${fxChg > 0 ? '貶' : '升'} ${Math.abs(fxChg)}%(外資用美元記帳,賣股換美元時匯率也算在裡面)` : '')
                         + `。匯率 = FRED(一週更新一次,中間沒有的 ${ff} 天用前面最近一筆)` + (todayOk ? ',今天用總經風險檔那一筆' : ',今天的匯率跟 FRED 對不上 → 用 FRED 最後一筆') });
             } else M('usdtw', '這一波:用台幣算 vs 用美元算', '匯率歷史接不到今天(FRED 太舊或今天的匯率讀不到)');
@@ -371,6 +371,8 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
         ['us2y_yield', '美債 2 年殖利率(%)', null, null, null, ''], ['gold_usd', '黃金(美元 / 盎司)', null, null, null, ''], ['wti_oil', '西德州原油(美元)', null, null, null, ''],
         ['copper', '銅(美元 / 磅)', 'copper_chg_pct', 'copper_chg_5d', 'copper_date', ''], ['btc_usd', '比特幣(美元)', null, null, null, '']];
     const fx = [];
+    // 🔬 V82.5.9 測過的那幾列帶實測總表的主題鍵(畫面轉述那一條的結論;沒測過的列 ⛔ 每一列都印「還沒測過」)
+    const FX_LAB = { jpy: 'yen-surge', usdtwd: 'usd-dd' };
     // 💱 V82.5.6 20 日 / 一年位置:① FRED 有那一條 → 先比「今天的值 vs FRED 最後一筆」是不是同一把尺,是才接
     //   ② FRED 沒有(美元指數 / 黃金 / 銅)或接不上 → 用 mood_hist 自己每天存的(同一個來源,天生同一把尺;不到 20 天寫「還在累積」)
     const ownFx = k => { const seen = new Set(), P = [];
@@ -395,7 +397,7 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
             if (P.length) { c20 = chg20(P, v, asOf); pos = yearPos(P, v, asOf); hs = `App 自己每天存的(${P.length} 天)`; }
             else if (!hwhy) hwhy = '還沒有歷史(App 從 11/20 開始每天存)';
         }
-        fx.push({ k, name, v, c1: c1 ? num(m[c1]) : null, c5: c5v, c20, pos, hs, hwhy, d: dd, upd: dk ? null : (m.updated || null), note });   // 沒有自己的日期 → 只寫檔案更新時間(⛔ 假裝是今天的)
+        fx.push({ k, name, v, c1: c1 ? num(m[c1]) : null, c5: c5v, c20, pos, hs, hwhy, d: dd, upd: dk ? null : (m.updated || null), note, lab: FX_LAB[k] || null });   // 沒有自己的日期 → 只寫檔案更新時間(⛔ 假裝是今天的)
     }
     todayRow.fx = Object.fromEntries(fx.map(r => [r.k, [r.v, r.d || null]]));
     if (num(m.sox_chg_pct) != null && num(m.sp500_chg_pct) != null) wind.push({ k: 'soxsp', name: '費半 − 標普(今天)', v: r2(num(m.sox_chg_pct) - num(m.sp500_chg_pct)), unit: 'pp', d: d10(m.sox_date), note: `費半 ${num(m.sox_chg_pct)}%・標普 ${num(m.sp500_chg_pct)}%`, lab: null });
@@ -531,6 +533,8 @@ function selftest() {
         const tw10 = mF.fx.find(r => r.k === 'usdtwd'), aOf = addDays(asof, -1), base = lin(30, 32)[addDays(aOf, -28)];
         ok('⑩ 匯率接 FRED:20 日 = 今天 ÷ 28 天前那一筆 − 1、一年位置 = 比過去一年都高(hi 0)、寫出來源', tw10 && tw10.c20 === r2((32.5 / base - 1) * 100)
             && tw10.pos && tw10.pos.hi === 0 && tw10.pos.n > 300 && /FRED DEXTAUS/.test(tw10.hs || ''), JSON.stringify(tw10 && { c20: tw10.c20, base, pos: tw10.pos, hs: tw10.hs, hwhy: tw10.hwhy }));
+        ok('⑩c 匯率表測過的那一列帶實測總表的主題鍵:台幣 → usd-dd、美元指數沒測過 → null(⛔ 亂掛別條)', tw10 && tw10.lab === 'usd-dd'
+            && (mF.fx.find(r => r.k === 'dxy') || {}).lab === null, JSON.stringify(mF.fx.map(r => [r.k, r.lab])));
         W('macro_risk.json', { ...M0, usdtwd: 3250 });
         const tw10b = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.fx.find(r => r.k === 'usdtwd');
         ok('⑩b 決定性對照:今天的匯率 ×100(單位對不上)→ ⛔ 接、20 日 / 一年位置都空、寫原因', tw10b && tw10b.c20 == null && tw10b.pos == null && /不像同一把尺/.test(tw10b.hwhy || ''), JSON.stringify(tw10b && { c20: tw10b.c20, pos: tw10b.pos, hwhy: tw10b.hwhy }));
@@ -543,6 +547,7 @@ function selftest() {
         W('fred_hist.json', FHfix(flat30)); W('macro_risk.json', { ...M0, usdtwd: 30, usdtwd_date: asof });
         const u0 = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.seats.fi.find(r => r.k === 'usdtw');
         ok('⑫ 匯率一直是 30 → 用美元算 == 用台幣算', u0 && Math.abs(u0.v - u0.ddT) < 0.02 && u0.v < -5 && /用台幣算 −/.test(u0.note), JSON.stringify(u0 && { v: u0.v, ddT: u0.ddT, note: u0.note }));
+        ok('⑫c 外資座位「用台幣算 vs 用美元算」那一列帶 usd-dd(畫面轉述 EXP-20261120-02 的結論)', u0 && u0.lab === 'usd-dd', JSON.stringify(u0 && u0.lab));
         const rise = Object.fromEntries(fxDays.map((d, k) => [d, k > fxDays.length - 40 ? 33 : 30]));
         W('fred_hist.json', FHfix(rise)); W('macro_risk.json', { ...M0, usdtwd: 33, usdtwd_date: asof });
         const u1 = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.seats.fi.find(r => r.k === 'usdtw');

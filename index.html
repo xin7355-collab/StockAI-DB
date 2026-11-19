@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.5.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.5.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -9063,10 +9063,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.5.8',
+    _APP_VERSION: 'V82.5.9',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.5.9', d: [
+            '🧭 反攻條件雷達:「日圓不急升」那條改成條件表下面一行只列出來(日圓 3 天升值或貶值幾 %),不再算進「幾條通過」、也不再算「外面壓力很大」;風險指數也不再因為日圓急升加分 —— 查過 2000 年以來的資料,日圓急升之後台股並沒有比平常同樣顛的時候更容易再大跌',
+            '🏭 產業作戰室「🧠 人性」頁:外資那一段「用台幣算 vs 用美元算」與匯率表的台幣、日圓那兩列,下面多一行以前的資料怎麼說 —— 用美元算台股已經跌很深、台幣又開始升值之後,台股並沒有比同一段隨便哪一天進場好;只描述,不是買賣訊號',
+        ], dt: '2026-11-20' },
         { v: 'V82.5.8', d: [
             '🏭 產業作戰室「🧠 人性」頁的群眾那段多一條「當沖成交金額占比(上市)」:證交所每天公布的當沖統計(買進、賣出成交金額占整個市場幾 %);每晚收、每晚往前補幾天,滿 20 天才排得出在歷史排第幾。只描述、不是買賣訊號',
         ], dt: '2026-11-20' },
@@ -9391,9 +9395,6 @@ ${list}
         { v: 'V80.0.1', d: [
             '🤖 App 裡所有 AI 分析的共用規則改了:價位(停損、壓力、支撐)只能引用 App 算好的數字,資料裡沒有的價位 AI 不能自己編;燈號只講偏多 / 中性 / 偏空,不再要 AI 下買賣指令',
             '📞 法說會簡報重點旁的頁碼會先核對:數字不在那一頁就改成真的那一頁,找不到就不標頁碼',
-        ] },
-        { v: 'V80.0.0', d: [
-            '📝 自動下單程式(auto_trade.py)每一行紀錄也存一份到電腦上的檔案(跟狀態檔放一起:真實帳戶 .stockai_auto_trade.log、模擬 .stockai_auto_trade.sim.log)—— 以前只印在視窗,關掉就沒了,出事查不到那天它看到什麼、為什麼買或不買;超過 2 MB 自動換一份,不想要可以設 AUTO_LOG=0。下單規則一個字都沒改',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -17925,7 +17926,7 @@ const marginByDate = {};
             `5 日回補 ≥3,000 口(空單縮才是轉多前兆)${mr.fi_complex_conclusion && !/資料整編/.test(mr.fi_complex_conclusion) ? ` ・${mr.fi_complex_conclusion}` : (fiPct != null ? ` ・近20日位階 ${Math.round(fiPct)}%` : '')}`,   // 🔁 V81.0.2 舊採礦檔的佔位字串(「資料整編中…」)⛔ 當成結論印
             fiChg5 == null);
         add('🛢️', '油價不走極端', wti == null ? '—' : `${wti >= 0 ? '+' : ''}${f1(wti)}%`, wti != null && Math.abs(wti) < 3, '單日 ±3% 內(暴漲暴跌兩頭都是恐慌)', wti == null);
-        add('💴', '日圓不急升', jpy3 == null ? '—' : `3日 ${jpy3 >= 0 ? '+' : ''}${f1(jpy3)}%`, jpy3 != null && jpy3 > -2, '3 日升值 <2%(急升=套利平倉,2024/8/5 崩盤主因)', jpy3 == null);
+        // 💴 2026-11-20 日圓那條改成只列出來(EXP-20261120-01:日圓 3 天升值 ≥2% 之後,台股跟同樣顛的日子差不多)→ 寫在條件表下面一行
         add('📊', '站回 5 日線', twiiC != null && twiiMa5 != null ? `${Math.round(twiiC).toLocaleString()} vs ${Math.round(twiiMa5).toLocaleString()}` : '—', twiiC != null && twiiMa5 != null && twiiC >= twiiMa5, '收盤站回 5MA;站回季線' + (twiiMa60 ? ` ${Math.round(twiiMa60).toLocaleString()}` : '') + ' 才算轉多'
             + (() => { const L = this._twiiLag(); return L.lag > 0 ? ` ・⚠️ 用的是 ${this._dW(L.twiiD)} 收盤(加權資料落後 ${L.lag} 天)` : ''; })(), twiiC == null);
         // 📐 V71.1.6 順逆價差(使用者建議,採礦端 taifex_backwardation 早就有,只是沒被用):
@@ -18025,7 +18026,7 @@ const marginByDate = {};
         //   等於永遠掛著一顆假的黑天鵝因子 → 改成「相對自己急遽加空」:5 日內多空 ≥8,000 口才算異常。
         if (fiChg5 != null && fiChg5 <= -8000) swanHits.push(`外資期貨 5 日急加空 ${Math.abs(Math.round(fiChg5)).toLocaleString()} 口`);
         if (bwd != null && bwd <= -300) swanHits.push(`台指深度逆價差 ${Math.round(bwd)} 點`);
-        if (jpy3 != null && jpy3 <= -4) swanHits.push(`日圓 3 日急升 ${f1(jpy3)}%(套利平倉)`);
+        // 💴 日圓 3 日升值 ≥4% 也不再算黑天鵝(同一個實驗:14 次裡之後沒有比較顛)→ 只在下面那一行列出來
         if ((kospi != null && kospi <= -5) || (nikkei != null && nikkei <= -5)) swanHits.push('日韓股單日 -5% 級重挫');
         if (sp != null && sp <= -3) swanHits.push(`標普 ${f1(sp)}%`);
         const isSwan = swanHits.length >= 2 || (swanHits.length >= 1 && vix != null && vix >= 32);
@@ -18097,6 +18098,8 @@ const marginByDate = {};
         };
         // 🐻 V79.9.8 大盤空頭守門的狀態(只轉述 `_bear60Of`,⛔ 另算):決策台真正會「先不買新的」看的是這一條,⛔ 不是上面幾條過幾條
         const _bear = (() => { try { return this._bear60Of(usm.twii_history); } catch (_) { return null; } })();
+        // 💴 2026-11-20 日圓 3 日變化只列出來(⛔ 算進上面的條件、⛔ 算黑天鵝;EXP-20261120-01)
+        const _jpyLine = jpy3 == null ? '' : `<div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-jpy3="1">💴 日圓 3 日${jpy3 < 0 ? '升值' : '貶值'} ${Math.abs(jpy3).toFixed(1)}%(只列出來,不算進上面的條件)</div>`;
         const _bearLine = _bear ? `<div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-bear60="${_bear.on ? 1 : 0}">🐻 大盤空頭守門(收盤在季線下、月線也在季線下):<b class="text-gray-200">${_bear.on ? '⚠️ 已觸發' : '目前沒有觸發'}</b>(${_bear.d ? this._dW(_bear.d) + ' ' : ''}收盤 ${Math.round(_bear.c).toLocaleString()} ・月線 ${Math.round(_bear.ma20).toLocaleString()} ・季線 ${Math.round(_bear.ma60).toLocaleString()})${_bear.on ? (this._isLead() ? '→ 你選的那一套空頭一律先不買新的;手上的照規則' : (this._bearGateOn() ? '→ 你的設定:<b class="text-gray-200">空頭不開新倉</b>,決策台今天不列買點;手上的照出場規則走' : '→ 你的設定:<b class="text-gray-200">空頭照常買</b>(設定中心可以改成空頭不開新倉)')) : '→ 決策台照常'}。</div>` : '';
         box.className = 'bg-[#161b22] border-l-4 ' + heroCls.split(' ')[1] + ' border-y border-r border-[#30363d] rounded-r p-3';
         box.innerHTML = `
@@ -18106,6 +18109,7 @@ const marginByDate = {};
             </div>
             <div class="bg-[#0d1117] border-l-4 ${heroCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1 mt-2">${C.map(row).join('')}</div>
+            ${_jpyLine}
             ${_bearLine}
             ${(() => { try { return this._crashOccHtml(); } catch (_) { return ''; } })()}
             <div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-dip0050="1">🪙 想買 0050 照你的計畫買,⛔ 不用等跌到某個價位、也不用硬分好幾批(那樣通常比較少賺)。</div>
@@ -56731,8 +56735,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const nqChg  = this._macroChg('nq_fut');    // Nasdaq 期夜盤(🚨 V75.2.4 前這個因子永遠 null)
         const dxyChg = this._macroChg('dxy');
         const goldChg = this._macroChg('gold');     // 🚨 V75.2.4 前永遠 null(macro_cache 沒有 gold)
-        // ⚠️ usdjpy **兩份檔都沒有**(採礦端就沒採)→ 回 null 是誠實的,⛔ 不可去別處硬湊一個
-        const usdjpyChg = this._macroChg('usdjpy');
+        // 💴 2026-11-20 日圓那段拿掉(EXP-20261120-01:日圓一天升值 ≥1% 之後 20 天內跌 5% 的比例比同樣顛的日子多 5.6pp,
+        //   但安慰劑沒過;3 天升值 ≥2% 只多 0.07pp)—— 而且它讀的 usdjpy 兩份檔都沒有,從來沒作用過。⛔ 接回來。
         const fi = this.fiShortQty;
 
         if (vix === null && fi === null) return null;
@@ -56805,15 +56809,6 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             else if (nqChg < -0.3) score += 1;
         }
 
-        // USDJPY: sharp drop = yen strengthening = carry trade unwind = black swan signal (0-15 points)
-        // USDJPY chg_pct < 0 means yen strengthening (bearish for risk assets)
-        if (usdjpyChg !== null) {
-            if      (usdjpyChg < -1.0) score += 15;
-            else if (usdjpyChg < -0.5) score += 10;
-            else if (usdjpyChg < -0.2) score += 5;
-            else if (usdjpyChg >  0.5) score -= 3;
-        }
-
         // Gold: rising = risk-off flight to safety (0-10 points)
         if (goldChg !== null) {
             if      (goldChg > 2.0) score += 10;
@@ -56866,7 +56861,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         // 避免使用者看到矩陣亮燈但風險指數仍顯示「中性」的視覺矛盾
         const mf = this._falconScores?.macro_flags || {};
         // V17.0 — 移除 market_bias_high(macro_miner 已停止寫,前端 taiex_ma240_bias 直算取代,警示文案在 line 10886)
-        const flagCount = ['jpy_surge', 'metal_oil_spike', 'kospi_dump'].filter(k => mf[k]).length;
+        // 💴 2026-11-20 jpy_surge(日圓 3 日升值 >1.5%)不再加分:EXP-20261120-01 3 天升值 ≥2% 之後跟同樣顛的日子差 0.07pp
+        const flagCount = ['metal_oil_spike', 'kospi_dump'].filter(k => mf[k]).length;
         if (flagCount > 0) score += Math.min(flagCount * 5, 20);
 
         // 🧹 2026-11-17 拿掉「今天 / 明天有重要度高的行事曆事件 → +10 分」:結算日 / CPI / 非農 / 四巫日加權 26 年測過

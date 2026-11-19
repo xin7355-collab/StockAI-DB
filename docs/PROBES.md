@@ -136,6 +136,8 @@
   → 新聞暴增前已先漲 vs 沒先漲(EXP-20261112-04)。news_cnt:`NEWS_DIR=<news_deep 解開> DATA_DIR=<d16> NAMES=stock_names.json OUT=news_cnt.json python3 scripts/news_factor.py`(約 15 分)。
 - `scripts/crash_stock_probe.mjs` 🧾 V82.1.8 加 `REV_DIR=<stock_deep/rev> [REV_ONLY=1]` → 恐慌 vs 基本面(跌深股月營收年增 ≥+10% vs ≤−10%,EXP-20261112-03)。
   rev 在 research_pack 的 `src/stock_deep/rev`(要 `KEEP_SRC=1` 或先複製出來,做完 src 會刪)。⏭️ 下一次大跌滿 60 天後重跑。
+- `scripts/yen_surge_probe.mjs`(💴 V82.5.9 新,EXP-20261120-01):`IDX_LONG IDX_EARLY TWII_NOW FRED_HIST node scripts/yen_surge_probe.mjs out.json` → 日圓一天升值 ≥1% / 3 天升值 ≥2%(判)與 ≥0.5% / ≥0.2% / 3 天 ≥4%(描述)之後,加權 20 天內跌 ≥5% / 60 天內跌 ≥10% 的比例 vs 同一個波動五分位的非事件日;看得到的那天 = 匯率日期之後第一個台股交易日;兩段・拿掉事件最多那年・循環平移安慰劑。結論 ⛔(見實測總表 yen-surge)。⏭️ ⛔ 換門檻重跑;要測「日圓急升 + 美股大跌同一天」先登記新的實驗。
+- `scripts/usd_dd_probe.mjs`(💵 V82.5.9 新,EXP-20261120-02):`IDX_LONG IDX_EARLY TWII_NOW FRED_HIST node scripts/usd_dd_probe.mjs out.json` → 用美元算的加權(加權收盤 ÷ 比那天早的最後一筆 DEXTAUS)跌 ≥20% 的段落裡,台幣 20 天第一次升值 ≥1% 那天隔天收盤起算,之後 60 / 120 天 vs 同一段隨便一天(`lib_crash.evVsCorr`);只描述跌 ≥15% / ≥25%、升值 ≥2%、段落第一天。結論 ⛔(見實測總表 usd-dd)。⏭️ ⛔ 換門檻重跑;要把外資實際買賣超放進條件,先登記新的實驗。
 - `scripts/psych_state_probe.mjs`(🧠 V82.1.7 新):`IDX_LONG IDX_EARLY TWII_NOW node scripts/psych_state_probe.mjs out.json` → 大盤 5 種心理狀態(遲滯、擴張百分位)、
   各狀態之後 20/60 天與回檔、狀態轉移、恐慌每段第一天、EXP-20261112-02 判定、現在的狀態。⏭️ ⛔ 看結果調門檻;要換規則先登記新的實驗。
 - `scripts/nsf_probe.mjs`(新):`IDX_LONG IDX_EARLY TWII_NOW US_HIST` → 國安基金 9 次進場前後 + 一樣深沒進場的修正段。⏭️ 國安基金再進場一次就加一筆重跑。

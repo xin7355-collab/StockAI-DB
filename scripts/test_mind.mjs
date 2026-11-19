@@ -59,7 +59,7 @@ const mk = (stk, zh) => ({
         { k: 'usdtw', name: '這一波:用台幣算 vs 用美元算', v: -26.5, unit: '%', d: today, lab: null, note: '離近一年高點:用台幣算 −22.87%(高點 2026-10-06)、用美元算 −26.5%(高點 2026-10-06);同一段台幣貶 4.9%' }],
         trust: [], retail: [{ ref: 'mg20' }], insider: [{ k: 'ins', name: '董監 / 大股東申報在市場上賣', v: 9, unit: '家', d: today, lab: 'insider-sell', list: ['某公司 1234'], note: '近 5 個交易日' }],
         gov: [{ k: 'nsf', name: '國安基金', v: null, d: '2026-11-06', lab: 'nsf-entry', note: '還在執行' }] },
-    fx: [{ k: 'usdtwd', name: '美元 / 台幣', v: 33, c1: 0.27, c5: 0.42, c20: 1.23, pos: { pct: 80.5, lo: 80, hi: 19, n: 250, from: '2025-11-20', to: '2026-11-19' }, hs: 'FRED DEXTAUS(到 2026-11-14)', d: today, note: '' },
+    fx: [{ k: 'usdtwd', name: '美元 / 台幣', v: 33, c1: 0.27, c5: 0.42, c20: 1.23, pos: { pct: 80.5, lo: 80, hi: 19, n: 250, from: '2025-11-20', to: '2026-11-19' }, hs: 'FRED DEXTAUS(到 2026-11-14)', d: today, note: '', lab: 'usd-dd' },
         { k: 'dxy', name: '美元指數', v: 103.82, c1: -0.03, c5: null, c20: null, pos: { pct: null, n: 6, from: '2026-11-13', to: today }, hs: 'App 自己每天存的(5 天)', d: today },
         { k: 'gold_usd', name: '黃金', v: 3691.6, c1: null, c5: null, c20: null, pos: null, hwhy: '還沒有歷史(App 從 11/20 開始每天存)', d: null, upd: today + ' 01:43 +0800' }],
     wind: [{ k: 'upr', name: '上漲家數比例', v: 6.8, unit: '%', d: today, note: '漲 152・跌 2084', lab: null }],
@@ -121,6 +121,7 @@ try {
             o.fxPos = (document.querySelector('[data-mind-fx="usdtwd"] [data-mind-pos]') || {}).innerText || '';
             o.fxDxyPos = (document.querySelector('[data-mind-fx="dxy"] [data-mind-pos]') || {}).innerText || '';
             o.fxUsd = (document.querySelector('[data-mind-fx="usdtwd"]') || {}).innerText || '';
+            o.fxLab = [...document.querySelectorAll('[data-mind-list="fx"] [data-mind-fx]')].map(e => [e.dataset.mindFx, (e.querySelector('[data-mind-lab]') || {dataset: {}}).dataset.mindLab || null]);
             o.fxGold = (document.querySelector('[data-mind-fx="gold_usd"]') || {}).innerText || '';
             o.fxBars = [...document.querySelectorAll('[data-mind-list="fx"] [data-mind-bar]')].map(e => getComputedStyle(e).backgroundImage + '|' + getComputedStyle(e.querySelector('i')).backgroundColor);
             PRO.mindFxSortBy('pos'); await new Promise(r => setTimeout(r, 30));
@@ -169,6 +170,8 @@ try {
         ok('⑧ 照一年位置排:有位置的在前、排不出來的排最後', R.fxPosOrd[0] === 'usdtwd' && R.fxPosOrd.length === 3, JSON.stringify(R.fxPosOrd));
         ok('⑨ 外資 5 日合計:有尺(排第幾)、賣超 → 跟「今天」那條同一個方向色(台股綠 = 賣)', R.fi5Bar && R.fi5Col && R.fi5Col === R.fisCol && R.fi5Col !== R.fimCol, JSON.stringify([R.fi5Col, R.fisCol, R.fimCol]));
         ok('⑨ 外資今年累計是事實列(⛔ 尺、⛔ 排第幾)', R.fiyFact && /外資現貨今年累計\(2026\)/.test(R.seatTxt) && /不排第幾/.test(R.seatTxt), R.fiyFact);
+        ok('⑧ 🔬 V82.5.9 匯率表測過的那一列(美元 / 台幣 → usd-dd)轉述實測總表那一條;沒測過的列 ⛔ 每一列都印「還沒測過」',
+           JSON.stringify(R.fxLab) === JSON.stringify([['usdtwd', 'usd-dd'], ['dxy', null], ['gold_usd', null]]) || JSON.stringify(R.fxLab.slice().sort()) === JSON.stringify([['dxy', null], ['gold_usd', null], ['usdtwd', 'usd-dd']]), JSON.stringify(R.fxLab));
         ok('⑧ 外資座位有「用台幣算 vs 用美元算」那一行', /用台幣算 vs 用美元算/.test(R.seatTxt) && /用美元算 −26\.5%/.test(R.seatTxt), R.seatTxt.slice(0, 200));
         ok('② 匯率照 1 日排、再點一次反向(讀不到的排最後)', JSON.stringify(R.fxC1) === '["usdtwd","dxy","gold_usd"]' && JSON.stringify(R.fxC1b) === '["dxy","usdtwd","gold_usd"]', JSON.stringify([R.fxC1, R.fxC1b]));
         ok('⑦ 同分:今天 0 家而且很多天也是 0 → 「近一年最低(跟 76% 的日子一樣)」,⛔「比 76% 的日子高」', R.tieLow === '近一年最低(跟 76% 的日子一樣)' && !/的日子高/.test(R.tieLow), R.tieLow);
