@@ -126,6 +126,9 @@ const R = await page.evaluate(async () => {
     out.farIdle = idleEl ? idleEl.innerText : '';
     app._atrTR14 = _atr;
     // ⑩ 價格位置圖:硬停損與出場線兩條都畫
+    //   ⚠️ 上面一路 await 的時候,App 開機的背景工作可能把 currentSymbolId 換掉(機器忙時才會;_priceRulerHtml 見 sym 對不上就回空字串)
+    //   → 畫之前同步再設一次(⛔ 放寬斷言)
+    app.currentSymbolId = '0000';
     app._keyLevels = { sym: '0000', C: 571, exitMode: false, buyPx: 548.6, buyLb: 'x', addPx: 605, slPx: 533, slLb: '硬停損(成本−5% / 發動K低)', exitRulePx: 511, exitRuleLb: '你設定的出場線(唐奇安 20 日低點)', pocLo: 0, pocHi: 0, bull: true, stuck: [] };
     app._bearGate = () => false;
     out.ruler = app._priceRulerHtml ? app._priceRulerHtml() : '';

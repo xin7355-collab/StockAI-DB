@@ -100,6 +100,15 @@ jobs:
         run: |
           node --max-old-space-size=4096 scripts/lead_dd_state.mjs data data/lead_dd.json || echo "::warning::👑 收一半狀態沒產出(線上留舊的)"
 
+      # 🧠 V82.5.5 產業作戰室「🧠 人性」頁的數字(scripts/mood_build.mjs → data/mood.json + 累積檔 data/mood_hist.json)
+      #   ⭐ 排在掃描之前、⛔ 不掛 scan_rc 閘門(陷阱 #44)。只描述,⛔ 進任何判斷;散戶 App ⛔ 讀這兩份。
+      #   mood_hist 是累積檔(上一步已從 data 分支還原):讀不出來 → exit 1、兩份都 ⛔ 寫(部署照推上一份,⛔ 用今天蓋掉歷史)
+      - name: 🧠 人性頁的數字
+        continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單
+        timeout-minutes: 5
+        run: |
+          node scripts/mood_build.mjs data data/mood.json data/mood_hist.json || echo "::warning::人性頁的數字沒產出(線上留舊的)"
+
       # 🎤 V77.2.7 法說會快照(MOPS mopsov ajax_t100sb02_1 → data/confcall.json)
       #   ⭐ 刻意排在掃描**之前**、而且不掛 scan_rc 閘門:掃描失敗那天法說會照樣更新(陷阱 #44)。
       #   ⭐ 累積型(hist)→ 上一步已把舊的 data/confcall.json 從 data 分支還原回來,miner 會合併。
@@ -228,8 +237,10 @@ jobs:
           [ -s data/dip_pick.json ] && cp data/dip_pick.json /tmp/dip_pick.json || echo "⚠️ 沒有 dip_pick.json → 大跌撿便宜這輪不更新"
           [ -s data/crash_events.json ] && cp data/crash_events.json /tmp/crash_events.json || echo "⚠️ 沒有 crash_events.json → 大跌事件這輪不更新"
           [ -s data/lead_dd.json ] && cp data/lead_dd.json /tmp/lead_dd.json || echo "⚠️ 沒有 lead_dd.json → 👑 收一半狀態這輪不更新"
-          ls -s /tmp/playbook_edge.json /tmp/pick_history.json /tmp/screener.json /tmp/confcall.json /tmp/dip_pick.json /tmp/crash_events.json /tmp/lead_dd.json 2>/dev/null || true
-          [ -s /tmp/playbook_edge.json ] || [ -s /tmp/confcall.json ] || [ -s /tmp/pick_history.json ] || [ -s /tmp/dip_pick.json ] || [ -s /tmp/crash_events.json ] || [ -s /tmp/lead_dd.json ] || { echo "❌ 沒有任何產物可推,跳過部署"; exit 0; }
+          [ -s data/mood.json ] && cp data/mood.json /tmp/mood.json || echo "⚠️ 沒有 mood.json → 人性頁這輪不更新"
+          [ -s data/mood_hist.json ] && cp data/mood_hist.json /tmp/mood_hist.json || echo "⚠️ 沒有 mood_hist.json → 人性頁累積這輪不更新"
+          ls -s /tmp/playbook_edge.json /tmp/pick_history.json /tmp/screener.json /tmp/confcall.json /tmp/dip_pick.json /tmp/crash_events.json /tmp/lead_dd.json /tmp/mood.json /tmp/mood_hist.json 2>/dev/null || true
+          [ -s /tmp/playbook_edge.json ] || [ -s /tmp/confcall.json ] || [ -s /tmp/pick_history.json ] || [ -s /tmp/dip_pick.json ] || [ -s /tmp/crash_events.json ] || [ -s /tmp/lead_dd.json ] || [ -s /tmp/mood.json ] || { echo "❌ 沒有任何產物可推,跳過部署"; exit 0; }
 
           # ⭐ 三個產物一次放回,⛔ 別在 retry 分支只放回其中一個(那正是以前漏掉快照的原因)
           restore_files () {
@@ -240,11 +251,13 @@ jobs:
             [ -s /tmp/dip_pick.json ] && cp /tmp/dip_pick.json data/dip_pick.json || true
             [ -s /tmp/crash_events.json ] && cp /tmp/crash_events.json data/crash_events.json || true
             [ -s /tmp/lead_dd.json ] && cp /tmp/lead_dd.json data/lead_dd.json || true
+            [ -s /tmp/mood.json ] && cp /tmp/mood.json data/mood.json || true
+            [ -s /tmp/mood_hist.json ] && cp /tmp/mood_hist.json data/mood_hist.json || true
           }
 
           # 📉 V82.0.0 只 add / commit 真的在的檔 —— ⛔ 寫死清單:新檔(dip_pick / crash_events)哪天沒產出,
           #   `git add -f a b c` 整行失敗 → 一個都沒加 →「無變更」→ 連明日作戰清單也沒推(陷阱 #44 的另一種形式)
-          present () { for f in data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json data/dip_pick.json data/crash_events.json data/lead_dd.json; do [ -e "$f" ] && printf '%s ' "$f"; done; return 0; }
+          present () { for f in data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json data/dip_pick.json data/crash_events.json data/lead_dd.json data/mood.json data/mood_hist.json; do [ -e "$f" ] && printf '%s ' "$f"; done; return 0; }
 
           deploy_branch () {
             local BR="$1"

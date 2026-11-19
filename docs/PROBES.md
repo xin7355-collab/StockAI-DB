@@ -3,6 +3,17 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🧠 V82.5.5(2026-11-20)人性:恐慌賣的代價(EXP-20261119-02 ⛔)・恐慌 / 貪婪先不買(EXP-20261119-01)・人性頁的數字
+- **`portfolio_backtest.mjs` `PANIC_SELL=<門檻 %>` / `PANIC_SHIFT=K`(V82.5.5 新開關)**:加權收盤跌到門檻那天的下一個交易日開盤把手上個股全賣、之後照名單規則再買(0050 停車照規則);
+  SHIFT = 同一份賣的日子循環平移(安慰劑)。⛔ 不進 CACHE_KEY、不設 == 原本逐位相同(`test_panicsell`)。TAKEN_OUT 每筆被提早賣的多一個 `pan:{d,ret,dv}`。
+- **`hot_ccwin.yml` `src=panic` / `src=psych`**:同一套 BASE / INS / S1~S3 五組 → `ccwin_overlay_probe verdict`;src=panic 另印 `ccwin_overlay_probe panic`(恐慌賣那幾筆:開盤賣 − 照規則賣、拿掉最大 3 筆、兩段)。
+  **`from_run=<run id>`** = 只重算判定:讀那個 run 的產物、⛔ 重跑回測(第一次跑的描述被 `tail` 切掉、產物下載又被沙箱擋時用這個;run 44599156819 就是這樣補出逐筆)。
+  結果:第 1 題 ⛔(16 年 17 條全輸、中位數 1,469% vs 1,543%、回撤只淺 0.7pp;66 筆裡 42 筆賣完還在跌,虧在少數大反彈,拿掉最大 3 筆剩 −0.56%)→ LAB `panic-sell`。
+  ⛔ 別再測「大跌隔天全賣」的同一種門檻;⭐ 要測就測**另一題**(`next-fri-drop-sell`「週五收盤賣、隔天買回」還在推薦欄)。第 2 題(src=psych)結果見 LAB `psych-state`。
+- **`scripts/ccwin_overlay_probe.mjs panic <組目錄>...`(V82.5.5)**:讀 `eq16/sum_*.json` 與 `taken16/taken_*.json`,17 條取中位數與範圍;一筆都沒賣 → exit 1。selftest ⑩。
+- **`scripts/mood_build.mjs`(新,不是探針;每晚 playbook_scan)**:`node scripts/mood_build.mjs <data 目錄> data/mood.json data/mood_hist.json`(`--selftest` 23 條)→ 產業作戰室「🧠 人性」頁。
+  今天的值只讀每天會更新的檔、長歷史只排名次(`rankPct`:同分算一半 + 真的比較低 / 高的比例 lo / hi,MIN_N 20)、兩份接起來之前 `sameUnit` 比重疊那段;排不出來 → `miss`。⛔ 拿它的量條直接當訊號 —— 每一條的結論讀 LAB 那個主題鍵(沒測過就是沒測過)。
+
 ### 📅 V82.5.0(2026-11-17)日子 / 事件看漲跌(EXP-20261117-01;LAB `cal-daytype`)
 - **`scripts/daytype_probe.mjs`(新,selftest 23 條)**:加權 2000 起「排定的日子」前後 —— 方向有沒有規律(20 格)、那一天顛不顛(12 格);對照 = 同星期幾、不是那種日子;
   照星期幾分層隨機置換 4,000 次 + BH;選舉只描述。⚠️ 「休市 N 天」= 跟上一個交易日差 N 個日曆天(連續 N−1 天沒開盤)。

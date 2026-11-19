@@ -72,6 +72,8 @@ CADENCE_H = {
     'dip_pick.json': 80,         # 📉 V82.0.0 大跌撿便宜清單:playbook_scan 每個平日晚上產(週一晚上接週五 ≈ 72h)
     'crash_events.json': 80,     # 📉 V82.0.0 大跌事件:同上,跟 dip_pick 同一步
     'lead_dd.json': 80,          # ✂️ V82.0.7 👑 跌 20% 收一半的狀態:playbook_scan 每個平日晚上產(自動下單 / App / Telegram 都讀它)
+    'mood.json': 80,             # 🧠 V82.5.5 產業作戰室「🧠 人性」頁:playbook_scan 每個平日晚上產(只有作戰室讀)
+    'mood_hist.json': 80,        # 🧠 V82.5.5 同上的累積檔(每天一列,只增不減)
 }
 
 # 🏦 V82.1.5 這幾個檔的 updated 是「採礦那天」不是資料日:採礦每天把同一份舊資料重寫、updated 寫今天
@@ -106,6 +108,10 @@ EXTRA_FILES = {
     'premkt_log.json': {'first': '2026-10-26',
                         'why': '盤前紀錄:平日早上 05:00~08:59 那幾輪先存進 macro_risk.premkt_recent,'
                                '晚上 daily_miner 那輪才寫成這個檔'},
+    'mood.json': {'first': '2026-11-21',
+                  'why': '🧠 人性頁(V82.5.5):平日晚上接在明日作戰清單後面算(scripts/mood_build.mjs)'},
+    'mood_hist.json': {'first': '2026-11-21',
+                       'why': '🧠 人性頁的累積檔(V82.5.5):同上,每天一列'},
 }
 
 META_KEYS = {'updated', 'generated', 'date', 'data_date', 'ts', 'miner_version', 'count', 'total'}

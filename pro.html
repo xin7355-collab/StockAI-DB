@@ -99,6 +99,26 @@ html.app-fish .brandbar{display:none!important}
 .hm-row:last-child{border-bottom:0}
 .hm-row .v{margin-left:auto;font-family:var(--mono);font-weight:900;white-space:nowrap}
 .hm-sub{font-size:11px;color:var(--dim2);line-height:1.6}
+/* 🧠 V82.5.5 人性頁:位置一律灰階(⛔ 紅綠講好壞);一列一張卡(手機欄位 ≥3 個不用 table) */
+.mind-state{margin:4px 0 10px}
+.mind-line{font-size:13.5px;line-height:1.75;color:var(--txt)}
+.mind-seg{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 6px}
+.mind-row,.mind-fact{border-bottom:1px solid var(--line);padding:8px 0}
+.mind-row>summary{list-style:none;cursor:pointer}
+.mind-row>summary::-webkit-details-marker{display:none}
+.mind-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.mind-n{font-size:13px;color:var(--txt);min-width:0;overflow-wrap:anywhere}
+.mind-v{font-size:15px;font-weight:800;white-space:nowrap}
+.mind-sub{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px;color:var(--sub)}
+.mind-d{margin-left:auto;color:var(--dim2)}
+.mind-stale{color:var(--amber)}
+.mind-bar{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,#252c38,#4b5568);margin:6px 0 4px}
+.mind-bar i{position:absolute;top:-3px;width:3px;height:12px;margin-left:-1.5px;background:#dbe4f0;border-radius:1px}
+.mind-lab{margin-top:4px}
+.mind-seat{margin:14px 0 4px}
+.mind-seat h3{font-size:14px;margin:0 0 4px;color:var(--txt)}
+.mind-det{margin-top:6px}
+.mind-det>summary{cursor:pointer;color:var(--sub);font-size:12px}
 /* 🩺 V82.0.3 App 體檢:無框(標題 + 分隔線);表格沿用 .tblwrap(自己橫捲,⛔ 撐寬整頁);⛔ 紅綠 —— 這一頁講做法與取捨,不是漲跌 */
 .aud-ex{padding:6px 0 10px;border-bottom:1px solid var(--line)}
 .aud-btns{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
@@ -1069,6 +1089,7 @@ details.colart:not([open]){margin-bottom:6px}
     <button class="sub-btn hidden" id="tabBtnChain" data-g="ind" data-sub="chain" onclick="PRO.navGo('chain')">AI 產業鏈</button>
     <button class="sub-btn hidden" id="tabBtnStar" data-g="ind" data-sub="star" onclick="PRO.navGo('star')">關聯星圖</button>
     <button class="sub-btn hidden" id="tabBtnVal" data-g="ind" data-sub="val" onclick="PRO.navGo('val')">產業估值</button>
+    <button class="sub-btn hidden" id="tabBtnMind" data-g="ind" data-sub="mind" onclick="PRO.navGo('mind')" title="群眾現在多怕多貪、外資與大戶怎麼看、匯率與風向;只描述,不是買賣訊號">🧠 人性</button>
     <button class="sub-btn hidden" id="tabBtnConf" data-g="conf" data-sub="conf" onclick="PRO.navGo('conf')" title="法說會時間表 + 官方擇要;只描述,不下多空">法說會</button>
     <button class="sub-btn hidden" id="tabBtnFish" data-g="reco" data-sub="fish" onclick="PRO.navGo('fish')">📒 成績單</button>
     <button class="sub-btn hidden" id="tabBtnPoli" data-g="reco" data-sub="poli" onclick="PRO.navGo('poli')" title="政治人物申報的持股,照著抱的話報酬多少(跟 0050 比)">🏛️ 政治人物持股</button>
@@ -1097,8 +1118,17 @@ details.colart:not([open]){margin-bottom:6px}
       <section class="hm-sec" id="homeSecRace"><div class="hm-hd"><b>📒 你的策略今天</b><button class="hm-go" onclick="PRO.navGo('fish')">看完整 ›</button></div><div id="homeRace"></div></section>
       <section class="hm-sec" id="homeSecConf"><div class="hm-hd"><b>📞 你清單上的法說會</b><button class="hm-go" onclick="PRO.navGo('conf')">看完整 ›</button></div><div id="homeConf"></div></section>
       <section class="hm-sec" id="homeSecRot"><div class="hm-hd"><b>🏭 板塊最強 / 最弱</b><button class="hm-go" onclick="PRO.navGo('rot')">看完整 ›</button></div><div id="homeRot"></div></section>
+      <section class="hm-sec" id="homeSecMind"><div class="hm-hd"><b>🧠 今天的人性</b><button class="hm-go" onclick="PRO.navGo('mind')">看完整 ›</button></div><div id="homeMind"></div></section>
       <section class="hm-sec" id="homeSecRad"><div class="hm-hd"><b>🛰️ 主題雷達</b><button class="hm-go" onclick="PRO._homeConfGo('', 'radar')">看完整 ›</button></div><div id="homeRad"></div></section>
     </div>
+  </div>
+</div>
+<!-- ═══════════ 🧠 人性(V82.5.5)—— 數字只讀 data/mood.json(scripts/mood_build.mjs);只描述 ═══════════ -->
+<div id="tabMind" class="hidden">
+  <div class="panel">
+    <h2>🧠 人性 <span class="sub">群眾多怕多貪・外資與大戶的座位・匯率與風向 —— 只描述,⛔ 不是買賣訊號</span></h2>
+    <div id="mindHead"></div>
+    <div id="mindBody"></div>
   </div>
 </div>
 <!-- ═══════════ 📊 產業估值 ═══════════ -->
@@ -2538,6 +2568,7 @@ const PRO = {
       safe('colPremkt', () => this._renderColCal()),
       safe('homeConf', () => this._homeConf()),
       safe('homeRot', () => this._homeRot()),
+      safe('homeMind', () => this._homeMind()),
       safe('homeRace', () => this._homeRace()),   // 最重的放最後(先放「計算中」)
     ]);
   },
@@ -2810,13 +2841,13 @@ const PRO = {
     this.toast('✅ 已更新');
   },
 
-  TABS: [['home', 'Home'], ['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['conf', 'Conf'], ['poli', 'Poli'], ['lab', 'Lab'], ['audit', 'Audit'], ['qlab', 'Qlab'], ['col', 'Col'], ['log', 'Log']],
+  TABS: [['home', 'Home'], ['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['conf', 'Conf'], ['poli', 'Poli'], ['lab', 'Lab'], ['audit', 'Audit'], ['qlab', 'Qlab'], ['col', 'Col'], ['log', 'Log'], ['mind', 'Mind']],
   // 🧭 V79.8.0 五大類(使用者 10/25 選的)—— ⛔ 作戰室新增頁面一律登記在這裡,⛔ 再平鋪按鈕
   //   (以前 10 顆排 3 行 = 手機直立 192px、橫拿 39% 螢幕)。第三欄 = 子頁(分頁代號);
   //   pick = 實測總表的「🏆 選哪一套」(跟 lab 共用 #tabLab,靠 _labSel 分)。
   NAV: [
     ['home', '🏠 今天', ['home']],
-    ['ind', '🏭 產業', ['rot', 'chain', 'star', 'val']],
+    ['ind', '🏭 產業', ['rot', 'chain', 'star', 'val', 'mind']],
     ['conf', '📞 法說會', ['conf']],
     ['reco', '📒 成績單', ['fish', 'poli']],
     ['res', '🔬 研究', ['pick', 'audit', 'qlab', 'col', 'lab', 'log']],
@@ -2879,6 +2910,7 @@ const PRO = {
     if (t === 'col') this.renderCol();
     if (t === 'qlab') this.renderQlab();
     if (t === 'audit') this.renderAudit();
+    if (t === 'mind') this.renderMind();
     if (t === 'log') this.renderLog();
     // 🧮 V79.8.0 產業估值第一次打開就用輸入框裡的預設組合跑一次(以前是空白頁,要先按鈕)
     if (t === 'val' && !this._valAuto) { this._valAuto = 1; if (!(this._valRows && this._valRows.length)) this.runValuation(true); }
@@ -9607,6 +9639,7 @@ const PRO = {
       { col: {"s": "👑 領頭羊", "q": "領頭羊中途最多可能賠掉四成以上,有沒有辦法少賠、而且賺的不要變少?", "do": ["先知道:照領頭羊做,中途從最高點跌 20% 以上,2011~2026 這 16 年每一種起跑日都碰過 7~12 次(中間值 10 次),最深那次跌掉七成;回到新高中間值大約 4 個多月", "想要兩段都「少賠又不少賺」的做法,這次 88 種裡沒有找到", "上一期跌很多、怕下一期再跌:照規則換跟先不換,過去差不多(16 年先不換略好、近 4 年照換略好),⛔ 不用為了怕而臨時改規則;真的怕,調的是放多少錢(兩本帳、一半放 0050),不是這次先不換", "最接近的是「兩本帳」(錢分兩半、換倉日錯開幾天):兩段的中間值都少賠一點、多賺一點,最倒楣那種起跑日也好很多;它在進階功能裡,預設關", "「跌 20% 就先收一半」11/07 起已經幫你打開(App 和自動下單都照做):領頭羊這一套從最高點跌 20%,下一次換倉起每檔只放一半,回到最高點那次換倉再補回 —— 會少賠,但長期少賺;想全攻就到設定的「🔓 進階功能」關掉", "⛔ 看「最近波動大就少放一點」「跌破均線就減碼」「大盤轉弱就減碼」這幾種,跟隨便挑日子減碼差不多,不推薦"], "warn": "少賠的做法幾乎都會讓 16 年那段少賺很多:大跌之後的反彈正是領頭羊最會賺的時候,收一半就少吃那一段。兩本帳的「多賺」不是每一種起跑日都多賺,是讓運氣好壞平均一點。", "how": "同一套領頭羊規則,用跟「選哪一套」同一把尺(2011 年起含已下市股票與股利、成本含手續費和稅、17 種起跑日),比 100 萬變多少與中途最多賠;減碼那幾種另外用「同樣的減碼比例、整段挪到別的日子」當對照,要贏對照才算抓對時機。", "range": "2022-09~2026-09 與 2011~2026-09 兩段・成交金額前 100 大普通股", "trig": "none", "trigWhy": "講整套資金怎麼配,每天都適用,不是某一天才發生的事", "u": "2026-11-07", "fig": {"na": "這篇比的是「中途最多賠幾 %」與「100 萬變多少萬」兩個數字一起看,沒有單一一筆賺幾 % 的數字"}}, r: 78, k: 'lead-drawdown', x: 'EXP-20261107-01', u: '2026-11-07', tries: 94, t: '🛡️ <b>👑 想「少賠又不少賺」—— 88 種做法(兩本帳 / 先衝再穩 / 跌多少就收一半 / 看波動少放 / 跌破均線減碼 / 看大盤減碼,含組合)沒有一種兩段都做到;最接近的是兩本帳;「跌 20% 收一半」是唯一抓得到時機的少賠(16 年少賺約 1,500 萬)—— V82.0.7 起 App + 自動下單預設開</b>', w: '✂️ V82.0.7 起「跌 20% 收一半」預設開(使用者 11/07 選「做成開關並幫我打開」;App 決策台 / 提醒 / Telegram + 自動下單 LEADER_DD_HALF 都照做,🔓 進階功能可以關)・👑 選股 / 換倉規則一行不改・📚 兩本帳照舊在 🔓 進階功能(預設關)', how: '新探針 lead_dd_probe.mjs:A 類真的重跑引擎(兩本帳錯開 3~7 天、先衝再穩 門檻 1.5 / 2 / 3 / 4 倍 × 換成三成 / 五成放 0050;leader_probe 新參數 glideCore);B 類「帳戶分兩桶」(⭐ 真實帳戶做得到:一部分照 👑、其餘放 0050,規則只決定比例):dd 從最高點跌 X% → 只留 lo、回到最高點(或均線之上)恢復 ・vt 最近 N 天年化波動超過目標 → 比例 = 目標 ÷ 波動 ・trend 👑 淨值在自己 N 日線下 → lo ・mkt 0050 在 N 日線下 → lo ・fix 永遠固定比例;只用到當天收盤、隔天收盤才調,調整付手續費 + 證交稅;🎲 安慰劑 = 同一條比例序列整段平移(6 種)。跟看板同一把尺(d16 含下市 + 股利、END 2026-09-24、100 萬、17 條起點間距 3,現行那一列逐元重現看板 1,018.78 / 9,543.58 萬,對不上 exit 1)。判準(使用者選的):4 年與 16 年都要 ① 中途最多賠中位變小 ② 100 萬變多少中位 ≥ 現行 ③ 17 條配對多賺 ≥13。selftest 9 條。', n: '✂️ <b>V82.0.7 引擎原生重測「換倉日才收 / 才補」</b>(leader_probe ddHalf;含跌停那天賣不掉;17 條中間值;近 4 年 | 16 年):停 0050 版 全攻 1,008・−44.2% | 9,397・−61.4% → <b>收一半 1,211・−38.6% | 7,893・−46.8%</b>(配對多賺 7 | 5、回撤較小 16 | 15;最差那條 681 | 2,145 萬;日期亂挪的安慰劑 923・−40.9% | 6,475・−49.2%;收一半的日子佔 47% | 60%)・回到最高點那次空頭也照補 1,204 | 7,789 ・隔天就調(舊探針的做法)1,160 | 7,658 ・<b>錢放現金(= 自動下單)</b> 全攻 821・−45.6% | 7,284・−57.9% → 收一半 779・−35.2% | 3,286・−40.6%(安慰劑 545 | 2,418)→ 兩種都過事先寫死的關卡(中途最多賠中位小 ≥3 個百分點 + 贏安慰劑中位);⚠️ 錢放現金版 16 年少賺一半以上。📜 舊的(V79.9.x 探針「帳戶分兩桶」做法)↓ 100 萬 → 萬・中途最多賠(17 條中間值;4 年 | 16 年):<b>現行全攻 1,019・−44.2% | 9,544・−58.4%</b>(最差那條 749 | 3,214 萬)・<b>兩本帳錯開 3 天 1,125・−41.4% | 11,794・−50.3%</b>(最差 778 | 6,440;配對多賺 9 | 10)・錯開 4 天 1,174・−42.3% | 10,955・−53.8%(最差 888 | 5,476;6 | 6)・錯開 6 天 1,166・−42.3% | 11,282・−53.9%(12 | 9)・錯開 7 天 1,112・−41.4% | 11,148・−52.0% ・<b>跌 20% 收一半(回到最高點恢復)1,112・−37.1% | 7,197・−46.1%</b>(回撤較小 17 | 15 條、配對多賺 7 | 0;安慰劑 907・−40.2% | 5,931・−50.5% → 時機是真的)・跌 15% 收一半 1,001・−36.0% | 5,890・−44.9% ・跌 25% 1,071・−41.2% | 6,761・−49.0% ・跌 10% 861・−35.0% | 5,027・−41.4% ・收一半改「站回 20 / 60 日線就恢復」⛔ 兩段都大輸 ・<b>兩本帳(錯開 4)+ 跌 20% 收一半 1,204・−35.7% | 7,532・−44.3%</b>(配對多賺 12 | 4、回撤較小 15 | 15)・先衝再穩(現行 2 倍・五成)1,033・−33.0% | 5,490・−40.5% ・3 倍・五成 1,097・−33.1% | 5,789・−40.5% ・3 倍・三成 1,099・−38.4% | 7,596・−48.2% ・1.5 倍・五成 897・−33.0% | 5,036・−40.5% ・波動控管 年化 30%・60 天 1,045・−36.7% | 7,388・−45.2%(安慰劑 914 | 8,193 萬 —— 16 年安慰劑反而多賺 → 只是少放錢,不是時機)・波動 40%・20 天 1,004・−40.2% | 8,657・−52.1% ・兩本帳 + 波動 45% 1,058・−41.8% | 10,238・−49.3%(安慰劑 1,069 | 10,278)・自己跌破 60 日線收一半 1,061・−44.0% | 8,428・−53.3% ・0050 跌破 120 日線收一半 1,149・−44.2% | 8,526・−54.3%(4 年回撤沒變小)・永遠七成 861・−41.2% | 7,040・−54.6% ・🔁 <b>上一期跌很多這次先不換(V79.9.8;17 條配對贏幾條,4 年 | 16 年)</b>:帳戶跌 ≥5% 10 | 7 ・≥8% 11 | 6 ・≥10% 6 | 14 ・≥12% 8 | 11 ・≥15% 6 | 12 ・隨機同樣比例不換 6~9 | 4~6(8 組)・跌 ≥10% 只賣不買停 0050 10 | 8 ・≥15% 1 | 9 ・🟩 <b>V82.0.6 加上「跌停鎖死那天賣不掉 → 隔天開盤再賣」重算</b>:全攻 1,008・−44.2% | 9,397・−61.4%;跌 20% 收一半 1,094・−37.1% | 7,054・−47.9%(安慰劑 901・−40.5% | 5,778・−51.2%)→ 結論不變', d: '✂️ <b>2026-11-07 使用者選「做成開關並幫我打開」</b>(問:「App 和自動下單的 👑 那一份都照這條規則做,如果帳戶已經從最高點跌超過 20%,下一次換倉就會先收一半」)→ ① 先用回測引擎原生重測(舊探針是「隔天收盤整桶調一半、另一半放 0050」,跟要做的「下一次換倉才收」不一樣,自動下單又是錢放現金),過關條件先寫死在 lead_ddhalf_gate.mjs 才跑:兩段 × 停 0050 / 錢放現金都過 ② 看的是「👑 這套規則本身」那條帳(lead_dd_state.mjs 每晚照看板 👑 那一列重算,起點 2024-07-01),⛔ 不是你自己的帳戶(App 和自動下單都量不到你自己的最高點)③ 唯一一份判斷 lib_leaddd.mjs;每晚寫 data/lead_dd.json,App / Telegram / 自動下單都只讀它 ④ 2026-11-12 那次換倉起生效(之前的換倉一律當全額);資料到 11/06 時那條帳離最高點約 −48%、從 07/24 起就在「收一半」→ 11/12 收盤那次換倉就會收一半。<br>📜 🔁 <b>2026-11-06 👑 現行設定的回撤史</b>(leader_probe EQ_DIR,16 年 / 近 4 年各 17 條,使用者 11/06 問「大跌讓策略動搖」時量的):<b>16 年每一條從最高點跌 ≥20% 中位 10 次(7~12)、跌幅中位 −31.6%、最深 −69.9%、回到新高中位 91 個交易日(最久 799)</b>;≥30% 中位 5 次、≥40% 中位 3 次;近 4 年 ≥20% 中位 4 次、最深 −55.3%。資料最後一天 10/08 時,6/18~7/30 那一波高點之後各條中位還在 −22%(−9 ~ −36%)、還沒回到新高;10/29 換進來那一批(截圖)平均再跌 17.6%(這兩週的帳是估的,沒有重算)。<br>📜 🔁 <b>2026-10-30(V79.9.8)使用者:「這一次的策略績效真的很差,是整個盤面都這樣子嗎?還是有失準情形,讓我明天不敢換股」</b> → ① 那一期(10/14 開盤 → 10/29 收盤)5 檔平均 −12.7%,同一段 10/13 前 10 天最強的 50 檔中位 −13.7%、全部股票中位 −3.1%、加權 −4.6% = <b>動能股集體回檔</b>,名單 / 換倉日 / 空頭守門都對過,⛔ 不是失準;跌幅在歷史範圍內(近 4 年最多賠 44%、16 年 58%、最壞一個月 −29%)② <b>「跌很多先不換」</b>新參數 <code>skipDrop</code>(帳戶從上次換倉跌 ≥ X% → 這次 hold 不賣不買 / park 只賣不買)+ <code>skipSham</code> 隨機不換同樣比例當安慰劑:16 年 ≥10~15% 先不換 17 條贏 11~14 條、隨機不換 8 組全輸(4~6 條)—— 看起來像真的;⛔ 但近 4 年 ≥10 / 12 / 15% 只贏 6 / 8 / 6 條(跟隨機不換一樣),16 年門檻往旁邊挪到 ≥5% / ≥8% 又輸(7 / 6 條)→ 兩段不一致、不是高原 = ⛔ 不改規則。逐筆看「本來會買的那 5 檔」:上一期跌 ≥10% 之後,換新名單下一期(扣換股成本)16 年 +2.43% vs 抱舊名單 +2.38%、近 4 年 +2.82% vs +1.73% —— 打平。→ 這期跌很多,下一期照換或先不換過去差不多;⛔ 不需要因為怕而臨時改規則,真的怕就調放多少錢(兩本帳、👑 一半 + 0050 一半)。<br>使用者(10/26,附決策台 👑 截圖):「中途最多賠有沒有辦法減少…賺得錢不要減少甚至要更多」。判準他選「4 年和 16 年都要成立」,找不到就「列成選項給我挑」。<br>⭐ 結論:① <b>兩全的 0 種</b> —— 少賠的做法在 16 年那段幾乎都少賺,因為大跌之後的反彈正是 👑 最會賺的時候 ② <b>兩本帳</b>兩段中間值都「少賠 + 多賺」、最差那條大幅變好(16 年 3,214 → 5,476~6,440 萬),但配對只贏一半 —— 它是把兩個起跑日平均,⛔ 不是每一種起跑日都多賺;價值是「少看運氣」③ <b>跌 20% 收一半</b>是這次唯一贏安慰劑的減碼(兩段回撤都小 7~12 個百分點),代價 16 年 17 條全少賺 ④ 看波動 / 看均線 / 看大盤減碼 ≈ 安慰劑 = 只是少放錢。<br>⚠️ 沒做進 App:兩本帳已在進階功能(預設關是使用者 V79.2.6 選的);「跌 20% 收一半」要使用者選了才做(會動 App + 自動下單 + 成績單)。', s: 'lead_ddhalf_gate.mjs・lib_leaddd.mjs・leader_probe.mjs ddHalf(V82.0.7)・lead_dd_state.mjs・lead_dd_probe.mjs・leader_probe.mjs glideCore(V79.9.1)+ skipDrop / skipSham(V79.9.8)', pl: ['ref', '部位', 2, '想少賠又不少賺:88 種做法沒有一種近 4 年和 16 年都做得到;「跌 20% 收一半」少賠、抓得到時機,11/07 起預設開', '已經幫你開了「跌 20% 收一半」(App 和自動下單都照做):這一套從最高點跌 2 成,下一次換倉起每檔只放一半 —— 少賠,但長期少賺;想全攻就到 🔓 進階功能關掉。兩本帳讓運氣好壞平均一點。', '100 萬(含跌停賣不掉):全攻近 4 年 1,008 萬・最多賠 44%、16 年 9,397 萬・61%;跌 20% 收一半 1,211 萬・39% / 7,893 萬・47%。兩本帳(舊算法)1,174 萬・42% / 10,955 萬・54%'] },
     ],
     trap: [
+      { col: {"s": "跌停與空頭", "q": "大盤一天跌 3% 以上,很怕,隔天開盤要不要先把股票全部賣掉、之後再買回來?", "a": "不用。照出場規則走的人,16 年下來比大跌隔天全賣的人多賺;全賣只讓帳上最多賠的幅度少一點點。", "num": "2011~2026 年 100 萬照出場規則走變 1,643 萬;每次大跌隔天開盤全賣、之後照規則再買,變 1,569 萬(少 73 萬),17 種開始日全部比較少。帳上最多賠的幅度只從 37.2% 變 36.5%。", "mean": "被賣掉的股票裡,將近三分之二(66 筆裡 42 筆)之後真的還在跌,看起來賣對了;但另外幾檔賣掉之後大漲,少賺的錢幾乎都在那幾檔,而事前分不出是哪幾檔。", "do": ["大跌隔天不用開盤就全部賣掉,手上的照你的出場規則走(收盤確認才算)", "真的怕到睡不著,下一次一開始就少買一點,而不是大跌之後全賣", "要買新的照決策台名單、尾盤到價才買,不要因為賣掉了就急著追回來"], "warn": "這次只看了「跌 3% 隔天開盤全賣」這一種賣法;跌 2% 就賣、收盤才賣、連 0050 一起賣,都還不知道。", "how": "用 🔥 那一套真的買賣方式(前一晚名單、尾盤到價才買、閒錢停 0050),從 2011 年起 17 個不同的開始日各跑一次:一份照出場規則走;一份在加權收盤一天跌 3% 以上的下一個交易日開盤,把手上的股票全部賣掉(那天鎖跌停賣不掉就隔天再賣),之後照規則再買。再把同樣多的賣出日隨便挪到別的日子當對照,看是不是「大跌隔天賣」特別吃虧。", "range": "2011-01 ~ 2026-11(16 年)・全市場含已下市・17 個開始日", "trig": ["idx_drop3", "feel_fear"], "u": "2026-11-20", "fig": {"pct": -73.3, "what": "大跌隔天開盤全賣 vs 照出場規則走(100 萬本金,16 年)", "rate": 63.6, "rn": 66, "rw": "被賣掉的股票之後其實還在跌的比例", "ru": "筆"}}, k: 'panic-sell', x: 'EXP-20261119-02', u: '2026-11-20', r: 95, tries: 1, t: '😱 <b>大盤一天跌 3% 以上 → 隔天開盤把手上個股全部賣掉、之後照規則再買 —— 16 年 17 條全部比照規則少(100 萬少約 73 萬),最大回撤只淺 0.7 個百分點</b>', w: '⛔ 大跌隔天不用開盤全賣,照出場規則走・「很怕想賣」小抄與大跌那天的專欄引用這條', n: 'EXP-20261119-02(事先登記)。🔥 照 App 實際買法(看板設定 SELF=high+hivolat+nobear、名單前 60 筆判觸發、PARK=idle 閒錢停 0050),引擎新開關 PANIC_SELL=-3:加權收盤比前一天跌 ≥ 3% 那天的下一個交易日開盤,把手上個股全部賣掉(一價到底鎖跌停或停牌 → 隔天開盤再試;提早賣掉那筆的股利只算到賣的那天),之後照名單規則再買、0050 照停。16 年(2011-01-03 ~ 2026-11-19)17 條:恐慌賣贏 <b>0/17</b>,中位數總報酬 <b>1,469.33% vs 照規則 1,542.61%</b>(100 萬 1,569 萬 vs 1,643 萬,少約 73 萬);近 4 年(2022-09-16 起)331.68% vs 397.8%(17 條贏 0,100 萬少約 66 萬);中位數最大回撤 −36.49% vs −37.21%(只淺 0.72pp)。兩段配對:2011~2018 0/17(中位數差 −7.8pp)・2019~ 0/17(−10.14pp)。安慰劑(同一份賣的日子循環平移 63 / 126 / 189 個交易日 = 一樣多次「中途全賣」,只是跟大跌無關):1,314.34 / 1,621.06 / 1,533.95% → 恐慌賣落在中間偏低。逐筆(17 條中位數):開盤要賣 36 天、賣掉 66 筆(鎖跌停延後 1 次、停牌延後 3 次);每筆「開盤賣 − 照規則賣」平均 <b>−4.76%</b>、中位數 <b>+3.68%</b>、比照規則差的 24/66 筆(= 42 筆賣了反而比較好);拿掉往同方向推最大 3 筆後平均 −0.56%(17/17 條同號);2011~2018 −4.18%(16 筆)・2019~ −4.94%(50 筆)。安慰劑每筆:−4.65 / −1.16 / −1.98%。判定:A「恐慌賣有代價」成立(≥ 13/17 比較少且中位數比較少);B「反而比較好」四條只過 ③ → 不成立。tries 1(門檻 −3% = App 的 _DAY_TH.dn3,沒有試別的)。', d: '使用者 11/18:「App 太理性,要加人性(貪婪與恐懼)」→ 計畫第 1 題「恐慌賣的代價」,用途是「很怕想賣」那張小抄與大跌那天的專欄。⭐ 讀法:① 大跌隔天賣掉的股票,多數(63.6%)之後真的還在跌 —— 這就是「賣了好像對」的感覺來源;② 但少數幾檔賣掉之後大漲,平均每筆被拉成 −4.8%,拿掉最大 3 筆就只剩 −0.6% → 代價集中在事前分不出來的那幾檔;③ 帳戶層級還多一層:賣掉之後錢先停 0050、要等名單到價才買回股票,中間那段反彈常常吃不到 → 17 條全部比較少;④ 跟「隨便挑一樣多天全賣」比落在中間 → 主要是「中途全賣再買回來」本身的代價,不是大跌隔天特別爛;⑤ 最大回撤只淺 0.7 個百分點 —— 用全賣換來的安心很少。⚠️ 限制:只測一種賣法(跌 3%、隔天開盤、只賣個股);−2%、收盤賣、連 0050 一起賣、星期五大跌(next-fri-drop-sell)都還沒測;樣本內(2011~2026 都看過)。', s: 'portfolio_backtest PANIC_SELL・hot_ccwin.yml src=panic(run 44524071130)+ from_run 重算(run 44599156819)・ccwin_overlay_probe panic・V82.5.5' },
       { col: {"s": "跌停與空頭", "q": "盤勢不好的時候,跌停隔天收大紅 K 可以進場搶反彈嗎?", "a": "不要。一筆一筆看,這種股票之後十天平均真的比較會彈;但真的拿錢照做(一次最多抱 10 檔),大盤空頭時每一筆平均比把錢放 0050 還少,成本稍微高一點整套就輸 0050。", "num": "2011~2026 年照做:100 萬變 12.9 倍,一直放 0050 是 10.8 倍;但 2004~2010 那段只有 1.1 倍(0050 是 1.9 倍,2008 年賠 63%)。大盤空頭那些天進場的 434 筆,平均每筆比同一段放 0050 少 1.1%,六個空頭年只有 2 年是正的。", "mean": "它只在 2020 年 3 月、2025 年 4 月那種跌很急又馬上彈回來的時候有用;2008、2011、2018 那種慢慢跌的空頭裡沒有用,而事前分不出是哪一種。", "do": ["不要因為「跌停隔天收大紅」就去買,大盤空頭時更不要", "手上本來就有的,照你的出場規則走,不用因為這根紅 K 加碼", "空頭時要買新的:只看決策台列的前 2 檔、尾盤到價才買,量放小;⛔ 不做空、不買反一", "閒錢想吃大跌後的反彈,放 0050 就吃得到,不用等跌完"], "warn": "這種機會擠在大跌那幾天,一天幾十檔,錢只夠買幾檔;實際買得到的,常常是先反彈、後來又再跌的那幾檔。", "how": "把 2004~2026 年全部「大盤一起跌造成的跌停、隔天收漲 3% 以上」找出來,用一個真的帳戶去做:平常錢放 0050,有訊號那天開盤換成股票、最多同時 10 檔、抱 10 天再換回 0050,扣掉買賣成本,跟一直放 0050 比;再把大盤空頭那些天進場的單獨拿出來看。", "range": "2004-08 ~ 2026-11(2004~2010 只有上市)・含已下市・訊號 8,166 筆", "trig": ["ld_redk", "bear_on"], "u": "2026-11-16", "fig": {"pct": -1.09, "what": "大盤空頭時照做,每一筆平均比同一段放 0050", "rate": 33.3, "rn": 6, "rw": "空頭年裡照做比放 0050 好的年份", "ru": "年"}}, k: 'ldred-port', x: 'EXP-20261116-01', u: '2026-11-16', r: 88, tries: 13, t: '🕯️💰 <b>「跌停隔天收大紅 K → 再隔天開盤買」真的拿錢照做 —— 2011 起贏 0050 約 20%,但 2004~2010 輸 43%、成本加倍就輸、空頭日進場 434 筆平均每筆輸 0050 1.09%(六個空頭年只有 2 年是正的)→ 六條過 3 條</b>', w: '⛔ 不拿來當買進理由(大盤空頭時更不要)・手上有的照出場規則走・App 的 K 線頁 / 總覽提醒 / 專欄一起改口', n: 'EXP-20261116-01(事先登記六條)。事件 = streak_probe 既有定義搬進 lib_ldred(跌停 = 收盤 ≤ −(漲跌幅上限 − 0.8)%:2015-06 起 −9.2%、之前 −6.2%;加權那天 ≤ −1%;隔天收漲 ≥ 3%;再隔天開盤進、鎖漲停買不到;同一檔 10 天一次;三天要連續交易)。帳戶 = margin_call_port.simulate 加「閒錢放 0050」:100 萬平常全放 0050(含息),訊號日開盤賣 0050 換股票、最多 10 檔、每檔 = 前一天總資產 ÷ 10、20 日均成交金額大的先且 ≥ 1 億、第 10 天收盤賣回 0050;股票來回 0.44%、0050 來回 0.24%。2011~2026(d16):訊號 5,425 筆(≥ 1 億 1,666 筆),帳戶 ×12.93(每年 18.1%・最多賠 41.1%)vs 0050 ×10.80(16.7%・34.0%);實際買到 590 筆 / 201 個進場日、賺錢 53%、平均每筆 +1.28%;逐年贏 0050 11/16(2014 3% vs 17%・2015 −14% vs −6%・2018 −12% vs −5%・2021 3% vs 22% 輸很多;2020 47% vs 31%・2025 57% vs 37%・2026 84% vs 61% 贏很多)。2004-08~2010-12(d04,只有上市):訊號 2,741 筆,帳戶 ×1.10 vs 0050 ×1.92(2008 −63% vs −43%、2009 +104% vs +75%),平均每筆 −0.12%。① 兩段都贏 ✗ ② 贏安慰劑 20/20(安慰劑 ×1.66~3.07)✓ ③ 逐年 69% ✓ ④ 拿掉最好 3 個進場日(2026-06-08 / 05-19 / 04-02)×11.21 ✓ ⑤ 成本加倍 ×8.66 ✗ ⑥ 空頭日 434 筆 −1.09%、2008 −3.8%(112 筆)・2011 +0.3%(57)・2015 −2.0%(39)・2018 −3.7%(23)・2022 +2.5%(50)・2025 −2.9%(19)✗。只描述:最多 5 檔 ×11.19・20 檔 ×12.68・抱 5 天 ×9.31・抱 20 天 ×9.76・跌最深的先 ×13.54・隨機先 ×13.10・不看大盤 ×8.08・不設流動性門檻 ×9.73・閒錢放現金 ×2.18。', d: '使用者 2026-11-16(加權一天跌 6.03%、212 檔跌 9.5% 以上):「最近盤勢不好,像這種我要怎麼找標的,另外要做空還是撿便宜,務必告訴我答案」。本站當時唯一寫著「空頭時可以做」的就是跌停後大紅 K(regime-ldred / ld-redk / ld-market,專欄還會在大盤空頭時自動跳出來)—— 但那三條都是一筆一筆的事件研究,空頭樣本只有 2022。⭐ 讀法:① 一筆一筆的平均是真的(2011 起 10 天比加權 +4.86pp、5,325 筆),但空頭日的事件平均 +5.5pp 幾乎全靠 2020(+12.2pp・855 筆)與 2025(+6.1pp・1,202 筆)兩次急跌急彈;2008 +0.1(1,343 筆)・2011 −0.2・2018 +0.3・2022 +1.8 → 慢慢跌的空頭裡接近零 ② 事件擠在少數幾天、一天幾十到幾百檔,帳戶只買得到 10 檔,而且常常買在還會再跌的半路(同 margin-call-bounce / hot-drop-reversal 那一課)③ 2004~2010 連一筆一筆都是 −0.08pp(2,738 筆)。📅 這個月照做的 7 個進場日到 11/16 收盤 6 個是負的:11/10 進場那 10 檔平均 −7.0%(同期 0050 −3.1%)、10/15 進場 −22.3%、10/28 進場 −15.4%。⚠️ 安慰劑候選(跌停後隔天漲不到 3%)是訊號的 2.8 倍、交易次數多、成本拖累大 → 「贏 20/20」有一部分是機械性的,⛔ 不可當成這條有用的證據。📍 落地 V82.4.1:App K 線頁那一塊、總覽重點判讀、出場狀態的步驟都改成「⛔ 不是進場理由」,大盤嚴格空頭時多一行「空頭裡照著買多數年份是賠的」;舊三篇專欄不再自動跳,改由這一篇在「碰到這種 K 線」與「大盤空頭」時出現。<code>scripts/ldred_port.mjs</code>(selftest 14 條:埋效果抓得到 / 沒埋只賠成本 / 安慰劑一樣好 → 不過 / 隔天跳空買不到 / 2008 年跌 6.8% 算跌停、同一份改成 2020 年不算;LD_INJECT=peek / nolock / noseq 各自紅)。', s: 'ldred_port.mjs・lib_ldred.mjs・margin_call_port.mjs・research/bear_playbook_20261116・V82.4.1' },
       { r: 64, k: 'size-split', x: 'EXP-20261113-02', u: '2026-11-13', tries: 3, t: '🧬 <b>股性分流:🅿️ 只挑當晚候選裡「大的一半」或「小的一半」都沒有比較好 —— 大的一半每年少 5.9 個百分點(17 條全輸);小的一半看起來每年多 2.1,但 2014 年以後只多 0.7、比隨機挑一半只多 1.8,而且只有 37% 的買進是 15 萬買得進去的</b>', w: '⛔ 分流(🅿️ 照原本不分大小)', how: 'EXP-20261113-02 事先登記(V82.2.7):名單那一晚通過 🧬 的候選,照到那一晚為止前 60 個交易日平均每日成交金額用當晚中位數切兩半(portfolio_backtest SIZE=big|small,名單層、被擋的不佔名額);安慰劑 = 同一池固定種子隨機留一半;hot_wf.yml mode=size 同一份釘住的資料跑 4 組,16 年 17 條起點、每年取中位。判定 6 條:16 年與 2014~2026 都 +2 個百分點、兩段同方向、17 條至少 13 條贏、贏隨機一半 2 個百分點、買得到(收盤鎖漲停那天買的 ≤ 10%、15 萬 ≤ 進場前 20 日成交金額中位數 1% 的 ≥ 90%)。', n: '16 年年化:不分 19.96% ・大 14.07% ・小 22.09% ・隨機 20.33%;2014~2026:不分 18.96% ・大 14.59% ・小 19.63% ・隨機 18.69% ・0050 含息 19.41%。<b>大的一半</b>:16 年 −5.89、2014~ −4.37、兩段 −8.57 / −2.81、17 條贏 0、比隨機 −6.26。<b>小的一半</b>:16 年 +2.13 ✅、2014~ +0.67 ❌、兩段 +3.73 / +0.37 ✅、17 條全贏 ✅、比隨機 +1.77 ❌、鎖漲停 21.3% ❌、容量 37.0% ❌。描述:賺最多 5 筆佔總獲利 大 94.8% / 小 25.9%;持股比例 大比隨機 +6.6、小 −3.6 個百分點。📎 不分(現行 🅿️)本身:22.1% 的買進在收盤漲停那天、只有 69.2% 符合容量。', d: '⭐ 讀法:① 只挑大的那一半明顯比較差 → 🅿️ 賺的大多來自當晚候選裡比較小的股票 ② 但小的那一半多賺的大多在 2011~2018,而且多半是成交金額太小、15 萬買不太進去的股票 → 實際拿不到 ③ ⚠️ 現行 🅿️ 回測本身有兩成多的買進在收盤漲停那天、三成的買進金額超過當天成交金額中位數的 1%(V79.4.9 舊設定量過:拿掉收盤鎖漲停的買進,16 年賺的 +1,945 萬 → +1,407 萬,少約 28%)—— 看板的 🅿️ 數字偏樂觀,要不要改量法另外決定。', s: 'portfolio_backtest SIZE・hot_wf.yml mode=size run 43397562917・hot_wf_probe cap / size・research/size_split_20261113・V82.3.0' },
       { k: 'rev-sector', x: 'EXP-20261113-07', u: '2026-11-13', r: 90, tries: 30, t: '🏭 <b>產業「月營收加速」+ 20 日動能挑產業 —— 全部 33 個產業、16 年:動能前一半裡營收加速前 3 個產業,20 天比同一天全部產業 +0.49%(BH q 0.008、前 2~5 個都正),但逐年沒過(17 年 13 年正)、只贏 94.4% 的「動能前一半裡隨機挑 3 個」(登記要 95%;安慰劑中位就有 +0.28)→ 大部分是動能本身,營收加速只多約 +0.2 → ⛔ 不做第二步、⛔ 進 App</b>', w: '⛔ 沒過(登記五條過三條)', n: 'EXP-20261113-07:d16 上市櫃 × industry_map 35 組(成員有 K 線 1,989 檔)× stock_deep/rev;每月決定日(資料月次月 11 日起第一個交易日)收盤,產業營收加速 = 同一批公司 3 個月營收年增(basketRevYoy3)這個月 − 上個月、20 日動能 = 成員過去 20 日報酬平均;隔天開盤等權買、含息、減同一天全部產業等權平均。主格(動能前一半裡營收加速前 3、20 天)198 個月 +0.49pp(p 0.004、BH q 0.008、中位 +0.12、前後半 +0.21 / +0.76、去最好年 +0.39、逐年 13/17:2010 −0.66・2011 −0.76・2019 −0.15・2026 −0.23)。高原 前 2/3/4/5:+0.48 / +0.49 / +0.52 / +0.57;抱 60 天 +1.0~+1.4。🎲 動能前一半裡隨機挑 3 個(500 次)5% / 50% / 95% = +0.06 / +0.28 / +0.49(主格贏 94.4%);全部產業隨機挑 −0.26 / −0.03 / +0.20。參考(⛔ 判定):只看營收加速前 3 +0.21(2/6)・兩個都在前一半全部買 +0.45(六關全過、17/17 年,但沒跟動能前一半的安慰劑比、而且是 30 種裡挑的)・成交金額加權 +0.90(5/6,只差逐年)。⚠️ industry_map 沒有下市股(存活者偏誤)。', d: '由來:LAB 推薦欄 next-rev-sector(V80.1.6 trade_lead_probe 14 組出口產業:營收加速 ∧ 20 日動能 +0.45pp)。這次全部產業、同一把尺,⭐ 判定用的安慰劑是「動能前一半裡隨機挑 3 個」(只換掉營收那一半;selftest ⑤ 決定性對照:只有動能 → 贏全部產業隨機、贏不了動能前一半隨機)→ 量到的大部分是動能(而動能本身在 sector_rotation_probe 只能描述)。⛔ 第二步(引擎「只買這幾個產業」× 17 條)不做。<code>scripts/sector_rev_probe.mjs</code>(面板 / 報酬 / 六關一律 import trade_lead_probe;trade_lead_probe 多 export gate / lagOf / loadRevDir)。', s: 'sector_rev_probe.mjs・research/sector_rev_20261113・V82.3.1' },
@@ -10854,6 +10887,161 @@ const PRO = {
     }
     return '';
   },
+  // ═══════════ 🧠 V82.5.5 人性(使用者 11/18:「App 太理性 —— 貪婪與恐懼、大戶外資的角度、匯率風向」)═══════════
+  //   ⛔ 只描述:數字一律讀 data/mood.json(scripts/mood_build.mjs 每晚算好),⛔ 這裡另算、⛔ 合成總分;
+  //   位置一律灰階(⛔ 紅綠講好壞;只有買賣超與匯率漲跌是方向,照台股紅漲綠跌);
+  //   每一條的結論只轉述實測總表那一條(_labByK),⛔ 另寫結論。🏠 今天那一格只轉述 _mindLine(這一頁頂端同一句)。
+  _mindSeg: 'crowd', _mindSort: null, _mindFxSort: null,
+  async _mindLoad() { const j = await this.fetchJson('data/mood.json', 9000); return j && typeof j === 'object' ? j : null; },
+  _mindMd(d) { return d ? String(d).slice(5, 10).replace('-', '/') : '—'; },
+  _mindNum(v, unit = '') {
+    if (v == null || !isFinite(v)) return '—';
+    const a = Math.abs(v), s = a >= 1000 ? Math.round(a).toLocaleString() : String(Math.round(a * 100) / 100);
+    return (v < 0 ? '−' : '') + s + (unit ? (unit === '%' ? '%' : ' ' + unit) : '');
+  },
+  _mindSpan(g) {
+    if (!g || !g.from || !g.to) return '歷史';
+    const days = (Date.parse(g.to) - Date.parse(g.from)) / 864e5;
+    if (!(days > 0)) return '歷史';
+    if (days <= 400) return days >= 300 ? '近一年' : `近 ${Math.max(1, Math.round(days / 30))} 個月`;
+    return `${String(g.from).slice(0, 4)} 年以來`;
+  },
+  /** 排第幾 → 白話(mood_build.rankPct:pct = 同分算一半的位置;lo / hi = 真的比較低 / 比較高的比例,含今天)
+   *  ⭐ 字只用 lo / hi:跌停家數這種整數很多天一樣,用 pct 講「比 X% 高」會把「一樣」講成「比較高」(⛔) */
+  _mindPctTxt(g, minN = 20) {
+    if (!g || g.pct == null) return g && g.n ? `⏳ 還在累積(${g.n} 筆,滿 ${minN} 筆才排得出來)` : '⏳ 沒有歷史可以比';
+    const sp = this._mindSpan(g), p = +g.pct, n = +g.n || 0;
+    const b = /^\d/.test(sp) ? '比 ' : '比';
+    if (g.lo != null && g.hi != null) {   /* mind-tie */
+      const lo = +g.lo, hi = +g.hi, eq = Math.max(0, 100 - lo - hi), same = eq >= 10 ? `(跟 ${Math.round(eq)}% 的日子一樣)` : '';
+      if (hi <= 0) return `${sp}最高${same}`;
+      if (lo <= 0) return `${sp}最低${same}`;
+      return (p >= 50 ? `${b}${sp} ${Math.round(lo)}% 的日子高` : `${b}${sp} ${Math.round(hi)}% 的日子低`) + same;
+    }
+    // 沒有 lo / hi(波動那條直接用 psych_state_probe 的百分位;連續數字,幾乎不會同分)
+    if (p >= 100) return `${sp}最高`;
+    if (n && p <= 100 / n + 1e-9) return `${sp}最低`;
+    return p >= 50 ? `${b}${sp} ${Math.round(p)}% 的日子高` : `${b}${sp} ${Math.round(100 - p)}% 的日子低`;
+  },
+  _mindAge(d) { const t = Date.parse(this._auditYmd()), x = Date.parse(String(d || '').slice(0, 10)); return isFinite(t) && isFinite(x) ? Math.floor((t - x) / 864e5) : null; },
+  /** ⭐ 頁頂那一句 = 🏠 那一格(唯一一份):狀態 + 離平常最遠的兩條(⛔ 停在舊日期的不算) */
+  _mindLine(j) {
+    if (!j) return null;
+    const parts = [], st = j.state;
+    if (st) parts.push(`大盤心理狀態 <b>${this._esc(st.zh)}</b>(${this._mindMd(st.since)} 起第 ${st.days} 天)`);
+    const ex = (j.crowd || []).filter(g => g && g.pct != null && !g.stale).map(g => ({ g, e: Math.abs(g.pct - 50) })).sort((a, b) => b.e - a.e).slice(0, 2);
+    for (const { g } of ex) parts.push(`${this._esc(g.name)} ${this._mindNum(g.v, g.unit)}(${this._esc(this._mindPctTxt(g, j.minN))})`);
+    return parts.length ? parts.join(' ・ ') : null;
+  },
+  async _homeMind() {
+    const el = document.getElementById('homeMind'); if (!el) return;
+    el.innerHTML = '<div class="hm-sub">⏳ 正在讀人性頁的數字…</div>';
+    const j = await this._mindLoad(), L = this._mindLine(j);
+    el.innerHTML = !j ? `<div class="warnbox" data-home-mind="nofile">⚠️ <b>讀不到 data/mood.json</b> —— ⛔ 不代表今天沒有恐慌或貪婪(檔案還沒產出,或網路失敗)。</div>`
+      : L ? `<div class="mind-line" data-home-mind="line">${L}</div><div class="hm-sub">只描述,⛔ 不是買賣訊號(${this._esc(String(j.updated || '').slice(5, 16))} 算的)</div>`
+      : `<div class="hm-sub" data-home-mind="empty">這一份一條都算不出來(原因寫在「🧠 人性」頁最下面)。</div>`;
+  },
+  mindSel(s) { this.buzz(8); this._mindSeg = s; this.renderMind(); },
+  mindSortBy(k) { const S = this._mindSort || { k: 'pct', dir: -1 }; this._mindSort = S.k === k ? { k, dir: -S.dir } : { k, dir: k === 'name' ? 1 : -1 }; this.renderMind(); },
+  mindFxSortBy(k) { const S = this._mindFxSort || { k: 'ord', dir: 1 }; this._mindFxSort = S.k === k ? { k, dir: -S.dir } : { k, dir: k === 'name' || k === 'ord' ? 1 : -1 }; this.renderMind(); },
+  /** 🔬 實測總表那一條(⛔ 另寫結論) */
+  _mindLabHtml(k) {
+    if (!k) return `<div class="hm-sub mind-lab" data-mind-lab="none">🔬 這一條還沒測過(只描述)</div>`;
+    const L = this._labByK(k);
+    if (!L) return `<div class="hm-sub mind-lab" data-mind-lab="nolab">🔬 實測總表找不到 ${this._esc(k)}</div>`;
+    const tag = { ok: '✅ 實測有用', trap: '⛔ 實測沒用', method: '🧭 回測的坑', blocked: '⏳ 還測不了', next: '🔬 還沒測' }[L.col] || L.col;
+    const T = this._labTitle(L.it.t), plain = x => String(x || '').replace(/<[^>]+>/g, '');
+    return `<div class="hm-sub mind-lab" data-mind-lab="${this._esc(k)}">🔬 <b>${tag}</b>:${this._esc(plain(T.a))}${T.b ? ' —— ' + this._esc(plain(T.b)) : ''}</div>`;
+  },
+  _mindBar(p) { return p == null || !isFinite(p) ? '' : `<div class="mind-bar" data-mind-bar="${Math.round(p)}"><i style="left:${Math.max(0, Math.min(100, +p))}%"></i></div>`; },
+  _mindRowHtml(g, minN) {
+    const dirCol = (g.k === 'fis' || g.k === 'fit') && g.v ? (g.v > 0 ? 'var(--up)' : 'var(--dn)') : 'var(--txt)';   // 買賣超是方向(台股紅買綠賣);其他 ⛔ 上色
+    const age = this._mindAge(g.d);
+    const stale = g.stale || (age != null && age >= 4) ? `<span class="mind-stale" data-mind-stale>⚠️ 資料停在 ${this._mindMd(g.d)}</span>` : '';
+    const hl = g.hiw ? `<div>高 = ${this._esc(g.hiw)}${g.low ? '・低 = ' + this._esc(g.low) : ''}(⛔ 不是叫你反著做)</div>` : '';
+    return `<details class="mind-row" data-mind-row="${this._esc(g.k)}"><summary>`
+      + `<div class="mind-top"><span class="mind-n">${this._esc(g.name)}</span><span class="mind-v mono" style="color:${dirCol}">${this._mindNum(g.v, g.unit)}</span></div>`
+      + this._mindBar(g.pct)
+      + `<div class="mind-sub"><span>${this._esc(this._mindPctTxt(g, minN))}</span>${stale}<span class="mind-d">${this._mindMd(g.d)}</span></div></summary>`
+      + `<div class="note">${hl}${g.note ? `<div>${this._esc(g.note)}</div>` : ''}<div>📏 歷史 ${g.from ? this._esc(g.from) + ' ~ ' + this._esc(g.to) : '—'}(${g.n || 0} 筆)</div>${this._mindLabHtml(g.lab)}</div></details>`;
+  },
+  _mindFactHtml(r) {
+    return `<div class="mind-fact" data-mind-row="${this._esc(r.k)}"><div class="mind-top"><span class="mind-n">${this._esc(r.name)}</span>${r.v != null ? `<span class="mind-v mono">${this._mindNum(r.v, r.unit)}</span>` : ''}</div>`
+      + `<div class="hm-sub">${r.d ? this._mindMd(r.d) + '・' : ''}${this._esc(r.note || '')}${r.list && r.list.length ? '<br>' + r.list.map(x => this._esc(x)).join('、') : ''}</div>${this._mindLabHtml(r.lab)}</div>`;
+  },
+  _mindSortRows(rows, S, keys) {
+    const key = keys[S.k] || keys.pct || (g => g.pct);
+    return rows.slice().sort((a, b) => { const x = key(a), y = key(b); if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return (x < y ? -1 : x > y ? 1 : 0) * S.dir; });
+  },
+  _mindSortBar(S, opts, fn) {
+    return `<div class="cr-sort" data-mind-sortbar="${fn}"><span>排序:</span>${opts.map(([k, n]) => `<button class="${S.k === k ? 'on' : ''}" data-mind-sort="${k}" aria-pressed="${S.k === k}" onclick="PRO.${fn}('${k}')">${n}${S.k === k ? (S.dir < 0 ? ' ▼' : ' ▲') : ''}</button>`).join('')}</div>`;
+  },
+  _mindCrowdHtml(j) {
+    const S = this._mindSort || { k: 'pct', dir: -1 };
+    const rows = this._mindSortRows(j.crowd || [], S, { pct: g => g.pct, name: g => g.name, v: g => g.v, d: g => g.d });
+    return `<div class="note">每一條 = 今天的值、在它自己的歷史排第幾、資料到哪天;點開看怎麼算、跟 🔬 實測總表那一條。灰色的尺只講「位置」,⛔ 不是好壞;⛔ 不會把這幾條加起來變成一個分數 —— 實測過的情緒指標都沒辦法拿來決定買賣。</div>`
+      + this._mindSortBar(S, [['pct', '在歷史的位置'], ['name', '名稱'], ['v', '今天'], ['d', '資料日']], 'mindSortBy')
+      + `<div data-mind-list="crowd">${rows.map(g => this._mindRowHtml(g, j.minN)).join('') || '<div class="hm-sub">⏳ 這一份一條都沒有</div>'}</div>`;
+  },
+  _MIND_SEATS: [
+    ['fi', '🌏 外資', '賣股票拿到的是台幣,要匯出得換成美元 → 外資大賣時台幣常跟著貶;很多錢照指數權重(MSCI 等)配置,權重一調就得買賣;錢太大,只進得了大型股。', ['fi-follow', 'fi-burst']],
+    ['trust', '👩‍💼 投信', '股票型基金要維持最低持股(七成)、單一個股不能超過一成 → 多半是換股,不是清倉;季底作帳、ETF 換股是最常被拿來講的理由。', ['window-dress', 'trustvol', 'etf-passive-chg']],
+    ['retail', '🧑 散戶', '融資跌到維持率 130% 以下會被追繳,沒補第 3 天就斷頭(被迫賣);當沖要當天平倉。', ['myth-retail-catch']],
+    ['insider', '🏢 公司內部人', '董監 / 大股東要在市場上賣,得先申報;庫藏股是公司自己買回,買不買完、買多少都不一定。', []],
+    ['gov', '🏛️ 政府', '國安基金只在大跌時授權進場;限空令影響融券、借券。', []],
+  ],
+  _mindSeatsHtml(j) {
+    const S = j.seats || {}, byK = Object.fromEntries((j.crowd || []).map(g => [g.k, g]));
+    return `<div class="note">換個座位看:每個座位 = 他手上的牌(今天的數字)、他的限制、測過的結論。⛔ 不是叫你跟著做。</div>`
+      + this._MIND_SEATS.map(([k, name, lim, labs]) => {
+        const rows = (S[k] || []).map(r => r && r.ref ? byK[r.ref] : r).filter(Boolean);
+        const body = rows.length ? rows.map(r => ('pct' in r) ? this._mindRowHtml(r, j.minN) : this._mindFactHtml(r)).join('') : `<div class="hm-sub">⏳ 這個座位今天沒有可以列的數字</div>`;
+        return `<section class="mind-seat" data-mind-seat="${k}"><h3>${name}</h3><div class="hm-sub">🔒 他的限制:${this._esc(lim)}</div>${body}${labs.map(x => this._mindLabHtml(x)).join('')}</section>`;
+      }).join('');
+  },
+  _mindFxHtml(j) {
+    const S = this._mindFxSort || { k: 'ord', dir: 1 };
+    const fx = (j.fx || []).map((r, i) => ({ ...r, ord: i }));
+    const rows = this._mindSortRows(fx, S, { ord: r => r.ord, name: r => r.name, v: r => r.v, c1: r => r.c1, c5: r => r.c5 });
+    const ch = v => v == null ? '<span style="color:var(--dim2)">—</span>' : `<span class="mono" style="color:${v > 0 ? 'var(--up)' : v < 0 ? 'var(--dn)' : 'var(--sub)'}">${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)}%</span>`;
+    const fxRow = r => `<div class="mind-fact" data-mind-fx="${this._esc(r.k)}"><div class="mind-top"><span class="mind-n">${this._esc(r.name)}</span><span class="mind-v mono">${this._mindNum(r.v)}</span></div>`
+      + `<div class="mind-sub"><span>1 日 ${ch(r.c1)}</span><span>${r.k === 'jpy' ? '3' : '5'} 日 ${ch(r.c5)}</span><span>20 日 ⏳</span><span>一年位置 ⏳</span><span class="mind-d">${r.d ? this._mindMd(r.d) : '檔案 ' + this._esc(String(r.upd || '').slice(5, 16))}</span></div>`
+      + (r.note ? `<div class="hm-sub">${this._esc(r.note)}</div>` : '') + `</div>`;
+    const wind = (j.wind || []).map(r => this._mindFactHtml({ ...r, note: r.note }));
+    return `<div class="note">漲跌照台股紅漲綠跌(⚠️ 美元 / 台幣變大 = 台幣貶)。20 日與一年位置要等第 6 期抓到每天的匯率歷史;沒有自己日期的那幾格只寫檔案更新時間(⛔ 假裝是今天的)。</div>`
+      + this._mindSortBar(S, [['ord', '預設順序'], ['name', '名稱'], ['v', '今天'], ['c1', '1 日'], ['c5', '5 日']], 'mindFxSortBy')
+      + `<div data-mind-list="fx">${rows.map(fxRow).join('') || '<div class="hm-sub">⏳ 讀不到匯率</div>'}</div>`
+      + `<section class="mind-seat" data-mind-seat="wind"><h3>🌬️ 風向</h3><div class="hm-sub">差多少就是差多少,⛔ 不是好壞。</div>${wind.join('') || '<div class="hm-sub">⏳ 今天沒有可以列的</div>'}</section>`;
+  },
+  _mindMissHtml(j) {
+    const M = j.miss || [];
+    if (!M.length) return '';
+    return `<details class="mind-det" data-mind-miss="${M.length}"><summary>⏳ 這一頁還沒有 / 這次讀不到的(${M.length} 條)</summary><div class="note">${M.map(x => `・${this._esc(x.name)}:${this._esc(x.why)}`).join('<br>')}</div></details>`;
+  },
+  _mindHeadHtml(j) {
+    const st = j.state, L = this._mindLine(j);
+    if (!st) { const w = (j.miss || []).find(x => x.k === 'state'); return `<div class="warnbox" data-mind-state="none">⚠️ 心理狀態算不出來(${this._esc(w ? w.why : '原因不明')})。${L ? '<br>' + L : ''}</div>`; }
+    const R = st.rules || {}, Z = st.names || {}, cnt = st.last250 || {};
+    const rules = R.panicV != null ? `${Z.PANIC || '恐慌'}:20 日波動在歷史前 ${100 - R.panicV}% 而且離一年高點跌 ${-R.panicD}% 以上;波動退到第 ${R.panicOutV} 百分位以下就變${Z.REPAIR || '修復'}。${Z.REPAIR || '修復'}:恐慌之後;回到離高點 ${-R.backD}% 以內變${Z.NEUTRAL || '中性'}。${Z.WORRY || '擔憂'}:離高點跌 ${-R.worryD}% 以上但不是恐慌。${Z.GREED || '貪婪'}:20 日漲跌在歷史前 ${100 - R.greedM}%、離高點 ${-R.greedD}% 以內、波動在第 ${R.greedV} 百分位以下;漲跌退到第 ${R.greedOutM} 百分位以下或離高點跌 ${-R.backD}% 就離開。其他都是${Z.NEUTRAL || '中性'}。` : '';
+    const dist = ['PANIC', 'REPAIR', 'WORRY', 'NEUTRAL', 'GREED'].filter(k => cnt[k]).map(k => `${this._esc(Z[k] || k)} ${cnt[k]} 天`).join('・');
+    return `<div class="mind-state" data-mind-state="${this._esc(st.k)}"><div class="mind-line" data-mind-line>${L || ''}</div>`
+      + `<div class="hm-sub">離一年高點 ${this._mindNum(st.D, '%')}・20 日波動排歷史第 ${Math.round(st.V)} 百分位・20 日漲跌排第 ${Math.round(st.M)} 百分位(${this._mindMd(st.d)} 收盤)</div>`
+      + (dist ? `<div class="hm-sub">近一年(250 個交易日):${dist}</div>` : '')
+      + (rules ? `<details class="mind-det"><summary>📖 這五種狀態怎麼分</summary><div class="note">${this._esc(rules)}</div></details>` : '')
+      + this._mindLabHtml(st.lab || 'psych-state') + `</div>`;
+  },
+  async renderMind() {
+    const box = document.getElementById('mindBody'), head = document.getElementById('mindHead'); if (!box || !head) return;
+    box.innerHTML = '<div class="note">⏳ 正在讀 data/mood.json…</div>';
+    const j = await this._mindLoad();
+    if (!j) { head.innerHTML = ''; box.innerHTML = `<div class="warnbox" data-mind="nofile">⚠️ <b>讀不到 data/mood.json</b> —— ⛔ 不代表今天沒有恐慌或貪婪。這份每天晚上接在明日作戰清單後面算(scripts/mood_build.mjs);第一次上線要等那一輪跑完。</div>`; return; }
+    head.innerHTML = this._mindHeadHtml(j);
+    const seg = this._mindSeg;
+    const bar = `<div class="mind-seg" data-mind-seg>${[['crowd', '🌡️ 群眾多怕多貪'], ['seat', '🏦 外資與大戶'], ['fx', '💱 匯率與風向']].map(([k, n]) => `<button class="sub-btn${seg === k ? ' on' : ''}" data-mind-segb="${k}" aria-pressed="${seg === k}" onclick="PRO.mindSel('${k}')">${n}</button>`).join('')}</div>`;
+    const body = seg === 'seat' ? this._mindSeatsHtml(j) : seg === 'fx' ? this._mindFxHtml(j) : this._mindCrowdHtml(j);
+    box.innerHTML = bar + body + this._mindMissHtml(j)
+      + `<div class="note" data-mind-foot>資料:${this._esc(String(j.updated || '—'))} 算的(加權到 ${this._mindMd(j.asof)})・每晚接在明日作戰清單後面算(scripts/mood_build.mjs)。⛔ 只描述,不是買賣訊號。</div>`;
+  },
   async renderAudit() {
     const el = document.getElementById('auditBody'); if (!el) return;
     const paint = () => {
@@ -11256,7 +11444,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V82.5.4',
+  VER: 'V82.5.5',
   _ROT: {
     win: 20, spread: 1.95, top: 1.06, bot: -0.88,
     q1: 2.48, q2: 1.42, exBest: 1.83,
