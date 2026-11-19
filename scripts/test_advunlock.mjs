@@ -174,6 +174,15 @@ const T = await page.evaluate(() => {
     R.stale = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kOld]]) }));
     R.gain = ids(run({ held: new Map([['2330', { cost: 80 }]]), bars: new Map([['2330', kFlat]]) }));
     R.gainNo = ids(run({ held: new Map([['2330', { cost: 90 }]]), bars: new Map([['2330', kFlat]]) }));
+    // 💭 V82.5.3 手上的收盤鎖跌停 → ld_held(收盤 = 最低、跌 10%);沒鎖 / 自選鎖跌停 → 沒有
+    const lockDn = k => { const n = k.length, p = k[n - 2].close; Object.assign(k[n - 1], { open: p, high: p, close: +(p * 0.9).toFixed(2), low: +(p * 0.9).toFixed(2) }); };
+    const kLd = mkK(80, '2026-10-16', lockDn);
+    R.ldHeld = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kLd]]) }));
+    R.ldHeldNo = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]) }));
+    R.ldFav = ids(run({ bars: new Map([['2454', kLd]]), fav: ['2454'] }));
+    // 💭 V82.5.3 你點的心情 → feel_xxx(只有 ctx.feel 有給才有;「不知道」沒有專欄)
+    R.feel = ['fear', 'fomo', 'back', 'lock', 'avg', 'idk'].map(f => ids(run({ feel: f })).filter(x => x.startsWith('feel_')));
+    R.feelNo = ids(run({})).filter(x => x.startsWith('feel_'));
     R.div = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]), div: { d: { 2330: { up: [['2026-10-23', 1]] } } } }));
     R.divNo = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]), div: { d: { 2330: { up: [['2026-11-03', 1]] } } } }));
     // 📞 V79.8.3 cc_soon:接下來 5 個交易日內有法說會(走 _findEarningsEvent,延期照新日期)—— 一覽表 / 今天都從 ctx 來(⛔ 讀全域 / 真的時鐘),行事曆清空(⛔ 被真資料救活)
@@ -334,6 +343,8 @@ ok('③b3 V79.2.3 收盤後用富果報價補今天那根(high 讀報價);盤中
 ok('③c ETF ⛔ 不判 K 線型態', !has(T.etf, 'lu_held'), JSON.stringify(T.etf));
 ok('③d K 線日期追不上大盤 ⛔ 不判(舊資料不冒充今天)', !has(T.stale, 'lu_held'), JSON.stringify(T.stale));
 ok('③e 帳面 +25% → gain20;+11% → 沒有', has(T.gain, 'gain20') && !has(T.gainNo, 'gain20'), JSON.stringify([T.gain, T.gainNo]));
+ok('③e2 💭 手上的收盤鎖跌停 → ld_held;沒鎖 / 自選鎖跌停 → 沒有', has(T.ldHeld, 'ld_held') && !has(T.ldHeldNo, 'ld_held') && !has(T.ldFav, 'ld_held'), JSON.stringify([T.ldHeld, T.ldHeldNo, T.ldFav]));
+ok('③e3 💭 你點的心情 → feel_xxx(只有點了才有;「不知道」沒有)', JSON.stringify(T.feel) === JSON.stringify([['feel_fear'], ['feel_fomo'], ['feel_back'], ['feel_lock'], ['feel_avg'], []]) && !T.feelNo.length, JSON.stringify([T.feel, T.feelNo]));
 ok('③f 除息 4 天後 → exdiv;15 天後 → 沒有', has(T.div, 'exdiv') && !has(T.divNo, 'exdiv'), JSON.stringify([T.div, T.divNo]));
 ok('③f2 📞 法說會 3 個交易日後 → cc_soon;一個月後 / 別檔的 → 沒有;延期的照新日期(寫「延期後」);自選的也提醒(scope fav);ctx 沒給一覽表 → 不判(⛔ 讀全域);「今天」照 ctx',
     has(T.cc, 'cc_soon') && !has(T.ccFar, 'cc_soon') && !has(T.ccOther, 'cc_soon') && T.ccMv.length === 1 && /延期/.test(T.ccMv[0]) && JSON.stringify(T.ccFav) === '["fav"]' && !has(T.ccNoCtx, 'cc_soon') && !has(T.ccToday, 'cc_soon'),
