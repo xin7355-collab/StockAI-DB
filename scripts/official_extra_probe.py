@@ -24,9 +24,11 @@
     處置 punish 當對照(OpenAPI 那份有資料)。官網只問 4~5 次。
 
  ⑨ V82.5.7 全市場當沖占比(產業作戰室「🧠 人性」頁):證交所 TWTB4U 的「當日沖銷交易統計資訊」——
-    extras_miner 用的 rwd afterTrading 路徑從 2026-06-26 起一直空(day_trade.json 的 data 是 {})→
-    新版路徑是 dayTrading 還是 afterTrading、格式是 tables 還是舊的 fields / data?最近 2 個平日、3 個候選網址,
-    有資料就換下一個網址;證交所擋了就停(最多問 6 次)。
+    extras_miner 用的 rwd afterTrading 路徑從 2026-06-26 起一直空(day_trade.json 的 data 是 {})。
+    11/20 05:25 第一輪(run 44618642348):rwd **dayTrading** 回 stat=OK、tables 2 張 —— 第 2 張是當天的「當日沖銷交易標的」
+    (1,247 列,開盤前就公布),第 1 張統計表 0 列(還沒開盤);rwd afterTrading 回「404 此網頁不存在」網頁 → 從候選拿掉。
+    ⚠️ 第一輪的停止條件寫錯(任何一張表有資料就換下一個網址)→ 改成「統計那張表有資料」才停、否則往前一個平日;
+    最近 3 個平日 × 2 個候選網址,最多問 6 次;證交所擋了就停。
 
 跑法:python3 scripts/official_extra_probe.py [--selftest]
       WHICH=notice python3 scripts/official_extra_probe.py   ← 只跑 ⑧(⛔ 打到鉅額 / 借券 / 期交所那些)
@@ -340,15 +342,29 @@ def probe_notice(tw_today):
 
 
 DTR_CANDS = [('rwd dayTrading', 'https://www.twse.com.tw/rwd/zh/dayTrading/TWTB4U', {'selectType': 'All', 'response': 'json'}),
-             ('rwd afterTrading(extras_miner 現在用的)', 'https://www.twse.com.tw/rwd/zh/afterTrading/TWTB4U', {'response': 'json'}),
              ('exchangeReport(舊)', 'https://www.twse.com.tw/exchangeReport/TWTB4U', {'response': 'json'})]
+DTR_DAYS = 3
+
+
+def dtr_stats(obj):
+    """統計那張表(欄位含「占市場比重」或標題含「統計」)而且有資料 → 那張表;否則 None(⛔ 拿「當日沖銷交易標的」那張當成有資料)。"""
+    if not isinstance(obj, dict):
+        return None
+    tabs = [t for t in (obj.get('tables') or []) if isinstance(t, dict)]
+    if obj.get('fields'):
+        tabs.append(obj)
+    for t in tabs:
+        f = ''.join(str(x) for x in (t.get('fields') or []))
+        if ('占市場比重' in f or '統計' in str(t.get('title') or '')) and t.get('data'):
+            return t
+    return None
 
 
 def probe_dtr(tw_today):
     """⑨ 全市場當沖占比(見檔頭):每個候選網址從最近一個平日往回最多 2 天,有資料就換下一個網址;擋了就停。"""
     say('\n## ⑨ 全市場當沖占比(證交所 TWTB4U「當日沖銷交易統計資訊」)')
     days, d = [], tw_today
-    while len(days) < 2:
+    while len(days) < DTR_DAYS:
         if d.weekday() < 5:
             days.append(d.strftime('%Y%m%d'))
         d -= timedelta(days=1)
@@ -368,8 +384,11 @@ def probe_dtr(tw_today):
             if obj.get('fields'):
                 say(f"  - 舊格式:欄位 {obj.get('fields')} ・{len(obj.get('data') or [])} 列"
                     f" ・前 2 列 {json.dumps((obj.get('data') or [])[:2], ensure_ascii=False)[:300]}")
-            if obj.get('data') or any(isinstance(t, dict) and t.get('data') for t in (obj.get('tables') or [])):
-                break   # 這個網址這天有資料 → 換下一個網址
+            st = dtr_stats(obj)
+            if st is not None:
+                say(f"  - ✅ 統計表:{str(st.get('title'))[:60]} ・欄位 {st.get('fields')} ・第 1 列 {json.dumps((st.get('data') or [])[:1], ensure_ascii=False)[:300]}")
+                break   # 這個網址這天統計表有資料 → 換下一個網址
+            say('  - ⏳ 統計表沒有資料(還沒開盤 / 沒開市)→ 往前一個平日')
 
 
 def finish():
@@ -614,19 +633,29 @@ def selftest():
     ok('⑱ 第一組參數沒資料 → 試第二組;第二組有資料就停(notice 2 次 + punish + notetrans = 4)',
        len(www_2) == 4 and sum('announcement/notice' in u for u in www_2) == 2, www_2)
     # ⑲ WHICH=dtr:只問 TWTB4U(⛔ 打到別段)、每個網址有資料就換下一個、擋了就停
-    dt_ok = json.dumps({'stat': 'OK', 'tables': [{'title': '115年11月19日 當日沖銷交易統計資訊', 'fields': ['當日沖銷交易總成交股數', '當日沖銷交易總成交股數占市場比重%'],
-                                                  'data': [['1,234,567,890', '38.12']]}]}).encode()
+    stat_t = {'title': '115年11月19日 當日沖銷交易統計資訊', 'fields': ['當日沖銷交易總成交股數', '當日沖銷交易總成交股數占市場比重%'], 'data': [['1,234,567,890', '38.12']]}
+    list_t = {'title': '115年11月20日 當日沖銷交易標的', 'fields': ['證券代號', '證券名稱', '暫停現股賣出後現款買進當沖註記'], 'data': [['2330', '台積電', '']]}
+    dt_ok = json.dumps({'stat': 'OK', 'tables': [stat_t, list_t]}).encode()
     calls_d, www_d, out_d = run_with('dtr', lambda u, p: R(200, dt_ok))
     other = [u for u in calls_d if 'TWTB4U' not in u]
-    ok('⑲ WHICH=dtr → 只問 TWTB4U(⛔ 打到別段)、每個網址第一天就有資料 → 3 個網址各 1 次、印出表名與欄位',
-       not other and len(www_d) == 3 and any('統計資訊' in s and '占市場比重' in s for s in out_d), (other, www_d))
+    ok('⑲ WHICH=dtr → 只問 TWTB4U(⛔ 打到別段)、統計表第一天就有資料 → 2 個網址各 1 次、印出統計表欄位',
+       not other and len(www_d) == 2 and any('✅ 統計表' in s and '占市場比重' in s for s in out_d), (other, www_d))
+    # ⭐ 11/20 第一輪實際長這樣:開盤前「統計表」0 列、「當日沖銷交易標的」有 1,247 列 → ⛔ 當成有資料,要往前一個平日
+    pre = json.dumps({'stat': 'OK', 'tables': [{'title': None, 'fields': None, 'data': []}, list_t]}).encode()
+    first_day = [None]
+
+    def www_pre(u, p):
+        first_day[0] = first_day[0] or p.get('date')
+        return R(200, pre if p.get('date') == first_day[0] else dt_ok)
+    _, www_p, _ = run_with('dtr', www_pre)
+    ok('⑲ 決定性對照(11/20 第一輪的形狀):統計表空、標的表有資料 → ⛔ 停,往前一個平日(dayTrading 2 次 + 舊網址 2 次)', len(www_p) == 4, www_p)
     calls_e, www_e, _ = run_with('dtr', lambda u, p: R(200, b'{"stat":"OK","data":[]}'))
-    ok('⑲ 每個網址都沒資料 → 每個問 2 天(共 6 次、⛔ 更多)', len(www_e) == 6, www_e)
+    ok('⑲ 每個網址都沒資料 → 每個問 3 天(共 6 次、⛔ 更多)', len(www_e) == 6, www_e)
     _, www_b, out_b = run_with('dtr', lambda u, p: R(200, b'<html>blocked</html>', 'text/html'))
     ok('⑲ 證交所擋頁 → 停(只問 1 次)', len(www_b) == 1 and any('證交所擋了' in s for s in out_b), www_b)
     OUT.clear()
     TALLY.clear()
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 23 條)')
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 24 條)')
     return 1 if fails else 0
 
 
