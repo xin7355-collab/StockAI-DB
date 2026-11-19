@@ -9,6 +9,7 @@
 //     ⑥ 390 / 844 不橫捲、無 pageerror;導覽:🏭 產業最後一顆是 🧠 人性、按鈕右緣都在畫面內
 //   INJECT=score|color|homecalc|tie → 把對應的壞寫法塞回 pro.html 的複本,必須紅
 //     ⑦ 同分:很多天一樣(跌停 0 家)→ 寫「最低(跟 N% 的日子一樣)」,⛔ 寫成「比 N% 的日子高」
+//     ⑨ V82.5.7 外資 5 日 / 20 日合計是買賣超 → 跟「今天」那條一樣台股紅買綠賣(方向);今年累計是事實列(⛔ 排第幾、⛔ 尺)
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -53,6 +54,8 @@ const mk = (stk, zh) => ({
         g('conc', '成交集中在前 10 檔', 35.1, '%', today, null, 1, null, null, null),
     ],
     seats: { fi: [g('fis', '外資現貨買賣超(今天)', -243.12, '億', today, 20.24, 751, '2023-09-14', '2026-10-19', 'fi-outflow'), { k: 'fim', name: '外資本月累計', v: -8303.2, unit: '億', d: today, lab: 'fi-follow', note: '月報' },
+        g('fi5', '外資現貨 5 日合計', -1233.4, '億', today, 4.5, 751, '2023-09-12', '2026-11-18', 'fi-outflow', { side: 'both', hiw: '買超大', low: '賣超大', note: '這 5 筆官方每日值加總(上市)' }),
+        { k: 'fiy', name: '外資現貨今年累計(2026)', v: -6780.2, unit: '億', d: today, lab: 'fi-follow', note: '214 個交易日的官方每日值加總(上市);今年到現在跟整年不能比 → 不排第幾' },
         { k: 'usdtw', name: '這一波:用台幣算 vs 用美元算', v: -26.5, unit: '%', d: today, lab: null, note: '離近一年高點:用台幣算 −22.87%(高點 2026-10-06)、用美元算 −26.5%(高點 2026-10-06);同一段台幣貶 4.9%' }],
         trust: [], retail: [{ ref: 'mg20' }], insider: [{ k: 'ins', name: '董監 / 大股東申報在市場上賣', v: 9, unit: '家', d: today, lab: 'insider-sell', list: ['某公司 1234'], note: '近 5 個交易日' }],
         gov: [{ k: 'nsf', name: '國安基金', v: null, d: '2026-11-06', lab: 'nsf-entry', note: '還在執行' }] },
@@ -109,6 +112,10 @@ try {
             PRO.mindSel('seat'); await new Promise(r => setTimeout(r, 30));
             o.seatTxt = T('tabMind'); o.seats = [...document.querySelectorAll('[data-mind-seat]')].map(e => e.dataset.mindSeat); o.sxSeat = sx();
             o.seatRetail = [...document.querySelectorAll('[data-mind-seat="retail"] [data-mind-row]')].map(e => e.dataset.mindRow);
+            const vCol = k => { const e = document.querySelector(`[data-mind-seat="fi"] [data-mind-row="${k}"] .mind-v`); return e ? getComputedStyle(e).color : ''; };
+            o.fi5Col = vCol('fi5'); o.fisCol = vCol('fis'); o.fimCol = vCol('fim');
+            o.fiyFact = !!document.querySelector('[data-mind-seat="fi"] .mind-fact[data-mind-row="fiy"]') && !document.querySelector('[data-mind-seat="fi"] [data-mind-row="fiy"] [data-mind-bar]');
+            o.fi5Bar = !!document.querySelector('[data-mind-seat="fi"] [data-mind-row="fi5"] [data-mind-bar]');
             PRO.mindSel('fx'); await new Promise(r => setTimeout(r, 30));
             o.fxTxt = T('tabMind'); o.fxRows = [...document.querySelectorAll('[data-mind-list="fx"] [data-mind-fx]')].map(e => e.dataset.mindFx); o.sxFx = sx();
             o.fxPos = (document.querySelector('[data-mind-fx="usdtwd"] [data-mind-pos]') || {}).innerText || '';
@@ -160,6 +167,8 @@ try {
             && /歷史:FRED DEXTAUS/.test(R.fxUsd) && R.fxBars.length === 1 && !/255, 93, 93|61, 220, 132/.test(R.fxBars[0]), JSON.stringify([R.fxPos, R.fxUsd.slice(0, 160), R.fxBars]));
         ok('⑧ 還在累積寫天數;沒有歷史寫原因(⛔ 空白)', /還在累積\(6 天\)/.test(R.fxDxyPos) && /還沒有歷史/.test(R.fxGold), JSON.stringify([R.fxDxyPos, R.fxGold.slice(0, 160)]));
         ok('⑧ 照一年位置排:有位置的在前、排不出來的排最後', R.fxPosOrd[0] === 'usdtwd' && R.fxPosOrd.length === 3, JSON.stringify(R.fxPosOrd));
+        ok('⑨ 外資 5 日合計:有尺(排第幾)、賣超 → 跟「今天」那條同一個方向色(台股綠 = 賣)', R.fi5Bar && R.fi5Col && R.fi5Col === R.fisCol && R.fi5Col !== R.fimCol, JSON.stringify([R.fi5Col, R.fisCol, R.fimCol]));
+        ok('⑨ 外資今年累計是事實列(⛔ 尺、⛔ 排第幾)', R.fiyFact && /外資現貨今年累計\(2026\)/.test(R.seatTxt) && /不排第幾/.test(R.seatTxt), R.fiyFact);
         ok('⑧ 外資座位有「用台幣算 vs 用美元算」那一行', /用台幣算 vs 用美元算/.test(R.seatTxt) && /用美元算 −26\.5%/.test(R.seatTxt), R.seatTxt.slice(0, 200));
         ok('② 匯率照 1 日排、再點一次反向(讀不到的排最後)', JSON.stringify(R.fxC1) === '["usdtwd","dxy","gold_usd"]' && JSON.stringify(R.fxC1b) === '["dxy","usdtwd","gold_usd"]', JSON.stringify([R.fxC1, R.fxC1b]));
         ok('⑦ 同分:今天 0 家而且很多天也是 0 → 「近一年最低(跟 76% 的日子一樣)」,⛔「比 76% 的日子高」', R.tieLow === '近一年最低(跟 76% 的日子一樣)' && !/的日子高/.test(R.tieLow), R.tieLow);

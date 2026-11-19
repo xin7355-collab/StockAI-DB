@@ -23,8 +23,14 @@
     → OpenAPI 的網址清單(swagger.json)有沒有改名 + 跟證交所官網同一份名單(rwd announcement/notice)比;
     處置 punish 當對照(OpenAPI 那份有資料)。官網只問 4~5 次。
 
+ ⑨ V82.5.7 全市場當沖占比(產業作戰室「🧠 人性」頁):證交所 TWTB4U 的「當日沖銷交易統計資訊」——
+    extras_miner 用的 rwd afterTrading 路徑從 2026-06-26 起一直空(day_trade.json 的 data 是 {})→
+    新版路徑是 dayTrading 還是 afterTrading、格式是 tables 還是舊的 fields / data?最近 2 個平日、3 個候選網址,
+    有資料就換下一個網址;證交所擋了就停(最多問 6 次)。
+
 跑法:python3 scripts/official_extra_probe.py [--selftest]
       WHICH=notice python3 scripts/official_extra_probe.py   ← 只跑 ⑧(⛔ 打到鉅額 / 借券 / 期交所那些)
+      WHICH=dtr python3 scripts/official_extra_probe.py      ← 只跑 ⑨(證交所最多問 6 次)
 """
 import csv
 import io
@@ -333,6 +339,39 @@ def probe_notice(tw_today):
                     break       # 這組參數有資料 → 不用再試下一組
 
 
+DTR_CANDS = [('rwd dayTrading', 'https://www.twse.com.tw/rwd/zh/dayTrading/TWTB4U', {'selectType': 'All', 'response': 'json'}),
+             ('rwd afterTrading(extras_miner 現在用的)', 'https://www.twse.com.tw/rwd/zh/afterTrading/TWTB4U', {'response': 'json'}),
+             ('exchangeReport(舊)', 'https://www.twse.com.tw/exchangeReport/TWTB4U', {'response': 'json'})]
+
+
+def probe_dtr(tw_today):
+    """⑨ 全市場當沖占比(見檔頭):每個候選網址從最近一個平日往回最多 2 天,有資料就換下一個網址;擋了就停。"""
+    say('\n## ⑨ 全市場當沖占比(證交所 TWTB4U「當日沖銷交易統計資訊」)')
+    days, d = [], tw_today
+    while len(days) < 2:
+        if d.weekday() < 5:
+            days.append(d.strftime('%Y%m%d'))
+        d -= timedelta(days=1)
+    for name, url, base in DTR_CANDS:
+        for ds in days:
+            obj, v = probe_json('⑨', f'{name} date={ds}', url, params={**base, 'date': ds}, show=False)
+            if v == 'blocked':
+                say('  - 🚦 證交所擋了 → 這段後面 ⛔ 再問')
+                return
+            if not isinstance(obj, dict):
+                continue
+            say(f"  - stat={str(obj.get('stat'))[:40]!r}、keys={sorted(obj)[:12]}")
+            for t in (obj.get('tables') or [])[:4]:
+                if isinstance(t, dict):
+                    say(f"  - 表:{str(t.get('title'))[:60]} ・欄位 {t.get('fields')} ・{len(t.get('data') or [])} 列"
+                        f" ・前 2 列 {json.dumps((t.get('data') or [])[:2], ensure_ascii=False)[:300]}")
+            if obj.get('fields'):
+                say(f"  - 舊格式:欄位 {obj.get('fields')} ・{len(obj.get('data') or [])} 列"
+                    f" ・前 2 列 {json.dumps((obj.get('data') or [])[:2], ensure_ascii=False)[:300]}")
+            if obj.get('data') or any(isinstance(t, dict) and t.get('data') for t in (obj.get('tables') or [])):
+                break   # 這個網址這天有資料 → 換下一個網址
+
+
 def finish():
     say('\n## 📋 總表')
     cnt = {}
@@ -350,8 +389,12 @@ def finish():
 def main():
     tw_today = datetime.now(timezone(timedelta(hours=8))).date()
     say(f'# 🔭 新官方資料探路({tw_today},UA 寫明身分,⛔ 不偽裝瀏覽器)')
-    if (os.environ.get('WHICH') or 'all').strip() == 'notice':
+    which = (os.environ.get('WHICH') or 'all').strip()
+    if which == 'notice':
         probe_notice(tw_today)
+        return finish()
+    if which == 'dtr':
+        probe_dtr(tw_today)
         return finish()
 
     say('\n## ① 注意 / 處置名單')
@@ -531,6 +574,8 @@ def selftest():
                 return R(200, b'[{"Code":"","Name":""}]'), 0.0, 1
             if 'www.twse.com.tw/rwd/zh/announcement/' in url:
                 return www(url, params), 0.0, 1
+            if 'TWTB4U' in url:
+                return www(url, params), 0.0, 1
             return R(404), 0.0, 1
         globals()['fetch'] = stub
         os.environ.pop('GITHUB_STEP_SUMMARY', None)
@@ -550,7 +595,7 @@ def selftest():
                     os.environ.pop(k, None)
                 else:
                     os.environ[k] = v
-        www_calls = [u for u in calls if 'www.twse.com.tw/rwd/zh/announcement/' in u]
+        www_calls = [u for u in calls if 'www.twse.com.tw/rwd/zh/announcement/' in u or 'TWTB4U' in u]
         return calls, www_calls, list(OUT)
 
     calls, www_calls, out = run_with('notice', lambda u, p: R(200, notice_ok))
@@ -568,9 +613,20 @@ def selftest():
                            else R(200, notice_ok))
     ok('⑱ 第一組參數沒資料 → 試第二組;第二組有資料就停(notice 2 次 + punish + notetrans = 4)',
        len(www_2) == 4 and sum('announcement/notice' in u for u in www_2) == 2, www_2)
+    # ⑲ WHICH=dtr:只問 TWTB4U(⛔ 打到別段)、每個網址有資料就換下一個、擋了就停
+    dt_ok = json.dumps({'stat': 'OK', 'tables': [{'title': '115年11月19日 當日沖銷交易統計資訊', 'fields': ['當日沖銷交易總成交股數', '當日沖銷交易總成交股數占市場比重%'],
+                                                  'data': [['1,234,567,890', '38.12']]}]}).encode()
+    calls_d, www_d, out_d = run_with('dtr', lambda u, p: R(200, dt_ok))
+    other = [u for u in calls_d if 'TWTB4U' not in u]
+    ok('⑲ WHICH=dtr → 只問 TWTB4U(⛔ 打到別段)、每個網址第一天就有資料 → 3 個網址各 1 次、印出表名與欄位',
+       not other and len(www_d) == 3 and any('統計資訊' in s and '占市場比重' in s for s in out_d), (other, www_d))
+    calls_e, www_e, _ = run_with('dtr', lambda u, p: R(200, b'{"stat":"OK","data":[]}'))
+    ok('⑲ 每個網址都沒資料 → 每個問 2 天(共 6 次、⛔ 更多)', len(www_e) == 6, www_e)
+    _, www_b, out_b = run_with('dtr', lambda u, p: R(200, b'<html>blocked</html>', 'text/html'))
+    ok('⑲ 證交所擋頁 → 停(只問 1 次)', len(www_b) == 1 and any('證交所擋了' in s for s in out_b), www_b)
     OUT.clear()
     TALLY.clear()
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 20 條)')
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 23 條)')
     return 1 if fails else 0
 
 

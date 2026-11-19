@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.5.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -9063,10 +9063,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.5.6',
+    _APP_VERSION: 'V82.5.7',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.5.7', d: [
+            '🏭 產業作戰室「🧠 人性」頁:外資、融資、期現基差、選擇權買賣權比、期貨大戶的長歷史改成每天晚上自己接著補(以前停在 10/19),排第幾都跟到今天的資料比',
+            '🏭 同一頁外資那一格多「5 日合計」「20 日合計」「今年累計」(證交所每天公布的數字加總,一天一筆);只描述、不是買賣訊號',
+        ], dt: '2026-11-20' },
         { v: 'V82.5.6', d: [
             '🏭 產業作戰室「🧠 人性」頁的匯率表補上「20 日」和「一年位置」(美元台幣、日圓、韓元、人民幣、美債、比特幣;美元指數、黃金、銅、油從今天開始每天存,滿 20 天才排得出來)',
             '🏭 同一頁多兩條:美國信用利差(公司債比公債多付多少利息,在 1986 年以來排第幾),外資那一格多「這一波用台幣算跌多少、用美元算跌多少」;只描述、不是買賣訊號',
@@ -9391,13 +9395,6 @@ ${list}
         { v: 'V79.9.9', d: [
             '🌅 盤前體檢:美股四項(道瓊 / 那斯達克 / S&P500 / 費半)和台積電 ADR <b>漲跌不到 0.4%</b>(例如 +0.17%)改成算持平、不加也不減分 —— 漲一點點對台股開盤幾乎沒影響,以前照樣給滿分,分數看起來比實際更有把握(像 10/29 那種 98 分、開出來是平盤);每一項照樣列出來,後面寫「太小不計分」',
             '🎲 盤前體檢底下那行「開盤發生率」跟著新算法重算',
-        ] },
-        { v: 'V79.9.8', d: [
-            '🌅 盤前體檢:「🌙 台指期夜盤」那一項其實是<b>前一天的日盤</b>(那一天的漲跌台股收盤早就反映了)→ 改成只列出來、⛔ 不算分,寫清楚是哪一天的日盤;分析師那段不再寫「夜盤走強 / 翻黑」',
-            '🌅 盤前體檢「今天怎麼看」講法改誠實:分數高只代表<b>比較少開低</b>,開高跟開平差不多一樣常見;底下多一行 🎲 開盤發生率(同樣分數的早上開高 / 開平 / 開低各幾 % + 隨便一天),⛔ 不是今天會漲或會跌',
-            '🧭 反攻條件雷達改成<b>只描述外面的狀況</b>:拿掉「幾條才進場」「分批回場(先 1/3)」「新單先等」這類指令,「進場門檻」改叫「成形門檻」;要不要買新的照決策台(你選的策略自己的規則)。多一行「🐻 大盤空頭守門」現在有沒有觸發;價差那一列比加權舊時標日期',
-            '🗑️ 拿掉「🪜 跌到哪裡才敢買」那張表(叫你第 1 批 3 成在某個點位),改成一句:想買 0050 照你的計畫買,⛔ 不用等跌到某個價位、也不用硬分好幾批',
-            '🪞 勝率鏡子:未滿 10 筆寫「N 筆(還太少)」,⛔ 不再顯示「勝率 100%」這種只有幾筆的百分比;點開也會先提醒筆數太少',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },

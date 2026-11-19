@@ -100,6 +100,24 @@ jobs:
         run: |
           node --max-old-space-size=4096 scripts/lead_dd_state.mjs data data/lead_dd.json || echo "::warning::👑 收一半狀態沒產出(線上留舊的)"
 
+      # 📚 V82.5.7 長歷史每天接著補(scripts/hist_daily.py → data/fi_mkt_hist.json + data/taifex_hist.json)
+      #   外資現貨 / 外資台指期 / 整體融資 / 期現基差(FinMind 免費層)+ 選擇權 P/C / 台指期大額交易人 / 小台散戶多空比(期交所下載頁)
+      #   ⭐ 排在 🧠 人性頁之前:同一個 job 先補再算(⛔ 另開 workflow —— 這裡開頭就還原完 data/ 了,另一支晚推上去這輪也讀不到)。
+      #   ⭐ 只寫有變的,另放一份到 /tmp/hist_daily 給部署那一步(⛔ 拿還原回來的舊檔蓋掉別人剛推的,陷阱 #41)。
+      #   抓不到 / 沒過守門(最後一天倒退、重疊那幾天對不上)→ 那一條沿用上一份、原因印成 ::warning::;上一份讀不出來 → 那份 ⛔ 動。
+      #   只描述:只拿來排人性頁的名次與研究,⛔ 進任何判斷。一輪 FinMind 6 次 + 期交所下載頁約 9 次(各自固定間隔、被擋就停手)。
+      - name: 📚 長歷史接著補(外資 / 融資 / 基差・選擇權 / 期貨大戶)
+        continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單
+        timeout-minutes: 6
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          DATA_DIR: data
+          OUTDIR: /tmp/hist_daily
+        run: |
+          pip install -q requests
+          python3 scripts/hist_daily.py --selftest > /tmp/hist_daily_selftest.log 2>&1 || { tail -30 /tmp/hist_daily_selftest.log; echo "::warning::長歷史接著補 selftest 沒過 → 這輪不補"; exit 0; }
+          python3 scripts/hist_daily.py || echo "::warning::長歷史有一份讀不出來(上面那行)→ 那份這輪不動"
+
       # 🧠 V82.5.5 產業作戰室「🧠 人性」頁的數字(scripts/mood_build.mjs → data/mood.json + 累積檔 data/mood_hist.json)
       #   ⭐ 排在掃描之前、⛔ 不掛 scan_rc 閘門(陷阱 #44)。只描述,⛔ 進任何判斷;散戶 App ⛔ 讀這兩份。
       #   mood_hist 是累積檔(上一步已從 data 分支還原):讀不出來 → exit 1、兩份都 ⛔ 寫(部署照推上一份,⛔ 用今天蓋掉歷史)
@@ -239,8 +257,10 @@ jobs:
           [ -s data/lead_dd.json ] && cp data/lead_dd.json /tmp/lead_dd.json || echo "⚠️ 沒有 lead_dd.json → 👑 收一半狀態這輪不更新"
           [ -s data/mood.json ] && cp data/mood.json /tmp/mood.json || echo "⚠️ 沒有 mood.json → 人性頁這輪不更新"
           [ -s data/mood_hist.json ] && cp data/mood_hist.json /tmp/mood_hist.json || echo "⚠️ 沒有 mood_hist.json → 人性頁累積這輪不更新"
+          # 📚 V82.5.7 長歷史接著補:只有真的有變的才在 /tmp/hist_daily(⛔ 從 data/ 拿 —— 那是開頭還原回來的舊檔)
+          ls -s /tmp/hist_daily/ 2>/dev/null || echo "ℹ️ 長歷史這輪沒有新的"
           ls -s /tmp/playbook_edge.json /tmp/pick_history.json /tmp/screener.json /tmp/confcall.json /tmp/dip_pick.json /tmp/crash_events.json /tmp/lead_dd.json /tmp/mood.json /tmp/mood_hist.json 2>/dev/null || true
-          [ -s /tmp/playbook_edge.json ] || [ -s /tmp/confcall.json ] || [ -s /tmp/pick_history.json ] || [ -s /tmp/dip_pick.json ] || [ -s /tmp/crash_events.json ] || [ -s /tmp/lead_dd.json ] || [ -s /tmp/mood.json ] || { echo "❌ 沒有任何產物可推,跳過部署"; exit 0; }
+          [ -s /tmp/playbook_edge.json ] || [ -s /tmp/confcall.json ] || [ -s /tmp/pick_history.json ] || [ -s /tmp/dip_pick.json ] || [ -s /tmp/crash_events.json ] || [ -s /tmp/lead_dd.json ] || [ -s /tmp/mood.json ] || [ -s /tmp/hist_daily/fi_mkt_hist.json ] || [ -s /tmp/hist_daily/taifex_hist.json ] || { echo "❌ 沒有任何產物可推,跳過部署"; exit 0; }
 
           # ⭐ 三個產物一次放回,⛔ 別在 retry 分支只放回其中一個(那正是以前漏掉快照的原因)
           restore_files () {
@@ -253,11 +273,13 @@ jobs:
             [ -s /tmp/lead_dd.json ] && cp /tmp/lead_dd.json data/lead_dd.json || true
             [ -s /tmp/mood.json ] && cp /tmp/mood.json data/mood.json || true
             [ -s /tmp/mood_hist.json ] && cp /tmp/mood_hist.json data/mood_hist.json || true
+            [ -s /tmp/hist_daily/fi_mkt_hist.json ] && cp /tmp/hist_daily/fi_mkt_hist.json data/fi_mkt_hist.json || true
+            [ -s /tmp/hist_daily/taifex_hist.json ] && cp /tmp/hist_daily/taifex_hist.json data/taifex_hist.json || true
           }
 
           # 📉 V82.0.0 只 add / commit 真的在的檔 —— ⛔ 寫死清單:新檔(dip_pick / crash_events)哪天沒產出,
           #   `git add -f a b c` 整行失敗 → 一個都沒加 →「無變更」→ 連明日作戰清單也沒推(陷阱 #44 的另一種形式)
-          present () { for f in data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json data/dip_pick.json data/crash_events.json data/lead_dd.json data/mood.json data/mood_hist.json; do [ -e "$f" ] && printf '%s ' "$f"; done; return 0; }
+          present () { for f in data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json data/dip_pick.json data/crash_events.json data/lead_dd.json data/mood.json data/mood_hist.json data/fi_mkt_hist.json data/taifex_hist.json; do [ -e "$f" ] && printf '%s ' "$f"; done; return 0; }
 
           deploy_branch () {
             local BR="$1"

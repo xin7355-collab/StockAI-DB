@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: 'all = 全部段落;notice = 只跑 ⑧ 上市注意股 OpenAPI vs 官網(官網只問 4 次)'
+        description: 'all = ①~⑧ 全部段落;notice = 只跑 ⑧ 上市注意股 OpenAPI vs 官網(官網只問 4 次);dtr = 只跑 ⑨ 全市場當沖占比(證交所最多問 6 次)'
         type: choice
-        options: [notice, all]
+        options: [notice, dtr, all]
         default: notice
 
 permissions:

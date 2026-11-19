@@ -74,6 +74,9 @@ CADENCE_H = {
     'lead_dd.json': 80,          # ✂️ V82.0.7 👑 跌 20% 收一半的狀態:playbook_scan 每個平日晚上產(自動下單 / App / Telegram 都讀它)
     'mood.json': 80,             # 🧠 V82.5.5 產業作戰室「🧠 人性」頁:playbook_scan 每個平日晚上產(只有作戰室讀)
     'mood_hist.json': 80,        # 🧠 V82.5.5 同上的累積檔(每天一列,只增不減)
+    # 📚 V82.5.7 長歷史每天接著補(scripts/hist_daily.py,明日作戰清單那一步;只在有新資料時才寫 → updated = 最後一次真的接上的時間)
+    'fi_mkt_hist.json': 80,      # 外資現貨 / 外資台指期 / 整體融資 / 期現基差(週一晚上接週五 ≈ 72h)
+    'taifex_hist.json': 80,      # 選擇權 P/C / 台指期大額交易人 / 小台散戶多空比
 }
 
 # 🏦 V82.1.5 這幾個檔的 updated 是「採礦那天」不是資料日:採礦每天把同一份舊資料重寫、updated 寫今天
@@ -112,6 +115,10 @@ EXTRA_FILES = {
                   'why': '🧠 人性頁(V82.5.5):平日晚上接在明日作戰清單後面算(scripts/mood_build.mjs)'},
     'mood_hist.json': {'first': '2026-11-21',
                        'why': '🧠 人性頁的累積檔(V82.5.5):同上,每天一列'},
+    'fi_mkt_hist.json': {'first': '2026-10-20',
+                         'why': '📚 大盤外資 / 融資 / 基差長歷史:10/20 手動補挖,V82.5.7 起明日作戰清單那一步每天接著補(scripts/hist_daily.py)'},
+    'taifex_hist.json': {'first': '2026-10-20',
+                         'why': '📚 選擇權 P/C / 期貨大戶長歷史:同上'},
 }
 
 META_KEYS = {'updated', 'generated', 'date', 'data_date', 'ts', 'miner_version', 'count', 'total'}

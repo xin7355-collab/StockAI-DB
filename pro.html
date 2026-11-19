@@ -10955,7 +10955,7 @@ const PRO = {
   },
   _mindBar(p) { return p == null || !isFinite(p) ? '' : `<div class="mind-bar" data-mind-bar="${Math.round(p)}"><i style="left:${Math.max(0, Math.min(100, +p))}%"></i></div>`; },
   _mindRowHtml(g, minN) {
-    const dirCol = (g.k === 'fis' || g.k === 'fit') && g.v ? (g.v > 0 ? 'var(--up)' : 'var(--dn)') : 'var(--txt)';   // 買賣超是方向(台股紅買綠賣);其他 ⛔ 上色
+    const dirCol = ['fis', 'fit', 'fi5', 'fi20'].includes(g.k) && g.v ? (g.v > 0 ? 'var(--up)' : 'var(--dn)') : 'var(--txt)';   // 買賣超(今天 / 5 日 / 20 日)是方向(台股紅買綠賣);其他 ⛔ 上色
     const age = this._mindAge(g.d);
     const stale = g.stale || (age != null && age >= 4) ? `<span class="mind-stale" data-mind-stale>⚠️ 資料停在 ${this._mindMd(g.d)}</span>` : '';
     const hl = g.hiw ? `<div>高 = ${this._esc(g.hiw)}${g.low ? '・低 = ' + this._esc(g.low) : ''}(⛔ 不是叫你反著做)</div>` : '';
@@ -11447,7 +11447,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V82.5.6',
+  VER: 'V82.5.7',
   _ROT: {
     win: 20, spread: 1.95, top: 1.06, bot: -0.88,
     q1: 2.48, q2: 1.42, exBest: 1.83,

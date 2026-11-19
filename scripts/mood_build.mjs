@@ -6,11 +6,13 @@
  *   + 實測總表(pro.html PRO.LAB)那一條的主題鍵 lab(頁面只轉述那一條的結論,⛔ 這裡另寫結論)。
  * 資料原則:
  *   ① 今天的值 ← 每天都會更新的檔(macro_risk / risk_history / breadth / attention_history / ^TWII / screener);
- *      長歷史只拿來算排第幾(fi_mkt_hist / taifex_hist 只有手動補挖,停在哪天就寫哪天、標 stale)。
+ *      長歷史只拿來算排第幾(fi_mkt_hist / taifex_hist:V82.5.7 起明日作戰清單那一步每天接著補(scripts/hist_daily.py),
+ *      停在哪天就寫哪天;比加權最新那天舊 ≥ STALE_D 天自動標 stale)。
  *   ② 兩份來源接在一起之前,先比重疊那段的值(陷阱 #17:同名不同單位 / 不同算法)→ 對不上那條就不接、進 miss 寫原因。
  *      實例:risk_history.retail_ls_pct 跟 taifex_hist.rl[3] 名字都叫散戶多空比,數字完全對不上 → 分開,只用前者自己的 90 天。
  *   ③ 讀不到 / 算不出來 → miss 寫原因(⛔ 當 0、⛔ 默默不顯示)。
- *   ④ ⛔ 加總 risk_history 的每日外資(快照有時晚一天、會重複 —— 陷阱 #16)→ 外資只給官方的「今天」與「本月累計」。
+ *   ④ ⛔ 加總 risk_history 的每日外資(快照有時晚一天、會重複 —— 陷阱 #16)→ 外資「今天」「本月累計」照官方那兩格;
+ *      V82.5.7 起「5 日 / 20 日 / 今年」= fi_mkt_hist.spot(官方每天一個值、一天一筆)加總 —— 最後一天要跟加權最新那天一樣才算「到今天」。
  * 心理狀態 = psych_state_probe 的 states()(⛔ 抄一份規則);加權 = lib_crash.loadIndex(idx_long_early + idx_long + ^TWII)。
  * 另寫 mood_hist.json:每天一列原始值(短歷史的那幾條之後才有長歷史可以排);同一天後跑的蓋前面;讀壞 ⛔ 寫回(exit 1)。
  *
@@ -98,6 +100,28 @@ export function yearPos(pts, v, asOf) {
 export const FX_FRED = { usdtwd: ['usdtwd', 0.05, false], jpy: ['jpy', 0.05, false], krw: ['krw', 0.05, false], cny: ['cny', 0.05, false],
     ust10y: ['ust10y', 0.5, true], us2y_yield: ['us2y', 0.5, true], btc_usd: ['btc', 0.15, false] };
 export const FRED_MAX_LAG = 45;   // FRED 最後一筆比今天舊超過幾天就不接(歷史斷太久)
+
+/** 💹 V82.5.7 外資現貨「最後 N 筆」加總(fi_mkt_hist.spot 的外資那一格,億;官方每天一個值、一天一筆)
+ *  → { last, roll: {n: [[日期, 到那天為止 N 筆的加總]…]}, days: {n: [第一天, 最後一天]}, ytd, ytdN };沒有 → null
+ *  cal(加權有開盤的日子)有給 → 最後 N 筆要剛好是最後 N 個交易日,跨過缺資料的日子 → gap 列出來(⛔ 默默多算一天) */
+export function fiSums(FM, cal = null, ns = [5, 20]) {
+    if (!FM || !FM.spot) return null;
+    const P = Object.keys(FM.spot).sort().map(k => [d10(k), Array.isArray(FM.spot[k]) ? num(FM.spot[k][0]) : null]).filter(([, v]) => v != null);
+    if (!P.length) return null;
+    const last = P.at(-1)[0], roll = {}, days = {}, gap = {};
+    for (const n of ns) {
+        const out = []; let acc = 0;
+        for (let i = 0; i < P.length; i++) { acc += P[i][1]; if (i >= n) acc -= P[i - n][1]; if (i >= n - 1) out.push([P[i][0], r2(acc)]); }
+        roll[n] = out;
+        days[n] = P.length >= n ? [P[P.length - n][0], last] : null;
+        if (cal && days[n]) {
+            const ci = cal.lastIndexOf(last), have = new Set(P.slice(-n).map(x => x[0]));
+            if (ci >= 0) gap[n] = cal.slice(Math.max(0, ci - n + 1), ci + 1).filter(d => !have.has(d));
+        }
+    }
+    const y = last.slice(0, 4), Y = P.filter(([d]) => d.startsWith(y));
+    return { last, roll, days, gap, ytd: Y.reduce((a, [, v]) => a + v, 0), ytdN: Y.length };
+}
 
 /** 一條量條 */
 function gauge(k, name, side, v, unit, d, hist, lab, extra = {}) {
@@ -229,19 +253,39 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
     if (TX && TX.pc) {
         const ks = Object.keys(TX.pc).sort(), lk = ks.at(-1), v = Array.isArray(TX.pc[lk]) ? num(TX.pc[lk][1]) : null;
         crowd.push(gauge('pcr', '選擇權賣權 ÷ 買權(未平倉)', 'fear', v, '%', lk, { vals: ks.slice(0, -1).map(k => Array.isArray(TX.pc[k]) ? num(TX.pc[k][1]) : null), from: d10(ks[0]), to: d10(lk) }, 'pcr-largetrader',
-            { hiw: '怕', stale: true, note: '⏳ 只有手動補挖的歷史,每天的值第 6 期才接' }));
+            { hiw: '怕', note: '期交所每天的買賣權未平倉量比率(明日作戰清單那一步接著補);> 100 = 賣權比較多' + ((TX.daily && TX.daily.err && TX.daily.err.pc) ? `。⚠️ 最近一次接著補沒成功:${TX.daily.err.pc}` : '') }));
     } else M('pcr', '選擇權賣權 ÷ 買權', tx.err || 'taifex_hist 沒有 pc');
     // ── 外資與大戶(換座位)
     const seats = { fi: [], trust: [], retail: [], insider: [], gov: [] };
-    const fiHist = idx => {
+    // ⚠️ V82.5.7 fi_mkt_hist 每天接著補之後,它最後一天常常就是「今天」→ 排第幾的歷史只取那一天以前的(⛔ 把今天自己算進去)
+    const fiHist = (idx, before) => {
         if (!FM || !FM.spot) return { vals: [] };
-        const ks = Object.keys(FM.spot).sort().slice(-FI_WIN);
+        const ks = Object.keys(FM.spot).filter(k => !before || d10(k) < before).sort().slice(-FI_WIN);
         return { vals: ks.map(k => Array.isArray(FM.spot[k]) ? num(FM.spot[k][idx]) : null), from: d10(ks[0]), to: d10(ks.at(-1)) };
     };
-    if (num(m.fi_spot_net) != null) seats.fi.push(gauge('fis', '外資現貨買賣超(今天)', 'both', num(m.fi_spot_net), '億', m.fi_spot_date, fiHist(0), 'fi-outflow', { hiw: '買超大', low: '賣超大', note: '上市;只跟近 3 年比(早年規模小)' }));
+    if (num(m.fi_spot_net) != null) seats.fi.push(gauge('fis', '外資現貨買賣超(今天)', 'both', num(m.fi_spot_net), '億', m.fi_spot_date, fiHist(0, d10(m.fi_spot_date)), 'fi-outflow', { hiw: '買超大', low: '賣超大', note: '上市;只跟近 3 年比(早年規模小)' }));
     else M('fis', '外資現貨買賣超', mr.err || 'macro_risk 沒有 fi_spot_net');
     if (num(m.fi_spot_mtd) != null) seats.fi.push({ k: 'fim', name: `外資本月累計(${m.fi_spot_mtd_month || ''})`, v: r2(num(m.fi_spot_mtd)), unit: '億', d: d10(m.fi_spot_date), lab: 'fi-follow',
         note: `證交所月報的累計(這個月 ${num(m.fi_spot_mtd_days) ?? '—'} 個交易日);⛔ 自己把每天加起來(快照會重複)。月中跟整個月不能比 → 不排第幾` });
+    // 💹 V82.5.7 外資 5 日 / 20 日 / 今年:fi_mkt_hist.spot = 官方每天一個值(上市三大法人的外資;一天一筆,⛔ 每天的快照)
+    //   最後 N 筆加總;排第幾 = 同樣「連續 N 筆」的加總在近 3 年(⛔ 含今天自己)。最後一天比加權最新那天舊 → 下面的 stale 會標出來
+    {
+        const fsum = fiSums(FM, S ? S.d : null);
+        if (!fsum) M('fi5', '外資現貨 5 日 / 20 日 / 今年', fm.err || 'fi_mkt_hist 沒有 spot');
+        else {
+            for (const [n, k] of [[5, 'fi5'], [20, 'fi20']]) {
+                const R = fsum.roll[n], cur = R.at(-1);
+                if (!cur) { M(k, `外資現貨 ${n} 日合計`, `fi_mkt_hist.spot 不到 ${n} 筆`); continue; }
+                const H = R.slice(0, -1).slice(-FI_WIN), gp = (fsum.gap && fsum.gap[n]) || [];
+                seats.fi.push(gauge(k, `外資現貨 ${n} 日合計`, 'both', cur[1], '億', fsum.last, { vals: H.map(x => x[1]), from: H[0] ? H[0][0] : null, to: H.at(-1) ? H.at(-1)[0] : null }, 'fi-outflow',
+                    { hiw: '買超大', low: '賣超大', note: `${fsum.days[n][0]} ~ ${fsum.last} 這 ${n} 筆官方每日值加總(上市);跟近 3 年每一段「連續 ${n} 筆」的加總比`
+                        + (gp.length ? `。⚠️ 這段有 ${gp.length} 個交易日沒有資料(${gp.join('、')}),實際跨了 ${n + gp.length} 個交易日` : '') }));
+            }
+            seats.fi.push({ k: 'fiy', name: `外資現貨今年累計(${fsum.last.slice(0, 4)})`, v: r2(fsum.ytd), unit: '億', d: fsum.last, lab: 'fi-follow',
+                note: `${fsum.ytdN} 個交易日的官方每日值加總(上市);今年到現在跟整年不能比 → 不排第幾` });
+            todayRow.fi5 = r2(fsum.roll[5].at(-1) ? fsum.roll[5].at(-1)[1] : null); todayRow.fid = fsum.last;
+        }
+    }
     if (num(m.fi_futures_net) != null) {
         // 快照有時晚一天、會重複 → 連續一樣的只留一筆;跟自己最近 20 筆比(⛔ 絕對口數不能跨年比:小台、微台上市後整體放大)
         const fr = RH.filter(r => num(r.fi_futures_net) != null).filter((r, k, a) => k === 0 || num(r.fi_futures_net) !== num(a[k - 1].fi_futures_net));
@@ -253,7 +297,7 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
         const ks = Object.keys(TX.lt).sort(), lk = ks.at(-1), x = TX.lt[lk] && TX.lt[lk].all;
         const ratio = k => { const a = TX.lt[k] && TX.lt[k].all; return Array.isArray(a) && num(a[2]) > 0 ? num(a[1]) / num(a[2]) * 100 : null; };
         seats.fi.push(gauge('lt10', '台指期前 10 大交易人淨部位 ÷ 未平倉', 'both', ratio(lk), '%', lk, { vals: ks.slice(0, -1).map(ratio), from: d10(ks[0]), to: d10(lk) }, 'pcr-largetrader',
-            { stale: true, note: `前 10 大淨 ${Array.isArray(x) ? x[1] : '—'} 口 ÷ 全市場 ${Array.isArray(x) ? x[2] : '—'} 口。⏳ 只有手動補挖的歷史,每天的值第 6 期才接` }));
+            { note: `前 10 大淨 ${Array.isArray(x) ? x[1] : '—'} 口 ÷ 全市場 ${Array.isArray(x) ? x[2] : '—'} 口(期交所台指期大額交易人,主力近月;明日作戰清單那一步接著補)` + ((TX.daily && TX.daily.err && TX.daily.err.lt) ? `。⚠️ 最近一次接著補沒成功:${TX.daily.err.lt}` : '') }));
     }
     // 台積電 ADR 溢價(只有今天;排第幾第 6 期)
     const k2330 = rdj(dir, '2330.json');
@@ -295,7 +339,7 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
             } else M('usdtw', '這一波:用台幣算 vs 用美元算', '匯率歷史接不到今天(FRED 太舊或今天的匯率讀不到)');
         } else M('usdtw', '這一波:用台幣算 vs 用美元算', fh.err || (FH ? 'fred_hist 沒有美元台幣(或太短)' : 'fred_hist.json 讀不到'));
     }
-    if (num(m.fi_trust_net) != null) seats.trust.push(gauge('fit', '投信買賣超(今天)', 'both', num(m.fi_trust_net), '億', m.fi_three_date, fiHist(1), 'fi-trust-sync', { hiw: '買超大', low: '賣超大', note: '上市;只跟近 3 年比' }));
+    if (num(m.fi_trust_net) != null) seats.trust.push(gauge('fit', '投信買賣超(今天)', 'both', num(m.fi_trust_net), '億', m.fi_three_date, fiHist(1, d10(m.fi_three_date)), 'fi-trust-sync', { hiw: '買超大', low: '賣超大', note: '上市;只跟近 3 年比' }));
     else M('fit', '投信買賣超', mr.err || 'macro_risk 沒有 fi_trust_net');
     for (const g of crowd.filter(x => ['mg20', 'rls'].includes(x.k))) seats.retail.push({ ref: g.k });
     // 內部人(近 5 個交易日):董監 / 大股東在市場上賣、庫藏股
@@ -505,6 +549,44 @@ function selftest() {
         ok('⑬b 只存了 5 天 → 一年位置排不出來(還在累積)、⛔ 硬排', dx5 && dx5.pos && dx5.pos.pct == null && dx5.pos.n === 6, JSON.stringify(dx5 && dx5.pos));
         const hF = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).hist.at(-1);
         ok('⑬c mood_hist 今天那一列存了匯率(值 + 那個值的日期)', hF.fx && Array.isArray(hF.fx.usdtwd) && hF.fx.usdtwd[0] === 32.5 && hF.fx.dxy[1] === aOf, JSON.stringify(hF.fx));
+        // ⑭ 💹 V82.5.7 外資 5 日 / 20 日 / 今年(fi_mkt_hist.spot,官方每天一個值;hist_daily 每天接著補)
+        const calD = S.d, ai = calD.lastIndexOf(asof), spotD = calD.slice(ai - 799, ai + 1);
+        const spot = Object.fromEntries(spotD.map((d, k) => [d, [k % 7 - 3, 1, 0]]));
+        spot[asof] = [999, 1, 0];   // 今天特別大 → 拿來驗「排第幾 ⛔ 把今天自己算進去」
+        W('fi_mkt_hist.json', { spot });
+        W('macro_risk.json', { ...M0, fi_spot_net: 999, fi_spot_date: asof.replace(/-/g, '') });
+        const md = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood;
+        const f5 = md.seats.fi.find(r => r.k === 'fi5'), f20 = md.seats.fi.find(r => r.k === 'fi20'), fy = md.seats.fi.find(r => r.k === 'fiy'), fs_ = md.seats.fi.find(r => r.k === 'fis');
+        const sumOf = ds => Math.round(ds.reduce((a, d) => a + spot[d][0], 0) * 100) / 100;
+        const y0 = asof.slice(0, 4), yd = spotD.filter(d => d.startsWith(y0));
+        ok('⑭ 5 日 / 20 日合計 = 最後 5 / 20 筆官方每日值加總(手算)、資料日 = 加權最新那天、⛔ stale',
+            f5 && f5.v === sumOf(spotD.slice(-5)) && f20 && f20.v === sumOf(spotD.slice(-20)) && f5.d === asof && !f5.stale && !f20.stale, JSON.stringify({ f5: f5 && f5.v, f20: f20 && f20.v, want: [sumOf(spotD.slice(-5)), sumOf(spotD.slice(-20))] }));
+        ok('⑭ 今年累計 = 那一年每一筆加總、天數對、⛔ 排第幾(今年到現在跟整年不能比)', fy && fy.v === sumOf(yd) && new RegExp(`^${yd.length} 個交易日`).test(fy.note) && !('pct' in fy), JSON.stringify(fy));
+        ok('⑭ 5 日排第幾的歷史 = 近 3 年「連續 5 筆」的加總、⛔ 含今天自己(n = 750 + 1、歷史到昨天)', f5.n === FI_WIN + 1 && f5.to === spotD.at(-2), JSON.stringify({ n: f5.n, to: f5.to }));
+        ok('⑭ 外資今天那一條(fis):歷史到昨天、⛔ 把今天自己算進去(決定性對照:舊寫法歷史最後一天 = 今天)', fs_ && fs_.to === spotD.at(-2) && fs_.lo === r2(FI_WIN / (FI_WIN + 1) * 100), JSON.stringify(fs_ && { to: fs_.to, lo: fs_.lo, n: fs_.n }));
+        ok('⑭ fiSums 純函式:roll 5 第一筆 = 前 5 筆加總', (() => { const F = fiSums({ spot }); return F.roll[5][0][1] === sumOf(spotD.slice(0, 5)) && F.last === asof; })());
+        // ⑭b 最後 5 筆中間缺一個交易日 → 寫出缺哪天、實際跨了 6 個交易日(⛔ 默默多算一天)
+        const holeD = spotD.at(-3), spotH = { ...spot }; delete spotH[holeD];
+        W('fi_mkt_hist.json', { spot: spotH });
+        const f5h = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.seats.fi.find(r => r.k === 'fi5');
+        ok('⑭b 最後 5 筆跨過缺資料的那天 → 寫出缺哪天、實際跨 6 個交易日', f5h && f5h.note.includes(holeD) && f5h.note.includes('實際跨了 6 個交易日'), f5h && f5h.note);
+        // ⑭c 停在 10 個交易日前 → 自動 stale(⛔ 寫死);上面 ⑭ 是決定性對照(到加權最新那天 → 不標)
+        W('fi_mkt_hist.json', { spot: Object.fromEntries(spotD.slice(0, -10).map(d => [d, spot[d]])) });
+        const f5s = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.seats.fi.find(r => r.k === 'fi5');
+        ok('⑭c 外資長歷史停在 10 個交易日前 → 5 日合計標 stale、資料日寫那天', f5s && f5s.stale === true && f5s.d === spotD.at(-11), JSON.stringify(f5s && { d: f5s.d, stale: f5s.stale }));
+        // ⑮ 買賣權比 / 期貨大戶:⛔ 寫死 stale,照日期判(hist_daily 每天接著補)
+        const txD = calD.slice(ai - 59, ai + 1);
+        const mkTX = ds => ({ pc: Object.fromEntries(ds.map((d, k) => [d, [90, 60 + k % 9]])), lt: Object.fromEntries(ds.map((d, k) => [d, { all: [1000, 2000 + k, 130000] }])),
+            daily: { err: { pc: '下載頁:2026/11 斷路' } } });
+        W('taifex_hist.json', mkTX(txD));
+        const m15 = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood;
+        const pcr = m15.crowd.find(g => g.k === 'pcr'), lt10 = m15.seats.fi.find(g => g.k === 'lt10');
+        ok('⑮ 買賣權比 / 期貨大戶到加權最新那天 → ⛔ stale、資料日 = 那天', pcr && !pcr.stale && pcr.d === asof && lt10 && !lt10.stale && lt10.d === asof, JSON.stringify({ pcr: pcr && [pcr.d, pcr.stale], lt10: lt10 && [lt10.d, lt10.stale] }));
+        ok('⑮ 最近一次接著補沒成功 → 說明裡寫出來', pcr && pcr.note.includes('最近一次接著補沒成功') && pcr.note.includes('斷路'), pcr && pcr.note);
+        W('taifex_hist.json', mkTX(txD.slice(0, -10)));
+        const m15s = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood;
+        const pcrS = m15s.crowd.find(g => g.k === 'pcr'), ltS = m15s.seats.fi.find(g => g.k === 'lt10');
+        ok('⑮ 決定性對照:停在 10 個交易日前 → 兩條都自動 stale', pcrS && pcrS.stale === true && ltS && ltS.stale === true, JSON.stringify({ pcr: pcrS && [pcrS.d, pcrS.stale], lt: ltS && [ltS.d, ltS.stale] }));
     } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
     console.log(bad ? `\n❌ ${bad} 條沒過` : '\n✅ 全部通過');
     return bad ? 1 : 0;
