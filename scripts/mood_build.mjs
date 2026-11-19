@@ -417,7 +417,16 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
             todayRow.conc = r2(v); todayRow.cd = d10(sc.j.data_date) || null;
         } else M('conc', '成交集中度', 'screener 個股成交金額不夠');
     } else M('conc', '成交集中度', sc.err || 'screener 沒有 amt');
-    for (const [k, n, why] of [['dtr', '當沖占比', '⏳ 第 6 期(證交所)']]) M(k, n, why);
+    // 📊 V82.5.8 全市場當沖占比(上市;data/dtr_hist.json = hist_daily 每晚從證交所 TWTB4U 統計表收的,每晚往前補幾天)
+    //   值 = 當沖買進 / 賣出成交金額占市場比重的平均;排第幾只跟自己的歷史比(不到 MIN_N 天寫「還在累積」)
+    const dt = rdj(dir, 'dtr_hist.json'), DT = dt.j && dt.j.d && typeof dt.j.d === 'object' ? dt.j.d : null;
+    const dtAmt = r => Array.isArray(r) && num(r[1]) != null && num(r[2]) != null ? (num(r[1]) + num(r[2])) / 2 : null;
+    if (DT && Object.keys(DT).length) {
+        const ks = Object.keys(DT).sort(), lk = ks.at(-1), x = DT[lk];
+        crowd.push(gauge('dtr', '當沖成交金額占比(上市)', 'greed', dtAmt(x), '%', lk, { vals: ks.slice(0, -1).map(k => dtAmt(DT[k])), from: ks[0], to: lk }, null,
+            { hiw: '貪(短線進出多)', note: `證交所當日沖銷交易統計:買進 ${x[1]}%、賣出 ${x[2]}%(成交金額占市場比重,取平均);成交股數占 ${x[0]}%。歷史 ${ks[0]} 起(每晚往前補幾天,補到 2024 年初),滿 ${MIN_N} 天才排得出第幾` }));
+        todayRow.dtr = r2(dtAmt(x)); todayRow.dtd = lk;
+    } else M('dtr', '當沖占比', dt.err || 'dtr_hist.json 還沒有資料');
     // ⚠️ 每天該更新的來源停了(比加權最新那天舊 ≥ STALE_D 天)→ 標 stale:畫面標「資料停在 MM/DD」、頁頂 / 🏠 那一句 ⛔ 挑它當「今天離平常最遠」
     //   (⛔ 跟手機的今天比 —— 連假時大家一起停,那不算;跟加權最新那天比才分得出「只有這一條停了」)
     const asofMs = twNow ? Date.parse(twNow.d) : NaN;
@@ -484,7 +493,7 @@ function selftest() {
         const mz = mood.miss.find(x => x.k === 'mg20'), mp = mood.miss.find(x => x.k === 'pcr');
         ok('⑤ 沒有 risk_history / fi_mkt_hist → 融資那條進 miss 而且有原因', mz && /讀不到|不夠/.test(mz.why), JSON.stringify(mz));
         ok('⑤ 沒有 taifex_hist → 買賣權比進 miss', mp && /讀不到/.test(mp.why), JSON.stringify(mp));
-        ok('⑤ 當沖占比寫「第 6 期」;沒有 fred_hist → 信用利差 / 用美元算那兩條進 miss 而且寫讀不到', (mood.miss.find(x => x.k === 'dtr') || {}).why?.includes('第 6 期')
+        ok('⑤ 沒有 dtr_hist → 當沖占比進 miss 寫讀不到;沒有 fred_hist → 信用利差 / 用美元算那兩條進 miss 而且寫讀不到', /dtr_hist/.test((mood.miss.find(x => x.k === 'dtr') || {}).why || '')
             && ['credit', 'usdtw'].every(k => /fred_hist/.test((mood.miss.find(x => x.k === k) || {}).why || '')), JSON.stringify(mood.miss.filter(x => ['dtr', 'credit', 'usdtw'].includes(x.k))));
         const vx = mood.crowd.find(g => g.k === 'vix');
         ok('⑤ VIX:今天有值但沒有美股日線 → miss(⛔ 只給今天沒有歷史卻假裝排第幾)', !vx && mood.miss.some(x => x.k === 'vix'));
@@ -587,6 +596,17 @@ function selftest() {
         const m15s = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood;
         const pcrS = m15s.crowd.find(g => g.k === 'pcr'), ltS = m15s.seats.fi.find(g => g.k === 'lt10');
         ok('⑮ 決定性對照:停在 10 個交易日前 → 兩條都自動 stale', pcrS && pcrS.stale === true && ltS && ltS.stale === true, JSON.stringify({ pcr: pcrS && [pcrS.d, pcrS.stale], lt: ltS && [ltS.d, ltS.stale] }));
+        // ⑯ 📊 全市場當沖占比(dtr_hist.json,hist_daily 每晚收):值 = 買進 / 賣出金額占比平均、歷史不含今天、不到 20 天不排
+        const dtD = calD.slice(ai - 24, ai + 1), mkDT = ds => ({ d: Object.fromEntries(ds.map((d, k) => [d, [25 + k % 3, 38 + k % 4, 38.2 + k % 4, 1, 1, 1]])) });
+        const dt25 = mkDT(dtD); dt25.d[asof] = [27.83, 41.29, 41.35, 4259348000, 389437473750, 389961679540];
+        W('dtr_hist.json', dt25);
+        const g16 = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.crowd.find(g => g.k === 'dtr');
+        ok('⑯ 當沖占比 = 買進 41.29 / 賣出 41.35 平均 41.32、資料日 = 那天、歷史到前一天(25 天 → 排得出第幾、今天最高)', g16 && g16.v === 41.32 && g16.d === asof && g16.to === asof
+            && g16.n === 25 && g16.hi === 0 && g16.pct != null && /買進 41\.29%、賣出 41\.35%/.test(g16.note), JSON.stringify(g16 && { v: g16.v, n: g16.n, hi: g16.hi, pct: g16.pct }));
+        W('dtr_hist.json', mkDT(dtD.slice(-5)));
+        const g16b = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.crowd.find(g => g.k === 'dtr');
+        ok('⑯ 只有 5 天 → 還在累積(pct null、⛔ 硬排)', g16b && g16b.pct == null && g16b.n === 5, JSON.stringify(g16b && { n: g16b.n, pct: g16b.pct }));
+        fs.rmSync(path.join(tmp, 'dtr_hist.json'));
     } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
     console.log(bad ? `\n❌ ${bad} 條沒過` : '\n✅ 全部通過');
     return bad ? 1 : 0;

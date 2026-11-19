@@ -77,6 +77,7 @@ CADENCE_H = {
     # 📚 V82.5.7 長歷史每天接著補(scripts/hist_daily.py,明日作戰清單那一步;只在有新資料時才寫 → updated = 最後一次真的接上的時間)
     'fi_mkt_hist.json': 80,      # 外資現貨 / 外資台指期 / 整體融資 / 期現基差(週一晚上接週五 ≈ 72h)
     'taifex_hist.json': 80,      # 選擇權 P/C / 台指期大額交易人 / 小台散戶多空比
+    'dtr_hist.json': 80,         # 📊 全市場當沖占比(證交所 TWTB4U 統計表;同一步每晚收)
 }
 
 # 🏦 V82.1.5 這幾個檔的 updated 是「採礦那天」不是資料日:採礦每天把同一份舊資料重寫、updated 寫今天
@@ -119,6 +120,8 @@ EXTRA_FILES = {
                          'why': '📚 大盤外資 / 融資 / 基差長歷史:10/20 手動補挖,V82.5.7 起明日作戰清單那一步每天接著補(scripts/hist_daily.py)'},
     'taifex_hist.json': {'first': '2026-10-20',
                          'why': '📚 選擇權 P/C / 期貨大戶長歷史:同上'},
+    'dtr_hist.json': {'first': '2026-11-21',
+                      'why': '📊 全市場當沖占比(V82.5.8):明日作戰清單那一步每晚從證交所收、往前補幾天(scripts/hist_daily.py)'},
 }
 
 META_KEYS = {'updated', 'generated', 'date', 'data_date', 'ts', 'miner_version', 'count', 'total'}

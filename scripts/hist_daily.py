@@ -24,6 +24,14 @@
   有變才寫回 data/(mood_build 讀它),並複製到 OUTDIR(部署那一步只推有變的;⛔ 拿還原回來的舊檔蓋掉別人剛推的)。
   ⛔ 只描述:這兩份只拿來排名次與研究,⛔ 進任何買賣判斷。
 
+📊 V82.5.8 同一步也收全市場當沖占比 → data/dtr_hist.json(上市;官方「當日沖銷交易統計資訊」)
+  證交所 rwd dayTrading/TWTB4U?date=…(11/20 探針 run 44619022085 對過:tables 兩張,欄位照名字找)
+  每一輪:先補最近 DTR_RECENT 個平日裡還沒有的,再往前補 DTR_BACK 天(慢慢長出歷史,補到 DTR_FROM 為止);
+  證交所 www 每次隔 4 秒、被擋就停手;回應的日期跟問的不一樣 → 不收;
+  統計表空的:最近幾天(可能還沒公布)下一輪再問、更早的(休市)記進 none 不再問。
+  中間某一天失敗 → 記進 miss,下一輪回頭補(一輪最多 DTR_HOLES 個、問 DTR_GIVEUP 次都沒拿到就不再問);
+  這一輪一天都沒拿到 = 來源有問題 → ⛔ 算到那幾天頭上。
+
 跑法:python3 scripts/hist_daily.py [--selftest]
       環境變數 DATA_DIR=data・OUTDIR=(留空 = 不複製)・FINMIND_TOKENS(逗號分隔)
 """
@@ -49,7 +57,14 @@ FM_API = 'https://api.finmindtrade.com/api/v4/data'
 OVERLAP = 45          # 每一條從自己的最後一天往前抓幾天(FinMind 偶爾修正 + 確保重疊夠對表)
 MIN_OV = 5            # 重疊幾天以上才算證明得了是同一把尺
 BAD_SHARE = 0.2       # 重疊那幾天對不上超過幾成就不收這次的
-GAPS = {'api.finmindtrade.com': 1.0, 'www.taifex.com.tw': 1.5, 'openapi.taifex.com.tw': 1.0}
+GAPS = {'api.finmindtrade.com': 1.0, 'www.taifex.com.tw': 1.5, 'openapi.taifex.com.tw': 1.0, 'www.twse.com.tw': 4.0}
+DTR_URL = 'https://www.twse.com.tw/rwd/zh/dayTrading/TWTB4U'
+DTR_RECENT = 3        # 每一輪先補最近幾個平日(還沒有的)
+DTR_BACK = 10         # 每一輪往前補幾天(證交所 www 隔 4 秒 → 一輪最多 16 次 ≈ 64 秒)
+DTR_HOLES = 3         # 每一輪最多回頭補幾個「問過但沒拿到」的洞(⛔ 永遠留著一個破洞)
+DTR_GIVEUP = 3        # 同一天問 3 次都沒拿到 → 不再問(記在 miss,看得出缺哪幾天)
+DTR_FROM = '2024-01-02'
+DTR_FIELDS = (('成交股數', '比重'), ('買進', '金額', '比重'), ('賣出', '金額', '比重'), ('總成交股數',), ('總買進成交金額',), ('總賣出成交金額',))
 FI_KEYS = ('spot', 'fut', 'mg', 'bs')
 TX_KEYS = ('pc', 'lt', 'rl')
 
@@ -312,6 +327,112 @@ def run(gate, fi_doc, tx_doc, today, tokens, log=print):
     return fi_doc, tx_doc, rep, changed
 
 
+def parse_dtr(obj, want_iso):
+    """證交所 TWTB4U → (值 [股數占比%, 買進金額占比%, 賣出金額占比%, 成交股數, 買進金額, 賣出金額] 或 None, 原因 '')。
+    統計表 = 欄位含「占市場比重」那張;欄位一律照名字找(⛔ 寫死第幾欄);回應日期 ≠ 問的那天 → 不收(陷阱 #60)。"""
+    if not isinstance(obj, dict):
+        return None, '不是 JSON 物件'
+    raw = ''.join(ch for ch in str(obj.get('date') or '') if ch.isdigit())
+    if len(raw) == 8 and f'{raw[:4]}-{raw[4:6]}-{raw[6:]}' != want_iso:
+        return None, f'回應日期 {raw} 跟問的 {want_iso} 不一樣'
+    for t in [t for t in (obj.get('tables') or []) if isinstance(t, dict)] + ([obj] if obj.get('fields') else []):
+        f = [str(x).replace(' ', '').replace('\n', '') for x in (t.get('fields') or [])]
+        if not any('占市場比重' in x for x in f):
+            continue
+        if not t.get('data'):
+            return None, 'empty'
+        row = t['data'][0]
+
+        def col(keys, ratio):
+            for i, x in enumerate(f):
+                if all(k in x for k in keys) and (('比重' in x) == ratio) and i < len(row):
+                    try:
+                        return float(str(row[i]).replace(',', '').replace('%', '').strip())
+                    except ValueError:
+                        return None
+            return None
+        v = [col(DTR_FIELDS[0], True), col(DTR_FIELDS[1], True), col(DTR_FIELDS[2], True),
+             col(DTR_FIELDS[3], False), col(DTR_FIELDS[4], False), col(DTR_FIELDS[5], False)]
+        if None in v[:3] or not all(0 <= x <= 100 for x in v[:3]):
+            return None, f'統計表欄位對不上:{f}'
+        return v, ''
+    return None, 'empty'
+
+
+def _weekdays_back(start, n, stop_iso='0000-00-00', skip=()):
+    """從 start(含)往回找 n 個平日(⛔ 包含 skip 裡的、⛔ 早於 stop)。"""
+    out, d = [], start
+    while len(out) < n and d.isoformat() >= stop_iso:
+        if d.weekday() < 5 and d.isoformat() not in skip:
+            out.append(d.isoformat())
+        d -= timedelta(days=1)
+    return out
+
+
+def run_dtr(gate, doc, today, log=print):
+    """全市場當沖占比:doc = 上一份(⛔ 原地改;None = 第一次)→ (doc, 有沒有變, 報告)。
+    一輪 = 最近 DTR_RECENT 個平日裡還沒有的 + 最多 DTR_HOLES 個洞(問過但沒拿到、⛔ 休市)+ 往前 DTR_BACK 天。
+    洞:中間某一天連線失敗 / 回應不對 → 記進 miss(次數),下一輪回頭再問;滿 DTR_GIVEUP 次就不再問(留在 miss 看得出缺哪天)。"""
+    doc = doc if isinstance(doc, dict) else {}
+    d, none = dict(doc.get('d') or {}), list(doc.get('none') or [])
+    miss = {k: int(v) for k, v in (doc.get('miss') or {}).items() if isinstance(v, (int, float))}
+    rep = {'add': [], 'err': {}, 'asked': 0, 'holes': 0}
+    fails = []                           # 這一輪失敗的(⛔ 最近幾天、⛔ 被擋)→ 這一輪有拿到別天的,才算那一天自己的問題
+    recent = _weekdays_back(today, DTR_RECENT)
+    asked_before = set(d) | set(none) | set(miss)
+    lo = min(asked_before | set(recent))
+    holes = [x for x in _weekdays_back(date.fromisoformat(recent[-1]) - timedelta(days=1), 99999, lo)
+             if x not in d and x not in none and miss.get(x, 0) < DTR_GIVEUP][:DTR_HOLES]
+    rep['holes'] = len(holes)
+    targets = [x for x in recent if x not in d] + holes
+    targets += _weekdays_back(date.fromisoformat(lo) - timedelta(days=1), DTR_BACK, DTR_FROM, skip=asked_before)
+    for iso in targets:
+        res, why = gate.get(DTR_URL, params={'date': iso.replace('-', ''), 'selectType': 'All', 'response': 'json'}, expect='json')
+        rep['asked'] += 1
+        if res is None:
+            rep['err'][iso] = why
+            if why.startswith('斷路'):     # 被擋 / 網站掛了:⛔ 算那一天的錯,整輪停手
+                break
+        else:
+            try:
+                v, why = parse_dtr(res.json(), iso)
+            except Exception:  # noqa: BLE001
+                v, why = None, '回應讀不出 JSON'
+            if v is not None:
+                d[iso] = v
+                miss.pop(iso, None)
+                rep['add'].append(iso)
+                continue
+            if why == 'empty':
+                if iso not in recent:    # 最近幾天可能只是還沒公布 → 下一輪再問;更早的 = 休市,記下來不再問
+                    none.append(iso)
+                    miss.pop(iso, None)
+                continue
+            rep['err'][iso] = why
+        if iso not in recent:            # 最近幾天下一輪本來就會再問 → 不記洞
+            fails.append(iso)
+    if rep['add']:
+        for iso in fails:
+            miss[iso] = miss.get(iso, 0) + 1
+    elif fails:                          # 一天都沒拿到 = 整個來源有問題(改版 / 掛了),⛔ 算到那幾天頭上(不然 3 輪後全部放棄)
+        rep['err']['_'] = f'這一輪一天都沒拿到 → {len(fails)} 天的失敗不記進 miss'
+    old_miss = {k: int(v) for k, v in (doc.get('miss') or {}).items() if isinstance(v, (int, float))}
+    changed = bool(rep['add']) or len(set(none)) != len(set(doc.get('none') or [])) or miss != old_miss
+    if changed:
+        doc.update({'v': 1, 'src': '證交所 rwd dayTrading/TWTB4U「當日沖銷交易統計資訊」(上市)',
+                    'unit': '[成交股數占市場比重%, 買進成交金額占比%, 賣出成交金額占比%, 成交股數, 買進成交金額(元), 賣出成交金額(元)]',
+                    'updated': _tw_now().strftime('%Y-%m-%d %H:%M'), 'd': {k: d[k] for k in sorted(d)}, 'none': sorted(set(none)),
+                    'miss': {k: miss[k] for k in sorted(miss)},
+                    'daily': {'run': _tw_now().strftime('%Y-%m-%d %H:%M +0800'), 'add': rep['add'], 'asked': rep['asked'],
+                              'holes': rep['holes'], 'err': rep['err']}})
+    gave_up = sorted(k for k, n in miss.items() if n >= DTR_GIVEUP)
+    log(f"  {'⚠️' if rep['err'] else '✅'} dtr:問了 {rep['asked']} 天(其中回頭補洞 {rep['holes']})、新增 {len(rep['add'])} 天"
+        f"{'(' + min(rep['add']) + ' ~ ' + max(rep['add']) + ')' if rep['add'] else ''} ・共 {len(d)} 天"
+        f"{' ・問了 ' + str(DTR_GIVEUP) + ' 次都沒拿到、不再問:' + ', '.join(gave_up[-5:]) if gave_up else ''}"
+        f"{' ・' + '; '.join(f'{k} {v}' for k, v in list(rep['err'].items())[:3]) if rep['err'] else ''}")
+    return doc, changed, rep
+
+
 def _tokens():
     return FMM._tokens()
 
@@ -325,30 +446,21 @@ def main():
     outdir = os.environ.get('OUTDIR') or ''
     rc = 0
     docs = {}
-    for name in ('fi_mkt_hist', 'taifex_hist'):
+    for name in ('fi_mkt_hist', 'taifex_hist', 'dtr_hist'):
         p = data_dir / f'{name}.json'
-        if not p.exists() or p.stat().st_size == 0:
+        if name != 'dtr_hist' and (not p.exists() or p.stat().st_size == 0):
             print(f'ℹ️ {p} 不在 → 跳過(這支只接著補;從頭建請手動跑「📚 歷史補挖」)')
             docs[name] = None
             continue
-        obj, can_write = load_accum(p, None, what=f'{name}.json')
+        obj, can_write = load_accum(p, {} if name == 'dtr_hist' else None, what=f'{name}.json')
         if not can_write or not isinstance(obj, dict):
             print(f'❌ {p} 讀不出來 → ⛔ 這份不動(⛔ 用這一輪蓋掉整段歷史)')
             docs[name] = None
             rc = 1
             continue
         docs[name] = obj
-    if docs['fi_mkt_hist'] is None and docs['taifex_hist'] is None:
-        print('ℹ️ 兩份都沒有可以接著補的 → 結束')
-        return rc
-    toks = [t for t in _tokens() if t]
-    print(f"📚 長歷史接著補:FinMind 金鑰 {len(toks)} 把 ・往前 {OVERLAP} 天抓、重疊 ≥{MIN_OV} 天才算同一把尺")
-    fi, tx, rep, changed = run(make_gate(), docs['fi_mkt_hist'], docs['taifex_hist'], _tw_now().date(), toks or [''])
-    for name, doc, tag in (('fi_mkt_hist', fi, 'fi'), ('taifex_hist', tx, 'tx')):
-        if doc is None or tag not in changed:
-            if doc is not None:
-                print(f'ℹ️ {name}.json 沒有新的(或這次的沒過守門)→ 不寫')
-            continue
+
+    def _write(name, doc):
         p = data_dir / f'{name}.json'
         tmp = p.with_suffix('.json.tmp')
         with open(tmp, 'w', encoding='utf-8') as f:
@@ -358,6 +470,29 @@ def main():
         if outdir:
             os.makedirs(outdir, exist_ok=True)
             shutil.copyfile(p, os.path.join(outdir, f'{name}.json'))
+
+    gate, today = make_gate(), _tw_now().date()
+    rep = {}
+    if docs['fi_mkt_hist'] is not None or docs['taifex_hist'] is not None:
+        toks = [t for t in _tokens() if t]
+        print(f"📚 長歷史接著補:FinMind 金鑰 {len(toks)} 把 ・往前 {OVERLAP} 天抓、重疊 ≥{MIN_OV} 天才算同一把尺")
+        fi, tx, rep, changed = run(gate, docs['fi_mkt_hist'], docs['taifex_hist'], today, toks or [''])
+        for name, doc, tag in (('fi_mkt_hist', fi, 'fi'), ('taifex_hist', tx, 'tx')):
+            if doc is None:
+                continue
+            if tag in changed:
+                _write(name, doc)
+            else:
+                print(f'ℹ️ {name}.json 沒有新的(或這次的沒過守門)→ 不寫')
+    if docs['dtr_hist'] is not None:
+        print(f'📊 全市場當沖占比(證交所;最近 {DTR_RECENT} 個平日 + 往前補 {DTR_BACK} 天,補到 {DTR_FROM})')
+        dtr, ch_d, rep_d = run_dtr(gate, docs['dtr_hist'], today)
+        if ch_d:
+            _write('dtr_hist', dtr)
+        else:
+            print('ℹ️ dtr_hist.json 沒有新的 → 不寫')
+        for k, w in list(rep_d['err'].items())[:5]:
+            print(f'::warning::當沖占比 {k}:{w}')
     for tag in ('fi', 'tx'):
         for k, w in (rep.get(tag) or {}).get('err', {}).items():
             print(f'::warning::{k}:{w}')
@@ -487,6 +622,8 @@ def selftest():
                 y, m = int(data['queryStartDate'][:4]), int(data['queryStartDate'][5:7])
                 kind = 'pc' if url == TXM.DOWN_PC else ('lt' if url == TXM.DOWN_LT else 'fut')
                 return R(200, month_csv(kind, y, m), 'text/html;charset=MS950')
+            if host == 'www.twse.com.tw':
+                return opt['tw'](params or {}) if opt.get('tw') else R(404, 'nf')
             if host == 'openapi.taifex.com.tw':
                 if url == TXM.OPENAPI_PC:
                     return R(200, json.dumps([{'Date': d.replace('-', ''), 'PutCallVolumeRatio%': str(pcv(d)[0]), 'PutCallOIRatio%': str(pcv(d)[1])}
@@ -616,11 +753,132 @@ def selftest():
         os.environ.pop('DATA_DIR', None)
         os.environ.pop('OUTDIR', None)
 
+    # ⑪ 📊 全市場當沖占比(證交所 TWTB4U;表的形狀照 11/20 探針 run 44619022085 的真實回應)
+    F6 = ['當日沖銷交易總成交股數', '當日沖銷交易總成交股數占市場比重%', '當日沖銷交易總買進成交金額', '當日沖銷交易總買進成交金額占市場比重%',
+          '當日沖銷交易總賣出成交金額', '當日沖銷交易總賣出成交金額占市場比重%']
+    LIST_T = {'title': '115年11月20日 當日沖銷交易標的', 'fields': ['證券代號', '證券名稱', '暫停現股賣出後\n現款買進當沖註記'], 'data': [['2330', '台積電', '']]}
+    HOLI = {'2026-11-12'}
+
+    def tw_ok(ymd):
+        k = I.get(f'{ymd[:4]}-{ymd[4:6]}-{ymd[6:]}', 0)
+        row = [f'{4_259_348_000 + k:,}', '27.83' if ymd == '20261119' else f'{25 + k % 7:.2f}', '389,437,473,750', '41.29' if ymd == '20261119' else f'{38 + k % 5:.2f}',
+               '389,961,679,540', '41.35' if ymd == '20261119' else f'{38 + k % 5 + 0.06:.2f}']
+        return {'date': ymd, 'selectType': 'All', 'stat': 'OK', 'tables': [{'title': '115年11月19日 當日沖銷交易統計資訊', 'fields': F6, 'data': [row]}, LIST_T]}
+
+    def tw_route(mode=''):
+        def f(pr):
+            ymd = pr.get('date', '')
+            iso = f'{ymd[:4]}-{ymd[4:6]}-{ymd[6:]}'
+            if mode == 'block':
+                return R(200, '<html>Security</html>', 'text/html')
+            if mode == 'wrongdate':
+                return R(200, json.dumps(tw_ok('20260101')))
+            if iso >= '2026-11-20' or iso in HOLI:   # 今天還沒開盤 / 休市:統計表空、標的表照樣有(⛔ 當成有資料)
+                return R(200, json.dumps({'date': ymd, 'stat': 'OK', 'tables': [{'title': None, 'fields': None, 'data': []}, LIST_T]}))
+            return R(200, json.dumps(tw_ok(ymd)))
+        return f
+    g, calls = fake({'tw': tw_route()})
+    dd1, ch1, r1 = run_dtr(g, None, today, log=quiet)
+    tw_calls = [c for c in calls if 'twse' in c['url']]
+    ok('⑪ 第一次:最近 3 個平日(今天還沒開盤 → 先不收、⛔ 記成休市)+ 往前 10 天,一共問 13 次', r1['asked'] == 13 == len(tw_calls)
+       and '2026-11-20' not in dd1['d'] and '2026-11-20' not in dd1['none'] and '2026-11-19' in dd1['d'], (r1['asked'], sorted(dd1['d'])[:3], dd1.get('none')))
+    ok('⑪ 11/19 照名字找欄位:股數占比 27.83、買進 41.29、賣出 41.35、股數 / 金額也收', dd1['d'].get('2026-11-19') == [27.83, 41.29, 41.35, 4259348000.0 + I['2026-11-19'], 389437473750.0, 389961679540.0],
+       dd1['d'].get('2026-11-19'))
+    ok('⑪ 休市(更早、統計表空)→ 記進 none 不再問;⛔ 把「當日沖銷交易標的」那張當成有資料', dd1['none'] == ['2026-11-12'] and '2026-11-12' not in dd1['d'], dd1.get('none'))
+    ok('⑪ 證交所固定間隔 4 秒、UA 寫明', g.gaps.get('www.twse.com.tw') == 4.0 and all('StockAI-DB' in c['headers'].get('User-Agent', '') for c in tw_calls))
+    g, calls = fake({'tw': tw_route()})
+    dd2, ch2, r2 = run_dtr(g, json.loads(json.dumps(dd1)), today, log=quiet)
+    asked2 = [c['params'].get('date') for c in calls if 'twse' in c['url']]
+    ok('⑪ 第二次:已經有的 / 休市的 ⛔ 再問;今天(還沒公布)照問;再往前補 10 天', r2['asked'] == 11 and '20261119' not in asked2 and '20261112' not in asked2 and '20261120' in asked2
+       and len(dd2['d']) == len(dd1['d']) + 10, (r2['asked'], asked2[:4], len(dd2['d'])))
+    g, _ = fake({'tw': tw_route('wrongdate')})
+    dd3, ch3, r3 = run_dtr(g, None, today, log=quiet)
+    ok('⑪ 回應的日期跟問的不一樣 → ⛔ 收、寫原因', not dd3.get('d') and not ch3 and any('不一樣' in v for v in r3['err'].values()), r3['err'])
+    g, calls = fake({'tw': tw_route('block')})
+    dd4, ch4, r4 = run_dtr(g, None, today, log=quiet)
+    ok('⑪ 證交所擋頁 → 停手(只問 1 次)', r4['asked'] == 1 and len([c for c in calls if 'twse' in c['url']]) == 1 and not ch4, r4)
+    full_back = {'v': 1, 'd': {x: [30.0, 40.0, 40.0, 1.0, 1.0, 1.0] for x in _weekdays_back(date(2026, 11, 19), 800, DTR_FROM)}, 'none': []}
+    g, _ = fake({'tw': tw_route()})
+    _, _, r5 = run_dtr(g, full_back, today, log=quiet)
+    ok(f'⑪ 已經補到 {DTR_FROM} → 只問最近還沒有的(今天),⛔ 再往前', r5['asked'] == 1, r5['asked'])
+    ok('⑪ parse_dtr:統計表欄位對不上(少了比重)→ 不收、寫原因', parse_dtr({'date': '20261119', 'tables': [{'fields': ['占市場比重 x'], 'data': [['a']]}]}, '2026-11-19')[0] is None)
+    # ⑪b 洞:中間某一天失敗 → 記 miss → 下一輪回頭補;一直失敗 → 3 次後不再問;最近幾天 / 被擋 ⛔ 記洞
+    def tw_flaky(bad, fails):
+        cnt = {}
+
+        def f(pr):
+            ymd = pr.get('date', '')
+            if ymd in bad:
+                cnt[ymd] = cnt.get(ymd, 0) + 1
+                if fails is None or cnt[ymd] <= fails:
+                    return R(200, json.dumps({'date': ymd, 'stat': 'OK', 'tables': [{'fields': ['占市場比重 x'], 'data': [['a']]}]}))
+            return tw_route()(pr)
+        return f
+    flaky = tw_flaky({'20261113'}, 1)
+    g, _ = fake({'tw': flaky})
+    h1, _, rh1 = run_dtr(g, None, today, log=quiet)
+    ok('⑪b 第一次:中間那天(11/13)回應不對 → 記進 miss 1 次、⛔ 進 d / none', h1['miss'] == {'2026-11-13': 1} and '2026-11-13' not in h1['d']
+       and '2026-11-13' not in h1['none'] and rh1['holes'] == 0, (h1.get('miss'), rh1['holes']))
+    g, calls = fake({'tw': flaky})
+    h2, _, rh2 = run_dtr(g, json.loads(json.dumps(h1)), today, log=quiet)
+    a2 = [c['params'].get('date') for c in calls if 'twse' in c['url']]
+    ok('⑪b 第二次:回頭補洞(排在往前補之前)→ 拿到了、從 miss 拿掉;一共 1 + 1 + 10 = 12 次', rh2['holes'] == 1 and a2[1] == '20261113'
+       and '2026-11-13' in h2['d'] and not h2['miss'] and rh2['asked'] == 12, (rh2['holes'], a2[:3], h2.get('miss'), rh2['asked']))
+    ok('⑪b 決定性對照:沒有補洞的寫法 → 那一天永遠缺(第二次問的日子裡沒有它)', '20261113' in a2 and '20261113' not in
+       [x.replace('-', '') for x in _weekdays_back(date(2026, 11, 20), 3)] + [x.replace('-', '') for x in _weekdays_back(date.fromisoformat(min(h1['d'])) - timedelta(days=1), DTR_BACK, DTR_FROM)])
+    dead = tw_flaky({'20261113'}, None)
+    hh, n_ask = None, []
+    for _ in range(DTR_GIVEUP + 1):
+        g, calls = fake({'tw': dead})
+        hh, _, _ = run_dtr(g, json.loads(json.dumps(hh)) if hh else None, today, log=quiet)
+        n_ask.append(sum(1 for c in calls if c['params'].get('date') == '20261113'))
+    ok(f'⑪b 一直失敗:問了 {DTR_GIVEUP} 次就不再問、留在 miss(看得出缺哪天)', n_ask == [1] * DTR_GIVEUP + [0] and hh['miss'] == {'2026-11-13': DTR_GIVEUP}, (n_ask, hh.get('miss')))
+    g, _ = fake({'tw': tw_flaky({'20261119'}, None)})
+    h3, _, _ = run_dtr(g, None, today, log=quiet)
+    ok('⑪b 最近幾天失敗 ⛔ 記洞(下一輪本來就會再問)', '2026-11-19' not in h3.get('miss', {}) and '2026-11-19' not in h3['d'], h3.get('miss'))
+    g, _ = fake({'tw': tw_route('block')})
+    h4, _, _ = run_dtr(g, json.loads(json.dumps(h1)), today, log=quiet)
+    ok('⑪b 被擋(斷路)⛔ 算那一天的錯:miss 不變', h4.get('miss', h1['miss']) == {'2026-11-13': 1}, h4.get('miss'))
+    g, _ = fake({'tw': tw_route('wrongdate')})
+    h5, ch5, r5b = run_dtr(g, json.loads(json.dumps(h1)), today, log=quiet)
+    ok('⑪b 一天都沒拿到(來源改版 / 掛了)→ ⛔ 把失敗算到那幾天頭上(miss 不變、不寫)', not ch5 and h5.get('miss') == {'2026-11-13': 1}
+       and '_' in r5b['err'], (ch5, h5.get('miss')))
+
+    # ⑫ 走正式入口 main():dtr_hist.json 不在 → 第一次建(長歷史兩份不在照樣跑這段);壞檔 → 一個位元組都不動 + exit 1
+    td2 = tempfile.mkdtemp()
+    dd2, od2 = os.path.join(td2, 'data'), os.path.join(td2, 'out')
+    os.makedirs(dd2)
+    g, _ = fake({'tw': tw_route()})
+    _mg, _now = make_gate, _tw_now
+    globals()['make_gate'] = lambda **kw: g
+    globals()['_tw_now'] = lambda: datetime(2026, 11, 20, 18, 30, tzinfo=timezone(timedelta(hours=8)))
+    os.environ['DATA_DIR'], os.environ['OUTDIR'] = dd2, od2
+    try:
+        rc = main()
+        dj = json.load(open(os.path.join(dd2, 'dtr_hist.json'), encoding='utf-8'))
+        ok('⑫ main:dtr_hist.json 不在 → 第一次建、OUTDIR 有它、exit 0(長歷史兩份不在 ⛔ 擋住這段)', rc == 0 and len(dj['d']) == 11
+           and os.path.exists(os.path.join(od2, 'dtr_hist.json')) and dj['none'] == ['2026-11-12'], (rc, len(dj.get('d') or {})))
+        badd = b'{"d":{"2026-11-19":[27.83,'
+        with open(os.path.join(dd2, 'dtr_hist.json'), 'wb') as f:
+            f.write(badd)
+        shutil.rmtree(od2)
+        g2, _ = fake({'tw': tw_route()})
+        globals()['make_gate'] = lambda **kw: g2
+        rc2 = main()
+        ok('⑫ main:dtr_hist.json 壞檔 → 一個位元組都不動、OUTDIR 沒有它、exit 1', rc2 == 1 and open(os.path.join(dd2, 'dtr_hist.json'), 'rb').read() == badd
+           and not os.path.exists(os.path.join(od2, 'dtr_hist.json')), rc2)
+    finally:
+        globals()['make_gate'], globals()['_tw_now'] = _mg, _now
+        os.environ.pop('DATA_DIR', None)
+        os.environ.pop('OUTDIR', None)
+
     # ⑩ 靜態:解析一律呼叫補挖那兩支(⛔ 自己再寫一份)、金鑰 ⛔ 進網址
     src = open(__file__, encoding='utf-8').read()
     body = src.split('# ───────────────── selftest')[0]
-    ok('⑩ 解析呼叫 FMM / TXM 的函式(⛔ 自己寫 def parse_)', all(x in body for x in ('FMM.parse_spot', 'FMM.parse_mg', 'FMM.combine_bs', 'TXM.parse_pc_csv', 'TXM.merge_rl'))
-       and 'def parse_' not in body)
+    import re as _re
+    dup = _re.findall(r'def (parse_(?:spot|fut|mg|txnear|ix|pc_csv|lt_csv|fut_csv|finmind_inst|openapi_\w+)|combine_bs|merge_rl)\(', body)
+    ok('⑩ 解析呼叫 FMM / TXM 的函式(⛔ 自己另寫一份補挖那兩支的解析)', all(x in body for x in ('FMM.parse_spot', 'FMM.parse_mg', 'FMM.combine_bs', 'TXM.parse_pc_csv', 'TXM.merge_rl'))
+       and not dup, dup)
     ok('⑩ 金鑰只放標頭', ("q['" + "token']") not in body and 'Authorization' in body)
 
     print('\n✅ HIST_DAILY_SELFTEST_PASS' if not bad else '\n❌ 失敗:' + ', '.join(bad))
