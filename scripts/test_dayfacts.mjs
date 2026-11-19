@@ -125,6 +125,17 @@ try {
     page.on('pageerror', e => errsP.push(e.message));
     await page.clock.setFixedTime(new Date('2027-02-03T02:00:00Z'));   // 台北 2027-02-03(三)10:00
     await page.route('**/*', r => (r.request().url().startsWith('file:') ? r.continue() : r.abort()));
+    // 🧪 2026-11-19 這支測試的春節是**合成的**(2/5~2/14 休市)—— ⛔ 讓真的官方休市表混進來:
+    //   data/macro_risk.json 的 tw_closed 從 11/19 起有 2027 那一張(2/2~2/10 休市),兩份休市日疊在一起
+    //   App 會算出「連休 13 天」→ ③a2 / ⑥g1 / ⑥g4 / ⑥h6 一起紅(取完新的測試資料就紅,跟程式無關)。
+    //   → 這一頁讀到的 macro_risk.json 一律先拿掉 tw_closed;⑦ 自己另外塞一份合成的來驗「讀得到官方表」。
+    await page.route(u => /\/macro_risk\.json(\?|$)/.test(String(u)), async r => {
+        try {
+            const j = JSON.parse(fs.readFileSync(decodeURIComponent(new URL(r.request().url()).pathname), 'utf8'));
+            delete j.tw_closed;
+            await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(j) });
+        } catch (_) { await r.continue(); }
+    });
     await page.goto('file://' + tmp, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof app !== 'undefined' && !!app._renderUpcomingMacroEvents && !!app._holidayKinds, null, { timeout: 60000 });
 
@@ -134,6 +145,9 @@ try {
         for (const k in o) o[k] = [...new Set(o[k])].sort();
         return o;
     }, openDays);
+    // 空過守門:真的官方休市表沒有混進這一頁(等背景那次 macro_risk.json 讀完再看;讀不到檔也算過)
+    const realTc = await page.evaluate(async () => { try { await app._loadMacroRiskCache(); } catch (_) {} return !!(app._macroRiskCache && app._macroRiskCache.tw_closed); });
+    ok('②0 這一頁的 macro_risk.json 沒有帶真的官方休市表(⛔ 跟合成的春節疊在一起)', realTc === false);
     ok('②a 空過守門:合成交易日裡真的有長假(6 天以上)和 4~5 天的連假', probe.post6.length >= 1 && probe.post45.length >= 2, JSON.stringify(probe));
     ok('②b App `_holidayKinds` 跟 daytype_probe `buildSets` 同一組日期一模一樣(休市前 / 後 × 4~5 天 / 6 天以上)',
        JSON.stringify(H) === JSON.stringify(probe), `App ${JSON.stringify(H)} vs probe ${JSON.stringify(probe)}`);

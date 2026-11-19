@@ -19,7 +19,13 @@ const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
 // ⛔ 研究字樣:清單只有一份(scripts/lib_retailbad.mjs,embed_col_trig 也用它)
 import { BAD, badOf } from './lib_retailbad.mjs';
-const ALLOW_LINE = [/^⚙️ 設定中心/];      // 版本徽章那一行
+const ALLOW_LINE = [
+    /^⚙️ 設定中心/,      // 版本徽章那一行
+    // 📰 2026-11-19 選股頁 › 題材每一列底下那一則新聞標題(「📰 標題 ・來源 月/日」)是**外面的媒體寫的**,不是 App 的用語 ——
+    //   當天 Yahoo 那則「美官方實測AI助攻恐攻…」剛好有「實測」兩個字就紅了(那一天有沒有這種標題,決定這支測試綠不綠 = 假紅燈)。
+    //   ⛔ 只放行這個固定格式(📰 開頭、結尾是「・來源 月/日」);App 自己寫的句子不會長這樣。
+    /^📰 .+ ・\S+ \d{1,2}\/\d{1,2}$/,
+];
 
 const STRATS = (process.env.STRATS || 'gene,lead').split(',');
 const SCOPE = process.env.SCOPE ? new Set(process.env.SCOPE.split(',')) : null;
