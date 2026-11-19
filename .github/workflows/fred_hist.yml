@@ -1,0 +1,112 @@
+name: 💱 匯率 / 美債 / 信用利差 每日歷史 (fred_hist)
+
+# 💱 V82.5.6「App 加上人性」第 6 期:產業作戰室「🧠 人性」頁要的歷史(20 日 / 一年位置 / 美國信用利差 / 用美元算的加權)
+#   ① scripts/fred_hist_miner.py:FRED(聖路易聯準銀行)graph CSV,免金鑰;第一次抓全部、之後每天往前 45 天抓再合併
+#      (守門:最後一天不可以倒退、重疊那幾天要對得上;上一份讀不出來 ⛔ 用這一輪蓋掉)
+#   ② data/fred_hist.json → 只推 data 分支(約 1 MB;mood_build 在明日作戰清單那一步讀;⛔ 進 gh-pages —— 手機用不到)
+# ⏰ 什麼時候跑:⛔ 不吃排程配額(V75.2.0)—— 跟在每日採礦後面(Cloudflare worker 台北 17:00 叫醒那輪);
+#   只跟「每天那一輪」(排程 / worker 叫醒 / 手動),⛔ push 那輪、被取消 / skipped 的那輪不跟。一輪 9 次請求(間隔 1 秒)。
+# ⚠️ FRED 的匯率一週才補一次(週一補上一週每天的值)→ 平日大多數輪「跟分支上一樣,沒東西可推」是正常的。
+# ⛔ 只描述:這份只拿來排「在自己歷史排第幾」,⛔ 進任何買賣判斷。
+
+on:
+  workflow_run:
+    workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      only:
+        description: '只跑這幾條(逗號分隔:usdtwd,jpy,krw,cny,ust10y,us2y,baa10y,wti,btc;留空 = 全部)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  # ⛔ 不進共用 gh-pages-push(這支只推 data 分支);推送靠下面的 5 次重試
+  group: fred-hist
+  cancel-in-progress: false
+
+jobs:
+  fred:
+    name: 💱 FRED 每日歷史 → data/fred_hist.json
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion != 'cancelled' && github.event.workflow_run.conclusion != 'skipped' &&
+       contains(fromJSON('["schedule","repository_dispatch","workflow_dispatch"]'), github.event.workflow_run.event))
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests --quiet
+
+      - name: 📚 拿上一份(data 分支)
+        run: |
+          mkdir -p data
+          git fetch --depth=1 origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null || true
+          # ⚠️ 先寫到暫存檔、有內容才搬過去(⛔ `>` 失敗會留下 0 bytes,陷阱 #18/#20)
+          if git show "origin/data:data/fred_hist.json" > /tmp/prev_fred.json 2>/dev/null && [ -s /tmp/prev_fred.json ]; then
+            mv /tmp/prev_fred.json data/fred_hist.json; echo "上一份 fred_hist.json:$(wc -c < data/fred_hist.json) bytes"
+          else
+            rm -f /tmp/prev_fred.json; echo "ℹ️ data 分支上還沒有 fred_hist.json → 第一次,每一條抓全部"
+          fi
+
+      # ⚠️ selftest 跟正式跑寫在同一個 step:selftest 沒過就 ⛔ 去動 data 分支
+      - name: 💱 selftest → 抓 FRED
+        env:
+          # 🔧 排程 / workflow_run 觸發時 inputs.* 是**空字串**不是不存在 → Python 端一律 `or 預設`(check_env_default.py)
+          ONLY: ${{ github.event.inputs.only }}
+          PREV: data/fred_hist.json
+        run: |
+          python3 scripts/fred_hist_miner.py --selftest
+          python3 scripts/fred_hist_miner.py || { echo "⛔ 守門沒過或一條都沒拿到 → 這輪不推(上一份保留)"; echo "SKIP=1" >> "$GITHUB_ENV"; }
+          if [ -s data/fred_hist.json ]; then
+            python3 - <<'PY'
+          import json
+          d = json.load(open('data/fred_hist.json'))
+          for k, s in d['series'].items():
+              print(f"  {k}({s['sid']}):{s['n']} 天 {s['from']} ~ {s['to']}")
+          for k, w in (d.get('src_error') or {}).items():
+              print(f"  ⚠️ {k}:{w}")
+          PY
+          fi
+
+      - name: 🚀 推到 data 分支(data/fred_hist.json)
+        if: env.SKIP != '1'
+        run: |
+          set -e
+          [ -s data/fred_hist.json ] || { echo "ℹ️ 沒有檔可推"; exit 0; }
+          cp data/fred_hist.json /tmp/fred_hist.json
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          # 🌿 陷阱 #64:切分支一律 -B "$BR" "origin/$BR"(⛔ 裸的分支名 —— 工作區有 data/ 資料夾會撞名)
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data"
+          git checkout -f -B data origin/data
+          mkdir -p data
+          cp /tmp/fred_hist.json data/fred_hist.json
+          git add -f data/fred_hist.json
+          if git diff --cached --quiet; then
+            echo "ℹ️ data/fred_hist.json 跟分支上一樣,沒東西可推(FRED 匯率一週才補一次,平日常常這樣)"
+          else
+            git commit -q -m "💱 FRED 每日歷史 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/fred_hist.json
+            pushed=0
+            # ⛔ 這個 retry 迴圈不可拿掉(唯一擋「同時 push」的東西;中間 pull --rebase)
+            for i in 1 2 3 4 5; do
+              git push origin data && { pushed=1; echo "✅ data/fred_hist.json 已推上 data 分支 (第 $i 次)"; break; }
+              sleep $((i * 3))
+              git pull --rebase origin data 2>/dev/null || true
+            done
+            [ "$pushed" -eq 1 ] || { echo "❌ push 連 5 次失敗"; exit 1; }
+          fi
+          echo "📦 明日作戰清單那一步(mood_build)會從 data 分支讀它;每日採礦的 orphan 部署靠 git archive origin/data 保留"
