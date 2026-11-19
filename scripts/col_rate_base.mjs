@@ -33,7 +33,7 @@ export function extractMember(src, name) {
     }
     throw new Error('大括號對不上:' + name);
 }
-export const NEED = ['_COL_OCC', '_QLAB_SIGS', '_colOccDef', '_colOccIds', '_qlabAt', '_colLim', '_colEvAt', '_colOutAt', '_colOcc', '_floorTick', '_tickOf', '_marginCallState', '_bear60Of', '_atrTR14', '_colMktChg', '_colTraitAt'];
+export const NEED = ['_COL_OCC', '_DAY_TH', '_QLAB_SIGS', '_colOccDef', '_colOccIds', '_qlabAt', '_colLim', '_colEvAt', '_colOutAt', '_colOcc', '_floorTick', '_tickOf', '_marginCallState', '_bear60Of', '_atrTR14', '_colMktChg', '_colTraitAt'];
 export function buildApp(src) {
     // 📐 V79.8.9 `ql_` 那幾條走 QCORE(index.html 檔案上層那一段,⛔ 另抄一份)
     const qi = src.indexOf('// ==QCORE BEGIN=='), qj = src.indexOf('// ==QCORE END==');

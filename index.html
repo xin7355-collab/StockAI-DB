@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.5.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.5.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3272,6 +3272,7 @@
                 買的來自 `playbook_edge.json`(每晚全市場實測),兩邊都是既有零件。 -->
         <div id="tabContentDesk" class="flex-col gap-2 p-2 pb-4" style="display:none;min-height:80vh;">
             <div id="deckHead"></div>
+            <div id="deckMood"></div>
             <div id="deckRisk"></div>
             <div id="deckLeader"></div>
             <div id="deckSell"></div>
@@ -4218,6 +4219,8 @@ const app = {
         if (!Array.isArray(data)) return [];
         return this._lastBarIsToday(data) ? data.slice(0, -1) : data;
     },
+    /** 盤中才把「今天那根還沒收完的 K」拿掉(收盤後今天那根算數)—— 觸發專欄(`_colTrigScan`)與 💭 今天的心情共用 */
+    _cutLive(rows) { return (Array.isArray(rows) && this.isMarketOpen() && this._lastBarIsToday(rows)) ? rows.slice(0, -1) : (Array.isArray(rows) ? rows : []); },
     
     isMarketOpen() {
         const now = new Date(); 
@@ -9060,10 +9063,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.5.1',
+    _APP_VERSION: 'V82.5.2',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.5.2', d: [
+            '💭 決策台最上面多一塊「今天的心情」(🔓 進階功能,預設開):大盤一天跌 2% 以上或漲 2% 以上、這一段大跌出現新的事件、你的股票今天漲停或跌停、帳戶熔斷亮燈、帳面賺超過兩成的那一天,先講兩句 —— 第一句講今天發生的事,第二句把下面幾格已經算好的再講一次(今天要賣的、離出場線多遠、今天名單)',
+            '💭 平常的日子一個字都不出現;帳面賺兩成只在第一次看到那天講、熔斷只在剛亮起來那天或那天又賠一筆才講,不會天天出現',
+            '💭 不是買賣建議:買賣規則一條都沒改;不想看的話,設定「🔓 進階功能」裡可以關掉',
+        ], dt: '2026-11-19' },
         { v: 'V82.5.1', d: [
             '🛟 你的賣出紀錄(庫存頁「勝率鏡子」靠它算)現在會跟著設定裡的「📤 一鍵備份」一起存;還原時是跟手機上現有的合併,不會蓋掉、也不會重複',
             '🩹 補掉兩個會讓賣出紀錄整本不見的洞:資料存到一半壞掉時,以前會被當成空的再蓋回去;現在救得回幾筆算幾筆,讀不出來的那一段另外留一份,鏡子上會講一聲',
@@ -9384,12 +9392,6 @@ ${list}
         { v: 'V79.9.4', d: [
             '🎲 你手上的股票碰到專欄裡講的情況(跌破月線、散戶接刀、融資追繳…)→ 🔔 鈴鐺安靜記一筆,寫出「過去碰到這種情況之後怎樣」的比例(這檔自己 / 一般股票);⛔ 不跳窗、⛔ 不叫你先賣,手上的照你的出場規則走(要先打開 📰 專欄)',
         ] },
-        { v: 'V79.9.3', d: [
-            '🗑️ 選股頁拿掉「渣男賽車、相對強度、K棒轉多、妖股雷達、K棒轉空」與「朱家泓」選股法的 8 個分頁:每一個都拿 16 年(含已下市的股票)整排照著買過一遍,扣掉手續費和稅之後都沒有比同一天隨便買一檔好 —— 照你說的「沒用就刪」。選股頁留下「🎯 會賺訊號」(預設)和題材脈動 / AI 鏈 / 處置股這幾個查資料用的',
-            '🗑️ 渣男賽車那條「大盤跌破 5 日線,追突破訊號已自動過濾」的提示跟著拿掉;Telegram 盤後總結也不再列朱家泓今日選股',
-            '🔀 設定裡的策略拿掉「📈 錢放現金」:選它的人會自動換成「🅿️ 閒錢停 0050」(同一份名單、同樣的買法,只差沒買股票的錢停在 0050),第一次打開會跳一次窗說明,可以一鍵換回',
-            '👑 領頭羊不換(沒有別的做法比它好);自動下單沒有動',
-        ], dt: '2026-10-26' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -23273,6 +23275,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 📚 V79.2.6 兩本帳(甲帳・乙帳)= 進階選項,⛔ 預設關(使用者明示);勾 = settings.leadBooks 2(⛔ 不另存一份)
         { k: 'books', unlock: true, st: 'lead', n: '📚 👑 錢分兩半:甲帳・乙帳輪流換', d: '同一套領頭羊規則,錢分成甲帳、乙帳兩半,乙帳晚 4 個交易日換倉 → 大約每 5 天換其中一本,不會全部押在同一天。每檔金額變一半、下單次數變兩倍。手上現有的全部算甲帳,⛔ 不用先賣一半。', def: false },
         { k: 'pro', unlock: true, n: '🏭 產業 pro', d: '左上角 🤖 右邊多一顆「產」,點了直接開產業作戰室(板塊輪動・法說會・成績單…)。', def: false },
+        // 💭 V82.5.2 今天的心情(使用者 11/18「App 太理性,加上人性的貪婪與恐懼」→ 選「情緒大的日子才講人話」「只給解鎖進階功能的人」)
+        //   只在情緒大的日子出現、平常一個字都沒有;第二句只轉述下面幾格已經算好的(⛔ 新的買賣指令)
+        { k: 'mood', unlock: true, n: '💭 今天的心情:情緒大的日子先講兩句', d: '大盤大跌大漲、你的股票漲停跌停、帳戶熔斷亮燈、帳面賺超過兩成的那一天,決策台最上面多兩句:第一句講今天發生的事,第二句把下面幾格已經算好的再講一次(今天要賣的、離出場線多遠、今天名單)。平常的日子一個字都不出現;⛔ 不是買賣建議。', def: true },
         // 🔀 V81.0.0 交叉提醒(使用者 11/03 選「跟專欄一樣放進階區」「都跳通知」)
         { k: 'cross', unlock: true, n: '🔀 交叉提醒:你的股票今天碰到的事', d: '同一檔今天碰到好幾件事(大盤大跌大漲、鎖漲停、跌破月線、進注意股…)合在一起講:這一檔過去碰到這種事之後怎樣(過去發生過的比例)、像它這種股性的股票怎樣、你該照哪一條規則走。碰到就跳通知(一天每檔最多一則)。', def: true },
         { k: 'col', unlock: true, n: '📰 今天碰到的專欄', d: '你的庫存、自選、大盤或日子碰到某種情況時(鎖漲停、跌停後收紅、進注意股、除息、連假前後、結算日…),把那一篇「怎麼做」拿出來;決策台與個股總覽都會出現,沒碰到就整區不出現。', def: true },
@@ -23342,6 +23347,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _deckShowApply() {
         const sh = this._deckShow(), $ = id => document.getElementById(id);
         const vis = (el, on) => { if (el) el.style.display = on ? '' : 'none'; };
+        vis($('deckMood'), sh.mood);
         vis($('deckRisk'), sh.risk);
         vis($('deckLeader'), sh.leader);
         vis($('deckSell'), sh.sell);
@@ -23416,6 +23422,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         m_up2:        { ev: '碰到大盤單日漲 2% 以上', out: '隔天收盤比那天高', o: 'up1', gap: 1, mk: 1 },
     },
     /** 🔀 V81.0.0 加權每天漲跌 %(M = 日期 → 收盤;同一個 M 只算一次)。⛔ 用執行環境時區 —— 日期字串直接排序 */
+    // 💭 V82.5.2 「今天算不算大跌 / 大漲 / 賺很多」的門檻 —— 觸發專欄(`_colTrigEval` / `_colEvAt`)與決策台「💭 今天的心情」(`_moodState`)共讀這一份,
+    //   ⛔ 別處再寫 −3 / −2 / 2 / 0.2。數字沒有換(V79.3.2 跌 3%、V81.0.0 跌 2% / 漲 2%、專欄 gain20 賺 2 成)。
+    //   ⚠️ 改這裡要重跑 scripts/col_rate_base.mjs → embed_col_base.mjs(「一般股票」那個比例是照這組門檻算的,test_colocc 逐日比)
+    _DAY_TH: { dn3: -3, dn2: -2, up2: 2, gain: 0.2 },
     _colMktChg(M) {
         if (!M || typeof M.get !== 'function') return new Map();
         const W = this._mcW || (this._mcW = new WeakMap());
@@ -23488,7 +23498,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (id === 'm_dn2' || id === 'm_up2') {   // 🔀 V81.0.0 大盤那天(加權收盤對前一個交易日);這一檔那天要有成交
             const ch = this._colMktChg(M).get(String(b[i].date || '').replace(/\//g, '-').slice(0, 10));
             if (ch == null || !(+b[i].volume > 0)) return null;
-            return (id === 'm_dn2' ? ch <= -2 : ch >= 2) ? { ch } : null;
+            return (id === 'm_dn2' ? ch <= this._DAY_TH.dn2 : ch >= this._DAY_TH.up2) ? { ch } : null;
         }
         const ma = e => { if (e < 19) return NaN; let t = 0; for (let j = e - 19; j <= e; j++) t += C(j); return t / 20; };
         const ma5 = e => e < 4 ? NaN : (C(e) + C(e - 1) + C(e - 2) + C(e - 3) + C(e - 4)) / 5;
@@ -23682,7 +23692,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (P && this._colEvAt('ma20_break', b, n - 1, sym)) { add('ma20_break', `${dW} 收盤跌破月線(20 日線)`, sym, sc); occ('ma20_break', b, sym); }
             if (!isH && this._colEvAt('near_ma20', b, n - 1, sym)) { add('near_ma20', '收在月線(20 日線)下方 3% 以內', sym, sc); occ('near_ma20', b, sym); }
             const cost = isH ? +((ctx.held.get(sym) || {}).cost) : 0;
-            if (cost > 0 && C(n - 1) / cost - 1 >= 0.2) add('gain20', `帳面賺 ${((C(n - 1) / cost - 1) * 100).toFixed(0)}%`, sym, sc);
+            if (cost > 0 && C(n - 1) / cost - 1 >= this._DAY_TH.gain) add('gain20', `帳面賺 ${((C(n - 1) / cost - 1) * 100).toFixed(0)}%`, sym, sc);
             // 📰 V79.3.3 再接 6 篇專欄(定義照各自的探針;⛔ 基準一律不含被判斷的那根,陷阱 #43)
             if (isH && this._colEvAt('ma5_break', b, n - 1, sym)) { add('ma5_break', `${dW} 收盤跌破 5 日線`, sym, sc); occ('ma5_break', b, sym); }
             if (isH && this._colEvAt('nh60_held', b, n - 1, sym)) { add('nh60_held', `${dW} 收盤創 60 日新高`, sym, sc); occ('nh60_held', b, sym); }
@@ -23716,11 +23726,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 📉 V79.3.2 加權最新一個收盤跌 ≥3%(盤中 tw 已砍掉今天那根 → 隔天白天也看得到;dipleader_probe)
         // 🔀 V81.0.0 跌 2~3%(3% 以上那天只算 idx_drop3)/ 漲 2% 以上 —— 定義 = scripts/col_rate_base.mjs mktEvents(test_colocc 逐日比)
         if (tw.length >= 2) { const c1 = +tw[tw.length - 1].close, c0 = +tw[tw.length - 2].close, x = c0 > 0 && c1 > 0 ? (c1 / c0 - 1) * 100 : null, wk = '日一二三四五六'[new Date(lastD + 'T00:00:00Z').getUTCDay()];
-            if (x != null && x <= -2 && x > -3) { add('idx_drop2', `${this._dW(tw[tw.length - 1].date)} 加權指數跌 ${(-x).toFixed(1)}%(星期${wk})`); mocc('idx_drop2'); }
+            if (x != null && x <= this._DAY_TH.dn2 && x > this._DAY_TH.dn3) { add('idx_drop2', `${this._dW(tw[tw.length - 1].date)} 加權指數跌 ${(-x).toFixed(1)}%(星期${wk})`); mocc('idx_drop2'); }
             // 🗓️ 星期五收盤跌 ≥2%(dipbuy_probe (D):下一個交易日比別的星期的大跌明顯弱)—— ⛔ 只是專欄觸發,⛔ 擋買 / 叫賣
-            if (x != null && x <= -2 && wk === '五') add('fri_drop', `${this._dW(tw[tw.length - 1].date)} 星期五加權指數跌 ${(-x).toFixed(1)}%`);
-            if (x != null && x >= 2) { add('idx_up2', `${this._dW(tw[tw.length - 1].date)} 加權指數漲 ${x.toFixed(1)}%(星期${wk})`); mocc('idx_up2'); } }
-        if (tw.length >= 2) { const c1 = +tw[tw.length - 1].close, c0 = +tw[tw.length - 2].close; if (c0 > 0 && c1 > 0 && (c1 / c0 - 1) * 100 <= -3) { add('idx_drop3', `${this._dW(tw[tw.length - 1].date)} 加權指數跌 ${((1 - c1 / c0) * 100).toFixed(1)}%`); mocc('idx_drop3'); } }
+            if (x != null && x <= this._DAY_TH.dn2 && wk === '五') add('fri_drop', `${this._dW(tw[tw.length - 1].date)} 星期五加權指數跌 ${(-x).toFixed(1)}%`);
+            if (x != null && x >= this._DAY_TH.up2) { add('idx_up2', `${this._dW(tw[tw.length - 1].date)} 加權指數漲 ${x.toFixed(1)}%(星期${wk})`); mocc('idx_up2'); } }
+        if (tw.length >= 2) { const c1 = +tw[tw.length - 1].close, c0 = +tw[tw.length - 2].close; if (c0 > 0 && c1 > 0 && (c1 / c0 - 1) * 100 <= this._DAY_TH.dn3) { add('idx_drop3', `${this._dW(tw[tw.length - 1].date)} 加權指數跌 ${((1 - c1 / c0) * 100).toFixed(1)}%`); mocc('idx_drop3'); } }
         // 🛑 V79.3.6 外資台指期「🚨 急遽加空」(= `_fiFutState` 的 danger,5 日加空 ≥8,000 口;hightop_sell_probe:照著停手 👑 兩窗口都少賺)
         const ff = ctx.fifut;
         if (ff && ff.level === 'danger' && ff.chg5 != null) add('fifut_cut', `外資台指期 5 日加空 ${Math.abs(ff.chg5).toLocaleString()} 口(淨 ${ff.net != null ? ff.net.toLocaleString() : '—'} 口)`);
@@ -23791,7 +23801,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._colTrigP = (async () => {
             try {
                 const iso = x => String(x || '').replace(/\//g, '-').slice(0, 10);
-                const cut = rows => (Array.isArray(rows) && this.isMarketOpen() && this._lastBarIsToday(rows)) ? rows.slice(0, -1) : (rows || []);
+                const cut = rows => this._cutLive(rows);   // 💭 V82.5.2 抽成一支(今天的心情同一條)
                 const base = window.location.href.split('?')[0].split('#')[0];
                 let tw = []; try { tw = cut(await this._getTwiiRows()); } catch (_) {}
                 const lastD = tw.length ? iso(tw[tw.length - 1].date) : '';
@@ -25382,6 +25392,244 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
      *   ③ 這個月已實現的虧損 = `_acctBreaker`(V80.0.4;有記賣出才顯示)
      *   ④ 手上全部碰到停損會賠多少 = `_totalRisk`(停損 = `_hardStopOf`,同回測 / 自動下單)
      *  ⛔ 研究數字(散戶 App V78.3.4);⛔ 紅綠(燈號鐵則:風險用 ✅⚠️⛔🐻)。 */
+    // ═══ 💭 V82.5.2 決策台第一行「今天的心情」(使用者 11/18:「AI 做的 App 太過於理性…加上人性的貪婪與恐懼」→ 選「情緒大的日子才講人話」「只給解鎖進階功能的人」)═══
+    //   只在情緒大的日子出現:大盤大跌大漲 / 這一段大跌出現新的事件 / 你的股票今天漲停跌停 / 帳戶熔斷亮燈 / 帳面賺超過兩成。平常一個字都沒有。
+    //   兩句:第一句 = 今天發生的事 + 一句感覺;第二句 = 你的計畫(⛔ 只轉述決策台已經算好的:今天要賣的 / 每檔的出場線 / 今天名單 / 熔斷那一行)。
+    //   ⛔ 四條:① 門檻只讀 `_DAY_TH`(觸發專欄同一份)與既有判斷(`_deckLimOf` / `_acctBreaker` / crash_events),⛔ 這裡寫新的買賣門檻
+    //           ② 句子全部在 `_MOOD_COPY`(scripts/test_mood.mjs 逐句掃:研究字樣 / 指令字 / 紅綠燈號 / 沒選 👑 時的領頭羊字樣)
+    //           ③ ⛔ 新的買賣指令、⛔ 研究數字、⛔ 用紅綠表示好壞(整塊灰階)
+    //           ④ 有算不出來的持股 ⛔ 說「都還沒碰到」;有今天可能碰到的 ⛔ 說「今天不用動」(同一頁不可打架)
+    //   ⚠️ 熔斷會亮一整週 / 整個月、帳面賺兩成會持續很多天 → 那兩種只在「剛發生那天」講(熔斷另加「今天又賠一筆」那天),記在 moodSeen_v1(可重建的快取)
+    _MOOD_STALE: 4,   // 沒有今天的大盤時,最後一根收盤 4 天內才拿來講(同 `_crashEvAlertSweep` 的 4 天;只管「講不講」,⛔ 不是買賣門檻)
+    _MOOD_COPY: {
+        // 第一句的事實({day} = 今天 / 11/16(一);{x} = 幅度;{names} = 股名)
+        fact: {
+            dn: '{day}加權跌 {x}%', up: '{day}加權漲 {x}%',
+            evPre: '{day}收盤加權',
+            leg10: '離一年最高點跌到一成了(這一段第一次)', fast15: '最近 25 天跌了 15% 以上', bear20: '離一年最高點跌了兩成',
+            ld: '你的{names}今天跌停', lu: '你的{names}今天漲停',
+            brk_day: '今天賣掉的已經賠到熔斷線', brk_week: '這週賣掉的已經賠到熔斷線', brk_month: '這個月賣掉的已經賠到熔斷線',
+            gain: '你的{names}帳面賺超過兩成了',
+        },
+        // 第一句的結尾(只講感覺,⛔ 講怎麼做)
+        feel: { ld: '最難受的就是這種時候。', fear: '這種日子會怕,很正常。', back: '這種時候最容易想趕快賺回來。', lock: '賺到的時候,最怕它又吐回去。', fomo: '看別人賺會心癢,很正常。' },
+        // 第二句:你的計畫(只轉述決策台已經算好的)
+        plan: {
+            none: '你手上沒有股票,今天沒有要處理的。',
+            etfOnly: '你手上只有 ETF,沒有要看出場線的個股。',
+            sell: '照你的出場規則,今天要賣的有 {n} 檔:{names}。',
+            under: '{names}現價在出場線下面,收盤還在線下才算數。',
+            okAll: '你手上 {n} 檔個股都還沒碰到出場線,這幾檔今天不用動。',
+            okSome: '{n} 檔個股還沒碰到出場線。',
+            okRest: '其他 {n} 檔還沒碰到。',
+            nearToday: '其中 {k} 檔離出場線很近,今天可能碰到,收盤還在線下才算數。',
+            skip: '另外 {n} 檔算不出來(沒填成本,或它的 K 線還沒載到)。',
+            lead: '👑 名單上的 {n} 檔照換倉日那一套。',
+            dip: '📉 大跌撿便宜那 {n} 檔照那一塊排好的日子走。',
+            asOf: '(照 {day} 收盤算)',
+            line: '{name}的出場線在 {v}({rule}),還差 {p}%。',
+            lineUnder: '{name}的出場線在 {v}({rule}),現價已經在下面,收盤還在線下才算數。',
+            lineSell: '{name}已經在今天要賣的那幾檔裡。',
+            lineNone: '{name}的出場線算不出來(沒填成本,或它的 K 線還沒載到)。',
+            lineLead: '{name}在 👑 名單上,照換倉日那一套。',
+            lineDip: '{name}是 📉 大跌撿便宜那一批,照那一塊排好的日子走。',
+            buyLead: '👑 那一套只在換倉日換股,不因為今天大漲多買。',
+            buyBear: '大盤還是嚴格空頭,你設定的是空頭不開新倉,今天不買新的。',
+            buyNull: '今天的名單還沒讀到,名單出來再看。',
+            buyNone: '今天名單上沒有可以買的,照規則就是不買。',
+            buyList: '今天名單上有 {n} 檔:{names};尾盤漲過觸發價才買,沒到價就不買。',
+            buyOff: '要不要買照決策台,不因為今天大漲就買。',
+        },
+    },
+    _moodFill(t, o) { return String(t == null ? '' : t).replace(/\{(\w+)\}/g, (_, k) => (o && o[k] != null) ? String(o[k]) : ''); },
+    _moodLab(sym) { const s = String(sym || ''); let n = s; try { n = this.getStockName(s) || s; } catch (_) {} return n && n !== s ? n : s; },
+    _moodNames(syms, max = 2) {
+        const L = syms || [], a = L.slice(0, max).map(s => this._moodLab(s)).join('、');
+        return L.length > max ? `${a} 等 ${L.length} 檔` : a;
+    },
+    _moodDayDiff(a, b) {
+        const x = Date.parse(`${String(a).slice(0, 10)}T00:00:00Z`), y = Date.parse(`${String(b).slice(0, 10)}T00:00:00Z`);
+        return (Number.isFinite(x) && Number.isFinite(y)) ? Math.round((x - y) / 86400e3) : NaN;
+    },
+    /** 今天算不算情緒大的日子。純函式:I = { mk:{pct,d}|null, ev:{k,d}|null, ld:[sym], lu:[sym], brk:'day'|'week'|'month'|null, gain:[sym] }
+     *  回 { kind, side, … } 或 null(null = 平常日 → 決策台一個字都不出現)。
+     *  優先序(決定第一句的結尾與第二句講哪一邊):跌停 > 大盤跌 3% > 新的大跌事件 > 熔斷 > 大盤跌 2% > 漲停 > 大盤漲 2% > 帳面賺兩成 */
+    _moodState(I) {
+        if (!I) return null;
+        const T = this._DAY_TH, pct = (I.mk && I.mk.pct != null && Number.isFinite(+I.mk.pct)) ? +I.mk.pct : null;
+        const dn3 = pct != null && pct <= T.dn3, dn2 = pct != null && pct <= T.dn2, up2 = pct != null && pct >= T.up2;
+        const ld = (I.ld || []).slice(), lu = (I.lu || []).slice(), gain = (I.gain || []).filter(s => !lu.includes(s) && !ld.includes(s));
+        const ev = (I.ev && this._MOOD_COPY.fact[I.ev.k]) ? I.ev : null, brk = this._MOOD_COPY.fact['brk_' + I.brk] ? I.brk : null;
+        const kind = ld.length ? 'ld' : dn3 ? 'dn3' : ev ? 'ev' : brk ? 'brk' : dn2 ? 'dn2' : lu.length ? 'lu' : up2 ? 'up2' : gain.length ? 'gain' : null;
+        if (!kind) return null;
+        const side = { ld: 'fear', dn3: 'fear', ev: 'fear', dn2: 'fear', brk: 'back', lu: 'lock', gain: 'lock', up2: 'fomo' }[kind];
+        return { kind, side, mk: (dn2 || up2) ? { pct, d: String(I.mk.d || '') } : null, ev, ld, lu, brk, gain };
+    },
+    /** 第一句的事實(最多 3 件;主角那一件一定留)。回字串陣列 */
+    _moodFacts(M, today) {
+        const C = this._MOOD_COPY.fact, F = (t, o) => this._moodFill(t, o), out = [];
+        const day = d => (d && d === today) ? '今天' : (d ? this._dW(d) : '');
+        if (M.mk) out.push({ g: 'mk', t: F(M.mk.pct < 0 ? C.dn : C.up, { day: day(M.mk.d), x: Math.abs(M.mk.pct).toFixed(1) }) });
+        if (M.ev) out.push({ g: 'ev', t: ((M.mk && M.mk.d === M.ev.d) ? '' : F(C.evPre, { day: day(M.ev.d) })) + C[M.ev.k] });
+        if (M.ld.length) out.push({ g: 'ld', t: F(C.ld, { names: this._moodNames(M.ld) }) });
+        if (M.lu.length) out.push({ g: 'lu', t: F(C.lu, { names: this._moodNames(M.lu) }) });
+        if (M.brk) out.push({ g: 'brk', t: C['brk_' + M.brk] });
+        if (M.gain.length) out.push({ g: 'gain', t: F(C.gain, { names: this._moodNames(M.gain) }) });
+        const main = { dn3: 'mk', dn2: 'mk', up2: 'mk' }[M.kind] || M.kind;
+        const keep = out.length <= 3 ? out : out.filter(f => f.g === main).concat(out.filter(f => f.g !== main)).slice(0, 3);
+        return out.filter(f => keep.includes(f)).map(f => f.t);
+    },
+    /** 讀今天的狀況(只讀既有的判斷;⛔ 新門檻)。X = renderDeck 傳進來的 { near, far }。回 { I, today, R(每檔的出場距離) } */
+    async _moodGather(st, X) {
+        const iso = x => String(x || '').replace(/\//g, '-').slice(0, 10);
+        const today = this._tpeMinutes().ymd, T = this._DAY_TH;
+        const I = { mk: null, ev: null, ld: [], lu: [], brk: null, gain: [] };
+        // ① 大盤:今天的(`_twiiToday` 只回今天)→ 沒有就最後一根收盤(帶日期;太舊不講)
+        try {
+            const t = this._twiiToday();
+            if (t && t.pct != null && Number.isFinite(+t.pct)) I.mk = { pct: +t.pct, d: today };
+            else {
+                const tw = this._cutLive(await this._getTwiiRows());
+                if (tw.length >= 2) {
+                    const c1 = +tw[tw.length - 1].close, c0 = +tw[tw.length - 2].close, d = iso(tw[tw.length - 1].date), age = this._moodDayDiff(today, d);
+                    if (c0 > 0 && c1 > 0 && age >= 0 && age <= this._MOOD_STALE) I.mk = { pct: (c1 / c0 - 1) * 100, d };
+                }
+            }
+        } catch (_) {}
+        // ② 這一段大跌的新事件(crash_events 最新那一天發生的;「結束」不算情緒日)
+        try {
+            await this._loadDipData();
+            const E = this._dipData && this._dipData.ev, th = E ? iso(E.through) : '';
+            const age = th ? this._moodDayDiff(today, th) : NaN;
+            if (E && Array.isArray(E.legs) && age >= 0 && age <= this._MOOD_STALE) {
+                const rank = { bear20: 3, fast15: 2, leg10: 1 };
+                for (const L of E.legs) for (const e of ((L && L.ev) || [])) {
+                    if (!e || !rank[e.k] || iso(e.d) !== th) continue;
+                    if (!I.ev || rank[e.k] > rank[I.ev.k]) I.ev = { k: e.k, d: th };
+                }
+            }
+        } catch (_) {}
+        // ③ 你的個股今天漲停 / 跌停(`_deckLimOf`,只看今天的價)・帳面賺超過兩成(`_DAY_TH.gain`,同專欄 gain20;同一筆只在第一次看到那天講)
+        const mem = this._lsJson('moodSeen_v1', {}) || {};
+        const gm = (mem.gain && typeof mem.gain === 'object') ? mem.gain : {}, gKeep = {};
+        let dirty = false;
+        const R = new Map();
+        for (const r of [...((st && st.sell) || []), ...((X && X.near) || []), ...((X && X.far) || [])]) if (r && r.sym != null) R.set(String(r.sym), r);
+        try {
+            const seen = new Set(), gseen = new Set();
+            for (const it of (this._getInventory() || [])) {
+                const sym = String((it && it.symbol) || ''); if (!sym || this._isEtfSym(sym)) continue;
+                const q = this._deckQuoteOf(sym);
+                if (!seen.has(sym)) { seen.add(sym); const lim = q ? this._deckLimOf(q.chg) : 0; if (lim < 0) I.ld.push(sym); else if (lim > 0) I.lu.push(sym); }
+                const cost = +it.cost; if (!(cost > 0)) continue;
+                const r = R.get(sym), px = (q && q.p > 0) ? q.p : ((r && r.ed && r.ed.pC > 0) ? r.ed.pC : ((r && +r.px > 0) ? +r.px : 0));
+                const k = `${sym}|${iso(it.buyDate)}|${cost}`;
+                if (gm[k]) gKeep[k] = gm[k];
+                if (px > 0 && px / cost - 1 >= T.gain) {
+                    if (!gKeep[k]) { gKeep[k] = today; dirty = true; }
+                    if (gKeep[k] === today && !gseen.has(sym)) { gseen.add(sym); I.gain.push(sym); }
+                }
+            }
+            if (Object.keys(gm).length !== Object.keys(gKeep).length) dirty = true;
+        } catch (_) {}
+        // ④ 帳戶熔斷(`_acctBreaker`,跟 🧯 那一行同一份):剛亮起來那天、或今天又賠一筆才講
+        try {
+            const b = this._acctBreaker(this._tradeLogNet(), this._acctBase());
+            if (b && (b.state === 'day' || b.state === 'week' || b.state === 'month')) {
+                const tds = today.replace(/-/g, '/');
+                const key = `${b.state}|${b.state === 'month' ? tds.slice(0, 7) : b.state === 'week' ? this._wkMonday(tds) : tds}`;
+                const s0 = (mem.brk && typeof mem.brk === 'object') ? mem.brk : null, fresh = !s0 || s0.k !== key;
+                if (fresh) { mem.brk = { k: key, d: today }; dirty = true; }
+                if (fresh || s0.d === today || (b.sum && b.sum.day < 0)) I.brk = b.state;
+            }
+        } catch (_) {}
+        if (dirty) { mem.gain = gKeep; try { localStorage.setItem('moodSeen_v1', JSON.stringify(mem)); } catch (_) {} }
+        return { I, today, R };
+    },
+    /** 第二句:你的計畫。⛔ 只轉述 —— 今天要賣的(st.sell)、每檔的出場線(`_exitDistance` 算好的 ed.lines)、今天名單(st.buy)、熔斷那一行(`_brkMsg`);
+     *  ⛔ 這裡不產生新的判斷。「現價在線下」= 今天的價(`_deckQuoteOf`)對同一條線,沒有今天的價就用那份 K 線的收盤並寫日期。回純文字 */
+    _moodPlan(M, st, G, X) {
+        const P = this._MOOD_COPY.plan, F = (t, o) => this._moodFill(t, o), R = (G && G.R) || new Map();
+        st = st || {};
+        if (M.side === 'back') { const m = this._brkMsg(M.brk); return (m && m.todo) ? m.todo + '。' : ''; }
+        if (M.side === 'fomo') {
+            if (this._isLead()) return P.buyLead;
+            if (st.bearGate) return P.buyBear;
+            if (!this._deckShow().pb) return P.buyOff;
+            if (st.pbNull) return P.buyNull;
+            const b = st.buy || [];
+            return b.length ? F(P.buyList, { n: b.length, names: this._moodNames(b.map(x => String(x.s)), 3) }) : P.buyNone;
+        }
+        let lead = new Set(), dip = new Set();
+        try { lead = this._leaderMine() || lead; } catch (_) {}
+        try { dip = this._dipMine() || dip; } catch (_) {}
+        const sellSet = new Set((st.sell || []).map(x => String(x.sym)));
+        const inv = [...new Set((this._getInventory() || []).map(i => String((i && i.symbol) || '')).filter(Boolean))];
+        const stocks = inv.filter(s => !this._isEtfSym(s)), etfN = inv.length - stocks.length;
+        const edOf = s => { const r = R.get(s), ed = r && r.ed; return (ed && Array.isArray(ed.lines) && ed.lines.length) ? ed : null; };
+        const pxOf = (s, ed) => { const q = this._deckQuoteOf(s); return (q && q.p > 0) ? { p: +q.p, live: true } : { p: +(ed && ed.pC) || 0, live: false }; };
+        const lineOf = s => {
+            const name = this._moodLab(s);
+            if (lead.has(s)) return F(P.lineLead, { name });
+            if (dip.has(s)) return F(P.lineDip, { name });
+            if (sellSet.has(s)) return F(P.lineSell, { name });
+            const ed = edOf(s), px = ed ? pxOf(s, ed).p : 0;
+            if (!ed || !(px > 0)) return F(P.lineNone, { name });
+            const over = ed.lines.filter(l => px < l.v).sort((a, b) => b.v - a.v)[0];
+            if (over) return F(P.lineUnder, { name, v: (+over.v).toFixed(2), rule: over.name });
+            const near = ed.lines.filter(l => l.v <= px).sort((a, b) => b.v - a.v)[0];
+            return near ? F(P.line, { name, v: (+near.v).toFixed(2), rule: near.name, p: ((px - near.v) / px * 100).toFixed(1) }) : F(P.lineNone, { name });
+        };
+        if (M.side === 'lock') return (M.lu.length ? M.lu : M.gain).slice(0, 2).map(lineOf).join('');
+        // 怕的那一邊:跌停那一兩檔先講它自己的線,其他持股講總數
+        const focus = M.kind === 'ld' ? M.ld.slice(0, 2) : [], excl = new Set(focus);
+        const nearToday = new Set(((X && X.near) || []).filter(x => x && x.ed && x.ed.level === 'today').map(x => String(x.sym)));
+        const S = { sell: [], under: [], ok: 0, okNear: 0, skip: 0, lead: 0, dip: 0, live: 0, asOf: '' };
+        for (const s of stocks) {
+            if (excl.has(s)) continue;
+            if (lead.has(s)) { S.lead++; continue; }
+            if (dip.has(s)) { S.dip++; continue; }
+            if (sellSet.has(s)) { S.sell.push(s); continue; }
+            const ed = edOf(s); if (!ed) { S.skip++; continue; }
+            const px = pxOf(s, ed); if (!(px.p > 0)) { S.skip++; continue; }
+            if (px.live) S.live++; else if (String(ed.asOf || '') > S.asOf) S.asOf = String(ed.asOf || '');
+            if (ed.lines.some(l => px.p < l.v)) S.under.push(s); else { S.ok++; if (nearToday.has(s)) S.okNear++; }
+        }
+        const n = S.sell.length + S.under.length + S.ok + S.skip + S.lead + S.dip, out = focus.map(lineOf);
+        if (!n) return out.length ? out.join('') : (etfN ? P.etfOnly : P.none);
+        if (S.sell.length) out.push(F(P.sell, { n: S.sell.length, names: this._moodNames(S.sell, 3) }));
+        if (S.under.length) out.push(F(P.under, { names: this._moodNames(S.under, 3) }));
+        if (S.ok) out.push(F((S.sell.length || S.under.length || excl.size) ? P.okRest : (S.skip || S.lead || S.dip || S.okNear) ? P.okSome : P.okAll, { n: S.ok }));
+        if (S.okNear) out.push(F(P.nearToday, { k: S.okNear }));
+        if (S.skip) out.push(F(P.skip, { n: S.skip }));
+        if (S.lead && this._isLead()) out.push(F(P.lead, { n: S.lead }));
+        if (S.dip) out.push(F(P.dip, { n: S.dip }));
+        if (!S.live && S.asOf && (S.under.length || S.ok)) out.push(F(P.asOf, { day: this._dW(S.asOf) }));
+        return out.join('');
+    },
+    /** 💭 那一塊的 HTML(整塊灰階,⛔ 紅綠);M = null → 空字串 */
+    _deckMoodHtml(M, G, st, X) {
+        if (!M) return '';
+        const facts = this._moodFacts(M, G && G.today);
+        if (!facts.length) return '';
+        const f = facts.join(',') + '。' + (this._MOOD_COPY.feel[M.kind === 'ld' ? 'ld' : M.side] || '');
+        let p = ''; try { p = this._moodPlan(M, st, G, X) || ''; } catch (_) { p = ''; }
+        return `<div class="bg-[#161b22] border-l-4 border-gray-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2" data-deckmood="${M.kind}" data-moodside="${M.side}">
+            <div class="text-[12px] text-gray-100 leading-relaxed" data-moodfact="1">💭 ${this._escHtml(f)}</div>
+            ${p ? `<div class="text-[11px] text-gray-300 leading-relaxed mt-1" data-moodplan="1">${this._escHtml(p)}</div>` : ''}
+        </div>`;
+    },
+    /** 決策台畫那一塊(只在解鎖 + 打開時;非同步,⛔ 擋決策台其他區塊)。回畫上去的 HTML */
+    async _renderDeckMood(st, X) {
+        const box = document.getElementById('deckMood'); if (!box) return '';
+        if (!this._deckShow().mood) { box.innerHTML = ''; this._moodLast = null; return ''; }
+        let html = '', M = null, G = null;
+        try { G = await this._moodGather(st, X); M = this._moodState(G.I); html = this._deckMoodHtml(M, G, st, X); } catch (_) { html = ''; M = null; }
+        if (!this._deckShow().mood) { box.innerHTML = ''; this._moodLast = null; return ''; }
+        this._moodLast = (M && html) ? { kind: M.kind, side: M.side, d: G.today } : null;
+        box.innerHTML = html;
+        return html;
+    },
     _deckRiskHtml(st) {
         const m = st && st.mkt;
         const f = v => (v == null || !Number.isFinite(+v)) ? '—' : Math.round(+v).toLocaleString();
@@ -50386,6 +50634,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const state = pct.month >= L.month ? 'month' : pct.week >= L.week ? 'week' : pct.day >= L.day ? 'day' : 'ok';
         return { state, sum, pct, lim: L };
     },
+    /** 🧯 熔斷每一級的說法(唯一一份;🧯 那一行與 💭 今天的心情共讀)。回 { ic, cls, what, todo } */
+    _brkMsg(state, L) {
+        L = L || this._BRK_LIM;
+        return ({
+            ok: { ic: '⚪', cls: 'text-gray-300', what: '正常', todo: '' },
+            day: { ic: '🟡', cls: 'text-amber-200', what: `今天已實現虧損到帳戶 ${L.day}%`, todo: '今天先不開新倉,手上的照你的出場規則走' },
+            week: { ic: '🟠', cls: 'text-orange-300', what: `本週已實現虧損到帳戶 ${L.week}%`, todo: '這週先不開新倉,手上的照你的出場規則走' },
+            month: { ic: '🟠', cls: 'text-orange-300', what: `本月已實現虧損到帳戶 ${L.month}%`, todo: '這個月先不開新倉、回頭看鏡子裡賠的那幾筆' },
+        })[state] || null;
+    },
     _acctBreakerHtml(b) {
         const L = b.lim, f = v => Math.round(v).toLocaleString();
         if (b.state === 'noacc') return `<div class="text-[10px] text-gray-500 leading-snug" data-brk="noacc">🧯 帳戶熔斷:⚙️ 設定裡還沒填帳戶資金 → 算不出今天 / 本週 / 本月虧了帳戶幾 %</div>`;
@@ -50396,12 +50654,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 + `<div class="text-[9px] text-gray-500 leading-snug">已實現:今天 ${sg(b.sum.day)} 元・本週 ${sg(b.sum.week)}・本月 ${sg(b.sum.month)}(只算記進鏡子的賣出)・門檻 ${L.day} / ${L.week} / ${L.month}% 是常見的建議值(不是本站算出來的)</div>`;
         }
         const p = b.pct, line = `今天 ${b.sum.day >= 0 ? '+' : ''}${f(b.sum.day)} 元(${(-p.day).toFixed(1)}%)・本週 ${b.sum.week >= 0 ? '+' : ''}${f(b.sum.week)}(${(-p.week).toFixed(1)}%)・本月 ${b.sum.month >= 0 ? '+' : ''}${f(b.sum.month)}(${(-p.month).toFixed(1)}%)`;
-        const msg = {
-            ok: ['⚪', 'text-gray-300', '正常'],
-            day: ['🟡', 'text-amber-200', `今天已實現虧損到帳戶 ${L.day}% → 今天先不開新倉,手上的照你的出場規則走`],
-            week: ['🟠', 'text-orange-300', `本週已實現虧損到帳戶 ${L.week}% → 這週先不開新倉,手上的照你的出場規則走`],
-            month: ['🟠', 'text-orange-300', `本月已實現虧損到帳戶 ${L.month}% → 這個月先不開新倉、回頭看鏡子裡賠的那幾筆`],
-        }[b.state];
+        const _m = this._brkMsg(b.state, L), msg = [_m.ic, _m.cls, _m.todo ? `${_m.what} → ${_m.todo}` : _m.what];
         return `<div class="text-[11px] ${msg[1]} leading-snug" data-brk="${b.state}">${msg[0]} <b>帳戶熔斷:${msg[2]}</b></div>`
             + `<div class="text-[9px] text-gray-500 leading-snug">${line}・門檻 ${L.day} / ${L.week} / ${L.month}% 是常見的建議值(不是本站算出來的),只算記進鏡子的賣出</div>`;
     },
@@ -53016,6 +53269,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             try { const _rk = $('deckRisk'); if (_rk) _rk.innerHTML = this._deckRiskHtml(st); } catch (_) {}   // 🧯 V80.0.9 你的風控
             try { this._deckShowApply(); } catch (_) {}
             try { this._syncDeckStream(); } catch (_) {}   // 📡 V79.1.6 👑 現價跳動(盤中、在決策台才開)
+            this._renderDeckMood(st, { near, far: farL }).catch(() => {});   // 💭 V82.5.2 今天的心情(只在解鎖後;情緒大的日子才有字)
             this._renderDeckCross().catch(() => {});   // 🔀 V81.0.0 交叉提醒(只在解鎖後)
             this._renderDeckCol().catch(() => {});   // 📰 V78.4.2 觸發式專欄(只在解鎖後;⛔ 不擋決策台其他區塊)
             // 🔔 導覽紅點:今天有幾件事要做
