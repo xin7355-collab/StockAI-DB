@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.5.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.6.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -9063,10 +9063,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.5.9',
+    _APP_VERSION: 'V82.6.0',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.6.0', d: [
+            '🏭 產業作戰室「🧠 人性」頁:「成交集中在前 10 檔」改看近 20 天平均(今天單日的另外寫),而且馬上就排得出在過去約 3 年半裡排第幾(以前要一天一天累積);拿掉「貪」字 —— 單日擠到很高常常就是大漲或大跌那一天。查過 2010 年以來的資料:擠一陣子之後比較常再跌一段,但次數太少,還說不準;只描述,不是買賣訊號',
+        ], dt: '2026-11-20' },
         { v: 'V82.5.9', d: [
             '🧭 反攻條件雷達:「日圓不急升」那條改成條件表下面一行只列出來(日圓 3 天升值或貶值幾 %),不再算進「幾條通過」、也不再算「外面壓力很大」;風險指數也不再因為日圓急升加分 —— 查過 2000 年以來的資料,日圓急升之後台股並沒有比平常同樣顛的時候更容易再大跌',
             '🏭 產業作戰室「🧠 人性」頁:外資那一段「用台幣算 vs 用美元算」與匯率表的台幣、日圓那兩列,下面多一行以前的資料怎麼說 —— 用美元算台股已經跌很深、台幣又開始升值之後,台股並沒有比同一段隨便哪一天進場好;只描述,不是買賣訊號',
@@ -9391,10 +9394,6 @@ ${list}
             '🧯 每天抓 K 線時,分得出「被證交所/櫃買擋住」和「那個月真的沒資料」:連續被擋會先停 2 分鐘再試,擋太多次這一輪就不再硬撞,改由備援來源補,而且會在紀錄裡亮黃燈/紅燈',
             '🔢 官方表格上的「--」不再被當成 0 價位寫進 K 線',
             '🌐 準備改成「一次抓全市場當天的 K 線」(一天 2 次請求取代 3 萬多次):先做好、先關著,實際對拍過官方資料才打開',
-        ] },
-        { v: 'V80.0.1', d: [
-            '🤖 App 裡所有 AI 分析的共用規則改了:價位(停損、壓力、支撐)只能引用 App 算好的數字,資料裡沒有的價位 AI 不能自己編;燈號只講偏多 / 中性 / 偏空,不再要 AI 下買賣指令',
-            '📞 法說會簡報重點旁的頁碼會先核對:數字不在那一頁就改成真的那一頁,找不到就不標頁碼',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },

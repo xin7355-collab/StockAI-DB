@@ -48,10 +48,10 @@ const mk = (stk, zh) => ({
         rules: { panicV: 90, panicD: -10, panicOutV: 75, worryD: -10, backD: -5, greedM: 90, greedD: -3, greedV: 50, greedOutM: 60 }, names: { PANIC: '恐慌', REPAIR: '修復', WORRY: '擔憂', NEUTRAL: '中性', GREED: '貪婪' }, lab: 'psych-state' },
     crowd: [
         g('ld', '跌停家數', 473, '家', today, 100, 250, '2025-11-14', today, 'crash-warn', { hiw: '怕' }),
-        g('lu', '漲停家數', 7, '家', today, 3.2, 250, '2025-11-14', today, 'leader-breadth4', { hiw: '貪' }),
+        g('lu', '漲停家數', 7, '家', today, 3.2, 250, '2025-11-14', today, null, { hiw: '貪' }),   // 沒測過的那一種(⑤ 要看到「還沒測過」)
         g('mg20', '融資餘額 20 日變化', -23.59, '%', today, 1.15, 5588, '2004-02-09', '2026-10-19', 'margin-call-bounce', { hiw: '貪(加槓桿)', low: '怕(斷頭、降槓桿)' }),
         g('pcr', '選擇權賣權 ÷ 買權(未平倉)', 61.6, '%', '2026-10-19', 0.68, 4115, '2010-01-04', '2026-10-19', 'pcr-largetrader', { stale: true }),
-        g('conc', '成交集中在前 10 檔', 35.1, '%', today, null, 1, null, null, null),
+        g('conc', '成交集中在前 10 檔(近 20 天平均)', 35.1, '%', today, null, 1, null, null, 'conc-extreme', { side: 'both', hiw: '擠在少數幾檔', low: '大家分散在很多檔', note: '今天單日 33.98%(前 10 大成交金額 ÷ 2291 檔個股,不含 ETF)' }),
     ],
     seats: { fi: [g('fis', '外資現貨買賣超(今天)', -243.12, '億', today, 20.24, 751, '2023-09-14', '2026-10-19', 'fi-outflow'), { k: 'fim', name: '外資本月累計', v: -8303.2, unit: '億', d: today, lab: 'fi-follow', note: '月報' },
         g('fi5', '外資現貨 5 日合計', -1233.4, '億', today, 4.5, 751, '2023-09-12', '2026-11-18', 'fi-outflow', { side: 'both', hiw: '買超大', low: '賣超大', note: '這 5 筆官方每日值加總(上市)' }),
@@ -103,6 +103,7 @@ try {
             document.querySelectorAll('details.mind-row').forEach(d => d.open = true);
             o.openTxt = T('tabMind');
             o.labLines = [...document.querySelectorAll('[data-mind-lab]')].map(e => e.dataset.mindLab);
+            { const cr = document.querySelector('[data-mind-row="conc"]'); if (cr) cr.open = true; o.concTxt = cr ? cr.innerText : null; o.concLab = cr ? (cr.querySelector('[data-mind-lab]') || { dataset: {} }).dataset.mindLab || null : null; }
             o.sx390crowd = sx();
             PRO.mindSortBy('pct'); await new Promise(r => setTimeout(r, 30));
             o.rowsAsc = [...document.querySelectorAll('[data-mind-list="crowd"] [data-mind-row]')].map(e => e.dataset.mindRow);
@@ -172,6 +173,7 @@ try {
         ok('⑨ 外資今年累計是事實列(⛔ 尺、⛔ 排第幾)', R.fiyFact && /外資現貨今年累計\(2026\)/.test(R.seatTxt) && /不排第幾/.test(R.seatTxt), R.fiyFact);
         ok('⑧ 🔬 V82.5.9 匯率表測過的那一列(美元 / 台幣 → usd-dd)轉述實測總表那一條;沒測過的列 ⛔ 每一列都印「還沒測過」',
            JSON.stringify(R.fxLab) === JSON.stringify([['usdtwd', 'usd-dd'], ['dxy', null], ['gold_usd', null]]) || JSON.stringify(R.fxLab.slice().sort()) === JSON.stringify([['dxy', null], ['gold_usd', null], ['usdtwd', 'usd-dd']]), JSON.stringify(R.fxLab));
+        ok('⑨ 📊 V82.6.0 成交集中度那條:轉述實測總表 conc-extreme(⛔ 實測沒用)、寫今天單日、⛔ 標「貪」', R.concLab === 'conc-extreme' && /實測沒用/.test(R.concTxt || '') && /今天單日 33\.98%/.test(R.concTxt || '') && !/貪/.test(R.concTxt || ''), JSON.stringify([R.concLab, (R.concTxt || '').slice(0, 160)]));
         ok('⑧ 外資座位有「用台幣算 vs 用美元算」那一行', /用台幣算 vs 用美元算/.test(R.seatTxt) && /用美元算 −26\.5%/.test(R.seatTxt), R.seatTxt.slice(0, 200));
         ok('② 匯率照 1 日排、再點一次反向(讀不到的排最後)', JSON.stringify(R.fxC1) === '["usdtwd","dxy","gold_usd"]' && JSON.stringify(R.fxC1b) === '["dxy","usdtwd","gold_usd"]', JSON.stringify([R.fxC1, R.fxC1b]));
         ok('⑦ 同分:今天 0 家而且很多天也是 0 → 「近一年最低(跟 76% 的日子一樣)」,⛔「比 76% 的日子高」', R.tieLow === '近一年最低(跟 76% 的日子一樣)' && !/的日子高/.test(R.tieLow), R.tieLow);

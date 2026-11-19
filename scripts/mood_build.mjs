@@ -27,6 +27,7 @@ import { loadIndex } from './lib_crash.mjs';
 import { states, ZH, STATE_RULES } from './psych_state_probe.mjs';
 import { NSF } from './stopfall_probe.mjs';
 import { NSF_EXIT } from './nsf_probe.mjs';
+import { concDaily, rollMean } from './lib_conc.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const MIN_N = 20;          // 歷史不到 20 天 → 不給排第幾(只寫「還在累積」)
@@ -406,19 +407,23 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
     const A = r20(tw.j), B = r20(two.j);
     if (A && B) wind.push({ k: 'twotc', name: '加權 − 櫃買(近 20 日)', v: r2(A.v - B.v), unit: 'pp', d: A.d === B.d ? A.d : `${A.d} / ${B.d}`, note: `加權 ${r2(A.v)}%・櫃買 ${r2(B.v)}%(正 = 大型股比較撐)`, lab: null });
     else M('twotc', '加權 − 櫃買', two.err || tw.err || '加權或櫃買不到 21 天');
-    // 成交集中度(前 10 大成交金額 ÷ 全部個股,⛔ 不含 00 開頭的 ETF):只有今天 → mood_hist 從今天開始累積
-    const sc = rdj(dir, 'screener.json');
-    if (sc.j && sc.j.rows && Array.isArray(sc.j.cols) && sc.j.cols.includes('amt')) {
-        const ia = sc.j.cols.indexOf('amt'), amts = Object.entries(sc.j.rows).filter(([s]) => !/^00/.test(s)).map(([, r]) => num(r[ia])).filter(x => x > 0).sort((a, b) => b - a);
-        const tot = amts.reduce((s, x) => s + x, 0);
-        if (tot > 0 && amts.length >= 100) {
-            const v = amts.slice(0, 10).reduce((s, x) => s + x, 0) / tot * 100;
-            const prev = [...hb.values()].filter(r => Number.isFinite(r.conc) && r.d < (d10(sc.j.data_date) || today)).sort((a, b) => a.d < b.d ? -1 : 1);
-            crowd.push(gauge('conc', '成交集中在前 10 檔', 'greed', v, '%', sc.j.data_date || sc.j.updated, { vals: prev.map(r => r.conc), from: prev[0] ? prev[0].d : null, to: prev.at(-1) ? prev.at(-1).d : null }, null,
-                { hiw: '貪(擠在少數股)', note: `前 10 大成交金額 ÷ ${amts.length} 檔個股(不含 ETF)。⏳ 從 11/20 開始每天累積,滿 ${MIN_N} 天才排得出第幾` }));
-            todayRow.conc = r2(v); todayRow.cd = d10(sc.j.data_date) || null;
-        } else M('conc', '成交集中度', 'screener 個股成交金額不夠');
-    } else M('conc', '成交集中度', sc.err || 'screener 沒有 amt');
+    // 📊 V82.6.0 成交集中度(前 10 大成交金額 ÷ 全部個股,⛔ 00 開頭的 ETF):每晚從 data/ 每一檔 K 線直接算
+    //   (lib_conc.concDaily —— 研究 conc_probe 同一份,⛔ 另寫)→ 歷史約 5 年、當天就排得出第幾(以前讀 screener 只有今天、要一天一天累積)
+    //   主數字 = 近 20 天平均:EXP-20261120-03 單日擠到很高多半是大漲大跌那一天;結論只轉述實測總表 conc-extreme(⛔ 另寫一句)
+    //   最後一天的成交金額不到前 20 天中位數一半 → 看起來還沒收完(盤中那一輪),先不算那一天
+    const CC = opt.conc !== undefined ? opt.conc : (() => { try { return concDaily(dir); } catch (e) { return { rows: [], err: String(e && e.message || e) }; } })();
+    let cr = (CC && CC.rows) || [], partial = null;
+    if (cr.length > 21) {
+        const t20 = cr.slice(-21, -1).map(r => r.tot).sort((a, b) => a - b), med = t20[Math.floor(t20.length / 2)];
+        if (cr.at(-1).tot < med * 0.5) { partial = cr.at(-1).d; cr = cr.slice(0, -1); }
+    }
+    if (cr.length >= 20 + MIN_N) {
+        const avg = rollMean(cr.map(r => r.s10), 20), i = cr.length - 1, vals = avg.slice(19, i);
+        const yrs = Math.round((Date.parse(cr[i].d) - Date.parse(cr[19].d)) / (365.25 * 864e5) * 10) / 10;
+        crowd.push(gauge('conc', '成交集中在前 10 檔(近 20 天平均)', 'both', avg[i], '%', cr[i].d, { vals, from: cr[19].d, to: cr[i - 1].d }, 'conc-extreme',
+            { hiw: '擠在少數幾檔', low: '大家分散在很多檔', today1: r2(cr[i].s10), note: `今天單日 ${r2(cr[i].s10)}%(前 10 大成交金額 ÷ ${cr[i].n} 檔個股,不含 ETF)・歷史 = data/ 每一檔 K 線自己算(約 ${yrs} 年)${partial ? `・${partial} 那一天的成交金額不到平常一半,看起來還沒收完 → 先不算` : ''}` }));
+        todayRow.conc = r2(cr[i].s10); todayRow.conc20 = r2(avg[i]); todayRow.cd = cr[i].d;
+    } else M('conc', '成交集中度', (CC && CC.err) || `data/ 的個股 K 線只算得出 ${cr.length} 天(近 20 天平均要再排第幾,至少 ${20 + MIN_N} 天)`);
     // 📊 V82.5.8 全市場當沖占比(上市;data/dtr_hist.json = hist_daily 每晚從證交所 TWTB4U 統計表收的,每晚往前補幾天)
     //   值 = 當沖買進 / 賣出成交金額占市場比重的平均;排第幾只跟自己的歷史比(不到 MIN_N 天寫「還在累積」)
     const dt = rdj(dir, 'dtr_hist.json'), DT = dt.j && dt.j.d && typeof dt.j.d === 'object' ? dt.j.d : null;
@@ -612,6 +617,20 @@ function selftest() {
         const g16b = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.crowd.find(g => g.k === 'dtr');
         ok('⑯ 只有 5 天 → 還在累積(pct null、⛔ 硬排)', g16b && g16b.pct == null && g16b.n === 5, JSON.stringify(g16b && { n: g16b.n, pct: g16b.pct }));
         fs.rmSync(path.join(tmp, 'dtr_hist.json'));
+        // ⑰ 📊 V82.6.0 成交集中度:每晚從 data/ 每一檔 K 線算(lib_conc;這裡直接餵算好的每天一列)→ 主數字 = 近 20 天平均、歷史 = 之前每一天的 20 天平均
+        const cD = calD.slice(0, ai + 1), ccRows = (lastS10, tail = []) => cD.map((d, k) => ({ d, n: 2000, tot: 1e12, s5: 20, s10: 25 + (k % 7) * 0.5, s20: 40 })).map((r, k, a) => k >= a.length - tail.length ? { ...r, ...tail[k - (a.length - tail.length)] } : r).map((r, k, a) => k === a.length - 1 && lastS10 != null ? { ...r, s10: lastS10 } : r);
+        const R0 = ccRows(), ck = c => build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT, conc: c }).mood;
+        const m17 = ck({ rows: R0 }), g17 = m17.crowd.find(g => g.k === 'conc'), last20 = R0.slice(-20).map(r => r.s10);
+        ok('⑰ 集中度:主數字 = 近 20 天平均、今天單日另外寫、帶實測總表 conc-extreme、⛔ 標「貪」', g17 && Math.abs(g17.v - r2(last20.reduce((s, x) => s + x, 0) / 20)) < 0.011 && g17.today1 === R0.at(-1).s10
+            && g17.lab === 'conc-extreme' && g17.d === R0.at(-1).d && g17.from === R0[19].d && g17.n === R0.length - 19 && !/貪/.test((g17.hiw || '') + (g17.low || '')) && /今天單日/.test(g17.note), JSON.stringify(g17 && { v: g17.v, exp: r2(last20.reduce((s, x) => s + x, 0) / 20), t1: g17.today1, t1e: R0.at(-1).s10, d: g17.d, de: R0.at(-1).d, n: g17.n, ne: R0.length - 19, from: g17.from, fe: R0[19].d }));
+        const g17b = ck({ rows: ccRows(null, Array.from({ length: 20 }, () => ({ s10: 48 }))) }).crowd.find(g => g.k === 'conc');
+        ok('⑰b 決定性對照:最後 20 天都擠到 48% → 排在歷史最高(hi 0)、主數字 48', g17b && g17b.v === 48 && g17b.hi === 0 && g17b.pct > 99, JSON.stringify(g17b && { v: g17b.v, hi: g17b.hi, pct: g17b.pct }));
+        const g17c = ck({ rows: ccRows(null, [{ tot: 3e11 }]) }).crowd.find(g => g.k === 'conc');
+        ok('⑰c 最後一天成交金額不到平常一半(盤中那一輪)→ 那一天先不算、寫出來', g17c && g17c.d === R0.at(-2).d && /看起來還沒收完/.test(g17c.note), JSON.stringify(g17c && { d: g17c.d, note: g17c.note }));
+        const m17d = ck({ rows: R0.slice(-30) }), g17d = m17d.crowd.find(g => g.k === 'conc');
+        ok('⑰d 只有 30 天(近 20 天平均排不出第幾)→ ⛔ 那一條、進 miss 寫原因', !g17d && m17d.miss.some(x => x.k === 'conc' && /只算得出 30 天/.test(x.why)), JSON.stringify(m17d.miss.filter(x => x.k === 'conc')));
+        const m17e = ck({ rows: [], err: 'data/ 讀不到' });
+        ok('⑰e 讀不到 → 原因照寫(⛔ 當 0)', !m17e.crowd.some(g => g.k === 'conc') && m17e.miss.some(x => x.k === 'conc' && /讀不到/.test(x.why)));
     } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
     console.log(bad ? `\n❌ ${bad} 條沒過` : '\n✅ 全部通過');
     return bad ? 1 : 0;
