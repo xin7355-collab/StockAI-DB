@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.5.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.5.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.5.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -9063,10 +9063,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.5.3',
+    _APP_VERSION: 'V82.5.4',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.5.4', d: [
+            '🧠 勝率鏡子裡多一段「你的習慣」(🔓 進階功能 › 💭 打開才有):把你的賣出紀錄分開來看 —— 買在常見追高買點那天的、大盤大跌那天賣的、比你的出場規則早賣的、碰到出場線之後隔天還沒賣的、賠錢賣掉之後多久又買',
+            '🧠 也照「這次為什麼賣」和「那天點的心情」分組;每一組不到 10 筆會寫「還太少」,先當參考',
+            '🧠 早賣 / 晚賣是用你現在設定的出場規則回頭算的(收盤跌破才算碰到),畫面上會寫是哪一條;只是把你做過的事分開來看,不是買賣建議',
+        ], dt: '2026-11-19' },
         { v: 'V82.5.3', d: [
             '💭 決策台「今天的心情」那一塊下面、庫存頁「🪞 勝率鏡子」旁邊多了「💭 心情」:點一個最接近你現在的感覺(很怕想賣 / 怕錯過想追 / 想趕快賺回來 / 想先落袋 / 想攤平 / 不知道),App 會把你現在的實際狀況和你已經訂好的計畫再講一次,並列出跟這種心情有關的專欄',
             '💭 每點一次記一筆心情日誌(同一天同一種只留一筆),存在這支手機;「📤 一鍵備份」會一起帶走,還原是合併、不會蓋掉現有的',
@@ -9392,11 +9397,6 @@ ${list}
             '🗑️ 舊的「美股昨夜 vs 台股板塊」卡拿掉(它要填的格子早就不在畫面上,盤中還一直在背景抓資料)',
             '🔁 個股頁「即時」和「⚡當沖」兩個分頁互換位置',
         ] },
-        { v: 'V79.9.5', d: [
-            '🎯 大盤頁「💧 輪動」改叫「🎯 概念股」:預設看概念股(玻纖布、CPO、散熱、記憶體、重電、軍工、航運…),點一列就展開裡面有哪幾檔(現價 / 今天 / 近 20 日),點股名進個股頁;官方產業照留一顆鈕切過去',
-            '🎯 概念股從 21 組擴到 38 組、每組至少 5 檔(新的那幾組下一輪採礦跑完才會出現)',
-            '📰 開始逐檔記錄每一檔每天被報導幾則新聞(目前只存資料,畫面還沒用)',
-        ], dt: '2026-10-27' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -23304,7 +23304,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         { k: 'pro', unlock: true, n: '🏭 產業 pro', d: '左上角 🤖 右邊多一顆「產」,點了直接開產業作戰室(板塊輪動・法說會・成績單…)。', def: false },
         // 💭 V82.5.2 今天的心情(使用者 11/18「App 太理性,加上人性的貪婪與恐懼」→ 選「情緒大的日子才講人話」「只給解鎖進階功能的人」)
         //   只在情緒大的日子出現、平常一個字都沒有;第二句只轉述下面幾格已經算好的(⛔ 新的買賣指令)
-        { k: 'mood', unlock: true, n: '💭 今天的心情:情緒大的日子先講兩句', d: '大盤大跌大漲、你的股票漲停跌停、帳戶熔斷亮燈、帳面賺超過兩成的那一天,決策台最上面多兩句:第一句講今天發生的事,第二句把下面幾格已經算好的再講一次(今天要賣的、離出場線多遠、今天名單)。平常的日子一個字都不出現。同一個開關也管:「💭 心情」按鈕(點一個你現在的感覺 → 把你的計畫再講一次、記一筆心情日誌)、賣出時問「這次為什麼賣」、新增持倉多看兩行。⛔ 不是買賣建議。', def: true },
+        { k: 'mood', unlock: true, n: '💭 今天的心情:情緒大的日子先講兩句', d: '大盤大跌大漲、你的股票漲停跌停、帳戶熔斷亮燈、帳面賺超過兩成的那一天,決策台最上面多兩句:第一句講今天發生的事,第二句把下面幾格已經算好的再講一次(今天要賣的、離出場線多遠、今天名單)。平常的日子一個字都不出現。同一個開關也管:「💭 心情」按鈕(點一個你現在的感覺 → 把你的計畫再講一次、記一筆心情日誌)、賣出時問「這次為什麼賣」、新增持倉多看兩行、勝率鏡子裡的「🧠 你的習慣」。⛔ 不是買賣建議。', def: true },
         // 🔀 V81.0.0 交叉提醒(使用者 11/03 選「跟專欄一樣放進階區」「都跳通知」)
         { k: 'cross', unlock: true, n: '🔀 交叉提醒:你的股票今天碰到的事', d: '同一檔今天碰到好幾件事(大盤大跌大漲、鎖漲停、跌破月線、進注意股…)合在一起講:這一檔過去碰到這種事之後怎樣(過去發生過的比例)、像它這種股性的股票怎樣、你該照哪一條規則走。碰到就跳通知(一天每檔最多一則)。', def: true },
         { k: 'col', unlock: true, n: '📰 今天碰到的專欄', d: '你的庫存、自選、大盤或日子碰到某種情況時(鎖漲停、跌停後收紅、進注意股、除息、連假前後、結算日…),把那一篇「怎麼做」拿出來;決策台與個股總覽都會出現,沒碰到就整區不出現。', def: true },
@@ -51231,6 +51231,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
         if (!document.getElementById('mirrorXc')) return;
         box.innerHTML = this._mirrorXcHtml(rows, log.length, posts, all) + this._klMissNote(miss);
+        // 🧠 V82.5.4 你的習慣(💭 開著才有那一格;K 線用上面已經抓好的)
+        const hb = document.getElementById('mirrorHabit');
+        if (hb) { try { hb.innerHTML = await this._mirrorHabitFill(all, kl, posts); } catch (_) { hb.innerHTML = ''; } }
     },
     /** 🪁 一行摘要:賣掉之後比大盤漲得多(賣飛)幾筆、少賺多少;跌了(賣對)幾筆、少賠多少。純函式 */
     _soldFlySum(posts) {
@@ -51316,6 +51319,182 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const det = document.getElementById('invPreTrade');
         if (det && cost > 0 && sh > 0 && !S._preOpened) { S._preOpened = 1; if (!det.open) det.open = true; }
     },
+    // ═══ 🧠 V82.5.4 鏡子「你的習慣」(規劃 1-4;跟 💭 同一個開關)═══
+    //   從你的賣出紀錄 + K 線回頭看五件事:追高買的 / 大盤大跌那天賣的 / 比計畫早賣 / 比計畫晚賣 / 賠錢賣掉之後多久又買;
+    //   再照「這次為什麼賣」與「那天點的心情」分組。
+    //   ⛔ 門檻一個都不新編,全部借現成的:
+    //     追高 = 買進那天碰到 `_QLAB_SIGS` 判 ⛔ 的那幾支(`_qlabAt`,同觸發專欄 qlab_trap)或收盤鎖漲停(`_luLock`);
+    //            它們平常就很常出現 → 同一條規則量「這一檔買之前一年隨便挑一天碰得到的比例」,畫面上一起講(⛔ 只講幾筆 = 看起來很嚴重);
+    //     大跌日 = `_DAY_TH.dn2 / dn3`(加權那天收盤對前一天);
+    //     早 / 晚 = 你**現在**設定的出場規則回頭算:硬停損(同 `_tradeExcursion`:買進那天看到的那一份)、你設定的線(`_exitLevelAt`)、
+    //               抱滿 `_maxHold()` 個交易日;收盤跌破才算碰到(同 `_exitDistance`)。碰到那天或隔天賣 = 照計畫,隔天還沒賣 = 比計畫晚。
+    //   ⛔ 只用買進那天(含)以前的 K 判追高;⛔ 研究數字;⛔ 叫你以後怎麼做;每組未滿 `_wrEnough` 筆寫「還太少」;
+    //   👑 領頭羊(買進理由選 👑)/ ETF 那幾筆不判早晚(它們不套三條出場)。
+    _HABIT_COPY: {
+        head: '🧠 你的習慣',
+        chase: '🏃 買在常見的追高買點那天(跳空開高走高、帶量突破這類,或收盤鎖漲停)',
+        chaseBase: '照這幾檔買之前一年的樣子,隨便挑一天買也會有大約 {x} 筆碰到',
+        dn: '🌧️ 大盤大跌那天賣的(加權那天跌 2% 以上)',
+        early: '⏩ 比計畫早賣(三條出場線都還沒碰到)',
+        late: '🐢 比計畫晚賣(碰到出場線之後,隔天還沒賣)',
+        ok: '✅ 照計畫賣(碰到出場線那天或隔天)',
+        rebuy: '🔁 賠錢賣掉之後,多久又買',
+        byWhy: '照「這次為什麼賣」分',
+        byMood: '照那天點的心情分',
+        few: '還太少',
+        foot: '出場線用你現在設定的規則({rule};最長抱 {maxd} 個交易日)回頭算,收盤跌破才算碰到;👑 / ETF 那幾筆不判早晚;沒有買進日或 K 線對不上的不算。只是把你做過的事分開來看,⛔ 不是買賣建議。',
+        empty: '要有填買進日的賣出紀錄才算得出來(編輯庫存時填買進日)。',
+        noTw: '⚠️ 大盤日線沒讀到 → 「大盤大跌那天賣的」先不算,「多久又買」改用日曆天數。',
+    },
+    /** 一組的小計(同 `_mirrorWhyGroups` 的算法):{ n, win, sum, avgPct } */
+    _habitAgg(L) {
+        const o = { n: 0, win: 0, sum: 0, sumPct: 0 };
+        for (const t of (L || [])) { const p = +t.pnlNTD || 0; o.n++; if (p > 0) o.win++; o.sum += p; o.sumPct += +t.pnlPct || 0; }
+        return { n: o.n, win: o.win, sum: Math.round(o.sum), avgPct: o.n ? o.sumPct / o.n : 0 };
+    },
+    /** 純函式(測試直接打):log = 賣出紀錄(`_tradeLogNet`)、KL = { 代號: 日 K(舊 → 新,只收已收盤的)}、twM = Map(YYYY-MM-DD → 加權那天漲跌 %)、
+     *  opt = { key: 出場規則, maxd, posts: Map(紀錄 → `_postSale` 結果), buys: [手上庫存的 { symbol, buyDate }], mood: 心情日誌 } */
+    _habitScan(log, KL, twM, opt) {
+        opt = opt || {};
+        const key = opt.key || this._exitRuleKey(), maxd = +opt.maxd || this._maxHold(key), T = this._DAY_TH;
+        const kd = d => String(d || '').replace(/-/g, '/').slice(0, 10), iso = d => kd(d).replace(/\//g, '-');
+        const L = (Array.isArray(log) ? log : []).filter(t => t && t.symbol && t.date);
+        const M = twM instanceof Map ? twM : new Map();
+        const tdays = [...M.keys()].sort();
+        const tdIdx = d => { let lo = 0, hi = tdays.length; while (lo < hi) { const m = (lo + hi) >> 1; if (tdays[m] < d) lo = m + 1; else hi = m; } return lo; };   // 第一個 ≥ d 的交易日
+        const posts = opt.posts instanceof Map ? opt.posts : new Map();
+        const rows = [];
+        for (const t of L) {
+            const sym = String(t.symbol), d = KL && KL[sym], bd = kd(t.buyDate), sd = kd(t.date), sh = Math.round((+t.shares || 0) * 1000);
+            const r = { t, dn: 0, chase: null, plan: null, why: null, jDate: null, diff: null, post: posts.get(t) || null };
+            const ch = M.get(iso(sd));
+            if (ch != null && ch <= T.dn2) r.dn = ch <= T.dn3 ? 3 : 2;
+            if (Array.isArray(d) && d.length && bd && bd <= sd && kd(d[d.length - 1].date) >= sd) {
+                const iB = d.findIndex(b => kd(b.date) >= bd);
+                let iS = -1; for (let i = d.length - 1; i >= 0; i--) if (kd(d[i].date) <= sd) { iS = i; break; }
+                if (iB >= 0 && iS >= iB) {
+                    r.k = 1;
+                    // 🏃 追高:只看買進那天(含)以前的 K(⛔ 用之後的);買進日要真的是那一根
+                    if (kd(d[iB].date) === bd) {
+                        const sub = d.slice(0, iB + 1);
+                        const hitAt = j => {
+                            for (const q of ((this._QLAB_SIGS || {}).bad || [])) if (this._qlabAt('ql_' + q.id, sub, j)) return q.name || q.id;
+                            return this._luLock(sub.slice(Math.max(0, j - 30), j + 1), { anyTime: 1 }) ? '收盤鎖漲停' : null;
+                        };
+                        r.chase = hitAt(iB);
+                        // 平常的比例:這一檔買之前一年(最多 250 個交易日)隨便挑一天,也碰得到的比例(同一條規則;⛔ 用買的那天以後的 K)
+                        let nb = 0, hb = 0;
+                        for (let j = Math.max(30, iB - 250); j < iB; j++) { nb++; if (hitAt(j)) hb++; }
+                        r.base = nb >= 60 ? hb / nb : null;
+                    }
+                    // ⏩🐢 早 / 晚:👑 / ETF 不判
+                    if (this._isEtfSym(sym)) r.plan = 'etf';
+                    else if (t.why === 'lead') r.plan = 'lead';
+                    else if (+t.cost > 0) {
+                        let stop = null;
+                        try { const pl = iB + 1 >= 25 ? this._unifiedExitPlan(d.slice(0, iB + 1), +t.cost, bd, {}) : null; stop = pl && pl.stopFinal > 0 ? +pl.stopFinal : null; } catch (_) {}
+                        if (!(stop > 0)) stop = this._floorTick ? this._floorTick(+t.cost * 0.95) : +(+t.cost * 0.95).toFixed(2);
+                        let jT = null, why = null;
+                        for (let j = iB + 1; j <= iS; j++) {
+                            const c = +d[j].close; if (!(c > 0)) continue;
+                            if (c < stop) { jT = j; why = 'stop'; break; }
+                            const lv = this._exitLevelAt(d, iB, j, key);
+                            if (lv > 0 && c < lv) { jT = j; why = 'line'; break; }
+                            if (j - iB >= maxd) { jT = j; why = 'maxd'; break; }
+                        }
+                        if (jT == null) r.plan = 'early';
+                        else {
+                            r.why = why; r.jDate = kd(d[jT].date);
+                            if (iS - jT >= 2) { r.plan = 'late'; r.diff = sh > 0 ? Math.round(sh * (+t.sellPrice - +d[jT].close)) : null; }
+                            else r.plan = 'ok';
+                        }
+                    }
+                }
+            }
+            rows.push(r);
+        }
+        // 🔁 賠錢賣掉之後多久又買(任何一檔;賣出紀錄的買進日 + 手上庫存的買進日;同一筆部位 ⛔ 算)
+        const buys = new Map();
+        for (const x of [...L, ...(Array.isArray(opt.buys) ? opt.buys : [])]) { const b = kd(x && x.buyDate); if (b) buys.set(`${String(x.symbol)}|${b}`, { sym: String(x.symbol), b: iso(b) }); }
+        const B = [...buys.values()].sort((a, b) => a.b < b.b ? -1 : a.b > b.b ? 1 : 0);
+        const rebuy = { b01: 0, b25: 0, bl: 0, none: 0, n: 0 };
+        for (const r of rows) {
+            if (!((+r.t.pnlNTD || 0) < 0)) continue;
+            const s = iso(r.t.date), self = `${String(r.t.symbol)}|${kd(r.t.buyDate)}`;
+            const nx = B.find(x => x.b >= s && `${x.sym}|${kd(x.b)}` !== self);
+            rebuy.n++;
+            if (!nx) { rebuy.none++; continue; }
+            const gap = tdays.length ? Math.max(0, tdIdx(nx.b) - tdIdx(s)) : Math.round((Date.parse(nx.b) - Date.parse(s)) / 864e5);
+            if (gap <= 1) rebuy.b01++; else if (gap <= 5) rebuy.b25++; else rebuy.bl++;
+        }
+        // 分組:這次為什麼賣 / 那天點的心情(同一天點了好幾種 → 最後點的那一種)
+        const moodOf = new Map();
+        for (const m of (Array.isArray(opt.mood) ? opt.mood : [])) { if (!m || !this._moodOk(m.m)) continue; const o = moodOf.get(m.d); if (!o || (+m.t || 0) >= (+o.t || 0)) moodOf.set(m.d, m); }
+        const grp = (keyOf, labelOf, order) => {
+            const G = new Map();
+            for (const t of L) { const k = keyOf(t); if (!G.has(k)) G.set(k, []); G.get(k).push(t); }
+            return [...G.entries()].map(([k, a]) => Object.assign({ k, label: labelOf(k) }, this._habitAgg(a)))
+                .sort((a, b) => (a.k ? 0 : 1) - (b.k ? 0 : 1) || order(a.k) - order(b.k));
+        };
+        const wOrd = k => { const i = this._SELLWHY_LIST.findIndex(x => x[0] === k); return i < 0 ? 99 : i; };
+        const mOrd = k => { const i = this._MOOD_LIST.findIndex(x => x[0] === k); return i < 0 ? 99 : i; };
+        const byWhy = grp(t => this._sellWhyOk(t.sellWhy) ? t.sellWhy : '', k => k ? this._sellWhyLabel(k) : '未填', wOrd);
+        const byMood = grp(t => { const m = moodOf.get(iso(t.date)); return m ? m.m : ''; }, k => k ? this._moodLabel(k) : '那天沒點心情', mOrd);
+        const pick = f => rows.filter(f).map(r => r.t);
+        const early = rows.filter(r => r.plan === 'early'), late = rows.filter(r => r.plan === 'late');
+        return {
+            n: L.length, nk: rows.filter(r => r.k).length, key, maxd, rows,
+            chase: Object.assign(this._habitAgg(pick(r => r.chase)), { exp: rows.reduce((a, r) => a + (r.base != null ? r.base : 0), 0), nb: rows.filter(r => r.base != null).length }), dn: Object.assign(this._habitAgg(pick(r => r.dn)), { n3: rows.filter(r => r.dn === 3).length }),
+            early: Object.assign(this._habitAgg(early.map(r => r.t)), { fly: this._soldFlySum(early.filter(r => r.post).map(r => ({ p: r.post }))) }),
+            late: Object.assign(this._habitAgg(late.map(r => r.t)), { diff: late.reduce((a, r) => a + (r.diff || 0), 0) }),
+            ok: this._habitAgg(pick(r => r.plan === 'ok')), skip: rows.filter(r => r.plan === 'etf' || r.plan === 'lead').length,
+            rebuy, byWhy, byMood, hasWhy: byWhy.some(g => g.k), hasMood: byMood.some(g => g.k),
+        };
+    },
+    _mirrorHabitHtml(H) {
+        const C = this._HABIT_COPY, F = (t, o) => this._moodFill(t, o), esc = t => this._escHtml(String(t == null ? '' : t));
+        if (!H || !H.n) return '';
+        if (!H.nk) return `<div class="text-[10px] text-gray-500 mt-2" data-habit="0">${esc(C.head)}:${esc(C.empty)}</div>`;
+        const nf = v => (v >= 0 ? '+' : '−') + Math.abs(Math.round(v)).toLocaleString();
+        const cls = v => v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400';
+        const few = n => this._wrEnough(n) ? '' : `<span class="text-gray-500">(${esc(C.few)})</span>`;
+        const sumTxt = g => g.n ? `${g.n} 筆${few(g.n)},合計 <span class="font-mono ${cls(g.sum)}">${nf(g.sum)}</span> 元` : '0 筆';
+        const line = (k, html) => `<div class="text-[10.5px] text-gray-300 leading-snug py-0.5 border-b border-[#21262d]" data-habitk="${k}">${html}</div>`;
+        const out = [];
+        out.push(line('chase', `${esc(C.chase)}:${sumTxt(H.chase)}${H.chase.nb ? `<span class="text-gray-500">;${esc(F(C.chaseBase, { x: H.chase.exp.toFixed(1) }))}</span>` : ''}`));
+        out.push(line('dn', `${esc(C.dn)}:${sumTxt(H.dn)}${H.dn.n3 ? `(其中跌 3% 以上 ${H.dn.n3} 筆)` : ''}`));
+        const fl = H.early.fly;
+        out.push(line('early', `${esc(C.early)}:${sumTxt(H.early)}${fl && fl.n ? `;賣掉之後(最多看 ${this._POST_N} 個交易日):賣飛 ${fl.nFly} 筆少賺 <span class="font-mono">${Math.round(fl.gaveUp).toLocaleString()}</span> 元、賣對 ${fl.nRight} 筆少賠 <span class="font-mono">${Math.round(fl.avoided).toLocaleString()}</span> 元` : ''}`));
+        out.push(line('late', `${esc(C.late)}:${sumTxt(H.late)}${H.late.n ? `;跟碰到那天收盤就賣比,<span class="font-mono ${cls(H.late.diff)}">${nf(H.late.diff)}</span> 元` : ''}`));
+        out.push(line('ok', `${esc(C.ok)}:${sumTxt(H.ok)}`));
+        const R = H.rebuy;
+        if (R.n) out.push(line('rebuy', `${esc(C.rebuy)}:當天到隔天 ${R.b01} 次・2~5 個交易日 ${R.b25} 次・更久 ${R.bl} 次・還沒再買 ${R.none} 次${few(R.n)}`));
+        const row = (g, attr) => `<div class="flex flex-wrap items-baseline gap-x-1.5 text-[10.5px] py-0.5 border-b border-[#21262d]" ${attr}="${esc(g.k || 'none')}">
+            <span class="text-gray-200 min-w-0" style="flex:1 1 7em">${esc(g.label)}</span>
+            <span class="text-gray-500 font-mono">${g.n} 筆${this._wrEnough(g.n) ? `・賺 ${g.win} 筆` : `(${esc(C.few)})`}</span>
+            <span class="font-mono ${cls(g.avgPct)}">平均 ${g.avgPct >= 0 ? '+' : '−'}${Math.abs(g.avgPct).toFixed(1)}%</span>
+            <span class="font-mono ${cls(g.sum)}">${nf(g.sum)} 元</span></div>`;
+        const grp = (title, G, attr) => `<div class="text-[10.5px] font-bold text-gray-300 mt-2">${esc(title)}</div>${G.map(g => row(g, attr)).join('')}`;
+        return `<details class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5" data-habit="${H.nk}"><summary class="text-[11px] text-gray-300 cursor-pointer list-none">${esc(C.head)} <span class="text-gray-500">(${H.nk}/${H.n} 筆對得到 K 線)▾</span></summary>
+            <div class="mt-1">${out.join('')}</div>
+            ${H.hasWhy ? grp(C.byWhy, H.byWhy, 'data-habitwhy') : ''}
+            ${H.hasMood ? grp(C.byMood, H.byMood, 'data-habitmood') : ''}
+            <div class="text-[9px] text-gray-500 leading-snug mt-1.5">${esc(F(C.foot, { rule: this._exitRuleName(), maxd: H.maxd }))}</div></details>`;
+    },
+    /** 🧠 鏡子「你的習慣」那一格:背景拿 K 線算完再填(💭 關著 → 空字串)。all / kl / posts = `_mirrorXcFill` 已經抓好的(⛔ 再抓一次) */
+    async _mirrorHabitFill(all, kl, posts) {
+        if (!this._deckShow().mood) return '';
+        let twM = new Map();
+        try {
+            const tw = this._wkClosed(await this._getTwiiRows()), Mc = new Map();
+            for (const b of (tw || [])) { const d = String((b && b.date) || '').replace(/\//g, '-').slice(0, 10), c = +(b && b.close); if (d && c > 0) Mc.set(d, c); }
+            twM = this._colMktChg(Mc);
+        } catch (_) {}
+        const KL = {}; for (const sym of Object.keys(kl || {})) KL[sym] = this._wkClosed(kl[sym]);
+        const H = this._habitScan(all, KL, twM, { posts: new Map((posts || []).map(r => [r.t, r.p])),
+            buys: (this._getInventory() || []).map(i => ({ symbol: i && i.symbol, buyDate: i && i.buyDate })), mood: this._userLogRead('proTerminalMoodLog').arr });
+        return this._mirrorHabitHtml(H) + (H.nk && !twM.size ? `<div class="text-[9px] text-gray-500 mt-1">${this._escHtml(this._HABIT_COPY.noTw)}</div>` : '');
+    },
     _tradeJournalHtml() {
         const box = { className: '', innerHTML: '', classList: { remove() {}, add() {} } };
         let log = this._tradeLogNet();
@@ -51379,7 +51558,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ${this._mirrorWhyHtml(log)}
             <details><summary class="text-[10px] text-gray-500 cursor-pointer list-none">📜 最近 5 筆 · 獲利因子 ${profitFactor >= 99 ? '∞' : profitFactor.toFixed(2)} · 最大單筆虧損 ${_nf(maxLoss)}</summary><div class="mt-1">${recent}</div></details>
             <div class="text-[9px] text-gray-600 mt-1.5">💡 只算在編輯庫存按「🎯 賣出」的單,損益已扣買賣手續費與證交稅。純刪除不計入。這面鏡子照的是你自己——比任何訊號都重要。</div>
-            <div id="mirrorXc" class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5"></div>`;
+            <div id="mirrorXc" class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5"></div>${this._deckShow().mood ? '<div id="mirrorHabit"></div>' : ''}`;
         return this._mirrorRiskHtml(log) + this._tradeLogBadNote() + box.innerHTML;
     },
     /** 🛟 V82.5.1 以前的賣出紀錄有一段讀不出來(原文另外留著)→ 鏡子裡講一聲;沒有這回事就一個字都不印 */

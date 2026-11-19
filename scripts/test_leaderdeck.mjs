@@ -71,7 +71,14 @@ const R = await page.evaluate(async () => {
     const tw = ['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25', '2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05', '2026-10-06'].map(d => ({ date: d }));
     out.c1 = app._leaderClock(tw, '2026-09-21', '2026-09-21'); out.c5 = app._leaderClock(tw, '2026-09-25', '2026-09-21'); out.c11 = app._leaderClock(tw, '2026-10-05', '2026-09-21'); out.c0 = app._leaderClock(tw, '2026-09-25', null);
     // 畫面:注入 screener + 空頭 + 庫存
+    // ⏳ 2026-11-19 偶爾紅的真因:App 開機時自己也在算 👑(讀真的全市場快照 → 真的換倉日 → `_leaderRebPx` 寫快取、`_leadTodo`)。
+    //   它比我們晚做完 → 換倉價的快取被換成真的那一天 → 下面再畫就去讀真的 pick_history,列出真的那一批(⛔ 合成的)。
+    //   → 等它做完(全市場快照讀完、👑 名單沒在算、決策台沒在畫;最多 30 秒)再換成合成的;換完把 👑 名單快取清掉,下面一律用合成的重算。
+    //   之後才開始的背景工作讀到的已經是合成的(`_loadScreener` / `_getTwiiRows` 換掉了)→ 不會再蓋掉。
+    for (let k = 0; k < 300 && (app._scrData === undefined || app._leadCtxP || app._deckBusy); k++) await new Promise(r => setTimeout(r, 100));
+    out.quiet = !(app._scrData === undefined || app._leadCtxP || app._deckBusy);
     app._scrData = D; app._loadScreener = async () => D; app._getTwiiRows = async () => tw;
+    app._leadCtx = null;
     app.inventory = [{ symbol: '1001', cost: 100 }, { symbol: '1041', cost: 100 }, { symbol: '1000', cost: 100 }, { symbol: '2330', cost: 100 }];
     app._mktBear60 = async () => ({ on: false, c: 1, ma20: 1, ma60: 1 });
     const host = document.createElement('div'); host.style.width = '358px'; document.body.appendChild(host);
@@ -199,6 +206,7 @@ const R = await page.evaluate(async () => {
     out.over = [...host.querySelectorAll('*')].filter(el => { const b = el.getBoundingClientRect(); return b.width > 0 && b.right > host.getBoundingClientRect().right + 1; }).length;
     return out;
 });
+ok('🚧 開機的背景工作(全市場快照 / 👑 名單 / 決策台)做完才換成合成資料(最多等 30 秒;⛔ 沒等到 = 下面可能讀到真的那一批)', R.quiet === true, JSON.stringify(R.quiet));
 ok('① 池子 = amt20 前 100(⛔ 不是今天的 amt)、不含 ETF', R.n === 100 && !R.poolHas0050 && !R.poolHas1100 && R.poolHas1000, JSON.stringify([R.n, R.poolHas0050, R.poolHas1100]));
 ok('①b 趨勢過濾:只有 b20 > 0 且 b20 < b60 的過(50 檔)', R.passed === 50, R.passed);
 ok('①c 排名 = chg10(前 5 = 1001/1003/1005/1007/1009;⛔ 不是 chg20 那組)', JSON.stringify(R.buy) === JSON.stringify(['1001', '1003', '1005', '1007', '1009']), JSON.stringify(R.buy));

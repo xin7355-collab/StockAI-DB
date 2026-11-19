@@ -13,7 +13,7 @@
  *   ⓑ 決策台:ETF 那一列⛔ 不可跟「抱滿」同一列;有 `[data-exitetf]` 且講「買了放著」;「今天要賣的(N 檔)」的 N 不算 ETF
  *   ⓒ `_ovDecide('0050')`:state `etfhold`、badge 含「ETF」,⛔ 不含「尾盤賣」「守住」
  *   ⓓ `_exitDistance('0050')` 回 `etf:true` 的空三條(⛔ 不回 null —— null 在呼叫端是「還沒辦法幫你看」)
- *   ⓔ 決定性對照:同一份 K 線把代號換成 '2330' → 必須出現「抱滿 N 天」(N = `_maxHold()`;分流靠代號,不靠資料)
+ *   ⓔ 決定性對照:同一份 K 線把代號換成 '9990' → 必須出現「抱滿 N 天」(N = `_maxHold()`;分流靠代號,不靠資料)
  *   ⓕ 🧹 V78.3.6 散戶 App⛔ 不印實測數字:改 `_ETF_HOLD_EDGE.n` 畫面仍不出現該數字(研究成績在產業作戰室)
  *   ⓖ 靜態:`_exitMode` 對 ETF 不進出場狀態;文案只有 `_etfHoldNote` 一份(⛔ 消費端不可自己再寫一份「買了放著」數字)
  * 注入(逐一確認會紅):拿掉 `_invExitScan` 那行 continue → ⓐⓑ 紅;拿掉 `_ovDecide` 的 etfNote 分支 → ⓒ 紅
@@ -61,31 +61,34 @@ const R = await page.evaluate(async () => {
     const rows = mk();
     const buyDate = rows[4].date.replace(/\//g, '-');
     app.currentSymbolId = '9999';
-    const inv = [{ symbol: '0050', cost: 90, shares: 3, buyDate }, { symbol: '2330', cost: 90, shares: 1, buyDate }];
+    // 🧪 個股那一檔用不存在的代號 9990:App 開機時會在背景把真的 2330 K 線寫進手機快取,蓋掉這裡放的假資料(2026-11-19 偶爾紅的真因)
+    const inv = [{ symbol: '0050', cost: 90, shares: 3, buyDate }, { symbol: '9990', cost: 90, shares: 1, buyDate }];
     app._getInventory = () => inv;
-    app.getStockName = s => ({ '0050': '元大台灣50', '2330': '台積電' }[s] || s);
+    app.getStockName = s => ({ '0050': '元大台灣50', '9990': '測試個股' }[s] || s);
     await app.idb.put('proTerm_kline_0050', { data: rows, ts: Date.now() });
-    await app.idb.put('proTerm_kline_2330', { data: rows, ts: Date.now() });
+    await app.idb.put('proTerm_kline_9990', { data: rows, ts: Date.now() });
     // ⓐ
     app._invExitAt = 0;
     const sell = await app._invExitScan();
     out.sellSyms = sell.map(x => x.sym); out.etf = (app._invExitEtf || []).map(x => x.sym);
     out.nearSyms = (app._invExitNear || []).map(x => x.sym); out.farSyms = (app._invExitFar || []).map(x => x.sym); out.skip = app._invExitSkip || [];
     // ⓓ / ⓔ
-    const ed0 = app._exitDistance(rows, '0050'), ed2 = app._exitDistance(rows, '2330');
+    const ed0 = app._exitDistance(rows, '0050'), ed2 = app._exitDistance(rows, '9990');
     out.ed0 = ed0 ? { etf: ed0.etf, level: ed0.level, lines: ed0.lines.length, maxd: ed0.maxd } : null;
     out.ed2 = ed2 ? { etf: ed2.etf, level: ed2.level, due: ed2.maxd && ed2.maxd.due, n: ed2.maxd && ed2.maxd.n, mh: app._maxHold() } : null;
     // ⓒ
-    const d0 = app._ovDecide(rows, '0050'), d2 = app._ovDecide(rows, '2330');
+    const d0 = app._ovDecide(rows, '0050'), d2 = app._ovDecide(rows, '9990');
     out.d0 = d0 ? { state: d0.state, badge: d0.badge, why: String(d0.why || '').slice(0, 400), plan0: d0.plan && d0.plan[0] && d0.plan[0].t } : null;
     out.d2 = d2 ? { state: d2.state, badge: d2.badge } : null;
     // ⓑ 決策台
     app._invExitAt = 0;
+    // ⏳ App 開機時自己也在畫決策台,畫的時候再叫一次會直接跳過(`_deckBusy`)→ 等它畫完再叫(2026-11-19 偶爾紅的真因)
+    for (let k = 0; k < 300 && app._deckBusy; k++) await new Promise(r => setTimeout(r, 100));
     try { await app.renderDeck(); } catch (e) { out.deckErr = String(e); }
     const etfBox = document.querySelector('[data-exitetf]');
     out.etfBox = etfBox ? { n: etfBox.getAttribute('data-exitetf'), txt: etfBox.innerText.replace(/\s+/g, ' ').slice(0, 300) } : null;
-    const rows2330 = document.querySelector('[data-exitrow="2330"]'), rows0050 = document.querySelector('[data-exitrow="0050"]');
-    out.row2330 = rows2330 ? rows2330.innerText.replace(/\s+/g, ' ').slice(0, 200) : null;
+    const rows9990 = document.querySelector('[data-exitrow="9990"]'), rows0050 = document.querySelector('[data-exitrow="0050"]');
+    out.row9990 = rows9990 ? rows9990.innerText.replace(/\s+/g, ' ').slice(0, 200) : null;
     out.row0050 = rows0050 ? rows0050.innerText.replace(/\s+/g, ' ').slice(0, 200) : null;
     const hdr = [...document.querySelectorAll('div')].map(d => d.textContent || '').find(t => /今天要賣的\(\d+ 檔\)/.test(t) && t.length < 40) || '';
     out.hdr = hdr;
@@ -96,27 +99,27 @@ const R = await page.evaluate(async () => {
     out.note99 = !h99.includes('99 檔') && !/實測|回測|勝率|期望值|\dpp|含息|贏.{0,3}0050|輸.{0,3}0050|探針|etf_signal_probe/.test(h99) && /買了放著/.test(h99);
     out.note99txt = h99.slice(0, 200);
     app._ETF_HOLD_EDGE.n = n0;
-    out.noteStock = app._etfHoldNote('2330');
+    out.noteStock = app._etfHoldNote('9990');
     return out;
 });
 await browser.close();
 
-ok('🚧 空過守門:掃到兩檔庫存(0050 + 2330),⛔ 沒有被「K 線不足」跳過', R.skip.length === 0 && (R.sellSyms.length + R.nearSyms.length + R.farSyms.length + R.etf.length) === 2, JSON.stringify({ skip: R.skip, sell: R.sellSyms, etf: R.etf }));
+ok('🚧 空過守門:掃到兩檔庫存(0050 + 9990),⛔ 沒有被「K 線不足」跳過', R.skip.length === 0 && (R.sellSyms.length + R.nearSyms.length + R.farSyms.length + R.etf.length) === 2, JSON.stringify({ skip: R.skip, sell: R.sellSyms, etf: R.etf }));
 ok('ⓐ 0050 ⛔ 不進 out/near/far,另列 `_invExitEtf`', !R.sellSyms.includes('0050') && !R.nearSyms.includes('0050') && !R.farSyms.includes('0050') && R.etf.includes('0050'), JSON.stringify({ sell: R.sellSyms, etf: R.etf }));
-ok('ⓐb 2330(同一份 K 線)照舊:抱了 55 天 → 進「今天要賣的」', R.sellSyms.includes('2330'), JSON.stringify(R.sellSyms));
+ok('ⓐb 9990(同一份 K 線)照舊:抱了 55 天 → 進「今天要賣的」', R.sellSyms.includes('9990'), JSON.stringify(R.sellSyms));
 ok('ⓓ `_exitDistance(\'0050\')` 回 `etf:true` 的空三條(⛔ 不是 null)', !!(R.ed0 && R.ed0.etf === true && R.ed0.level === 'etf' && R.ed0.lines === 0 && !R.ed0.maxd), JSON.stringify(R.ed0));
 // 🔁 V77.7.6 最長天數跟著出場規則走(預設吊燈 ATR = 20)→ 釘「等於 `_maxHold()`」,⛔ 不寫死 40
-ok('ⓔ 決定性對照:同一份 K 線、代號 2330 → 抱滿上限到期(分流靠代號不靠資料)', !!(R.ed2 && !R.ed2.etf && R.ed2.due === true && R.ed2.n === R.ed2.mh && R.ed2.mh > 0), JSON.stringify(R.ed2));
+ok('ⓔ 決定性對照:同一份 K 線、代號 9990 → 抱滿上限到期(分流靠代號不靠資料)', !!(R.ed2 && !R.ed2.etf && R.ed2.due === true && R.ed2.n === R.ed2.mh && R.ed2.mh > 0), JSON.stringify(R.ed2));
 ok('ⓒ `_ovDecide(\'0050\')` state=etfhold、badge 含 ETF', !!(R.d0 && R.d0.state === 'etfhold' && /ETF/.test(R.d0.badge)), JSON.stringify(R.d0 && { s: R.d0.state, b: R.d0.badge }));
 ok('ⓒb 主卡文案⛔ 不含「尾盤賣」「守住」,而且講「買了放著」', !!(R.d0 && !/尾盤賣|守住/.test(R.d0.why + R.d0.badge) && /買了放著/.test(R.d0.why)), R.d0 && R.d0.why);
 ok('ⓒc 行動清單第一條是「買了放著」(⛔ 不是「今天尾盤賣」)', !!(R.d0 && /買了放著/.test(R.d0.plan0 || '')), R.d0 && R.d0.plan0);
-ok('ⓒd 對照:2330 同一份資料 → state=exit(抱滿到期)', !!(R.d2 && R.d2.state === 'exit'), JSON.stringify(R.d2));
+ok('ⓒd 對照:9990 同一份資料 → state=exit(抱滿到期)', !!(R.d2 && R.d2.state === 'exit'), JSON.stringify(R.d2));
 ok('ⓑ 決策台有 `[data-exitetf="1"]` 且講「買了放著」與檔數', !!(R.etfBox && R.etfBox.n === '1' && /買了放著/.test(R.etfBox.txt) && /0050/.test(R.etfBox.txt)), JSON.stringify(R.etfBox));
 ok('ⓑb 0050 ⛔ 不可出現在賣出列(`[data-exitrow="0050"]` 不存在)', R.row0050 == null, R.row0050);
-ok('ⓑc 2330 在賣出列而且寫「時間到期 / 抱滿」', !!(R.row2330 && /抱滿|時間到期/.test(R.row2330)), R.row2330);
+ok('ⓑc 9990 在賣出列而且寫「時間到期 / 抱滿」', !!(R.row9990 && /抱滿|時間到期/.test(R.row9990)), R.row9990);
 ok('ⓑd 「今天要賣的(N 檔)」的 N 不算 ETF(= 1)', /今天要賣的\(1 檔\)/.test(R.hdr), R.hdr);
 ok('ⓕ 🧹 V78.3.6 一般模式⛔ 不印實測數字:`_ETF_HOLD_EDGE.n` 改 99 → 文案仍沒有 99 檔 / 研究字樣,「買了放著」還在', R.note99 === true, R.note99txt);
-ok('ⓕb 個股⛔ 不會拿到 ETF 文案(`_etfHoldNote(\'2330\')` 是 null)', R.noteStock === null, JSON.stringify(R.noteStock));
+ok('ⓕb 個股⛔ 不會拿到 ETF 文案(`_etfHoldNote(\'9990\')` 是 null)', R.noteStock === null, JSON.stringify(R.noteStock));
 ok('無 pageerror', errs.length === 0, errs.join(' | '));
 if (R.deckErr) ok('renderDeck 沒有 throw', false, R.deckErr);
 
