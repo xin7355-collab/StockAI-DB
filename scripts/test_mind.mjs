@@ -56,7 +56,8 @@ const mk = (stk, zh) => ({
     seats: { fi: [g('fis', '外資現貨買賣超(今天)', -243.12, '億', today, 20.24, 751, '2023-09-14', '2026-10-19', 'fi-outflow'), { k: 'fim', name: '外資本月累計', v: -8303.2, unit: '億', d: today, lab: 'fi-follow', note: '月報' },
         g('fi5', '外資現貨 5 日合計', -1233.4, '億', today, 4.5, 751, '2023-09-12', '2026-11-18', 'fi-outflow', { side: 'both', hiw: '買超大', low: '賣超大', note: '這 5 筆官方每日值加總(上市)' }),
         { k: 'fiy', name: '外資現貨今年累計(2026)', v: -6780.2, unit: '億', d: today, lab: 'fi-follow', note: '214 個交易日的官方每日值加總(上市);今年到現在跟整年不能比 → 不排第幾' },
-        { k: 'usdtw', name: '這一波:用台幣算 vs 用美元算', v: -26.5, unit: '%', d: today, lab: null, note: '離近一年高點:用台幣算 −22.87%(高點 2026-10-06)、用美元算 −26.5%(高點 2026-10-06);同一段台幣貶 4.9%' }],
+        { k: 'usdtw', name: '這一波:用台幣算 vs 用美元算', v: -26.5, unit: '%', d: today, lab: null, note: '離近一年高點:用台幣算 −22.87%(高點 2026-10-06)、用美元算 −26.5%(高點 2026-10-06);同一段台幣貶 4.9%' },
+        g('adr', '台積電 ADR 溢價', 9.32, '%', today, 2.19, 251, '2025-11-14', '2026-11-12', 'adr-premium', { side: 'both', lo: 1.99, hi: 97.61, hiw: '溢價大(美國那邊比較願意付)', low: '溢價小 / 折價', note: 'ADR 360.74 美元 × 匯率 32.955 ÷ 5 vs 台股 2175;排第幾 = 跟過去一年(美股 250 天)比' })],
         trust: [], retail: [{ ref: 'mg20' }], insider: [{ k: 'ins', name: '董監 / 大股東申報在市場上賣', v: 9, unit: '家', d: today, lab: 'insider-sell', list: ['某公司 1234'], note: '近 5 個交易日' }],
         gov: [{ k: 'nsf', name: '國安基金', v: null, d: '2026-11-06', lab: 'nsf-entry', note: '還在執行' }] },
     fx: [{ k: 'usdtwd', name: '美元 / 台幣', v: 33, c1: 0.27, c5: 0.42, c20: 1.23, pos: { pct: 80.5, lo: 80, hi: 19, n: 250, from: '2025-11-20', to: '2026-11-19' }, hs: 'FRED DEXTAUS(到 2026-11-14)', d: today, note: '', lab: 'usd-dd' },
@@ -116,6 +117,7 @@ try {
             const vCol = k => { const e = document.querySelector(`[data-mind-seat="fi"] [data-mind-row="${k}"] .mind-v`); return e ? getComputedStyle(e).color : ''; };
             o.fi5Col = vCol('fi5'); o.fisCol = vCol('fis'); o.fimCol = vCol('fim');
             o.fiyFact = !!document.querySelector('[data-mind-seat="fi"] .mind-fact[data-mind-row="fiy"]') && !document.querySelector('[data-mind-seat="fi"] [data-mind-row="fiy"] [data-mind-bar]');
+            { const ar = document.querySelector('[data-mind-seat="fi"] [data-mind-row="adr"]'); if (ar) ar.open = true; o.adrTxt = ar ? ar.innerText : ''; o.adrLab = ar ? (ar.querySelector('[data-mind-lab]') || { dataset: {} }).dataset.mindLab || null : null; o.adrBar = !!(ar && ar.querySelector('[data-mind-bar]')); }
             o.fi5Bar = !!document.querySelector('[data-mind-seat="fi"] [data-mind-row="fi5"] [data-mind-bar]');
             PRO.mindSel('fx'); await new Promise(r => setTimeout(r, 30));
             o.fxTxt = T('tabMind'); o.fxRows = [...document.querySelectorAll('[data-mind-list="fx"] [data-mind-fx]')].map(e => e.dataset.mindFx); o.sxFx = sx();
@@ -173,6 +175,7 @@ try {
         ok('⑨ 外資今年累計是事實列(⛔ 尺、⛔ 排第幾)', R.fiyFact && /外資現貨今年累計\(2026\)/.test(R.seatTxt) && /不排第幾/.test(R.seatTxt), R.fiyFact);
         ok('⑧ 🔬 V82.5.9 匯率表測過的那一列(美元 / 台幣 → usd-dd)轉述實測總表那一條;沒測過的列 ⛔ 每一列都印「還沒測過」',
            JSON.stringify(R.fxLab) === JSON.stringify([['usdtwd', 'usd-dd'], ['dxy', null], ['gold_usd', null]]) || JSON.stringify(R.fxLab.slice().sort()) === JSON.stringify([['dxy', null], ['gold_usd', null], ['usdtwd', 'usd-dd']]), JSON.stringify(R.fxLab));
+        ok('⑩ 🇺🇸 V82.6.1 台積電 ADR 溢價那一格:有尺(跟過去一年比)、轉述實測總表 adr-premium(⛔ 實測沒用)', R.adrLab === 'adr-premium' && R.adrBar && /實測沒用/.test(R.adrTxt) && /過去一年/.test(R.adrTxt), JSON.stringify([R.adrLab, R.adrBar, (R.adrTxt || '').slice(0, 160)]));
         ok('⑨ 📊 V82.6.0 成交集中度那條:轉述實測總表 conc-extreme(⛔ 實測沒用)、寫今天單日、⛔ 標「貪」', R.concLab === 'conc-extreme' && /實測沒用/.test(R.concTxt || '') && /今天單日 33\.98%/.test(R.concTxt || '') && !/貪/.test(R.concTxt || ''), JSON.stringify([R.concLab, (R.concTxt || '').slice(0, 160)]));
         ok('⑧ 外資座位有「用台幣算 vs 用美元算」那一行', /用台幣算 vs 用美元算/.test(R.seatTxt) && /用美元算 −26\.5%/.test(R.seatTxt), R.seatTxt.slice(0, 200));
         ok('② 匯率照 1 日排、再點一次反向(讀不到的排最後)', JSON.stringify(R.fxC1) === '["usdtwd","dxy","gold_usd"]' && JSON.stringify(R.fxC1b) === '["dxy","usdtwd","gold_usd"]', JSON.stringify([R.fxC1, R.fxC1b]));

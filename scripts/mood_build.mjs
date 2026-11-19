@@ -28,6 +28,7 @@ import { states, ZH, STATE_RULES } from './psych_state_probe.mjs';
 import { NSF } from './stopfall_probe.mjs';
 import { NSF_EXIT } from './nsf_probe.mjs';
 import { concDaily, rollMean } from './lib_conc.mjs';
+import { adjust as adrAdjust, premium as adrPremium } from './adr_premium_probe.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const MIN_N = 20;          // 歷史不到 20 天 → 不給排第幾(只寫「還在累積」)
@@ -300,12 +301,27 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
         seats.fi.push(gauge('lt10', '台指期前 10 大交易人淨部位 ÷ 未平倉', 'both', ratio(lk), '%', lk, { vals: ks.slice(0, -1).map(ratio), from: d10(ks[0]), to: d10(lk) }, 'pcr-largetrader',
             { note: `前 10 大淨 ${Array.isArray(x) ? x[1] : '—'} 口 ÷ 全市場 ${Array.isArray(x) ? x[2] : '—'} 口(期交所台指期大額交易人,主力近月;明日作戰清單那一步接著補)` + ((TX.daily && TX.daily.err && TX.daily.err.lt) ? `。⚠️ 最近一次接著補沒成功:${TX.daily.err.lt}` : '') }));
     }
-    // 台積電 ADR 溢價(只有今天;排第幾第 6 期)
+    // 台積電 ADR 溢價:🇺🇸 V82.6.1 跟過去一年(美股 250 天)比 —— 歷史 = us_hist 的 TSM(還原過股利)÷ 2330 用同一種方式還原
+    //   (adr_premium_probe 的 adjust / premium,研究同一份 ⛔ 另寫;陷阱 #49 同一把尺);今天 = 總經風險檔的原始價格
+    //   (最近一次除息之後兩邊都還沒有還原差)。2330 除息紀錄讀不到 → 不排(⛔ 拿還原過的 ADR 比原始的 2330)
     const k2330 = rdj(dir, '2330.json');
     const r2330 = Array.isArray(k2330.j) ? k2330.j.filter(r => num(r.close) > 0).at(-1) : null;
     if (num(m.tsm) > 0 && num(m.usdtwd) > 0 && r2330) {
-        seats.fi.push({ k: 'adr', name: '台積電 ADR 溢價', side: 'both', v: r2((num(m.tsm) * num(m.usdtwd) / 5 / num(r2330.close) - 1) * 100), unit: '%', d: d10(m.tsm_date), pct: null, n: 0, lab: null,
-            note: `ADR ${num(m.tsm)} 美元(${d10(m.tsm_date)})× 匯率 ${num(m.usdtwd)} ÷ 5 vs 台股 ${num(r2330.close)}(${d10(r2330.date)});兩邊收盤時間不同。歷史排第幾 ⏳:美股日線那份是還原過股利的價格,跟台股原始價格不是同一把尺(陷阱 #46),要等有原始價格的 ADR 歷史` });
+        const v = (num(m.tsm) * num(m.usdtwd) / 5 / num(r2330.close) - 1) * 100, td = d10(m.tsm_date) || today;
+        let vals = [], hfrom = null, hto = null, hwhy = null;
+        const ts = us.j && us.j.syms && us.j.syms.TSM, dv = rdj(dir, 'dividends_hist.json'), dh = dv.j && (dv.j.d || dv.j) && (dv.j.d || dv.j)['2330'];
+        if (!ts || !Array.isArray(ts.c) || !Array.isArray(us.j.days)) hwhy = us.err || 'us_hist 沒有 TSM';
+        else if (!FH || !FH.usdtwd) hwhy = fh.err || 'fred_hist 沒有 usdtwd';
+        else if (!dh || !Array.isArray(dh.h)) hwhy = dv.err || 'dividends_hist 沒有 2330 的除息紀錄(⛔ 拿還原過的 ADR 比原始的 2330)';
+        else {
+            const US = { d: [], c: [] }; us.j.days.forEach((d, i) => { const x = num(ts.c[i]); if (x > 0 && d10(d) < td) { US.d.push(d10(d)); US.c.push(x); } });
+            const fx = fredPts(FH, 'usdtwd'), FX = { d: fx.map(x => x[0]), v: fx.map(x => x[1]) };
+            const rows = k2330.j.filter(r => num(r.close) > 0), T = adrAdjust({ d: rows.map(r => d10(r.date)), c: rows.map(r => num(r.close)) }, dh.h);
+            const P = adrPremium(US, FX, T, T).slice(-250);
+            if (P.length >= MIN_N) { vals = P.map(x => x.p); hfrom = P[0].t; hto = P.at(-1).t; } else hwhy = `ADR 歷史只對得上 ${P.length} 天`;
+        }
+        seats.fi.push(gauge('adr', '台積電 ADR 溢價', 'both', v, '%', td, { vals, from: hfrom, to: hto }, 'adr-premium', { hiw: '溢價大(美國那邊比較願意付)', low: '溢價小 / 折價',
+            note: `ADR ${num(m.tsm)} 美元(${d10(m.tsm_date)})× 匯率 ${num(m.usdtwd)} ÷ 5 vs 台股 ${num(r2330.close)}(${d10(r2330.date)});兩邊收盤時間不同。排第幾 = 跟過去一年(美股 250 天)比${hwhy ? `・⏳ ${hwhy}` : '・歷史 = 美股日線那份(手動更新)÷ 2330 同樣還原過股利'}` }));
     } else M('adr', '台積電 ADR 溢價', mr.err || k2330.err || 'ADR、匯率或 2330 讀不到');
     // 💱 這一波:用台幣算 vs 用美元算(外資看的是美元)—— 加權 ÷ 美元台幣(FRED,沒有的那幾天用前面最近一筆,最多 7 天;今天用總經風險檔的匯率)
     {
@@ -631,6 +647,25 @@ function selftest() {
         ok('⑰d 只有 30 天(近 20 天平均排不出第幾)→ ⛔ 那一條、進 miss 寫原因', !g17d && m17d.miss.some(x => x.k === 'conc' && /只算得出 30 天/.test(x.why)), JSON.stringify(m17d.miss.filter(x => x.k === 'conc')));
         const m17e = ck({ rows: [], err: 'data/ 讀不到' });
         ok('⑰e 讀不到 → 原因照寫(⛔ 當 0)', !m17e.crowd.some(g => g.k === 'conc') && m17e.miss.some(x => x.k === 'conc' && /讀不到/.test(x.why)));
+        // ⑱ 🇺🇸 V82.6.1 台積電 ADR 溢價:跟過去一年比;歷史 = 還原過股利的 TSM ÷ 2330 用同一種方式還原(adr_premium_probe 同一份)
+        //   固定世界:2330 原始 1000、中間某天除息 20(參考價 980)之後 980;TSM 還原過股利 = 980 × 1.2 × 5 ÷ 30 → 溢價一路都是 20%
+        const aD = calD.slice(ai - 299, ai + 1), xD = aD[150], usD = aD.slice(0, -1);
+        W('2330.json', aD.map(d => ({ date: d.replace(/-/g, '/'), close: d < xD ? 1000 : 980 })));
+        W('fred_hist.json', FHfix(Object.fromEntries(aD.map(d => [d, 30]))));
+        W('us_hist.json', { adj: true, days: usD, syms: { TSM: { c: usD.map(() => 980 * 1.2 * 5 / 30) } } });
+        W('dividends_hist.json', { d: { 2330: { h: [[xD, 20, '息', 1000, 980]] } } });
+        const MA = { ...M0, usdtwd: 30, usdtwd_date: asof, tsm: 196, tsm_date: asof };
+        W('macro_risk.json', MA);
+        const adrOf = () => build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT, conc: { rows: [] } }).mood.seats.fi.find(g => g.k === 'adr');
+        const a18 = adrOf();
+        ok('⑱ ADR 溢價:今天 20%、過去一年(250 天)還原後也一直是 20% → 排在正中間、帶 adr-premium', a18 && Math.abs(a18.v - 20) < 0.01 && a18.pct === 50 && a18.n === 251 && a18.lab === 'adr-premium' && a18.to === usD.at(-1), JSON.stringify(a18 && { v: a18.v, pct: a18.pct, n: a18.n, from: a18.from, to: a18.to }));
+        W('macro_risk.json', { ...MA, tsm: 980 * 1.3 * 5 / 30 });
+        const a18b = adrOf();
+        ok('⑱b 決定性對照:今天溢價變 30% → 比過去一年都高(hi 0)', a18b && Math.abs(a18b.v - 30) < 0.01 && a18b.hi === 0, JSON.stringify(a18b && { v: a18b.v, hi: a18b.hi }));
+        W('macro_risk.json', MA); W('dividends_hist.json', { d: {} });
+        const a18c = adrOf();
+        ok('⑱c 2330 除息紀錄讀不到 → ⛔ 排第幾、寫原因(⛔ 拿還原過的 ADR 比原始的 2330)', a18c && a18c.pct == null && /除息紀錄/.test(a18c.note), JSON.stringify(a18c && { pct: a18c.pct, note: a18c.note }));
+        for (const f of ['2330.json', 'us_hist.json', 'dividends_hist.json']) fs.rmSync(path.join(tmp, f), { force: true });
     } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
     console.log(bad ? `\n❌ ${bad} 條沒過` : '\n✅ 全部通過');
     return bad ? 1 : 0;
