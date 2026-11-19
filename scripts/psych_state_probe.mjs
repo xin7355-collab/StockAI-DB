@@ -19,6 +19,8 @@
  * ⛔ RESEARCH_ONLY:結果只進 pro.html 實測總表,⛔ 散戶 App。
  *
  * 跑法:IDX_LONG=$S/k_idx_long.json IDX_EARLY=$S/k_idx_long_early.json TWII_NOW=$S/k6/twii_now.json node scripts/psych_state_probe.mjs out.json
+ *       GATE_OUT=<資料夾> → 另外寫 gate_panic / gate_greed / gate_both.json(狀態是恐慌 / 貪婪那天的**下一個交易日**;回測 DAYGATE 用,
+ *       EXP-20261119-01「恐慌 / 貪婪那幾天先不買」)+ states.json({日期: 狀態})
  *       node scripts/psych_state_probe.mjs --selftest
  */
 import fs from 'fs';
@@ -77,6 +79,13 @@ export function states(S, R = STATE_RULES, start = START) {
         prev = step(prev, F.D[i], F.V[i], F.M[i], R); st[i] = prev;
     }
     return { st, F };
+}
+
+/** 🚦 擋買的日子:狀態在 which 裡的那一天 → 它的**下一個交易日**(App 看的是前一晚收盤後的狀態;⛔ 用當天收盤後才知道的去擋當天)。純函式 */
+export function gateDays(S, st, which) {
+    const set = new Set(which), out = [];
+    for (let i = 0; i + 1 < S.d.length; i++) if (st[i] && set.has(st[i])) out.push(S.d[i + 1]);
+    return out;
 }
 
 /** 之後 h 天報酬(含息有就用)、之後 h 天內最大回檔 */
@@ -191,12 +200,29 @@ function selftest() {
     // ⑧ 只有距一年高 ≤ −10% 的日子算(D = −5 的恐慌 ⛔ 進池子)
     const rows8 = mk(8).map(r => r.s === 'PANIC' ? { ...r, D: -5 } : r);
     t(judge(rows8).verdict === '樣本不夠', '⑧ 池子只收距一年高 ≤ −10%(恐慌全在 −5% → 樣本不夠)');
+    // ⑨ 擋買的日子 = 那個狀態的下一個交易日(最後一天沒有下一天 → 不擋)
+    const g9 = { d: ['2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08'] }, s9 = [null, 'PANIC', 'NEUTRAL', 'GREED'];
+    t(JSON.stringify(gateDays(g9, s9, ['PANIC'])) === '["2026-01-07"]' && JSON.stringify(gateDays(g9, s9, ['PANIC', 'GREED'])) === '["2026-01-07"]' && !gateDays(g9, s9, ['GREED']).length,
+      '⑨ 擋的是下一個交易日;最後一天的狀態沒有下一天 → 不擋');
+    // ⑩ ⛔ 偷看未來:改掉第 1000 天以後的價格,第 1000 天以前要擋的日子一模一樣
+    const gA = gateDays(S, A.st, ['PANIC', 'GREED']).filter(x => x <= d[999]), gB = gateDays({ d, c: c2 }, B.st, ['PANIC', 'GREED']).filter(x => x <= d[999]);
+    t(gA.length > 0 && JSON.stringify(gA) === JSON.stringify(gB), `⑩ 改掉未來的價格,之前要擋的日子一模一樣(${gA.length} 天)`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
 
 if (process.argv[1] && process.argv[1].endsWith('psych_state_probe.mjs')) {
     if (process.argv.includes('--selftest')) process.exit(selftest());
-    const out = run(loadIndex());
+    const S0 = loadIndex(), out = run(S0);
     if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify(out, null, 1));
+    if (process.env.GATE_OUT) {
+        const G = process.env.GATE_OUT, { st } = states(S0);
+        fs.mkdirSync(G, { recursive: true });
+        const m = {}; for (let i = 0; i < S0.d.length; i++) if (st[i]) m[S0.d[i]] = st[i];
+        fs.writeFileSync(`${G}/states.json`, JSON.stringify(m));
+        for (const [k, w] of [['panic', ['PANIC']], ['greed', ['GREED']], ['both', ['PANIC', 'GREED']]]) {
+            const b = gateDays(S0, st, w); fs.writeFileSync(`${G}/gate_${k}.json`, JSON.stringify({ block: b }));
+            console.log(`🚦 gate_${k}:${b.length} 天(2011 起 ${b.filter(x => x >= '2011-01-01').length} 天・最後 ${b[b.length - 1] || '—'})`);
+        }
+    }
 }

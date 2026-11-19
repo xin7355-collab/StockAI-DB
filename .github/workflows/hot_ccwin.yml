@@ -9,6 +9,9 @@ name: 🧾 🔥 名單層濾網疊加 + 安慰劑 (hot_ccwin)
 #   BASE / INS 跑 16 年(WARMUP 251+3k)+ 近 4 年(3125+3k)各 17 條;安慰劑只跑 16 年。
 #   判定 = scripts/ccwin_overlay_probe.mjs(條件照登記寫死,結果在 Step Summary + artifact)。
 #   📉 src=revdec(EXP-20261113-05):事件換成「營收衰退中」(rev_decline_probe EVENTS_OUT,釘住的 stock_deep/rev),其他一模一樣。
+#   🌡️ src=psych(EXP-20261119-01):⛔ 名單層濾網,改成整天不買 —— 大盤心理狀態機(psych_state_probe,釘住的 data 分支 idx_long /
+#      idx_long_early / ^TWII)是恐慌或貪婪那天的**下一個交易日**先不買(DAYGATE,只在 ④;0050 照停、手上的照出場);
+#      安慰劑 S1 S2 S3 = 同一份擋法循環平移 63 / 126 / 189 個交易日(DAYGATE_SHIFT;擋幾天、連續多長一模一樣)。名單 ② 不動。
 # ⛔ 排程(手動才跑,一次約 3~4 小時);⛔ 寫任何分支;自己的 concurrency(⛔ 跟 hot_wf 同一個 group —— 同一個 group 只留一個排隊中的,
 #   後派的會把對方排隊中的那輪取消掉)。
 
@@ -16,11 +19,11 @@ on:
   workflow_dispatch:
     inputs:
       src:
-        description: 'insider = 申報轉讓(EXP-20261113-03)・revdec = 營收衰退中(EXP-20261113-05)'
+        description: 'insider = 申報轉讓(EXP-20261113-03)・revdec = 營收衰退中(EXP-20261113-05)・psych = 恐慌 / 貪婪那幾天先不買(EXP-20261119-01)'
         required: false
         default: 'insider'
         type: choice
-        options: [insider, revdec]
+        options: [insider, revdec, psych]
       only:
         description: '只跑這幾組(例 BASE,INS;空白 = BASE INS S1 S2 S3 全跑)'
         required: false
@@ -110,9 +113,22 @@ jobs:
         env:
           INS_REF: ${{ needs.pin.outputs.ins }}
           SD_REF: ${{ needs.pin.outputs.sd }}
+          DATA_REF: ${{ needs.pin.outputs.data }}
           SRC: ${{ inputs.src }}
         run: |
           set -eo pipefail
+          if [ "$SRC" = psych ]; then
+            git fetch -q origin "$DATA_REF"
+            mkdir -p /tmp/psy
+            for f in idx_long.json idx_long_early.json '^TWII.json'; do git show "$DATA_REF:data/$f" > "/tmp/psy/$f"; done
+            IDX_LONG=/tmp/psy/idx_long.json IDX_EARLY=/tmp/psy/idx_long_early.json TWII_NOW='/tmp/psy/^TWII.json' GATE_OUT=/tmp/psy node scripts/psych_state_probe.mjs | tail -4
+            cp /tmp/psy/gate_both.json /tmp/dgate.json
+            [ -s /tmp/dgate.json ] || { echo "::error::$K 擋的日子是空的"; exit 1; }
+            case "$CC" in 1) SH=63 ;; 2) SH=126 ;; 3) SH=189 ;; *) SH= ;; esac
+            { echo "DGF=/tmp/dgate.json"; echo "DGS=$SH"; } >> "$GITHUB_ENV"
+            echo "🌡️ $K:恐慌 + 貪婪的下一個交易日先不買・平移 ${SH:-0} 天"
+            exit 0
+          fi
           if [ "$SRC" = revdec ]; then
             git fetch -q origin "$SD_REF"
             mkdir -p /tmp/sd
@@ -149,7 +165,7 @@ jobs:
           fail () { echo "::error::$K $1"; exit 1; }
           T0=$(date +%s); tsec () { echo "$(( $(date +%s) - T0 ))s"; }
           echo "🖥️ $(nproc) 核心・記憶體 $(free -m | awk '/Mem:/{print $2}') MB"
-          if [ -n "$CC" ] && [ ! -s "$CCF" ]; then fail "要擋事件但沒有事件清單"; fi
+          if [ -n "$CC" ] && [ ! -s "${CCF:-}" ] && [ ! -s "${DGF:-}" ]; then fail "要擋但沒有事件清單 / 擋的日子"; fi
           # ① 交易快取:4 片平行(⛔ 帶 CCWIN —— 快取是全部觸發,濾網只在名單 ② 與回測 ④)
           pids=""
           for k in 0 1 2 3; do
@@ -163,7 +179,9 @@ jobs:
           rm -f /tmp/tc.s0.ndjson /tmp/tc.s1.ndjson /tmp/tc.s2.ndjson /tmp/tc.s3.ndjson
           echo "🧱 交易快取 $(du -h /tmp/tc.ndjson | cut -f1)・$(tsec)"
           export TRADES_CACHE=/tmp/tc.ndjson ALLFIRE=1 GATE=lb CLIFF=20 STATS_WIN=1200 MIN_MKT_N=0 MIN_N=8 LB_Z=0 LB_TOP=99 LISTK=2 FILTER=
-          if [ -n "$CC" ]; then export CCWIN="$CCF" CCWIN_PRE=0 CCWIN_POST=19; fi
+          if [ -n "$CC" ] && [ -n "${CCF:-}" ]; then export CCWIN="$CCF" CCWIN_PRE=0 CCWIN_POST=19; fi
+          # 🌡️ psych:整天不買只在 ④(名單 ② 照舊)
+          DG=(); if [ -n "${DGF:-}" ]; then DG+=("DAYGATE=$DGF"); if [ -n "${DGS:-}" ]; then DG+=("DAYGATE_SHIFT=$DGS"); fi; fi
           # ② 每一晚的名單(前 60 筆、單一起點、空頭照買;有 CCWIN = 被擋的拿掉、下一檔遞補)
           SELF=high+hivolat+nobear PARK= LIST_DUMP=/tmp/dump.ndjson LIST_DUMP_N=60 WARMUP=251 node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -6
           [ -s /tmp/dump.ndjson ] || fail "名單沒產出"
@@ -182,7 +200,7 @@ jobs:
           # ④ 17 條起點(🅿️ 閒錢停 0050 = App 預設);BASE / INS 再加近 4 年 17 條
           mkdir -p /tmp/eq /tmp/out/$K/eq16 /tmp/out/$K/eq4 /tmp/out/$K/taken16
           W=$(node -e "const a=Array.from({length:17},(_,k)=>251+3*k);if(process.env.W4==='1')for(let k=0;k<17;k++)a.push(3125+3*k);console.log(a.join(','))")
-          SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson PARK=idle WARMUPS="$W" EQUITY_OUT='/tmp/eq/eq_{W}.json' SUMMARY_OUT='/tmp/eq/sum_{W}.json' TAKEN_OUT='/tmp/eq/taken_{W}.json' \
+          env "${DG[@]}" SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson PARK=idle WARMUPS="$W" EQUITY_OUT='/tmp/eq/eq_{W}.json' SUMMARY_OUT='/tmp/eq/sum_{W}.json' TAKEN_OUT='/tmp/eq/taken_{W}.json' \
             node --max-old-space-size=7000 scripts/portfolio_backtest.mjs 9999 2 | tail -24
           for w in $(echo "$W" | tr ',' ' '); do
             if [ "$w" -lt 3000 ]; then d=16; else d=4; fi
@@ -231,7 +249,7 @@ jobs:
           ls /tmp/v
           node scripts/ccwin_overlay_probe.mjs verdict /tmp/v /tmp/v/verdict.json | tee /tmp/v/verdict.txt
           if [ -d /tmp/all/BASE/taken16 ] && [ -d /tmp/all/INS/taken16 ]; then node scripts/ccwin_overlay_probe.mjs tail /tmp/all/BASE/taken16 /tmp/all/INS/taken16 | tee /tmp/v/tail.txt; fi
-          if [ "$SRC" = revdec ]; then T='### 📉 營收衰退中疊到 🔥(EXP-20261113-05)'; else T='### 🧾 申報轉讓疊到 🔥(EXP-20261113-03)'; fi
+          if [ "$SRC" = revdec ]; then T='### 📉 營收衰退中疊到 🔥(EXP-20261113-05)'; elif [ "$SRC" = psych ]; then T='### 🌡️ 恐慌 / 貪婪那幾天先不買疊到 🔥(EXP-20261119-01)'; else T='### 🧾 申報轉讓疊到 🔥(EXP-20261113-03)'; fi
           { echo "$T"; echo; echo '```'; cat /tmp/v/verdict.txt; [ -f /tmp/v/tail.txt ] && tail -1 /tmp/v/tail.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
