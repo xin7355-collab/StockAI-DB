@@ -32,8 +32,10 @@ on:
         required: false
         default: ''
 
+# 🧵 2026-11-19 每一種來源各自一個 group:不同題目可以同時跑(各自只讀分支、只上傳 artifact,⛔ 寫任何分支);
+#   同一種來源照舊只留一個排隊中的。⚠️ 兩題同時跑 = 10 個 job,避開台北 16:30~18:00 每日採礦那段(它自己就要 20 個)。
 concurrency:
-  group: hot-ccwin
+  group: hot-ccwin-${{ inputs.src || 'insider' }}
   cancel-in-progress: false
 
 permissions:
@@ -99,7 +101,9 @@ jobs:
         if: steps.sel.outputs.run == '1'
         run: |
           npm i -D playwright@1.49.1
-          npx playwright install --with-deps chromium
+          # 🔁 2026-11-19 Ubuntu 套件庫偶爾 503(那天 S1 / S2 在裝字型時掛掉,回測一行都還沒跑)→ 最多試 3 次、每次隔 60 秒
+          for k in 1 2 3; do npx playwright install --with-deps chromium && exit 0; echo "⚠️ 第 $k 次安裝瀏覽器失敗,60 秒後再試"; sleep 60; done
+          exit 1
 
       - name: 📦 研究資料包 d16(版本釘住)
         if: steps.sel.outputs.run == '1'
