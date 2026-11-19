@@ -12,6 +12,9 @@ name: 🧾 🔥 名單層濾網疊加 + 安慰劑 (hot_ccwin)
 #   🌡️ src=psych(EXP-20261119-01):⛔ 名單層濾網,改成整天不買 —— 大盤心理狀態機(psych_state_probe,釘住的 data 分支 idx_long /
 #      idx_long_early / ^TWII)是恐慌或貪婪那天的**下一個交易日**先不買(DAYGATE,只在 ④;0050 照停、手上的照出場);
 #      安慰劑 S1 S2 S3 = 同一份擋法循環平移 63 / 126 / 189 個交易日(DAYGATE_SHIFT;擋幾天、連續多長一模一樣)。名單 ② 不動。
+#   😱 src=panic(EXP-20261119-02 恐慌賣的代價):⛔ 擋買,改成「加權收盤跌 ≥ 3% 那天的下一個交易日開盤,把手上個股全部賣掉、之後照規則再買」
+#      (PANIC_SELL=-3,只在 ④;鎖跌停 / 停牌那天賣不掉隔天再試;0050 停車照規則);安慰劑 S1 S2 S3 = 同一份賣的日子循環平移 63 / 126 / 189 個交易日
+#      (PANIC_SHIFT)。判定照登記:INS 比 BASE 少 = 恐慌賣的代價;四條全過 = 反而比較好(⛔ 不自動換)。
 # ⛔ 排程(手動才跑,一次約 3~4 小時);⛔ 寫任何分支;自己的 concurrency(⛔ 跟 hot_wf 同一個 group —— 同一個 group 只留一個排隊中的,
 #   後派的會把對方排隊中的那輪取消掉)。
 
@@ -19,11 +22,11 @@ on:
   workflow_dispatch:
     inputs:
       src:
-        description: 'insider = 申報轉讓(EXP-20261113-03)・revdec = 營收衰退中(EXP-20261113-05)・psych = 恐慌 / 貪婪那幾天先不買(EXP-20261119-01)'
+        description: 'insider = 申報轉讓(EXP-20261113-03)・revdec = 營收衰退中(EXP-20261113-05)・psych = 恐慌 / 貪婪那幾天先不買(EXP-20261119-01)・panic = 大跌隔天開盤全賣(EXP-20261119-02)'
         required: false
         default: 'insider'
         type: choice
-        options: [insider, revdec, psych]
+        options: [insider, revdec, psych, panic]
       only:
         description: '只跑這幾組(例 BASE,INS;空白 = BASE INS S1 S2 S3 全跑)'
         required: false
@@ -117,6 +120,12 @@ jobs:
           SRC: ${{ inputs.src }}
         run: |
           set -eo pipefail
+          if [ "$SRC" = panic ]; then
+            case "$CC" in 1) SH=63 ;; 2) SH=126 ;; 3) SH=189 ;; *) SH= ;; esac
+            { echo "PNS=-3"; echo "PNSH=$SH"; } >> "$GITHUB_ENV"
+            echo "😱 $K:加權收盤跌 ≥ 3% 那天的下一個交易日開盤把手上個股全部賣掉・平移 ${SH:-0} 天"
+            exit 0
+          fi
           if [ "$SRC" = psych ]; then
             git fetch -q origin "$DATA_REF"
             mkdir -p /tmp/psy
@@ -165,7 +174,7 @@ jobs:
           fail () { echo "::error::$K $1"; exit 1; }
           T0=$(date +%s); tsec () { echo "$(( $(date +%s) - T0 ))s"; }
           echo "🖥️ $(nproc) 核心・記憶體 $(free -m | awk '/Mem:/{print $2}') MB"
-          if [ -n "$CC" ] && [ ! -s "${CCF:-}" ] && [ ! -s "${DGF:-}" ]; then fail "要擋但沒有事件清單 / 擋的日子"; fi
+          if [ -n "$CC" ] && [ ! -s "${CCF:-}" ] && [ ! -s "${DGF:-}" ] && [ -z "${PNS:-}" ]; then fail "要擋但沒有事件清單 / 擋的日子 / 賣的門檻"; fi
           # ① 交易快取:4 片平行(⛔ 帶 CCWIN —— 快取是全部觸發,濾網只在名單 ② 與回測 ④)
           pids=""
           for k in 0 1 2 3; do
@@ -182,6 +191,8 @@ jobs:
           if [ -n "$CC" ] && [ -n "${CCF:-}" ]; then export CCWIN="$CCF" CCWIN_PRE=0 CCWIN_POST=19; fi
           # 🌡️ psych:整天不買只在 ④(名單 ② 照舊)
           DG=(); if [ -n "${DGF:-}" ]; then DG+=("DAYGATE=$DGF"); if [ -n "${DGS:-}" ]; then DG+=("DAYGATE_SHIFT=$DGS"); fi; fi
+          # 😱 panic:大跌隔天開盤全賣只在 ④(名單 ② 照舊)
+          if [ -n "${PNS:-}" ]; then DG+=("PANIC_SELL=$PNS"); if [ -n "${PNSH:-}" ]; then DG+=("PANIC_SHIFT=$PNSH"); fi; fi
           # ② 每一晚的名單(前 60 筆、單一起點、空頭照買;有 CCWIN = 被擋的拿掉、下一檔遞補)
           SELF=high+hivolat+nobear PARK= LIST_DUMP=/tmp/dump.ndjson LIST_DUMP_N=60 WARMUP=251 node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -6
           [ -s /tmp/dump.ndjson ] || fail "名單沒產出"
@@ -249,7 +260,7 @@ jobs:
           ls /tmp/v
           node scripts/ccwin_overlay_probe.mjs verdict /tmp/v /tmp/v/verdict.json | tee /tmp/v/verdict.txt
           if [ -d /tmp/all/BASE/taken16 ] && [ -d /tmp/all/INS/taken16 ]; then node scripts/ccwin_overlay_probe.mjs tail /tmp/all/BASE/taken16 /tmp/all/INS/taken16 | tee /tmp/v/tail.txt; fi
-          if [ "$SRC" = revdec ]; then T='### 📉 營收衰退中疊到 🔥(EXP-20261113-05)'; elif [ "$SRC" = psych ]; then T='### 🌡️ 恐慌 / 貪婪那幾天先不買疊到 🔥(EXP-20261119-01)'; else T='### 🧾 申報轉讓疊到 🔥(EXP-20261113-03)'; fi
+          if [ "$SRC" = revdec ]; then T='### 📉 營收衰退中疊到 🔥(EXP-20261113-05)'; elif [ "$SRC" = psych ]; then T='### 🌡️ 恐慌 / 貪婪那幾天先不買疊到 🔥(EXP-20261119-01)'; elif [ "$SRC" = panic ]; then T='### 😱 大跌隔天開盤全賣 vs 照規則(恐慌賣的代價,EXP-20261119-02)'; else T='### 🧾 申報轉讓疊到 🔥(EXP-20261113-03)'; fi
           { echo "$T"; echo; echo '```'; cat /tmp/v/verdict.txt; [ -f /tmp/v/tail.txt ] && tail -1 /tmp/v/tail.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()

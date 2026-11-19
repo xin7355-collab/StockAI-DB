@@ -28,7 +28,8 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 const ck = (CODE.match(/const CACHE_KEY = JSON\.stringify\(\{[^}]*\}\)/) || [''])[0];
 ok('ⓐs CACHE_KEY ⛔ 沒有 ROTATE / COST_X(只動資金層,既有快取照樣重用)', ck && !/ROTATE|COST_X|COST\b/.test(ck), ck);
 ok('ⓑs 換股⛔ 不改 vic.ret(寫在 _rot)', /vic\._rot = \{ ret: r, dv: dvr, d/.test(CODE) && !/vic\.ret\s*=[^=]/.test(CODE), '');
-ok('ⓒs net 讀 _rot(換掉的那筆用實際賣出價)', /const net = t => \(t\._rot \? t\._rot\.ret \+ t\._rot\.dv : t\.ret \+ \(t\.dv \|\| 0\)\) - COST;/.test(CODE), '');
+// 😱 V82.5.5 前面多了 PANIC_SELL 的 _pan 那一段(test_panicsell ⓑs2 釘)→ 這裡只釘「_rot 那筆用實際賣出價、其他照原本」
+ok('ⓒs net 讀 _rot(換掉的那筆用實際賣出價)', /const net = t => \((?:t\._pan \? t\._pan\.ret \+ t\._pan\.dv : )?t\._rot \? t\._rot\.ret \+ t\._rot\.dv : t\.ret \+ \(t\.dv \|\| 0\)\) - COST;/.test(CODE), '');
 ok('ⓒs2 股利只算賣出前的(_dvEv 過濾 D <= d)', /\(vic\._dvEv \|\| \[\]\)\.filter\(\(\[D\]\) => D <= d\)/.test(CODE), '');
 ok('ⓓs 空過守門:ROTATE 設了卻 0 筆 → exit 1', /ROTATE 設了卻一筆都沒換[^\n]*process\.exit\(1\)/.test(CODE), '');
 ok('ⓔs 0050 對照用 COST0(⛔ 不跟著 COST_X 放大)', (CODE.match(/- COST0/g) || []).length >= 4 && /const COST = COST0 \* COST_X;/.test(CODE), '');

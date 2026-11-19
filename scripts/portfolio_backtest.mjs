@@ -36,7 +36,7 @@ import { trSeries, scaleFor, loadPx, nhiRate } from './lib_totalreturn.mjs';
 import { cliffPrefix, cliffIn } from './lib_cliff.mjs';
 import { lbOf } from './lib_lb.mjs';
 import { HOT_RULES, HOT_DEFAULT } from './lib_hotrule.mjs';
-import { upLimitClose } from './lib_limit.mjs';
+import { upLimitClose, lockedBar } from './lib_limit.mjs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
@@ -547,6 +547,17 @@ if (DAYGATE) {
     if (bad.length) { console.error(`🚨 DAYGATE 有 ${bad.length} 個日期格式不對(要 YYYY-MM-DD),例如 ${bad.slice(0, 3).join(', ')}`); process.exit(1); }
     DG_RAW = new Set(arr.map(String));
 }
+// 😱 V82.5.5 PANIC_SELL=<門檻 %,負數,例 -3>:加權收盤比前一天跌到門檻(含)那天 → **下一個交易日開盤**把手上的個股全部賣掉,
+//   之後照名單規則再買(名單上又出現就照買;🅿️ 收盤閒錢照停 0050)—— 回答「大跌隔天嚇到全賣」比照出場規則走差多少(EXP-20261119-02)。
+//   ⭐ 那天開盤一價到底鎖跌停(lib_limit lockedBar)/ 停牌 → 賣不掉,隔天開盤再試(⛔ 假設一定賣得掉 —— 大跌隔天正是最多股票鎖跌停的時候)。
+//   賣價 = 開盤價;股利照「賣的那天(含)以前除息」入帳(配股照倍數)。PANIC_SHIFT=K → 安慰劑:同一份賣的日子循環平移 K 個交易日。
+//   ⛔ 不進 CACHE_KEY(只動資金層、不改每筆交易的進出場);⛔ 改 t.ret(選股門檻的歷史成績);不設時一個字都不變(交易物件也不多欄位)。
+const PANIC_SELL = (process.env.PANIC_SELL || '').trim();
+const PANIC_SHIFT = (process.env.PANIC_SHIFT || '').trim();
+let PANIC_DAYS = null, pnDays = 0, pnN = 0, pnLock = 0, pnStuck = 0, pnU = 0;
+if (PANIC_SELL && !/^-\d+(\.\d+)?$/.test(PANIC_SELL)) { console.error(`🚨 PANIC_SELL=${PANIC_SELL} 要是負數(跌幾 %,例 -3)`); process.exit(1); }
+if (PANIC_SHIFT && !PANIC_SELL) { console.error('🚨 PANIC_SHIFT 要跟 PANIC_SELL 一起設'); process.exit(1); }
+if (PANIC_SHIFT && !/^-?\d+$/.test(PANIC_SHIFT)) { console.error(`🚨 PANIC_SHIFT=${PANIC_SHIFT} 要是整數`); process.exit(1); }
 // 🐻 V80.1.1 BEAR_MODE:大盤嚴格空頭那幾天怎麼做(空頭 = 引擎同一條 notBear60,跟 FILTER=bear60 / App 空頭守門同一個定義)
 //   skip = 不開新倉(⭐ 跟 FILTER=bear60 的差別:手上的照出場、🅿️ 收盤照停 0050;FILTER=bear60 整天 continue,錢卡在現金)
 //   cash = 不開新倉,而且停在 0050 的錢那天收盤全部賣掉放現金;不是空頭那天收盤照常停回 0050(要 PARK=idle)
@@ -1081,7 +1092,7 @@ if (DIV_TRADES) {
             const D = String(dt).slice(0, 10);
             if (!(D > a && D <= b)) continue;
             if (typ === '權') {
-                if (before > 0 && after > 0 && before / after > 1.001 && before / after < 1.6) { F *= before / after; nStock++; hit = true; }
+                if (before > 0 && after > 0 && before / after > 1.001 && before / after < 1.6) { F *= before / after; nStock++; hit = true; (t._dvF ||= []).push([D, before / after]); }   // 😱 PANIC_SELL 提早賣掉時算到賣的那天
                 continue;
             }
             if (!(amt > 0)) continue;
@@ -1211,6 +1222,41 @@ if (DG_RAW) {
     const _out = [...DG_RAW].filter(d => d < days[0] || d > days[L - 1]).length;
     console.log(`🚦 DAYGATE ${path.basename(DAYGATE)}${K ? `(平移 ${K} 個交易日)` : ''}:${DG_BLOCK.size}/${L} 個交易日不開新倉(${(DG_BLOCK.size / L * 100).toFixed(1)}%)` + (_out ? `・檔案裡 ${_out} 天在資料範圍外` : ''));
     if (!DG_BLOCK.size) { console.error(`🚨 DAYGATE 在資料範圍內一天都沒擋 → 沒生效(⛔ 不是「沒差別」)`); process.exit(1); }
+}
+// 😱 PANIC_SELL:第 k 天開盤賣 = 第 k−1 天收盤比第 k−2 天跌到門檻(含);平移 K = 整份往後挪 K 個交易日(循環)
+/** 😱 一筆部位今天開盤賣不賣得掉、賣多少(純函式;test_panicsell 直接抽出來跑)。
+ *  b = 那天的 {o, h, l, pc};沒有那根 / 開盤價不是正數 → stuck(停牌);一價到底鎖跌停 → lock;其他 → r = 開盤賣的價格報酬 %、
+ *  dv = 賣的那天(含)以前除息的現金股利 + 配股倍數換成的 %(跟 DIV_TRADES 的 t.dv 同一條公式) */
+function panicFill(x, b, d) {
+    if (!b || !(b.o > 0)) return { why: 'stuck' };
+    if (lockedBar(d, b.pc, b.o, b.h, b.l) === -1) return { why: 'lock' };
+    const r = (b.o / x.entry - 1) * 100;
+    const cd = (x._dvEv || []).filter(([D]) => D <= d).reduce((a, [, per]) => a + per, 0);
+    const F = (x._dvF || []).filter(([D]) => D <= d).reduce((a, [, f]) => a * f, 1);
+    return { r, dv: ((1 + r / 100) * F + cd / x.entry - 1) * 100 - r };
+}
+const _ohc = new Map();   // 😱 代號 → Map(日期 → {o, h, l, pc 前一根收盤})(只有 PANIC_SELL 會讀)
+const ohlcAt = (sym, d) => {
+    if (!_ohc.has(sym)) {
+        let m = null;
+        try {
+            const rows = JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8'));
+            if (Array.isArray(rows)) {
+                m = new Map(); let pc = null;
+                const B = rows.map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), o: +r.open, h: +r.high, l: +r.low, c: +r.close })).filter(r => r.d).sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+                for (const r of B) { m.set(r.d, { o: r.o, h: r.h, l: r.l, pc }); if (r.c > 0) pc = r.c; }
+            }
+        } catch (_) {}
+        _ohc.set(sym, m);
+    }
+    const m = _ohc.get(sym); return m ? (m.get(d) || null) : null;
+};
+if (PANIC_SELL) {
+    const th = +PANIC_SELL, K = +(PANIC_SHIFT || 0), L = days.length;
+    const hit = days.map((_, k) => k >= 2 && twii[k - 2].c > 0 && (twii[k - 1].c / twii[k - 2].c - 1) * 100 <= th);
+    PANIC_DAYS = new Set(days.filter((_, k) => hit[(((k - K) % L) + L) % L]));
+    console.log(`😱 PANIC_SELL ${th}%${K ? `(平移 ${K} 個交易日)` : ''}:整段 ${PANIC_DAYS.size}/${L} 個交易日開盤把手上個股全部賣掉`);
+    if (!PANIC_DAYS.size) { console.error('🚨 PANIC_SELL 整段一天都沒有 → 沒生效(⛔ 不是「沒差別」)'); process.exit(1); }
 }
 // 📚 V77.6.3 對照組 / 停泊用的 0050 可以另外指定(長歷史:k66 那段沒有 ETF,真的 0050 2010 起放在另一個檔)。
 //   ⛔ 不動「股票池」裡的 0050.json —— 那會改變 0050 當候選股的交易,交易快取就不能重用。沒設就跟以前一樣。
@@ -1779,7 +1825,7 @@ const EQUITY_OUT = _nm(_EQ0), SUMMARY_OUT = _nm(_SO0), TAKEN_OUT = _nm(_TO0);
 const stat = {};             // 「sym|key」→ {n, sum, sq}(⭐ 每檔自己的打法成績;sq = 平方和,GATE=lb 算標準差用)
 const symKeys = new Map();   // 🎯 GATE=lb:sym -> 這檔出現過的 stat 鍵(⛔ 不掃整個 stat —— 全市場 5 萬多個鍵)
 const lkTop = new Map(), lkDirty = new Set();   // 🧾 LISTK:每檔過門檻的前 LB_TOP 招(只在成績有變的那幾檔重算)
-const lkStat = { days: 0, slots: 0, hit: 0, hitDays: 0, unk: 0, inexact: 0, blk: 0 }, szStat = { nights: 0, pool: 0, kept: 0, blk: 0, na: 0 }; listBlk = 0; dgBlk = 0; dgCand = 0; bmDays = 0; bmCand = 0; bmHalf = 0; bmSell = 0;   // 🧾 名單幾格、名單上當天觸發幾檔、有觸發的天數(unk / inexact = LIST_TRIG 沒判過的筆數 / 可能不準的晚數)
+const lkStat = { days: 0, slots: 0, hit: 0, hitDays: 0, unk: 0, inexact: 0, blk: 0 }, szStat = { nights: 0, pool: 0, kept: 0, blk: 0, na: 0 }; listBlk = 0; dgBlk = 0; dgCand = 0; bmDays = 0; bmCand = 0; bmHalf = 0; bmSell = 0; pnDays = 0; pnN = 0; pnLock = 0; pnStuck = 0; pnU = 0;   // 🧾 名單幾格、名單上當天觸發幾檔、有觸發的天數(unk / inexact = LIST_TRIG 沒判過的筆數 / 可能不準的晚數)
 const mkt = {};              // key → {n, sum}(全市場該型態,當第二層門檻)
 // 📏 RANKBY=shrink / mean 的名單排序分(stat / mkt 是每個起點各一份 → 定義在迴圈裡)
 const _shrK = k => { const p = k.indexOf('|'), h = k.indexOf('#'); return _shrOf(stat[k], mkt[(h >= 0 && h < p ? k.slice(0, h + 1) : '') + k.slice(p + 1)]); };
@@ -1822,6 +1868,22 @@ const pushEq = (i, d) => {
 };
 for (let i = 0; i < days.length; i++) {
     const d = days[i];
+    // 😱 PANIC_SELL:今天開盤賣掉(大跌隔天把手上全部標成要賣;那天鎖跌停 / 停牌的留到明天開盤再試)
+    if (PANIC_DAYS) {
+        if (PANIC_DAYS.has(d) && live.length) { pnDays++; for (const x of live) x._pp = 1; }
+        const _sold = new Set();
+        for (const x of live) {
+            if (!x._pp) continue;
+            const f = panicFill(x, ohlcAt(x.sym, d), d);
+            if (f.why === 'stuck') { pnStuck++; continue; }
+            if (f.why === 'lock') { pnLock++; continue; }
+            const { r, dv } = f, a0 = x._amt || LOT;
+            cash += a0 + a0 * (r + dv - COST) / 100; realized += a0 * (r - COST) / 100;
+            x._pan = { ret: r, dv, d, u: (r + dv) - (x.ret + (x.dv || 0)) };   // ⛔ 不改 x.ret(選股門檻的歷史成績)
+            pnN++; pnU += x._pan.u; _sold.add(x);
+        }
+        if (_sold.size) live = live.filter(x => !_sold.has(x));
+    }
     // 今天到期的先出場 → 錢回來
     for (const x of live.filter(x => outIdx(x) <= i)) {
         // 💰 用**這一筆自己的投入金額**還原(等權時 _amt 就等於 LOT,結果與舊版完全相同)
@@ -2136,6 +2198,7 @@ for (let i = 0; i < days.length; i++) {
         seen.add(t.sym); cash -= amt;
         t._amt = amt;
         t._d = d; t._i = i;   // 📤 TAKEN_OUT 用:記下實際成交那天(⛔ 事後才標環境會對不上)
+        if (PANIC_DAYS) { t._pp = 0; t._pan = null; }   // 😱 上一個起點留下來的標記清掉(⛔ 不設時交易物件一個欄位都不多)
         taken.push(t); live.push(t); picked++;
         if (SIZING === 'volpar' || SIZING === 'volsham') { vpN++; vpSum += amt; }
     }
@@ -2200,7 +2263,7 @@ if (TAKEN_OUT) {
         const i = t._i, d = t._d, b2 = yBr(i);
         return {
             d, sym: t.sym, key: t.key, ret: t.ret,
-            outD: t.outD, fx: t.fx || 0, dv: t.dv || 0, ...(t._r ? { r: t._r } : {}),   // 🪜 V77.7.4 每筆機會成本 / 賣掉後錯失(trade_alpha_probe)要用
+            outD: t.outD, fx: t.fx || 0, dv: t.dv || 0, ...(t._r ? { r: t._r } : {}), ...(t._pan ? { pan: { d: t._pan.d, ret: +t._pan.ret.toFixed(4), dv: +t._pan.dv.toFixed(4) } } : {}),   // 🪜 V77.7.4 每筆機會成本 / 賣掉後錯失(trade_alpha_probe)要用
             dow: new Date(d + 'T00:00:00Z').getUTCDay(),
             dom: +d.slice(8, 10),
             set: isSet(d) ? 1 : 0,
@@ -2217,7 +2280,7 @@ if (TAKEN_OUT) {
 }
 
 // ── ④ 結果:整體 / 每月 / vs 0050 ────────────────────────────────────────
-const net = t => (t._rot ? t._rot.ret + t._rot.dv : t.ret + (t.dv || 0)) - COST;   // 🔁 ROTATE 換掉的那筆用實際賣出價        // 扣成本後的單趟報酬 %(💰 DIV_TRADES 的股利只在這裡入帳)
+const net = t => (t._pan ? t._pan.ret + t._pan.dv : t._rot ? t._rot.ret + t._rot.dv : t.ret + (t.dv || 0)) - COST;   // 😱 PANIC_SELL 賣掉的那筆用開盤賣價   // 🔁 ROTATE 換掉的那筆用實際賣出價        // 扣成本後的單趟報酬 %(💰 DIV_TRADES 的股利只在這裡入帳)
 // 🐛 V77.5.9:以前寫死 LOT —— SIZING=risk / SCALE 時每筆金額會浮動,累積損益卻照 LOT 算(= 那兩種變體的總獲利是錯的)。
 //   等權時 _amt 就是 LOT → 預設輸出一個字都不變。
 const money = t => (t._amt || LOT) * net(t) / 100;
@@ -2278,6 +2341,10 @@ const avgAmt = taken.reduce((a, t) => a + (t._amt || LOT), 0) / taken.length;
 console.log(`💰 本金 ${nf(CAPITAL)} 元 ・每筆 ${nf(LOT)} 元 ・同時最多持有 ${maxOpen} 筆(平均 ${avgOpen.toFixed(1)} 筆 → 資金使用率 ${(avgOpen * avgAmt / CAPITAL * 100).toFixed(0)}%)`);
 if (skipped) console.log(`⚠️ 有 ${skipped} 次訊號因為**錢已經用完**而錯過(本金再多一點結果會不同)`);
 console.log('═'.repeat(74));
+if (PANIC_DAYS) {
+    console.log(`😱 PANIC_SELL ${PANIC_SELL}%:窗口內 ${pnDays} 天開盤要賣・賣掉 ${pnN} 筆・鎖跌停延後 ${pnLock} 次・停牌延後 ${pnStuck} 次・賣掉那幾筆「開盤賣 − 照規則賣」平均 ${pnN ? (pnU / pnN >= 0 ? '+' : '') + (pnU / pnN).toFixed(2) + '%' : '—'}`);
+    if (!pnN) { console.error('❌ PANIC_SELL 設了卻一筆都沒賣 → 沒生效(⛔ 不是「沒差別」)'); process.exit(1); }
+}
 if (ROTATE) {
     const R = taken.filter(t => t._rot);
     const du = R.length ? R.reduce((a, t) => a + t._rot.u, 0) / R.length : 0;
@@ -2413,6 +2480,7 @@ if (SUMMARY_OUT) {
     if (DG_BLOCK) summary.daygate = { file: path.basename(DAYGATE), shift: +(DAYGATE_SHIFT || 0), days: DG_BLOCK.size, blocked: dgBlk, cand: dgCand };
     if (BEAR_MODE) summary.bearMode = { mode: BEAR_MODE, days: bmDays, cand: bmCand, half: bmHalf, sell: bmSell, ...(BEAR_LAG ? { lag: 1 } : {}) };
     if (ROTATE) summary.rot = { mode: ROTATE, n: rotN, minHold: ROT_MIN };
+    if (PANIC_DAYS) summary.panic = { th: +PANIC_SELL, shift: +(PANIC_SHIFT || 0), days: pnDays, n: pnN, lock: pnLock, stuck: pnStuck, u: pnN ? +(pnU / pnN).toFixed(3) : null };   // 😱 V82.5.5
     if (COST_X !== 1) summary.costX = COST_X;
     if (EXIT_SCHED) { const c = {}; for (const t of taken) c[t._r] = (c[t._r] || 0) + 1; summary.sched = { file: EXIT_SCHED.split('/').pop(), taken: c }; }   // 🔄 實際成交各用了哪一套
     if (USSIG) summary.ussig = { kind: USSIG, min: usMin, noData: usNoData, keys: usMap.size };   // 🇺🇸 V77.7.7 缺美股資料而被剔除的候選數(⛔ 一定要報)

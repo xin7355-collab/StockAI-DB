@@ -39,7 +39,7 @@ ok('ⓢ2 nobear = 收盤同時跌破 20 與 60 日線才擋(同 playbook_scan se
    /if \(c === 'nobear' && f\.nb === 1\) return false;/.test(CODE)
    && /_o\.nb = \(dd\[i\]\.c < a20 \/ 20 && dd\[i\]\.c < a60 \/ 60\) \? 1 : 0;/.test(CODE)
    && /const NEED_NB = SELF\.includes\('nobear'\);/.test(CODE) && !/NEED_MA = SELF\.some\([^;]*nobear/.test(CODE));
-ok('ⓢ3 NOLOCK 用 lib_limit 的 upLimitClose(⛔ 不寫死 9.7 / 1.095)', /import \{ upLimitClose \} from '\.\/lib_limit\.mjs';/.test(CODE) && /upLimitClose\(t\.inD, f\.c, f\.pc\)/.test(CODE));
+ok('ⓢ3 NOLOCK 用 lib_limit 的 upLimitClose(⛔ 不寫死 9.7 / 1.095)', /import \{ upLimitClose(?:, \w+)* \} from '\.\/lib_limit\.mjs';/.test(CODE) && /upLimitClose\(t\.inD, f\.c, f\.pc\)/.test(CODE));
 ok('ⓢ4 MIN_MKT_N=0 時沒有全市場紀錄也放行(App 沒有這一關);預設 20', /const restOk = x => \(MIN_MKT_N === 0 \|\| \(x\.m && x\.m\.n >= MIN_MKT_N\)\)/.test(CODE) && /=== '' \? 20 : \+process\.env\.MIN_MKT_N/.test(CODE));
 
 // ── 執行期 ──
