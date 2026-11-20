@@ -1,14 +1,86 @@
 {
-  "updated": "2026-11-20 18:31 UTC",
+  "updated": "2026-11-20 19:27 UTC",
   "items": [
+    {
+      "source": "Musk Tesla",
+      "title": "Tesla-SpaceX Merger Could Hand Elon Musk a 60% Stake — and TSLA Holders a 33% Premium, Analyst Says - Benzinga",
+      "url": "https://news.google.com/rss/articles/CBMi_wFBVV95cUxNdHIwUUFrQUVVYnFzeEpUTlluTVVsOHptdUtmYWVJLU9LMXFQNGdhbW4xOWRSYmZUaWhhb21TQzQ2Y0J2ajUxZDQ4RUV4TVFNU0pCTnpYdEp0ZmhDb3A1QzhodllvTjF1V2ZDRjlfVTBlZmY2ZUt3QmZCQS13OWpHTlUxZktwU2Rqb1ZySzZrUURXcF9nQzNhWUh2S2ptZ2gyNl91cDVuWmFuTk9Ba2ZyYk5vZWFxZjVyLU8tUFBMclNrZFVwcGwtTG1KeWtsbjZfakFUdVRPS2htZnp2U3VGMVZ1MmdqWENVTGdoNzVlaElCUHdLRjUyc1pSWHEyc0U?oc=5",
+      "published": "Fri, 20 Nov 2026 18:44:41 GMT",
+      "title_zh": "分析師：特斯拉併購SpaceX或讓馬斯克持股達60%",
+      "impact": "特斯拉與SpaceX合併若成真，將大幅提升企業估值並為股東帶",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "🌍 地緣突發",
+      "title": "Ukraine strikes Kerch Bridge as Putin ally declares ‘no one needs Europe’ - Al Jazeera",
+      "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQeDNGX09hZ1Rsc0xUZjJ4N2RNUnNoSzltckFEdFliVmVidUk0WlFZTWlibzZUM1RZS2Njb2NleE5fVFBsRzFOd1Z6LVdqdFZIRUotV2ZKbmNCVVFpaVRQYUJpVG1FQzVUZm5KSGVvRVpkU0RBbmJraWVWcmlIODYyNDZIbVd0TU1BOUFabEc4SlhYRUdNWXRhaGFhcVB6UUZ5bFJEbWNtaUZQUdIBrwFBVV95cUxPdWRKbTVTZ0FJVFY2LW44Qk5RemZaVG5ieGF0aDIzX1ZiR1piR1ZBMmRCMmQwQXNGSGpNd0J6Wk5xUlF0NzVua0k2WDJVOUJ6LUFIenpoajNNQnJaTk0wTncwcmozazU1elJoNk8yRi05dkdTS2piNjEtTzBMcmtnYm81Y2VJRk1LTlNvWmZoaHdRSUZoRnh6cDNBNTYwSUR3dTk4VnN0X1ZfVmVwOGxR?oc=5",
+      "published": "Fri, 20 Nov 2026 18:43:21 GMT",
+      "title_zh": "烏軍襲擊刻赤橋 普京盟友稱歐洲無用",
+      "impact": "地緣政治風險升溫，可能引發市場避險情緒，對台股構成壓力。",
+      "impact_level": "bearish"
+    },
+    {
+      "source": "⚡ 缺貨漲價",
+      "title": "A 700% Price Hike on A Key Component in Gaming Consoles? Blame A 25-Year Cartel. - BIG by Matt Stoller",
+      "url": "https://news.google.com/rss/articles/CBMiekFVX3lxTFA0MFh6bFRMWnBLSWxHUUVCNm1GTFhnVTdDMWFMeXlNeFFYUFF1M2p5XzdDVGtQbnVoYTVKajBvemowQUZpZFdiYnlDSk5OSTUtcWlPUFFHSjRmLW1sTGtZUWRfbDRXRlMySVVBUTM4a1hTMzYwX25kWFlR?oc=5",
+      "published": "Fri, 20 Nov 2026 18:40:19 GMT",
+      "title_zh": "遊戲主機關鍵元件漲價700% 源於25年壟斷",
+      "impact": "遊戲主機關鍵元件因壟斷漲價700%，將推高硬體成本並壓縮硬體",
+      "impact_level": "bearish"
+    },
+    {
+      "source": "🌍 地緣突發",
+      "title": "Poland accuses Russia of \"intentional provocation\" as missiles hit NATO soil, kill at least 8 in Ukraine - CBS News",
+      "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNYUFSTWdxSVdBMEtrN1RpU2F0eTZuOTVQV0lSQ1hsWERjY25VLWV2d1hlZHluaWZOeklXRWhaN3NrSmMtWjhFY2VKU0lWbU9FWndENldZU0owa1BaQ3N2eWN4WE9xOXhkNjlLMmxxb3AycE5sRHZqVnpXLTFnN1daRGh3MDh2cFR1RVBYLTNoMXdMbTZWSURtQQ?oc=5",
+      "published": "Fri, 20 Nov 2026 18:21:50 GMT",
+      "title_zh": "波蘭指控俄故意挑釁，導彈擊中北約領土",
+      "impact": "地緣政治風險急升引發避險情緒，資金流出風險資產，對台股構成壓",
+      "impact_level": "bearish"
+    },
+    {
+      "source": "🌍 地緣突發",
+      "title": "House Democrats recoil at forcing December shutdown to cut Iran war funding - Axios",
+      "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTE9ZbG5pRzBtX2tSRU1PQU9ZejlEeWw5dzZOZ21aSE9hNWVqZnpXN21DNmFGS0RYTk1LZGZNOU5lT3VSSWJ1TVI4M2o1RlhScTR1LTdqZ3AyUHpqOG9sV2J3dVlkQW8zQnk5OGpYTmVWWi1HblpoTHRsQUx2QXBUdVU?oc=5",
+      "published": "Fri, 20 Nov 2026 18:13:27 GMT",
+      "title_zh": "美眾院民主黨反對強行關門削減伊朗戰爭資金",
+      "impact": "政治不確定性降低，市場情緒趨穩，對台股影響中性。",
+      "impact_level": "neutral"
+    },
     {
       "source": "AMD Amazon",
       "title": "AMD's Ryzen 7 9850X3D could save you $80 at Amazon with a $26.99 coupon - MIXED News",
       "url": "https://news.google.com/rss/articles/CBMihAFBVV95cUxPaEhXNm56RG1ZTnRoVkdZR0dMVlV0SVV0eGNEUG4zR3JYNGlkWElNa1hLSzJHZEw0MHVld1lWeFg4ekVNeXlROUdmUTVDLTZyX3JjYkJmcktoTTFvX01xTjRTSndfTnZRQ0hwYmg0RkhYVEV3NE9EeVdveXpkOFFqcnFnd0E?oc=5",
-      "published": "Fri, 20 Nov 2026 17:54:00 GMT",
+      "published": "Fri, 20 Nov 2026 18:08:21 GMT",
       "title_zh": "AMD Ryzen 7 9850X3D 亞馬遜優惠省80美元",
-      "impact": "單品促銷活動對整體市場情緒影響極小，屬中性消息。",
+      "impact": "顯示AMD消費級產品市場競爭激烈，對台股本質影響有限。",
       "impact_level": "neutral"
+    },
+    {
+      "source": "🏢 雲端巨頭",
+      "title": "Meta’s (META) AI Spending Spree Looks Risky, but There’s More to the Story - Yahoo Finance",
+      "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQQm1Od0F5OXJYZ0Q4OWI5d1Z0X1FrQU5KX2hPeFotZTZfUFN5cUY5X0dHQWZFamNtejIwSG40c20xdWJUcUd1ZGdWVWhqVGE1bGxkZVpCR3NZX1FaX2ZHdXd0MFNJV21pVS1xN2l6bC1HUl9ETWZZa1JNcFVkTzlPME4zQWNGRmRiaktpVDRKRWNDaGNMNlE?oc=5",
+      "published": "Fri, 20 Nov 2026 18:04:36 GMT",
+      "title_zh": "Meta AI支出風險高企，背後另有隱情",
+      "impact": "Meta的AI支出風險可能引發市場對科技巨頭資本支出的擔憂，",
+      "impact_level": "bearish"
+    },
+    {
+      "source": "🌍 地緣突發",
+      "title": "Congress struggles to avert US shutdown as Iran war divides lawmakers - Reuters",
+      "url": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxPUDZZTmpNTGpqLUMwR0JBZUJuaVBuMDAwYVpVanpkNTJDSGpNMEkxdXlSX1JkSDJpaG1SNUlmMnJZTHZ2Y192UmFKSjlGazN5UE9hZEJfcmFwdzVGWFE0QWk3OXBGWEpudkV5bTdiLVEwWjJicDFrTHJWVGVQT2RNMlBYZ3pMMmhQTHhKRnJ1QktWbGhVWWxRb0paRGZvdVNDdlRJNEd1N1lEbG9LOU1mTURPZE9CZlVvUk5j?oc=5",
+      "published": "Fri, 20 Nov 2026 18:01:41 GMT",
+      "title_zh": "美國會難避政府關門 伊朗戰局撕裂兩黨",
+      "impact": "政府關門風險升高引發市場對財政不確定性的擔憂，利空台股。",
+      "impact_level": "bearish"
+    },
+    {
+      "source": "📊 巨頭財報",
+      "title": "Micron Stock: 3 Catalysts Set to Boost the Memory Chip Maker Beyond Nvidia Earnings - Barron's",
+      "url": "https://news.google.com/rss/articles/CBMifEFVX3lxTE1EUkd4T0FNR1lpSjgxY2pQMm5jR1dJYU1WLU9PT0tybjhIcGpFTTBqemF5djRKUFd2T0gzaENGQU9QUXhuQXhpQmdUNmlZcG50Q1RJMjhFSlRIUlhQWmpGZFZKWWVjRm8wcGk0WmFJaUxVeEkwdnQxQXVaX3g?oc=5",
+      "published": "Fri, 20 Nov 2026 17:54:00 GMT",
+      "title_zh": "美光三大催化劑驅動股價超越輝達",
+      "impact": "記憶體芯片需求預期強勁，利好台積電等相關供應鏈。",
+      "impact_level": "bullish"
     },
     {
       "source": "TSMC Apple",
@@ -16,80 +88,8 @@
       "url": "https://news.google.com/rss/articles/CBMiugFBVV95cUxNVWIwbjNUMzJQOFZUMkRySDJueHVZc2psaDJQM052amVUaGE0aVhtTENORC0tdkhwanN5a3ZNd1NXcWk2NENBdmpha28td2FyOGROZHpKR0JzMU50OWJqX29BcUpsTVdULTN4bU83Z1A3UEI1bUhzN0t1Sk1qRWhiSTRpMFFmQi1QX2p0RnJuT2k3V3Y2RHpNZXNZWm9tY28zODh5M1drYTZfcnVnMlFnLThCZGNVN0IzLUE?oc=5",
       "published": "Fri, 20 Nov 2026 17:47:00 GMT",
       "title_zh": "台積電因出口管制中斷中國晶片訂單",
-      "impact": "台積電營收受挫，市場擔憂地緣政治風險，對台股構成負面影響。",
+      "impact": "台積電因出口管制中斷中國晶片訂單，營收損失預期將抵消地緣政治",
       "impact_level": "bearish"
-    },
-    {
-      "source": "🏢 雲端巨頭",
-      "title": "Broadcom Stock Falls on Report Google is Cutting AI Chip Shipments - Barron's",
-      "url": "https://news.google.com/rss/articles/CBMifEFVX3lxTE5Cd2w3NzJtb0xha0ZJazRHS09nRUVPanNPN192RmRWOGVxdW52QThWZzVwbG9VVmNpT1F6MkZaQVdjV09aMU9razJCVUpfckppUllpQWZCN3hIeHh6VkhhLWRWRC11QWRkSjhMaFlQQ1pyWVFCZ0VsQ2RiWmw?oc=5",
-      "published": "Fri, 20 Nov 2026 17:42:00 GMT",
-      "title_zh": "廣達因Google削減AI晶片出貨量股價下跌",
-      "impact": "AI晶片需求放緩訊號可能引發市場對相關供應鏈的擔憂，對台股科",
-      "impact_level": "bearish"
-    },
-    {
-      "source": "BBC Business",
-      "title": "Anthropic shares fall after blockbuster opening as wider tech sell-off continues",
-      "url": "https://www.bbc.co.uk/news/articles/c6808ym10vzgo?at_medium=RSS&at_campaign=rss",
-      "published": "Fri, 20 Nov 2026 17:36:29 GMT",
-      "title_zh": "Anthropic股價開盤後下跌 科技股持續拋售",
-      "impact": "AI龍頭股開盤後下跌並引發科技股廣泛拋售，將對台股的科技硬體",
-      "impact_level": "bearish"
-    },
-    {
-      "source": "🧪 技術突破",
-      "title": "It's the Mighty Morphin' Quadrotors?! - IEEE Spectrum",
-      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTFBJajJhRkgxUkxSZnVabWxESU9lUjhmQVBEWXJVcXh4NUNSaFVlc0phZXpJaTE0OHpHWG1Wak9rSGRZUWU5dTJWSW5JcVpoeVZGbURuUHcyX1ROdmFIekRkbkhQb0R6Szh6cHFqVWtYSEpIZw?oc=5",
-      "published": "Fri, 20 Nov 2026 17:33:39 GMT",
-      "title_zh": "四旋翼無人機技術突破",
-      "impact": "無人機技術創新利好相關硬體供應鏈，提振市場情緒。",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "🌍 油價航運",
-      "title": "Oil price instability perplexes energy producers - Odessa American",
-      "url": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxNV3BrTGJPcWF5NFpHZEJGc0hwc19sY2t2YkhzMTdqcFdCc0FGQ0FsNEtyMFA3YWNJMFZTUlVObjZPUTVCYXhweUhtbldCMXRBOU4tUF9EY2FUSkJ3UTdjOGRDYmhGbkp6WkdwTmFKNDhfbm94a2E5NktIMUVfTlNzcVh0eVNic3Ix?oc=5",
-      "published": "Fri, 20 Nov 2026 17:23:40 GMT",
-      "title_zh": "油價波動令能源生產商困惑",
-      "impact": "油價不穩定增加能源股波動性，對台股影響有限。",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "🏢 雲端巨頭",
-      "title": "Scaling Airflow pipelines with AI agents on Managed Airflow - Google Cloud",
-      "url": "https://news.google.com/rss/articles/CBMiswFBVV95cUxPWUs4V2lwTldXRmMtY3dlUTVINmNEV3d6ZDViNEJDN2lXUUEtNDhpQWp1QjNxZ2pMWDFWd20zOE92eVVWOXZSWVN6MnRqSHhvSGZyZXFlYTFYYUg3eVpqUlFRLWowY3BlVnZrQUplMlkxeURvUFE0OFp4aDBqNjZqNzB4eEVoYUdmUFVRVGluVGs0cTgtNzhjc3VadE5jZU5iNHR4M2VUMXZRYW51RkZxcUZHQQ?oc=5",
-      "published": "Fri, 20 Nov 2026 17:21:20 GMT",
-      "title_zh": "Google Cloud AI代理擴展Airflow管線",
-      "impact": "此為Google Cloud技術部落格文章，屬基礎設施層面更",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "Trump Market",
-      "title": "Watch Donald Trump's Tariffs Can't Kill Globalization - Bloomberg.com",
-      "url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxOVHM5UVlLSktxdV9iOGtHVm5ITTJ3UVRRaXROZGxPNllPNURmRTBRMkFJbEx5MXNkY0M2dWd2Unh5ZWxSRTF1ZUR1OG12QzYtT01iR2l2VmhFeU01NzA2d3ZnUi1Edi02SWFMSlNfZkU3VTBNOFlIaXlPaW80R1hINXhya1Q2SGV3NWw0amFWZmRuTVI0bkwtb0g0LVUyc3hCUTdnVQ?oc=5",
-      "published": "Fri, 20 Nov 2026 17:06:32 GMT",
-      "title_zh": "川普關稅難阻全球化",
-      "impact": "緩解市場對貿易戰升級的恐慌，有助於穩定台股情緒。",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "🔥 停產事故",
-      "title": "Appeals court temporarily halts detonation of lead azide at Iowa ammunition plant - KCCI",
-      "url": "https://news.google.com/rss/articles/CBMiwwFBVV95cUxQVC1iamVpMFNnQ3hHdjUzcU5SVDVMME5MM0E3R2ZabVEwdUktNVdybTdpV1VYLXFrNGNIeXRMMUlRYnN5TzBxS0xjSE0yMHY5c0JJaXBLVEhIYkNFcFJLOTJqaFk2d1kyN3c4UEdUQ0JUY1F4OU0tYWhWUDExUXJzY1JsSHQ0c3hEaTBQMHl5NDJHeXdraWVva0pRZkg1UERGcG5WY3hPaDdLMlRRSFpTYjF0ZUJ6ZGdYcTU2MHRQeks5N3M?oc=5",
-      "published": "Fri, 20 Nov 2026 16:59:00 GMT",
-      "title_zh": "愛荷華彈藥廠鉛疊氮鉛引爆案暫緩",
-      "impact": "此事件主要影響美國當地彈藥製造業，對台股的直接影響極小，市場",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "🏢 雲端巨頭",
-      "title": "Google reportedly cuts Broadcom-designed TPU plans, eyes more MediaTek chips - Yahoo Finance",
-      "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxOaWVyUXhORkRBbDBpcndSaERrVFBMeWdXZmg5R21oTGlFbWkyOEZ5M19qMjdpZk05dFVtNHd1Q0Z2RjlBYTZuUEhWVmwwb2lmLUZXZVo3TmN5TTFKTGRyUnRoVUdWSHVJeWJxWjZQZHhFSTB1MmdxOFp3TXNGdXBxVXo4SzljRFlHRmt2Z1RkVFBWV3pKcmN4RUJEZDRCRnlITjlOSTlWUQ?oc=5",
-      "published": "Fri, 20 Nov 2026 16:55:18 GMT",
-      "title_zh": "傳谷歌削減廣達TPU，轉用聯發科晶片",
-      "impact": "台積電因失去廣達TPU訂單而受壓，但聯發科獲谷歌採用利好其股",
-      "impact_level": "neutral"
     }
   ]
 }

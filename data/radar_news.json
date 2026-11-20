@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-20 18:31 UTC",
+  "updated": "2026-11-20 19:27 UTC",
   "count": 15,
   "data": [
     {
@@ -12,7 +12,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "晶片外流凸顯管制漏洞，恐影響台廠供應鏈穩定",
+      "ai_reason": "晶片外流凸顯出口管制失效，衝擊產業秩序",
       "important": true
     },
     {
@@ -27,7 +27,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "融資大減創新高，AI股重挫血洗",
+      "ai_reason": "融資大減創新高，AI股重挫",
       "important": true
     },
     {
@@ -41,7 +41,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "搶攻地端AI商機，目標明年毛利率突破6成",
+      "ai_reason": "搶攻地端AI商機，目標明年毛利率拚6成以上",
       "important": true
     },
     {
@@ -54,21 +54,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利多",
-      "ai_reason": "AI商機爆發，出口創歷史新高",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "搶攻2000億移工經濟、匯兌商機！ 數位至匯11/25每股120元登興櫃",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5648073",
-      "published_time": "Fri, 20 Nov 2026 20:37:24 +0800",
-      "matched_keywords": [
-        "匯兌",
-        "營收"
-      ],
-      "cat": "💱 匯率成本",
-      "ai_sentiment": "利多",
-      "ai_reason": "登興櫃搶攻移工經濟與匯兌商機",
+      "ai_reason": "AI商機爆發，出口貿易順差創新高",
       "important": true
     },
     {
@@ -81,7 +67,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利空",
-      "ai_reason": "個股因單週大跌被列入處置股票",
+      "ai_reason": "個股觸發處置，反映市場投信投機情緒降溫",
       "important": true
     },
     {
@@ -111,7 +97,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "政府補貼台電中油，保障民生用電不漲價",
+      "ai_reason": "政府補貼台電中油，穩定民生用電油價",
       "important": true
     },
     {
@@ -124,21 +110,21 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "政府補貼台電中油，緩解電力成本壓力",
+      "ai_reason": "政府補貼台電中油，緩解財報壓力",
       "important": true
     },
     {
-      "source_name": "中央社財經",
-      "title": "上海商銀前3季EPS優於去年同期　明年股利發放視資本決定",
-      "link": "https://www.cna.com.tw/news/afe/202611200294.aspx",
-      "published_time": "Fri, 20 Nov 2026 19:17:16 +0800",
+      "source_name": "Yahoo 即時財經",
+      "title": "Token費用直直落　Anthropic股價閃紅燈？",
+      "link": "https://tw.news.yahoo.com/token%E8%B2%BB%E7%94%A8%E7%9B%B4%E7%9B%B4%E8%90%BD-anthropic%E8%82%A1%E5%83%B9%E9%96%83%E7%B4%85%E7%87%88-191500832.html",
+      "published_time": "Fri, 20 Nov 2026 19:15:00 +0800",
       "matched_keywords": [
-        "每股盈餘",
-        "EPS"
+        "降價",
+        "營收"
       ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "前3季EPS優於去年同期，獲利表現強勁",
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI降價或增需求，影響待觀",
       "important": true
     },
     {
@@ -151,7 +137,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "閎康證實CSP研發需求未減速，安撫市場疑慮",
+      "ai_reason": "閎康證實CSP研發需求未減速，緩解市場對AI產業疑慮",
       "important": true
     },
     {
@@ -178,7 +164,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "10月獲利年增近4倍，業績表現優異",
+      "ai_reason": "10月獲利年增388%，業績大幅超預期",
       "important": true
     },
     {
@@ -206,6 +192,19 @@
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
       "ai_reason": "砷化鎵大廠獲買進評等，目標價上看650元",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "中華電：沒放棄 AWS 低軌衛星合作，盼協調 28GHz 頻譜",
+      "link": "https://technews.tw/2026/11/20/cht-aws-28ghz/",
+      "published_time": "Fri, 20 Nov 2026 09:40:48 +0000",
+      "matched_keywords": [
+        "低軌衛星"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "頻譜協調未定，合作存變數",
       "important": true
     }
   ]

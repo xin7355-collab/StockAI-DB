@@ -1,6 +1,35 @@
 {
-  "updated": "2026-11-20 18:32 UTC",
-  "trump": [],
+  "updated": "2026-11-20 19:28 UTC",
+  "trump": [
+    {
+      "title": "Trump's tariffs are unpopular -- but they'll be tough to repeal despite Democrats' landslide win - Arkansas Advocate",
+      "url": "https://news.google.com/rss/articles/CBMiywFBVV95cUxQV2R1WFhDQWpGWl9rcW52dzZ6OWpaWW5LY1VMQ2pscGdCenJENTgtQXE3RnJsdXlGV1Z5SmJ6bnY3Um05SVRLdGdjSlllS3FrZ1ZvOVpXZWtjVDlGcWVLNTJkTjI0NW52alFlaEhMeC1FM3lyTXhMODdrY1g5dmhia2VnQWhTUDNrcHJ2UW9GdW50NDZmSFVKZFJFVVNhbXpabzFxZ093M2tjcGF4U21SclFSeFJkeS1GZ1g2cHdSY0ZFZFhkTHJYU0R5NA?oc=5",
+      "published": "Tue, 17 Nov 2026 11:54:10 GMT",
+      "title_zh": "川普關稅不討喜，民主黨大勝仍難廢除"
+    },
+    {
+      "title": "Does Donald Trump care about the economy? - The Economist",
+      "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxOZW53X1hFYy1uNVFDTExuYk92VnlqX0xFaVRDZTVFMllJQVNLRHpiQnNKYnVHbVVTZVA4LW9kR2hGRDFiYWhxb2ZpMTdROW1ia0F6QVFwY29JUWo4UUNCcVliN29DV3MtVlFmWno0UjJNeXJiV0FzQlVvMDBWa1paRG9jM25rcWRfUUhwcnV3cVVDZ0Vmb3N5QVpZQ21TZjlL?oc=5",
+      "published": "Tue, 17 Nov 2026 17:54:03 GMT",
+      "title_zh": "唐納德·川普在乎經濟嗎？——《經濟學人》"
+    },
+    {
+      "title": "US Democratic senator introduces bill to end China's trade status ahead of Trump-Xi meeting - Reuters",
+      "url": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNVXQtUnc0dXFSSFBBcmQ3R0c5RXhWZFVVSmtxMUpqU21EOUlNNExWYWVacWdwTHJ1cUZWZVFMS293d2FTb3BfZlJhZ3k3ejNQYnB5Vy04S216ZjVTeWxXOWVrSVNQeWlJN1hTRkI2VmV1Mml6aDA4RG9hRUlaZ0l0WUZtZVRjNW1BLVhVTjlreGJ6R08yTWNZX1c2UHFZRThJajNheTRsT203aGZudmpBcTR3dndXallfcmVoUTNR?oc=5",
+      "published": "Tue, 17 Nov 2026 23:01:15 GMT",
+      "title_zh": "美參議員提議終止中國貿易地位，川普習會前"
+    },
+    {
+      "title": "President Donald Trump Claims, \"Tariffs Don't Cause Inflation, They Cause Wealth\" -- but Economic Data Says Otherwise - Yahoo Finance",
+      "url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxOcEFBb2VRbzM5SGExQkZ4SUprQ01IRmNrVDNtalk1Vmp3NnJJb3VNODBaUVVRY19abG1LQkV6S2VMbGVhaVh2bUQ3SkJtRVBFcENrOHBjS0dsVWlRQjZzZlRVcUJvMHMzUU1GRjIxbEsxbDRxRFRXSmxhYzhOR19uWVlUTkxqVGFTc29NelVQLXUxMk1lY0VMU092bl9zaC13eTllNA?oc=5",
+      "published": "Sun, 15 Nov 2026 09:26:02 GMT"
+    },
+    {
+      "title": "See which Florida companies received millions in Trump tariff refunds - Miami Herald",
+      "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTE1ldk9jRUFCNHpwdW4wamp5bFJxLTdESG1LSkY5dmE2cDl0WkUwRTRFWWFUVEZaR3NFd05lQTVRSG5Ta2Z0Wk9kQjVqd1ZxemJxdlp4UG56UXZpUU5RTjFTY2hFdDQzOVlTc1h4Nlo5eFBUNG51V1kxWEpPMFhqMEHSAX9BVV95cUxNNkF1VzVyTWpVRmFEazY1NklfZzd5VGlQY1RsNV9VSGR2alRyTFZ0OUJ3ckk2TEdrdFJsbTZQdUJHeUdlVFdHSjk2SnhxSktwLVJyaWVWSFFCT1VsLUtXYVFkSHlMWHhNbVAxcURTNmdoN3JRMzhUQUtGbl9vWVFz?oc=5",
+      "published": "Fri, 20 Nov 2026 13:49:24 GMT"
+    }
+  ],
   "huang": [
     {
       "title": "California targets Nvidia in China AI chip probe - BBC",
@@ -12,13 +41,13 @@
       "title": "Nvidia exec reportedly berated by Jensen Huang faces scandal as his wife is accused of chip smuggling - New York Post",
       "url": "https://news.google.com/rss/articles/CBMizwFBVV95cUxOYm1zUFBRX3R3UmJhUEFpVnB5ZEE3aEFNalZpQ053NlMwTXlTSlFubXBKbjZxYXJtY0hyTVRiT2tqalU1M1pGWnRaLW8xd1BydmVpWkJBakNyX0R0V0VDZXpBUXEyM2otc2t6YWhpS0h6QVAwd1h4dFE5bDFPaGs3cFFvMUxpYzd5cGJfNmVtQW5kRVQ3Y193bjhFSTVpd2tfS0IzeW1YZFJ5RVI5M3pOb2N4MkYyUy1vZUZXMTdQcVUxaFI3QXNPR203QU9nTG8?oc=5",
       "published": "Thu, 19 Nov 2026 21:22:00 GMT",
-      "title_zh": "輝達高管遭黃仁勳斥責，妻子被控走私晶片"
+      "title_zh": "輝達高管遭黃仁勳斥責，其妻被控走私晶片"
     },
     {
       "title": "Dan Ives Says Nvidia’s AI Dominance Can Survive Without Jensen Huang: ‘Two, Three Years Ahead’ Of Rivals - Yahoo Finance",
       "url": "https://news.google.com/rss/articles/CBMikAFBVV95cUxPaVJESU9PUEZtTTd1blJ0eDZQOHI4dlJ2MmlkN01ZY3VzeVVPbmZVSGU2dXVZV3pqeUdaWTIzT2U0T2ZSQlZPd3B5Rk94anU3ZFB6TjlhS01yWVVMRVZtbTVGSEwzLVNROFBocXYxcDBpNElNd0daM0o3QmlqSTF1di1UbkJ5emI3RVdKNmdLdTU?oc=5",
       "published": "Thu, 19 Nov 2026 03:39:00 GMT",
-      "title_zh": "丹·艾夫斯：英偉達AI領先對手兩三年，無黃仁勳亦能維持"
+      "title_zh": "丹·艾夫斯：英偉達AI領先對手兩三年，無黃仁勳亦可"
     },
     {
       "title": "Jensen Huang’s Right-Hand Man Oversaw Chip Customers—Including Alice Huang - The Information",
@@ -36,37 +65,43 @@
       "title": "SpaceX launches Starship on ambitious 22-hour Flight 15 test, but aborts booster 'chopsticks' catch (video) - Space",
       "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxNcEhQWFJRdTk2a2oxdnBsNm1ZUHdjSUdDNUtuQnloQjlTdHZIdXpVeFlQeTNNMk8xeE9uXzhpamdiTnZHaFY2ZFZZbmViSEhBYUxGTENfNXVtZ3RHY2Z2SGlqSXU3cEZNRmtZdDFUc3VHbERUbWFiTEFNUk4wTHF2TVBJblIxUFc1UnBSY1lJRnM5VnFLM3hfYVU3VEpvWW44NmxNSmtUa3pUUXdxUEFHWV8tcnpkUE52MWFOX1pLZjNldlN1?oc=5",
       "published": "Fri, 13 Nov 2026 23:20:03 GMT",
-      "title_zh": "SpaceX星艦15號試飛22小時，助推器夾具捕獲中止"
+      "title_zh": "SpaceX星艦第15次試飛22小時，助推器夾具捕捉失敗"
     },
     {
-      "title": "Launch preview: SpaceX to launch first Starlink V3 satellites to orbit on Starship - Spaceflight Now",
-      "url": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxOdHFLQUtjcERHVElwWWJQN2RzemlmT0J0c1ZMcXlaWEZDYWpfZWJlQ0pTRlVhYzc1RzFkR09heVQxV0E4NVJXdHUyVWdXak9XVlIwVWl3VlJQczRqdm90WXMzU1ZvMGpzTWFId0lhU09uNFlvT0N4ajgtVmVsVmlQcEZBRXNzaFlucFhobnNROHJMaFpPTEV0bFpMLWxtclBtT09xQmdLeEVWa3Q0REhvMnZlN0tST1M2cjdV?oc=5",
-      "published": "Mon, 28 Sep 2026 07:00:00 GMT",
-      "title_zh": "SpaceX 將以星艦發射首批 Starlink V3 衛星"
+      "title": "SpaceX scrubs launch of classified payload for the U.S. Space Force, targets Friday - Spaceflight Now",
+      "url": "https://news.google.com/rss/articles/CBMitAFBVV95cUxNbktEejlaa2VQdktxTDNTN3dYWld4QW5vMjhpMWFJZ1N6WGRLM3RteUFUTllWVXRNVENlXzF5TWhTbEdiWHhpNUxUUGYzX3NZbWpVbFJPOEtiU2ZhS0FmdTQ1ejZtOG4tTDJKWkk5bHhvMWhBRHVuNzRFTm9US1JVYlBLWUFoMXFGcWpwN1RnNzlPbWNDeUUxSlVmdEw1TXpGSDl6ZDVVT1daaHgtQmFDOHRQZ24?oc=5",
+      "published": "Thu, 19 Nov 2026 23:51:47 GMT",
+      "title_zh": "SpaceX取消美太空軍機密任務發射，改期週五"
     },
     {
-      "title": "SpaceX’s Starship launches on first orbital mission from Texas - NPR",
-      "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQV2tOX3hqcjgtWDYwbllnSXM3RF9HZFNwczdjZlE3Q1NhZnRfZmVQTG9VOEV1Y3BlR0YtdFpmX3hwYjVCYUNBaTRXV3RwYk1YcE5mTzlmR3FuVlUyNmlWMk9ZV0lSZi1LVzQ5QWRydWluZk4yMUFQVDNVLTd2b18yNWxqZmluWVo5RC1rSm10eGFYWEE?oc=5",
-      "published": "Mon, 28 Sep 2026 07:00:00 GMT",
-      "title_zh": "SpaceX星艦自德州首飛入軌"
+      "title": "Starship Flight 15 - SpaceX",
+      "url": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE5vNXBfdXhzTnJReWZSYkJuczA4ejRpc3NlRE1VcEZlcWFUQTlIWjJGbENNSXIzVmhqVTFRQW9ZbjZLbW9hR2NHWlB6UFJMdkxDbUh5NFZUS3F5cnBjbG5Z?oc=5",
+      "published": "Sat, 14 Nov 2026 08:00:00 GMT",
+      "title_zh": "星艦15號試飛 - SpaceX"
     },
     {
-      "title": "SpaceX launches Starship into orbit for first time ever but cuts mission short - Fox Business",
-      "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxNam9WLU9UaTdCNzBFOThjSk42RURobDdhUXd4VC13WDBROV9SOGpyakNvbjE4OUxMd3R2ZHJwbDJTNVNHTHhCcDdLSFZ2aVpWWko0TDNBMmRwdklwVzZwZE1nMnhaZFBWMGdvRjdXd0VnUDVMWHdxVnI4dnhHd2IxMXVrb2NBQy1WODAtb0c3MmJmekVvMVhuZnpTbHdYY3dsLTdtX2JCUXpzWTJKVHdZ0gG0AUFVX3lxTE5JYks5OHdrWkRYNGdRTHEyOVJkRGdvdkNVOHZHcTVQMzNRbEtYMVJWbnpmNWFQSnowNHp6TFljalVPcS1US3J4VkFFM2d3aVduMUdaU1JaZFJsSmgzU1RhOS1PVmZjVGJJZ0FsR3dVM2EyWW9Sa1lPMjNUZTlDNnA4YUl1MkNwYVN0aGRLVm84ZVhPeUt6ZXc1T0U3VFl0V29uQV9fbWxldVF0OWJlLTcxd0RncQ?oc=5",
-      "published": "Mon, 28 Sep 2026 07:00:00 GMT"
+      "title": "The view from the tower: Watch Starship come in for chopsticks catch in epic slo-mo video - Space",
+      "url": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxNZ1dzUzQ0TDdoTy1kNldDaUdPcGNnSWFTOXJqUlNUZHVFQzRRbjFpdXk5RG5iSEQ2MjlDR0NSa3J6WWx0MkNKeEZ4SXRHTG1XWDRILXBNS09RZmpWZ1ZDNmtUcUpkQ09YbEZDRUNiRXh2ODA2MFpPZ3BVaDNralpHZnFwemY3UktIMDlXZHBJelRNdGpLMzgzbE5BZlFCTzhqdFFRLWh6WWo1d2ZjZDdGWHYzaEZJcERFb2taSDRBSlFEV19paUNlODJGTzB6NUlFdG1kSC1mcU0td0lfaGRMRUFB?oc=5",
+      "published": "Thu, 19 Nov 2026 22:00:00 GMT"
     },
     {
-      "title": "Starship Flight 14 - SpaceX",
-      "url": "https://news.google.com/rss/articles/CBMiX0FVX3lxTFBpYThOaTctbk9jeFBjOFJYamJqaEFqZEwzd3lVV1NRSHNZN3BzMms0NGNLeHJYY24xR3VOTFZYZl81OFFXVmpENkNrckNXeVo2N2JJVkdBd3VTSGh2SDhZ?oc=5",
-      "published": "Mon, 28 Sep 2026 07:00:00 GMT"
+      "title": "Why SpaceX’s Starship is commercial aerospace’s most ambitious test program - Aerospace Testing International",
+      "url": "https://news.google.com/rss/articles/CBMiyAFBVV95cUxNVmw0MDJHdmRjQTBlVHJManVTMU1NYWJkSG1xZTN2ajcyMk1TSHhQOXFCMnhjbHZfVllFMWpZY0FPWVkydlFnSDlDNlFaeDJlS1RzTHowTDRFNDl3ZDFJenRhNzBKc0ctYVNJOW5RaW8xNzFLWi1LZDh0dWJLTEJyYl8xdnRqUFhKS2lnT0xTS3VFbHFldXlMa3FrLTRuM1JfYUN1QmNGN3RIRVRuTWRiQzJmYXhWVS10T01yT0FrRlQ4T2JkeDFsNw?oc=5",
+      "published": "Fri, 20 Nov 2026 15:20:35 GMT"
     }
   ],
   "kuiper": [
     {
+      "title": "Amazon Resumes Satellite Deployments Following Vulcan Accident - Aviation Week",
+      "url": "https://news.google.com/rss/articles/CBMisAFBVV95cUxQZmlQdC1ZR1p4Uk9wM3BfbmM0QWdPMUprdGZIMjh2QkVFM1kwMjFaalBfVmoxd3FQZHFaS0VtT3FlYktaaENhM1hFT203emg1VkdsamdpQVhHdFFjTF9odFdZOE1yNVpvMUVUVnZvNFNXNEV1TloxMVpvb0M2dnNrQlhNOFFhWnY4OE5HSC1RYnFYNUhYQmpFb3phTERrb2hDU3ZUQ1FGcTdwM3BpWE5UZw?oc=5",
+      "published": "Fri, 20 Nov 2026 18:36:21 GMT",
+      "title_zh": "火神事故後，亞馬遜恢復衛星部署"
+    },
+    {
       "title": "Rocket from Boeing-Lockheed firm fails mid-flight, destroys payload of Amazon satellites - Reuters",
       "url": "https://news.google.com/rss/articles/CBMi0gFBVV95cUxNRENJR2FvRjB1WmJfWk56alNqNHBwRHExSk0tdU91LV9wSUMzVm9PZEtRdHc0Y1JaMW44OVBJc3puTENpMXNBY3VmSVNjSTZIazlYRGh4aUxVaW9GdXNBamZla29sRzJnajdMdU1yQU9xekdPcUwyRXdaRzF4TXhiZXV6RDZIN21yVS15bGpNVUJFZUpnWU1ZTFJqbm94OXhjamR3SXFRV3F0YWZWSnA5ei1Gd2o4UW1PSnlrTnFtMENUb2V1VjVDc09XSFJNN0JaWXc?oc=5",
       "published": "Sun, 15 Nov 2026 20:26:00 GMT",
-      "title_zh": "波音洛克希德火箭飛行中故障，摧毀亞馬遜衛星"
+      "title_zh": "波音洛克希德火箭飛行中失敗，摧毀亞馬遜衛星"
     },
     {
       "title": "Early data points to Vulcan’s first stage in launch failure that cost Amazon 40 Leo satellites - GeekWire",
@@ -75,45 +110,39 @@
       "title_zh": "初步數據顯示 Vulcan 一級故障致 Amazon 損失 40 顆衛星"
     },
     {
+      "title": "Amazon Lost 40 Leo Satellites During This Failed Rocket Launch - BGR",
+      "url": "https://news.google.com/rss/articles/CBMib0FVX3lxTE9vTWl0d3lNdmJJcF9mTTR1NTlielpENkNHdWd1WXRYVDJVZjM2ZEluc1kwbWllTVhwU05lc3MwZFFYZW1iZzhFQ3cyQTdGTjd3ekFlVUtrc25aVFdxb3ZEOFRwVE0xRDY2QVN2VUpmWQ?oc=5",
+      "published": "Fri, 20 Nov 2026 18:47:00 GMT"
+    },
+    {
       "title": "Vulcan Rocket Mishap Hurts Amazon’s Satellite Aspirations - Barron's",
       "url": "https://news.google.com/rss/articles/CBMigAFBVV95cUxPbWFvZXRFV05GQ1p5aXJpNGlkVTM0RGozcHF5YjdSX1NRV0kxYVQyMDRQcVpsZl9LWm1OVTVmU29nR24xTzA0SHo3Mk1GREUzRDBOZDNJYzNRWERJaTh5X0xrQmpDZ1ZJZVBjdFFBUXVBWi1aSVpWUF9WcXRHYk1EUg?oc=5",
-      "published": "Mon, 16 Nov 2026 13:42:00 GMT",
-      "title_zh": "維珍火箭失誤打擊亞馬遜衛星計劃"
-    },
-    {
-      "title": "Amazon Leo loses 40 satellites in Vulcan explosion - Fierce Network",
-      "url": "https://news.google.com/rss/articles/CBMikgFBVV95cUxOemU1Um9ySTc5MHdSd0E2OXR0Sk9aMFdqaURtNC1kdzFZTFF1b2hHcWFfVmo3eVYxdlQ5UmZMbGVuRjlEZDJMb2xQX0tsT0RMQ2VkU3hBZ2NGYUpHd2lELURmMzNqdDNhT3JLNktZU3hvWGVkZFNyN2hoT1pmMF9ZTXZqcmpWMEJSSGpNVk9CVGlEUQ?oc=5",
-      "published": "Mon, 16 Nov 2026 16:27:00 GMT"
-    },
-    {
-      "title": "ULA suffers first outright failure with loss of Vulcan rocket carrying 40 Amazon Leo satellites - Spaceflight Now",
-      "url": "https://news.google.com/rss/articles/CBMi1gFBVV95cUxPOXBwbWd2b0g0V3hIb3RLVTU4Tkd6M2xtSUNDUU5Pd1B5OW9rcGVMcXdiMnJKclpldzBIS0FsZlplY2tSelFyZldnQlhrd3FtOEZsWDRSYkJjdjNEWWFPVEdET0pPNHFjSEZUaFYyZTJCaUhGcC1PYkc3M1VIZDJGdG9WWHNsZFd1X0V1V1hFT1JKR2FmNnR0dXY2eWh5b0FEVTNVWFh2SjVSRmgtQVZPY2RaMXBfVTJhTzA2UG4zV05nd0dUZTFQVUtrNFhuMzlzbU5XOWF3?oc=5",
-      "published": "Sun, 15 Nov 2026 19:16:59 GMT"
+      "published": "Mon, 16 Nov 2026 13:42:00 GMT"
     }
   ],
   "earnings": [
     {
       "title": "Nvidia Earnings Preview: NVDA’s First Test of the Post Jenson Huang Era - StoneX",
       "url": "https://news.google.com/rss/articles/CBMiugFBVV95cUxQQWxOcHotbmtwS1FsYWZacGppZW9FQkRlbkQ5QlFhR2RtNzNTQlIyNG43OENfZ3Y5Qi1rSlo5Ni1ZR0tMbFlBdnlPWXc4RFN6aTI0NHZXeU5pZ01JaUZqQzdYT1RNWlhMUnBsNHhNMjBjR3QydDEyMVpCcmlMSmhqamJSNnZhMUd2WGlYOUdwVUdJeEpHd2RYYWdXWXR2OWljc0hqQ0RrcUFmaTRfTXRxN1NqQjk3WENlb1E?oc=5",
-      "published": "Fri, 20 Nov 2026 15:32:30 GMT",
+      "published": "Fri, 20 Nov 2026 17:25:50 GMT",
       "title_zh": "輝達財測：黃仁勳時代後首考 - StoneX"
     },
     {
       "title": "Micron Stock: 3 Catalysts Set to Boost the Memory Chip Maker Beyond Nvidia Earnings - Barron's",
       "url": "https://news.google.com/rss/articles/CBMifEFVX3lxTE1EUkd4T0FNR1lpSjgxY2pQMm5jR1dJYU1WLU9PT0tybjhIcGpFTTBqemF5djRKUFd2T0gzaENGQU9QUXhuQXhpQmdUNmlZcG50Q1RJMjhFSlRIUlhQWmpGZFZKWWVjRm8wcGk0WmFJaUxVeEkwdnQxQXVaX3g?oc=5",
       "published": "Fri, 20 Nov 2026 17:54:00 GMT",
-      "title_zh": "美光股價：三大催化劑將助其超越輝達業績"
-    },
-    {
-      "title": "Prediction: Micron Stock Is Going to Soar After Its December Earnings Report - Yahoo Finance",
-      "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxPMjNWZ0ZCRDBMSDJxQ3RiOU1aMFdhSTdhcVNzeXJlN1BmSGFTTlpDZmdxNDBKb1J2R3E5R1B6OTNDSGQwNUQ2VVBiNXRDMmRVcFhBWEc2d0lvTUZYSk5MU29qNm9EUkRLQUduQzhxQnZWUVczUm94VW9kRTdoeHhUWXVsbERDZlowLUd5ZGxOUlNoSjgwSWxENk5pMGZfLTJu?oc=5",
-      "published": "Fri, 20 Nov 2026 12:20:02 GMT",
-      "title_zh": "預測：美光12月財報後股價將飆升"
+      "title_zh": "美光股價：三大催化劑助其超越輝達業績"
     },
     {
       "title": "Stock Market Dives To New Lows Despite Nvidia Earnings, Anthropic IPO: Weekly Review - Investor's Business Daily",
       "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxOOFcwdEJJOEpPWVFTZHIxRUtyakdGbElWOGtHWnZ3NS1BdXM1eXVrejlTU1QwcExwTTIzb3JFRGxJZDZPVnlkR1FnTVpuazNtbFA5MFdRMGd0TFZUNHNjdF9xTEU4MUxwVk5BQ2tpcnRCNUZ1Tmg0c2xLbWpRWDdZRm90eXJQMUhDT1pqWjZudlR2WVRwUE9ZTg?oc=5",
-      "published": "Fri, 20 Nov 2026 16:35:00 GMT"
+      "published": "Fri, 20 Nov 2026 16:35:00 GMT",
+      "title_zh": "英偉達財報與Anthropic IPO難擋，股市創低"
+    },
+    {
+      "title": "Prediction: Micron Stock Is Going to Soar After Its December Earnings Report - Yahoo Finance",
+      "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxPMjNWZ0ZCRDBMSDJxQ3RiOU1aMFdhSTdhcVNzeXJlN1BmSGFTTlpDZmdxNDBKb1J2R3E5R1B6OTNDSGQwNUQ2VVBiNXRDMmRVcFhBWEc2d0lvTUZYSk5MU29qNm9EUkRLQUduQzhxQnZWUVczUm94VW9kRTdoeHhUWXVsbERDZlowLUd5ZGxOUlNoSjgwSWxENk5pMGZfLTJu?oc=5",
+      "published": "Fri, 20 Nov 2026 12:20:02 GMT"
     },
     {
       "title": "Prediction: This Is What Will Happen to Micron’s Stock Price in December - The Motley Fool",
