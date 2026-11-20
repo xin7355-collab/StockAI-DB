@@ -23,6 +23,8 @@
 - `radar_miner.py` 刪 `build_falcon_scores` 與 `_FALCON_SECTORS / _SYM2SECTOR / _falcon_ma`(只有它在用),留墓碑;`daily_miner.yml` 部署那一步在「複製一份到 /tmp/mine」**之前** `rm -f data/falcon_scores.json`(跟 V79.0.0 刪付費資料那一行同一個位置)。
   - 🚨 推之前才發現:一開始照 chief_ai_cache.json 的前例放在後面 —— 但 data 分支是從 /tmp/mine 那份推的,放後面只會清掉 gh-pages。實查 origin/data:**chief_ai_cache.json 從 2026-06 退役到現在還在 data 分支**(那個前例本身就只清了一半;沒人讀,這次不動它)。
   ⚠️ 改這兩個檔一推就帶起整輪每日採礦 → 收盤後才推(實際 11/21 週六凌晨推;跟在每日採礦後面的那幾支都不跟「推程式」那種 → 明日作戰清單 / 週回測不會被帶起來)。
+  - 🚨 推上去才發現漏算一件事:那時週五的**排程** daily_miner #714(排程遲到 8.5 小時,01:03 才開始)還在跑 → 我推的那一輪 #715 把它標成 `cancelled`。#714 的部署 job 已經在跑(`always()`),gh-pages / data 照樣在 17:30 推完 → 資料沒少;但跟車的 weekly_backtest(只跟週五排程那輪)/ kbar5 / playbook_scan 看到 cancelled 全部跳過。
+    → 手動補派:kbar5 馬上派(週六快照 = 週五的量排行)、weekly_backtest(force=true)與 playbook_scan 等 #715 部署完再派。CLAUDE.md V16.1 那節加一條:推 daily_miner push paths 裡的檔之前,先看有沒有 in_progress 的排程那輪。
 - ⛔ 這次不動:App 裡其他讀 `_falconScores` / `_falconScoresCache` 的地方(全是「讀不到就用預設值」,畫面不受影響);
   Telegram 機器人的 `/set falcon` 與歡迎詞裡的「獵鷹分突破」(也沒作用,但機器人負責叫醒採礦,為了說明文字重新部署不划算 → 下次改機器人時一起拿掉)。
 - `backtest.py` / `paper_trade.py` 的 `_falcon_score_simplified` 是它們自己算的另一份,⛔ 不讀 falcon_scores.json → 不受影響。

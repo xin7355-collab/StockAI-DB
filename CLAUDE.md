@@ -56,6 +56,7 @@
 - 想手動停跑中的 daily_miner:Actions UI → 該 run → 右上「Cancel workflow」按鈕,**完全無風險**(SQLite 逐股 commit、`if: always()` 上傳 artifact、deploy job STOCKS<100 守門擋空部署)
 - 🧟 **2026-10-23 起:被新的一輪取代的那輪 ⛔ 不部署** —— 部署 job 是 `always()`(某個節點跑滿 90 分仍要部署),以前連「被取代」也照跑 26 分、佔著共用部署鎖,新的那輪只能排隊(10/23 #640 → #641 等了 27 分)。→ 部署前的 `gate` job 問 GitHub 同分支有沒有編號比較大、還沒結束的 run(`scripts/miner_superseded.py`),有才跳過;問不到一律照舊部署;自己按 Cancel(沒有新的一輪)照舊部署已採到的。⛔ 部署條件寫成 `!= '0'`(fail-open),⛔ 改成 `== '1'`。測試 `test_deploy_relay ⑧`
 - deploy_pages.yml 1 分鐘部署不會被新 push cancel(`cancel-in-progress: false`),完整性優先
+- 🚨 **2026-11-21 推採礦檔撞上還在跑的排程那輪**(V82.6.3 實例):push 帶起的新一輪會把排程那輪標成 `cancelled` —— 資料不會少(新的一輪整個重跑;那次排程那輪的部署 job 已經在跑,`always()` 照樣推完),但**跟車的全部看到 cancelled 就跳過**:`weekly_backtest`(只跟週五排程那輪 → 那一週就沒回測)、`kbar5`(只跟排程那輪 → 那天沒有 5 分 K)、`playbook_scan` 第二輪。⛔ 推 daily_miner push paths 裡的檔(`miner.py` / `radar_miner.py` / `daily_miner.yml`…)之前先 `actions_list` 看有沒有 in_progress 的**排程** daily_miner,有就等它跑完再推;撞到了 → 新的一輪跑完後手動派:`weekly_backtest`(force=true)、`kbar5`(週末派 = 用週五的量排行)、`playbook_scan`
 
 ### 🚨🚨🚨 V73.9.0 ⭐⭐⭐ 真因是 **GitHub 每個 repo 的排程配額**,不是 concurrency（V73.7.9 只對了一半）
 
