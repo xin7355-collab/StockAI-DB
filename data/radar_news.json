@@ -1,0 +1,211 @@
+{
+  "updated": "2026-11-20 17:44 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "中央社財經",
+      "title": "CNN：至少6所遭美列黑名單中國大學採購輝達晶片",
+      "link": "https://www.cna.com.tw/news/aopl/202611200337.aspx",
+      "published_time": "Fri, 20 Nov 2026 21:50:55 +0800",
+      "matched_keywords": [
+        "出口管制"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "晶片出口管制失效，凸顯供應鏈管控風險",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "散戶自我了斷潮來襲！上市櫃融資大減637.01億  創單日新高",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5648118",
+      "published_time": "Fri, 20 Nov 2026 21:20:16 +0800",
+      "matched_keywords": [
+        "出口管制",
+        "不如預期",
+        "新高"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "融資大減創新高，AI股重挫拖累大盤",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "威聯通搶攻地端AI商機 明年毛利率拚6成以上",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5648104",
+      "published_time": "Fri, 20 Nov 2026 21:12:41 +0800",
+      "matched_keywords": [
+        "法說",
+        "毛利率"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "搶攻地端AI商機，目標明年毛利率拚6成以上",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "第3季經常帳順差創歷年次高　民眾出國旅行支出寫新高",
+      "link": "https://www.cna.com.tw/news/afe/202611200317.aspx",
+      "published_time": "Fri, 20 Nov 2026 20:43:09 +0800",
+      "matched_keywords": [
+        "新高"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI商機爆發，出口貿易順差創新高",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "搶攻2000億移工經濟、匯兌商機！ 數位至匯11/25每股120元登興櫃",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5648073",
+      "published_time": "Fri, 20 Nov 2026 20:37:24 +0800",
+      "matched_keywords": [
+        "匯兌",
+        "營收"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "登興櫃搶攻移工經濟商機",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "大盤跌翻竟有個股漲多下週一要被「抓去關」 另20檔跌多潛在被關標的",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5648070",
+      "published_time": "Fri, 20 Nov 2026 20:35:51 +0800",
+      "matched_keywords": [
+        "處置股"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利空",
+      "ai_reason": "個股因單週跌幅過大遭處置，反映市場恐慌",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "數位至匯11/25登錄興櫃　明年擬拓泰國匯款",
+      "link": "https://www.cna.com.tw/news/afe/202611200308.aspx",
+      "published_time": "Fri, 20 Nov 2026 20:03:49 +0800",
+      "matched_keywords": [
+        "匯兌",
+        "營收",
+        "展望"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "營收獲利超去年，擬拓泰國市場",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "經部：將於12月電價審議會表達民生用電不漲價立場",
+      "link": "https://www.cna.com.tw/news/afe/202611200301.aspx",
+      "published_time": "Fri, 20 Nov 2026 19:40:33 +0800",
+      "matched_keywords": [
+        "漲價",
+        "油價",
+        "增資"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "政府補貼台電中油，穩定民生用電油價",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "油電瓦斯補貼到手！12月電價會議照開 經濟部表態支持民生電價不漲",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5647992",
+      "published_time": "Fri, 20 Nov 2026 19:17:19 +0800",
+      "matched_keywords": [
+        "增資"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "政府補貼台電中油，緩解財困並穩定民生",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "上海商銀前3季EPS優於去年同期　明年股利發放視資本決定",
+      "link": "https://www.cna.com.tw/news/afe/202611200294.aspx",
+      "published_time": "Fri, 20 Nov 2026 19:17:16 +0800",
+      "matched_keywords": [
+        "每股盈餘",
+        "EPS"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "前3季EPS優於去年同期，獲利表現穩健。",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "輝達換帥衝擊AI產業？閎康董座：美CSP大廠研發需求未見減速",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5647958",
+      "published_time": "Fri, 20 Nov 2026 19:04:34 +0800",
+      "matched_keywords": [
+        "法說"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "閎康證實CSP研發需求未減速",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "新台幣貶破33元後翻升 央行︰外資買匯轉弱、國人結售美元增加",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5647954",
+      "published_time": "Fri, 20 Nov 2026 19:02:58 +0800",
+      "matched_keywords": [
+        "新台幣貶"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利空",
+      "ai_reason": "台股大跌2393點失守37000點",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "南電：10月獲利年增388.53％  本週股價暴跌35.2％",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5647896",
+      "published_time": "Fri, 20 Nov 2026 18:13:24 +0800",
+      "matched_keywords": [
+        "合併",
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "10月獲利年增近4倍，業績表現優異",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "紅外熱成像鏡頭需求續增 今國光2027年營運正向",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5647900",
+      "published_time": "Fri, 20 Nov 2026 18:12:13 +0800",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "紅外熱成像鏡頭需求續增，營運前景正向",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "中華電：沒放棄 AWS 低軌衛星合作，盼協調 28GHz 頻譜",
+      "link": "https://technews.tw/2026/11/20/cht-aws-28ghz/",
+      "published_time": "Fri, 20 Nov 2026 09:40:48 +0000",
+      "matched_keywords": [
+        "低軌衛星"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "頻譜協調中，合作結果未定",
+      "important": true
+    }
+  ]
+}
