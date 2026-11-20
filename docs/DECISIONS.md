@@ -4,6 +4,34 @@
 
 
 
+## V82.6.3(2026-11-20)🦅 獵鷹分數的殘骸清掉:風險指數的黑天鵝旗標加分 V39.2 起一次都沒算過(更正 V82.5.9)・Telegram 自助診斷兩句假話拿掉・採礦不再算獵鷹建倉分・當沖占比每輪補 30 天
+
+**🔎 查證(使用者說「繼續」,收上一輪留下的「獵鷹分數日圓急升 −20」)**
+- App 從 V39.2(使用者要求拔掉獵鷹系統)起就不載入 `falcon_scores.json`:全檔只有 `this._falconScores = null` 與宣告,沒有任何地方再賦值;
+  Telegram 機器人的 `buildFalconMap(radar)` 讀的是 radar.json 裡不存在的鍵(falcon / stocks / list / by_strategy;實際只有 updated / data)→ 空的。
+  → radar_miner 每輪算的「獵鷹建倉分」(含日圓急升 −20 / 金油暴漲 −20 / 亞股提款 −10 煞車)**沒有任何人讀**。
+- 🚨 **更正 V82.5.9**:風險指數的「黑天鵝旗標加分」讀的是 `this._falconScores?.macro_flags` → 永遠是空的 → **從 V39.2 起一次都沒加過分**。
+  V82.5.9 寫的「jpy_surge 旗標不再加分、金油暴漲旗標照舊 +5」——那個「+5」是 `test_yen_off` 自己把 `_falconScores` 塞進去才算出來的(陷阱 #40:測試環境跟正式環境不一樣)。
+- 同一支「沒收到推送?自助診斷」:永遠印「🦅 全市場獵鷹分 ≥ 80:0 檔」,清單不空就一定跳「💡 全市場高分股少(可能盤勢淡或大盤回檔),自然訊號就少」(假的);
+  另一句「💡 監控空 → 量爆突破 5MA + 朱家泓 5MA 朝掃都 skip、到朱家泓五大選股法一鍵加入」也過時(朝掃 V78.1.1 已刪、五大選股法 V79.9.3 起只剩實驗室;帶量站上 5 日線自選 / 庫存照樣推,監控清單只是把它們合成一則)。
+
+**做了什麼(正式環境的數字一個都不變)**
+- 風險指數那段刪掉,留說明;⛔ 改成去讀 macro_risk.json 的 `blackswan`(那等於打開一個沒測過的加分,陷阱 #38)。
+  網站 11/20 17:42 那份真資料前後比:舊 46 分 = 新 46 分(`_falconScores` 兩邊都是 null)。
+- `test_yen_off` ② 改成:旗標全部塞進去 → 分數一分不變;決定性對照:只把台指選擇權 VIX 22 → 33 → +6 分。③ 靜態:那支 ⛔ 讀 `_falconScores / macro_flags / blackswan / jpy_surge / flagCount`。INJECT=flag(把舊那段塞回去)必紅。
+- 自助診斷拿掉那三句;新測試 `scripts/test_tgdiag.mjs`(真的呼叫,INJECT=1 / 2 各自紅)。
+- `radar_miner.py` 刪 `build_falcon_scores` 與 `_FALCON_SECTORS / _SYM2SECTOR / _falcon_ma`(只有它在用),留墓碑;`daily_miner.yml` 部署那一步在「複製一份到 /tmp/mine」**之前** `rm -f data/falcon_scores.json`(跟 V79.0.0 刪付費資料那一行同一個位置)。
+  - 🚨 推之前才發現:一開始照 chief_ai_cache.json 的前例放在後面 —— 但 data 分支是從 /tmp/mine 那份推的,放後面只會清掉 gh-pages。實查 origin/data:**chief_ai_cache.json 從 2026-06 退役到現在還在 data 分支**(那個前例本身就只清了一半;沒人讀,這次不動它)。
+  ⚠️ 改這兩個檔一推就帶起整輪每日採礦 → 收盤後才推(實際 11/21 週六凌晨推;跟在每日採礦後面的那幾支都不跟「推程式」那種 → 明日作戰清單 / 週回測不會被帶起來)。
+- ⛔ 這次不動:App 裡其他讀 `_falconScores` / `_falconScoresCache` 的地方(全是「讀不到就用預設值」,畫面不受影響);
+  Telegram 機器人的 `/set falcon` 與歡迎詞裡的「獵鷹分突破」(也沒作用,但機器人負責叫醒採礦,為了說明文字重新部署不划算 → 下次改機器人時一起拿掉)。
+- `backtest.py` / `paper_trade.py` 的 `_falcon_score_simplified` 是它們自己算的另一份,⛔ 不讀 falcon_scores.json → 不受影響。
+
+**📊 第 ⑧ 題(當沖占比)的資料補快一點**
+- `hist_daily.py` 每輪往前補 10 → 30 天(證交所 www 隔 4 秒,一輪最多 3 + 3 + 30 = 36 次 ≈ 2.5 分;playbook_scan 那一步時限 6 → 8 分);11/20 才 12 天 → 補到 2024-01-02 約 2 週。
+- 起點 2024-01-02 是當初隨便訂的 → 探針 `official_extra_probe.py` 加 `DTR_AT`(workflow input `dtr_at`,只問那幾天、最多 6 天、擋了就停),先問 2014-01-06 / 2018-01-02 / 2022-10-03 拿不拿得到、欄位一不一樣,再決定要不要往前延(結果補在下面)。
+- PTT 照原本「不往回挖」的設計 → 第 ⑧ 題 PTT 那一半 2027 年底再看。
+
 ## V82.6.2(2026-11-20)🏦 個股外資持股比 20 天大增 / 大減之後沒有用(EXP-20261120-05 ⛔)→ 只寫實測總表
 
 **🏦 第 7 期第 7 題(事先登記 EXP-20261120-05,`scripts/fi_hold_probe.mjs`)**

@@ -60,7 +60,7 @@ BAD_SHARE = 0.2       # 重疊那幾天對不上超過幾成就不收這次的
 GAPS = {'api.finmindtrade.com': 1.0, 'www.taifex.com.tw': 1.5, 'openapi.taifex.com.tw': 1.0, 'www.twse.com.tw': 4.0}
 DTR_URL = 'https://www.twse.com.tw/rwd/zh/dayTrading/TWTB4U'
 DTR_RECENT = 3        # 每一輪先補最近幾個平日(還沒有的)
-DTR_BACK = 10         # 每一輪往前補幾天(證交所 www 隔 4 秒 → 一輪最多 16 次 ≈ 64 秒)
+DTR_BACK = 30         # 每一輪往前補幾天(V82.6.3 10 → 30;證交所 www 隔 4 秒 → 一輪最多 3 + 3 + 30 = 36 次 ≈ 2.5 分)
 DTR_HOLES = 3         # 每一輪最多回頭補幾個「問過但沒拿到」的洞(⛔ 永遠留著一個破洞)
 DTR_GIVEUP = 3        # 同一天問 3 次都沒拿到 → 不再問(記在 miss,看得出缺哪幾天)
 DTR_FROM = '2024-01-02'
@@ -780,7 +780,7 @@ def selftest():
     g, calls = fake({'tw': tw_route()})
     dd1, ch1, r1 = run_dtr(g, None, today, log=quiet)
     tw_calls = [c for c in calls if 'twse' in c['url']]
-    ok('⑪ 第一次:最近 3 個平日(今天還沒開盤 → 先不收、⛔ 記成休市)+ 往前 10 天,一共問 13 次', r1['asked'] == 13 == len(tw_calls)
+    ok(f'⑪ 第一次:最近 {DTR_RECENT} 個平日(今天還沒開盤 → 先不收、⛔ 記成休市)+ 往前 {DTR_BACK} 天,一共問 {DTR_RECENT + DTR_BACK} 次', r1['asked'] == DTR_RECENT + DTR_BACK == len(tw_calls)
        and '2026-11-20' not in dd1['d'] and '2026-11-20' not in dd1['none'] and '2026-11-19' in dd1['d'], (r1['asked'], sorted(dd1['d'])[:3], dd1.get('none')))
     ok('⑪ 11/19 照名字找欄位:股數占比 27.83、買進 41.29、賣出 41.35、股數 / 金額也收', dd1['d'].get('2026-11-19') == [27.83, 41.29, 41.35, 4259348000.0 + I['2026-11-19'], 389437473750.0, 389961679540.0],
        dd1['d'].get('2026-11-19'))
@@ -789,15 +789,15 @@ def selftest():
     g, calls = fake({'tw': tw_route()})
     dd2, ch2, r2 = run_dtr(g, json.loads(json.dumps(dd1)), today, log=quiet)
     asked2 = [c['params'].get('date') for c in calls if 'twse' in c['url']]
-    ok('⑪ 第二次:已經有的 / 休市的 ⛔ 再問;今天(還沒公布)照問;再往前補 10 天', r2['asked'] == 11 and '20261119' not in asked2 and '20261112' not in asked2 and '20261120' in asked2
-       and len(dd2['d']) == len(dd1['d']) + 10, (r2['asked'], asked2[:4], len(dd2['d'])))
+    ok(f'⑪ 第二次:已經有的 / 休市的 ⛔ 再問;今天(還沒公布)照問;再往前補 {DTR_BACK} 天', r2['asked'] == 1 + DTR_BACK and '20261119' not in asked2 and '20261112' not in asked2 and '20261120' in asked2
+       and len(dd2['d']) == len(dd1['d']) + DTR_BACK, (r2['asked'], asked2[:4], len(dd2['d'])))
     g, _ = fake({'tw': tw_route('wrongdate')})
     dd3, ch3, r3 = run_dtr(g, None, today, log=quiet)
     ok('⑪ 回應的日期跟問的不一樣 → ⛔ 收、寫原因', not dd3.get('d') and not ch3 and any('不一樣' in v for v in r3['err'].values()), r3['err'])
     g, calls = fake({'tw': tw_route('block')})
     dd4, ch4, r4 = run_dtr(g, None, today, log=quiet)
     ok('⑪ 證交所擋頁 → 停手(只問 1 次)', r4['asked'] == 1 and len([c for c in calls if 'twse' in c['url']]) == 1 and not ch4, r4)
-    full_back = {'v': 1, 'd': {x: [30.0, 40.0, 40.0, 1.0, 1.0, 1.0] for x in _weekdays_back(date(2026, 11, 19), 800, DTR_FROM)}, 'none': []}
+    full_back = {'v': 1, 'd': {x: [30.0, 40.0, 40.0, 1.0, 1.0, 1.0] for x in _weekdays_back(date(2026, 11, 19), 9000, DTR_FROM)}, 'none': []}
     g, _ = fake({'tw': tw_route()})
     _, _, r5 = run_dtr(g, full_back, today, log=quiet)
     ok(f'⑪ 已經補到 {DTR_FROM} → 只問最近還沒有的(今天),⛔ 再往前', r5['asked'] == 1, r5['asked'])
@@ -822,8 +822,8 @@ def selftest():
     g, calls = fake({'tw': flaky})
     h2, _, rh2 = run_dtr(g, json.loads(json.dumps(h1)), today, log=quiet)
     a2 = [c['params'].get('date') for c in calls if 'twse' in c['url']]
-    ok('⑪b 第二次:回頭補洞(排在往前補之前)→ 拿到了、從 miss 拿掉;一共 1 + 1 + 10 = 12 次', rh2['holes'] == 1 and a2[1] == '20261113'
-       and '2026-11-13' in h2['d'] and not h2['miss'] and rh2['asked'] == 12, (rh2['holes'], a2[:3], h2.get('miss'), rh2['asked']))
+    ok(f'⑪b 第二次:回頭補洞(排在往前補之前)→ 拿到了、從 miss 拿掉;一共 1 + 1 + {DTR_BACK} = {2 + DTR_BACK} 次', rh2['holes'] == 1 and a2[1] == '20261113'
+       and '2026-11-13' in h2['d'] and not h2['miss'] and rh2['asked'] == 2 + DTR_BACK, (rh2['holes'], a2[:3], h2.get('miss'), rh2['asked']))
     ok('⑪b 決定性對照:沒有補洞的寫法 → 那一天永遠缺(第二次問的日子裡沒有它)', '20261113' in a2 and '20261113' not in
        [x.replace('-', '') for x in _weekdays_back(date(2026, 11, 20), 3)] + [x.replace('-', '') for x in _weekdays_back(date.fromisoformat(min(h1['d'])) - timedelta(days=1), DTR_BACK, DTR_FROM)])
     dead = tw_flaky({'20261113'}, None)
@@ -856,7 +856,7 @@ def selftest():
     try:
         rc = main()
         dj = json.load(open(os.path.join(dd2, 'dtr_hist.json'), encoding='utf-8'))
-        ok('⑫ main:dtr_hist.json 不在 → 第一次建、OUTDIR 有它、exit 0(長歷史兩份不在 ⛔ 擋住這段)', rc == 0 and len(dj['d']) == 11
+        ok('⑫ main:dtr_hist.json 不在 → 第一次建、OUTDIR 有它、exit 0(長歷史兩份不在 ⛔ 擋住這段)', rc == 0 and len(dj['d']) == (DTR_RECENT - 1) + (DTR_BACK - 1)
            and os.path.exists(os.path.join(od2, 'dtr_hist.json')) and dj['none'] == ['2026-11-12'], (rc, len(dj.get('d') or {})))
         badd = b'{"d":{"2026-11-19":[27.83,'
         with open(os.path.join(dd2, 'dtr_hist.json'), 'wb') as f:

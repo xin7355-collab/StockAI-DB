@@ -458,7 +458,7 @@ jobs:
       # 🧹 V68.9.9 使用者授權清理:data/chips/ 歷史累積 ~2.6 萬個「非股票代號」空垃圾檔
       #    (權證/債券/ETN 如 020xxx / 01001T / 02001L,買賣超全空)。只刪 chips 目錄、
       #    只刪「非 4碼股票 且 非 00 開頭 ETF」→ 真股票/ETF 一律保留;⚠️絕不動 data/ 本體
-      #    (data/ 有 day_trade/inst_rank/falcon_scores 等合法非股票代號檔,誤刪會壞前端)。
+      #    (data/ 有 day_trade/inst_rank 等合法非股票代號檔,誤刪會壞前端)。
       #    清完後 gh-pages + data 分支都不再帶垃圾(orphan force-push),下輪 archive 也不會再引入。
       - name: 🧹 清理 chips 垃圾檔(權證/債券空檔,使用者授權)
         run: |
@@ -730,6 +730,10 @@ jobs:
             rm -f "data/$f.json"
           done
           rm -f broker_names.json data/broker_names.json
+          # 🗑️ V82.6.3 獵鷹建倉分(radar_miner build_falcon_scores)已刪:App V39.2 起就不讀 falcon_scores.json。
+          #   ⚠️ 一定要在下面「cp data/*.json /tmp/mine/data/」之前刪 —— data 分支是從 /tmp/mine 那份推的,
+          #   放到後面(像 chief_ai_cache 那段)只會清掉 gh-pages,data 分支會一直留著(chief_ai_cache 到現在還在 data 分支)
+          [ -f data/falcon_scores.json ] && rm -f data/falcon_scores.json && echo "🧹 已清退役檔 data/falcon_scores.json(gh-pages + data 分支)" || true
 
           # 備份合併後的完整資料
           mkdir -p /tmp/mine/data/chips

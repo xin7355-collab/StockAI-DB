@@ -33,6 +33,7 @@
 跑法:python3 scripts/official_extra_probe.py [--selftest]
       WHICH=notice python3 scripts/official_extra_probe.py   ← 只跑 ⑧(⛔ 打到鉅額 / 借券 / 期交所那些)
       WHICH=dtr python3 scripts/official_extra_probe.py      ← 只跑 ⑨(證交所最多問 6 次)
+      WHICH=dtr DTR_AT=2014-01-06,2018-01-02 python3 …      ← V82.6.3 只問這幾天(新的那條網址,最多 6 天;看更早的拿不拿得到、欄位一不一樣)
 """
 import csv
 import io
@@ -344,6 +345,17 @@ def probe_notice(tw_today):
 DTR_CANDS = [('rwd dayTrading', 'https://www.twse.com.tw/rwd/zh/dayTrading/TWTB4U', {'selectType': 'All', 'response': 'json'}),
              ('exchangeReport(舊)', 'https://www.twse.com.tw/exchangeReport/TWTB4U', {'response': 'json'})]
 DTR_DAYS = 3
+DTR_AT_MAX = 6      # V82.6.3 指定日期最多問幾天(證交所 www 一次最多 6 次)
+
+
+def dtr_at_days(raw):
+    """DTR_AT='2014-01-06,20180102' → ['20140106', '20180102'](格式不對的丟掉、重複只留一次、最多 DTR_AT_MAX 天)"""
+    out = []
+    for x in str(raw or '').replace(' ', '').split(','):
+        d = x.replace('-', '').replace('/', '')
+        if len(d) == 8 and d.isdigit() and d not in out:
+            out.append(d)
+    return out[:DTR_AT_MAX]
 
 
 def dtr_stats(obj):
@@ -363,6 +375,22 @@ def dtr_stats(obj):
 def probe_dtr(tw_today):
     """⑨ 全市場當沖占比(見檔頭):每個候選網址從最近一個平日往回最多 2 天,有資料就換下一個網址;擋了就停。"""
     say('\n## ⑨ 全市場當沖占比(證交所 TWTB4U「當日沖銷交易統計資訊」)')
+    at = dtr_at_days(os.environ.get('DTR_AT'))
+    if at:
+        # V82.6.3 指定日期:只問新的那條網址(hist_daily 用的那條),每天問一次;看更早的拿不拿得到、欄位跟現在一不一樣
+        name, url, base = DTR_CANDS[0]
+        say(f'  - 指定日期 {at}(只問 {name},每天 1 次)')
+        for ds in at:
+            obj, v = probe_json('⑨', f'{name} date={ds}', url, params={**base, 'date': ds}, show=False)
+            if v == 'blocked':
+                say('  - 🚦 證交所擋了 → 後面的日期 ⛔ 再問')
+                return
+            st = dtr_stats(obj) if isinstance(obj, dict) else None
+            if st is not None:
+                say(f"  - ✅ {ds} 統計表:{str(st.get('title'))[:60]} ・欄位 {st.get('fields')} ・第 1 列 {json.dumps((st.get('data') or [])[:1], ensure_ascii=False)[:300]}")
+            else:
+                say(f"  - ⏳ {ds} 沒有統計表(stat={str((obj or {}).get('stat') if isinstance(obj, dict) else obj)[:60]!r})")
+        return
     days, d = [], tw_today
     while len(days) < DTR_DAYS:
         if d.weekday() < 5:
@@ -578,10 +606,10 @@ def selftest():
     ok('⑮b 決定性對照:欄位換位置(日期排第一)→ 結果一樣(⛔ 寫死第幾欄)', (by2, coded2) == (by, coded), (by2, coded2))
 
     # ⑯~⑱ 只跑 ⑧ / 官網被擋就停 / 第一組參數有資料就不試第二組(假的 fetch,⛔ 連網)
-    real_fetch, saved_env = fetch, {k: os.environ.get(k) for k in ('WHICH', 'GITHUB_STEP_SUMMARY')}
+    real_fetch, saved_env = fetch, {k: os.environ.get(k) for k in ('WHICH', 'GITHUB_STEP_SUMMARY', 'DTR_AT')}
     notice_ok = json.dumps({'stat': 'OK', 'fields': flds, 'data': rows[:2]}).encode()
 
-    def run_with(which, www):
+    def run_with(which, www, dtr_at=None):
         calls = []
 
         def stub(url, method='GET', params=None, data=None, timeout=40):
@@ -602,6 +630,10 @@ def selftest():
             os.environ.pop('WHICH', None)
         else:
             os.environ['WHICH'] = which
+        if dtr_at is None:
+            os.environ.pop('DTR_AT', None)
+        else:
+            os.environ['DTR_AT'] = dtr_at
         OUT.clear()
         TALLY.clear()
         try:
@@ -653,9 +685,25 @@ def selftest():
     ok('⑲ 每個網址都沒資料 → 每個問 3 天(共 6 次、⛔ 更多)', len(www_e) == 6, www_e)
     _, www_b, out_b = run_with('dtr', lambda u, p: R(200, b'<html>blocked</html>', 'text/html'))
     ok('⑲ 證交所擋頁 → 停(只問 1 次)', len(www_b) == 1 and any('證交所擋了' in s for s in out_b), www_b)
+    # ⑳ V82.6.3 DTR_AT:只問那幾天、只問新的那條網址、最多 6 天、擋了就停;格式不對的丟掉
+    seen = []
+
+    def www_at(u, p):
+        seen.append((u, p.get('date')))
+        return R(200, dt_ok if p.get('date') != '20140106' else b'{"stat":"\u5f88\u62b1\u6b49","data":[]}')
+    _, www_at_calls, out_at = run_with('dtr', www_at, dtr_at='2014-01-06,2018/01/02,20221003,bad,2018-01-02')
+    ok('⑳ DTR_AT → 只問那 3 天(重複 / 格式不對的丟掉)、只問 rwd dayTrading、每天 1 次;沒資料那天寫 ⏳',
+       [d for _, d in seen] == ['20140106', '20180102', '20221003'] and all('rwd/zh/dayTrading' in u for u, _ in seen)
+       and any('⏳ 20140106' in s_ for s_ in out_at) and any('✅ 20180102' in s_ for s_ in out_at), seen)
+    seen.clear()
+    _, www_at7, _ = run_with('dtr', lambda u, p: (seen.append(p.get('date')), R(200, dt_ok))[1],
+                             dtr_at=','.join(f'2015010{i}' for i in range(1, 10)))
+    ok('⑳ 給 9 天 → 只問前 6 天(⛔ 更多)', len(www_at7) == 6, www_at7)
+    _, www_atb, out_atb = run_with('dtr', lambda u, p: R(200, b'<html>blocked</html>', 'text/html'), dtr_at='2014-01-06,2018-01-02')
+    ok('⑳ 指定日期時證交所擋頁 → 停(只問 1 次)', len(www_atb) == 1 and any('證交所擋了' in s_ for s_ in out_atb), www_atb)
     OUT.clear()
     TALLY.clear()
-    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 24 條)')
+    print(f'\n{"✅ 全過" if not fails else "❌ 失敗 " + str(len(fails)) + " 條"}(共 27 條)')
     return 1 if fails else 0
 
 

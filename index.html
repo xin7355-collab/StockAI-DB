@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.6.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.6.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.6.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.6.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -9063,10 +9063,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.6.2',
+    _APP_VERSION: 'V82.6.3',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.6.3', d: [
+            '🧹 設定 › Telegram「沒收到推送?自助診斷」拿掉三句過時的話:「全市場獵鷹分 ≥ 80:0 檔」、「全市場高分股少,自然訊號就少」(其實不是原因)、「監控空 → 兩個推送都沒了、去朱家泓五大選股法加入」(那兩個功能早就拿掉了;帶量站上 5 日線的推送自選 / 庫存照樣會發)',
+            '🧹 風險指數裡一段「黑天鵝旗標加分」從很久以前就沒有作用(它讀的資料早就不載入了),這次把它整段拿掉 —— 你看到的分數一分都不會變',
+        ], dt: '2026-11-20' },
         { v: 'V82.6.2', d: [
             '🏭 產業作戰室實測總表多一條:個股的外資持股比 20 天大增之後,接下來一個月有一半以上輸給同一天的其他股票;大減之後也沒有比較差 —— 外資持股比的變化不用當成買賣理由',
         ], dt: '2026-11-20' },
@@ -9386,12 +9390,6 @@ ${list}
         { v: 'V80.0.5', d: [
             '👆 決策台:整列都可以點進個股頁(以前只有股票名字那一小格能點,點價格 / 漲跌那幾格沒反應)—— 👑 名單、你手上的、今天要做的事、🔥 今天可以買的都一樣',
             '↩️ 從個股頁按「返回」回到決策台原本捲到的位置(以前會跳回最上面);打開個股頁一律從最上面開始',
-        ] },
-        { v: 'V80.0.4', d: [
-            '🧯 勝率鏡子最上面多了「帳戶熔斷」:記進鏡子的賣出,今天虧到帳戶 2%、本週 5%、本月 8% 會亮 🟡/🟠 提醒先別開新倉(只提醒,不會替你做任何事;門檻是常見的建議值),庫存標題列那顆 🪞 鈕也看得到',
-            '🧮 同一處也算「手上全部碰到停損 ≈ 賠多少、佔帳戶幾 %」,超過 6% 會提醒',
-            '📐 鏡子每一筆多了:R(賺賠 ÷ 買進時離停損多遠)、持有期間最多曾賠 / 曾賺多少、同一段時間放 0050 會怎樣',
-            '🧭 ➕ 新增持倉視窗多一格「買之前看一眼」:這一筆碰到停損會賠多少、買完之後總風險、按確認前問自己三句',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -56854,13 +56852,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         //   台股那幾則是採礦端 AI(ai_sentiment)判的 —— 模型換過、前後定義不一致、研究不可用(V82.1.5);
         //   國際那幾則是另一個提示詞,從沒驗過準不準。新聞照樣顯示,⛔ 進分數(test_newsdup ⑨ 釘住:新聞全部換成利空,分數一樣)。
 
-        // 🦅 黑天鵝旗標加成:每觸發 1 個 macro_flag +5 分(上限 +20),讓「全球宏觀黑天鵝防禦矩陣」與風險指數連動
-        // 避免使用者看到矩陣亮燈但風險指數仍顯示「中性」的視覺矛盾
-        const mf = this._falconScores?.macro_flags || {};
-        // V17.0 — 移除 market_bias_high(macro_miner 已停止寫,前端 taiex_ma240_bias 直算取代,警示文案在 line 10886)
-        // 💴 2026-11-20 jpy_surge(日圓 3 日升值 >1.5%)不再加分:EXP-20261120-01 3 天升值 ≥2% 之後跟同樣顛的日子差 0.07pp
-        const flagCount = ['metal_oil_spike', 'kospi_dump'].filter(k => mf[k]).length;
-        if (flagCount > 0) score += Math.min(flagCount * 5, 20);
+        // 🦅 黑天鵝旗標加分已拿掉(V82.6.3):它讀的是獵鷹分數裡的 macro_flags,而獵鷹分數 V39.2 起就不載入
+        //   → 這段從 V39.2 起一次都沒加過分(V82.5.9 說「金油暴漲照舊 +5」是測試自己塞旗標算出來的,正式環境不成立)。
+        //   ⛔ 改成去讀 macro_risk.json 的 blackswan:那等於打開一個沒測過的加分(陷阱 #38;日圓那條 EXP-20261120-01 也沒過)。
 
         // 🧹 2026-11-17 拿掉「今天 / 明天有重要度高的行事曆事件 → +10 分」:結算日 / CPI / 非農 / 四巫日加權 26 年測過
         //    跟平常一樣顛,MSCI / 日銀 / 央行根本沒測過(research/daytype_20261117)。一年約 100 個交易日被加 10 分,
@@ -59672,8 +59666,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const monitor = this.monitorList?.length || 0;
         const priceAlerts = this.priceAlerts?.length || 0;
         const invWithCost = (this.inventory || []).filter(i => +i.cost > 0).length;
-        const falconScoresMap = this._falconScores?.stocks || this._falconScores || {};
-        const falconHigh = Object.values(falconScoresMap).filter(f => (f?.score || 0) >= 80).length;
+        // 🦅 V82.6.3 拿掉「全市場獵鷹分 ≥ 80」與「全市場高分股少」:獵鷹分數 V39.2 起就不載入 → 永遠 0 檔、
+        //   只要清單不空就一定跳「高分股少,自然訊號就少」—— 那句是假的(test_tgdiag)
         const tgBound = !!this.settings?.cloudCode;
 
         const lines = [];
@@ -59684,7 +59678,6 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         }
         lines.push('');
         lines.push(`📋 你的清單:自選 <b>${wl}</b> 檔 / 庫存 <b>${inv}</b> 檔(<b>${invWithCost}</b> 檔有填成本)/ 監控 <b>${monitor}</b> 檔 / 限價 <b>${priceAlerts}</b> 檔`);
-        lines.push(`🦅 全市場獵鷹分 ≥ 80:<b>${falconHigh}</b> 檔`);
         lines.push('');
         const issues = [];
         if (wl + inv + monitor + priceAlerts === 0) {
@@ -59693,14 +59686,10 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         if (inv > 0 && invWithCost === 0) {
             issues.push('⚠️ <b class="text-amber-300">庫存沒填成本</b> → 停利停損規則 skip(規則:庫存 +20% 停利 / -5% 停損 / 跌破 5MA,須 cost > 0)');
         }
-        if (monitor === 0) {
-            issues.push('💡 <b class="text-blue-300">監控空</b> → 「量爆突破 5MA」+「朱家泓 5MA 朝掃」這兩個推送都 skip。到朱家泓五大選股法 → 一鍵加入監控');
-        }
+        // 🧹 V82.6.3 拿掉「監控空 → 兩個推送都 skip、到朱家泓五大選股法一鍵加入」:朱家泓 5MA 朝掃 V78.1.1 已刪、
+        //   五大選股法 V79.9.3 起只剩實驗室;「帶量站上 5 日線」自選 / 庫存照樣會推(監控清單只是把它們合成一則)→ 監控空不是沒收到的原因
         if (priceAlerts === 0) {
             issues.push('💡 <b class="text-blue-300">無限價</b> → 想要「現價 ≥ X 元推送」?到任一個股頁點 🚨 設限價(上下限任一即可)');
-        }
-        if (falconHigh < 5 && wl + inv + monitor > 0) {
-            issues.push('💡 <b class="text-blue-300">全市場高分股少</b>(可能盤勢淡或大盤回檔),自然訊號就少');
         }
         if (issues.length === 0 && tgBound && (wl + inv + monitor + priceAlerts) > 0) {
             issues.push('✅ <b class="text-green-300">配置看起來正常</b> — 可能昨天市場剛好沒觸發任何規則,或 throttle(同股 6h 防重)生效');

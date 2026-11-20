@@ -106,11 +106,11 @@ jobs:
       #   ⭐ 只寫有變的,另放一份到 /tmp/hist_daily 給部署那一步(⛔ 拿還原回來的舊檔蓋掉別人剛推的,陷阱 #41)。
       #   抓不到 / 沒過守門(最後一天倒退、重疊那幾天對不上)→ 那一條沿用上一份、原因印成 ::warning::;上一份讀不出來 → 那份 ⛔ 動。
       #   只描述:只拿來排人性頁的名次與研究,⛔ 進任何判斷。一輪 FinMind 6 次 + 期交所下載頁約 9 次(各自固定間隔、被擋就停手)。
-      #   📊 同一步也收全市場當沖占比 → data/dtr_hist.json(證交所 rwd dayTrading/TWTB4U 統計表;最近 3 個平日 + 往前補 10 天,
-      #      證交所 www 隔 4 秒、一輪最多 13 次、被擋就停;第一次跑會自己建檔)。
+      #   📊 同一步也收全市場當沖占比 → data/dtr_hist.json(證交所 rwd dayTrading/TWTB4U 統計表;最近 3 個平日 + 往前補 30 天,
+      #      證交所 www 隔 4 秒、一輪最多 36 次 ≈ 2.5 分(V82.6.3 從 10 天加到 30 天 → 時限 6 → 8 分)、被擋就停;第一次跑會自己建檔)。
       - name: 📚 長歷史接著補(外資 / 融資 / 基差・選擇權 / 期貨大戶)
         continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單
-        timeout-minutes: 6
+        timeout-minutes: 8
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           DATA_DIR: data

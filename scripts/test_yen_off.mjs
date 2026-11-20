@@ -1,5 +1,5 @@
-// 💴 日圓那幾條只描述(EXP-20261120-01 沒過):反攻雷達不算進條件、不算黑天鵝;風險指數不加分
-//   INJECT=flag  → 把 jpy_surge 加回風險指數的旗標加分(② 必紅)
+// 💴 日圓那幾條只描述(EXP-20261120-01 沒過):反攻雷達不算進條件、不算黑天鵝;風險指數不讀任何黑天鵝旗標(V82.6.3)
+//   INJECT=flag  → 把舊的「黑天鵝旗標加分」那段塞回風險指數(②③ 必紅;V82.6.3 起整段拿掉 —— 它讀的獵鷹分數 V39.2 起就不載入)
 //   INJECT=radar → 把「日圓不急升」加回雷達條件(① 必紅)
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
@@ -14,16 +14,17 @@ const ok = (n, c, x = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 const INJ = process.env.INJECT || '';
 let src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), file = path.join(ROOT, 'index.html');
 if (INJ) {
-    if (INJ === 'flag') src = src.replace("const flagCount = ['metal_oil_spike', 'kospi_dump']", "const flagCount = ['jpy_surge', 'metal_oil_spike', 'kospi_dump']");
+    if (INJ === 'flag') src = src.replace("        // 🦅 黑天鵝旗標加分已拿掉(V82.6.3)", "        const mf = this._falconScores?.macro_flags || {};\n        const flagCount = ['jpy_surge', 'metal_oil_spike', 'kospi_dump'].filter(k => mf[k]).length;\n        if (flagCount > 0) score += Math.min(flagCount * 5, 20);\n        // 🦅 黑天鵝旗標加分已拿掉(V82.6.3)");
     if (INJ === 'radar') src = src.replace("        const dist = N(this._distDayCount);", "        const dist = N(this._distDayCount);\n        const _injJ = 1;")
         .replace("        // 💴 2026-11-20 日圓那條改成只列出來", "        add('💴', '日圓不急升', jpy3 == null ? '—' : String(jpy3), jpy3 != null && jpy3 > -2, '3 日升值 <2%', jpy3 == null);\n        // 💴 2026-11-20 日圓那條改成只列出來");
     file = path.join(ROOT, '_inj_yen_index.html');
     fs.writeFileSync(file, src);
 }
-// ③ 靜態:風險指數那支沒有 usdjpy、旗標清單沒有 jpy_surge(INJECT 的時候讀注入後那份)
+// ③ 靜態:風險指數那支沒有 usdjpy、也 ⛔ 讀任何黑天鵝旗標(INJECT 的時候讀注入後那份;先剝掉 // 註解)
 const rs = (src.match(/_calcRiskScore\s*\([^)]*\)\s*\{[\s\S]*?\n    \},/) || [''])[0];
-ok('③ 風險指數那支 ⛔ 讀 usdjpy', rs.length > 500 && !/usdjpy/.test(rs.replace(/\/\/.*$/gm, '')), rs.length);
-ok('③ 旗標加分清單 ⛔ 有 jpy_surge', /const flagCount = \[/.test(rs) && !/flagCount = \[[^\]]*jpy_surge/.test(rs));
+const rsCode = rs.replace(/\/\/.*$/gm, '');
+ok('③ 風險指數那支 ⛔ 讀 usdjpy', rs.length > 500 && !/usdjpy/.test(rsCode), rs.length);
+ok('③ 風險指數那支 ⛔ 讀黑天鵝旗標(_falconScores / macro_flags / blackswan / jpy_surge / flagCount)', rs.length > 500 && !/_falconScores|macro_flags|blackswan|jpy_surge|flagCount/.test(rsCode));
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu'] });
 try {
@@ -58,9 +59,14 @@ try {
         };
         const calm = mk(-0.2, 17.1), surge = mk(-4.5, 17.1), swan = mk(-0.2, 33);
         // 風險指數:只換旗標,其他一樣
-        const risk = flags => { app._falconScores = { macro_flags: flags }; app.fiShortQty = -50000; return app._calcRiskScore(); };
+        // 正式環境 App 不載入獵鷹分數(V39.2 起 _falconScores 永遠是 null)→ 測試硬塞旗標進去,分數也要一分不變
+        const risk = flags => { app._falconScores = flags ? { macro_flags: flags } : null; app.fiShortQty = -50000; return app._calcRiskScore(); };
         const sc = s => s && typeof s === 'object' ? (s.score ?? s.total ?? s.value) : s;
-        return { calm, surge, swan, r0: sc(risk({})), rJ: sc(risk({ jpy_surge: true })), rM: sc(risk({ metal_oil_spike: true })) };
+        const r0 = sc(risk(null)), rAll = sc(risk({ jpy_surge: true, metal_oil_spike: true, kospi_dump: true, market_bias_high: true }));
+        // 決定性對照:同一份資料只把台指選擇權 VIX 22 → 33(+2 分 → +8 分)→ 分數要跟著變(量得到東西,不是常數)
+        const tv0 = app._macroRiskCache.tw_vix; app._macroRiskCache.tw_vix = 33;
+        const rTw = sc(risk(null)); app._macroRiskCache.tw_vix = tv0;
+        return { calm, surge, swan, r0, rAll, rTw };
     });
     ok('渲染沒有 pageerror', errs.length === 0, errs[0] || '');
     ok('① 雷達條件表沒有日圓那條(總條數不含它)', !/日圓不急升/.test(R.calm.txt) && R.calm.v.total === R.surge.v.total, JSON.stringify([R.calm.v, R.surge.v]));
@@ -68,8 +74,8 @@ try {
     ok('① 決定性對照:VIX 33 → 照樣是「外面壓力很大」(黑天鵝那條路還活著)', R.swan.v.txt === '外面壓力很大', JSON.stringify(R.swan.v));
     ok('① 條件表下面一行只列出來:「日圓 3 日升值 4.5%(只列出來,不算進上面的條件)」', /日圓 3 日升值 4\.5%/.test(R.surge.jpy || '') && /不算進/.test(R.surge.jpy || ''), R.surge.jpy);
     ok('① 那一行 ⛔ 研究字樣 / 指令字', !/實測|回測|探針|賣出|減碼|空手/.test(R.surge.jpy || ''), R.surge.jpy);
-    ok('② 風險指數:日圓急升的旗標 ⛔ 加分', typeof R.r0 === 'number' && R.rJ === R.r0, JSON.stringify([R.r0, R.rJ]));
-    ok('② 決定性對照:金油暴漲的旗標照舊 +5', typeof R.rM === 'number' && R.rM === R.r0 + 5, JSON.stringify([R.r0, R.rM]));
+    ok('② 風險指數:黑天鵝旗標(日圓急升 / 金油暴漲 / 亞股提款)全部塞進去 → 分數一分不變', typeof R.r0 === 'number' && R.rAll === R.r0, JSON.stringify([R.r0, R.rAll]));
+    ok('② 決定性對照:只把台指選擇權 VIX 22 → 33 → 分數 +6(這個量法量得到東西)', typeof R.rTw === 'number' && R.rTw === R.r0 + 6, JSON.stringify([R.r0, R.rTw]));
 } finally {
     await b.close();
     if (INJ) fs.rmSync(file, { force: true });
