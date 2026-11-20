@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-20 17:44 UTC",
+  "updated": "2026-11-20 18:31 UTC",
   "count": 15,
   "data": [
     {
@@ -12,7 +12,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "晶片出口管制失效，凸顯供應鏈管控風險",
+      "ai_reason": "晶片外流凸顯管制漏洞，恐影響台廠供應鏈穩定",
       "important": true
     },
     {
@@ -27,7 +27,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "融資大減創新高，AI股重挫拖累大盤",
+      "ai_reason": "融資大減創新高，AI股重挫血洗",
       "important": true
     },
     {
@@ -41,7 +41,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "搶攻地端AI商機，目標明年毛利率拚6成以上",
+      "ai_reason": "搶攻地端AI商機，目標明年毛利率突破6成",
       "important": true
     },
     {
@@ -54,7 +54,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利多",
-      "ai_reason": "AI商機爆發，出口貿易順差創新高",
+      "ai_reason": "AI商機爆發，出口創歷史新高",
       "important": true
     },
     {
@@ -68,7 +68,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "登興櫃搶攻移工經濟商機",
+      "ai_reason": "登興櫃搶攻移工經濟與匯兌商機",
       "important": true
     },
     {
@@ -81,7 +81,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利空",
-      "ai_reason": "個股因單週跌幅過大遭處置，反映市場恐慌",
+      "ai_reason": "個股因單週大跌被列入處置股票",
       "important": true
     },
     {
@@ -96,7 +96,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "營收獲利超去年，擬拓泰國市場",
+      "ai_reason": "營收獲利超去年全年，擬拓泰國市場",
       "important": true
     },
     {
@@ -111,7 +111,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "政府補貼台電中油，穩定民生用電油價",
+      "ai_reason": "政府補貼台電中油，保障民生用電不漲價",
       "important": true
     },
     {
@@ -124,7 +124,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "政府補貼台電中油，緩解財困並穩定民生",
+      "ai_reason": "政府補貼台電中油，緩解電力成本壓力",
       "important": true
     },
     {
@@ -138,7 +138,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "前3季EPS優於去年同期，獲利表現穩健。",
+      "ai_reason": "前3季EPS優於去年同期，獲利表現強勁",
       "important": true
     },
     {
@@ -151,7 +151,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "閎康證實CSP研發需求未減速",
+      "ai_reason": "閎康證實CSP研發需求未減速，安撫市場疑慮",
       "important": true
     },
     {
@@ -164,7 +164,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利空",
-      "ai_reason": "台股大跌2393點失守37000點",
+      "ai_reason": "台股大跌2393點，失守37000點關卡",
       "important": true
     },
     {
@@ -195,16 +195,17 @@
       "important": true
     },
     {
-      "source_name": "科技新報",
-      "title": "中華電：沒放棄 AWS 低軌衛星合作，盼協調 28GHz 頻譜",
-      "link": "https://technews.tw/2026/11/20/cht-aws-28ghz/",
-      "published_time": "Fri, 20 Nov 2026 09:40:48 +0000",
+      "source_name": "Yahoo 即時財經",
+      "title": "明年EPS挑戰16元！「這大廠」挾光通訊需求攀升　法人喊買目標價650元",
+      "link": "https://tw.news.yahoo.com/%E6%98%8E%E5%B9%B4eps%E6%8C%91%E6%88%B016%E5%85%83-%E9%80%99%E5%A4%A7%E5%BB%A0-%E6%8C%BE%E5%85%89%E9%80%9A%E8%A8%8A%E9%9C%80%E6%B1%82%E6%94%80%E5%8D%87-%E6%B3%95%E4%BA%BA%E5%96%8A%E8%B2%B7%E7%9B%AE%E6%A8%99%E5%83%B9650%E5%85%83-180700206.html",
+      "published_time": "Fri, 20 Nov 2026 18:07:00 +0800",
       "matched_keywords": [
-        "低軌衛星"
+        "低軌衛星",
+        "EPS"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "中立",
-      "ai_reason": "頻譜協調中，合作結果未定",
+      "ai_sentiment": "利多",
+      "ai_reason": "砷化鎵大廠獲買進評等，目標價上看650元",
       "important": true
     }
   ]
