@@ -35,6 +35,8 @@ export const MIN_N = 20;          // 歷史不到 20 天 → 不給排第幾(只
 export const STALE_D = 4;   // 比加權最新那天舊幾個日曆天就算停了(同畫面 ≥4 天轉黃 ⚠️ 那條)
 export const HIST_MAX = 5000;     // mood_hist 最多留幾列
 export const FI_WIN = 750;        // 外資 / 投信買賣超只跟近 3 年比(早年規模小,整段比不公平)
+export const DTR_WIN = 750;       // 📊 V82.6.4 當沖占比也只跟近 3 年比:歷史往前補到 2014,而 2014 年初占比不到 1%(可以當沖的只有 150 檔)、2018 約 24%、2022 約 46%
+                                  //   → 整段一起比,今天天天「比幾乎所有日子高」(⛔ 把制度變化當成人心)
 const r2 = x => x == null || !isFinite(x) ? null : Math.round(x * 100) / 100;
 const d10 = s => s == null ? null : (/^\d{8}$/.test(String(s)) ? `${String(s).slice(0, 4)}-${String(s).slice(4, 6)}-${String(s).slice(6, 8)}` : String(s).replace(/\//g, '-').slice(0, 10));
 const num = v => (v == null || v === '' || !isFinite(+v)) ? null : +v;
@@ -445,9 +447,9 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
     const dt = rdj(dir, 'dtr_hist.json'), DT = dt.j && dt.j.d && typeof dt.j.d === 'object' ? dt.j.d : null;
     const dtAmt = r => Array.isArray(r) && num(r[1]) != null && num(r[2]) != null ? (num(r[1]) + num(r[2])) / 2 : null;
     if (DT && Object.keys(DT).length) {
-        const ks = Object.keys(DT).sort(), lk = ks.at(-1), x = DT[lk];
-        crowd.push(gauge('dtr', '當沖成交金額占比(上市)', 'greed', dtAmt(x), '%', lk, { vals: ks.slice(0, -1).map(k => dtAmt(DT[k])), from: ks[0], to: lk }, null,
-            { hiw: '貪(短線進出多)', note: `證交所當日沖銷交易統計:買進 ${x[1]}%、賣出 ${x[2]}%(成交金額占市場比重,取平均);成交股數占 ${x[0]}%。歷史 ${ks[0]} 起(每晚往前補幾天,補到 2024 年初),滿 ${MIN_N} 天才排得出第幾` }));
+        const ks = Object.keys(DT).sort(), lk = ks.at(-1), x = DT[lk], hk = ks.slice(0, -1).slice(-DTR_WIN);
+        crowd.push(gauge('dtr', '當沖成交金額占比(上市)', 'greed', dtAmt(x), '%', lk, { vals: hk.map(k => dtAmt(DT[k])), from: hk[0] || lk, to: lk }, null,
+            { hiw: '貪(短線進出多)', note: `證交所當日沖銷交易統計:買進 ${x[1]}%、賣出 ${x[2]}%(成交金額占市場比重,取平均);成交股數占 ${x[0]}%。排第幾只跟近 3 年比(2014 年初占比不到 1%,制度跟現在不同);收到的歷史 ${ks[0]} 起(每晚往前補,補到 2014 年初),滿 ${MIN_N} 天才排得出第幾` }));
         todayRow.dtr = r2(dtAmt(x)); todayRow.dtd = lk;
     } else M('dtr', '當沖占比', dt.err || 'dtr_hist.json 還沒有資料');
     // ⚠️ 每天該更新的來源停了(比加權最新那天舊 ≥ STALE_D 天)→ 標 stale:畫面標「資料停在 MM/DD」、頁頂 / 🏠 那一句 ⛔ 挑它當「今天離平常最遠」
@@ -632,6 +634,15 @@ function selftest() {
         W('dtr_hist.json', mkDT(dtD.slice(-5)));
         const g16b = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.crowd.find(g => g.k === 'dtr');
         ok('⑯ 只有 5 天 → 還在累積(pct null、⛔ 硬排)', g16b && g16b.pct == null && g16b.n === 5, JSON.stringify(g16b && { n: g16b.n, pct: g16b.pct }));
+        // ⑯c 📊 V82.6.4 歷史往前補到 2014 之後:排第幾只跟近 3 年(DTR_WIN)比 —— 早年占比不到 1%,一起比今天天天「最高」
+        const dtL = calD.slice(ai - (DTR_WIN + 400), ai + 1), dtLong = { d: Object.fromEntries(dtL.map((d, k) => [d, k < 400 ? [0.3, 0.7, 0.7, 1, 1, 1] : [30, 40 + (k % 5), 40 + (k % 5), 1, 1, 1]])) };
+        dtLong.d[asof] = [28, 41.5, 41.5, 1, 1, 1];
+        W('dtr_hist.json', dtLong);
+        const g16c = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.crowd.find(g => g.k === 'dtr');
+        const fullR = rankPct(dtL.slice(0, -1).map(d => (dtLong.d[d][1] + dtLong.d[d][2]) / 2), 41.5), winR = rankPct(dtL.slice(-(DTR_WIN + 1), -1).map(d => (dtLong.d[d][1] + dtLong.d[d][2]) / 2), 41.5);
+        ok('⑯c 歷史比 3 年長 → 只跟最近 DTR_WIN 天比(n = 750 + 1、起點 = 窗口第一天、說明寫「只跟近 3 年比」)', g16c && g16c.n === DTR_WIN + 1 && g16c.from === dtL.at(-(DTR_WIN + 1)) && g16c.pct === winR.pct
+            && /只跟近 3 年比/.test(g16c.note) && g16c.note.includes(dtL[0]), JSON.stringify(g16c && { n: g16c.n, from: g16c.from, pct: g16c.pct, win: winR.pct }));
+        ok('⑯c 決定性對照:整段一起比(含早年不到 1% 的那 400 天)→ 排名會不一樣(這組資料分得出來)', fullR.pct != null && winR.pct != null && fullR.pct > winR.pct + 5, JSON.stringify({ full: fullR.pct, win: winR.pct }));
         fs.rmSync(path.join(tmp, 'dtr_hist.json'));
         // ⑰ 📊 V82.6.0 成交集中度:每晚從 data/ 每一檔 K 線算(lib_conc;這裡直接餵算好的每天一列)→ 主數字 = 近 20 天平均、歷史 = 之前每一天的 20 天平均
         const cD = calD.slice(0, ai + 1), ccRows = (lastS10, tail = []) => cD.map((d, k) => ({ d, n: 2000, tot: 1e12, s5: 20, s10: 25 + (k % 7) * 0.5, s20: 40 })).map((r, k, a) => k >= a.length - tail.length ? { ...r, ...tail[k - (a.length - tail.length)] } : r).map((r, k, a) => k === a.length - 1 && lastS10 != null ? { ...r, s10: lastS10 } : r);
