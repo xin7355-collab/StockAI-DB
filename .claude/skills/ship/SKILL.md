@@ -12,20 +12,14 @@ description: 把改動安全送上線。要 push、部署、上線、發佈、bu
 ## ① 四驗證（⛔ 一項都不能跳，全部要 rc=0）
 
 ```bash
-node scripts/smoke_test.mjs                     # 1. headless 真載入
-python3 -m py_compile *.py                      # 2. 後端語法
-python3 scripts/check_main_order.py             #    進入點順序（陷阱 #9）
-python3 scripts/check_workflow_paths.py         #    artifact 有沒有真的收（陷阱 #11、#12）
-python3 scripts/check_undefined_py.py           #    潛在 NameError
-python3 scripts/check_dup_def.py                #    重複定義同名函式
-python3 scripts/check_env_default.py            #    inputs.* 環境變數要 or 預設
-python3 scripts/test_no_token_leak.py           #    金鑰片段不可進公開 log
-python3 scripts/check_dom_ids.py                # 3. DOM id 唯一性
-node scripts/check_dup_key.mjs                  #    物件字面量重複鍵
+bash scripts/fetch_testdata.sh                  # 先取測試資料(取完 git status 不該看到 data/ 有變動)
+python3 scripts/run_fourcheck.py                # 全部平行跑(清單 scripts/fourcheck.txt,約 300 條)
+python3 scripts/run_fourcheck.py --only smoke_test --only check_   # 先跑快的那幾條
 ```
 
-4. **HTML div 平衡**（只要動過 `index.html` 的 HTML 結構就必跑）— awk 指令見
-   CLAUDE.md「**驗證 HTML div 平衡腳本**」那一段，正確結果是「tabContentMarket 閉合於 L20XX」。
+清單一行一條在 `scripts/fourcheck.txt`(含 smoke_test、py_compile、check_*、各支 test_*、
+**HTML div 平衡** awk、`check_claude_md.py`);每一條的用意與來歷在 `docs/FOURCHECK.md`。
+新增守門:兩邊都要加。最後會列出失敗的那幾條與 log 位置。
 
 ⚠️ 改到哪一塊就順便跑那一塊的測試（`ls scripts/test_*` 找對應的）。
 ⚠️ 測試紅燈**先分類再修**：本地沒有採礦產物 → `bash scripts/fetch_testdata.sh`；
@@ -47,7 +41,7 @@ node scripts/check_dup_key.mjs                  #    物件字面量重複鍵
 | 5 | `pro.html` 的 `VER`（產業作戰室，⛔ 最常漏掉的一處） | `grep -n "VER: 'V" pro.html` |
 
 ⚠️ `_CHANGELOG` 是使用者跳窗會看到的內容 → 寫**白話**，⛔ 不寫函式名。
-⚠️ 筆數超過 ~80 筆時照 CLAUDE.md「`_CHANGELOG` 瘦身」那節搬進 `CHANGELOG.md`（**搬移不是刪除**）。
+⚠️ 筆數超過 ~80 筆時照 `.claude/rules/deploy.md`「`_CHANGELOG` 瘦身」那節搬進 `CHANGELOG.md`（**搬移不是刪除**）。
 
 ---
 

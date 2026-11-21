@@ -4,6 +4,21 @@
 
 
 
+## 2026-11-21 📏 CLAUDE.md 瘦身:2,541 行 → 121 行,其餘照主題搬到 `.claude/rules/`(讀到對應檔案才載入)與 `docs/`(只搬位置、一個字沒刪)
+
+使用者 11/21:「依照你推薦做」。11/18 一個只做簡單事的新對話,第一輪就用掉約 35 萬 Token —— 因為 CLAUDE.md(29.9 萬字)每個對話一開始都整份讀進去。
+
+- **每次自動載入**:搬之前 CLAUDE.md 2,541 行 / 298,806 字 → 搬之後 121 行 / 約 8 千字(`.claude/rules/` 每個檔都有 `paths`,沒有一個會在開場載入)。
+- **規則檔**(官方文件:讀 / 寫 / 改到符合 `paths` 的檔時才載入):app / ui / pro / lab / strategy / deploy / workflows / mining / testing / data-audit / linkage / skills / docs-meta,共 13 個。
+- **docs/**:`FOURCHECK.md`(四驗證每一條的用意,約 12.7 萬字)、`LINKAGE.md`(連動更新檢查清單全文,約 6.5 萬字)、`TRAPS.md`(68 條陷阱)、`CLAUDE_HISTORY.md`(功能盤點 / 已解決的問題 / 已完成的待辦)。
+- **四驗證變成可以執行的**:`scripts/fourcheck.txt`(一行一條,313 條 = 舊清單 310 條 + 第 4 項 div 平衡 awk + `check_claude_md.py` 兩條)+ `scripts/run_fourcheck.py`(平行跑、每條存 log、最後列出失敗的)。
+  ⚠️ 舊清單有兩條藏在描述括號沒閉合的那一行(`test_medgap.mjs` / `test_live_spot_idx.py`)、一條寫成「+ `--selftest`」(`test_release_gate.py --selftest`)—— 都已補進 `fourcheck.txt`。
+  ⚠️ div 平衡那支原本只印訊息、永遠 exit 0,而且 index.html 有一則註解文字裡寫著 `</div>` → 改成先拿掉註解再數、不平衡 exit 1(注入多一個 `<div>` 必紅)。
+- **新守門** `scripts/check_claude_md.py`(進四驗證):CLAUDE.md ≤ 200 行・規則檔都有 `paths` 而且每個 glob 對得到檔・CLAUDE.md 與規則檔自己寫的那幾行提到的 repo 路徑都存在(搬過來的舊原文提到已刪除的檔是歷史,⛔ 檢查);`--selftest` 13 條含 7 種注入。
+- **連動清單放 docs/ 不放規則檔(取捨)**:全文 6.5 萬字,而它的列幾乎都跟 index.html 有關 → 放規則檔等於每次碰 index.html 都載入 6.5 萬字。改成規則檔 `linkage.md` 只放 119 列的第一欄(觸發清單,約 9 千字),做那件事之前 `grep -n` 讀 `docs/LINKAGE.md` 那一列。代價:要靠 Claude 自己去讀那一列。
+- **兩支會讀 CLAUDE.md 內容的程式照新位置改**:`check_lab_coverage.py`(探針名字)、`test_pbexit.mjs`(全 repo 用過的 EXIT 值)—— 都改成一起讀 `.claude/rules/*.md` 與新的 docs 檔。
+- ⛔ 沒動 App 行為、⛔ 沒升版號。程式註解裡寫「見 CLAUDE.md『某一節』」的(index.html / pro.html / miner.py 等十幾處)沒改(改 index.html 會觸發部署):舊 CLAUDE.md 裡有的章節名稱都原封不動在新位置,`grep -rn '章節名' CLAUDE.md .claude/rules docs` 找得到;有幾處在這次之前就已經指到不存在的名稱(「分析師焦點」在 DECISIONS、「跌破月線實測」「no silent caps」「rc=0 不等於有跑」「換一個來源的值」到處都找不到)—— 不是這次造成的,沒動。Skill(ship / probe / uicard / README)裡的指路已改到新位置。
+
 ## V82.6.4(2026-11-21)📊 證交所當沖統計拿得到 2014 起、欄位一樣 → 當沖占比歷史往前補到 2014-01-06;人性頁「排第幾」只跟近 3 年比(制度斷點)
 
 **探針結果**(`official_extra_probe.py` `WHICH=dtr DTR_AT=2014-01-06,2018-01-02,2022-10-03`,run 44788198298)

@@ -78,7 +78,7 @@ if (app._inExitMode(sym)) { /* 出場狀態 → 走 _exitModeNoticeHtml() */ }
 
 ---
 
-## ⑥ 🎨 版面（樣板一律引用 CLAUDE.md「UI/UX 設計規範」，⛔ 別重新設計）
+## ⑥ 🎨 版面（樣板一律引用 `.claude/rules/ui.md`「UI/UX 設計規範」，⛔ 別重新設計）
 
 - 背景 `bg-[#161b22]` / 邊框 `border-[#30363d]`；⛔ 禁霓虹漸層
 - 重要數字 `text-2xl font-black font-mono`，副字 `text-[10px]`；**% 一定順便給實際金額**

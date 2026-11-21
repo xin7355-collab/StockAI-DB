@@ -40,7 +40,9 @@ const bad2 = run('donn20');
 ok('②b 打錯字 donn20 也要擋', bad2.status === 1, `status=${bad2.status}`);
 // ③ 全 repo 用過的 EXIT 值都要被接受(⛔ 守門不可誤殺既有的實驗)
 const used = new Set();
-for (const f of ['docs/DECISIONS.md', 'docs/PROBES.md', 'docs/INDEX.md', 'CLAUDE.md', 'pro.html', '.github/workflows/weekly_backtest.yml']) {
+// ⚠️ 2026-11-21 CLAUDE.md 瘦身:原文搬進 .claude/rules/*.md 與 docs/ 幾個檔 → 一起掃(⛔ 只掃 CLAUDE.md 會漏掉搬走的那些 EXIT 值)
+const _ruleFiles = (() => { try { return fs.readdirSync(path.join(ROOT, '.claude/rules')).filter(x => x.endsWith('.md')).map(x => '.claude/rules/' + x); } catch (_) { return []; } })();
+for (const f of ['docs/DECISIONS.md', 'docs/PROBES.md', 'docs/INDEX.md', 'CLAUDE.md', 'docs/FOURCHECK.md', 'docs/LINKAGE.md', 'docs/TRAPS.md', 'docs/CLAUDE_HISTORY.md', ..._ruleFiles, 'pro.html', '.github/workflows/weekly_backtest.yml']) {
     // ⚠️ V77.6.8:BEAR_EXIT= / FORCE_EXIT= 是別的選項 → 左邊界 (?<![A-Z_]),⛔ 不可被當成 EXIT 值
     try { const t = fs.readFileSync(path.join(ROOT, f), 'utf8'); for (const m of t.matchAll(/(?<![A-Z_])EXIT[=:]\s*([A-Za-z0-9_.]+)/g)) used.add(m[1]); } catch (_) {}
 }

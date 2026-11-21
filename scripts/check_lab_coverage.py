@@ -17,7 +17,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 # ⚠️ 2026-10-17 探針登記表從 CLAUDE.md 搬去 docs/PROBES.md;兩份都讀(⛔ 只讀一份會漏)
-cm = '\n'.join((ROOT / f).read_text(encoding='utf-8') for f in ('docs/PROBES.md', 'docs/INDEX.md', 'CLAUDE.md') if (ROOT / f).exists())
+# ⚠️ 2026-11-21 CLAUDE.md 瘦身:原文照主題搬進 .claude/rules/*.md 與 docs/(FOURCHECK / LINKAGE / TRAPS / CLAUDE_HISTORY)→ 一起讀
+_SRC = ['docs/PROBES.md', 'docs/INDEX.md', 'CLAUDE.md', 'docs/FOURCHECK.md', 'docs/LINKAGE.md', 'docs/TRAPS.md',
+        'docs/CLAUDE_HISTORY.md'] + sorted(str(q.relative_to(ROOT)) for q in (ROOT / '.claude' / 'rules').glob('*.md'))
+cm = '\n'.join((ROOT / f).read_text(encoding='utf-8') for f in _SRC if (ROOT / f).exists())
 pro = (ROOT / 'pro.html').read_text(encoding='utf-8')
 
 probes = {p.split('/')[-1] for p in

@@ -1,0 +1,317 @@
+# 每次 push main 前必跑的「四驗證」—— 一行一條指令(在 repo 根目錄執行)
+# 跑法:python3 scripts/run_fourcheck.py   (說明見 docs/FOURCHECK.md,每條的用意與來歷也在那裡)
+# ⛔ 只能加不能默默刪;要拿掉一條,先在 docs/FOURCHECK.md 寫原因
+# 空行與 # 開頭的行會被略過
+node scripts/smoke_test.mjs
+python3 -m py_compile *.py
+python3 scripts/check_main_order.py
+python3 scripts/check_workflow_paths.py
+python3 scripts/check_wf_bash.py
+python3 scripts/check_undefined_py.py
+python3 scripts/check_dup_def.py
+python3 scripts/check_env_default.py
+python3 scripts/test_release_gate.py
+python3 scripts/test_release_gate.py --selftest
+node scripts/test_exp_registry.mjs
+node scripts/test_evolve.mjs
+node scripts/lib_perf.mjs --selftest
+node scripts/research_pack.mjs --selftest
+node scripts/lead_wf_probe.mjs --selftest
+node scripts/trade_base.mjs --selftest
+node scripts/embed_evolve.mjs --selftest
+python3 scripts/fills_report.py --selftest
+python3 scripts/l1_report.py --selftest
+node scripts/test_worker_cron.mjs
+node scripts/test_worker_push.mjs
+node scripts/test_tg_kick.mjs
+python3 scripts/test_intraday_relay.py
+python3 scripts/test_trump_trigger.py
+python3 scripts/test_branch_checkout.py
+python3 lib_jsonsafe.py --selftest
+python3 scripts/test_picksnap.py
+python3 scripts/test_accum_safe.py
+python3 scripts/test_tick_backup_skip.py
+node scripts/test_bgfetch_quiet.mjs
+python3 scripts/news_deep.py --selftest
+python3 news_buzz_miner.py --selftest
+node scripts/dropbuzz_proxy_probe.mjs --selftest
+python3 lib_trump.py --selftest
+python3 trump_posts_miner.py --selftest
+python3 scripts/trump_src_probe.py --selftest
+node scripts/test_trump_pane.mjs
+python3 scripts/trump_intraday_probe.py --selftest
+python3 scripts/fi_outflow_probe.py --selftest
+node scripts/test_tap44.mjs
+node scripts/test_colbell.mjs
+node scripts/test_radartidy.mjs
+python3 scripts/radar_list_probe.py --selftest
+node scripts/test_xraycache.mjs
+node scripts/test_nodirective.mjs
+node scripts/test_premkt_open.mjs
+node scripts/test_macro_kick.mjs
+node scripts/test_twii_today.mjs
+node scripts/test_medgap.mjs
+python3 scripts/test_live_spot_idx.py
+python3 scripts/test_tick_incr.py
+python3 scripts/test_kline_gapfill.py
+python3 scripts/test_inst_date.py
+python3 scripts/test_tpex_new.py
+python3 scripts/test_tpex_run.py
+python3 scripts/test_daily_all.py
+node scripts/ftd_probe.mjs --selftest
+node scripts/test_buywhy.mjs
+node scripts/test_backup_log.mjs
+node scripts/test_mood.mjs
+node scripts/test_moodlog.mjs
+node scripts/test_habit.mjs
+node scripts/test_yen_off.mjs
+node scripts/yen_surge_probe.mjs --selftest
+node scripts/test_tgdiag.mjs
+node scripts/usd_dd_probe.mjs --selftest
+node scripts/lib_conc.mjs --selftest
+node scripts/conc_probe.mjs --selftest
+node scripts/adr_premium_probe.mjs --selftest
+node scripts/fi_hold_probe.mjs --selftest
+node scripts/test_mind.mjs
+node scripts/mood_build.mjs --selftest
+python3 scripts/hist_daily.py --selftest
+python3 scripts/fred_hist_miner.py --selftest
+node scripts/test_calib.mjs
+node scripts/test_discipline.mjs
+node scripts/test_recorace.mjs
+node scripts/test_premkt_age.mjs
+node scripts/test_premkt_formula.mjs
+node scripts/premkt_app_probe.mjs --selftest
+python3 scripts/test_rh_fallback.py
+python3 scripts/test_txnight.py
+python3 scripts/test_premkt_log.py
+node scripts/test_premkt_track.mjs
+python3 scripts/test_etf_chg.py
+node scripts/test_idxparse.mjs
+node scripts/test_ovtruth.mjs
+node scripts/test_ussig.mjs
+node scripts/test_equity_out.mjs
+node scripts/test_statswin.mjs
+node scripts/test_pbgate.mjs
+node scripts/test_tradecache.mjs
+node scripts/test_listtrig.mjs
+node scripts/test_listk_guard.mjs
+node scripts/fin16_build.mjs --selftest
+python3 scripts/ccwin_build.py --selftest
+python3 scripts/test_auto_park.py
+python3 scripts/test_auto_send.py
+python3 scripts/test_auto_recon.py
+python3 scripts/test_auto_fills.py
+python3 scripts/test_auto_hot.py
+node scripts/test_hotrule.mjs
+node scripts/test_pbmirror.mjs
+python3 scripts/check_eval_scope.py
+node scripts/test_pbscan_run.mjs
+node scripts/test_pbpick_same.mjs
+node scripts/test_exitsched.mjs
+node scripts/test_volcap.mjs
+node scripts/test_lib_limit.mjs
+node scripts/test_holdshade.mjs
+node scripts/test_cbtlog.mjs
+python3 scripts/test_newscluster.py
+node scripts/test_newsdup.mjs
+python3 scripts/test_namematch.py
+node scripts/test_accrfilter.mjs
+node scripts/test_rotate.mjs
+node scripts/test_labplain.mjs
+node scripts/test_invmodal.mjs
+node scripts/test_selllog.mjs
+node scripts/test_daytrades.mjs
+node scripts/test_ai_model_pick.mjs
+python3 scripts/test_groqmodel.py
+python3 scripts/test_techgiants.py
+python3 scripts/test_macro_groq.py
+node scripts/test_ai429.mjs
+python3 groq_common.py --selftest
+node scripts/test_ormodel.mjs
+python3 scripts/test_confcall_deck.py
+python3 confcall_deck.py --selftest
+python3 scripts/mops_daily.py --selftest
+python3 scripts/test_mops_daily_wf.py
+node scripts/test_week_digest.mjs
+python3 ptt_meta.py --selftest
+python3 scripts/test_confcall_qa.py
+python3 confcall_qa.py --selftest
+python3 lib_transcript.py --selftest
+node scripts/test_confcall_qa_ui.mjs
+node scripts/test_cchabit.mjs
+node scripts/confcall_habit_probe.mjs --selftest
+node scripts/test_quant_core.mjs
+node scripts/lib_quant.mjs --selftest
+node scripts/quant_lab_build.mjs --selftest
+node scripts/test_qlab_ui.mjs
+node scripts/test_qlab_trap.mjs
+node scripts/test_qlab_box.mjs
+node scripts/test_qlab_log.mjs
+node scripts/qlab_ext.mjs --selftest
+node scripts/lead_dd_probe.mjs --selftest
+node scripts/test_crossremind.mjs
+node scripts/dipbuy_probe.mjs --selftest
+node scripts/test_stratperf.mjs
+node scripts/embed_strat_yearly.mjs --selftest
+node scripts/test_colocc.mjs
+node scripts/col_rate_base.mjs --selftest
+node scripts/test_conf_radar_ui.mjs
+python3 confcall_guidance.py --selftest
+node scripts/test_ccguide_ui.mjs
+python3 scripts/test_confcall.py
+node scripts/test_confcall.mjs
+node scripts/test_confcall_ui.mjs
+node scripts/retail_inst_probe.mjs --selftest
+node scripts/margin_call_port.mjs --selftest
+python3 scripts/confcall_feat_dump.py --selftest
+node scripts/confcall_content_probe.mjs --selftest
+node scripts/test_contrast.mjs
+node scripts/test_ainumgate.mjs
+node scripts/test_quiet.mjs
+node scripts/test_reducedmotion.mjs
+node scripts/test_favvisible.mjs
+node scripts/test_daygate.mjs
+node scripts/test_panicsell.mjs
+node scripts/test_bearcash.mjs
+python3 scripts/sbl_bucket_probe.py --selftest
+node scripts/test_parkchurn.mjs
+node scripts/test_promptaudit.mjs
+node scripts/test_labexport.mjs
+node scripts/test_leaderdeck.mjs
+node scripts/test_generank.mjs
+node scripts/test_leader_deck_ledger.mjs
+node scripts/test_rodload.mjs
+node scripts/test_settings_slim.mjs
+node scripts/test_pickboard.mjs
+node scripts/test_profitboard.mjs
+node scripts/test_leader_ledger.mjs
+python3 scripts/test_auto_leader.py
+python3 scripts/test_margin_placeholder.py
+python3 scripts/test_margin_dated.py
+node scripts/test_etfhold.mjs
+node scripts/test_dispohold.mjs
+node scripts/test_forceexit.mjs
+node scripts/test_noframe.mjs
+node scripts/test_fishapp.mjs
+python3 scripts/test_futures_night_gate.py
+node scripts/test_mktwarn.mjs
+node scripts/test_volsurge.mjs
+python3 scripts/test_fi_complex.py
+node scripts/test_crash_occ.mjs
+node scripts/test_crash_global.mjs
+python3 scripts/crash_global_probe.py --selftest
+node scripts/crash_playbook_probe.mjs --selftest
+node scripts/crash_stock_probe.mjs --selftest
+node scripts/stopfall_probe.mjs --selftest
+node scripts/nsf_probe.mjs --selftest
+node scripts/psych_state_probe.mjs --selftest
+node scripts/news_runup_probe.mjs --selftest
+node scripts/hot_wf_probe.mjs --selftest
+node scripts/ccwin_overlay_probe.mjs --selftest
+node scripts/rev_decline_probe.mjs --selftest
+node scripts/test_revdecline.mjs
+python3 scripts/test_fund_div.py
+node scripts/copper_chain_probe.mjs --selftest
+node scripts/sector_rev_probe.mjs --selftest
+node scripts/dip_pick.mjs --selftest
+node scripts/test_dipdeck.mjs
+node scripts/test_crash_events.mjs
+node scripts/crash_events.mjs --selftest
+node scripts/test_worker_crashdip.mjs
+python3 scripts/world_hist_miner.py --selftest
+python3 scripts/tw_deep04_fetch.py --selftest
+python3 scripts/tw04_merge.py --selftest
+node scripts/rebound_lab_probe.mjs --selftest
+node scripts/ldred_port.mjs --selftest
+node scripts/lib_ldred.mjs --selftest
+node scripts/test_ldredk.mjs
+node scripts/short_inverse_probe.mjs --selftest
+node scripts/dipleader_probe.mjs --selftest
+node scripts/test_retailsign.mjs
+node scripts/test_leadbooks.mjs
+node scripts/test_leaddd.mjs
+node scripts/lib_leaddd.mjs --selftest
+node scripts/lead_dd_state.mjs --selftest
+node scripts/lead_ddhalf_gate.mjs --selftest
+node scripts/test_leadlive.mjs
+node scripts/test_leadday.mjs
+node scripts/test_leakfree.mjs
+node scripts/test_nobroker.mjs
+node scripts/test_trapbal.mjs
+python3 scripts/test_free_fund.py
+node scripts/test_dtlab.mjs
+node scripts/test_deckbuytbl.mjs
+node scripts/test_lugap.mjs
+node scripts/test_leadtiming.mjs
+node scripts/test_leadheld.mjs
+node scripts/test_labmode.mjs
+node scripts/test_evening.mjs
+node scripts/test_column.mjs
+node scripts/test_advunlock.mjs
+node scripts/test_ovopen.mjs
+node scripts/test_ovprob.mjs
+node scripts/test_attcard.mjs
+node scripts/test_stratrank.mjs
+node scripts/test_deckfin.mjs
+node scripts/test_aigod.mjs
+node scripts/test_ovdue.mjs
+node scripts/test_ludefer.mjs
+python3 scripts/test_peband_carry.py
+python3 scripts/test_screener_mcap.py
+python3 scripts/test_screener_tse.py
+node scripts/test_nav.mjs
+node scripts/test_home.mjs
+node scripts/test_audit.mjs
+node scripts/leader_probe.mjs --selftest
+node scripts/health_base.mjs --selftest
+node scripts/embed_health_base.mjs --selftest
+node scripts/test_confimg.mjs
+node scripts/test_fishhome.mjs
+node scripts/test_stratswitch.mjs
+python3 scripts/test_lead_ghost.py
+python3 scripts/test_holiday_ghost.py
+python3 scripts/test_kline_repair.py
+python3 scripts/test_otc_hist.py
+python3 scripts/test_industry_gate.py
+python3 scripts/test_key_header.py
+python3 scripts/test_no_token_leak.py
+python3 scripts/check_dom_ids.py
+node scripts/check_dup_key.mjs
+python3 scripts/test_deploy_relay.py
+node scripts/test_dupnum.mjs
+node scripts/test_exitdist.mjs
+node scripts/test_beargate.mjs
+node scripts/test_pbexit.mjs
+node scripts/test_ovslim.mjs
+node scripts/test_dtprune.mjs
+node scripts/test_dtedge.mjs
+node scripts/test_skills.mjs
+python3 scripts/test_attention_fetch.py
+python3 scripts/test_tdcc_refresh.py
+python3 scripts/data_audit.py --selftest
+python3 lib_http.py --selftest
+python3 scripts/block_deep_fetch.py --selftest
+python3 scripts/official_extra_probe.py --selftest
+python3 lib_quotes.py --selftest
+python3 scripts/test_yf2.py
+python3 lib_official.py --selftest
+python3 scripts/test_yf_official.py
+python3 scripts/pick_ledger.py --selftest
+python3 scripts/test_no_trade_ci.py
+python3 scripts/check_div16.py --selftest
+node scripts/block_trade_probe.mjs --selftest
+node scripts/test_mktattr.mjs
+node scripts/test_minfee.mjs
+node scripts/test_aicite.mjs
+node scripts/test_rottail.mjs
+node scripts/test_vixsrc.mjs
+node scripts/test_dayfacts.mjs
+node scripts/embed_day_facts.mjs --check
+python3 scripts/test_macro_calendar.py
+python3 scripts/test_tgalert.py
+node scripts/test_alertcat.mjs
+node scripts/test_calvol.mjs
+awk '/id="tabContent[A-Za-z]+"/{ if(start){ bad=bad " " name "(L" start ")被下一個容器包住" } start=NR; bal=0; name=$0; sub(/.*id="/,"",name); sub(/".*/,"",name) } start { gsub(/<!--.*-->/,""); o=gsub(/<div/,"<div"); c=gsub(/<\/div>/,"</div>"); bal+=o-c; if(bal<=0){ start=0 } } END{ if(start){ bad=bad " " name "(L" start ")到檔尾都沒閉合" } if(bad!=""){ print "❌ tabContent* 容器 div 不平衡:" bad; exit 1 } print "✅ tabContent* 容器 div 開合平衡" }' index.html
+python3 scripts/check_claude_md.py
+python3 scripts/check_claude_md.py --selftest
