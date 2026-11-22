@@ -57,6 +57,9 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const browser = await chromium.launch({ ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}), args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+// ⏰ 台北平日 05:00~08:59 第一次打開會自動跳去「大盤 › 盤前」(V82.0.8 `_premktAutoWant`)→ 跟這支測試搶畫面
+//    (2026-11-23 週一 05:5x 連跑:改之前 / 改之後的 index.html 都是時好時壞;週六跑都過)→ 一律當作「今天已經跳過了」(⛔ 讀真的時鐘,testing.md ③)
+await page.addInitScript(() => { try { localStorage.setItem('premktAuto_v1', new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())); } catch (_) {} });
 const benign = t => /Failed to load resource|net::ERR_|CORS|Cross origin|vibrate|chromestatus|Access to fetch|echarts is not defined|Tailwind/i.test(t);
 const errs = [];
 page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); if (!benign(t)) errs.push(t); });
@@ -67,6 +70,8 @@ await page.evaluate(() => { if (!document.getElementById('ovOpenBox')) { const d
 
 const R = await page.evaluate(() => {
     const out = {};
+    // ⏳ App 開機後還在跑的畫面更新,有時會把測試自己塞的 #ovOpenBox 清掉(2026-11-23 改之前 / 改之後都時好時壞)→ 每段開頭重擺
+    if (!document.getElementById('ovOpenBox')) { const d = document.createElement('div'); d.id = 'ovOpenBox'; d.className = 'hidden w-full'; (document.getElementById('ovCommandCenter') || document.body).appendChild(d); }
     const mk = (last = 213.5) => {
         const rows = [];
         for (let i = 0; i < 60; i++) {
@@ -197,6 +202,7 @@ ok('ⓙd ⛔ 研究字樣', bad.length === 0, bad.join(' | '));
 // 🌅 V78.5.4 五列「開盤後通常怎麼走」
 const Q = await page.evaluate(() => {
     const o = {};
+    if (!document.getElementById('ovOpenBox')) { const d = document.createElement('div'); d.id = 'ovOpenBox'; d.className = 'hidden w-full'; (document.getElementById('ovCommandCenter') || document.body).appendChild(d); }
     app._closedTail = d => d; app.isMarketOpen = () => false; app._lastBarIsToday = () => false;
     app.currentSymbolId = '5483'; app.settings.leadTiming = 'split';
     const mkG = (n, gOf, back = 0) => { const a = []; let c = 100; for (let i = 0; i < n; i++) { const o2 = i ? c * (1 + gOf(i) / 100) : c; c = back ? c : o2 * (1 + 0.003 * Math.sin(i)); const dt = new Date(Date.UTC(2025, 0, 1) + i * 86400000).toISOString().slice(0, 10); a.push({ date: dt, open: +o2.toFixed(4), high: Math.max(o2, c) * 1.01, low: Math.min(o2, c) * 0.99, close: +c.toFixed(4), volume: 1000 }); } return a; };
@@ -271,14 +277,20 @@ ok('ⓟf 寫明「不是預測」+ ⛔ 研究字樣', /不是預測/.test(Q.mixT
 // 390px 不溢出
 await page.evaluate(rwdShim);
 const ov = await page.evaluate(() => {
+    if (!document.getElementById('ovOpenBox')) { const d = document.createElement('div'); d.id = 'ovOpenBox'; d.className = 'hidden w-full'; (document.getElementById('ovCommandCenter') || document.body).appendChild(d); }
+    app._closedTail = d => d; app.isMarketOpen = () => false; app._lastBarIsToday = () => false;
+    app.currentSymbolId = '5483'; app.settings.leadTiming = 'split';
+    const mkG = (n, gOf, back = 0) => { const a = []; let c = 100; for (let i = 0; i < n; i++) { const o2 = i ? c * (1 + gOf(i) / 100) : c; c = back ? c : o2 * (1 + 0.003 * Math.sin(i)); const dt = new Date(Date.UTC(2025, 0, 1) + i * 86400000).toISOString().slice(0, 10); a.push({ date: dt, open: +o2.toFixed(4), high: Math.max(o2, c) * 1.01, low: Math.min(o2, c) * 0.99, close: +c.toFixed(4), volume: 1000 }); } return a; };
+    const G = [-10, -5, -2.5, -0.4, 0, 0.6, 1.5, 3.5, 6, 10], mix = mkG(300, i => G[i % G.length], 1);
+    app._renderOvOpen('5483', mix, { held: true, state: 'hold', cost: 200, shares: 2, lead: { st: 'sell', isRebal: true, date: mix[mix.length - 1].date, left: 3, H: 10, N: 5 } });
     const el = document.getElementById('ovOpenBox');
     const host = document.createElement('div'); host.style.cssText = 'width:358px;position:absolute;left:16px;top:0';
     host.appendChild(el.cloneNode(true)); document.body.appendChild(host);
     const W = host.getBoundingClientRect(); let worst = 0;
     host.querySelectorAll('*').forEach(x => { const r = x.getBoundingClientRect(); if (r.width) worst = Math.max(worst, r.right - W.right); });
-    const w = W.width; host.remove(); return { worst, w };
+    const w = W.width, n = (el.innerText || el.textContent || '').length; host.remove(); return { worst, w, n };
 });
-ok('ⓙe 390px 不溢出', ov.w >= 350 && ov.worst <= 1, JSON.stringify(ov));
+ok('ⓙe 390px 不溢出(⛔ 量空盒子:卡片裡要真的有字)', ov.w >= 350 && ov.worst <= 1 && ov.n > 50, JSON.stringify(ov));
 ok('ⓩ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
