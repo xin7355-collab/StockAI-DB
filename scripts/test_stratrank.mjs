@@ -10,14 +10,24 @@
  *   ④ leadpark:`_strat()` = lead、`_park()` = true;lead:`_park()` = false;舊的 'lead' 搬家一次成 leadpark
  *   ⑤ 個股總覽:這一檔在決策台「今天可以買的」名單上(沒有固定觸發價那種)→ ⛔ 不可寫「觀望」;🅿️ 時講「先從 0050 賣出」
  *   ⑥ 決定性對照:同一檔把決策台名單換掉 → 總覽回到「觀望」
+ *   ⑦ 🏷️ V82.6.5 策略名字散戶 App == 產業作戰室 `STRAT_NAMES`(設定選項 / 每年賺多少 / 決策台 🅿️ 那一句);⛔ 再叫「符合進場」
+ *      INJECT=oldname → 把名字換回「符合進場」,⑦b~⑦e 必紅
  */
 import fs from 'fs';
 import path from 'path';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const HTML = process.env.INDEX_HTML || path.join(ROOT, 'index.html');
-const SRC = fs.readFileSync(HTML, 'utf8'), PS = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
+let HTML = process.env.INDEX_HTML || path.join(ROOT, 'index.html');
+let SRC = fs.readFileSync(HTML, 'utf8');
+const PS = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
+// 🏷️ V82.6.5 INJECT=oldname → 把策略名字換回「符合進場」(⑦ 必紅);暫存檔放在 repo 根目錄,畫面才讀得到 data/
+const INJ = process.env.INJECT || '';
+if (INJ === 'oldname') {
+    SRC = SRC.split('🅿️ 高檔飆股+停車 0050').join('🅿️ 符合進場+停車 0050').split('🔥 高檔飆股・錢放現金').join('📈 符合進場・錢放現金');
+    HTML = path.join(ROOT, '_inj_stratrank_index.html');
+    fs.writeFileSync(HTML, SRC);
+}
 let fails = 0;
 const ok = (n, c, e = '') => { if (c) console.log(`✅ ${n}`); else { fails++; console.log(`❌ ${n}${e ? '  ' + String(e).slice(0, 260) : ''}`); } };
 
@@ -41,6 +51,9 @@ const R = await page.evaluate(async () => {
     A.settings.strategy = 'gene'; A._renderStratBox();
     o.box = [...document.querySelectorAll('#stratBox [data-stratopt]')].map(x => x.dataset.stratopt);
     o.boxAdv = [...document.querySelectorAll('#stratBox [data-advbox] [data-stratopt]')].map(x => x.dataset.stratopt);
+    // ⑦ 🏷️ V82.6.5 設定畫面上每一個策略的名字(選項的第一行)+ 每年賺多少那張表用的名字
+    o.labels = Object.fromEntries([...document.querySelectorAll('#stratBox [data-stratopt]')].map(x => [x.dataset.stratopt, ((x.querySelector('span > span') || {}).textContent || '').trim()]));
+    o.perfNm = { ...A._STRAT_PERF_NM };
     o.exitOrd = A._exitOrder();
     o.exitRob = JSON.parse(JSON.stringify(A._EXIT_EDGE.rob));
     o.exitBtns = [...document.querySelectorAll('[id^="btn_exit_"]')].map(b => b.id.replace('btn_exit_', ''));
@@ -105,6 +118,25 @@ ok('⑤b 🅿️ 時講「先從 0050 賣出」;🔥 時⛔ 不講', /先從 005
 ok('⑥ 決定性對照:名單換掉 → 回到觀望', /觀望/.test(R.ovOff.badge || ''), R.ovOff.badge);
 ok('⑥b 大盤嚴格空頭 + 自己打開守門 → ⛔ 不叫你買', !/今天可以買/.test(R.ovBear.badge || '') && /不開新倉/.test(R.ovBear.badge || ''), JSON.stringify(R.ovBear).slice(0, 200));
 ok('⑥b2 🔬 決定性對照:守門關著(V79.4.9 預設)→ 照常列在今天可以買', /今天可以買/.test(R.ovBearOff.badge || ''), JSON.stringify(R.ovBearOff).slice(0, 200));
+// ⑦ 🏷️ V82.6.5 同一套策略兩個 App 只能有一個名字(使用者看成績單問「高檔飆股有沒有在散戶 App 裡」—— 散戶 App 叫「符合進場」、成績單叫「高檔飆股」)
+//    唯一的名字表 = pro `STRAT_NAMES`(散戶 park ↔ pro park、gene ↔ hot、leadpark ↔ lead、lead ↔ leadcash);「📈 符合進場」是決策台另一份名單,⛔ 不可當策略名字
+const snBlock = (PS.match(/^  STRAT_NAMES: \{[\s\S]*?\n  \},/m) || [''])[0];
+const SN = {};
+for (const k of ['hot', 'park', 'lead', 'leadcash']) { const m = snBlock.match(new RegExp(`^\\s+${k}:\\s*\\{\\s*n:\\s*'([^']+)'`, 'm')); SN[k] = m ? m[1] : null; }
+ok('⑦a 🚧 讀得到 pro STRAT_NAMES 四個名字(⛔ 空過)', Object.values(SN).every(Boolean), JSON.stringify(SN));
+const P = R.perfNm || {};
+ok('⑦b 每年賺多少那張表的名字 == pro 名字表(park / leadpark / lead 一字不差、gene 以 🔥 那個名字開頭)',
+    P.park === SN.park && P.leadpark === SN.lead && P.lead === SN.leadcash && String(P.gene || '').startsWith(SN.hot || '\u0000'), JSON.stringify({ P, SN }));
+const LB = R.labels || {};
+ok('⑦c 設定「我的策略」每個選項的名字 == pro 名字表(畫面上真的看到的那一行)',
+    String(LB.park || '').startsWith(SN.park || '\u0000') && String(LB.gene || '').startsWith(SN.hot || '\u0000')
+    && String(LB.leadpark || '').startsWith(SN.lead || '\u0000') && String(LB.lead || '').startsWith(SN.leadcash || '\u0000'), JSON.stringify(LB));
+const pn = SRC.match(/const _pn = lead \? '([^']+)' : '([^']+)';/);
+ok('⑦d 決策台「你選的是 …」那一句的名字 == pro 名字表', !!pn && pn[1] === SN.lead && pn[2] === SN.park, pn ? pn.slice(1).join(' / ') : '找不到 _pn');
+ok('⑦e ⛔ 策略名字不可再叫「符合進場」(那是決策台另一份名單);那份名單自己的名字照舊',
+    ![...Object.values(P), ...Object.values(LB), ...(pn ? pn.slice(1) : [])].some(x => /符合進場/.test(String(x)))
+    && /k: 'fit', st: 'gene', n: '📈 符合進場/.test(SRC), JSON.stringify({ P, LB }));
 ok('無 pageerror', errs.length === 0, errs.join(' | '));
+if (INJ === 'oldname') { try { fs.unlinkSync(HTML); } catch (_) {} }
 console.log(fails ? `\n❌ STRATRANK_FAIL(${fails})` : '\n✅ STRATRANK_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

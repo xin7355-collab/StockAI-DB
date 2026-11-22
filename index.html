@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.6.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.6.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.6.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.6.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -9063,10 +9063,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.6.4',
+    _APP_VERSION: 'V82.6.5',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.6.5', d: [
+            '🏷️ 設定「我的策略」的名字改成跟產業作戰室成績單一樣:「🅿️ 高檔飆股+停車 0050」(以前叫「符合進場+停車 0050」)—— 它買的就是決策台「🔥 今天可以買的」那份;「📈 符合進場」是決策台另一份名單(看多訊號、預設收起)。只改名字,選股、買賣、提醒一個字都沒改',
+        ], dt: '2026-11-22' },
         { v: 'V82.6.4', d: [
             '📊 產業作戰室「🧠 人性」頁的當沖占比:歷史會一路往前補到 2014 年;但「排第幾」只跟最近 3 年比 —— 2014 年初可以當沖的股票很少、占比不到 1%,跟現在的四成多一起比,會變成天天「比幾乎所有日子都高」',
         ], dt: '2026-11-21' },
@@ -9385,10 +9388,6 @@ ${list}
             '📅 換倉那一句改寫日期(例:「10/29 換倉 → 下一個交易日買」),不再寫「今天是換倉日」(隔天早上打開會講錯天);起算日之後還沒買過的,寫出為什麼',
             '📱 「同一起點比一比」的策略名改成自己一行,手機上不會再一個字一行',
             '⏳ 最後一天是今天、還沒收盤定案時(盤中,或收盤後晚上的資料還沒更新),會寫「還沒定案:最後一天用的是盤中價」(以前看起來像收盤價)',
-        ] },
-        { v: 'V80.0.6', d: [
-            '🌐 上市股每天的 K 線改用證交所官方「全市場當天行情」一次抓(先跟網站上現有的 K 線逐欄比對過,299 檔開高低收量全部一樣才換);上櫃股量還沒完全對上,先維持原本的抓法',
-            '🧯 上櫃股官方逐股資料從雲端一直抓不到,以前被當成「還沒公布」,現在會算成被擋、在紀錄裡寫出來',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -22703,7 +22702,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return !!this._luLock(d2, { anyTime: 1 });   // ⛔ 鎖漲停判斷只有 `_luLock` 一份(test_ovdue ⓕ)
         } catch (_) { return false; }
     },
-    /** 🅿️ V78.1.1 「符合進場+停車 0050」(V79.2.7 改名;舊名「高檔飆股+停車 0050」):
+    /** 🅿️ V78.1.1 「高檔飆股+停車 0050」(V79.2.7 曾改名「符合進場+停車 0050」;🏷️ V82.6.5 改回 —— 使用者看成績單問「高檔飆股有沒有在散戶 App 裡」:
+     *     名字一律跟產業作戰室 `STRAT_NAMES`(park / hot)一樣(`test_stratrank` ⑦ 跨檔比對),而且它買的就是決策台「🔥 今天可以買的」;
+     *     「📈 符合進場」是決策台另一份名單(看多訊號、預設收起),⛔ 不可再拿來當策略名字):
      *  ⭐ 選股 / 出場 / 提醒 / 通知 / Telegram **全部等於 🔥**(`_strat()` 照樣回 'gene',⛔ 不另走一條路),
      *  唯一差別是決策台把「沒用到的錢停 0050」算成**金額**。
      *  🅿️ V79.4.9 改成**預設**(使用者:「改預設,自動下單也幫我買」)→ ⛔ 不用解鎖;auto_trade.py `park_step` 照同一個算法買賣 0050。
@@ -22793,8 +22794,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const D = {
             leadpark: ['👑 領頭羊+停車 0050', `${leadRule}<b>沒買股票的錢</b>停在 0050、換倉要買時先賣掉需要的部分;決策台會幫你算「今天停多少錢在 0050」。⚠️ 自動下單只會買賣領頭羊那 5 檔,<b>0050 要自己買賣</b>。`],
             lead:     ['💵 領頭羊・錢放現金', `${leadRule}沒買股票的錢放現金(⛔ 不停 0050)。`],
-            park:     ['🅿️ 符合進場+停車 0050(預設)', `決策台列出標 🧬(一年位置高、很會跳)的股票裡,這一檔自己最常用的那一招明天的觸發價(🔥 今天可以買的:尾盤漲過才買,一天最多 2 檔);總覽、提醒、通知都照這一套。賣法照三條出場(硬停損 / 你設定的線 / 抱滿天數)。<b>沒買股票的錢</b>每天收盤停在 0050、要買股票時先賣掉需要的部分;決策台會幫你算「今天停多少錢在 0050」,自動下單也會照這個算法幫你買賣(要設帳戶總資金;真實帳戶第一次要先確認一次交割款,確認前只預覽、不會真的買)。`],
-            gene:     ['📈 符合進場・錢放現金(舊的)', '選股、賣法、提醒都跟 🅿️ 一模一樣;差別只在沒買股票的錢放現金(⛔ 不停 0050)。⚠️ 這個選項已經拿掉,只有你現在還在用才看得到;改選 🅿️ 之後就不會再出現。'],
+            park:     ['🅿️ 高檔飆股+停車 0050(預設)', `決策台列出標 🧬(一年位置高、很會跳)的股票裡,這一檔自己最常用的那一招明天的觸發價(🔥 今天可以買的:尾盤漲過才買,一天最多 2 檔);總覽、提醒、通知都照這一套。賣法照三條出場(硬停損 / 你設定的線 / 抱滿天數)。<b>沒買股票的錢</b>每天收盤停在 0050、要買股票時先賣掉需要的部分;決策台會幫你算「今天停多少錢在 0050」,自動下單也會照這個算法幫你買賣(要設帳戶總資金;真實帳戶第一次要先確認一次交割款,確認前只預覽、不會真的買)。`],
+            gene:     ['🔥 高檔飆股・錢放現金(舊的)', '選股、賣法、提醒都跟 🅿️ 一模一樣;差別只在沒買股票的錢放現金(⛔ 不停 0050)。⚠️ 這個選項已經拿掉,只有你現在還在用才看得到;改選 🅿️ 之後就不會再出現。'],
         };
         // 🔒 V79.1.2 使用者:「我要點進階才能是領頭羊策略」→ 👑 兩個選項搬進「🔓 進階功能」那一區
         // 🅿️ V79.4.9 🅿️ 改預設 → 上面一律列 🅿️ / 📈 兩個(⛔ 不用解鎖)
@@ -22827,7 +22828,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
      *  ⭐ 每一年 = 那一年 1 月重新放 100 萬、只買那一年的訊號(= pro 逐年成績單 `_YEARLY_BT` 那一格,使用者 V77.6.1 定的口徑)
      *     上面那行 16 年合計才是「同一個帳戶一路滾」(= pro `_PROFIT_BOARD` 16 年那一組);研究數字只准在 [data-stratperf] 這一塊
      *  🚦 漲跌用台股紅漲綠跌(那是漲跌);贏不贏 0050 用 ✅ / ➖、最多賠用灰字(⛔ 紅綠講好壞);表頭可點排序、同一欄再點一次反向 */
-    _STRAT_PERF_NM: { park: '🅿️ 符合進場+停車 0050', gene: '📈 符合進場・錢放現金', leadpark: '👑 領頭羊+停車 0050', lead: '💵 領頭羊・錢放現金' },
+    _STRAT_PERF_NM: { park: '🅿️ 高檔飆股+停車 0050', gene: '🔥 高檔飆股・錢放現金', leadpark: '👑 領頭羊+停車 0050', lead: '💵 領頭羊・錢放現金' },
     _stratPerfPick(k) { this._perfSel = k; try { this._renderStratBox(); } catch (_) {} },
     _stratPerfSort(k) { const S = this._perfSort || { k: 'y', dir: 1 }; this._perfSort = S.k === k ? { k, dir: -S.dir } : { k, dir: k === 'y' ? 1 : -1 }; try { this._renderStratBox(); } catch (_) {} },
     _stratPerfHtml() {
@@ -25325,12 +25326,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 🔥 V79.4.9 新預設那一輪:1945 vs 371 萬(最差 1899 vs 368)、17/17、回撤 37.2% vs 22.1%(V79.4.8 那一輪:821 vs 117 萬)
         long: { win: '2011 ~ 2026', paths: 17, on: 1945, onLo: 1899, off: 371, offLo: 368, wins: 17, onDD: 37.2, offDD: 22.1, ddBetter: 0, rule: 'mean', bear: false },
     },
-    /** 🅿️ V78.1.1 選了「符合進場+停車 0050」→ 把「閒錢停 0050」算成**今天的金額**(⛔ App 不下單;V79.4.9 起自動下單照同一個算法做,真實帳戶確認交割款前只預覽)。
+    /** 🅿️ V78.1.1 選了「高檔飆股+停車 0050」→ 把「閒錢停 0050」算成**今天的金額**(⛔ App 不下單;V79.4.9 起自動下單照同一個算法做,真實帳戶確認交割款前只預覽)。
      *  停多少 = 帳戶本金 − 手上**個股**市值(現價,沒有就用成本);已經在 0050 的另外列。沒填本金 → 說要填才算得出來。 */
     _parkAmountHtml(mkt) {
         if (!this._park || !this._park()) return '';
         const lead = this._isLead();
-        const _pn = lead ? '👑 領頭羊+停車 0050' : '🅿️ 符合進場+停車 0050';
+        const _pn = lead ? '👑 領頭羊+停車 0050' : '🅿️ 高檔飆股+停車 0050';
         const head = `<div class="text-[11px] text-gray-200 mt-2 pt-1.5 border-t border-[#21262d] leading-snug" data-parkamt="1">🅿️ <b>你選的是「${_pn}」</b>`;
         const wan = v => (Math.round(v / 1000) / 10).toLocaleString() + ' 萬';
         // 💵 V79.1.6 帳戶總資金一律走 `_leadSlot()`(⛔ 不各算一份)
