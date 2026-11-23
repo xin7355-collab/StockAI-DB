@@ -69,6 +69,10 @@ node scripts/yen_surge_probe.mjs --selftest
 node scripts/test_tgdiag.mjs
 node scripts/usd_dd_probe.mjs --selftest
 node scripts/twd_weak_probe.mjs --selftest
+python3 scripts/btc_hist_miner.py --selftest
+python3 scripts/txnight_hist_miner.py --selftest
+node scripts/btc_tw_probe.mjs --selftest
+node scripts/txnight_probe.mjs --selftest
 node scripts/lib_conc.mjs --selftest
 node scripts/conc_probe.mjs --selftest
 node scripts/adr_premium_probe.mjs --selftest
