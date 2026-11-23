@@ -65,6 +65,7 @@ node scripts/test_mood.mjs
 node scripts/test_moodlog.mjs
 node scripts/test_habit.mjs
 node scripts/test_yen_off.mjs
+node scripts/test_btc_off.mjs
 node scripts/yen_surge_probe.mjs --selftest
 node scripts/test_tgdiag.mjs
 node scripts/usd_dd_probe.mjs --selftest

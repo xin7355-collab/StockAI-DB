@@ -393,7 +393,8 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
     // 🔬 V82.5.9 測過的那幾列帶實測總表的主題鍵(畫面轉述那一條的結論;沒測過的列 ⛔ 每一列都印「還沒測過」)
     //   💱 V82.6.6 美元 / 台幣那一列改轉述 twd-weak(EXP-20261123-01「台幣一年最弱 + 修正中 → 台股比較慢回來?」⛔ 量不到)——
     //     那一列印的就是台幣的一年位置,這一題才是在問它;外資座位「用台幣算 vs 用美元算」那一行照舊 usd-dd
-    const FX_LAB = { jpy: 'yen-surge', usdtwd: 'twd-weak' };
+    //   ₿ V82.6.7 比特幣那一列轉述 btc-tw(EXP-20261123-02「比特幣能不能提早知道台股開盤 / 盤中 / 大跌之後」⛔ 四個判定全沒過)
+    const FX_LAB = { jpy: 'yen-surge', usdtwd: 'twd-weak', btc_usd: 'btc-tw' };
     // 💱 V82.5.6 20 日 / 一年位置:① FRED 有那一條 → 先比「今天的值 vs FRED 最後一筆」是不是同一把尺,是才接
     //   ② FRED 沒有(美元指數 / 黃金 / 銅)或接不上 → 用 mood_hist 自己每天存的(同一個來源,天生同一把尺;不到 20 天寫「還在累積」)
     const ownFx = k => { const seen = new Set(), P = [];
@@ -552,14 +553,16 @@ function selftest() {
         const lin = (a, b) => Object.fromEntries(fxDays.map((d, k) => [d, +(a + (b - a) * k / (fxDays.length - 1)).toFixed(4)]));
         const baaD = Object.fromEntries(fxDays.map((d, k) => [d, +(1.5 + (k % 50) / 100).toFixed(2)]));
         const FHfix = (twd) => ({ v: 1, series: { usdtwd: { sid: 'DEXTAUS', d: twd }, baa10y: { sid: 'BAA10Y', d: baaD } } });
-        const M0 = { usdtwd: 32.5, usdtwd_chg_pct: 0.1, usdtwd_date: addDays(asof, -1), dxy: 100, dxy_date: addDays(asof, -1) };
+        const M0 = { usdtwd: 32.5, usdtwd_chg_pct: 0.1, usdtwd_date: addDays(asof, -1), dxy: 100, dxy_date: addDays(asof, -1), btc_usd: 61496 };
         W('fred_hist.json', FHfix(lin(30, 32))); W('macro_risk.json', M0);
         const mF = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood;
         const tw10 = mF.fx.find(r => r.k === 'usdtwd'), aOf = addDays(asof, -1), base = lin(30, 32)[addDays(aOf, -28)];
         ok('⑩ 匯率接 FRED:20 日 = 今天 ÷ 28 天前那一筆 − 1、一年位置 = 比過去一年都高(hi 0)、寫出來源', tw10 && tw10.c20 === r2((32.5 / base - 1) * 100)
             && tw10.pos && tw10.pos.hi === 0 && tw10.pos.n > 300 && /FRED DEXTAUS/.test(tw10.hs || ''), JSON.stringify(tw10 && { c20: tw10.c20, base, pos: tw10.pos, hs: tw10.hs, hwhy: tw10.hwhy }));
-        ok('⑩c 匯率表測過的那一列帶實測總表的主題鍵:台幣 → twd-weak(V82.6.6;一年位置那一題)、美元指數沒測過 → null(⛔ 亂掛別條)', tw10 && tw10.lab === 'twd-weak'
-            && (mF.fx.find(r => r.k === 'dxy') || {}).lab === null, JSON.stringify(mF.fx.map(r => [r.k, r.lab])));
+        ok('⑩c 匯率表測過的那一列帶實測總表的主題鍵:台幣 → twd-weak(V82.6.6;一年位置那一題)、比特幣 → btc-tw(V82.6.7)、美元指數沒測過 → null(⛔ 亂掛別條)', tw10 && tw10.lab === 'twd-weak'
+            && (mF.fx.find(r => r.k === 'btc_usd') || {}).lab === 'btc-tw' && (mF.fx.find(r => r.k === 'dxy') || {}).lab === null, JSON.stringify(mF.fx.map(r => [r.k, r.lab])));
+        const proSrc = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8'), labs = mF.fx.map(r => r.lab).filter(Boolean);
+        ok('⑩d 匯率表轉述的主題鍵每一條都真的在實測總表裡(pro.html LAB 的 k;⛔ 打錯字 = 那一列轉述不到)', labs.length >= 2 && labs.every(k => proSrc.includes(`k: '${k}'`)), JSON.stringify(labs.filter(k => !proSrc.includes(`k: '${k}'`))));
         W('macro_risk.json', { ...M0, usdtwd: 3250 });
         const tw10b = build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT }).mood.fx.find(r => r.k === 'usdtwd');
         ok('⑩b 決定性對照:今天的匯率 ×100(單位對不上)→ ⛔ 接、20 日 / 一年位置都空、寫原因', tw10b && tw10b.c20 == null && tw10b.pos == null && /不像同一把尺/.test(tw10b.hwhy || ''), JSON.stringify(tw10b && { c20: tw10b.c20, pos: tw10b.pos, hwhy: tw10b.hwhy }));

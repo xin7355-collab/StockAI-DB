@@ -275,6 +275,14 @@ const T = await page.evaluate(() => {
       R.foNone = ids(run({ fiout: null }));
       const h = run({ fiout: { spot: s0 - 100, spotD: '20261016', twd: t0 + 0.3, twdD: '2026-10-16' } }).find(x => x.id === 'fi_out');
       R.foWhy = h ? h.why : ''; }
+    // ₿ V82.6.7 比特幣一天漲跌 ≥ _BTC_BIG(5%,跟全球大玩家卡同一個值)→ btc_big;4.9% / 資料比大盤最新收盤舊 / null(⛔ 當 0)/ 沒資料 → 沒有
+    { const BB = +app._BTC_BIG;
+      R.btOk = BB === 5;
+      R.bt = ids(run({ btc: { c: -(BB + 0.6), d: '2026-10-17' } })); R.btUp = ids(run({ btc: { c: BB, d: '2026-10-16' } }));
+      R.btNo = ids(run({ btc: { c: -(BB - 0.1), d: '2026-10-17' } })); R.btOld = ids(run({ btc: { c: -9, d: '2026-10-15' } }));
+      R.btNull = ids(run({ btc: { c: null, d: '2026-10-17' } })); R.btStr = ids(run({ btc: { c: '', d: '2026-10-17' } })); R.btNone = ids(run({ btc: null }));
+      const h = run({ btc: { c: -(BB + 0.6), d: '2026-10-17' } }).find(x => x.id === 'btc_big');
+      R.btWhy = h ? h.why : ''; }
     // 📰 V79.3.3 再接 6 篇專欄
     { const H = new Map([['2330', { cost: 0 }]]);
       const drop = mkK(80, '2026-10-16', k => { k[k.length - 1].close = 95; });
@@ -374,6 +382,10 @@ ok('③m2 外資台指期急遽加空 → fifut_cut;空單近期最重 / 沒資�
 ok('③m3 🏧 外資現貨賣超超過門檻 / 台幣貶超過門檻 → fi_out;沒超過 / 資料舊 / null / 沒資料 → 沒有', T.foOk && has(T.fo, 'fi_out') && has(T.foT, 'fi_out') && !has(T.foNo, 'fi_out') && !has(T.foOld, 'fi_out') && !has(T.foNull, 'fi_out') && !has(T.foNone, 'fi_out'),
     JSON.stringify([T.foOk, T.fo, T.foT, T.foNo, T.foOld, T.foNull, T.foNone]));
 ok('③m4 🏧 fi_out 那一行寫實際數字 + 日期(兩個都超過就兩個都寫)', /10\/16\(五\) 外資現貨賣超 [\d,]+ 億、台幣一天貶 [\d.]+%/.test(T.foWhy || ''), T.foWhy);
+ok('③m5 ₿ 比特幣一天跌 5.6% / 漲 5%(邊界)→ btc_big;跌 4.9% / 比大盤最新收盤舊 / null / 空字串(⛔ 當 0)/ 沒資料 → 沒有;門檻 = _BTC_BIG 5',
+   T.btOk && has(T.bt, 'btc_big') && has(T.btUp, 'btc_big') && ![T.btNo, T.btOld, T.btNull, T.btStr, T.btNone].some(x => has(x, 'btc_big')),
+   JSON.stringify([T.btOk, T.bt, T.btUp, T.btNo, T.btOld, T.btNull, T.btStr, T.btNone]));
+ok('③m6 ₿ btc_big 那一行寫日期 + 漲 / 跌 + 幾 %(⛔「利多 / 小心」)', /10\/17\(六\) 比特幣一天跌 5\.6%/.test(T.btWhy || '') && !/利多|小心|風險/.test(T.btWhy || ''), T.btWhy);
 ok('③n 手上的跌破 5 日線 → ma5_break;沒跌破 / 自選 → 沒有', has(T.ma5, 'ma5_break') && !has(T.ma5No, 'ma5_break') && !has(T.ma5Fav, 'ma5_break'), JSON.stringify([T.ma5, T.ma5No, T.ma5Fav]));
 ok('③o 手上的收盤創 60 日新高 → nh60_held;平盤 → 沒有', has(T.nh, 'nh60_held') && !has(T.nhNo, 'nh60_held'), JSON.stringify([T.nh, T.nhNo]));
 ok('③p 外資連買 5 天(最後一根 0 = 沒公布,從前一根算)→ fi_streak5;4 天 → 沒有', has(T.fi, 'fi_streak5') && !has(T.fiNo, 'fi_streak5'), JSON.stringify([T.fi, T.fiNo]));
