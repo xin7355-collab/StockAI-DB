@@ -17385,28 +17385,31 @@ const marginByDate = {};
         const iso = v => { const s = String(v || '').replace(/\//g, '-'); return /^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : (/^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : ''); };
         const tws = [iso(mr.taiex_date), iso(mr.fi_three_date)].filter(Boolean).sort();
         const tw = tws[0] || '', us = iso(mr.sp500_date) || iso(mr.nasdaq_date);
+        // 🌙 V82.6.7 twMax = 比較晚的那個 → 夜盤「是不是前一晚那一盤」用它(晚上那份 taiex_date 常常還停在上一個交易日,用早的會放過舊夜盤)
+        const twMax = tws.length ? tws[tws.length - 1] : '';
         const today = todayISO || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
         const stale = {}, at = {};
         const chk = (k, ref) => { const d = iso(mr[k + '_date']); at[k] = d || null; if (d && ref && d < ref) stale[k] = d; };
         for (const k of ['nikkei', 'kospi', 'hsi']) chk(k, tw);
         for (const k of ['tsm', 'asx', 'umc']) chk(k, us);
-        return { stale, at, tw, us, today };
+        return { stale, at, tw, twMax, us, today };
     },
     // 🌙 V82.6.7 台指期夜盤算不算進盤前分數 —— ⛔ 全 App 唯一判斷點(pro `_premktScore` 抄同一條,test_premkt_formula ⑥f / ⑧ 跨檔比對)
     //   EXP-20261123-03(scripts/txnight_probe.mjs):期交所 2017-05 起的盤後歷史 2,288 天,App 那條夜盤規則算進去
     //   → 猜開盤方向 78.2% → 79.8%、開反 6.2% → 5.1%,10 年每一年都比較準 → 拿掉以前的 score: false(V82.4.0 只顯示)。
     //   只認「這次開盤前那一盤、而且已經收了」(回測用的就是凌晨 5 點收的那一盤):
     //     ① sess === 'night'、不是估算、有漲跌 %(V79.9.8:OpenAPI 那份是前一天日盤 → 只列出來)
-    //     ② 收在台股上一個交易日之後(date > tw;⛔ 前一晚那一盤,台股上一個交易日開盤時就反映過了 —— 同 V79.9.8 那個錯)
+    //     ② 收在台股上一個交易日之後(date > twMax = taiex_date 與三大法人日期比較晚的那個;⛔ 前一晚那一盤,台股上一個交易日開盤時就反映過了 —— 同 V79.9.8 那個錯)
     //     ③ 已經收了(最後成交 04:55 ~ 06:00;還在交易的夜盤是半場 → 同美股盤中 ⛔ 當收盤)
-    //   tw = `_premktFieldAge(mr).tw`(台股上一個交易日;呼叫端傳進來,⛔ 這裡再算一次)→ { chg: 漲跌 % 或 null, why: '' 或 只列出來的原因 }
+    //   tw = `_premktFieldAge(mr).twMax`(台股上一個交易日;呼叫端傳進來,⛔ 這裡再算一次)→ { chg: 漲跌 % 或 null, why: '' 或 只列出來的原因 }
     _premktNight(mr, tw) {
         const tx = (mr || {}).taifex_tx_now;
         if (!tx || tx.sess !== 'night' || tx.est === true || tx.chg == null || tx.chg === '' || !Number.isFinite(+tx.chg)) return { chg: null, why: '' };
         const d = String(tx.date || '').slice(0, 10), t = String(tx.time || '');
+        // ⚠️ 先看收了沒:晚上還在交易的那一盤日期 = 今天(= 台股上一個交易日),先比日期會被講成「前一晚那一盤」
+        if (!(t >= '04:55' && t < '06:00')) return { chg: null, why: '夜盤還沒收(凌晨 5 點收)' };
         if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !tw) return { chg: null, why: '看不出是哪一天的夜盤' };
         if (d <= tw) return { chg: null, why: '前一晚那一盤,台股已經反映過' };
-        if (!(t >= '04:55' && t < '06:00')) return { chg: null, why: '夜盤還沒收(凌晨 5 點收)' };
         return { chg: +tx.chg, why: '' };
     },
 
@@ -18275,7 +18278,7 @@ const marginByDate = {};
         //   (TAIFEX OpenAPI;10/29 早上拿到的是 10/28 日盤 +2.47%)→ 那一天的漲跌台股前一天收盤早就反映了,
         //   以前當成「夜盤」+1.5 分、分析師那行寫「夜盤走強」= 講錯。⛔ 沒有 sess / 日盤 / 估算 一律不算分(pro `_premktScore` 同一條,test_premkt_formula ⑥⑧)。
         // 💱 V82.4.0 期交所行情網給的是真的夜盤 → 🌙 V82.6.7 回測過關開始算分;算不算一律走 `_premktNight`(這次開盤前那一盤、已經收了)
-        const _nt = this._premktNight(mr, _age.tw);
+        const _nt = this._premktNight(mr, _age.twMax);
         const nightChg = _nt.chg;
         const _po = this._preOpenScore({
             dji: usPct('dji'), ndx: usPct('nasdaq'), spx: usPct('sp500'), sox: usPct('sox'), tsm: usPct('tsm'),

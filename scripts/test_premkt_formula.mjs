@@ -25,7 +25,7 @@
  *   ⑪ V82.4.2 美股還沒收盤時抓的(`_intraday`)→ 照樣列出來寫「美股盤中(美東 幾點),還不是收盤」、0 分;macro_cache 有同一天收盤 → 改用收盤;
  *      ⑧ 那 300 組有一半帶盤中標記,兩邊照樣逐一相同(產業作戰室那份同一條)
  *   INJECT=1:漲跌太小也算分 / 台積電權重 ×2→×1 / 恐懼貪婪 null 退回 `+x.fg` / 呼叫端把那斯達克跟 S&P 接反 / 亞股又算分 / 日盤又算分(App 或只改產業作戰室那份)/ 只改產業作戰室台積電權重
- *            / 🌙 前一晚那一盤也算 / 還沒收也算(App 或只改產業作戰室那份)
+ *            / 🌙 前一晚那一盤也算 / 還沒收也算 / 用比較早的台股日期判(App 或只改產業作戰室那份)
  *            / 盤中標記算分那支看不到 / 呼叫端沒擋 macro_risk 的盤中值 / 只有產業作戰室把盤中值算分 → 每一種都要紅
  */
 import fs from 'node:fs';
@@ -45,6 +45,7 @@ const INJ = {
   // 🌙 V82.6.7 前一晚那一盤 / 還沒收的夜盤也算分
   nightStale: ["if (d <= tw) return { chg: null, why: '前一晚那一盤", "if (false) return { chg: null, why: '前一晚那一盤"],
   nightOpen: ["if (!(t >= '04:55' && t < '06:00')) return { chg: null, why: '夜盤還沒收", "if (false) return { chg: null, why: '夜盤還沒收"],
+  nightMin: ["const _nt = this._premktNight(mr, _age.twMax);", "const _nt = this._premktNight(mr, _age.tw);"],
   occ: ['hi: { n: 1774, up: 51.3,', 'hi: { n: 1774, up: 99.9,'],
   dead: ["const _dz = v => { const n = N(v); return n != null && Math.abs(Math.round(n * 100) / 100) < this._PREMKT_DEAD; };", "const _dz = v => false;"],
   // 🕐 V82.4.2 盤中標記:算分那支看不到 / 呼叫端沒擋下 macro_risk 的盤中值
@@ -58,6 +59,7 @@ const INJ_PRO = { proTsm: ["if (tsm != null && !stale('tsm')) add('台積電 ADR
                   proTxDay: ["if (tx && tx.sess === 'night' && tx.est !== true", "if (tx && tx.est !== true"],
                   proNightStale: ["tw && txd > tw && txt >= '04:55'", "tw && txt >= '04:55'"],
                   proNightOpen: ["txd > tw && txt >= '04:55' && txt < '06:00') {", "txd > tw) {"],
+                  proNightMin: ["iso(mr.fi_three_date)].filter(Boolean).sort().pop() || '';", "iso(mr.fi_three_date)].filter(Boolean).sort()[0] || '';"],
                   proIntraOff: ["const intra = k => !!mr[k + '_intraday'];", 'const intra = k => false;'] };
 
 const fnBody = html => {
@@ -171,12 +173,17 @@ async function run(html, proHtml = PRO_SRC) {
     o.txNight = await runTx({ ...NT, sess: 'night' });
     o.txDayT = await runTx({ ...NT, sess: 'day' });
     o.txNaT = await runTx({ ...NT });
-    // ⑥f 前一晚那一盤(10/21 凌晨收的,台股 10/21 開盤就反映了)/ 還沒收(凌晨 2 點半抓的)/ 昨晚還在交易(date = 開始那天)→ 只列出來;
+    // ⑥f 前一晚那一盤(10/21 凌晨收的,台股 10/21 開盤就反映了)/ 還沒收(凌晨 2 點半抓的)/ 晚上還在交易(date = 開始那天 = 台股那天)→ 只列出來;
     //    舊檔的 score: false ⛔ 再擋(回測過關)
     o.txNightOld = await runTx({ ...NT, sess: 'night', date: '2026-10-21' });
     o.txNightOpen = await runTx({ ...NT, sess: 'night', time: '02:29:59' });
     o.txNightEve = await runTx({ ...NT, sess: 'night', date: '2026-10-21', time: '20:15:00' });
     o.txNightNoT = await runTx({ ...NT, sess: 'night', time: null });
+    // ⑥f3 晚上那份 taiex_date 常常還停在上一個交易日(11/23 17:45 那份:taiex 11/20、三大法人 11/23)→ 「前一晚那一盤」要用比較晚的那個日期判
+    const runTxM = async (tx, extra) => { A._macroRiskCache = { ...mr, ...extra, taifex_tx_now: tx }; await A.renderMarketBriefing(); const c = A._preOpenCalc || {};
+      return { d: ((c.parts || []).find(p => p.nm === '🌙 台指期夜盤') || {}).d, txt: (document.getElementById('marketBriefing') || {}).textContent || '' }; };
+    o.txNightLag = await runTxM({ ...NT, sess: 'night', date: '2026-10-21' }, { taiex_date: '2026-10-20' });
+    o.txNightLagOk = await runTxM({ ...NT, sess: 'night' }, { taiex_date: '2026-10-20' });
     o.txNightFlag = await runTx({ ...NT, sess: 'night', score: false });
     // ⑪ 🕐 V82.4.2 美股還沒收盤時抓的(`intra`)→ 照樣列出來、寫「盤中」、0 分;決定性對照:同一組值沒有 intra → 照算
     const IM = { dji: { at: '13:28', v: 1 }, sox: { at: '13:28', v: 2 }, tsm: { at: '13:26', v: 1 }, vix: { at: '13:28', v: 15 }, asx: { at: '13:28', v: 1 } };
@@ -244,9 +251,12 @@ async function run(html, proHtml = PRO_SRC) {
      TX.day === undefined && TX.na === undefined && TX.dayT === undefined && TX.naT === undefined && TX.night === 1.5 && Math.abs(TX.ds - 1.5) < 1e-9, JSON.stringify(TX));
   const NO = { old: R.txNightOld, open: R.txNightOpen, eve: R.txNightEve, noT: R.txNightNoT };
   const noScore = Object.values(NO).every(x => x && x.d === undefined && R.txDay && Math.abs(x.s - R.txDay.s) < 1e-9 && /夜盤/.test(x.txt) && /不算分/.test(x.txt));
-  ok('⑥f 🌙 V82.6.7 前一晚那一盤 / 還沒收 / 昨晚還在交易 / 沒有最後成交時間 → ⛔ 算分(總分跟日盤那次一樣)、那一格寫原因 +「不算分」',
-     noScore && /前一晚那一盤/.test(NO.old.txt) && /前一晚那一盤/.test(NO.eve.txt) && /夜盤還沒收/.test(NO.open.txt) && /夜盤還沒收/.test(NO.noT.txt),
+  ok('⑥f 🌙 V82.6.7 前一晚那一盤 / 還沒收 / 晚上還在交易(寫「還沒收」⛔「前一晚」)/ 沒有最後成交時間 → ⛔ 算分(總分跟日盤那次一樣)、那一格寫原因 +「不算分」',
+     noScore && /前一晚那一盤/.test(NO.old.txt) && /夜盤還沒收/.test(NO.eve.txt) && !/前一晚那一盤/.test(NO.eve.txt) && /夜盤還沒收/.test(NO.open.txt) && /夜盤還沒收/.test(NO.noT.txt),
      JSON.stringify(Object.fromEntries(Object.entries(NO).map(([k, x]) => [k, x && { d: x.d, s: x.s }]))) + ` s0 ${R.txDay && R.txDay.s}`);
+  ok('⑥f3 🌙 taiex_date 落後一天(三大法人已經是 10/21)→ 10/21 凌晨收的那一盤照樣是「前一晚那一盤」、⛔ 算分;10/22 凌晨收的照算(決定性對照)',
+     R.txNightLag && R.txNightLag.d === undefined && /前一晚那一盤/.test(R.txNightLag.txt) && R.txNightLagOk && R.txNightLagOk.d === 1.5,
+     JSON.stringify({ lag: R.txNightLag && R.txNightLag.d, ok: R.txNightLagOk && R.txNightLagOk.d }));
   ok('⑥f2 🌙 今天凌晨收的那一盤:算分、那一格 ⛔ 寫「不算分」;舊檔留著的 score: false ⛔ 再擋(回測過關了)',
      R.txNight.d === 1.5 && !/不算分/.test(R.txNight.txt.match(/夜盤[^)]*$/m)?.[0] || '') && !/只列出來、不算分/.test(R.txNight.txt) && R.txNightFlag && R.txNightFlag.d === 1.5,
      JSON.stringify({ d: R.txNight.d, flag: R.txNightFlag && R.txNightFlag.d })); 
@@ -304,6 +314,11 @@ async function run(html, proHtml = PRO_SRC) {
   for (const m of fx) if (m.taifex_tx_now) { const t = m.taifex_tx_now, r = rnd3();
     if (r < 0.45) Object.assign(t, { date: '2026-10-22', time: '04:59:59' }); else if (r < 0.6) Object.assign(t, { date: '2026-10-21', time: '04:59:58' });
     else if (r < 0.75) Object.assign(t, { date: '2026-10-22', time: '02:30:00' }); else if (r < 0.9) Object.assign(t, { date: '2026-10-21', time: '20:15:00' }); }
+  // ⑧c 再放 4 組固定的:taiex_date 落後一天 × 前一晚那一盤 / 今天凌晨那一盤(⛔ 產業作戰室退回用「比較早的日期」會對不上)
+  const FULL = { updated: '2026-10-22 08:12 +0800', taiex_date: '2026-10-20', fi_three_date: '2026-10-21', sp500_date: '2026-10-21', dji_chg_pct: 1, nasdaq_chg_pct: 1, sp500_chg_pct: 1, sox_chg_pct: 1, tsm_chg_pct: 1,
+                 tsm_date: '2026-10-21', vix: 18, fear_greed: 50, usdtwd_chg_pct: 0.1, fi_total_net: 100, fi_spot_net: -50 };
+  for (const [d, c] of [['2026-10-21', 1.2], ['2026-10-21', -1.5], ['2026-10-22', 1.2], ['2026-10-22', -1.5]])
+    fx.push({ ...FULL, taifex_tx_now: { chg: c, est: false, sess: 'night', date: d, time: '04:59:58' } });
   const txOk = t => t && t.sess === 'night' && t.est !== true && t.chg != null;
   const nTxOn = fx.filter(m => txOk(m.taifex_tx_now) && m.taifex_tx_now.date === '2026-10-22' && m.taifex_tx_now.time === '04:59:59').length;
   const nTxOff = fx.filter(m => txOk(m.taifex_tx_now) && !(m.taifex_tx_now.date === '2026-10-22' && m.taifex_tx_now.time === '04:59:59')).length;
