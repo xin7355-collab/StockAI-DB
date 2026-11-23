@@ -131,8 +131,8 @@ export function run(inp, log = console.log) {
     log(`  → ${J.pass.map(x => x ? '✓' : '✗').join('')} ${J.ok ? '✅ 過' : '⛔ 沒過'}`);
     // 只描述
     const ys = yearsOf(rows);
-    out.desc.io = Object.fromEntries(ys.map(y => { const R = rows.filter(r => r.d.startsWith(y)); return [y, r2(spearman(R.map(r => r.nm), R.map(r => r.io)) * 100) / 100]; }));
-    out.desc.ioAll = r2(spearman(rows.map(r => r.nm), rows.map(r => r.io)) * 100) / 100;
+    out.desc.io = Object.fromEntries(ys.map(y => { const R = rows.filter(r => r.d.startsWith(y)); return [y, +spearman(R.map(r => r.nm), R.map(r => r.io)).toFixed(3)]; }));
+    out.desc.ioAll = +spearman(rows.map(r => r.nm), rows.map(r => r.io)).toFixed(3);
     const big = (f) => { const R = rows.filter(f); return { n: R.length, gap: r2(mean(R.map(r => r.gap))), io: r2(mean(R.map(r => r.io))), up: r2(R.filter(r => r.gap > 0.3).length / (R.length || 1) * 100), dn: r2(R.filter(r => r.gap < -0.3).length / (R.length || 1) * 100) }; };
     out.desc.bins = { dn1: big(r => r.nm <= -1), dn02: big(r => r.nm <= -0.2 && r.nm > -1), flat: big(r => Math.abs(r.nm) < 0.2), up02: big(r => r.nm >= 0.2 && r.nm < 1), up1: big(r => r.nm >= 1) };
     log('・只描述(⛔ 拿來判):');
