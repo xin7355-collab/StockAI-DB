@@ -3201,8 +3201,10 @@ def fetch_taifex_tx_now():
     # ① 💱 期交所行情網(官方行情系統,換掉 yfinance ^TXF=F —— 它要冒充瀏覽器,而且實測落後一個交易日)
     #   台北 08:45~15:00(週一~五)= 日盤時段 → 問日盤:13:45 前 sess 'live'(盤中)、之後 sess 'day'(今天的日盤收盤);
     #   其他時間 → 問盤後:sess 'night'(真的夜盤;早上 8 點就有凌晨 5 點剛收的那一盤,OpenAPI 要等下午)。
-    #   ⚠️ 夜盤 score False:V42.0 那條夜盤計分規則沒有回測過(16 年公式裡沒有夜盤歷史)→ 先只顯示,要不要算分等使用者決定
-    #      (App / pro 只有 sess === 'night' 而且 score !== false 才計分)。
+    #   🌙 V82.6.7 夜盤開始算分(以前標 score False 只顯示):EXP-20261123-03 用期交所 2017-05 起的盤後歷史回測
+    #      (scripts/txnight_probe.mjs,2,288 天)→ App 那條夜盤規則算進盤前分數,猜開盤方向 78.2% → 79.8%、10 年每一年都比較準。
+    #      App / pro 只有「這次開盤前那一盤、而且已經收了」才算(index `_premktNight`:date 晚於台股上一個交易日、
+    #      最後成交在 04:55~06:00)→ 這裡一定要給 date(夜盤結束那天)與 time(最後成交),⛔ 拿掉(test_txnight ④)。
     _tw = datetime.now(timezone(timedelta(hours=8)))
     _hm = _tw.strftime('%H%M')
     _day_hours = _tw.weekday() < 5 and '0845' <= _hm < '1500'
@@ -3217,8 +3219,7 @@ def fetch_taifex_tx_now():
         print(f"   ✅ 台指期 期交所行情網({'盤後' if sess == 'night' else '日盤'}・{q.get('contract') or '近月'})"
               f" {q['price']}({q['chg']:+.2f}%)・{q['date']} {q.get('time') or ''} → sess {sess}")
         return {"price": q['price'], "chg": q['chg'], "est": False, "date": q['date'], "time": q.get('time'),
-                "src": f"期交所行情網({'盤後' if sess == 'night' else '日盤'})", "sess": sess,
-                **({"score": False} if sess == 'night' else {}), "error": None}
+                "src": f"期交所行情網({'盤後' if sess == 'night' else '日盤'})", "sess": sess, "error": None}
     print(f"   ⚠️ 台指期 期交所行情網拿不到:{why} → 改用 OpenAPI 前一個交易日日盤")
     # ② V27.3 — 行情網拿不到 → TAIFEX 官方 OpenAPI 近月收盤
     #   🐛 V79.9.8 OpenAPI 給的是**前一個交易日的日盤**(10/29 早上拿到的是 10/28 日盤 +2.47%,10/27 早上拿到 10/22 日盤),

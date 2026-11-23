@@ -9,17 +9,18 @@
 修法:`fetch_taifex_tx_now` 每條路徑都標 `sess` + 那一列自己的日期;前端只有 `sess === 'night'`(真的夜盤)才算分
 (index / pro 同一條,test_premkt_formula ⑥d ⑧)。
 💱 V82.4.0 換掉 yfinance ^TXF=F → 期交所行情網(官方行情系統):日盤時段(台北 08:45~15:00,週一~五)問日盤 →
-'live'(13:45 前)/ 'day'(當天收盤);其他時間問盤後 → 'night' = 真的夜盤,但 **score: False**
-(V42.0 那條計分沒回測過 → 只顯示、⛔ 算分,等使用者決定;test_premkt_formula ⑥f)。
+'live'(13:45 前)/ 'day'(當天收盤);其他時間問盤後 → 'night' = 真的夜盤。
+🌙 V82.6.7 夜盤開始算分(EXP-20261123-03 回測過關)→ ⛔ 再標 score: False;前端只算「這次開盤前那一盤、已經收了」
+(index `_premktNight` 看 date 與 time → 這兩個欄位一定要有;test_premkt_formula ⑥f)。
 
 ⛔ 釘住(走正式入口 `fetch_taifex_tx_now`,只換網路):
   ① 行情網拿不到 → OpenAPI:sess == 'day'、date == 那一列的 Date(20261028 → 2026-10-28)、est False、漲跌 % 照算
   ② OpenAPI 沒有漲跌欄 → est True,但 sess / date 照樣有
   ③ OpenAPI 那一列沒有 Date → date None(⛔ 不可編一個今天),sess 仍是 'day'
-  ④ 夜間(台北 08:00)行情網盤後 → sess 'night'、score False、date = 夜盤結束那天;④b 日盤時段 → 'live' / 'day'(⛔ night);
-     ④c 日盤時段但行情網停在前一天(休市)→ 退 OpenAPI;④d ⭐ 只有行情網盤後那條會回 night,而且一定 score False
+  ④ 夜間(台北 08:00)行情網盤後 → sess 'night'、⛔ score False、date = 夜盤結束那天、time = 最後成交;④b 日盤時段 → 'live' / 'day'(⛔ night);
+     ④c 日盤時段但行情網停在前一天(休市)→ 退 OpenAPI;④d ⭐ 只有行情網盤後那條會回 night(⛔ 帶 score)
   ⑤ `_taifex_openapi_tx_close_change` 回三個值(收盤, 漲跌 %, 資料日),失敗回三個 None
-  INJECT=1:拿掉 sess / 把 date 寫死 None / 夜盤拿掉 score False / 日盤時段也標 night → 必紅
+  INJECT=1:拿掉 sess / 把 date 寫死 None / 夜盤加回 score False / 拿掉 time / 日盤時段也標 night → 必紅
 """
 import os
 import sys
@@ -100,14 +101,14 @@ def run(src, quiet=False):
     r3 = M.fetch_taifex_tx_now()
     ok('③ 那一列沒有 Date → date None(⛔ 不可編一個今天),sess 仍是 day', r3.get('date') is None and r3.get('sess') == 'day', str(r3))
 
-    # ④ 期交所行情網(盤後)= 真的夜盤 → sess 'night',但 score False(計分沒回測過,只顯示)
+    # ④ 期交所行情網(盤後)= 真的夜盤 → sess 'night';🌙 V82.6.7 起算分(⛔ score False),date / time 一定要有(前端判「已經收了沒」)
     NIGHT = {'price': 47000.0, 'chg': -0.35, 'ref': 47165.0, 'date': '2026-11-17', 'time': '04:59:59', 'contract': '臺指期116'}
     asked.clear()
     M._LQ.taifex_mis = lambda gate, market='1': (asked.append(market), (dict(NIGHT), ''))[1]
     at(2026, 11, 17, 8, 0)
     r4 = M.fetch_taifex_tx_now()
-    ok('④ 台北 08:00 → 問盤後(MarketType 1)、sess night、score False、日期 = 夜盤結束那天',
-       asked == ['1'] and r4.get('sess') == 'night' and r4.get('score') is False and r4.get('date') == '2026-11-17'
+    ok('④ 台北 08:00 → 問盤後(MarketType 1)、sess night、⛔ score False、日期 = 夜盤結束那天、time = 最後成交',
+       asked == ['1'] and r4.get('sess') == 'night' and 'score' not in r4 and r4.get('date') == '2026-11-17' and r4.get('time') == '04:59:59'
        and r4.get('chg') == -0.35 and '盤後' in str(r4.get('src')), str(r4))
     DAYQ = dict(NIGHT, date='2026-11-17', time='12:05:00', chg=0.4)
     asked.clear()
@@ -124,8 +125,8 @@ def run(src, quiet=False):
     r7 = M.fetch_taifex_tx_now()
     ok('④c 日盤時段但行情網停在前一天(休市 / 還沒開)→ 退 OpenAPI 日盤(⛔ 拿昨天當盤中)',
        r7.get('sess') == 'day' and r7.get('src') == 'TAIFEX OpenAPI', str(r7))
-    ok('④d ⭐ 只有行情網盤後那條會回 night,而且一定 score False(OpenAPI 三條 ⛔ night)',
-       all((x or {}).get('sess') != 'night' for x in (r1, r2, r3, r5, r6, r7)) and r4.get('sess') == 'night' and r4.get('score') is False,
+    ok('④d ⭐ 只有行情網盤後那條會回 night(OpenAPI 三條 ⛔ night);🌙 V82.6.7 起沒有一條帶 score(夜盤算分)',
+       all((x or {}).get('sess') != 'night' for x in (r1, r2, r3, r5, r6, r7)) and r4.get('sess') == 'night' and all('score' not in (x or {}) for x in (r1, r2, r3, r4, r5, r6, r7)),
        str([(x or {}).get('sess') for x in (r1, r2, r3, r4, r5, r6, r7)]))
 
     M._taifex_openapi = lambda paths: (None, '全失敗')
@@ -142,7 +143,8 @@ if os.environ.get('INJECT'):
         'nosess': ('"date": off_d, "src": "TAIFEX OpenAPI", "sess": "day", "error": None}',
                    '"date": off_d, "src": "TAIFEX OpenAPI", "error": None}'),
         'nodate': ('return best_close, best_pct, best_date', 'return best_close, best_pct, None'),
-        'scoreon': ('**({"score": False} if sess == \'night\' else {}), ', ''),
+        'scoreoff': ('"sess": sess, "error": None}', '"sess": sess, **({"score": False} if sess == \'night\' else {}), "error": None}'),
+        'notime': ('"date": q[\'date\'], "time": q.get(\'time\'),', '"date": q[\'date\'],'),
         'allnight': ("sess = 'night' if not _day_hours else ('live' if _hm < '1345' else 'day')", "sess = 'night'"),
     }
     bad = 0

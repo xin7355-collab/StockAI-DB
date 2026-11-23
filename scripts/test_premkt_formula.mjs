@@ -17,11 +17,15 @@
  *   ⑤ ⭐ 決定性對照:抓不到(null)⛔ 不可當成 0 —— 恐懼貪婪 null 以前會變「極度恐慌 +0.5 分」;同一組換成 10 → 才 +0.5
  *   ⑥ 接線:renderMarketBriefing 實跑的 `_preOpenCalc` == 直接呼叫 `_preOpenScore`(同一份輸入);每一項的說明 = 餵進去的那個值
  *   ⑥d ⑥e V79.9.8 台指期只有真的夜盤(sess 'night')才算分:前一天日盤 / 不知道哪一盤 → 0 分,那一格寫日期 +「日盤」+「只列出來」(決定性對照:同一個 +2.47% 換成夜盤 → +1.5)
+ *   ⑥f 🌙 V82.6.7 夜盤回測過關開始算分(EXP-20261123-03),但只算「這次開盤前那一盤、已經收了」(`_premktNight` 唯一判斷點):
+ *      前一晚那一盤(date ≤ 台股上一個交易日)/ 還沒收(最後成交不在 04:55~06:00)→ 0 分、那一格寫原因 +「不算分」;舊檔的 score: false ⛔ 再擋
+ *      (決定性對照:同一個 +2.47% 換成「今天凌晨收的那一盤」→ +1.5)
  *   ⑩ V79.9.9 美股四項 + 台積電 ADR 漲跌太小(|%| < 0.4)算 0 分:門檻 App == pro、邊界 0.39 → 0 / 0.4 → 照算;注入「拿掉門檻」必紅
  *   ⑨ V79.9.8 開盤發生率(`_PREMKT_OCC`)== 產業作戰室 `_PREMKT`;高分 / 低分那一行三個比例跟著換、⛔ 研究字樣
  *   ⑪ V82.4.2 美股還沒收盤時抓的(`_intraday`)→ 照樣列出來寫「美股盤中(美東 幾點),還不是收盤」、0 分;macro_cache 有同一天收盤 → 改用收盤;
  *      ⑧ 那 300 組有一半帶盤中標記,兩邊照樣逐一相同(產業作戰室那份同一條)
  *   INJECT=1:漲跌太小也算分 / 台積電權重 ×2→×1 / 恐懼貪婪 null 退回 `+x.fg` / 呼叫端把那斯達克跟 S&P 接反 / 亞股又算分 / 日盤又算分(App 或只改產業作戰室那份)/ 只改產業作戰室台積電權重
+ *            / 🌙 前一晚那一盤也算 / 還沒收也算(App 或只改產業作戰室那份)
  *            / 盤中標記算分那支看不到 / 呼叫端沒擋 macro_risk 的盤中值 / 只有產業作戰室把盤中值算分 → 每一種都要紅
  */
 import fs from 'node:fs';
@@ -37,8 +41,11 @@ const INJ = {
   fgnull: ['const _fgN = _num(x.fg);', 'const _fgN = +x.fg;'],
   wiring: ["dji: usPct('dji'), ndx: usPct('nasdaq'), spx: usPct('sp500'),", "dji: usPct('dji'), ndx: usPct('sp500'), spx: usPct('nasdaq'),"],
   asia: ["const _asia = (nm, k, c) => _info(nm,", "const _asia = (nm, k, c) => _add(nm, Number.isFinite(c) ? Math.sign(c) : 0,"],
-  txday: ["if (txNight && txNight.sess === 'night' && txNight.est !== true", "if (txNight && txNight.est !== true"],
-  occ: ['hi: { n: 1738, up: 50.7,', 'hi: { n: 1738, up: 99.9,'],
+  txday: ["if (!tx || tx.sess !== 'night' || tx.est === true", "if (!tx || tx.est === true"],
+  // 🌙 V82.6.7 前一晚那一盤 / 還沒收的夜盤也算分
+  nightStale: ["if (d <= tw) return { chg: null, why: '前一晚那一盤", "if (false) return { chg: null, why: '前一晚那一盤"],
+  nightOpen: ["if (!(t >= '04:55' && t < '06:00')) return { chg: null, why: '夜盤還沒收", "if (false) return { chg: null, why: '夜盤還沒收"],
+  occ: ['hi: { n: 1774, up: 51.3,', 'hi: { n: 1774, up: 99.9,'],
   dead: ["const _dz = v => { const n = N(v); return n != null && Math.abs(Math.round(n * 100) / 100) < this._PREMKT_DEAD; };", "const _dz = v => false;"],
   // 🕐 V82.4.2 盤中標記:算分那支看不到 / 呼叫端沒擋下 macro_risk 的盤中值
   intraOff: ['const intra = x.intra || {};', 'const intra = {};'],
@@ -49,6 +56,8 @@ const PRO_SRC = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 const INJ_PRO = { proTsm: ["if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, dz(tsm) ? 0 : sg(tsm) * 2);", "if (tsm != null && !stale('tsm')) add('台積電 ADR', tsm, dz(tsm) ? 0 : sg(tsm) * 1.5);"],
                   proDead: ["const DEAD = 0.4, dz = v => Math.abs(Math.round(v * 100) / 100) < DEAD;", "const DEAD = 0.4, dz = v => false;"],
                   proTxDay: ["if (tx && tx.sess === 'night' && tx.est !== true", "if (tx && tx.est !== true"],
+                  proNightStale: ["tw && txd > tw && txt >= '04:55'", "tw && txt >= '04:55'"],
+                  proNightOpen: ["txd > tw && txt >= '04:55' && txt < '06:00') {", "txd > tw) {"],
                   proIntraOff: ["const intra = k => !!mr[k + '_intraday'];", 'const intra = k => false;'] };
 
 const fnBody = html => {
@@ -135,7 +144,7 @@ async function run(html, proHtml = PRO_SRC) {
       dji_chg_pct: 0.11, nasdaq_chg_pct: -0.22, sp500_chg_pct: 0.33, sox_chg_pct: -0.44, tsm_chg_pct: 0.55,
       asx_chg_pct: 0.66, umc_chg_pct: -0.77, tsm_date: '2026-10-21', asx_date: '2026-10-21', umc_date: '2026-10-21',
       vix: 26.5, vix_date: '2026-10-22', nq_fut_chg_pct: 0.88, ust10y_chg_pct: -2.5,
-      fi_spot_net: -123, fi_total_net: 456, taifex_tx_now: { chg: -0.35, est: false, sess: 'night' },
+      fi_spot_net: -123, fi_total_net: 456, taifex_tx_now: { chg: -0.35, est: false, sess: 'night', date: '2026-10-22', time: '04:59:59' },
       nikkei_chg_pct: 1.11, kospi_chg_pct: -0.45, hsi_chg_pct: 0.6, nikkei_date: '2026-10-21', kospi_date: '2026-10-21', hsi_date: '2026-10-21',
       fear_greed: null, usdtwd_chg_pct: 0.2, usdtwd_chg_5d: 0.9, krw_chg_5d: 0.85, cny_chg_5d: 1.3,
     };
@@ -157,9 +166,18 @@ async function run(html, proHtml = PRO_SRC) {
       return { d: ((c.parts || []).find(p => p.nm === '🌙 台指期夜盤') || {}).d, s: c.s, txt: (document.getElementById('marketBriefing') || {}).textContent || '' }; };
     o.txDay = await runTx({ price: 23456, chg: 2.47, est: false, sess: 'day', date: '2026-10-28' });
     o.txNa = await runTx({ price: 23456, chg: 2.47, est: false });
-    o.txNight = await runTx({ price: 23456, chg: 2.47, est: false, sess: 'night' });
-    // ⑥f 💱 V82.4.0 期交所行情網的真夜盤標 score: false(V42.0 那條計分沒回測過)→ 只顯示、⛔ 算分;那一格寫「只顯示、不算分」
-    o.txNightNo = await runTx({ price: 23456, chg: 2.47, est: false, sess: 'night', score: false, date: '2026-11-17' });
+    // 🌙 V82.6.7 今天凌晨收的那一盤(date 晚於台股上一個交易日 10/21、最後成交 04:59:59)→ 算分;日盤 / 沒標盤別就算日期時間長得一樣也 ⛔ 算
+    const NT = { price: 23456, chg: 2.47, est: false, date: '2026-10-22', time: '04:59:59' };
+    o.txNight = await runTx({ ...NT, sess: 'night' });
+    o.txDayT = await runTx({ ...NT, sess: 'day' });
+    o.txNaT = await runTx({ ...NT });
+    // ⑥f 前一晚那一盤(10/21 凌晨收的,台股 10/21 開盤就反映了)/ 還沒收(凌晨 2 點半抓的)/ 昨晚還在交易(date = 開始那天)→ 只列出來;
+    //    舊檔的 score: false ⛔ 再擋(回測過關)
+    o.txNightOld = await runTx({ ...NT, sess: 'night', date: '2026-10-21' });
+    o.txNightOpen = await runTx({ ...NT, sess: 'night', time: '02:29:59' });
+    o.txNightEve = await runTx({ ...NT, sess: 'night', date: '2026-10-21', time: '20:15:00' });
+    o.txNightNoT = await runTx({ ...NT, sess: 'night', time: null });
+    o.txNightFlag = await runTx({ ...NT, sess: 'night', score: false });
     // ⑪ 🕐 V82.4.2 美股還沒收盤時抓的(`intra`)→ 照樣列出來、寫「盤中」、0 分;決定性對照:同一組值沒有 intra → 照算
     const IM = { dji: { at: '13:28', v: 1 }, sox: { at: '13:28', v: 2 }, tsm: { at: '13:26', v: 1 }, vix: { at: '13:28', v: 15 }, asx: { at: '13:28', v: 1 } };
     const im = F({ intra: IM }), ctl = F({ dji: 1, sox: 2, tsm: 1, vix: 15, asx: 1 });
@@ -221,12 +239,17 @@ async function run(html, proHtml = PRO_SRC) {
      && N['🇯🇵 日經'] === '1.11% ・不計分' && N['🇰🇷 韓股'] === '-0.45% ・不計分' && N['🇭🇰 恆指'] === '0.6% ・不計分' && !('🧭 恐懼貪婪' in N)
      && N['💱 台幣(當日)'] === '0.2%' && /台幣 0\.9% ・韓元 0\.8%/.test(N['💱 亞幣競貶'] || '') && N['💱 人民幣急貶'] === '1.30%',
      JSON.stringify(N));
-  const TX = { day: R.txDay && R.txDay.d, na: R.txNa && R.txNa.d, night: R.txNight && R.txNight.d, ds: R.txNight && R.txDay && R.txNight.s - R.txDay.s };
-  ok('⑥d V79.9.8 台指期前一天日盤 / 不知道哪一盤 ⛔ 算分;同一個 +2.47% 換成真的夜盤才 +1.5(決定性對照)',
-     TX.day === undefined && TX.na === undefined && TX.night === 1.5 && Math.abs(TX.ds - 1.5) < 1e-9, JSON.stringify(TX));
-  ok('⑥f 💱 真夜盤但 score: false → ⛔ 算分(總分跟日盤那次一樣)、那一格寫「夜盤」+「不算分」',
-     R.txNightNo && R.txNightNo.d === undefined && R.txDay && Math.abs(R.txNightNo.s - R.txDay.s) < 1e-9 && /夜盤/.test(R.txNightNo.txt) && /不算分/.test(R.txNightNo.txt),
-     JSON.stringify({ d: R.txNightNo && R.txNightNo.d, s: R.txNightNo && R.txNightNo.s, s0: R.txDay && R.txDay.s }));
+  const TX = { day: R.txDay && R.txDay.d, na: R.txNa && R.txNa.d, dayT: R.txDayT && R.txDayT.d, naT: R.txNaT && R.txNaT.d, night: R.txNight && R.txNight.d, ds: R.txNight && R.txDay && R.txNight.s - R.txDay.s };
+  ok('⑥d V79.9.8 台指期前一天日盤 / 不知道哪一盤 ⛔ 算分(就算日期時間跟夜盤一樣);同一個 +2.47% 換成今天凌晨收的夜盤才 +1.5(決定性對照)',
+     TX.day === undefined && TX.na === undefined && TX.dayT === undefined && TX.naT === undefined && TX.night === 1.5 && Math.abs(TX.ds - 1.5) < 1e-9, JSON.stringify(TX));
+  const NO = { old: R.txNightOld, open: R.txNightOpen, eve: R.txNightEve, noT: R.txNightNoT };
+  const noScore = Object.values(NO).every(x => x && x.d === undefined && R.txDay && Math.abs(x.s - R.txDay.s) < 1e-9 && /夜盤/.test(x.txt) && /不算分/.test(x.txt));
+  ok('⑥f 🌙 V82.6.7 前一晚那一盤 / 還沒收 / 昨晚還在交易 / 沒有最後成交時間 → ⛔ 算分(總分跟日盤那次一樣)、那一格寫原因 +「不算分」',
+     noScore && /前一晚那一盤/.test(NO.old.txt) && /前一晚那一盤/.test(NO.eve.txt) && /夜盤還沒收/.test(NO.open.txt) && /夜盤還沒收/.test(NO.noT.txt),
+     JSON.stringify(Object.fromEntries(Object.entries(NO).map(([k, x]) => [k, x && { d: x.d, s: x.s }]))) + ` s0 ${R.txDay && R.txDay.s}`);
+  ok('⑥f2 🌙 今天凌晨收的那一盤:算分、那一格 ⛔ 寫「不算分」;舊檔留著的 score: false ⛔ 再擋(回測過關了)',
+     R.txNight.d === 1.5 && !/不算分/.test(R.txNight.txt.match(/夜盤[^)]*$/m)?.[0] || '') && !/只列出來、不算分/.test(R.txNight.txt) && R.txNightFlag && R.txNightFlag.d === 1.5,
+     JSON.stringify({ d: R.txNight.d, flag: R.txNightFlag && R.txNightFlag.d })); 
   ok('⑥e 日盤那一格寫出哪一天、「日盤」、「只列出來」;⛔ 寫「夜盤走強」',
      /10\/28/.test(R.txDay.txt) && /日盤/.test(R.txDay.txt) && /只列出來/.test(R.txDay.txt) && !/夜盤走強/.test(R.txDay.txt) && !/夜盤走強/.test(R.txNa.txt),
      R.txDay.txt.slice(0, 160));
@@ -275,6 +298,16 @@ async function run(html, proHtml = PRO_SRC) {
   const rnd2 = () => { seed2 = (seed2 * 1103515245 + 12345) & 0x7fffffff; return seed2 / 0x7fffffff; };
   for (const m of fx) for (const k of ['sp500', 'nasdaq', 'dji', 'sox', 'tsm', 'vix', 'asx', 'umc']) if (rnd2() < 0.08) m[`${k}_intraday`] = '13:28';
   const nIntraFx = fx.filter(m => Object.keys(m).some(k => k.endsWith('_intraday'))).length;
+  // 🌙 V82.6.7 台指期那一格再配日期 / 最後成交(第三個種子;台股上一個交易日 = 10/21):今天凌晨收的 / 前一晚那一盤 / 還沒收 / 昨晚還在交易 / 沒寫
+  let seed3 = 20261123;
+  const rnd3 = () => { seed3 = (seed3 * 1103515245 + 12345) & 0x7fffffff; return seed3 / 0x7fffffff; };
+  for (const m of fx) if (m.taifex_tx_now) { const t = m.taifex_tx_now, r = rnd3();
+    if (r < 0.45) Object.assign(t, { date: '2026-10-22', time: '04:59:59' }); else if (r < 0.6) Object.assign(t, { date: '2026-10-21', time: '04:59:58' });
+    else if (r < 0.75) Object.assign(t, { date: '2026-10-22', time: '02:30:00' }); else if (r < 0.9) Object.assign(t, { date: '2026-10-21', time: '20:15:00' }); }
+  const txOk = t => t && t.sess === 'night' && t.est !== true && t.chg != null;
+  const nTxOn = fx.filter(m => txOk(m.taifex_tx_now) && m.taifex_tx_now.date === '2026-10-22' && m.taifex_tx_now.time === '04:59:59').length;
+  const nTxOff = fx.filter(m => txOk(m.taifex_tx_now) && !(m.taifex_tx_now.date === '2026-10-22' && m.taifex_tx_now.time === '04:59:59')).length;
+  const nTxDayLike = fx.filter(m => m.taifex_tx_now && m.taifex_tx_now.sess !== 'night' && m.taifex_tx_now.est !== true && m.taifex_tx_now.date === '2026-10-22' && m.taifex_tx_now.time === '04:59:59').length;
   const appS = await page.evaluate(async F => {
     const A = app, out = [];
     A._getTwiiRows = async () => null; A.fetchFugleData = async () => null; A._bubbleCache = {}; A._riskHistCache = [];
@@ -306,6 +339,8 @@ async function run(html, proHtml = PRO_SRC) {
   ok('⑧ 產業作戰室 `PRO._premktScore` == App(300 組隨機 macro_risk,兩邊都有分數的那幾組逐一相同)',
      both.length >= 250 && diff.length === 0, `比到 ${both.length} 組、不同 ${diff.length} 組:${JSON.stringify(diff.slice(0, 5))}`);
   ok('⑪c 🕐 ⑧ 那 300 組裡 ≥ 100 組帶盤中標記(⛔ 沒有就測不到兩邊一起不算)', nIntraFx >= 100, `${nIntraFx} 組`);
+  ok('⑧b 🌙 ⑧ 那 300 組裡:今天凌晨收的夜盤 ≥ 25 組、前一晚 / 還沒收 / 昨晚還在交易 / 沒寫 ≥ 25 組、日盤配一樣的日期時間 ≥ 10 組(⛔ 沒有就測不到兩邊一起擋)',
+     nTxOn >= 25 && nTxOff >= 25 && nTxDayLike >= 10, `今天凌晨 ${nTxOn} ・只列出來 ${nTxOff} ・日盤長得像 ${nTxDayLike}`);
   await browser.close();
   return fails;
 }

@@ -140,7 +140,27 @@ export function run(inp, log = console.log) {
     for (const [k, nm] of [['dn1', '夜盤 ≤ −1%'], ['dn02', '−1% < 夜盤 ≤ −0.2%'], ['flat', '夜盤 ±0.2% 以內'], ['up02', '+0.2% ≤ 夜盤 < +1%'], ['up1', '夜盤 ≥ +1%']]) {
         const v = out.desc.bins[k]; log(`  ${nm.padEnd(16)} ${v.n} 天・0050 開高 ${v.up}% / 開低 ${v.dn}%・跳空平均 ${v.gap}%・開盤到收盤 ${v.io}%`);
     }
+    // 🎲 V82.6.7 開盤發生率(= index `_PREMKT_OCC` / pro `_PREMKT` 那一組;過了才拿去換):2010 起全部日子,夜盤只在有的那幾天加(2017-05 以前 = 0 分 = App 沒有夜盤時)
+    const all = (inp.dump || []).filter(r => r.d <= cut && !r.ex);
+    const sN = r => { const o = NM.get(r.d); return Math.round((r.s + (o ? (inp.pts.get(o.nm) ?? 0) : 0)) * 10) / 10; };
+    out.occ = { now: occTable(all, r => r.s), night: occTable(all, sN) };
+    for (const [k, nm] of [['now', '現行(夜盤不算)'], ['night', '夜盤算進去']]) {
+        const o = out.occ[k];
+        log(`  🎲 ${nm.padEnd(10)} ${o.from}~${o.to} ${o.days} 天:≥65 ${o.hi.n} 天 開高 ${o.hi.up}% 開平 ${o.hi.flat}% 開低 ${o.hi.dn}%・36~64 ${o.mid.n} 天 ${o.mid.up}/${o.mid.flat}/${o.mid.dn}・≤35 ${o.lo.n} 天 ${o.lo.up}/${o.lo.flat}/${o.lo.dn}・隨便一天 ${o.all.up}/${o.all.flat}/${o.all.dn}`);
+        log(`     方向猜對 ${o.hit}% 開反 ${o.wrong}%・最近 250 天 ${o.hit250}% / ${o.wrong250}%・每年 ${o.yrLo}~${o.yrHi}%・講話 ${o.call}%・名次相關 ${o.rho}・開盤到收盤 高分 − 低分 ${o.ioSpread} 個百分點`);
+    }
     return out;
+}
+/** 🎲 App 盤前分數的開盤發生率(index `_PREMKT_OCC` / pro `_PREMKT` 的欄位;sPct 跟 App 一樣 = 50 + 5s 夾在 0~100,開平 = 跳空 ±0.3% 以內) */
+export function occTable(rows, sOf) {
+    const sp = r => Math.max(0, Math.min(100, Math.round(50 + sOf(r) * 5))), B = 0.3, r1 = v => Math.round(v * 10) / 10;
+    const occ = rs => ({ n: rs.length, up: r1(rs.filter(r => r.gap > B).length / (rs.length || 1) * 100), flat: r1(rs.filter(r => Math.abs(r.gap) <= B).length / (rs.length || 1) * 100), dn: r1(rs.filter(r => r.gap < -B).length / (rs.length || 1) * 100) });
+    const hi = rows.filter(r => sp(r) >= 65), lo = rows.filter(r => sp(r) <= 35), mid = rows.filter(r => sp(r) > 35 && sp(r) < 65);
+    const J = judge(rows, sOf), J250 = judge(rows.slice(-250), sOf), yh = yearsOf(rows).map(y => judge(rows.filter(r => r.d.startsWith(y)), sOf).hit);
+    const { n: _n, ...a } = occ(rows); void _n;
+    return { from: rows[0].d.slice(0, 4), to: rows.at(-1).d, days: rows.length, hi: occ(hi), mid: occ(mid), lo: occ(lo), all: a,
+             hit: r1(J.hit), wrong: r1(J.wrong), hit250: r1(J250.hit), wrong250: r1(J250.wrong), yrLo: r1(Math.min(...yh)), yrHi: r1(Math.max(...yh)),
+             call: r1(J.call), rho: Math.round(J.rho * 1000) / 1000, ioSpread: Math.round((mean(hi.map(r => r.io)) - mean(lo.map(r => r.io))) * 100) / 100 };
 }
 const f1 = v => Number.isFinite(v) ? v.toFixed(1) : '—', f3 = v => Number.isFinite(v) ? (v >= 0 ? '+' : '') + v.toFixed(3) : '—';
 

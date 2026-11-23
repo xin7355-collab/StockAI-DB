@@ -17390,14 +17390,32 @@ const marginByDate = {};
         for (const k of ['tsm', 'asx', 'umc']) chk(k, us);
         return { stale, at, tw, us, today };
     },
+    // 🌙 V82.6.7 台指期夜盤算不算進盤前分數 —— ⛔ 全 App 唯一判斷點(pro `_premktScore` 抄同一條,test_premkt_formula ⑥f / ⑧ 跨檔比對)
+    //   EXP-20261123-03(scripts/txnight_probe.mjs):期交所 2017-05 起的盤後歷史 2,288 天,App 那條夜盤規則算進去
+    //   → 猜開盤方向 78.2% → 79.8%、開反 6.2% → 5.1%,10 年每一年都比較準 → 拿掉以前的 score: false(V82.4.0 只顯示)。
+    //   只認「這次開盤前那一盤、而且已經收了」(回測用的就是凌晨 5 點收的那一盤):
+    //     ① sess === 'night'、不是估算、有漲跌 %(V79.9.8:OpenAPI 那份是前一天日盤 → 只列出來)
+    //     ② 收在台股上一個交易日之後(date > tw;⛔ 前一晚那一盤,台股上一個交易日開盤時就反映過了 —— 同 V79.9.8 那個錯)
+    //     ③ 已經收了(最後成交 04:55 ~ 06:00;還在交易的夜盤是半場 → 同美股盤中 ⛔ 當收盤)
+    //   tw = `_premktFieldAge(mr).tw`(台股上一個交易日;呼叫端傳進來,⛔ 這裡再算一次)→ { chg: 漲跌 % 或 null, why: '' 或 只列出來的原因 }
+    _premktNight(mr, tw) {
+        const tx = (mr || {}).taifex_tx_now;
+        if (!tx || tx.sess !== 'night' || tx.est === true || tx.chg == null || tx.chg === '' || !Number.isFinite(+tx.chg)) return { chg: null, why: '' };
+        const d = String(tx.date || '').slice(0, 10), t = String(tx.time || '');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !tw) return { chg: null, why: '看不出是哪一天的夜盤' };
+        if (d <= tw) return { chg: null, why: '前一晚那一盤,台股已經反映過' };
+        if (!(t >= '04:55' && t < '06:00')) return { chg: null, why: '夜盤還沒收(凌晨 5 點收)' };
+        return { chg: +tx.chg, why: '' };
+    },
 
     // 🎲 V79.9.8 盤前分數的「開盤發生率」(使用者 10/30:「這兩天都寫很高分,實際開出來很差」)——
     //   高分只代表「比較少開低」,開高跟開平差不多一樣常見(10/29 98 分開平 = 第二常見的結果)→ 三個比例一起印(V79.8.6 發生率格式,`data-occ`)。
     //   數字 = scripts/premkt_app_probe.mjs(App 這條公式 2010 起逐日重建、0050 真的開盤、開平 = 差不到 0.3%)= pro `_PREMKT` 同一組
+    //   🌙 V82.6.7 夜盤算進去之後重算(scripts/txnight_probe.mjs 的 occ.night:2010 ~ 2026-11-06、夜盤只在 2017-05 起有的那幾天加分)
     //   ⛔ 手改:test_premkt_formula ⑨ 跨檔比對(只改一邊會紅)。
-    _PREMKT_OCC: { from: '2010', days: 4090,
-        hi: { n: 1738, up: 50.7, flat: 44.6, dn: 4.7 }, mid: { n: 1198, up: 19.5, flat: 65.3, dn: 15.2 }, lo: { n: 1154, up: 9.4, flat: 36.2, dn: 54.4 },
-        all: { up: 29.9, flat: 48.3, dn: 21.8 } },
+    _PREMKT_OCC: { from: '2010', days: 4099,
+        hi: { n: 1774, up: 51.3, flat: 44.5, dn: 4.2 }, mid: { n: 1141, up: 18.8, flat: 66.2, dn: 15 }, lo: { n: 1184, up: 8.4, flat: 36.6, dn: 55 },
+        all: { up: 29.9, flat: 48.2, dn: 21.9 } },
     // 🧪 V79.9.9 美股四項 + 台積電 ADR 漲跌不到這個 %(絕對值)算 0 分(premkt_app_probe DEAD;pro `_premktScore` 的 DEAD 要一樣,test_premkt_formula ⑩)
     _PREMKT_DEAD: 0.4,
     _premktOccHtml(sPct) {
@@ -17488,7 +17506,9 @@ const marginByDate = {};
         if (x.tech != null) _info('📈 加權自己的技術面', x.tech);
         // 🌙 V42.0 台指期夜盤(15:00~次日5:00,台灣資金對隔夜美股+盤後事件的即時反應=最直接的隔日開盤風向球)
         //   僅在有「真實漲跌%」(非估算)時計分(呼叫端已排除估算值);夜盤重挫權重略高(夜盤大跌常代表盤後有突發利空)
-        //   🐛 V79.9.8 呼叫端只餵 sess === 'night'(真的夜盤);採礦現在拿到的都是前一天日盤 → 這一項目前不計分(= 16 年回測那條公式,那裡本來就沒有夜盤歷史)
+        //   🐛 V79.9.8 呼叫端只餵 sess === 'night'(真的夜盤)
+        //   🌙 V82.6.7 回測過關開始算分(EXP-20261123-03,2017-05 起 2,288 天:猜開盤方向 78.2% → 79.8%、10 年每一年都比較準);
+        //      餵不餵一律由 `_premktNight` 決定(這次開盤前那一盤、已經收了)。⛔ 改這裡的門檻先重跑 scripts/txnight_probe.mjs
         const nightChg = (x.night != null && Number.isFinite(+x.night)) ? +x.night : null;
         if (nightChg != null) _add('🌙 台指期夜盤', nightChg >= 1 ? 1.5 : nightChg >= 0.2 ? 1 : nightChg <= -1 ? -2 : nightChg <= -0.2 ? -1 : 0, `${nightChg}%`);
         // 🧪 V79.5.4 亞股三項(日經 / 韓股 / 恆指)只列出來、⛔ 不算分(V50.2 起原本是 ±1 / ±1 / ±0.5):
@@ -18252,9 +18272,9 @@ const marginByDate = {};
         // 🐛 V79.9.8 只認「真的夜盤」(sess === 'night')的漲跌%:採礦那份 taifex_tx_now 其實是**前一個交易日的日盤**
         //   (TAIFEX OpenAPI;10/29 早上拿到的是 10/28 日盤 +2.47%)→ 那一天的漲跌台股前一天收盤早就反映了,
         //   以前當成「夜盤」+1.5 分、分析師那行寫「夜盤走強」= 講錯。⛔ 沒有 sess / 日盤 / 估算 一律不算分(pro `_premktScore` 同一條,test_premkt_formula ⑥⑧)。
-        let nightChg = null;
-        // 💱 V82.4.0 期交所行情網給的是真的夜盤,但 V42.0 那條計分沒有回測過 → 採礦標 score: false = 只顯示、⛔ 算分(等使用者決定)
-        if (txNight && txNight.sess === 'night' && txNight.est !== true && txNight.score !== false && txNight.chg != null && Number.isFinite(+txNight.chg)) nightChg = +txNight.chg;
+        // 💱 V82.4.0 期交所行情網給的是真的夜盤 → 🌙 V82.6.7 回測過關開始算分;算不算一律走 `_premktNight`(這次開盤前那一盤、已經收了)
+        const _nt = this._premktNight(mr, _age.tw);
+        const nightChg = _nt.chg;
         const _po = this._preOpenScore({
             dji: usPct('dji'), ndx: usPct('nasdaq'), spx: usPct('sp500'), sox: usPct('sox'), tsm: usPct('tsm'),
             asx: asxChg, umc: umcChg, vix, nq: mr.nq_fut_chg_pct, ust: mr.ust10y_chg_pct, night: nightChg,
@@ -18296,9 +18316,11 @@ const marginByDate = {};
         //   亞股不收(分析師解讀 ② 已含,收了會重複講兩次)。
         const _analystNotes = [];
         if (nightChg != null) {
-            if (nightChg <= -1) _analystNotes.push(`🌙 台指期夜盤重挫 ${nightChg}%(盤後恐有突發利空),慎防低開走弱。`);
-            else if (nightChg <= -0.3) _analystNotes.push(`🌙 台指期夜盤翻黑 ${nightChg}%,留意開盤偏弱。`);
-            else if (nightChg >= 1) _analystNotes.push(`🌙 台指期夜盤走強 +${nightChg}%,偏多氣氛延續到早盤。`);
+            // 🌙 V82.6.7 只講開盤(夜盤對開盤之後怎麼走幾乎沒有關係)→ ⛔「走弱 / 氣氛延續」那種講到盤中的話
+            if (nightChg <= -1) _analystNotes.push(`🌙 台指期夜盤跌 ${nightChg}% → 今天很可能開低;開盤之後怎麼走這裡不預測。`);
+            else if (nightChg <= -0.3) _analystNotes.push(`🌙 台指期夜盤小跌 ${nightChg}% → 開盤比較容易偏低。`);
+            else if (nightChg >= 1) _analystNotes.push(`🌙 台指期夜盤漲 +${nightChg}% → 今天很可能開高;⛔ 別在開盤追高。`);
+            else if (nightChg >= 0.3) _analystNotes.push(`🌙 台指期夜盤小漲 +${nightChg}% → 開盤比較容易偏高。`);
         }
         if (Number.isFinite(_fgN) && _fgN >= 80) _analystNotes.push(`🧭 市場情緒過熱(恐懼貪婪 ${Math.round(_fgN)}),追高風險升高。`);
         else if (Number.isFinite(_fgN) && _fgN <= 20) _analystNotes.push(`🧭 市場極度恐慌(恐懼貪婪 ${Math.round(_fgN)}),超跌易現反彈。`);
@@ -18325,7 +18347,7 @@ const marginByDate = {};
         const txNightLine = (() => {
             if (!(txNight && txNight.price)) return `<span class="text-gray-500">採集中</span>`;
             const px = `<span class="font-mono ${txNight.chg > 0 ? 'text-red-300' : txNight.chg < 0 ? 'text-green-300' : 'text-gray-300'}">${(+txNight.price).toFixed(0)}${txNight.chg != null ? ` (${txNight.chg > 0 ? '+' : ''}${txNight.chg}%)` : '(估)'}</span>`;
-            if (txNight.sess === 'night') return `${px} <span class="text-gray-500 text-[10px]">夜盤${txNight.date ? ' ' + this._dW(String(txNight.date).slice(0, 10)) : ''}${txNight.score === false ? '(只顯示、不算分)' : ''}</span>`;
+            if (txNight.sess === 'night') return `${px} <span class="text-gray-500 text-[10px]" data-txsess="night">夜盤${txNight.date ? ' ' + this._dW(String(txNight.date).slice(0, 10)) : ''}${_nt.why ? `(${_nt.why},只列出來、不算分)` : ''}</span>`;
             if (txNight.sess === 'live') return `${px} <span class="text-gray-500 text-[10px]" data-txsess="live">日盤盤中(開盤後的盤前分數只看開盤前那一刻)</span>`;
             const dTxt = txNight.date ? this._dW(String(txNight.date).slice(0, 10)) + ' ' : '';
             if (txNight.sess === 'day') return `<span class="text-gray-500 text-[10px]" data-txsess="day">${dTxt}日盤</span> ${px} <span class="text-gray-500 text-[10px]">(那天收盤已反映,只列出來)</span>`;
