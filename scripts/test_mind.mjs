@@ -60,7 +60,7 @@ const mk = (stk, zh) => ({
         g('adr', '台積電 ADR 溢價', 9.32, '%', today, 2.19, 251, '2025-11-14', '2026-11-12', 'adr-premium', { side: 'both', lo: 1.99, hi: 97.61, hiw: '溢價大(美國那邊比較願意付)', low: '溢價小 / 折價', note: 'ADR 360.74 美元 × 匯率 32.955 ÷ 5 vs 台股 2175;排第幾 = 跟過去一年(美股 250 天)比' })],
         trust: [], retail: [{ ref: 'mg20' }], insider: [{ k: 'ins', name: '董監 / 大股東申報在市場上賣', v: 9, unit: '家', d: today, lab: 'insider-sell', list: ['某公司 1234'], note: '近 5 個交易日' }],
         gov: [{ k: 'nsf', name: '國安基金', v: null, d: '2026-11-06', lab: 'nsf-entry', note: '還在執行' }] },
-    fx: [{ k: 'usdtwd', name: '美元 / 台幣', v: 33, c1: 0.27, c5: 0.42, c20: 1.23, pos: { pct: 80.5, lo: 80, hi: 19, n: 250, from: '2025-11-20', to: '2026-11-19' }, hs: 'FRED DEXTAUS(到 2026-11-14)', d: today, note: '', lab: 'usd-dd' },
+    fx: [{ k: 'usdtwd', name: '美元 / 台幣', v: 33, c1: 0.27, c5: 0.42, c20: 1.23, pos: { pct: 80.5, lo: 80, hi: 19, n: 250, from: '2025-11-20', to: '2026-11-19' }, hs: 'FRED DEXTAUS(到 2026-11-14)', d: today, note: '', lab: 'twd-weak' },
         { k: 'dxy', name: '美元指數', v: 103.82, c1: -0.03, c5: null, c20: null, pos: { pct: null, n: 6, from: '2026-11-13', to: today }, hs: 'App 自己每天存的(5 天)', d: today },
         { k: 'gold_usd', name: '黃金', v: 3691.6, c1: null, c5: null, c20: null, pos: null, hwhy: '還沒有歷史(App 從 11/20 開始每天存)', d: null, upd: today + ' 01:43 +0800' }],
     wind: [{ k: 'upr', name: '上漲家數比例', v: 6.8, unit: '%', d: today, note: '漲 152・跌 2084', lab: null }],
@@ -173,8 +173,8 @@ try {
         ok('⑧ 照一年位置排:有位置的在前、排不出來的排最後', R.fxPosOrd[0] === 'usdtwd' && R.fxPosOrd.length === 3, JSON.stringify(R.fxPosOrd));
         ok('⑨ 外資 5 日合計:有尺(排第幾)、賣超 → 跟「今天」那條同一個方向色(台股綠 = 賣)', R.fi5Bar && R.fi5Col && R.fi5Col === R.fisCol && R.fi5Col !== R.fimCol, JSON.stringify([R.fi5Col, R.fisCol, R.fimCol]));
         ok('⑨ 外資今年累計是事實列(⛔ 尺、⛔ 排第幾)', R.fiyFact && /外資現貨今年累計\(2026\)/.test(R.seatTxt) && /不排第幾/.test(R.seatTxt), R.fiyFact);
-        ok('⑧ 🔬 V82.5.9 匯率表測過的那一列(美元 / 台幣 → usd-dd)轉述實測總表那一條;沒測過的列 ⛔ 每一列都印「還沒測過」',
-           JSON.stringify(R.fxLab) === JSON.stringify([['usdtwd', 'usd-dd'], ['dxy', null], ['gold_usd', null]]) || JSON.stringify(R.fxLab.slice().sort()) === JSON.stringify([['dxy', null], ['gold_usd', null], ['usdtwd', 'usd-dd']]), JSON.stringify(R.fxLab));
+        ok('⑧ 🔬 V82.5.9 匯率表測過的那一列(美元 / 台幣 → V82.6.6 起 twd-weak)轉述實測總表那一條;沒測過的列 ⛔ 每一列都印「還沒測過」',
+           JSON.stringify(R.fxLab) === JSON.stringify([['usdtwd', 'twd-weak'], ['dxy', null], ['gold_usd', null]]) || JSON.stringify(R.fxLab.slice().sort()) === JSON.stringify([['dxy', null], ['gold_usd', null], ['usdtwd', 'twd-weak']]), JSON.stringify(R.fxLab));
         ok('⑩ 🇺🇸 V82.6.1 台積電 ADR 溢價那一格:有尺(跟過去一年比)、轉述實測總表 adr-premium(⛔ 實測沒用)', R.adrLab === 'adr-premium' && R.adrBar && /實測沒用/.test(R.adrTxt) && /過去一年/.test(R.adrTxt), JSON.stringify([R.adrLab, R.adrBar, (R.adrTxt || '').slice(0, 160)]));
         ok('⑨ 📊 V82.6.0 成交集中度那條:轉述實測總表 conc-extreme(⛔ 實測沒用)、寫今天單日、⛔ 標「貪」', R.concLab === 'conc-extreme' && /實測沒用/.test(R.concTxt || '') && /今天單日 33\.98%/.test(R.concTxt || '') && !/貪/.test(R.concTxt || ''), JSON.stringify([R.concLab, (R.concTxt || '').slice(0, 160)]));
         ok('⑧ 外資座位有「用台幣算 vs 用美元算」那一行', /用台幣算 vs 用美元算/.test(R.seatTxt) && /用美元算 −26\.5%/.test(R.seatTxt), R.seatTxt.slice(0, 200));

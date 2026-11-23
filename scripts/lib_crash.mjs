@@ -73,12 +73,13 @@ export function evVsCorr(S, A, CL, ev, hs, seed = 7, SIMS = 2000, from = 0) {
         const base = pool.map(f).filter(v => v != null), e = ev.map(i => [i, f(i)]).filter(z => z[1] != null);
         if (e.length < 3 || base.length < 30) { out.h[h] = { n: e.length }; continue; }
         const em = mean(e.map(z => z[1])), bm = mean(base);
-        let ge = 0; for (let s = 0; s < SIMS; s++) { let sum = 0; for (let k = 0; k < e.length; k++) sum += base[Math.floor(R() * base.length)]; if (sum / e.length >= em) ge++; }
+        // pLo(V82.6.6 twd_weak_probe 加):「事件比較差」那一側 = 抽出來的平均 ≤ 事件平均的比例;同一圈亂數(⛔ 多抽)→ 舊的 p 一個數字都不變
+        let ge = 0, le = 0; for (let s = 0; s < SIMS; s++) { let sum = 0; for (let k = 0; k < e.length; k++) sum += base[Math.floor(R() * base.length)]; if (sum / e.length >= em) ge++; if (sum / e.length <= em) le++; }
         const half = e.length >> 1, h1 = mean(e.slice(0, half).map(z => z[1])), h2 = mean(e.slice(half).map(z => z[1]));
         const yr = {}; for (const [i, x] of e) (yr[S.d[i].slice(0, 4)] = yr[S.d[i].slice(0, 4)] || []).push(x);
         const ys = Object.values(yr);
         out.h[h] = { n: e.length, ev: r2(em), base: r2(bm), diff: r2(em - bm), up: r2(e.filter(z => z[1] > 0).length / e.length * 100),
-            upBase: r2(base.filter(v => v > 0).length / base.length * 100), p: +(ge / SIMS).toFixed(3),
+            upBase: r2(base.filter(v => v > 0).length / base.length * 100), p: +(ge / SIMS).toFixed(3), pLo: +(le / SIMS).toFixed(3),
             h1: r2((h1 ?? NaN) - bm), h2: r2((h2 ?? NaN) - bm), yrsWin: ys.filter(a => mean(a) > bm).length, yrsN: ys.length };
     }
     const A0 = ev.map(i => after(S, A, legs, corr, i, 20));
