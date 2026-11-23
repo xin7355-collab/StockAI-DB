@@ -201,7 +201,8 @@ async function main() {
         premHist.push(prem);
       }
     }
-    meta.push({ d: D, gap: (o / pc - 1) * 100, io: (c / o - 1) * 100, cc: (c / pc - 1) * 100, ex: ex.has(D), asiaOld, adrRel });
+    // ₿ V82.6.7 usd = 分數用的那次美股收盤是哪一天(btc_tw_probe 從那一刻接比特幣,⛔ 自己再猜一次)
+    meta.push({ d: D, gap: (o / pc - 1) * 100, io: (c / o - 1) * 100, cc: (c / pc - 1) * 100, ex: ex.has(D), asiaOld, adrRel, usd: mr.sp500_date });
   }
   const sc = await scoreAll(days, html);
   const rows = meta.map((m, i) => ({ ...m, x: days[i].x, s: sc[i].s, sPct: sc[i].sPct, p: sc[i].p })).filter(r => !r.ex);
@@ -328,8 +329,10 @@ async function selftest() {
   process.exit(fails ? 1 : 0);
 }
 
-if (SELF) await selftest();
-else if (process.argv[1] && process.argv[1].endsWith('premkt_app_probe.mjs')) {
+// ⚠️ V82.6.7 只有直接跑這支才動作:被 btc_tw_probe / txnight_probe import 時(它們自己帶 --selftest)⛔ 跟著跑這支的 selftest
+const IS_MAIN = !!(process.argv[1] && process.argv[1].endsWith('premkt_app_probe.mjs'));
+if (SELF && IS_MAIN) await selftest();
+else if (IS_MAIN) {
   const { rows } = await main();
   const R = report(rows);
   console.log(R.text);
