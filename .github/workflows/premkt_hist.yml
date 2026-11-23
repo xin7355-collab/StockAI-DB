@@ -1,0 +1,105 @@
+name: 🌅 盤前研究資料(比特幣每小時 / 台指期夜盤歷史)
+
+# 🌅 V82.6.7 研究用(使用者 11/23:「比特幣跟股市有沒有關聯、盤前 / 盤中能不能先知道股市信心」+ 選「夜盤一起驗」)
+#   btc     → scripts/btc_hist_miner.py   → btc_1h.json.gz(Coinbase BTC-USD 每小時 K 線,2016 起;這個雲端沙箱連不到 Coinbase,只能在這裡抓)
+#   txnight → scripts/txnight_hist_miner.py → txnight.json(FinMind TaiwanFuturesDaily TX 一般盤 + 盤後,2017 起)
+#   推到獨立分支 premkt_hist(⛔ gh-pages、⛔ data —— 手機用不到;同 world_hist 的做法)。每次只換自己抓的那一份,另一份留著。
+# ⛔ 排程(配額,test_wf_quota):只能手動派。研究探針 btc_tw_probe.mjs / txnight_probe.mjs 讀這個分支。
+# ✅ 驗收看分支上真的有檔:git show origin/premkt_hist:btc_1h.json.gz | gunzip | head -c 300(⛔ 只看綠燈)
+
+on:
+  workflow_dispatch:
+    inputs:
+      which:
+        description: '抓哪一份:btc / txnight / both'
+        required: false
+        default: 'both'
+      full:
+        description: '比特幣:1 = 整段重抓(留空 = 有舊檔就從最後 72 小時接著抓)'
+        required: false
+        default: ''
+
+concurrency:
+  group: premkt-hist
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    name: 🌅 抓研究資料 → premkt_hist 分支
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝 requests
+        run: pip install --quiet requests
+
+      # ⚠️ selftest 跟正式跑寫在同一個 step:selftest 沒過就 ⛔ 去抓;守門沒過 → 這一份不換(分支上那份保留)
+      - name: ₿ 比特幣每小時 K 線
+        if: github.event.inputs.which != 'txnight'
+        env:
+          # 🔧 inputs 留空 = 空字串 → Python 端一律 `or 預設`(check_env_default.py)
+          FULL: ${{ github.event.inputs.full }}
+          OUT: /tmp/premkt_out/btc_1h.json.gz
+          PREV: /tmp/premkt_prev_btc.json.gz
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/premkt_out
+          python3 scripts/btc_hist_miner.py --selftest
+          # 上一份(有就接著抓);拿不到 → 刪掉(⛔ 留 0 bytes,陷阱 #18/#20)
+          if git fetch --depth=1 origin "+refs/heads/premkt_hist:refs/remotes/origin/premkt_hist" 2>/dev/null \
+             && git show origin/premkt_hist:btc_1h.json.gz > "$PREV" 2>/dev/null && [ -s "$PREV" ]; then
+            echo "🧾 上一份 $(wc -c < "$PREV") bytes"
+          else
+            rm -f "$PREV"; echo "ℹ️ 分支上還沒有 btc_1h.json.gz → 從頭抓"
+          fi
+          python3 scripts/btc_hist_miner.py 2>&1 | tee /tmp/premkt_btc.log || { echo "⛔ 比特幣守門沒過 → 這一份不換"; rm -f "$OUT"; }
+
+      - name: 🌙 台指期夜盤歷史
+        if: github.event.inputs.which != 'btc'
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          OUT: /tmp/premkt_out/txnight.json
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/premkt_out
+          python3 scripts/txnight_hist_miner.py --selftest
+          python3 scripts/txnight_hist_miner.py 2>&1 | tee /tmp/premkt_txnight.log || { echo "⛔ 夜盤守門沒過 → 這一份不換"; rm -f "$OUT"; }
+
+      - name: 🚀 推到 premkt_hist 分支
+        run: |
+          set -e
+          ls -la /tmp/premkt_out 2>/dev/null || true
+          FILES=""
+          for f in btc_1h.json.gz txnight.json; do [ -s "/tmp/premkt_out/$f" ] && FILES="$FILES $f"; done
+          if [ -z "$FILES" ]; then echo "ℹ️ 這輪沒有新的檔(守門沒過或沒抓)→ 不推"; exit 0; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          if git fetch --depth=1 origin "+refs/heads/premkt_hist:refs/remotes/origin/premkt_hist" 2>/dev/null; then
+            git checkout -f -B premkt_hist origin/premkt_hist
+          else
+            git checkout -q --orphan premkt_hist
+            git rm -rqf . 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+          fi
+          for f in $FILES; do cp "/tmp/premkt_out/$f" "$f"; git add -f "$f"; done
+          if git diff --cached --quiet; then echo "ℹ️ 跟分支上一樣"; exit 0; fi
+          git commit -q -m "🌅 盤前研究資料:$FILES $(date -u '+%Y-%m-%d %H:%M UTC')" -- $FILES
+          for i in 1 2 3 4 5; do
+            git push origin premkt_hist && { echo "✅ premkt_hist 分支已更新:$FILES(第 $i 次)"; exit 0; }
+            sleep $((i * 3))
+            git fetch --depth=1 origin "+refs/heads/premkt_hist:refs/remotes/origin/premkt_hist" 2>/dev/null && git rebase -q origin/premkt_hist 2>/dev/null || true
+          done
+          echo "❌ push 連 5 次失敗"; exit 1
