@@ -87,9 +87,17 @@ if (!fs.existsSync(path.join(DATA, '^TWII.json')) || fs.readdirSync(DATA).filter
 
     // ⓑ FORCE_EXIT:挑基準裡抱最久的一筆,把事件日放在持有中間
     if (c0) {
-        const pick = [...c0.trades].filter(t => norm(t.outD) > norm(t.inD)).sort((a, b) => (norm(b.outD) > norm(a.outD) ? 1 : -1))[0];
-        const rows = JSON.parse(fs.readFileSync(path.join(DATA, `${pick.sym}.json`), 'utf8')).map(r => ({ d: norm(r.date), o: +r.open, c: +r.close })).filter(r => r.d);
-        const i0 = rows.findIndex(r => r.d === norm(pick.inD)), i1 = rows.findIndex(r => r.d === norm(pick.outD));
+        // ⚠️ 2026-11-24:舊寫法挑「出場日最晚」的那一筆(跟上面這句「抱最久」不一樣)→ 測試資料最新那筆剛進場不到 3 根時 rows[i0 + 3] 不存在、整支當掉;
+        //    改成照持有天數由長到短,挑第一筆「進場後至少還有 5 根、事件日與賣出日都在持有中間」的(ⓑ2 本來就要求 i1 > i0 + 4)
+        const daysHeld = t => Date.parse(norm(t.outD)) - Date.parse(norm(t.inD));
+        const readRows = sym => JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8')).map(r => ({ d: norm(r.date), o: +r.open, c: +r.close })).filter(r => r.d);
+        let pick = null, rows = [], i0 = -1, i1 = -1;
+        for (const t of [...c0.trades].filter(t => norm(t.outD) > norm(t.inD)).sort((a, b) => daysHeld(b) - daysHeld(a))) {
+            const rr = readRows(t.sym), a = rr.findIndex(r => r.d === norm(t.inD)), b = rr.findIndex(r => r.d === norm(t.outD));
+            if (a >= 0 && b > a + 4) { pick = t; rows = rr; i0 = a; i1 = b; break; }
+        }
+        ok('ⓑ0 基準裡找得到一筆抱超過 5 根的交易(拿來放事件日)', !!pick, '');
+        if (!pick) { fs.rmSync(tmp, { recursive: true, force: true }); console.log(`\n❌ FORCEEXIT_FAIL(${fails.length}):${fails.join(' / ')}`); process.exit(1); }
         // 事件日 = 進場成交日之後第 3 根(⚠️ inD 是訊號日、成交在隔一根 → 至少要在 i0+2 之後)
         const ev = rows[i0 + 3], sellDay = rows[i0 + 4];
         const fj = path.join(tmp, 'force.json');
