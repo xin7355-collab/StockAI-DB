@@ -339,6 +339,32 @@ function loadWorld(env) {
     return { cal, calIdx, stocks, blocks, skipMkt, vol0, nKdMiss, miss: miss2 };
 }
 
+/** 只描述(⛔ 影響判定,登錄之後才加的):流動性、集中度、中位數、拿掉最大 5%、去掉冷門股、為什麼有幾筆不算 */
+function describe(rows, T, W, baseB, iCut) {
+    const out = {}, q = (a, p) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.min(s.length - 1, Math.floor(p * s.length))] : NaN; };
+    const dayMean = arr => { const m = new Map(); for (const r of arr) { const a = m.get(r.d) || []; a.push(r.x); m.set(r.d, a); } return mean([...m.values()].map(mean)); };
+    const seen = new Set();
+    for (const r of rows) {
+        const id = `${r.key}/${r.H}`; if (seen.has(id)) continue; seen.add(id);
+        const k = HS.indexOf(r.H), evs = T[r.key];
+        let delist = 0, other = 0;
+        for (const e of evs) { if (e.i + r.H > iCut) continue; const S = W.stocks.get(e.sym); if (S.cell[e.i] < 0) continue; if (fwdRet(S, e.i + 1, e.i + r.H) == null) { let last = -1; for (let i = S.c.length - 1; i >= 0; i--) if (S.c[i] > 0) { last = i; break; } if (last < e.i + r.H) delist++; else other++; } }
+        const xs = evRets(evs, W, r.H, iCut).map(e => { const b = baseB[k].get(e.key); return b && b.n >= MIN_CELL ? { ...e, x: e.r - b.s / b.n, amt: W.stocks.get(e.sym).amt[e.i] } : null; }).filter(Boolean);
+        const liq = xs.filter(e => e.amt >= 1e7), sorted = xs.slice().sort((a, b) => b.x - a.x);
+        const bySym = new Map(); for (const e of xs) bySym.set(e.sym, (bySym.get(e.sym) || 0) + e.x);
+        const top5 = [...bySym.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
+        const amts = xs.map(e => e.amt).filter(Number.isFinite);
+        out[id] = { n: xs.length, syms: bySym.size, all: dayMean(xs), median: q(xs.map(e => e.x), 0.5), winRate: xs.filter(e => e.x > 0).length / xs.length,
+                    dropTop5pct: dayMean(sorted.slice(Math.ceil(0.05 * sorted.length))), withoutTop5Syms: dayMean(xs.filter(e => !top5.includes(e.sym))), top5,
+                    amt20Med: q(amts, 0.5), amt20P25: q(amts, 0.25), shareBelow1e7: 1 - liq.length / xs.length, liquidOnly: { n: liq.length, m: dayMean(liq) },
+                    exitAfterLastBar: delist, otherNull: other };
+        const o = out[id];
+        console.log(`   ${r.name} 抱 ${r.H} 天:${o.n} 筆 / ${o.syms} 檔・平均 ${sg(o.all)}・中位 ${sg(o.median)}・比同格好的比例 ${(o.winRate * 100).toFixed(0)}%・拿掉最大 5% ${sg(o.dropTop5pct)}・拿掉貢獻最大 5 檔 ${sg(o.withoutTop5Syms)}(${top5.join(' ')})`);
+        console.log(`      20 日平均成交金額 中位 ${(o.amt20Med / 1e4).toFixed(0)} 萬・P25 ${(o.amt20P25 / 1e4).toFixed(0)} 萬・不到 1,000 萬的 ${(o.shareBelow1e7 * 100).toFixed(0)}%・只看 ≥ 1,000 萬 ${o.liquidOnly.n} 筆 ${sg(o.liquidOnly.m)}・出場日在最後一根之後(下市)${delist}・其他不算 ${other}`);
+    }
+    return out;
+}
+
 function main(out) {
     const t0 = Date.now(), env = process.env;
     const W = loadWorld(env);
@@ -372,7 +398,7 @@ function main(out) {
     const list = [...W.stocks.values()];
     const F = list.map(S => features(S, W.cal.length));
     const cells = buildCells(F, W.cal.length);
-    list.forEach((S, j) => { S.cell = cells[j]; });
+    list.forEach((S, j) => { S.cell = cells[j]; S.amt = F[j].amt; });
     F.length = 0;
     const noCell = Object.fromEntries(Object.entries(T).map(([k, a]) => [k, a.filter(e => W.stocks.get(e.sym).cell[e.i] < 0).length]));
     console.log(`   事件那天算不出格(上市不到半年 / 位階窗口有斷崖…)→ 不算:${JSON.stringify(noCell)}`);
@@ -412,12 +438,14 @@ function main(out) {
     const ok = rows.filter(r => r.ok);
     console.log(`\n判定:${ok.length ? '✅ ' + ok.map(r => `${r.name} 抱 ${r.H} 天(${r.dir > 0 ? '之後比較強' : '之後比較弱'})`).join('、') : '⛔ 15 格沒有一格七條全過'}`);
     const surprise = rows.filter(r => r.rev && Math.sign(r.mB) === -r.dir && r.qA <= 0.05 && r.qB <= 0.05 && r.rev.pCell <= 0.05 && r.rev.pShift <= 0.05);
+    console.log('\n只描述(⛔ 影響判定,登錄之後才加):');
+    const desc = describe(rows.filter(r => r.ok || ['T1', 'T2', 'T5'].includes(r.key) && r.H !== 60), T, W, baseB, iCut);
     if (surprise.length) console.log(`⚠️ 意外(跟預期方向相反、而且顯著):${surprise.map(r => `${r.name} 抱 ${r.H} 天`).join('、')} → ⛔ 採用,要另外登記再驗`);
     console.log(`(${((Date.now() - t0) / 1000).toFixed(0)} 秒)`);
     const res = { updated: new Date().toISOString().slice(0, 10), cutoff: W.cal[iCut], stocks: W.stocks.size, blocks: W.blocks.length, ev: ev.length, evRatio: evR.length,
                   drop: { noTrade: st.noTrade, phys: st.phys, scaled: st.scaled, noTv: st.noTv, overOne: st.overOne, pre2010: W.miss.pre, cal: W.miss.cal, univ: W.miss.univ },
                   range: [W.cal[ev[0].i], W.cal[ev[ev.length - 1].i]], counts: Object.fromEntries(Object.entries(T).map(([k, a]) => [k, { raw: raw[k].length, dedup: a.length }])),
-                  rows: rows.map(r => ({ ...r, c: r.c })), ok: ok.map(r => `${r.key}/${r.H}`), surprise: surprise.map(r => `${r.key}/${r.H}`) };
+                  rows: rows.map(r => ({ ...r, c: r.c })), ok: ok.map(r => `${r.key}/${r.H}`), surprise: surprise.map(r => `${r.key}/${r.H}`), desc };
     if (out) fs.writeFileSync(out, JSON.stringify(res, null, 1));
 }
 
