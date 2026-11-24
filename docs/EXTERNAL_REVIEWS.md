@@ -161,7 +161,7 @@
 
 **B. 回測(本站 16 年資料,隔天開盤、含息、扣 0.44、同一天對照、六關、BH)**
 - 📐 `trend-template` ⛔ / 👑 `leader-rs-rank` ⛔ / 🌡️ `leader-breadth4` ⛔(數字見 DECISIONS V80.1.9 與 LAB);📌 位階高檔 ∧ 樣板 20 日 +0.14pp 觀察。
-- 🐘 策略 D 鉅額佔比前 1% / 溢價成交:官方歷史回補中(`block_deep`),`block_trade_probe.mjs` 等資料。
+- 🐘 策略 D 鉅額佔比前 1% / 溢價成交:V82.6.8 測完(EXP-20261124-01,`block_trade_probe.mjs`)—— 佔比前 1% 之後 20 天比同類股票 +1.10%(📌 參考:中位數 ≈ 0、平均靠少數幾檔、多半冷門股);溢價成交 ⛔ 沒有用。LAB `block-trade`。
 - ⛔ 策略 C 外資買權未平倉突增:期交所只留約 3 年 → 測不了。
 
 **C. 落地(V80.1.9)**:上櫃注意股 + 上市 notice / notetrans 合併 + 官方理由 / 公告日 + 其他官方名單 `flags`・官方休市表 → 假日幽靈 K・`lib_http` 共用連線守門・`block_deep` 鉅額歷史・`pick_ledger` 存證・下單守門補兩個繞路・`check_div16`・App:持股損益歸因 / 賣飛金額 / 最低手續費 / AI 數字出處 / 引文比對 / RRG 軌跡尾巴。
