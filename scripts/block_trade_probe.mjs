@@ -3,28 +3,40 @@
  * 🐘 鉅額交易之後,那檔股票會比較強還是比較弱?(V80.1.9 寫好、V82.6.3 資料到齊後補方法再跑;評估紀錄 52 策略 D + LAB「💵 鉅額交易」)
  *
  * 資料:證交所 BFIAUU 2009 起每一天的鉅額交易(block_deep 分支,block_deep_fetch.py)+ 研究資料包 d16(含下市、除權息)。
- *   ⚠️ 只有上市(BFIAUU 只有上市)→ 股票池 = stock_names 標「上市」的 + 已下市(標不出市場的);⛔ 上櫃 / 興櫃。
- *   鉅額當天收盤後才公布 → 第二天開盤才算知道。成交量 0 的列(停牌時帶上一天收盤的佔位列)當沒有交易。
+ *   ⚠️ 只有上市(BFIAUU 只有上市)。鉅額當天收盤後才公布 → 第二天開盤才算知道。成交量 0 的列(停牌時帶上一天收盤的佔位列)當沒有交易。
  * 一天一檔先合起來:鉅額股數 = 那天所有鉅額列加總、鉅額均價 = 金額 ÷ 股數。
  *   d16 在分割 / 面額變更之前那段換過尺標(列上 `_sk` = 股數倍數:d16 收盤 × _sk = 當時的原始收盤、d16 成交量 ÷ _sk = 原始成交量,
- *   merge_stock_deep.share_scale)→ 溢價 = 鉅額均價 ÷ 原始收盤 − 1。
+ *   merge_stock_deep.share_scale)→ 溢價 = 鉅額均價 ÷ 原始收盤 − 1(2021 起直接用 klines_deep 的原始收盤;沒有才用 d16 × _sk)。
  *   🚨 佔比的分母要同一個口徑:FinMind 的成交量「含鉅額」(2010~2023-05 的 3.6 萬筆鉅額沒有一筆超過當天成交量),本站 data 分支
  *   2023-05 起的成交量有些天含、有些天不含(同一天跟 FinMind 比:一樣 7,887 筆、差剛好一筆鉅額 301 筆、差鉅額 + 一點點 3,112 筆)
  *   → 佔比 = 鉅額股數 ÷ 當天總成交股數(含鉅額,FinMind 口徑):2021 起讀 klines_deep 的原始成交量(KD_DIR),
  *   2021 前 d16 本身就是 FinMind(÷ _sk 換回原始);2021 後 klines_deep 沒有那一天(2026-09 以後)→ 佔比算不出、只做溢價 / 折價。
  *   鉅額價格也在當天漲跌幅之內 → 均價 ÷ 收盤 超出 (1−L)/(1+L) ~ (1+L)/(1−L)(L = 當天漲跌幅)= 尺標還是對不上 → 丟掉、列數。
+ *   鉅額比當天總成交還多 = 資料矛盾 → 佔比、溢價都不用。
  * 五個檢定 × 抱 5 / 20 / 60 天(15 格一起 BH):
  *   T1 佔比前 1%   T2 佔比前 5%   (門檻 = 「之前」所有鉅額事件的分位數,⛔ 用到未來;至少 250 筆才開始)
  *   T3 溢價成交(≥ 收盤 +1%,預期之後比較強)   T4 折價成交(≤ 收盤 −3%,預期之後比較弱)
- *   T5 配對交易而且佔比前 5%(協議成交,最像大股東轉讓)   —— T1 / T2 / T5 方向不預設(看 Ⓑ 全期那個方向)
- * 規則同 trade_lead_probe:隔天開盤買(開盤一價鎖漲停 = 買不到、不算)、含息、窗口有斷崖不算、同一檔 10 天內只算第一次。
- * 兩種對照(都要過):Ⓐ 同一天股票池全部 Ⓑ 同一天同一格(20 日成交金額 × 一年位階 × 20 日波動 各三分位 = 27 格;
- *   特徵只用當天以前的資料、三分位只用當天的股票)。檢定先每天平均,p 一律 Newey-West(lag = ⌈(H−1) × 有事件的天數比例⌉)。
- * 兩種安慰劑:同一天同一格隨便挑一檔(500 次)、同一檔換到前後 40~120 個交易日(200 次;落在自己有鉅額的 10 天內就重抽)。
+ *   T5 配對交易而且佔比前 5%(協議成交,最像大股東轉讓)   —— T1 / T2 / T5 方向不預設(看 Ⓑ 全期那個方向,p 一律雙尾)
+ * 規則:隔天開盤買(開盤一價鎖漲停 = 買不到、不算;基準 = 參考價,除權息那天要先扣)、含息、同一檔 10 天內只算第一次。
+ *   出場:第 H 天收盤;那天沒交易(停牌 / 下市)或中間碰到斷崖 → 用「最後一根有交易、斷崖之前」的收盤(⛔ 整筆丟掉 = 倖存者偏誤)。
+ *   斷崖 = 跟前一根(扣掉除權息的參考價)比,開盤或收盤超出當天漲跌幅(物理上不可能 = 尺標變了 / 減資恢復交易 / 興櫃那段)、
+ *   或停牌 / 沒成交 ≥ 3 個交易日之後恢復的那一根(減資換股停止買賣)、或舊規則 ×1.5 / ×0.67。
+ * 股票池 = 「那一天之前已經出現在上市鉅額名單」的股票日(證明那天是上市;⛔ 用今天的上市名單往回套 —— 會混進上市前的上櫃 / 興櫃那段,
+ *   而且等於用未來挑對照組)。舊母體(今天上市 + 已下市的全部歷史)當敏感度,兩個都要過才算。
+ * 兩種對照(都要過):Ⓐ 同一天股票池全部 Ⓑ 同一天同一格(前 20 日平均成交金額(⛔ 含當天:當天的量含鉅額本身)× 一年位階 × 20 日波動
+ *   各三分位 = 27 格;特徵只用當天以前的資料、三分位只用當天的股票)。Ⓐ 跟事件一樣只收「那天算得出格」的。
+ *   只描述(⛔ 影響判定):Ⓒ 同一天同一格再切「當天漲跌」三分位(看是不是只是短線反轉)。
+ * 檢定:先每天平均,p = 「H 天一段」的區塊穩健 t(每段加總、相鄰兩段的共變異也算進去、自由度 = 段數 − 1)。
+ *   ⛔ 舊的 Newey-West(lag 照全期平均事件密度)在同一檔每 10 天一筆、抱 60 天時,沒效果也有 14% 的機會 p ≤ 0.05(審查 #1)。
+ * 兩種安慰劑(都要過;方向沒預設的雙尾):
+ *   ① 同一天同一格隨便挑一檔(500 次;同一檔窗口連在一起的那幾筆用同一檔替身,保留重疊)
+ *   ② 同一檔整段一起挪到前後 H+20 ~ H+270 個交易日(200 次;同一檔所有事件挪一樣多,保留同一檔的間隔)
  * 🔒 樣本外封存:事件日與出場日都 ≤ 2026-11-06(LAB oos-seal)。判定條件寫在實驗登錄(EXP-20261124-01)。
+ * 🔍 2026-11-24 獨立審查 13 點(重疊窗口當獨立樣本、安慰劑太窄、單尾、母體、減資跳價、除息日鎖漲停、下市整筆消失…)→
+ *   全部照上面改完才下判定;第一次跑的結果作廢(docs/DECISIONS.md 那一節有原文與作廢的數字)。
  *
  * 跑法:DATA_DIR=<d16> BLOCK_DIR=<block_deep 資料夾> KD_DIR=<klines_deep 資料夾> IDX_LONG=<idx_long.json> node --max-old-space-size=8000 scripts/block_trade_probe.mjs out.json
- *       CHECK_ONLY=1 …(只印資料檢查:事件數 / 丟掉幾筆 / 佔比分布,⛔ 算任何報酬)
+ *       CHECK_ONLY=1 …(只印資料檢查:事件數 / 丟掉幾筆 / 佔比分布 / 斷崖,⛔ 算任何報酬)
  *       node scripts/block_trade_probe.mjs --selftest
  */
 import fs from 'fs';
@@ -33,23 +45,54 @@ import zlib from 'zlib';
 import { fileURLToPath } from 'url';
 import { gates, COST, increments, baseAdd, negate } from './lib_evgate.mjs';
 import { bhQ } from './lib_fdr.mjs';
-import { alignStock, fwdRet, nwP } from './trade_lead_probe.mjs';
-import { limitOf } from './lib_limit.mjs';
+import { alignStock, nwP } from './trade_lead_probe.mjs';
+import { limitOf, lockedBar } from './lib_limit.mjs';
 
 export const HS = [5, 20, 60];
 const DEDUP = 10;
 const MIN_HIST = 250;
-const SHAM_N = 500, SHIFT_N = 200, SHIFT_LO = 40, SHIFT_HI = 120;
+const SHAM_N = 500, SHIFT_N = 200;
+export const SHIFT_GAP = 20, SHIFT_SPAN = 250;   // 換日安慰劑:挪 H+20 ~ H+270 個交易日(⛔ 跟自己的窗口重疊)
+export const GAP_CLIFF = 3;                      // 停牌 / 沒成交幾個交易日以上,恢復的那一根當斷崖
+export const JUMP_TOL = 0.01;                    // 超出漲跌幅多少才算「物理上不可能」(漲跌停價有跳動單位捨入)
 const MIN_CELL = 5;                 // 那一格那一天至少幾檔才拿來當對照
 export const CUTOFF = '2026-11-06'; // 🔒 樣本外封存(2026-11-07 起的資料只拿來驗)
 export const KD_FROM = '2021-01-04';  // klines_deep(FinMind 原始日 K)從這天起;之前 d16 本身就是 FinMind
-export const DIR = { T1: 0, T2: 0, T3: 1, T4: -1, T5: 0 };   // 預期方向:0 = 不預設
+export const DIR = { T1: 0, T2: 0, T3: 1, T4: -1, T5: 0 };   // 預期方向:0 = 不預設(p 一律雙尾)
 const NAME = { T1: '佔比前 1%', T2: '佔比前 5%', T3: '溢價 ≥ +1%', T4: '折價 ≤ −3%', T5: '配對佔比前 5%' };
+const UNIV = { listed: '那天已上市(主)', all: '舊母體(敏感度)' };
 const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN;
 const sg = x => (x >= 0 ? '+' : '') + (Number.isFinite(x) ? x.toFixed(2) : '—');
 const d10 = s => String(s || '').replace(/\//g, '-').slice(0, 10);
 const ymd = s => `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
 const rng = s => () => ((s = (s * 16807) % 2147483647) / 2147483647);
+
+// ───────── t 分配(區塊檢定的段數不多,⛔ 用常態近似)─────────
+function lgamma(x) {
+    const C = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+    if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lgamma(1 - x);
+    x -= 1; let a = C[0]; const t = x + 7.5;
+    for (let i = 1; i < 9; i++) a += C[i] / (x + i);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
+function betacf(a, b, x) {
+    const FP = 1e-300; let c = 1, d = 1 - (a + b) * x / (a + 1); if (Math.abs(d) < FP) d = FP; d = 1 / d; let h = d;
+    for (let m = 1; m <= 300; m++) {
+        const m2 = 2 * m; let aa = m * (b - m) * x / ((a - 1 + m2) * (a + m2));
+        d = 1 + aa * d; if (Math.abs(d) < FP) d = FP; c = 1 + aa / c; if (Math.abs(c) < FP) c = FP; d = 1 / d; h *= d * c;
+        aa = -(a + m) * (a + b + m) * x / ((a + m2) * (a + 1 + m2));
+        d = 1 + aa * d; if (Math.abs(d) < FP) d = FP; c = 1 + aa / c; if (Math.abs(c) < FP) c = FP; d = 1 / d;
+        const del = d * c; h *= del; if (Math.abs(del - 1) < 3e-14) break;
+    }
+    return h;
+}
+const ibeta = (x, a, b) => {
+    if (x <= 0) return 0; if (x >= 1) return 1;
+    const bt = Math.exp(lgamma(a + b) - lgamma(a) - lgamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+    return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a : 1 - bt * betacf(b, a, 1 - x) / b;
+};
+/** t 分配雙尾 p */
+export const pT = (t, df) => Number.isFinite(t) && df > 0 ? ibeta(df / (df + t * t), df / 2, 0.5) : 1;
 
 /** 一天的鉅額列 [[代號, 交易別, 價, 股數, 金額]] → Map(代號 → {sh, val, vwap, pair})。只收 4 碼普通股。 */
 export function aggDay(rows) {
@@ -96,17 +139,19 @@ export function totalVol(S, i, sk) {
     return d < KD_FROM && S.v[i] > 0 ? S.v[i] / sk : NaN;
 }
 
-/** 鉅額事件 → 佔比 / 溢價(用 _sk 換回原始尺標);那天沒有一般成交 / 均價超出物理範圍 → 丟掉,計數進 st;
- *  佔比的分母算不出 → ratio = NaN(只做溢價 / 折價);鉅額比當天總成交股數還多 = 資料矛盾 → ratio = NaN、計數 */
+/** 鉅額事件 → 佔比 / 溢價(收盤用 klines_deep 原始收盤,沒有才用 d16 × _sk);那天沒有一般成交 / 均價超出物理範圍 → 丟掉,計數進 st;
+ *  佔比的分母算不出 → ratio = NaN(只做溢價 / 折價);鉅額比當天總成交股數還多 = 資料矛盾 → ratio、溢價都 NaN、計數 */
 export function enrich(blocks, stocks, st = {}) {
-    for (const k of ['noTrade', 'phys', 'scaled', 'noTv', 'overOne']) st[k] = st[k] || 0;
+    for (const k of ['noTrade', 'phys', 'scaled', 'noTv', 'overOne', 'rawClose', 'rawDiff']) st[k] = st[k] || 0;
     st.physEx = st.physEx || [];
     const out = [];
     for (const b of blocks) {
         const S = stocks.get(b.sym), v = S.v[b.i], c = S.c[b.i];
         if (!(v > 0) || !(c > 0)) { st.noTrade++; continue; }
-        const sk = S.sk && S.sk[b.i] > 0 ? S.sk[b.i] : 1;
-        const rc = c * sk, q = b.vwap / rc;
+        const sk = S.sk && S.sk[b.i] > 0 ? S.sk[b.i] : 1, kc = S.kc ? S.kc[b.i] : NaN;
+        let rc = c * sk;
+        if (kc > 0) { st.rawClose++; if (Math.abs(rc / kc - 1) > 0.005) st.rawDiff++; rc = kc; }
+        const q = b.vwap / rc;
         const [lo, hi] = physRange(S.date ? S.date[b.i] : '2020-01-01');
         if (!(q >= lo - 1e-9 && q <= hi + 1e-9)) {
             st.phys++;
@@ -115,31 +160,74 @@ export function enrich(blocks, stocks, st = {}) {
         }
         if (sk !== 1) st.scaled++;
         const tv = totalVol(S, b.i, sk);
-        let ratio = tv > 0 ? b.sh / tv : NaN, pairRatio = tv > 0 ? b.pair / tv : NaN;
+        let ratio = tv > 0 ? b.sh / tv : NaN, pairRatio = tv > 0 ? b.pair / tv : NaN, prem = q - 1;
         if (!(tv > 0)) st.noTv++;
-        else if (ratio > 1.001) { st.overOne++; ratio = NaN; pairRatio = NaN; }
-        out.push({ ...b, ratio, prem: q - 1, pairRatio });
+        else if (ratio > 1.001) { st.overOne++; ratio = NaN; pairRatio = NaN; prem = NaN; }
+        out.push({ ...b, ratio, prem, pairRatio });
     }
     return out;
 }
 
-/** 第 i 天收盤時(只用 ≤ i 的資料):20 日平均成交金額、一年(250 根)位階、20 日波動。算不出 = NaN。
- *  成交金額 = 收盤 × 成交量(d16 換尺標時價 ÷ k、量 × k → 乘起來不變);位階窗口內有斷崖就不算;波動只用相鄰兩根都有交易、中間沒有斷崖的日報酬。 */
+/** 斷崖(審查 #9):跟前一根有交易的比(參考價 = 前收 ÷ 中間的除權息因子),開盤或收盤超出當天漲跌幅 + JUMP_TOL → 物理上不可能
+ *  (減資恢復交易 / 沒記到的除權 / 資料錯 / 沒有漲跌幅的那段);舊規則(alignStock 的 ×1.5 / ×0.67)—— 這兩種 = 尺標變了(S.mkS);
+ *  停牌 / 沒成交 ≥ GAP_CLIFF 個交易日之後恢復的那一根(可能是在漲跌幅之內的小減資)—— 只讓持有窗口提早出場,⛔ 算尺標變了。
+ *  → S.mk(報酬用:三種都算)、S.cliff(前綴和,蓋掉 alignStock 的)、S.lastS(最近一次尺標變動在哪一根,位階用)、S.ldv(除權息因子取 log 的前綴和)。
+ *  回 {nJ, nG} 新增幾根 */
+export function markCliffs(S, gapMin = GAP_CLIFF, tol = JUMP_TOL) {
+    const T = S.c.length, mk = new Uint8Array(T), mkS = new Uint8Array(T), ldv = new Float64Array(T + 1);
+    for (let i = 0; i < T; i++) ldv[i + 1] = ldv[i] + Math.log(S.divf[i] > 0 ? S.divf[i] : 1);
+    let p = -1, nJ = 0, nG = 0;
+    for (let i = 0; i < T; i++) {
+        if (!(S.c[i] > 0)) continue;
+        if (p >= 0) {
+            if (S.cliff[i + 1] - S.cliff[i] > 0) mkS[i] = 1;
+            const ref = S.c[p] / Math.exp(ldv[i + 1] - ldv[p + 1]), L = limitOf(S.date ? S.date[i] : '2020-01-01') + tol;
+            const o = S.o[i] > 0 ? S.o[i] : S.c[i], a = S.c[i] / ref, b = o / ref;
+            if (a > 1 + L || a < 1 - L || b > 1 + L || b < 1 - L) { if (!mkS[i]) nJ++; mkS[i] = 1; }
+            mk[i] = mkS[i];
+            if (!mk[i] && i - p - 1 >= gapMin) { nG++; mk[i] = 1; }
+        }
+        p = i;
+    }
+    const cliff = new Int32Array(T + 1), lastS = new Int32Array(T);
+    for (let i = 0; i < T; i++) { cliff[i + 1] = cliff[i] + mk[i]; lastS[i] = mkS[i] ? i : (i ? lastS[i - 1] : -1); }
+    S.mk = mk; S.mkS = mkS; S.cliff = cliff; S.lastS = lastS; S.ldv = ldv;
+    return { nJ, nG };
+}
+
+/** 一檔:第 e 天開盤買、第 x 天收盤賣(含息)→ {r 報酬 %, y 實際出場那天};買不到 → null。
+ *  鎖漲停的基準 = 前一根有交易的收盤 ÷ 除權息因子(審查 #10:除息日參考價比較低)。進場那根本身是斷崖 → 不算(開盤跟前收不同尺標)。
+ *  出場那天沒交易 / 中間有斷崖 → 最後一根有交易、斷崖之前的收盤(審查 #8:停牌 / 下市 ⛔ 整筆丟掉)。 */
+export function fwdX(S, e, x) {
+    if (e < 1 || x >= S.c.length || !(S.o[e] > 0) || S.mk[e]) return null;
+    let p = e - 1; while (p >= 0 && !(S.c[p] > 0)) p--;
+    if (p >= 0 && lockedBar(S.date ? S.date[e] : '2020-01-01', S.c[p] / Math.exp(S.ldv[e + 1] - S.ldv[p + 1]), S.o[e], S.h[e], S.l[e]) === 1) return null;
+    let y = x;
+    if (S.cliff[x + 1] - S.cliff[e + 1] > 0) { for (let k = e + 1; k <= x; k++) if (S.mk[k]) { y = k - 1; break; } }
+    while (y > e && !(S.c[y] > 0)) y--;
+    if (!(S.c[y] > 0)) return null;
+    return { r: (S.c[y] * Math.exp(S.ldv[y + 1] - S.ldv[e + 1]) / S.o[e] - 1) * 100, y };
+}
+export const fwd = (S, e, x) => { const o = fwdX(S, e, x); return o ? o.r : null; };
+
+/** 第 i 天收盤時(只用 ≤ i 的資料):前 20 日平均成交金額(⛔ 含第 i 天:那天的量含鉅額本身,審查 #6)、一年(250 根)位階、20 日波動。算不出 = NaN。
+ *  成交金額 = 收盤 × 成交量(d16 換尺標時價 ÷ k、量 × k → 乘起來不變);
+ *  位階 = 最近 250 根、但只從最近一次尺標變動那一根起算(至少 120 根有交易);波動只用相鄰兩根都有交易、中間沒有斷崖的日報酬。 */
 export function features(S, T) {
     const amt = new Float64Array(T).fill(NaN), pos = new Float64Array(T).fill(NaN), vol = new Float64Array(T).fill(NaN);
-    const { c, v, h, l, cliff } = S;
+    const { c, v, h, l, cliff } = S, lastS = S.lastS;
     for (let i = 0; i < T; i++) {
         if (!(c[i] > 0)) continue;
         let sa = 0, na = 0;
-        for (let t = Math.max(0, i - 19); t <= i; t++) if (c[t] > 0 && v[t] > 0) { sa += c[t] * v[t]; na++; }
+        for (let t = Math.max(0, i - 20); t <= i - 1; t++) if (c[t] > 0 && v[t] > 0) { sa += c[t] * v[t]; na++; }
         if (na >= 10) amt[i] = sa / na;
         let s1 = 0, s2 = 0, nv = 0;
         for (let t = Math.max(1, i - 19); t <= i; t++) {
             if (c[t] > 0 && c[t - 1] > 0 && cliff[t + 1] - cliff[t] === 0) { const x = Math.log(c[t] / c[t - 1]); s1 += x; s2 += x * x; nv++; }
         }
         if (nv >= 10) vol[i] = Math.sqrt(Math.max(0, (s2 - s1 * s1 / nv) / (nv - 1)));
-        const a = Math.max(0, i - 249);
-        if (cliff[i + 1] - cliff[a + 1] === 0) {
+        const a = Math.max(0, i - 249, lastS ? lastS[i] : 0);
+        if (lastS || cliff[i + 1] - cliff[a + 1] === 0) {
             let mx = -Infinity, mn = Infinity, np = 0;
             for (let t = a; t <= i; t++) if (c[t] > 0) { if (h[t] > mx) mx = h[t]; if (l[t] < mn) mn = l[t]; np++; }
             if (np >= 120 && mx > mn) pos[i] = (c[i] - mn) / (mx - mn);
@@ -148,14 +236,16 @@ export function features(S, T) {
     return { amt, pos, vol };
 }
 
-/** 每天:三個特徵各自在「當天三個都算得出來的股票」裡切三分位 → 格 0~26(算不出 / 那天不到 minN 檔 = −1)。只用同一天的截面。 */
-export function buildCells(F, T, minN = 30) {
+/** 每天:三個特徵各自在「當天三個都算得出來、而且在股票池裡的股票」裡切三分位 → 格 0~26(算不出 / 不在股票池 / 那天不到 minN 檔 = −1)。
+ *  只用同一天的截面。first[j] = 第 j 檔從哪一天起算在股票池(null = 全部都算)。 */
+export function buildCells(F, T, minN = 30, first = null) {
     const cells = F.map(() => new Int8Array(T).fill(-1));
     const cut = a => { const s = Float64Array.from(a).sort(); return [s[Math.floor(s.length / 3)], s[Math.floor(2 * s.length / 3)]]; };
     const bk = (x, t) => x < t[0] ? 0 : (x < t[1] ? 1 : 2);
     for (let i = 0; i < T; i++) {
         const A = [], P = [], V = [], who = [];
         for (let j = 0; j < F.length; j++) {
+            if (first && !(i >= first[j])) continue;
             const a = F[j].amt[i], p = F[j].pos[i], v = F[j].vol[i];
             if (a > 0 && Number.isFinite(p) && Number.isFinite(v)) { A.push(a); P.push(p); V.push(v); who.push(j); }
         }
@@ -166,54 +256,93 @@ export function buildCells(F, T, minN = 30) {
     return cells;
 }
 
-/** Ⓑ 的增量:每一筆減「同一天同一格」的平均(那格那天 < minCell 檔不算),再照日期收成每天一個平均(同 lib_evgate.increments 的口徑) */
-export function incCell(evs, baseB, minCell = MIN_CELL) {
+/** 只描述 Ⓒ:每天,那天有格的股票按「當天漲跌」(對參考價、含除權息;斷崖那根算不出)切三分位 → 0/1/2,算不出 = −1 */
+export function buildRetTerc(list, T, minN = 30) {
+    const dr = list.map(S => {
+        const a = new Float64Array(T).fill(NaN); let p = -1;
+        for (let i = 0; i < T; i++) { if (!(S.c[i] > 0)) continue; if (p >= 0 && !S.mk[i]) a[i] = S.c[i] * Math.exp(S.ldv[i + 1] - S.ldv[p + 1]) / S.c[p] - 1; p = i; }
+        return a;
+    });
+    const out = list.map(() => new Int8Array(T).fill(-1));
+    for (let i = 0; i < T; i++) {
+        const xs = [], who = [];
+        for (let j = 0; j < list.length; j++) { const x = dr[j][i]; if (list[j].cell[i] >= 0 && Number.isFinite(x)) { xs.push(x); who.push(j); } }
+        if (who.length < minN) continue;
+        const s = Float64Array.from(xs).sort(), t1 = s[Math.floor(s.length / 3)], t2 = s[Math.floor(2 * s.length / 3)];
+        who.forEach((j, k) => { out[j][i] = xs[k] < t1 ? 0 : (xs[k] < t2 ? 1 : 2); });
+    }
+    return out;
+}
+
+/** Ⓑ 的增量:每一筆減「同一天同一格」的平均(那格那天 < minCell 檔不算),再照日期收成每天一個平均(同 lib_evgate.increments 的口徑)。
+ *  kf = 用哪個欄位當對照的鍵(key = Ⓑ、keyC = Ⓒ) */
+export function incCell(evs, base, minCell = MIN_CELL, kf = 'key') {
     const byDay = new Map(); let n = 0;
     for (const e of evs) {
-        const b = baseB.get(e.key); if (!b || b.n < minCell) continue;
+        const k = e[kf]; if (k == null) continue;
+        const b = base.get(k); if (!b || b.n < minCell) continue;
         const a = byDay.get(e.d) || []; a.push(e.r - b.s / b.n); byDay.set(e.d, a); n++;
     }
     const days = [...byDay.keys()].sort();
     return { n, days, dm: days.map(d => { const a = byDay.get(d); return a.reduce((s, x) => s + x, 0) / a.length; }), all: days.flatMap(d => byDay.get(d)) };
 }
 
-/** 事件 → [{d, key, r, i, sym}](出場日超過 iCut / 那天沒有格 / 買不到 / 斷崖 → 不算) */
+/** 事件 → [{d, key, keyC, r, i, sym, cell, y}](出場日超過 iCut / 那天沒有格 / 買不到 → 不算) */
 export function evRets(evs, W, H, iCut) {
     const out = [];
     for (const e of evs) {
         if (e.i + H > iCut) continue;
         const S = W.stocks.get(e.sym), cell = S.cell ? S.cell[e.i] : 0;
         if (cell < 0) continue;
-        const r = fwdRet(S, e.i + 1, e.i + H); if (r == null) continue;
-        out.push({ d: W.cal[e.i], key: W.cal[e.i] + '|' + cell, r, i: e.i, sym: e.sym });
+        const o = fwdX(S, e.i + 1, e.i + H); if (!o) continue;
+        const rt = S.rt ? S.rt[e.i] : -1, d = W.cal[e.i];
+        out.push({ d, key: d + '|' + cell, keyC: rt >= 0 ? d + '|' + (cell * 3 + rt) : null, r: o.r, i: e.i, sym: e.sym, cell, y: o.y });
     }
     return out;
 }
 
-/** 對照:Ⓐ 同一天股票池全部(key = 日期)Ⓑ 同一天同一格(key = 日期|格);只收出場日 ≤ iCut 的 */
+/** 對照:Ⓐ 同一天股票池全部(key = 日期)Ⓑ 同一天同一格(key = 日期|格)Ⓒ 再切當天漲跌三分位(只描述)。
+ *  只收「那天算得出格」(= 在股票池、特徵算得出)而且出場日 ≤ iCut 的(Ⓐ 也是,審查 #4:跟事件同一個資格) */
 export function buildBases(W, iCut) {
-    const A = HS.map(() => new Map()), B = HS.map(() => new Map());
+    const A = HS.map(() => new Map()), B = HS.map(() => new Map()), C = HS.map(() => new Map());
     for (const S of W.stocks.values()) {
         for (let i = 1; i <= iCut; i++) {
-            if (!(S.c[i] > 0)) continue;
+            const cell = S.cell ? S.cell[i] : 0;
+            if (cell < 0 || !(S.c[i] > 0)) continue;
+            const rt = S.rt ? S.rt[i] : -1;
             for (let k = 0; k < HS.length; k++) {
                 const H = HS[k]; if (i + H > iCut) continue;
-                const r = fwdRet(S, i + 1, i + H); if (r == null) continue;
+                const r = fwd(S, i + 1, i + H); if (r == null) continue;
                 baseAdd(A[k], W.cal[i], r);
-                const cell = S.cell ? S.cell[i] : 0;
-                if (cell >= 0) baseAdd(B[k], W.cal[i] + '|' + cell, r);
+                baseAdd(B[k], W.cal[i] + '|' + cell, r);
+                if (rt >= 0) baseAdd(C[k], W.cal[i] + '|' + (cell * 3 + rt), r);
             }
         }
     }
-    return { A, B };
+    return { A, B, C };
 }
 
-/** 在方向 dir(+1 / −1)上過六關;p 一律 Newey-West(lag = ⌈(H − 1) × 有事件的天數比例⌉,至少 1;雙尾,方向不影響) */
-export function gateDir(inc, H, dir, density) {
+/** 區塊穩健 p(審查 #1):事件日照交易日編號切成 H 天一段 → 每段的每日增量加總 S_k、天數 n_k;
+ *  殘差 e_k = S_k − n_k·平均;變異 = Σe² + 2Σ(相鄰兩段 e_k·e_{k+1})(⛔ 比 Σe² 小)× G/(G−1);t 分配、自由度 G − 1。
+ *  H 天一段 → 窗口只會跟下一段的窗口重疊,同一檔 / 同一時期擠在一起的都算進同一段或相鄰段。idxOf(日期) → 交易日編號。 */
+export function blockP(inc, H, idxOf) {
+    const N = inc.dm.length, m = mean(inc.dm), G = new Map();
+    inc.days.forEach((d, j) => { const k = Math.floor(idxOf(d) / H); const g = G.get(k) || { s: 0, n: 0 }; g.s += inc.dm[j]; g.n++; G.set(k, g); });
+    const ks = [...G.keys()].sort((a, b) => a - b), g = ks.length;
+    if (g < 8 || !Number.isFinite(m)) return { p: 1, g, t: 0 };
+    let v0 = 0, v1 = 0;
+    for (const k of ks) { const a = G.get(k), x = a.s - a.n * m; v0 += x * x; const b = G.get(k + 1); if (b) v1 += x * (b.s - b.n * m); }
+    const V = Math.max(v0, v0 + 2 * v1) * g / (g - 1), t = m / (Math.sqrt(V) / N);
+    return { p: pT(t, g - 1), g, t };
+}
+
+/** 在方向 dir(+1 / −1)上過六關;p 一律用區塊穩健 p(雙尾,方向不影響)。舊的 Newey-West(lag 照事件密度)留在 pNWold 只供對照 */
+export function gateDir(inc, H, dir, idxOf, density = 1) {
     const g = gates(dir < 0 ? negate(inc) : inc, COST);
-    g.lag = Math.max(1, Math.ceil((H - 1) * density));
-    g.pNW = nwP(inc.dm, g.lag);
-    g.pass['⑥檢定'] = g.d > 0 && g.pNW <= 0.05;
+    const b = blockP(inc, H, idxOf);
+    g.pBlk = b.p; g.nBlk = b.g; g.tBlk = b.t;
+    g.pNWold = nwP(inc.dm, Math.max(1, Math.ceil((H - 1) * density)));
+    g.pass['⑥檢定'] = g.d > 0 && g.pBlk <= 0.05;
     g.nPass = Object.values(g.pass).filter(Boolean).length;
     return g;
 }
@@ -228,11 +357,17 @@ export function trimDir(rets, baseB, dir, frac = 0.01, minCell = MIN_CELL) {
     return { drop, m: dir * mean([...byDay.values()].map(mean)) };
 }
 
-const hasIn = (arr, lo, hi) => { if (!arr) return false; let a = 0, b = arr.length; while (a < b) { const m = (a + b) >> 1; if (arr[m] < lo) a = m + 1; else b = m; } return a < arr.length && arr[a] <= hi; };
+/** 同一檔、窗口連在一起(跟上一筆差 < H 天)的事件 = 同一串 → [串編號...]、幾串 */
+export function clusterIds(rets, H) {
+    const last = new Map(), cid = new Int32Array(rets.length); let nc = 0;
+    rets.forEach((e, j) => { const p = last.get(e.sym); cid[j] = p && e.i - p.i < H ? p.c : nc++; last.set(e.sym, { i: e.i, c: cid[j] }); });
+    return { cid, nc };
+}
 
-/** 安慰劑①:每一筆換成「同一天同一格」隨便一檔(n 次)→ 每次的 Ⓑ 增量平均 */
+/** 安慰劑①:每一筆換成「同一天同一格」隨便一檔(n 次)→ 每次的 Ⓑ 增量平均。
+ *  同一串(同一檔、窗口重疊)用同一個替身(那天替身沒格 / 買不到才另抽)→ 保留重疊造成的相關(審查 #1)。 */
 export function shamCell(rets, W, H, baseB, n, seed) {
-    const R = rng(seed), vals = [];
+    const R = rng(seed), vals = [], { cid, nc } = clusterIds(rets, H);
     W._pool = W._pool || new Map();
     const syms = [...W.stocks.keys()];
     const poolOf = (i, cell) => {
@@ -241,41 +376,49 @@ export function shamCell(rets, W, H, baseB, n, seed) {
         return p;
     };
     for (let t = 0; t < n; t++) {
-        const ev = [];
-        for (const e of rets) {
-            const cell = +e.key.split('|')[1], p = poolOf(e.i, cell);
+        const rep = new Array(nc), ev = [];
+        rets.forEach((e, j) => {
+            const c = cid[j], s0 = rep[c];
+            if (s0 != null) {
+                const S = W.stocks.get(s0), cl = S.cell ? S.cell[e.i] : 0;
+                if (cl >= 0) { const r = fwd(S, e.i + 1, e.i + H); if (r != null) { ev.push({ d: e.d, key: e.d + '|' + cl, r }); return; } }
+            }
+            const p = poolOf(e.i, e.cell);
             for (let k = 0; k < 5 && p.length; k++) {
-                const s = p[Math.floor(R() * p.length)], r = fwdRet(W.stocks.get(s), e.i + 1, e.i + H);
-                if (r != null) { ev.push({ d: e.d, key: e.key, r }); break; }
+                const s = p[Math.floor(R() * p.length)], r = fwd(W.stocks.get(s), e.i + 1, e.i + H);
+                if (r != null) { if (s0 == null) rep[c] = s; ev.push({ d: e.d, key: e.key, r }); break; }
             }
-        }
+        });
         vals.push(mean(incCell(ev, baseB).dm));
     }
     return vals;
 }
 
-/** 安慰劑②:同一檔換到前後 SHIFT_LO~SHIFT_HI 個交易日(落在自己有鉅額的 DEDUP 天內、沒有格、買不到 → 重抽,最多 10 次)→ 每次的 Ⓑ 增量平均 */
-export function shamShift(rets, W, H, baseB, iCut, blockDays, n, seed) {
-    const R = rng(seed), vals = [];
+/** 安慰劑②:同一檔的所有事件一起挪 ±(H+SHIFT_GAP ~ H+SHIFT_GAP+SHIFT_SPAN) 個交易日(每次每檔抽一個)→ 每次的 Ⓑ 增量平均。
+ *  同一檔挪一樣多 = 保留同一檔事件之間的間隔與重疊(審查 #1);至少挪 H+20 天 = ⛔ 跟自己的窗口重疊、範圍夠寬(審查 #2)。
+ *  挪過去超出範圍 / 那天沒有格 / 買不到 → 那一筆這次不算。 */
+export function shamShift(rets, W, H, baseB, iCut, n, seed) {
+    const R = rng(seed), vals = [], syms = [...new Set(rets.map(e => e.sym))], lo = H + SHIFT_GAP;
     for (let t = 0; t < n; t++) {
+        const sh = new Map(syms.map(s => [s, (R() < 0.5 ? -1 : 1) * (lo + Math.floor(R() * (SHIFT_SPAN + 1)))]));
         const ev = [];
         for (const e of rets) {
-            const S = W.stocks.get(e.sym);
-            for (let k = 0; k < 10; k++) {
-                const sh = SHIFT_LO + Math.floor(R() * (SHIFT_HI - SHIFT_LO + 1)), i2 = e.i + (R() < 0.5 ? -sh : sh);
-                if (i2 < 1 || i2 + H > iCut || hasIn(blockDays.get(e.sym), i2 - DEDUP, i2)) continue;
-                const cell = S.cell ? S.cell[i2] : 0; if (cell < 0 || !(S.c[i2] > 0)) continue;
-                const r = fwdRet(S, i2 + 1, i2 + H); if (r == null) continue;
-                ev.push({ d: W.cal[i2], key: W.cal[i2] + '|' + cell, r }); break;
-            }
+            const S = W.stocks.get(e.sym), i2 = e.i + sh.get(e.sym);
+            if (i2 < 1 || i2 + H > iCut) continue;
+            const cell = S.cell ? S.cell[i2] : 0; if (cell < 0 || !(S.c[i2] > 0)) continue;
+            const r = fwd(S, i2 + 1, i2 + H); if (r == null) continue;
+            ev.push({ d: W.cal[i2], key: W.cal[i2] + '|' + cell, r });
         }
         vals.push(mean(incCell(ev, baseB).dm));
     }
     return vals;
 }
 
-/** 安慰劑的單尾 p(在 dir 方向上,實際值至少一樣極端的比例) */
-export const pSham = (vals, actual, dir) => (1 + vals.filter(v => dir * v >= dir * actual).length) / (1 + vals.length);
+/** 安慰劑 p:dir 方向上,實際值至少一樣極端的比例;two = 方向沒預設(用結果決定方向)→ 雙尾 = 單尾 × 2(審查 #3) */
+export const pSham = (vals, actual, dir, two = false) => {
+    const p = (1 + vals.filter(v => dir * v >= dir * actual).length) / (1 + vals.length);
+    return two ? Math.min(1, 2 * p) : p;
+};
 
 /** 一格(檢定 × 天期)的判定:全部過才算有用(登錄 EXP-20261124-01 的七條) */
 export function judge(r) {
@@ -303,7 +446,7 @@ function loadWorld(env) {
     const names = (() => { try { return JSON.parse(fs.readFileSync(path.join(env.DATA_DIR, 'stock_names.json'), 'utf8')).names; } catch (_) { return null; } })();
     if (!names) { console.log('❌ 讀不到 stock_names.json(要用它挑上市 / 已下市的股票)'); process.exit(1); }
     const mkt = s => { const v = names[s]; return v && v.length > 2 ? v[2] : 'unknown'; };
-    const stocks = new Map(), skipMkt = {}; let vol0 = 0, nKdMiss = 0;
+    const stocks = new Map(), skipMkt = {}; let vol0 = 0, nKdMiss = 0, nJ = 0, nG = 0, nOld = 0;
     for (const f of fs.readdirSync(env.DATA_DIR).sort()) {
         const s = f.replace(/\.json$/, '');
         if (!/^[1-9]\d{3}$/.test(s)) continue;          // 普通股(⛔ ETF / 權證)
@@ -315,13 +458,16 @@ function loadWorld(env) {
         vol0 += bars.length - real.length;
         const A = alignStock(cal, calIdx, real, (divAll[s] || {}).h);
         A.date = cal; A.mkt = m;
+        nOld += A.cliff[cal.length];
+        const mc = markCliffs(A); nJ += mc.nJ; nG += mc.nG;
         A.sk = new Float64Array(cal.length).fill(1);
         for (const r of real) { const i = calIdx.get(d10(r.date)); if (i != null && +r._sk > 0) A.sk[i] = +r._sk; }
-        A.kv = new Float64Array(cal.length).fill(NaN);
+        A.kv = new Float64Array(cal.length).fill(NaN); A.kc = new Float64Array(cal.length).fill(NaN);
         try {
             const kd = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(env.KD_DIR, s + '.json.gz'))).toString('utf8'));
-            for (const r of (kd.k || [])) { const i = calIdx.get(d10(r[0])); if (i != null && +r[5] > 0) A.kv[i] = +r[5]; }
+            for (const r of (kd.k || [])) { const i = calIdx.get(d10(r[0])); if (i == null) continue; if (+r[5] > 0) A.kv[i] = +r[5]; if (+r[4] > 0) A.kc[i] = +r[4]; }
         } catch (_) { nKdMiss++; }
+        A.first = Infinity;
         stocks.set(s, A);
     }
     const blocks = [], miss2 = { pre: 0, cal: 0, univ: 0 };
@@ -336,33 +482,83 @@ function loadWorld(env) {
         }
     }
     blocks.sort((a, b) => a.i - b.i || (a.sym < b.sym ? -1 : 1));
-    return { cal, calIdx, stocks, blocks, skipMkt, vol0, nKdMiss, miss: miss2 };
+    for (const b of blocks) { const S = stocks.get(b.sym); if (b.i < S.first) S.first = b.i; }   // 第一次出現在上市鉅額名單 = 那天起確定是上市
+    return { cal, calIdx, stocks, blocks, skipMkt, vol0, nKdMiss, miss: miss2, cliffs: { old: nOld, jump: nJ, gap: nG } };
 }
 
-/** 只描述(⛔ 影響判定,登錄之後才加的):流動性、集中度、中位數、拿掉最大 5%、去掉冷門股、為什麼有幾筆不算 */
+/** 只描述(⛔ 影響判定,登錄之後才加的):流動性、集中度、中位數、拿掉最大 5%、去掉冷門股、出場提早幾筆、Ⓒ、溢價那兩格只看配對 */
 function describe(rows, T, W, baseB, iCut) {
     const out = {}, q = (a, p) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.min(s.length - 1, Math.floor(p * s.length))] : NaN; };
     const dayMean = arr => { const m = new Map(); for (const r of arr) { const a = m.get(r.d) || []; a.push(r.x); m.set(r.d, a); } return mean([...m.values()].map(mean)); };
-    const seen = new Set();
     for (const r of rows) {
-        const id = `${r.key}/${r.H}`; if (seen.has(id)) continue; seen.add(id);
-        const k = HS.indexOf(r.H), evs = T[r.key];
-        let delist = 0, other = 0;
-        for (const e of evs) { if (e.i + r.H > iCut) continue; const S = W.stocks.get(e.sym); if (S.cell[e.i] < 0) continue; if (fwdRet(S, e.i + 1, e.i + r.H) == null) { let last = -1; for (let i = S.c.length - 1; i >= 0; i--) if (S.c[i] > 0) { last = i; break; } if (last < e.i + r.H) delist++; else other++; } }
-        const xs = evRets(evs, W, r.H, iCut).map(e => { const b = baseB[k].get(e.key); return b && b.n >= MIN_CELL ? { ...e, x: e.r - b.s / b.n, amt: W.stocks.get(e.sym).amt[e.i] } : null; }).filter(Boolean);
+        const id = `${r.key}/${r.H}`, k = HS.indexOf(r.H), evs = T[r.key];
+        const rets = evRets(evs, W, r.H, iCut);
+        const xs = rets.map(e => { const b = baseB[k].get(e.key); return b && b.n >= MIN_CELL ? { ...e, x: e.r - b.s / b.n, amt: W.stocks.get(e.sym).amt[e.i] } : null; }).filter(Boolean);
         const liq = xs.filter(e => e.amt >= 1e7), sorted = xs.slice().sort((a, b) => b.x - a.x);
         const bySym = new Map(); for (const e of xs) bySym.set(e.sym, (bySym.get(e.sym) || 0) + e.x);
         const top5 = [...bySym.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
         const amts = xs.map(e => e.amt).filter(Number.isFinite);
+        const early = rets.filter(e => e.y < e.i + r.H).length;
         out[id] = { n: xs.length, syms: bySym.size, all: dayMean(xs), median: q(xs.map(e => e.x), 0.5), winRate: xs.filter(e => e.x > 0).length / xs.length,
                     dropTop5pct: dayMean(sorted.slice(Math.ceil(0.05 * sorted.length))), withoutTop5Syms: dayMean(xs.filter(e => !top5.includes(e.sym))), top5,
                     amt20Med: q(amts, 0.5), amt20P25: q(amts, 0.25), shareBelow1e7: 1 - liq.length / xs.length, liquidOnly: { n: liq.length, m: dayMean(liq) },
-                    exitAfterLastBar: delist, otherNull: other };
+                    exitEarly: early, exitEarlyShare: early / Math.max(1, rets.length) };
         const o = out[id];
         console.log(`   ${r.name} 抱 ${r.H} 天:${o.n} 筆 / ${o.syms} 檔・平均 ${sg(o.all)}・中位 ${sg(o.median)}・比同格好的比例 ${(o.winRate * 100).toFixed(0)}%・拿掉最大 5% ${sg(o.dropTop5pct)}・拿掉貢獻最大 5 檔 ${sg(o.withoutTop5Syms)}(${top5.join(' ')})`);
-        console.log(`      20 日平均成交金額 中位 ${(o.amt20Med / 1e4).toFixed(0)} 萬・P25 ${(o.amt20P25 / 1e4).toFixed(0)} 萬・不到 1,000 萬的 ${(o.shareBelow1e7 * 100).toFixed(0)}%・只看 ≥ 1,000 萬 ${o.liquidOnly.n} 筆 ${sg(o.liquidOnly.m)}・出場日在最後一根之後(下市)${delist}・其他不算 ${other}`);
+        console.log(`      前 20 日平均成交金額 中位 ${(o.amt20Med / 1e4).toFixed(0)} 萬・P25 ${(o.amt20P25 / 1e4).toFixed(0)} 萬・不到 1,000 萬的 ${(o.shareBelow1e7 * 100).toFixed(0)}%・只看 ≥ 1,000 萬 ${o.liquidOnly.n} 筆 ${sg(o.liquidOnly.m)}・停牌 / 下市 / 斷崖提早出場 ${early} 筆(${(100 * o.exitEarlyShare).toFixed(1)}%)`);
     }
     return out;
+}
+
+/** 一個股票池跑完 15 格:格 → 對照 → 增量 / 六關 / 安慰劑 / 去極端 → BH → 判定 */
+function analyze(W, T, F, list, univ, iCut, quiet = false) {
+    const t0 = Date.now();
+    const first = univ === 'all' ? null : list.map(S => S.first);
+    const cells = buildCells(F, W.cal.length, 30, first);
+    list.forEach((S, j) => { S.cell = cells[j]; });
+    const rts = buildRetTerc(list, W.cal.length);
+    list.forEach((S, j) => { S.rt = rts[j]; });
+    W._pool = new Map();
+    let nAct = 0, nAll = 0; for (const S of list) for (let i = 0; i <= iCut; i++) if (S.c[i] > 0) { nAll++; if (S.cell[i] >= 0) nAct++; }
+    const noCell = Object.fromEntries(Object.entries(T).map(([k, a]) => [k, a.filter(e => W.stocks.get(e.sym).cell[e.i] < 0).length]));
+    const { A: baseA, B: baseB, C: baseC } = buildBases(W, iCut);
+    const idxOf = d => W.calIdx.get(d), nDaysAll = iCut + 1, rows = [];
+    for (const key of Object.keys(T)) {
+        HS.forEach((H, k) => {
+            const rets = evRets(T[key], W, H, iCut);
+            const incA = increments(rets, baseA[k]), incB = incCell(rets, baseB[k]), incC = incCell(rets, baseC[k], MIN_CELL, 'keyC');
+            const mA = mean(incA.dm), mB = mean(incB.dm), mC = mean(incC.dm);
+            const dir = DIR[key] || (mB < 0 ? -1 : 1), two = !DIR[key];
+            const gA = gateDir(incA, H, dir, idxOf, incA.days.length / nDaysAll), gB = gateDir(incB, H, dir, idxOf, incB.days.length / nDaysAll);
+            const yr = (gB.YR || []).filter(y => y.n >= 20);
+            const seed = 20261124 + 97 * HS.indexOf(H) + 7 * Object.keys(T).indexOf(key);
+            const vC = shamCell(rets, W, H, baseB[k], SHAM_N, seed), vS = shamShift(rets, W, H, baseB[k], iCut, SHIFT_N, seed + 1);
+            const trim = trimDir(rets, baseB[k], dir);
+            const med = (() => { const s = incB.all.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : NaN; })();
+            const by = (a, b) => mean(incB.days.map((d, j) => [d, incB.dm[j]]).filter(([d]) => d >= a && d <= b).map(x => x[1]));
+            const { nc } = clusterIds(rets, H);
+            const ovl = (() => { const bySym = new Map(); for (const e of rets) { const a = bySym.get(e.sym) || []; a.push(e.i); bySym.set(e.sym, a); } let c = 0; for (const a of bySym.values()) for (let j = 0; j + 1 < a.length; j++) if (a[j + 1] - a[j] <= H) c++; return c / Math.max(1, rets.length); })();
+            rows.push({ key, name: NAME[key], H, dir, two, n: incB.n, nDays: incB.days.length, nClusters: nc, overlap: ovl, nBlk: gB.nBlk,
+                        mA, mB, mC, nC: incC.n, pA: gA.pBlk, pB: gB.pBlk, pNWoldA: gA.pNWold, pNWoldB: gB.pNWold, pC: blockP(incC, H, idxOf).p,
+                        gB: { d: gB.d, H: gB.H, dropBest: gB.dropBest, nPass: gB.nPass, pass: gB.pass }, YR: gB.YR, yrPos: yr.filter(y => y.d > 0).length, yrN: yr.length,
+                        shamCell: { med: mean(vC) }, shamShift: { med: mean(vS) },
+                        pCell: pSham(vC, mB, dir, two), pShift: pSham(vS, mB, dir, two), trim, median: med,
+                        exitEarly: rets.filter(e => e.y < e.i + H).length,
+                        split: { a: by('2010-01-01', '2018-12-31'), b: by('2019-01-01', '2026-12-31') },
+                        rev: DIR[key] ? { pCell: pSham(vC, mB, -dir), pShift: pSham(vS, mB, -dir) } : null });
+        });
+    }
+    const qA = bhQ(rows.map(r => r.pA)), qB = bhQ(rows.map(r => r.pB));
+    rows.forEach((r, j) => { r.qA = qA[j]; r.qB = qB[j]; const J = judge(r); r.c = J.c; r.ok = J.ok; r.nOk = J.n; });
+    if (!quiet) {
+        console.log(`\n【${UNIV[univ]}】那天算得出格的股票日 ${nAct.toLocaleString()} / 有交易的 ${nAll.toLocaleString()}(${(100 * nAct / nAll).toFixed(0)}%)・事件那天算不出格 → 不算:${JSON.stringify(noCell)}`);
+        console.log('檢定           抱  方向 筆數  串數 重疊%  段數  Ⓐ增量  Ⓑ增量  Ⓒ增量  中位   qⒶ    qⒷ  (舊NW pⒷ) 年同向  前後半        去最好年  安慰劑(格/換日)  去極端   判定');
+        for (const r of rows) {
+            console.log(`${r.name.padEnd(12)} ${String(r.H).padStart(3)}  ${r.dir > 0 ? '＋' : '－'}${r.two ? '雙' : '單'} ${String(r.n).padStart(5)} ${String(r.nClusters).padStart(5)} ${(100 * r.overlap).toFixed(0).padStart(4)} ${String(r.nBlk).padStart(5)} ${sg(r.mA).padStart(6)} ${sg(r.mB).padStart(6)} ${sg(r.mC).padStart(6)} ${sg(r.median).padStart(6)} ${r.qA.toFixed(3).padStart(6)} ${r.qB.toFixed(3).padStart(6)} (${r.pNWoldB.toFixed(3)})  ${String(r.yrPos).padStart(2)}/${r.yrN}  ${sg(r.dir * r.gB.H[0])}/${sg(r.dir * r.gB.H[1])}  ${sg(r.dir * r.gB.dropBest).padStart(6)}  ${r.pCell.toFixed(3)}/${r.pShift.toFixed(3)}  ${sg(r.dir * r.trim.m).padStart(6)}  ${r.ok ? '✅' : '⛔'} ${r.nOk}/7`);
+        }
+        console.log(`(${((Date.now() - t0) / 1000).toFixed(0)} 秒)`);
+    }
+    return { rows, baseB, nAct, nAll, noCell };
 }
 
 function main(out) {
@@ -370,83 +566,110 @@ function main(out) {
     const W = loadWorld(env);
     let iCut = W.cal.length - 1; while (iCut > 0 && W.cal[iCut] > CUTOFF) iCut--;
     const nU = [...W.stocks.values()].reduce((m, S) => { m[S.mkt] = (m[S.mkt] || 0) + 1; return m; }, {});
-    console.log(`🐘 股票池 ${W.stocks.size} 檔(上市 ${nU.twse || 0}・已下市標不出市場 ${nU.unknown || 0};跳過 ${JSON.stringify(W.skipMkt)})・成交量 0 的列 ${W.vol0}`);
+    const nFirst = [...W.stocks.values()].filter(S => S.first <= iCut).length;
+    console.log(`🐘 股票池 ${W.stocks.size} 檔(上市 ${nU.twse || 0}・已下市標不出市場 ${nU.unknown || 0};跳過 ${JSON.stringify(W.skipMkt)})・成交量 0 的列 ${W.vol0}・在封存日前出現過鉅額的 ${nFirst} 檔`);
     console.log(`   日曆 ${W.cal[0]} ~ ${W.cal[W.cal.length - 1]}(${W.cal.length} 天)・🔒 判定只到 ${W.cal[iCut]}(第 ${iCut} 天)`);
+    console.log(`   斷崖:舊規則(×1.5 / ×0.67)${W.cliffs.old}・新增「超出當天漲跌幅」${W.cliffs.jump}・新增「停牌 / 沒成交 ≥ ${GAP_CLIFF} 天後恢復」${W.cliffs.gap}`);
     console.log(`   鉅額(一天一檔合併)${W.blocks.length} 筆・沒對上:2010 前(d16 沒有股價)${W.miss.pre}・不在日曆 ${W.miss.cal}・不在股票池 ${W.miss.univ}`);
     if (!W.blocks.length) { console.log('❌ 一筆鉅額都沒有 → block_deep 還沒抓好?'); process.exit(1); }
     const st = {};
     const ev = enrich(W.blocks.filter(b => b.i <= iCut), W.stocks, st);
     console.log(`   那天沒有一般成交 ${st.noTrade}・均價超出物理範圍(尺標對不上)${st.phys}・用 _sk 換回原始尺標 ${st.scaled}・可用 ${ev.length}`);
-    console.log(`   佔比分母(FinMind 總成交股數)算不出 ${st.noTv}(只做溢價 / 折價)・鉅額比當天總成交還多(資料矛盾)${st.overOne}・klines_deep 沒有這檔 ${W.nKdMiss}`);
+    console.log(`   溢價分母用 klines_deep 原始收盤 ${st.rawClose} 筆(跟 d16 × _sk 差 > 0.5% 的 ${st.rawDiff})・佔比分母算不出 ${st.noTv}(只做溢價 / 折價)・鉅額比當天總成交還多(資料矛盾,佔比 / 溢價都不用)${st.overOne}・klines_deep 沒有這檔 ${W.nKdMiss}`);
     if (st.physEx.length) console.log('   超出物理範圍的例子:' + st.physEx.join(' / '));
     const qs = (a, p) => { const s = a.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
-    const evR = ev.filter(e => Number.isFinite(e.ratio)), ratios = evR.map(e => e.ratio), prems = ev.map(e => e.prem);
-    console.log(`   佔比 中位 ${qs(ratios, 0.5).toFixed(3)}・前 5% ${qs(ratios, 0.95).toFixed(2)}・前 1% ${qs(ratios, 0.99).toFixed(2)}・溢價 ≥ +1% ${prems.filter(x => x >= 0.01).length} 筆・折價 ≤ −3% ${prems.filter(x => x <= -0.03).length} 筆`);
+    const evR = ev.filter(e => Number.isFinite(e.ratio)), ratios = evR.map(e => e.ratio), prems = ev.map(e => e.prem).filter(Number.isFinite);
+    console.log(`   佔比 中位 ${qs(ratios, 0.5).toFixed(3)}・前 5% ${qs(ratios, 0.95).toFixed(2)}・前 1% ${qs(ratios, 0.99).toFixed(2)}・溢價 ≥ +1% ${prems.filter(x => x >= 0.01).length} 筆・折價 ≤ −3% ${prems.filter(x => x <= -0.03).length} 筆・有配對的 ${(100 * evR.filter(e => e.pair > 0).length / evR.length).toFixed(1)}%`);
     const thr1 = expandingQuantile(ratios, 0.99), thr5 = expandingQuantile(ratios, 0.95), thrP = expandingQuantile(evR.map(e => e.pairRatio), 0.95);
     const raw = {
         T1: evR.filter((e, j) => e.ratio >= thr1[j]), T2: evR.filter((e, j) => e.ratio >= thr5[j]),
         T3: ev.filter(e => e.prem >= 0.01), T4: ev.filter(e => e.prem <= -0.03),
         T5: evR.filter((e, j) => e.pair > 0 && e.pairRatio >= thrP[j]),
     };
-    console.log(`   門檻(最後那天):佔比前 1% ≥ ${thr1[thr1.length - 1].toFixed(3)}・前 5% ≥ ${thr5[thr5.length - 1].toFixed(3)}・配對前 5% ≥ ${thrP[thrP.length - 1].toFixed(3)}(佔比算得出的 ${evR.length} 筆,${W.cal[evR[0].i]} ~ ${W.cal[evR[evR.length - 1].i]})`);
+    const t5zero = evR.filter((e, j) => e.pair > 0 && e.pairRatio >= thrP[j] && !(thrP[j] > 0)).length;
+    console.log(`   門檻(最後那天):佔比前 1% ≥ ${thr1[thr1.length - 1].toFixed(3)}・前 5% ≥ ${thr5[thr5.length - 1].toFixed(3)}・配對前 5% ≥ ${thrP[thrP.length - 1].toFixed(3)}(最小 ${Math.min(...thrP.filter(Number.isFinite)).toFixed(3)}・T5 門檻 = 0 的 ${t5zero} 筆)(佔比算得出的 ${evR.length} 筆,${W.cal[evR[0].i]} ~ ${W.cal[evR[evR.length - 1].i]})`);
     const T = Object.fromEntries(Object.entries(raw).map(([k, a]) => [k, dedup(a)]));
     for (const k of Object.keys(T)) {
         const ys = new Set(T[k].map(e => W.cal[e.i].slice(0, 4)));
         console.log(`   ${k} ${NAME[k].padEnd(10)} 原始 ${String(raw[k].length).padStart(6)} → 去重 ${String(T[k].length).padStart(6)} 筆・${new Set(T[k].map(e => e.sym)).size} 檔・${ys.size} 年`);
     }
-    // 特徵 / 格
     const list = [...W.stocks.values()];
     const F = list.map(S => features(S, W.cal.length));
-    const cells = buildCells(F, W.cal.length);
-    list.forEach((S, j) => { S.cell = cells[j]; S.amt = F[j].amt; });
-    F.length = 0;
-    const noCell = Object.fromEntries(Object.entries(T).map(([k, a]) => [k, a.filter(e => W.stocks.get(e.sym).cell[e.i] < 0).length]));
-    console.log(`   事件那天算不出格(上市不到半年 / 位階窗口有斷崖…)→ 不算:${JSON.stringify(noCell)}`);
-    if (env.CHECK_ONLY) { console.log(`\n(CHECK_ONLY:只印資料檢查,⛔ 算報酬)${((Date.now() - t0) / 1000).toFixed(0)} 秒`); return; }
-
-    const { A: baseA, B: baseB } = buildBases(W, iCut);
-    const blockDays = new Map(); for (const b of W.blocks) { if (b.i > iCut) continue; const a = blockDays.get(b.sym) || []; if (a[a.length - 1] !== b.i) a.push(b.i); blockDays.set(b.sym, a); }
-    const nDaysAll = iCut + 1, rows = [];
-    for (const key of Object.keys(T)) {
-        HS.forEach((H, k) => {
-            const rets = evRets(T[key], W, H, iCut);
-            const incA = increments(rets, baseA[k]), incB = incCell(rets, baseB[k]);
-            const mA = mean(incA.dm), mB = mean(incB.dm);
-            const dir = DIR[key] || (mB < 0 ? -1 : 1);
-            const density = incB.days.length / nDaysAll;
-            const gA = gateDir(incA, H, dir, incA.days.length / nDaysAll), gB = gateDir(incB, H, dir, density);
-            const yr = (gB.YR || []).filter(y => y.n >= 20);
-            const seed = 20261124 + 97 * HS.indexOf(H) + 7 * Object.keys(T).indexOf(key);
-            const vC = shamCell(rets, W, H, baseB[k], SHAM_N, seed), vS = shamShift(rets, W, H, baseB[k], iCut, blockDays, SHIFT_N, seed + 1);
-            const trim = trimDir(rets, baseB[k], dir);
-            const med = (() => { const s = incB.all.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : NaN; })();
-            const by = (a, b) => { const xs = incB.days.map((d, j) => [d, incB.dm[j]]).filter(([d]) => d >= a && d <= b).map(x => x[1]); return mean(xs); };
-            rows.push({ key, name: NAME[key], H, dir, n: incB.n, nDays: incB.days.length, mA, mB, pA: gA.pNW, pB: gB.pNW, lag: gB.lag,
-                        gB: { d: gB.d, H: gB.H, dropBest: gB.dropBest, nPass: gB.nPass, pass: gB.pass }, YR: gB.YR, yrPos: yr.filter(y => y.d > 0).length, yrN: yr.length,
-                        shamCell: { med: mean(vC), p: pSham(vC, mB, dir) }, shamShift: { med: mean(vS), p: pSham(vS, mB, dir) },
-                        pCell: pSham(vC, mB, dir), pShift: pSham(vS, mB, dir), trim, median: med,
-                        split: { a: by('2010-01-01', '2018-12-31'), b: by('2019-01-01', '2026-12-31') },
-                        rev: DIR[key] ? { pCell: pSham(vC, mB, -dir), pShift: pSham(vS, mB, -dir) } : null });
-        });
+    list.forEach((S, j) => { S.amt = F[j].amt; });
+    if (env.CHECK_ONLY) {
+        for (const u of ['listed', 'all']) {
+            const first = u === 'all' ? null : list.map(S => S.first), cells = buildCells(F, W.cal.length, 30, first);
+            let nAct = 0, nAll = 0; list.forEach((S, j) => { for (let i = 0; i <= iCut; i++) if (S.c[i] > 0) { nAll++; if (cells[j][i] >= 0) nAct++; } });
+            const noCell = Object.fromEntries(Object.entries(T).map(([k, a]) => [k, a.filter(e => cells[list.indexOf(W.stocks.get(e.sym))][e.i] < 0).length]));
+            console.log(`   【${UNIV[u]}】算得出格的股票日 ${nAct.toLocaleString()} / ${nAll.toLocaleString()}・事件那天算不出格:${JSON.stringify(noCell)}`);
+        }
+        console.log(`\n(CHECK_ONLY:只印資料檢查,⛔ 算報酬)${((Date.now() - t0) / 1000).toFixed(0)} 秒`);
+        return;
     }
-    const qA = bhQ(rows.map(r => r.pA)), qB = bhQ(rows.map(r => r.pB));
-    rows.forEach((r, j) => { r.qA = qA[j]; r.qB = qB[j]; const J = judge(r); r.c = J.c; r.ok = J.ok; r.nOk = J.n; });
-    console.log('\n檢定           抱  方向 筆數   Ⓐ增量  Ⓑ增量  中位   qⒶ    qⒷ   年同向  前後半        去最好年  安慰劑(格/換日)  去極端   判定');
-    for (const r of rows) {
-        console.log(`${r.name.padEnd(12)} ${String(r.H).padStart(3)}  ${r.dir > 0 ? '＋' : '－'} ${String(r.n).padStart(6)} ${sg(r.mA).padStart(6)} ${sg(r.mB).padStart(6)} ${sg(r.median).padStart(6)} ${r.qA.toFixed(3).padStart(6)} ${r.qB.toFixed(3).padStart(6)}  ${String(r.yrPos).padStart(2)}/${r.yrN}  ${sg(r.dir * r.gB.H[0])}/${sg(r.dir * r.gB.H[1])}  ${sg(r.dir * r.gB.dropBest).padStart(6)}  ${r.pCell.toFixed(3)}/${r.pShift.toFixed(3)}  ${sg(r.dir * r.trim.m).padStart(6)}  ${r.ok ? '✅' : '⛔'} ${r.nOk}/7`);
-    }
-    const ok = rows.filter(r => r.ok);
-    console.log(`\n判定:${ok.length ? '✅ ' + ok.map(r => `${r.name} 抱 ${r.H} 天(${r.dir > 0 ? '之後比較強' : '之後比較弱'})`).join('、') : '⛔ 15 格沒有一格七條全過'}`);
-    const surprise = rows.filter(r => r.rev && Math.sign(r.mB) === -r.dir && r.qA <= 0.05 && r.qB <= 0.05 && r.rev.pCell <= 0.05 && r.rev.pShift <= 0.05);
-    console.log('\n只描述(⛔ 影響判定,登錄之後才加):');
-    const desc = describe(rows.filter(r => r.ok || ['T1', 'T2', 'T5'].includes(r.key) && r.H !== 60), T, W, baseB, iCut);
+    const P = analyze(W, T, F, list, 'listed', iCut);
+    const Q = analyze(W, T, F, list, 'all', iCut);
+    const ok = P.rows.filter((r, j) => r.ok && Q.rows[j].ok);
+    const okP = P.rows.filter(r => r.ok).map(r => `${r.key}/${r.H}`), okQ = Q.rows.filter(r => r.ok).map(r => `${r.key}/${r.H}`);
+    console.log(`\n判定(兩個股票池都要七條全過):${ok.length ? '✅ ' + ok.map(r => `${r.name} 抱 ${r.H} 天(${r.dir > 0 ? '之後比較強' : '之後比較弱'})`).join('、') : '⛔ 15 格沒有一格七條全過'}`);
+    console.log(`   主股票池過的:${okP.join('、') || '無'}・舊股票池過的:${okQ.join('、') || '無'}`);
+    const surprise = P.rows.filter(r => r.rev && Math.sign(r.mB) === -r.dir && r.qA <= 0.05 && r.qB <= 0.05 && r.rev.pCell <= 0.05 && r.rev.pShift <= 0.05);
     if (surprise.length) console.log(`⚠️ 意外(跟預期方向相反、而且顯著):${surprise.map(r => `${r.name} 抱 ${r.H} 天`).join('、')} → ⛔ 採用,要另外登記再驗`);
+    // 主股票池的格 / 對照重算回來給 describe 用(analyze 'all' 蓋掉了 S.cell)
+    const first = list.map(S => S.first), cells = buildCells(F, W.cal.length, 30, first);
+    list.forEach((S, j) => { S.cell = cells[j]; });
+    const rts = buildRetTerc(list, W.cal.length); list.forEach((S, j) => { S.rt = rts[j]; });
+    console.log('\n只描述(⛔ 影響判定;主股票池):');
+    const desc = describe(P.rows.filter(r => ok.includes(r) || ['T1', 'T2', 'T5'].includes(r.key) && r.H !== 60), T, W, P.baseB, iCut);
+    // 溢價 / 折價:只看「幾乎全是配對交易」的(配對股數 ≥ 鉅額股數一半;盤中逐筆成交的均價會跟收盤前的走勢綁在一起,審查 #5)
+    const pairOnly = {};
+    for (const key of ['T3', 'T4']) {
+        const sub = dedup(raw[key].filter(e => e.pair >= 0.5 * e.sh));
+        HS.forEach((H, k) => { const inc = incCell(evRets(sub, W, H, iCut), P.baseB[k]); pairOnly[`${key}/${H}`] = { n: inc.n, m: mean(inc.dm), p: blockP(inc, H, d => W.calIdx.get(d)).p }; });
+    }
+    console.log('   溢價 / 折價只看配對為主的:' + Object.entries(pairOnly).map(([k, o]) => `${k} ${o.n} 筆 ${sg(o.m)}(p ${o.p.toFixed(3)})`).join('・'));
     console.log(`(${((Date.now() - t0) / 1000).toFixed(0)} 秒)`);
+    const slim = rows => rows.map(r => ({ ...r, c: r.c }));
     const res = { updated: new Date().toISOString().slice(0, 10), cutoff: W.cal[iCut], stocks: W.stocks.size, blocks: W.blocks.length, ev: ev.length, evRatio: evR.length,
-                  drop: { noTrade: st.noTrade, phys: st.phys, scaled: st.scaled, noTv: st.noTv, overOne: st.overOne, pre2010: W.miss.pre, cal: W.miss.cal, univ: W.miss.univ },
-                  range: [W.cal[ev[0].i], W.cal[ev[ev.length - 1].i]], counts: Object.fromEntries(Object.entries(T).map(([k, a]) => [k, { raw: raw[k].length, dedup: a.length }])),
-                  rows: rows.map(r => ({ ...r, c: r.c })), ok: ok.map(r => `${r.key}/${r.H}`), surprise: surprise.map(r => `${r.key}/${r.H}`), desc };
+                  drop: { noTrade: st.noTrade, phys: st.phys, scaled: st.scaled, noTv: st.noTv, overOne: st.overOne, pre2010: W.miss.pre, cal: W.miss.cal, univ: W.miss.univ, rawClose: st.rawClose, rawDiff: st.rawDiff },
+                  cliffs: W.cliffs, range: [W.cal[ev[0].i], W.cal[ev[ev.length - 1].i]],
+                  counts: Object.fromEntries(Object.entries(T).map(([k, a]) => [k, { raw: raw[k].length, dedup: a.length }])),
+                  univ: { listed: { nAct: P.nAct, nAll: P.nAll, noCell: P.noCell }, all: { nAct: Q.nAct, nAll: Q.nAll, noCell: Q.noCell } },
+                  rows: slim(P.rows), rowsAll: slim(Q.rows), ok: ok.map(r => `${r.key}/${r.H}`), okListed: okP, okAll: okQ,
+                  surprise: surprise.map(r => `${r.key}/${r.H}`), desc, pairOnly };
     if (out) fs.writeFileSync(out, JSON.stringify(res, null, 1));
+}
+
+// ───────── 合成世界(selftest / 校準共用)─────────
+export function mkWorld(nS, T, seedV, bump = () => 0, sig = 0.02) {
+    const cal = [...Array(T).keys()].map(i => new Date(Date.UTC(2016, 0, 1) + i * 86400000).toISOString().slice(0, 10));
+    const calIdx = new Map(cal.map((d, i) => [d, i])), R = rng(seedV), stocks = new Map();
+    for (let s = 0; s < nS; s++) {
+        const bars = []; let p = 50;
+        for (let i = 0; i < T; i++) { p *= 1 + (R() - 0.5) * sig + bump(s, i); bars.push({ date: cal[i], open: p, high: p * 1.01, low: p * 0.99, close: p, volume: 1e6 }); }
+        const A = alignStock(cal, calIdx, bars, []); A.date = cal; A.cell = new Int8Array(T); A.sk = new Float64Array(T).fill(1); A.first = 0;
+        markCliffs(A);
+        stocks.set(String(1000 + s), A);
+    }
+    return { cal, calIdx, stocks };
+}
+/** 改過價之後重算斷崖(合成世界用) */
+const remark = S => { const T = S.c.length; let p = NaN; const cl = new Int32Array(T + 1); for (let i = 0; i < T; i++) { let b = 0; if (S.c[i] > 0) { if (p > 0) { const r1 = S.c[i] / p, r2 = S.o[i] / p; if (!(r1 >= 0.67 && r1 <= 1.5) || !(r2 >= 0.67 && r2 <= 1.5)) b = 1; } p = S.c[i]; } cl[i + 1] = cl[i] + b; } S.cliff = cl; markCliffs(S); };
+
+/** 沒效果的世界裡,三個檢定 p ≤ 0.05 的比例(名目 5%)。kind:stockCluster = 15 檔 × 3 段 × 每 10 天一筆(= 去重後天天有鉅額的樣子) */
+export function nullFPR({ nW = 40, H = 20, kind = 'stockCluster', nPl = 60, NS = 60, T = 900, seed0 = 1 } = {}) {
+    const k = HS.indexOf(H); let fB = 0, fC = 0, fS = 0, fOld = 0;
+    for (let w = 0; w < nW; w++) {
+        const W = mkWorld(NS, T, seed0 + 17 * w, () => 0, 0.06), R = rng(77 + w + seed0), ev = [], iCut = T - 1;
+        if (kind === 'stockCluster') { for (let s = 0; s < 12; s++) for (let b = 0; b < 3; b++) { const i0 = 60 + Math.floor(R() * (T - 260)); for (let q = 0; q < 6; q++) ev.push({ i: i0 + 10 * q, sym: String(1000 + s) }); } }
+        else { for (let q = 0; q < 220; q++) ev.push({ i: 60 + Math.floor(R() * (T - 200)), sym: String(1000 + Math.floor(R() * NS)) }); }
+        ev.sort((a, b) => a.i - b.i);
+        const B = buildBases(W, iCut), rets = evRets(ev, W, H, iCut), inc = incCell(rets, B.B[k]), m = mean(inc.dm);
+        const g = gateDir(inc, H, 1, d => W.calIdx.get(d), inc.days.length / (iCut + 1));
+        const vC = shamCell(rets, W, H, B.B[k], nPl, 9 + w), vS = shamShift(rets, W, H, B.B[k], iCut, nPl, 10 + w), dir = m < 0 ? -1 : 1;
+        if (g.pBlk <= 0.05) fB++; if (g.pNWold <= 0.05) fOld++;
+        if (pSham(vC, m, dir, true) <= 0.05) fC++; if (pSham(vS, m, dir, true) <= 0.05) fS++;
+    }
+    return { blk: fB / nW, cell: fC / nW, shift: fS / nW, nwOld: fOld / nW };
 }
 
 function selftest() {
@@ -458,33 +681,26 @@ function selftest() {
     const xs = [...Array(300).keys()].map(i => i % 100);
     const t = expandingQuantile(xs, 0.99, 250);
     ok(t[249] === Infinity && Number.isFinite(t[250]), '② 不到 250 筆不開始(門檻 = 無限大)');
-    const xs2 = xs.slice(); xs2[299] = 1e9;
-    const t2 = expandingQuantile(xs2, 0.99, 250);
-    ok(t.slice(0, 299).every((v, i) => v === t2[i]), '③ ⛔ 前視:最後一筆改成超大,之前每一筆的門檻一個都沒變(門檻只用「之前」的事件)');
+    {   // ③ 後 50 筆全改成超大:之前每一筆的門檻都不變;決定性對照:用全期(含未來)算一個門檻的寫法 → 之前的門檻跟著變
+        const xs2 = xs.slice(); for (let j = 250; j < 300; j++) xs2[j] = 1e9;
+        const t2 = expandingQuantile(xs2, 0.99, 250);
+        const leaky = a => { const s = a.slice().sort((x, y) => x - y), v = s[Math.floor(0.99 * s.length)]; return a.map((_, j) => j < 250 ? Infinity : v); };
+        const l1 = leaky(xs), l2 = leaky(xs2);
+        ok(t.slice(0, 251).every((v, i) => v === t2[i]) && t2[299] !== t[299] && l1[250] !== l2[250],
+           `③ ⛔ 前視:後 50 筆改成超大,第 250 筆以前的門檻一個都沒變(之後的有變 = 有鑑別力);決定性對照:全期門檻的寫法第 250 筆就從 ${l1[250]} 變成 ${l2[250]}`);
+    }
     const dd = dedup([{ i: 0, sym: 'A' }, { i: 5, sym: 'A' }, { i: 10, sym: 'A' }, { i: 3, sym: 'B' }].sort((a, b) => a.i - b.i));
     ok(dd.map(e => `${e.sym}${e.i}`).join(',') === 'A0,B3,A10', '④ 同一檔 10 天內只算第一次');
 
-    // 合成世界(全部同一格 → Ⓑ = 同一天全部股票)
-    const mkWorld = (nS, T, seedV, bump) => {
-        const cal = [...Array(T).keys()].map(i => new Date(Date.UTC(2016, 0, 1) + i * 86400000).toISOString().slice(0, 10));
-        const calIdx = new Map(cal.map((d, i) => [d, i])), R = rng(seedV), stocks = new Map();
-        for (let s = 0; s < nS; s++) {
-            const bars = []; let p = 50;
-            for (let i = 0; i < T; i++) { p *= 1 + (R() - 0.5) * 0.02 + bump(s, i); bars.push({ date: cal[i], open: p, high: p * 1.01, low: p * 0.99, close: p, volume: 1e6 }); }
-            const A = alignStock(cal, calIdx, bars, []); A.date = cal; A.cell = new Int8Array(T); A.sk = new Float64Array(T).fill(1);
-            stocks.set(String(1000 + s), A);
-        }
-        return { cal, calIdx, stocks };
-    };
-    const mkBase = (W, iCut) => buildBases(W, iCut);
     // ⑤ 事件之後 20 天逐日墊高 → 抓得到;同樣檔數隨機日子 ≈ 0
-    const T5 = 800, W5 = mkWorld(40, T5, 7, () => 0), evs = [];
+    const T5 = 800, W5 = mkWorld(40, T5, 7), evs = [];
     for (let s = 0; s < 40; s++) for (let i0 = 100 + 3 * s; i0 < 700; i0 += 97) {
         const S = W5.stocks.get(String(1000 + s));
         for (let i = i0 + 1; i < T5; i++) { const f = i <= i0 + 20 ? 1 + 0.001 * (i - i0) : 1 + 0.001 * 20; S.o[i] *= f; S.c[i] *= f; S.h[i] *= f; S.l[i] *= f; }
         evs.push({ i: i0, sym: String(1000 + s) });
     }
-    const B5 = mkBase(W5, T5 - 1), r5 = evRets(evs.sort((a, b) => a.i - b.i), W5, 20, T5 - 1);
+    for (const S of W5.stocks.values()) remark(S);
+    const B5 = buildBases(W5, T5 - 1), r5 = evRets(evs.sort((a, b) => a.i - b.i), W5, 20, T5 - 1);
     const inc5 = incCell(r5, B5.B[1]);
     const rnd = rng(3), fake = evs.map(e => ({ i: 100 + Math.floor(rnd() * 600), sym: e.sym })).sort((a, b) => a.i - b.i);
     const incF = incCell(evRets(fake, W5, 20, T5 - 1), B5.B[1]);
@@ -509,7 +725,7 @@ function selftest() {
         const [lo12, hi12] = physRange('2012-03-01'), [lo16, hi16] = physRange('2016-03-01');
         ok(!(1.16 <= hi12) && 1.16 <= hi16 && lo12 > lo16, `⑧ 物理範圍跟著漲跌幅制度:2015-06 前 ±7% → ${lo12.toFixed(3)}~${hi12.toFixed(3)}、之後 ±10% → ${lo16.toFixed(3)}~${hi16.toFixed(3)}`);
     }
-    // ⑨ 特徵 ⛔ 前視:第 300 天以後的資料整段改掉 → 第 300 天以前的特徵一個都沒變
+    // ⑨ 特徵 ⛔ 前視:第 300 天以後的資料整段改掉 → 第 300 天以前的特徵一個都沒變;成交金額不含當天(只改第 400 天的量 → 第 400 天不變、第 401 天變)
     {
         const S = W5.stocks.get('1002'), T = W5.cal.length;
         const f1 = features(S, T);
@@ -519,9 +735,11 @@ function selftest() {
         ['o', 'h', 'l', 'c', 'v'].forEach((k, j) => S[k].set(keep[j]));
         const same = ['amt', 'pos', 'vol'].every(k => { for (let i = 0; i <= 300; i++) { const a = f1[k][i], b = f2[k][i]; if (!(a === b || (Number.isNaN(a) && Number.isNaN(b)))) return false; } return true; });
         const changed = ['amt', 'pos', 'vol'].some(k => f1[k][T - 1] !== f2[k][T - 1]);
-        ok(same && changed, '⑨ ⛔ 前視:把第 300 天以後的價量整段改掉,第 300 天以前的成交金額 / 位階 / 波動一個都沒變(之後的有變 = 測試有鑑別力)');
+        S.v[400] *= 10; const f3 = features(S, T); S.v[400] /= 10;
+        ok(same && changed && f3.amt[400] === f1.amt[400] && f3.amt[401] > f1.amt[401],
+           '⑨ ⛔ 前視:把第 300 天以後的價量整段改掉,第 300 天以前的成交金額 / 位階 / 波動一個都沒變(之後的有變 = 有鑑別力);成交金額只用前 20 天(當天量放大 10 倍 → 當天不變、隔天才變)');
     }
-    // ⑩ 格只用同一天的截面:別天的值改掉,這一天的格不變;那天不到 minN 檔 → −1
+    // ⑩ 格只用同一天的截面:別天的值改掉,這一天的格不變;那天不到 minN 檔 → −1;不在股票池(first 之前)→ −1
     {
         const T = 5, mk = v => ({ amt: Float64Array.from({ length: T }, () => v[0]), pos: Float64Array.from({ length: T }, () => v[1]), vol: Float64Array.from({ length: T }, () => v[2]) });
         const F = [...Array(60).keys()].map(j => mk([1 + j, (j % 7) / 7, (j % 11) / 11]));
@@ -529,33 +747,37 @@ function selftest() {
         const R10 = rng(13); F.forEach(f => { f.amt[3] = R10(); f.pos[3] = R10(); });
         const c2 = buildCells(F, T);
         const fewF = F.slice(0, 10), c3 = buildCells(fewF, T);
-        ok(c1.every((a, j) => a[2] === c2[j][2]) && c1.some((a, j) => a[3] !== c2[j][3]) && c3.every(a => a[2] === -1) && new Set(c1.map(a => a[2])).size > 5,
-           '⑩ 三分位只用同一天的股票:改掉第 4 天的值,第 3 天的格一個都沒變;那天不到 30 檔 → 不分格');
+        const first = F.map((_, j) => j < 5 ? 3 : 0), c4 = buildCells(F, T, 30, first);
+        ok(c1.every((a, j) => a[2] === c2[j][2]) && c1.some((a, j) => a[3] !== c2[j][3]) && c3.every(a => a[2] === -1) && new Set(c1.map(a => a[2])).size > 5
+           && c4.slice(0, 5).every(a => a[2] === -1 && a[3] >= 0) && c4.slice(5).every(a => a[2] >= 0),
+           '⑩ 三分位只用同一天的股票:改掉第 4 天的值,第 3 天的格一個都沒變;那天不到 30 檔 → 不分格;還沒出現在上市鉅額名單的那幾天 → 不算股票池');
     }
-    // ⑪ Newey-West:重疊窗口(相鄰高度相關)→ p 比一般 t 檢定大
+    // ⑪ 區塊穩健 p:重疊窗口(相鄰高度相關)→ p 比一般 t 檢定大;t 分配
     {
-        const R = rng(11), e = [...Array(600)].map(() => R() - 0.5), x = e.map((_, i) => { let s = 0; for (let k = 0; k < 20 && i - k >= 0; k++) s += e[i - k]; return s / 20 + 0.01; });
-        const inc = { n: x.length, days: x.map((_, i) => `2016-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + (i % 28)).padStart(2, '0')}`), dm: x, all: x };
-        const g = gateDir(inc, 20, 1, 1);
-        ok(g.pNW > g.p && g.lag === 19, `⑪ 抱 20 天、天天有事件 → lag 19、Newey-West p ${g.pNW.toFixed(3)} > 一般 t 檢定 ${g.p.toFixed(3)}`);
+        const R = rng(11), e = [...Array(600)].map(() => R() - 0.5), x = e.map((_, i) => { let s = 0; for (let k = 0; k < 20 && i - k >= 0; k++) s += e[i - k]; return s / 20 + 0.02; });
+        const days = x.map((_, i) => new Date(Date.UTC(2016, 0, 1) + i * 86400000).toISOString().slice(0, 10)), di = new Map(days.map((d, i) => [d, i]));
+        const inc = { n: x.length, days, dm: x, all: x };
+        const g = gateDir(inc, 20, 1, d => di.get(d), 1);
+        ok(g.pBlk > g.p && g.nBlk === 30 && Math.abs(pT(1.959964, 1e7) - 0.05) < 1e-4 && Math.abs(pT(2.228139, 10) - 0.05) < 1e-4,
+           `⑪ 抱 20 天、天天有事件 → 切 ${g.nBlk} 段、區塊 p ${g.pBlk.toFixed(3)} > 一般 t 檢定 ${g.p.toFixed(3)};t 分配 p(1.96, ∞) = ${pT(1.959964, 1e7).toFixed(4)}、p(2.228, 10) = ${pT(2.228139, 10).toFixed(4)}`);
     }
     // ⑫ 換日安慰劑分得出「時間點」與「這檔本來就強」:
     //    A 世界(事件之後才強)→ 換日安慰劑 p 很小;B 世界(這幾檔天天都多漲、事件日是隨便挑的)→ 增量一樣是正的,但換日安慰劑 p 大
     {
         const T = 900, iCut = T - 1, pick = rng(5);
-        const evA = [], WA = mkWorld(60, T, 21, () => 0);
+        const evA = [], WA = mkWorld(60, T, 21);
         for (let s = 0; s < 30; s++) for (let i0 = 150 + 5 * s; i0 < 750; i0 += 131) {
             const S = WA.stocks.get(String(1000 + s));
             for (let i = i0 + 1; i < T; i++) { const f = i <= i0 + 20 ? 1 + 0.0015 * (i - i0) : 1 + 0.0015 * 20; S.o[i] *= f; S.c[i] *= f; S.h[i] *= f; S.l[i] *= f; }
             evA.push({ i: i0, sym: String(1000 + s) });
         }
+        for (const S of WA.stocks.values()) remark(S);
         const WB = mkWorld(60, T, 21, s => (s < 30 ? 0.002 : 0)), evB = [];
         for (let s = 0; s < 30; s++) for (let k = 0; k < 4; k++) evB.push({ i: 150 + Math.floor(pick() * 600), sym: String(1000 + s) });
         const run = (W, evl) => {
             evl.sort((a, b) => a.i - b.i);
             const B = buildBases(W, iCut), rets = evRets(evl, W, 20, iCut), inc = incCell(rets, B.B[1]);
-            const bd = new Map(); for (const e of evl) { const a = bd.get(e.sym) || []; a.push(e.i); bd.set(e.sym, a); }
-            const vS = shamShift(rets, W, 20, B.B[1], iCut, bd, 60, 9), vC = shamCell(rets, W, 20, B.B[1], 60, 9);
+            const vS = shamShift(rets, W, 20, B.B[1], iCut, 60, 9), vC = shamCell(rets, W, 20, B.B[1], 60, 9);
             return { m: mean(inc.dm), pS: pSham(vS, mean(inc.dm), 1), pC: pSham(vC, mean(inc.dm), 1) };
         };
         const a = run(WA, evA), b = run(WB, evB);
@@ -578,23 +800,108 @@ function selftest() {
     {
         const fake = { qA: 0.001, qB: 0.001, mA: 2, mB: 2, dir: -1, gB: { d: -2, H: [-1, -1], dropBest: -1 }, yrPos: 0, yrN: 10, pCell: 0.9, pShift: 0.9, trim: { m: -1 } };
         const J = judge(fake);
-        const inc = { n: 50, days: [...Array(50).keys()].map(i => `20${10 + (i % 10)}-01-0${1 + (i % 9)}`), dm: [...Array(50)].map((_, i) => -1 - (i % 3) * 0.1), all: [] };
-        const g1 = gateDir(inc, 5, -1, 0.5), g2 = gates(negate(inc), COST);
+        const days = [...Array(50).keys()].map(i => new Date(Date.UTC(2010 + (i % 10), 0, 1 + i)).toISOString().slice(0, 10)).sort(), di = new Map(days.map((d, i) => [d, i * 30]));
+        const inc = { n: 50, days, dm: [...Array(50)].map((_, i) => -1 - (i % 3) * 0.1), all: [] };
+        const g1 = gateDir(inc, 5, -1, d => di.get(d), 0.5), g2 = gates(negate(inc), COST);
         ok(!J.ok && !J.c['①兩種對照 q≤0.05 同方向'] && Math.abs(g1.d - g2.d) < 1e-12 && g1.d > 0,
            '⑮ 預期方向寫死:T4 結果是正的 → ① 不過;方向 −1 = 增量取負號再過同一套關卡');
     }
     // ⑯ 佔比的分母 = 當天總成交股數(含鉅額,FinMind 口徑):有 klines_deep 用它;2021 前用 d16 ÷ _sk;2021 後沒有 → 佔比算不出(溢價照算);
-    //    鉅額比總成交還多 = 資料矛盾 → 佔比不算。決定性對照:同一天把本站「不含鉅額」的成交量當分母 → 佔比會 > 1
+    //    鉅額比總成交還多 = 資料矛盾 → 佔比、溢價都不算;溢價的收盤有 klines_deep 原始收盤就用它。決定性對照:同一天把本站「不含鉅額」的成交量當分母 → 佔比會 > 1
     {
-        const T = 4, mkS = (date, v, kv, sk) => ({ c: Float64Array.from([100, 100, 100, 100]), v: Float64Array.from([v, v, v, v]), sk: Float64Array.from([sk, sk, sk, sk]),
-                                                  kv: Float64Array.from([kv, kv, kv, kv]), date: Array(T).fill(date) });
-        const stocks = new Map([['1001', mkS('2024-05-02', 1e6, 3e6, 1)], ['1002', mkS('2015-05-04', 8e6, NaN, 4)], ['1003', mkS('2026-09-15', 1e6, NaN, 1)], ['1004', mkS('2024-05-02', 1e6, 1.5e6, 1)]]);
+        const T = 4, mkS = (date, v, kv, sk, kc = NaN) => ({ c: Float64Array.from([100, 100, 100, 100]), v: Float64Array.from([v, v, v, v]), sk: Float64Array.from([sk, sk, sk, sk]),
+                                                  kv: Float64Array.from([kv, kv, kv, kv]), kc: Float64Array.from([kc, kc, kc, kc]), date: Array(T).fill(date) });
+        const stocks = new Map([['1001', mkS('2024-05-02', 1e6, 3e6, 1)], ['1002', mkS('2015-05-04', 8e6, NaN, 4)], ['1003', mkS('2026-09-15', 1e6, NaN, 1)], ['1004', mkS('2024-05-02', 1e6, 1.5e6, 1)],
+                                 ['1005', mkS('2024-05-02', 1e6, 3e6, 1, 100.5)]]);
         const blk = sym => { const px = 101 * stocks.get(sym).sk[1]; return { i: 1, sym, sh: 2e6, val: 2e6 * px, vwap: px, pair: 2e6 }; };   // 均價照原始尺標(d16 收盤 × _sk)
-        const st = {}, e = enrich(['1001', '1002', '1003', '1004'].map(blk), stocks, st);
+        const st = {}, e = enrich(['1001', '1002', '1003', '1004', '1005'].map(blk), stocks, st);
         const by = Object.fromEntries(e.map(x => [x.sym, x]));
         ok(Math.abs(by['1001'].ratio - 2 / 3) < 1e-9 && Math.abs(by['1002'].ratio - 1) < 1e-9 && Number.isNaN(by['1003'].ratio) && Math.abs(by['1003'].prem - 0.01) < 1e-9
-           && Number.isNaN(by['1004'].ratio) && st.noTv === 1 && st.overOne === 1 && 2e6 / 1e6 > 1,
-           `⑯ 佔比分母:有 FinMind 總成交用它(2/3)・2021 前 d16 ÷ _sk(1.00)・2021 後沒有 → 佔比算不出、溢價照算・鉅額比總成交還多 → 資料矛盾不算;決定性對照:拿本站「不含鉅額」的量當分母 = ${(2e6 / 1e6).toFixed(1)}(> 1)`);
+           && Number.isNaN(by['1004'].ratio) && Number.isNaN(by['1004'].prem) && st.noTv === 1 && st.overOne === 1 && 2e6 / 1e6 > 1
+           && Math.abs(by['1005'].prem - (101 / 100.5 - 1)) < 1e-12 && st.rawClose === 1 && st.rawDiff === 0,
+           `⑯ 佔比分母:有 FinMind 總成交用它(2/3)・2021 前 d16 ÷ _sk(1.00)・2021 後沒有 → 佔比算不出、溢價照算・鉅額比總成交還多 → 資料矛盾,佔比 / 溢價都不算・溢價用原始收盤(${sg(100 * by['1005'].prem)}%);決定性對照:拿本站「不含鉅額」的量當分母 = ${(2e6 / 1e6).toFixed(1)}(> 1)`);
+    }
+    // ⑰ 隔天開盤才進場(審查 #13):效果全在事件當天(那天收盤 +5%,之後照常)→ 正確寫法 ≈ 0;決定性對照:當天開盤就買 ≈ +5
+    {
+        const T = 700, W = mkWorld(40, T, 31), ev = [];
+        for (let s = 0; s < 40; s++) for (let i0 = 100 + 4 * s; i0 < 600; i0 += 89) {
+            const S = W.stocks.get(String(1000 + s));
+            S.c[i0] *= 1.05; S.h[i0] = Math.max(S.h[i0], S.c[i0]);
+            for (let i = i0 + 1; i < T; i++) { S.o[i] *= 1.05; S.c[i] *= 1.05; S.h[i] *= 1.05; S.l[i] *= 1.05; }
+            ev.push({ i: i0, sym: String(1000 + s) });
+        }
+        for (const S of W.stocks.values()) remark(S);
+        ev.sort((a, b) => a.i - b.i);
+        const B = buildBases(W, T - 1), good = mean(incCell(evRets(ev, W, 5, T - 1), B.B[0]).dm);
+        const wrong = mean(ev.map(e => { const S = W.stocks.get(e.sym), b = B.B[0].get(W.cal[e.i] + '|0'); return fwd(S, e.i, e.i + 4) - b.s / b.n; }));
+        ok(Math.abs(good) < 1 && wrong > 3.5, `⑰ 鉅額收盤後才公布 → 隔天開盤才買:效果全在事件當天的世界 → 增量 ${sg(good)};決定性對照:當天開盤就買(前視)${sg(wrong)}`);
+    }
+    // ⑱ 減資 30% 停牌 6 天後以 ×1.43 恢復交易(在 ×1.5 之內,舊斷崖抓不到)→ 超出漲跌幅 = 斷崖、在停牌前出場;決定性對照:舊寫法 +42.9%
+    //    減資 8% 停牌 6 天後 ×1.087 恢復(在漲跌幅之內)→ 停牌 ≥ 3 天恢復 = 斷崖;沒停牌、一天跳 +20%(2016 漲跌幅 10%)→ 斷崖
+    {
+        const T = 120, cal = [...Array(T).keys()].map(i => new Date(Date.UTC(2016, 0, 1) + i * 86400000).toISOString().slice(0, 10)), calIdx = new Map(cal.map((d, i) => [d, i]));
+        const mkA = (pOf, skip = () => false) => { const bars = []; for (let i = 0; i < T; i++) { if (skip(i)) continue; const p = pOf(i); bars.push({ date: cal[i], open: p, high: p, low: p, close: p, volume: 1e6 }); } const A = alignStock(cal, calIdx, bars, []); A.date = cal; return A; };
+        const halt = i => i >= 51 && i <= 56;
+        const A = mkA(i => (i < 57 ? 50 : 50 / 0.7), halt), old = (A.c[69] / A.o[41] - 1) * 100, oldCliff = A.cliff[70] - A.cliff[41];
+        const mc = markCliffs(A), o = fwdX(A, 41, 69);
+        const A3 = mkA(i => (i < 57 ? 50 : 50 / 0.92), halt), mc3 = markCliffs(A3), o3 = fwdX(A3, 41, 69);
+        const A2 = mkA(i => (i < 60 ? 50 : 60)); markCliffs(A2); const o2 = fwdX(A2, 41, 69);
+        ok(oldCliff === 0 && mc.nJ === 1 && o && Math.abs(o.r) < 1e-9 && o.y === 50 && Math.abs(old - 42.857) < 0.01
+           && mc3.nG === 1 && mc3.nJ === 0 && o3 && o3.y === 50 && A2.mk[60] === 1 && o2 && o2.y === 59,
+           `⑱ 減資停牌 6 天後 ×1.43 恢復交易:舊斷崖沒標(${oldCliff})、舊寫法報酬 ${sg(old)}% → 超出漲跌幅 = 斷崖、在停牌前出場(${o ? sg(o.r) : '—'}%);×1.087(在漲跌幅之內)→ 停牌 ≥ 3 天恢復 = 斷崖;一天跳 +20% → 斷崖`);
+    }
+    // ⑲ 除息日鎖漲停(審查 #10):前收 100、除息 5 → 參考價 95、漲停 104.5;一價到底 104.5 = 買不到;決定性對照:拿前收當基準 → +4.5% < 9.7% → 當成買得到
+    {
+        const T = 30, cal = [...Array(T).keys()].map(i => new Date(Date.UTC(2016, 5, 1) + i * 86400000).toISOString().slice(0, 10)), calIdx = new Map(cal.map((d, i) => [d, i]));
+        const bars = []; for (let i = 0; i < T; i++) { const p = i < 10 ? 100 : (i === 10 ? 104.5 : 105); bars.push({ date: cal[i], open: p, high: p, low: p, close: p, volume: 1e6 }); }
+        const A = alignStock(cal, calIdx, bars, [[cal[10], 5, '息', 100, 95]]); A.date = cal; markCliffs(A);
+        const naive = lockedBar(cal[10], A.c[9], A.o[10], A.h[10], A.l[10]);
+        ok(fwdX(A, 10, 15) === null && naive === 0 && Math.abs(A.divf[10] - 100 / 95) < 1e-12,
+           '⑲ 除息日一價到底在漲停(參考價 95 × 1.1 = 104.5)→ 買不到、不算;決定性對照:拿前收 100 當基準 → +4.5% → 會被當成買得到');
+    }
+    // ⑳ 出場那天已經下市(審查 #8):第 3 天之後就沒交易 → 用最後一根收盤出場(⛔ 整筆丟掉);決定性對照:只認第 H 天收盤 → 整筆不見
+    {
+        const T = 60, cal = [...Array(T).keys()].map(i => new Date(Date.UTC(2016, 0, 1) + i * 86400000).toISOString().slice(0, 10)), calIdx = new Map(cal.map((d, i) => [d, i]));
+        const bars = []; for (let i = 0; i <= 33; i++) { const p = i <= 30 ? 50 : 50 - 2 * (i - 30); bars.push({ date: cal[i], open: p, high: p, low: p, close: p, volume: 1e6 }); }
+        const A = alignStock(cal, calIdx, bars, []); A.date = cal; markCliffs(A);
+        const o = fwdX(A, 31, 50);
+        ok(o && o.y === 33 && Math.abs(o.r - (44 / 48 - 1) * 100) < 1e-9 && !(A.c[50] > 0),
+           `⑳ 抱 20 天、第 3 天後下市 → 用最後一根收盤出場 ${o ? sg(o.r) : '—'}%(⛔ 整筆丟掉 = 倖存者偏誤);決定性對照:第 H 天沒有收盤 → 舊寫法整筆不算`);
+    }
+    // ㉑ 方向沒預設(用結果決定方向)→ 安慰劑 p 雙尾 = 單尾 × 2(審查 #3)
+    {
+        const v = [...Array(99).keys()].map(i => (i - 49) / 10), p1 = pSham(v, 4.5, 1), p2 = pSham(v, 4.5, 1, true);
+        ok(Math.abs(p2 - Math.min(1, 2 * p1)) < 1e-12 && p2 > p1 && pSham(v, 0, 1, true) === 1,
+           `㉑ 方向用結果決定 → 安慰劑 p 雙尾:單尾 ${p1.toFixed(3)} → 雙尾 ${p2.toFixed(3)}(上限 1)`);
+    }
+    // ㉒ 校準(審查 #1 / #2 / #13):沒效果的世界、同一檔每 10 天一筆(= 去重後天天有鉅額)、抱 20 / 60 天
+    //    → 區塊 p / 兩種安慰劑 p ≤ 0.05 的比例都要接近 5%;決定性對照:舊 Newey-West(lag 照事件密度)比例明顯偏高
+    {
+        const c20 = nullFPR({ nW: 40, H: 20 }), c60 = nullFPR({ nW: 40, H: 60, T: 1000 });
+        const f = x => (100 * x).toFixed(0) + '%';
+        ok(c20.blk <= 0.1 && c20.cell <= 0.1 && c20.shift <= 0.1 && c60.blk <= 0.1 && c60.cell <= 0.1 && c60.shift <= 0.1 && c60.nwOld >= c60.blk + 0.05,
+           `㉒ 沒效果的世界(同一檔每 10 天一筆、40 個世界)p ≤ 0.05 的比例:抱 20 天 區塊 ${f(c20.blk)}・格 ${f(c20.cell)}・換日 ${f(c20.shift)}(舊 NW ${f(c20.nwOld)});抱 60 天 區塊 ${f(c60.blk)}・格 ${f(c60.cell)}・換日 ${f(c60.shift)}(決定性對照:舊 NW ${f(c60.nwOld)})`);
+    }
+    // ㉓ Ⓐ 也只收「那天算得出格」的股票日(審查 #4:舊版 Ⓐ 在檢查格之前就收)
+    {
+        const T = 200, W = mkWorld(10, T, 41, s => (s === 0 ? 0.01 : 0));
+        W.stocks.get('1000').cell.fill(-1);
+        const B = buildBases(W, T - 1), d = W.cal[50], a = B.A[0].get(d);
+        ok(a && a.n === 9, `㉓ Ⓐ 只收那天算得出格的股票日:第 1 檔沒有格 → 同一天對照 ${a ? a.n : 0} 檔(⛔ 10)`);
+    }
+    // ㉔ 位階只從最近一次尺標變動起算:第 200 天減資(×1.43)→ 第 400 天的位階只看 200~400(⛔ 拿新舊兩種尺標的高低點);
+    //    第 250 天(變動後才 51 根 < 120)→ 算不出;停牌 ≥ 3 天(尺標沒變)⛔ 擋位階
+    {
+        const T = 500, cal = [...Array(T).keys()].map(i => new Date(Date.UTC(2016, 0, 1) + i * 86400000).toISOString().slice(0, 10)), calIdx = new Map(cal.map((d, i) => [d, i]));
+        const px = i => (i < 200 ? 50 : 50 / 0.7) * (1 + 0.05 * Math.sin(i / 9));
+        const bars = []; for (let i = 0; i < T; i++) { if (i >= 194 && i <= 199) continue; const p = px(i); bars.push({ date: cal[i], open: p, high: p * 1.01, low: p * 0.99, close: p, volume: 1e6 }); }
+        const A = alignStock(cal, calIdx, bars, []); A.date = cal; markCliffs(A);
+        const F = features(A, T);
+        let mx = -Infinity, mn = Infinity; for (let t = 200; t <= 400; t++) { mx = Math.max(mx, A.h[t]); mn = Math.min(mn, A.l[t]); }
+        const bars2 = []; for (let i = 0; i < T; i++) { if (i >= 300 && i <= 305) continue; const p = 50 * (1 + 0.05 * Math.sin(i / 9)); bars2.push({ date: cal[i], open: p, high: p * 1.01, low: p * 0.99, close: p, volume: 1e6 }); }
+        const A2 = alignStock(cal, calIdx, bars2, []); A2.date = cal; markCliffs(A2); const F2 = features(A2, T);
+        ok(A.mkS[200] === 1 && Math.abs(F.pos[400] - (A.c[400] - mn) / (mx - mn)) < 1e-12 && Number.isNaN(F.pos[250]) && A2.mk[306] === 1 && !A2.mkS[306] && Number.isFinite(F2.pos[350]),
+           `㉔ 位階只從最近一次尺標變動起算(減資後第 200 根 → ${F.pos[400].toFixed(3)};變動後不到 120 根 → 算不出);停牌 ≥ 3 天只讓持有提早出場、⛔ 擋位階`);
     }
     console.log(bad ? `❌ ${bad} 條沒過` : '✅ 全過');
     process.exit(bad ? 1 : 0);
