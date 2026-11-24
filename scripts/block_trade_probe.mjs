@@ -421,8 +421,8 @@ export function shamCell(rets, W, H, baseB, n, seed) {
  *   (b) 原本擠在同一天的事件挪開之後各自變成一天 → 「先每天平均」的權重跟實際值不一樣
  *       → 安慰劑每一筆沿用它原本那一天的權重(1 ÷ 那天的筆數),實際值也用同一套權重算。
  *  回 {vals, actual(拿掉沒地方挪的那幾串之後的實際值), nKeep, nAll} */
-export function shamShift(rets, W, H, baseB, iCut, n, seed) {
-    const R = rng(seed), lo = H + SHIFT_GAP, hi = lo + SHIFT_SPAN, { cid, nc } = clusterIds(rets, H);
+export function shamShift(rets, W, H, baseB, iCut, n, seed, span = SHIFT_SPAN) {
+    const R = rng(seed), lo = H + SHIFT_GAP, hi = lo + span, { cid, nc } = clusterIds(rets, H);
     const mem = Array.from({ length: nc }, () => []); rets.forEach((e, j) => mem[cid[j]].push(j));
     const okAt = (S, i2) => i2 >= 1 && i2 + H <= iCut && (S.cell ? S.cell[i2] : 0) >= 0 && S.c[i2] > 0 && S.o[i2 + 1] > 0 && !S.mk[i2 + 1];
     const valid = mem.map(js => {
