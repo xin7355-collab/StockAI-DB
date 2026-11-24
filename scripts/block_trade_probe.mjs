@@ -17,25 +17,29 @@
  *   T1 佔比前 1%   T2 佔比前 5%   (門檻 = 「之前」所有鉅額事件的分位數,⛔ 用到未來;至少 250 筆才開始)
  *   T3 溢價成交(≥ 收盤 +1%,預期之後比較強)   T4 折價成交(≤ 收盤 −3%,預期之後比較弱)
  *   T5 配對交易而且佔比前 5%(協議成交,最像大股東轉讓)   —— T1 / T2 / T5 方向不預設(看 Ⓑ 全期那個方向,p 一律雙尾)
- * 規則:隔天開盤買(開盤一價鎖漲停 = 買不到、不算;基準 = 參考價,除權息那天要先扣)、含息、同一檔 10 天內只算第一次。
+ * 規則:隔天開盤買(開盤一價鎖漲停 = 買不到、不算;基準 = 參考價,除權息那天要先扣;漲停價照跳動單位往下捨)、含息、同一檔 10 天內只算第一次。
  *   出場:第 H 天收盤;那天沒交易(停牌 / 下市)或中間碰到斷崖 → 用「最後一根有交易、斷崖之前」的收盤(⛔ 整筆丟掉 = 倖存者偏誤)。
  *   斷崖 = 跟前一根(扣掉除權息的參考價)比,開盤或收盤超出當天漲跌幅(物理上不可能 = 尺標變了 / 減資恢復交易 / 興櫃那段)、
  *   或停牌 / 沒成交 ≥ 3 個交易日之後恢復的那一根(減資換股停止買賣)、或舊規則 ×1.5 / ×0.67。
  * 股票池 = 「那一天之前已經出現在上市鉅額名單」的股票日(證明那天是上市;⛔ 用今天的上市名單往回套 —— 會混進上市前的上櫃 / 興櫃那段,
  *   而且等於用未來挑對照組)。舊母體(今天上市 + 已下市的全部歷史)當敏感度,兩個都要過才算。
  * 兩種對照(都要過):Ⓐ 同一天股票池全部 Ⓑ 同一天同一格(前 20 日平均成交金額(⛔ 含當天:當天的量含鉅額本身)× 一年位階 × 20 日波動
- *   各三分位 = 27 格;特徵只用當天以前的資料、三分位只用當天的股票)。Ⓐ 跟事件一樣只收「那天算得出格」的。
+ *   各三分位 = 27 格;特徵只用當天以前的資料、三分位只用當天的股票)。Ⓐ 跟事件一樣只收「那天算得出格」的;對照平均一律扣掉自己那一筆。
  *   只描述(⛔ 影響判定):Ⓒ 同一天同一格再切「當天漲跌」三分位(看是不是只是短線反轉)。
  * 檢定:先每天平均,p = 「H 天一段」的區塊穩健 t(每段加總、相鄰兩段的共變異也算進去、自由度 = 段數 − 1)。
  *   ⛔ 舊的 Newey-West(lag 照全期平均事件密度)在同一檔每 10 天一筆、抱 60 天時,沒效果也有 14% 的機會 p ≤ 0.05(審查 #1)。
  * 兩種安慰劑(都要過;方向沒預設的雙尾):
  *   ① 同一天同一格隨便挑一檔(500 次;同一檔窗口連在一起的那幾筆用同一檔替身,保留重疊)
- *   ② 同一檔整段一起挪到前後 H+20 ~ H+770 個交易日(200 次;同一檔所有事件挪一樣多,保留同一檔的間隔)
+ *   ② 同一串(同一檔、窗口重疊)整段一起挪到前後 H+20 ~ H+770 個交易日(200 次;只從「整串挪過去都還在股票池、有格」的位移裡抽,
+ *      一個位移都沒有的整串兩邊一起拿掉;安慰劑沿用實際值每一天的權重)
+ *   去極端 1% 照「串」拿(同一段大漲在抱 60 天時會被算好幾次)。
  *   📏 兩種 p 都拿「真實事件的時間點 × 沒效果的世界」校準過(200 個世界、名目 5%):區塊 p 15 格 3.5~7.0%;換日安慰劑挪 H+20~H+270 時
- *      抱 60 天有一格 10% → 照事先寫死的選法改成 H+20~H+770(最高 7.0%);同格安慰劑 2~7%。
+ *      抱 60 天有一格 10% → 照事先寫死的選法改成 H+20~H+770(最高 7.0%);同格安慰劑 2~7%。第二輪審查改完換日安慰劑之後重新校準(見 DECISIONS)。
  * 🔒 樣本外封存:事件日與出場日都 ≤ 2026-11-06(LAB oos-seal)。判定條件寫在實驗登錄(EXP-20261124-01)。
  * 🔍 2026-11-24 獨立審查 13 點(重疊窗口當獨立樣本、安慰劑太窄、單尾、母體、減資跳價、除息日鎖漲停、下市整筆消失…)→
  *   全部照上面改完才下判定;第一次跑的結果作廢(docs/DECISIONS.md 那一節有原文與作廢的數字)。
+ *   第二輪審查(改完之後再派一個不知道結果的)6 點:換日安慰劑兩個洞(晚進股票池的被漏掉、同一天擠很多筆的權重不一樣)、
+ *   漲停價沒照跳動單位、去極端一筆一筆拿、對照含自己、兩個股票池沒比方向 → 也全部改完(selftest ㉕~㉚)。
  *
  * 跑法:DATA_DIR=<d16> BLOCK_DIR=<block_deep 資料夾> KD_DIR=<klines_deep 資料夾> IDX_LONG=<idx_long.json> node --max-old-space-size=8000 scripts/block_trade_probe.mjs out.json
  *       CHECK_ONLY=1 …(只印資料檢查:事件數 / 丟掉幾筆 / 佔比分布 / 斷崖,⛔ 算任何報酬)
@@ -45,10 +49,11 @@ import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 import { fileURLToPath } from 'url';
-import { gates, COST, increments, baseAdd, negate } from './lib_evgate.mjs';
+import { gates, COST, baseAdd, negate } from './lib_evgate.mjs';
 import { bhQ } from './lib_fdr.mjs';
 import { alignStock, nwP } from './trade_lead_probe.mjs';
 import { limitOf, lockedBar } from './lib_limit.mjs';
+import { tickOf, floorTick } from './gap_base.mjs';
 
 export const HS = [5, 20, 60];
 const DEDUP = 10;
@@ -197,13 +202,21 @@ export function markCliffs(S, gapMin = GAP_CLIFF, tol = JUMP_TOL) {
     return { nJ, nG };
 }
 
+/** 開盤一價到底鎖漲停(審查第二輪:漲停價要照跳動單位往下捨 —— 參考價 99 的漲停價是 108.5 = +9.6%,⛔ 只拿 +9.7% 判會當成買得到):
+ *  一價到底(高 = 低)而且開盤 ≥ 漲停價 − 一檔(參考價是自己算的,可能跟官方差一檔)。價格先乘 _sk 換回原始尺標再對跳動單位。 */
+export function lockedUp(date, ref, o, h, l, sk = 1) {
+    if (!(ref > 0 && o > 0) || h !== l) return false;
+    const up = ref * sk * (1 + limitOf(date));
+    return o * sk >= floorTick(up) - tickOf(up) - 1e-9;
+}
+
 /** 一檔:第 e 天開盤買、第 x 天收盤賣(含息)→ {r 報酬 %, y 實際出場那天};買不到 → null。
- *  鎖漲停的基準 = 前一根有交易的收盤 ÷ 除權息因子(審查 #10:除息日參考價比較低)。進場那根本身是斷崖 → 不算(開盤跟前收不同尺標)。
+ *  鎖漲停的基準 = 前一根有交易的收盤 ÷ 除權息因子(審查 #10:除息日參考價比較低),漲停價照跳動單位(lockedUp)。進場那根本身是斷崖 → 不算(開盤跟前收不同尺標)。
  *  出場那天沒交易 / 中間有斷崖 → 最後一根有交易、斷崖之前的收盤(審查 #8:停牌 / 下市 ⛔ 整筆丟掉)。 */
 export function fwdX(S, e, x) {
     if (e < 1 || x >= S.c.length || !(S.o[e] > 0) || S.mk[e]) return null;
     let p = e - 1; while (p >= 0 && !(S.c[p] > 0)) p--;
-    if (p >= 0 && lockedBar(S.date ? S.date[e] : '2020-01-01', S.c[p] / Math.exp(S.ldv[e + 1] - S.ldv[p + 1]), S.o[e], S.h[e], S.l[e]) === 1) return null;
+    if (p >= 0 && lockedUp(S.date ? S.date[e] : '2020-01-01', S.c[p] / Math.exp(S.ldv[e + 1] - S.ldv[p + 1]), S.o[e], S.h[e], S.l[e], S.sk && S.sk[e] > 0 ? S.sk[e] : 1)) return null;
     let y = x;
     if (S.cliff[x + 1] - S.cliff[e + 1] > 0) { for (let k = e + 1; k <= x; k++) if (S.mk[k]) { y = k - 1; break; } }
     while (y > e && !(S.c[y] > 0)) y--;
@@ -276,14 +289,16 @@ export function buildRetTerc(list, T, minN = 30) {
     return out;
 }
 
-/** Ⓑ 的增量:每一筆減「同一天同一格」的平均(那格那天 < minCell 檔不算),再照日期收成每天一個平均(同 lib_evgate.increments 的口徑)。
- *  kf = 用哪個欄位當對照的鍵(key = Ⓑ、keyC = Ⓒ) */
+/** 增量:每一筆減「同一天同一格、扣掉自己」的平均(對照本來就收了自己那一筆 —— 含自己會把增量縮成 (1 − 1/n) 倍,審查第二輪;
+ *  扣掉自己之後那格那天 < minCell 檔不算),再照日期收成每天一個平均(同 lib_evgate.increments 的口徑)。
+ *  kf = 用哪個欄位當對照的鍵(key = Ⓑ、keyC = Ⓒ、d = Ⓐ 同一天全部) */
+export const xOf = (e, b) => e.r - (b.s - e.r) / (b.n - 1);
 export function incCell(evs, base, minCell = MIN_CELL, kf = 'key') {
     const byDay = new Map(); let n = 0;
     for (const e of evs) {
         const k = e[kf]; if (k == null) continue;
-        const b = base.get(k); if (!b || b.n < minCell) continue;
-        const a = byDay.get(e.d) || []; a.push(e.r - b.s / b.n); byDay.set(e.d, a); n++;
+        const b = base.get(k); if (!b || b.n - 1 < minCell) continue;
+        const a = byDay.get(e.d) || []; a.push(xOf(e, b)); byDay.set(e.d, a); n++;
     }
     const days = [...byDay.keys()].sort();
     return { n, days, dm: days.map(d => { const a = byDay.get(d); return a.reduce((s, x) => s + x, 0) / a.length; }), all: days.flatMap(d => byDay.get(d)) };
@@ -349,14 +364,16 @@ export function gateDir(inc, H, dir, idxOf, density = 1) {
     return g;
 }
 
-/** 拿掉方向上貢獻最大的 frac 筆(每筆增量 × dir 最大的),再照每天平均 → 方向上的平均(> 0 = 還在) */
-export function trimDir(rets, baseB, dir, frac = 0.01, minCell = MIN_CELL) {
-    const xs = [];
-    for (const e of rets) { const b = baseB.get(e.key); if (!b || b.n < minCell) continue; xs.push({ d: e.d, x: e.r - b.s / b.n }); }
-    xs.sort((a, b) => dir * b.x - dir * a.x);
-    const drop = Math.ceil(frac * xs.length), byDay = new Map();
-    for (const o of xs.slice(drop)) { const a = byDay.get(o.d) || []; a.push(o.x); byDay.set(o.d, a); }
-    return { drop, m: dir * mean([...byDay.values()].map(mean)) };
+/** 拿掉方向上貢獻最大的 frac「串」(同一檔、窗口重疊的算同一串 —— 同一段大漲在抱 60 天時會被算好幾次,一筆一筆拿 1% 拿不掉,審查第二輪;
+ *  H = 0 → 一筆一串),再照每天平均 → 方向上的平均(> 0 = 還在) */
+export function trimDir(rets, baseB, dir, frac = 0.01, minCell = MIN_CELL, H = 0) {
+    const cid = H > 0 ? clusterIds(rets, H).cid : null, xs = [];
+    rets.forEach((e, j) => { const b = baseB.get(e.key); if (!b || b.n - 1 < minCell) return; xs.push({ d: e.d, c: cid ? cid[j] : j, x: xOf(e, b) }); });
+    const byC = new Map(); for (const o of xs) byC.set(o.c, (byC.get(o.c) || 0) + dir * o.x);
+    const order = [...byC.entries()].sort((a, b) => b[1] - a[1]), drop = Math.ceil(frac * order.length), gone = new Set(order.slice(0, drop).map(z => z[0]));
+    const byDay = new Map(); let dropEv = 0;
+    for (const o of xs) { if (gone.has(o.c)) { dropEv++; continue; } const a = byDay.get(o.d) || []; a.push(o.x); byDay.set(o.d, a); }
+    return { drop, dropEv, m: dir * mean([...byDay.values()].map(mean)) };
 }
 
 /** 同一檔、窗口連在一起(跟上一筆差 < H 天)的事件 = 同一串 → [串編號...]、幾串 */
@@ -396,24 +413,41 @@ export function shamCell(rets, W, H, baseB, n, seed) {
     return vals;
 }
 
-/** 安慰劑②:同一檔的所有事件一起挪 ±(H+SHIFT_GAP ~ H+SHIFT_GAP+SHIFT_SPAN) 個交易日(每次每檔抽一個)→ 每次的 Ⓑ 增量平均。
- *  同一檔挪一樣多 = 保留同一檔事件之間的間隔與重疊(審查 #1);至少挪 H+20 天 = ⛔ 跟自己的窗口重疊、範圍 750 天夠寬(審查 #2;250 天時校準最高 10%)。
- *  挪過去超出範圍 / 那天沒有格 / 買不到 → 那一筆這次不算。 */
+/** 安慰劑②:同一串(同一檔、窗口重疊)的事件一起挪 ±(H+SHIFT_GAP ~ H+SHIFT_GAP+SHIFT_SPAN) 個交易日 → 每次的 Ⓑ 增量平均。
+ *  同一串挪一樣多 = 保留重疊造成的相關(審查 #1);至少挪 H+20 天 = ⛔ 跟自己的窗口重疊、範圍 750 天夠寬(審查 #2;250 天時校準最高 10%)。
+ *  審查第二輪兩個洞:
+ *   (a) 挪過去落在股票池外 / 超出範圍的直接丟掉 → 晚進股票池、歷史很短的那幾檔在安慰劑裡被漏掉,「這檔本來就強」擋不住
+ *       → 每一串只從「整串挪過去都還在股票池、有格、有交易」的位移裡抽;一個位移都沒有的整串,實際值跟安慰劑兩邊一起拿掉(同一批事件比)
+ *   (b) 原本擠在同一天的事件挪開之後各自變成一天 → 「先每天平均」的權重跟實際值不一樣
+ *       → 安慰劑每一筆沿用它原本那一天的權重(1 ÷ 那天的筆數),實際值也用同一套權重算。
+ *  回 {vals, actual(拿掉沒地方挪的那幾串之後的實際值), nKeep, nAll} */
 export function shamShift(rets, W, H, baseB, iCut, n, seed) {
-    const R = rng(seed), vals = [], syms = [...new Set(rets.map(e => e.sym))], lo = H + SHIFT_GAP;
+    const R = rng(seed), lo = H + SHIFT_GAP, hi = lo + SHIFT_SPAN, { cid, nc } = clusterIds(rets, H);
+    const mem = Array.from({ length: nc }, () => []); rets.forEach((e, j) => mem[cid[j]].push(j));
+    const okAt = (S, i2) => i2 >= 1 && i2 + H <= iCut && (S.cell ? S.cell[i2] : 0) >= 0 && S.c[i2] > 0 && S.o[i2 + 1] > 0 && !S.mk[i2 + 1];
+    const valid = mem.map(js => {
+        const S = W.stocks.get(rets[js[0]].sym), out = [];
+        for (let a = lo; a <= hi; a++) for (const s of [a, -a]) if (js.every(j => okAt(S, rets[j].i + s))) out.push(s);
+        return out;
+    });
+    const keep = rets.map((e, j) => { const b = baseB.get(e.key); return valid[cid[j]].length > 0 && !!b && b.n - 1 >= MIN_CELL; });
+    const kDay = new Map(); rets.forEach((e, j) => { if (keep[j]) kDay.set(e.d, (kDay.get(e.d) || 0) + 1); });
+    const w = rets.map((e, j) => keep[j] ? 1 / kDay.get(e.d) : 0);
+    let sw = 0, sx = 0; rets.forEach((e, j) => { if (keep[j]) { sw += w[j]; sx += w[j] * xOf(e, baseB.get(e.key)); } });
+    const actual = sw ? sx / sw : NaN, vals = [];
     for (let t = 0; t < n; t++) {
-        const sh = new Map(syms.map(s => [s, (R() < 0.5 ? -1 : 1) * (lo + Math.floor(R() * (SHIFT_SPAN + 1)))]));
-        const ev = [];
-        for (const e of rets) {
-            const S = W.stocks.get(e.sym), i2 = e.i + sh.get(e.sym);
-            if (i2 < 1 || i2 + H > iCut) continue;
-            const cell = S.cell ? S.cell[i2] : 0; if (cell < 0 || !(S.c[i2] > 0)) continue;
-            const r = fwd(S, i2 + 1, i2 + H); if (r == null) continue;
-            ev.push({ d: W.cal[i2], key: W.cal[i2] + '|' + cell, r });
-        }
-        vals.push(mean(incCell(ev, baseB).dm));
+        const pick = valid.map(v => v.length ? v[Math.floor(R() * v.length)] : 0);
+        let tw = 0, tx = 0;
+        rets.forEach((e, j) => {
+            if (!keep[j]) return;
+            const S = W.stocks.get(e.sym), i2 = e.i + pick[cid[j]], cell = S.cell ? S.cell[i2] : 0;
+            const r = fwd(S, i2 + 1, i2 + H); if (r == null) return;
+            const b = baseB.get(W.cal[i2] + '|' + cell); if (!b || b.n - 1 < MIN_CELL) return;
+            tw += w[j]; tx += w[j] * xOf({ r }, b);
+        });
+        vals.push(tw ? tx / tw : NaN);
     }
-    return vals;
+    return { vals: vals.filter(Number.isFinite), actual, nKeep: keep.filter(Boolean).length, nAll: rets.length };
 }
 
 /** 安慰劑 p:dir 方向上,實際值至少一樣極端的比例;two = 方向沒預設(用結果決定方向)→ 雙尾 = 單尾 × 2(審查 #3) */
@@ -435,6 +469,9 @@ export function judge(r) {
     };
     return { c, ok: Object.values(c).every(Boolean), n: Object.values(c).filter(Boolean).length };
 }
+
+/** 兩個股票池都七條全過、而且是同一個方向才算(審查第二輪:方向沒預設的那三個檢定,兩邊各自用自己的結果決定方向) */
+export const bothOk = (p, q) => !!(p && q && p.ok && q.ok && p.dir === q.dir);
 
 function loadWorld(env) {
     const miss = ['DATA_DIR', 'BLOCK_DIR', 'KD_DIR', 'IDX_LONG'].filter(k => !env[k]);
@@ -495,18 +532,19 @@ function describe(rows, T, W, baseB, iCut) {
     for (const r of rows) {
         const id = `${r.key}/${r.H}`, k = HS.indexOf(r.H), evs = T[r.key];
         const rets = evRets(evs, W, r.H, iCut);
-        const xs = rets.map(e => { const b = baseB[k].get(e.key); return b && b.n >= MIN_CELL ? { ...e, x: e.r - b.s / b.n, amt: W.stocks.get(e.sym).amt[e.i] } : null; }).filter(Boolean);
-        const liq = xs.filter(e => e.amt >= 1e7), sorted = xs.slice().sort((a, b) => b.x - a.x);
-        const bySym = new Map(); for (const e of xs) bySym.set(e.sym, (bySym.get(e.sym) || 0) + e.x);
+        const dir = r.dir;   // 審查第二輪:拿掉「方向上」最有利的那一端(方向 −1 的拿掉跌最多的)
+        const xs = rets.map(e => { const b = baseB[k].get(e.key); return b && b.n - 1 >= MIN_CELL ? { ...e, x: xOf(e, b), amt: W.stocks.get(e.sym).amt[e.i] } : null; }).filter(Boolean);
+        const liq = xs.filter(e => e.amt >= 1e7), sorted = xs.slice().sort((a, b) => dir * b.x - dir * a.x);
+        const bySym = new Map(); for (const e of xs) bySym.set(e.sym, (bySym.get(e.sym) || 0) + dir * e.x);
         const top5 = [...bySym.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
         const amts = xs.map(e => e.amt).filter(Number.isFinite);
         const early = rets.filter(e => e.y < e.i + r.H).length;
-        out[id] = { n: xs.length, syms: bySym.size, all: dayMean(xs), median: q(xs.map(e => e.x), 0.5), winRate: xs.filter(e => e.x > 0).length / xs.length,
+        out[id] = { n: xs.length, syms: bySym.size, all: dayMean(xs), median: q(xs.map(e => e.x), 0.5), winRate: xs.filter(e => dir * e.x > 0).length / xs.length,
                     dropTop5pct: dayMean(sorted.slice(Math.ceil(0.05 * sorted.length))), withoutTop5Syms: dayMean(xs.filter(e => !top5.includes(e.sym))), top5,
                     amt20Med: q(amts, 0.5), amt20P25: q(amts, 0.25), shareBelow1e7: 1 - liq.length / xs.length, liquidOnly: { n: liq.length, m: dayMean(liq) },
                     exitEarly: early, exitEarlyShare: early / Math.max(1, rets.length) };
         const o = out[id];
-        console.log(`   ${r.name} 抱 ${r.H} 天:${o.n} 筆 / ${o.syms} 檔・平均 ${sg(o.all)}・中位 ${sg(o.median)}・比同格好的比例 ${(o.winRate * 100).toFixed(0)}%・拿掉最大 5% ${sg(o.dropTop5pct)}・拿掉貢獻最大 5 檔 ${sg(o.withoutTop5Syms)}(${top5.join(' ')})`);
+        console.log(`   ${r.name} 抱 ${r.H} 天:${o.n} 筆 / ${o.syms} 檔・平均 ${sg(o.all)}・中位 ${sg(o.median)}・${dir > 0 ? '比同格好' : '比同格差'}的比例 ${(o.winRate * 100).toFixed(0)}%・拿掉方向上最有利的 5% ${sg(o.dropTop5pct)}・拿掉貢獻最大 5 檔 ${sg(o.withoutTop5Syms)}(${top5.join(' ')})`);
         console.log(`      前 20 日平均成交金額 中位 ${(o.amt20Med / 1e4).toFixed(0)} 萬・P25 ${(o.amt20P25 / 1e4).toFixed(0)} 萬・不到 1,000 萬的 ${(o.shareBelow1e7 * 100).toFixed(0)}%・只看 ≥ 1,000 萬 ${o.liquidOnly.n} 筆 ${sg(o.liquidOnly.m)}・停牌 / 下市 / 斷崖提早出場 ${early} 筆(${(100 * o.exitEarlyShare).toFixed(1)}%)`);
     }
     return out;
@@ -528,14 +566,14 @@ function analyze(W, T, F, list, univ, iCut, quiet = false) {
     for (const key of Object.keys(T)) {
         HS.forEach((H, k) => {
             const rets = evRets(T[key], W, H, iCut);
-            const incA = increments(rets, baseA[k]), incB = incCell(rets, baseB[k]), incC = incCell(rets, baseC[k], MIN_CELL, 'keyC');
+            const incA = incCell(rets, baseA[k], MIN_CELL, 'd'), incB = incCell(rets, baseB[k]), incC = incCell(rets, baseC[k], MIN_CELL, 'keyC');
             const mA = mean(incA.dm), mB = mean(incB.dm), mC = mean(incC.dm);
             const dir = DIR[key] || (mB < 0 ? -1 : 1), two = !DIR[key];
             const gA = gateDir(incA, H, dir, idxOf, incA.days.length / nDaysAll), gB = gateDir(incB, H, dir, idxOf, incB.days.length / nDaysAll);
             const yr = (gB.YR || []).filter(y => y.n >= 20);
             const seed = 20261124 + 97 * HS.indexOf(H) + 7 * Object.keys(T).indexOf(key);
-            const vC = shamCell(rets, W, H, baseB[k], SHAM_N, seed), vS = shamShift(rets, W, H, baseB[k], iCut, SHIFT_N, seed + 1);
-            const trim = trimDir(rets, baseB[k], dir);
+            const vC = shamCell(rets, W, H, baseB[k], SHAM_N, seed), sS = shamShift(rets, W, H, baseB[k], iCut, SHIFT_N, seed + 1), vS = sS.vals;
+            const trim = trimDir(rets, baseB[k], dir, 0.01, MIN_CELL, H);
             const med = (() => { const s = incB.all.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : NaN; })();
             const by = (a, b) => mean(incB.days.map((d, j) => [d, incB.dm[j]]).filter(([d]) => d >= a && d <= b).map(x => x[1]));
             const { nc } = clusterIds(rets, H);
@@ -543,11 +581,11 @@ function analyze(W, T, F, list, univ, iCut, quiet = false) {
             rows.push({ key, name: NAME[key], H, dir, two, n: incB.n, nDays: incB.days.length, nClusters: nc, overlap: ovl, nBlk: gB.nBlk,
                         mA, mB, mC, nC: incC.n, pA: gA.pBlk, pB: gB.pBlk, pNWoldA: gA.pNWold, pNWoldB: gB.pNWold, pC: blockP(incC, H, idxOf).p,
                         gB: { d: gB.d, H: gB.H, dropBest: gB.dropBest, nPass: gB.nPass, pass: gB.pass }, YR: gB.YR, yrPos: yr.filter(y => y.d > 0).length, yrN: yr.length,
-                        shamCell: { med: mean(vC) }, shamShift: { med: mean(vS) },
-                        pCell: pSham(vC, mB, dir, two), pShift: pSham(vS, mB, dir, two), trim, median: med,
+                        shamCell: { med: mean(vC) }, shamShift: { med: mean(vS), actual: sS.actual, keep: sS.nKeep / Math.max(1, sS.nAll) },
+                        pCell: pSham(vC, mB, dir, two), pShift: pSham(vS, sS.actual, dir, two), trim, median: med,
                         exitEarly: rets.filter(e => e.y < e.i + H).length,
                         split: { a: by('2010-01-01', '2018-12-31'), b: by('2019-01-01', '2026-12-31') },
-                        rev: DIR[key] ? { pCell: pSham(vC, mB, -dir), pShift: pSham(vS, mB, -dir) } : null });
+                        rev: DIR[key] ? { pCell: pSham(vC, mB, -dir), pShift: pSham(vS, sS.actual, -dir) } : null });
         });
     }
     const qA = bhQ(rows.map(r => r.pA)), qB = bhQ(rows.map(r => r.pB));
@@ -610,7 +648,7 @@ function main(out) {
     }
     const P = analyze(W, T, F, list, 'listed', iCut);
     const Q = analyze(W, T, F, list, 'all', iCut);
-    const ok = P.rows.filter((r, j) => r.ok && Q.rows[j].ok);
+    const ok = P.rows.filter((r, j) => bothOk(r, Q.rows[j]));
     const okP = P.rows.filter(r => r.ok).map(r => `${r.key}/${r.H}`), okQ = Q.rows.filter(r => r.ok).map(r => `${r.key}/${r.H}`);
     console.log(`\n判定(兩個股票池都要七條全過):${ok.length ? '✅ ' + ok.map(r => `${r.name} 抱 ${r.H} 天(${r.dir > 0 ? '之後比較強' : '之後比較弱'})`).join('、') : '⛔ 15 格沒有一格七條全過'}`);
     console.log(`   主股票池過的:${okP.join('、') || '無'}・舊股票池過的:${okQ.join('、') || '無'}`);
@@ -667,9 +705,9 @@ export function nullFPR({ nW = 40, H = 20, kind = 'stockCluster', nPl = 60, NS =
         ev.sort((a, b) => a.i - b.i);
         const B = buildBases(W, iCut), rets = evRets(ev, W, H, iCut), inc = incCell(rets, B.B[k]), m = mean(inc.dm);
         const g = gateDir(inc, H, 1, d => W.calIdx.get(d), inc.days.length / (iCut + 1));
-        const vC = shamCell(rets, W, H, B.B[k], nPl, 9 + w), vS = shamShift(rets, W, H, B.B[k], iCut, nPl, 10 + w), dir = m < 0 ? -1 : 1;
+        const vC = shamCell(rets, W, H, B.B[k], nPl, 9 + w), sS = shamShift(rets, W, H, B.B[k], iCut, nPl, 10 + w), dir = m < 0 ? -1 : 1;
         if (g.pBlk <= 0.05) fB++; if (g.pNWold <= 0.05) fOld++;
-        if (pSham(vC, m, dir, true) <= 0.05) fC++; if (pSham(vS, m, dir, true) <= 0.05) fS++;
+        if (pSham(vC, m, dir, true) <= 0.05) fC++; if (pSham(sS.vals, sS.actual, dir, true) <= 0.05) fS++;
     }
     return { blk: fB / nW, cell: fC / nW, shift: fS / nW, nwOld: fOld / nW };
 }
@@ -779,8 +817,8 @@ function selftest() {
         const run = (W, evl) => {
             evl.sort((a, b) => a.i - b.i);
             const B = buildBases(W, iCut), rets = evRets(evl, W, 20, iCut), inc = incCell(rets, B.B[1]);
-            const vS = shamShift(rets, W, 20, B.B[1], iCut, 60, 9), vC = shamCell(rets, W, 20, B.B[1], 60, 9);
-            return { m: mean(inc.dm), pS: pSham(vS, mean(inc.dm), 1), pC: pSham(vC, mean(inc.dm), 1) };
+            const sS = shamShift(rets, W, 20, B.B[1], iCut, 60, 9), vC = shamCell(rets, W, 20, B.B[1], 60, 9);
+            return { m: mean(inc.dm), pS: pSham(sS.vals, sS.actual, 1), pC: pSham(vC, mean(inc.dm), 1) };
         };
         const a = run(WA, evA), b = run(WB, evB);
         ok(a.m > 1 && a.pS <= 0.05 && a.pC <= 0.05 && b.m > 1 && b.pS > 0.05 && b.pC <= 0.05,
@@ -905,6 +943,81 @@ function selftest() {
         ok(A.mkS[200] === 1 && Math.abs(F.pos[400] - (A.c[400] - mn) / (mx - mn)) < 1e-12 && Number.isNaN(F.pos[250]) && A2.mk[306] === 1 && !A2.mkS[306] && Number.isFinite(F2.pos[350]),
            `㉔ 位階只從最近一次尺標變動起算(減資後第 200 根 → ${F.pos[400].toFixed(3)};變動後不到 120 根 → 算不出);停牌 ≥ 3 天只讓持有提早出場、⛔ 擋位階`);
     }
+    // ── 審查第二輪 ──
+    // 舊的換日安慰劑(每檔各自挪、挪不過去就丟掉、跟全部事件的實際值比)—— 只拿來當 ㉕㉖ 的決定性對照
+    const naiveShift = (rets, W, H, base, iCut, n, seed) => {
+        const R = rng(seed), vals = [], syms = [...new Set(rets.map(e => e.sym))], lo = H + SHIFT_GAP;
+        for (let t = 0; t < n; t++) {
+            const sh = new Map(syms.map(s => [s, (R() < 0.5 ? -1 : 1) * (lo + Math.floor(R() * (SHIFT_SPAN + 1)))])), ev = [];
+            for (const e of rets) {
+                const S = W.stocks.get(e.sym), i2 = e.i + sh.get(e.sym); if (i2 < 1 || i2 + H > iCut) continue;
+                const cell = S.cell[i2]; if (cell < 0 || !(S.c[i2] > 0)) continue;
+                const r = fwd(S, i2 + 1, i2 + H); if (r != null) ev.push({ d: W.cal[i2], key: W.cal[i2] + '|' + cell, r });
+            }
+            vals.push(mean(incCell(ev, base).dm));
+        }
+        return vals;
+    };
+    const med = a => { const s = a.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
+    // ㉕ 20 檔「本來就強」(每天多 0.15%,跟鉅額無關)晚進股票池(第 650 天才第一次出現鉅額),事件都在 650~860 → 往前挪落在池子外
+    //    → 新寫法:整串沒地方挪 → 兩邊一起拿掉 → 換日 p 不小;決定性對照:舊寫法(挪不過去就丟掉)→ p ≤ 0.05(誤判有效果)
+    {
+        const T = 900, iCut = T - 1, H = 20, pN = [], pO = [];
+        for (const seed of [31, 44, 57]) {
+            const W = mkWorld(60, T, seed, s => (s < 20 ? 0.0015 : 0)), ev = [];
+            for (let s = 0; s < 60; s++) {
+                const S = W.stocks.get(String(1000 + s));
+                if (s < 20) { S.first = 650; for (let i = 0; i < 650; i++) S.cell[i] = -1; for (let i0 = 650 + (s % 15); i0 <= 860; i0 += 15) ev.push({ i: i0, sym: String(1000 + s) }); }
+                else for (let i0 = 100 + 3 * s; i0 <= 860; i0 += 45) ev.push({ i: i0, sym: String(1000 + s) });
+            }
+            ev.sort((a, b) => a.i - b.i);
+            const B = buildBases(W, iCut), rets = evRets(ev, W, H, iCut), m = mean(incCell(rets, B.B[1]).dm), sS = shamShift(rets, W, H, B.B[1], iCut, 100, 11);
+            pN.push(pSham(sS.vals, sS.actual, 1, true)); pO.push(pSham(naiveShift(rets, W, H, B.B[1], iCut, 100, 11), m, 1, true));
+        }
+        ok(med(pN) > 0.2 && Math.max(...pO) <= 0.05, `㉕ 本來就強、晚進股票池的那幾檔(沒有任何鉅額效果):換日 p ${pN.map(x => x.toFixed(2)).join(' / ')}(不會誤判);決定性對照:舊寫法 ${pO.map(x => x.toFixed(3)).join(' / ')}(誤判有效果)`);
+    }
+    // ㉖ 沒效果的 40 檔事件 8 檔擠同一天、本來就強的 20 檔事件各自分開(都從頭就在池子)→ 新寫法沿用每天的權重 → 不會誤判;決定性對照:舊寫法拆散成一筆一天 → 誤判
+    {
+        const T = 900, iCut = T - 1, H = 20, pN = [], pO = [];
+        for (const seed of [41, 48, 55]) {
+            const W = mkWorld(60, T, seed, s => (s < 20 ? 0.0015 : 0)), ev = [];
+            for (let s = 0; s < 20; s++) for (let i0 = 300 + 3 * s; i0 <= 600; i0 += 60) ev.push({ i: i0, sym: String(1000 + s) });
+            for (let s = 20; s < 60; s++) for (let i0 = 300 + 7 * ((s - 20) % 5); i0 <= 600; i0 += 60) ev.push({ i: i0, sym: String(1000 + s) });
+            ev.sort((a, b) => a.i - b.i);
+            const B = buildBases(W, iCut), rets = evRets(ev, W, H, iCut), m = mean(incCell(rets, B.B[1]).dm), sS = shamShift(rets, W, H, B.B[1], iCut, 100, 5);
+            pN.push(pSham(sS.vals, sS.actual, 1, true)); pO.push(pSham(naiveShift(rets, W, H, B.B[1], iCut, 100, 5), m, 1, true));
+        }
+        ok(med(pN) > 0.2 && Math.max(...pO) <= 0.05, `㉖ 同一天擠很多筆的沒效果、分開的本來就強:換日 p ${pN.map(x => x.toFixed(2)).join(' / ')}(不會誤判);決定性對照:舊寫法 ${pO.map(x => x.toFixed(3)).join(' / ')}`);
+    }
+    // ㉗ 漲停價照跳動單位往下捨:參考價 99 → 漲停 108.5(+9.6%)、2012 年 ±7% → 105.5(+6.6%),一價到底 = 買不到;+3% 一價到底(只成交一筆)照樣買得到
+    //    決定性對照:共用的 lockedBar(只看 +9.7% / +6.7%)兩個都當成買得到
+    {
+        const mk = (y, p1) => { const T = 20, cal = [...Array(T).keys()].map(i => new Date(Date.UTC(y, 5, 1) + i * 86400000).toISOString().slice(0, 10)), calIdx = new Map(cal.map((d, i) => [d, i]));
+            const bars = []; for (let i = 0; i < T; i++) { const p = i < 10 ? 99 : (i === 10 ? p1 : p1 * 1.001); bars.push({ date: cal[i], open: p, high: p, low: p, close: p, volume: 1e6 }); }
+            const A = alignStock(cal, calIdx, bars, []); A.date = cal; A.sk = new Float64Array(T).fill(1); markCliffs(A); return A; };
+        const a16 = mk(2016, 108.5), a12 = mk(2012, 105.5), a3 = mk(2016, 101.97);
+        const n16 = lockedBar(a16.date[10], 99, 108.5, 108.5, 108.5), n12 = lockedBar(a12.date[10], 99, 105.5, 105.5, 105.5);
+        ok(fwdX(a16, 10, 15) === null && fwdX(a12, 10, 15) === null && fwdX(a3, 10, 15) !== null && n16 === 0 && n12 === 0,
+           '㉗ 漲停價照跳動單位:參考價 99 一價到底 108.5(+9.6%)/ 2012 年 105.5(+6.6%)→ 買不到;+3% 一價到底照樣買得到;決定性對照:只看 +9.7% / +6.7% 的寫法兩個都當成買得到');
+    }
+    // ㉘ 去極端照「串」拿:394 筆 −0.5、同一檔重疊的 6 筆 +120(抱 60 天、每 10 天一筆)→ 整串拿掉 −0.50;決定性對照:一筆一筆拿 1%(4 筆)→ 還剩 +0.11
+    {
+        const rets = [], base = new Map(), add = (j, sym, i, r) => { const key = 'k' + j; rets.push({ d: `d${String(i).padStart(5, '0')}`, key, r, i, sym }); base.set(key, { s: r, n: 11 }); };
+        for (let j = 0; j < 394; j++) add(j, 'N' + j, 30 * j, -0.5);
+        for (let q = 0; q < 6; q++) add(394 + q, 'X', 20000 + 10 * q, 120);
+        rets.sort((a, b) => a.i - b.i);
+        const tc = trimDir(rets, base, 1, 0.01, MIN_CELL, 60), te = trimDir(rets, base, 1, 0.01, MIN_CELL, 0);
+        ok(Math.abs(tc.m + 0.5) < 1e-9 && tc.dropEv === 9 && te.m > 0.1 && te.drop === 4,
+           `㉘ 去極端 1% 照串拿:同一檔重疊的 6 筆算一串 → 拿掉之後 ${sg(tc.m)}(⑦ 不過);決定性對照:一筆一筆拿 ${te.drop} 筆 → 還剩 ${sg(te.m)}`);
+    }
+    // ㉙ 對照扣掉自己:同一天同一格 6 檔 1 / 2 / 3 / 4 / 5 / 10,事件那檔是 10 → 增量 = 10 − 3 = 7;決定性對照:含自己 = 10 − 4.17 = 5.83
+    {
+        const base = new Map([['d|0', { s: 25, n: 6 }]]), inc = incCell([{ d: 'd', key: 'd|0', r: 10 }], base, 5);
+        ok(Math.abs(inc.dm[0] - 7) < 1e-12 && Math.abs((10 - 25 / 6) - 5.8333) < 1e-3, `㉙ 對照扣掉自己:增量 ${sg(inc.dm[0])}(含自己會是 ${sg(10 - 25 / 6)})`);
+    }
+    // ㉚ 兩個股票池都要過、而且方向一樣
+    ok(bothOk({ ok: true, dir: 1 }, { ok: true, dir: 1 }) && !bothOk({ ok: true, dir: 1 }, { ok: true, dir: -1 }) && !bothOk({ ok: true, dir: 1 }, { ok: false, dir: 1 }),
+       '㉚ 兩個股票池都七條全過而且方向一樣才算(一邊之後比較強、一邊之後比較弱 ⛔ 算)');
     console.log(bad ? `❌ ${bad} 條沒過` : '✅ 全過');
     process.exit(bad ? 1 : 0);
 }
