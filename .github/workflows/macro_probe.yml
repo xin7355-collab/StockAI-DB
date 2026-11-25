@@ -26,6 +26,7 @@ on:
           - yf2_live # 🔎 2026-11-15 同上:Cboe 延遲報價(VIX / SPX)+ 期交所行情網夜盤(~20 秒,只讀、只印 log)
           - yf2_cboe # 🔎 2026-11-15 同上:Cboe 延遲報價有沒有 ADR / 美股 / ETF / 其他指數(~1 分,只讀、只印 log)
           - us_cal # 🗓️ 2026-11-17 聯準會開會日 / CPI / 非農 的歷史日期(官方網站;日子 / 事件補測要用,~2 分,只讀、只印 log)
+          - tariff_src # 🏛️ 2026-11-25 川普新 301 關稅追蹤:聯邦公報 API / 美國貿易代表署新聞稿的真實格式 + 2018 起關稅總統文件 / 301 公告清單(EXP-A 事件名單;~3 分,只讀、只印 log)
 
 permissions:
   contents: read
@@ -72,6 +73,14 @@ jobs:
         run: |
           python3 scripts/yf2_src_probe.py --selftest
           python3 scripts/yf2_src_probe.py
+
+      # 🏛️ 2026-11-25 川普新 301 關稅追蹤(使用者選「App 每天自動收官方公告 + 有新的推 Telegram」):
+      #   沙箱連不到 federalregister.gov / ustr.gov → 只能在這裡量格式;⛔ 只讀、只印、⛔ 金鑰(走 lib_http.Gate,UA 寫明身分)
+      - name: 🏛️ 美國官方關稅來源格式
+        if: ${{ inputs.which == 'tariff_src' }}
+        run: |
+          python3 scripts/tariff_src_probe.py --selftest
+          python3 scripts/tariff_src_probe.py
 
       # 🌏 V74.6.9 台股 vs 美日韓大盤層級對照 —— 沙箱連不到 Yahoo/stooq,只能在這裡跑。
       #   ⛔ 只讀、只印:不寫檔、不碰任何分支、不需要任何機密。
