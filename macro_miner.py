@@ -675,7 +675,7 @@ def _calc_day_events(today, end, tw_closed=None):
     return sorted(out, key=lambda x: x["date"])
 
 
-def _compute_upcoming_macro_events(today, window_days=14, tw_closed=None):
+def _compute_upcoming_macro_events(today, window_days=14, tw_closed=None, tariff=None):
     """演算法計算未來 N 天的全球重大財經事件,純函式無 IO,絕對不會拋例外。
     14 天視窗(2026/06 起,從 7 → 14 涵蓋更多籌備期事件)。
     涵蓋類別:
@@ -686,7 +686,8 @@ def _compute_upcoming_macro_events(today, window_days=14, tw_closed=None):
       ✅ 台股政策:央行理監事會
       ✅ 被動資金:MSCI 季度權重調整
       ✅ 連假效應:西曆固定連假(春節/端午/中秋因農曆寫進 manual_events.json)
-      ✅ 一次性:manual_events.json"""
+      ✅ 一次性:manual_events.json
+      ✅ 🏛️ 2026-11-25 美國關稅生效日:tariff = [(date, 中文摘要)](呼叫端用 _tariff_upcoming() 讀 tariff_watch.json;這裡⛔ 讀檔)"""
     from datetime import date, timedelta
     if not isinstance(today, date):
         today = date.today()
@@ -866,6 +867,14 @@ def _compute_upcoming_macro_events(today, window_days=14, tw_closed=None):
             continue
         _add(ev_date, ev_text, _kind_of_text(ev_text))
 
+    # ── 🏛️ 2026-11-25 美國關稅生效日(tariff_watch.py → upcoming 的「生效」;kind tariff → _DAY_FACTS.kinds.tariff 那一句)──
+    #    ⛔ 文字只講是什麼(test_macro_calendar ③b 禁方向 / 買賣字);中文摘要括號後面那段(點名哪些國家)行事曆不放
+    for ev_date, zh in (tariff or []):
+        try:
+            _add(date.fromisoformat(str(ev_date)[:10]), f"🏛️ 美國關稅生效:{str(zh).split('(')[0][:40]}", 'tariff')
+        except (TypeError, ValueError):
+            continue
+
     # 去重 + 依日期升冪排序
     seen = set()
     uniq = []
@@ -883,7 +892,7 @@ def _compute_upcoming_macro_events(today, window_days=14, tw_closed=None):
     #    ⚠️ 改事件文字時關鍵字要跟著對(`scripts/test_macro_calendar.py` ④ 釘住每一種事件的分級)。
     # 🧹 2026-11-17 拿掉 `direction`(利多 / 利空 / 震盪):是關鍵字湊的、沒有任何測試,而且全 repo 沒有人讀。
     HIGH_KW   = ['FOMC', '聯準會', 'BOJ', '日銀', 'CPI', '通膨', 'NFP', '非農', '台指期月結算',
-                 '四巫', '央行理監事', 'MSCI', '股東會法定截止', '美股四巫']
+                 '四巫', '央行理監事', 'MSCI', '股東會法定截止', '美股四巫', '美國關稅生效']
     MID_KW    = ['PPI', '生產者物價', 'ISM', '製造業 PMI', '季報法定截止', '法說旺季',
                  '股東會旺季', '除權息高峰']
 
@@ -1732,6 +1741,39 @@ def _load_prev_macro(local_path=None, getter=None, local=True):
         except Exception as e:
             why.append(f"{label} {str(e)[:60]}")
     return {}, "讀不到上一份 → 這一輪日期守門不作用(" + ";".join(why) + ")"
+
+
+# 🏛️ 2026-11-25 美國關稅生效日 → 財經行事曆(tariff_watch.py 產的 data/tariff_watch.json → upcoming 的「生效」)
+#   macro_cron 是乾淨 checkout(data/ 在 main 是 .gitignore)→ 本機沒有就讀已發佈的那份(同 _load_prev_macro 那一招)
+_TARIFF_URLS = (
+    ("gh-pages", "https://xin7355-collab.github.io/StockAI-DB/data/tariff_watch.json"),
+    ("data 分支", "https://raw.githubusercontent.com/xin7355-collab/StockAI-DB/data/data/tariff_watch.json"),
+)
+
+
+def _tariff_upcoming(local_path=None, getter=None):
+    """回 ([(生效日, 中文摘要)], 從哪裡讀到的)。⛔ 永遠不丟例外;讀不到 → ([], 原因)(行事曆照常,只是少這一種)。"""
+    def _pick(j):
+        return [(u.get("date"), u.get("zh") or "") for u in ((j or {}).get("upcoming") or [])
+                if isinstance(u, dict) and u.get("what") == "生效" and u.get("date")]
+    p = Path(local_path) if local_path else DATA_DIR / "tariff_watch.json"
+    why = []
+    try:
+        if p.exists():
+            return _pick(json.loads(p.read_text(encoding="utf-8"))), f"本機 {p.name}"
+        why.append("本機沒有")
+    except Exception as e:
+        why.append(f"本機讀不到({str(e)[:40]})")
+    get = getter or (lambda u: http.get(u, timeout=12))
+    for label, url in _TARIFF_URLS:
+        try:
+            r = get(f"{url}?t={int(time.time())}")
+            if getattr(r, "status_code", 0) == 200:
+                return _pick(r.json()), f"線上 {label}"
+            why.append(f"{label} HTTP {getattr(r, 'status_code', '?')}")
+        except Exception as e:
+            why.append(f"{label} {str(e)[:60]}")
+    return [], "讀不到(" + ";".join(why) + ")"
 
 
 # 🌅 V79.5.5 盤前體檢「早上那份」每天留一筆 → 產業作戰室「早上那份準不準」
@@ -4221,7 +4263,9 @@ def main():
             print(f"  🗓️ 官方休市表:{len(_twc['days'])} 天(年份 {_twc['years']};{_twc_note})")
         else:
             print(f"  ⚠️ 官方休市表沒有可用的年份({_twc_note})→ 這一輪休市日只靠固定連假(1/1、4/4、10/10)+ manual_events.json")
-        out["upcoming_macro_events"] = _compute_upcoming_macro_events(_date.today(), window_days=14, tw_closed=_twc)
+        _tw_up, _tw_src = _tariff_upcoming()
+        print(f"  🏛️ 美國關稅生效日:{len(_tw_up)} 個({_tw_src})")
+        out["upcoming_macro_events"] = _compute_upcoming_macro_events(_date.today(), window_days=14, tw_closed=_twc, tariff=_tw_up)
         # 📞 併入 TWSE 法說會逐檔日期(失敗回 [] 不影響演算法事件)
         try:
             _ec = fetch_earnings_calls(window_days=14)

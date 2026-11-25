@@ -422,6 +422,16 @@ export function build(dir, prevHist = [], now = new Date(), opt = {}) {
         fx.push({ k, name, v, c1: c1 ? num(m[c1]) : null, c5: c5v, c20, pos, hs, hwhy, d: dd, upd: dk ? null : (m.updated || null), note, lab: FX_LAB[k] || null });   // 沒有自己的日期 → 只寫檔案更新時間(⛔ 假裝是今天的)
     }
     todayRow.fx = Object.fromEntries(fx.map(r => [r.k, [r.v, r.d || null]]));
+    // 🌎 2026-11-25 標普離一年高點(轉述 global-crash:全球一起大跌,台股沒有比較慢回來;撿美股那一題 us-dip 在同一個專欄系列)
+    //   今天 = macro_risk sp500(V82.6.9 起 Cboe 拿不到會退 yfinance);一年最高 = us_hist ^GSPC 那天之前 365 個日曆天(手動更新)∪ 今天
+    //   ⛔ 前端自己算;us_hist 沒有 ^GSPC → 不列(⛔ 只拿今天當最高 → 永遠 0%)
+    if (num(m.sp500) > 0 && us.j && us.j.syms && us.j.syms['^GSPC'] && Array.isArray(us.j.days)) {
+        const sd = d10(m.sp500_date) || today, from = new Date(Date.parse(sd + 'T00:00:00Z') - 365 * 864e5).toISOString().slice(0, 10);
+        const c = us.j.syms['^GSPC'].c || [], days = us.j.days; let hi = num(m.sp500), hd = sd, nH = 0;
+        for (let k = 0; k < days.length; k++) if (days[k] >= from && days[k] < sd && num(c[k]) > 0) { nH++; if (num(c[k]) > hi) { hi = num(c[k]); hd = days[k]; } }
+        if (nH >= 100) wind.push({ k: 'spdd', name: '標普離一年高點', v: r2((num(m.sp500) / hi - 1) * 100), unit: '%', d: sd,
+            note: `今天 ${num(m.sp500)}・一年最高 ${r2(hi)}(${hd};歷史 = 美股日線那份,手動更新,到 ${days.at(-1)})`, lab: 'global-crash' });
+    }
     if (num(m.sox_chg_pct) != null && num(m.sp500_chg_pct) != null) wind.push({ k: 'soxsp', name: '費半 − 標普(今天)', v: r2(num(m.sox_chg_pct) - num(m.sp500_chg_pct)), unit: 'pp', d: d10(m.sox_date), note: `費半 ${num(m.sox_chg_pct)}%・標普 ${num(m.sp500_chg_pct)}%`, lab: null });
     const two = rdj(dir, '^TWOII.json'), tw = rdj(dir, '^TWII.json');
     const r20 = j => { const a = Array.isArray(j) ? j.filter(r => num(r.close) > 0) : []; return a.length > 21 ? { v: (a.at(-1).close / a.at(-21).close - 1) * 100, d: d10(a.at(-1).date) } : null; };
@@ -681,6 +691,20 @@ function selftest() {
         W('macro_risk.json', MA); W('dividends_hist.json', { d: {} });
         const a18c = adrOf();
         ok('⑱c 2330 除息紀錄讀不到 → ⛔ 排第幾、寫原因(⛔ 拿還原過的 ADR 比原始的 2330)', a18c && a18c.pct == null && /除息紀錄/.test(a18c.note), JSON.stringify(a18c && { pct: a18c.pct, note: a18c.note }));
+        // ⑲ 🌎 2026-11-25 標普離一年高點:一年最高 = us_hist ^GSPC 那天之前 365 天 ∪ 今天;帶實測總表 global-crash;歷史不到 100 天 / 沒有 ^GSPC → 不列
+        const spD = calD.slice(ai - 299, ai), spC = spD.map((_, k) => k === 120 ? 5000 : 4000);
+        W('us_hist.json', { adj: true, days: spD, syms: { '^GSPC': { c: spC } } });
+        const spOf = sp => { W('macro_risk.json', { ...M0, sp500: sp, sp500_date: asof }); return build(tmp, [], new Date('2026-11-19T12:00:00Z'), { today: '2026-11-19', root: ROOT, conc: { rows: [] } }).mood.wind.find(r => r.k === 'spdd'); };
+        const s19 = spOf(4250);
+        ok('⑲ 標普離一年高點:今天 4250、過去一年最高 5000 → −15%、帶 global-crash、寫最高那天', s19 && s19.v === -15 && s19.lab === 'global-crash' && s19.note.includes(spD[120]), JSON.stringify(s19));
+        const s19b = spOf(5200);
+        ok('⑲b 今天比過去一年都高 → 0%(一年最高就是今天)', s19b && s19b.v === 0, JSON.stringify(s19b));
+        W('us_hist.json', { adj: true, days: spD.slice(-50), syms: { '^GSPC': { c: spC.slice(-50) } } });
+        const s19c = spOf(4250);
+        W('us_hist.json', { adj: true, days: spD, syms: { TSM: { c: spC } } });
+        const s19d = spOf(4250);
+        ok('⑲c 歷史不到 100 天 / us_hist 沒有 ^GSPC → ⛔ 列(⛔ 拿今天當最高 = 永遠 0%)', !s19c && !s19d, JSON.stringify([s19c, s19d]));
+        W('macro_risk.json', M0);
         for (const f of ['2330.json', 'us_hist.json', 'dividends_hist.json']) fs.rmSync(path.join(tmp, f), { force: true });
     } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
     console.log(bad ? `\n❌ ${bad} 條沒過` : '\n✅ 全部通過');

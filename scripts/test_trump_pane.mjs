@@ -10,8 +10,8 @@
  *   ⑥ 畫面⛔ 研究字樣 / 🔴🟢 / 買賣指令(只描述)
  *   ⑦ `_TRUMP_OCC` 類別 == lib_trump.CLS + any(⛔ 兩份分類)
  *   ⑧ 接線:第三顆分頁鈕 + 切到才讀 + ghBase + ?t= ;AI 提示詞的 `_trumpRaw` 照舊讀新聞(⛔ 改成餵發文)
- *   ⑨ 真的載入 index.html(假網路):切到 🗽 → 畫出來、點一下展開、390px 不橫捲、5 分鐘內切回來⛔ 再打網路
- *   INJECT=tz → 窗口不轉台北時間 → ① 必紅;INJECT=occ → 發生率寫死 → ③ 決定性對照必紅
+ *   ⑨ 真的載入 index.html(假網路):切到 🗽 → 畫出來、點一下展開、390px 不橫捲、5 分鐘內切回來⛔ 再打網路;🏛️ 官方動作那一段也餵資料(最上面、點名台灣、連聯邦公報、逐元素不超出這一格)
+ *   INJECT=tz → 窗口不轉台北時間 → ① 必紅;INJECT=occ → 發生率寫死 → ③ 決定性對照必紅;INJECT=wide → 官方動作標題換成一串 160 字不斷行 → ⑨ 358px 那條必紅
  */
 import fs from 'fs';
 import os from 'os';
@@ -20,6 +20,7 @@ import { execFileSync } from 'child_process';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { extractMember } from './col_rate_base.mjs';
+import { rwdShim } from './lib_rwdshim.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let HTML = path.join(ROOT, 'index.html');
@@ -178,16 +179,28 @@ await page.goto(pathToFileURL(HTML).href, { waitUntil: 'domcontentloaded', timeo
 await page.waitForFunction(() => typeof app !== 'undefined' && typeof app._loadTrumpPane === 'function', null, { timeout: 60000 });
 await page.waitForTimeout(2000);
 const FIX = mk(Date.now());
-const R = await page.evaluate(async ({ FIX, NEWS }) => {
-    const out = {}; let hits = 0;
+// 🏛️ 2026-11-25 官方動作那一段也要真的畫出來量 390px(長英文標題 + 點名 16 國 + 生效日)—— 以前這格沒餵,等於沒量到
+const nowIso = new Date().toISOString().replace(/\.\d+Z$/, 'Z'), d10 = k => new Date(Date.now() + k * 864e5).toISOString().slice(0, 10);
+const TW = { v: 1, checked: nowIso, ok_at: nowIso, src: 'federalregister.gov', err: null, pushed: [],
+    items: [
+        { id: '2026-22001', date: d10(-1), type: 'Notice', kind: '定案', agency: '美國貿易代表署', tw: true, eff: d10(20), url: 'https://www.federalregister.gov/d/2026-22001',
+          title: process.env.INJECT === 'wide' ? 'X'.repeat(160) : 'Notice of Action in the Section 301 Investigations of Acts, Policies, and Practices of Sixteen Economies Related to Structural Excess Capacity and Production in Manufacturing Sectors',
+          zh: '301 條款・產能過剩・定案(點名 16 個:台灣、中國、日本、韓國、歐盟、越南…)', countries: ['台灣', '中國', '日本', '韓國', '歐盟', '越南', '墨西哥', '泰國', '馬來西亞', '印度', '印尼', '瑞士', '柬埔寨', '德國', '加拿大', '巴西'] },
+        { id: '2026-21500', date: d10(-7), type: 'Presidential Document', kind: '總統公告', agency: '白宮', tw: false, url: 'https://www.federalregister.gov/d/2026-21500',
+          title: 'Adjusting Imports of Semiconductors, Semiconductor Manufacturing Equipment, and Their Derivative Products Into the United States', zh: '232 條款・半導體・總統公告', countries: [] },
+    ],
+    upcoming: [{ date: d10(20), what: '生效', id: '2026-22001', zh: '301 條款・產能過剩・定案(點名 16 個:台灣、中國…)' }] };
+const R = await page.evaluate(async ({ FIX, NEWS, TW }) => {
+    const out = {}; let hits = 0, thits = 0;
     const real = window.fetch;
     window.fetch = (u, o) => {
         const s = String(u);
+        if (/data\/tariff_watch\.json\?t=/.test(s)) { thits++; return Promise.resolve(new Response(JSON.stringify(TW), { status: 200, headers: { 'Content-Type': 'application/json' } })); }
         if (/data\/trump_posts\.json\?t=/.test(s)) { hits++; return Promise.resolve(new Response(JSON.stringify(FIX), { status: 200, headers: { 'Content-Type': 'application/json' } })); }
         if (/data\/tech_giants_news\.json/.test(s)) return Promise.resolve(new Response(JSON.stringify({ trump: NEWS }), { status: 200 }));
         return real(u, o);
     };
-    app._trumpCache = null;
+    app._trumpCache = null; app._tariffWatchCache = null;
     app.switchAppTab('market'); try { app.switchMarketSubTab('global'); } catch (_) {}
     app.switchNewsPane('trump');
     for (let i = 0; i < 40 && !document.querySelector('#trumpPaneBody [data-trump-top]'); i++) await new Promise(r => setTimeout(r, 100));
@@ -198,6 +211,12 @@ const R = await page.evaluate(async ({ FIX, NEWS }) => {
     out.newsHidden = getComputedStyle(document.querySelector('[data-newspane-body="news"]')).display === 'none';
     out.saved = localStorage.getItem('newsPane');
     out.ts = document.getElementById('trumpPaneTs').textContent;
+    const tb = body.querySelector('[data-tariff]');
+    out.tariffFirst = !!(body.firstElementChild && body.firstElementChild.hasAttribute('data-tariff'));
+    out.tItems = body.querySelectorAll('[data-tariff-item]').length;
+    out.tTxt = tb ? tb.innerText : '';
+    out.tLink = tb ? [...tb.querySelectorAll('a')].map(a => a.getAttribute('href')) : [];
+    out.tHtml = tb ? tb.outerHTML : '';
     const p0 = body.querySelector('[data-trump-post]'), tx = p0 && p0.querySelector('.tp-txt');
     out.clampBefore = tx ? getComputedStyle(tx).webkitLineClamp : null;
     if (p0) p0.click();
@@ -207,16 +226,41 @@ const R = await page.evaluate(async ({ FIX, NEWS }) => {
     out.hits1 = hits;
     app.switchNewsPane('news'); app.switchNewsPane('trump');
     await new Promise(r => setTimeout(r, 300));
-    out.hits2 = hits;
+    out.hits2 = hits; out.thits = thits;
     out.postsAgain = document.querySelectorAll('#trumpPaneBody [data-trump-post]').length;
     window.fetch = real;
     return out;
-}, { FIX, NEWS });
+}, { FIX, NEWS, TW });
 ok('⑨ 切到 🗽 → 畫出第一行 + 3 則、這一格顯示、新聞那格藏起來', R.top && R.posts === 3 && R.paneShown && R.newsHidden, JSON.stringify(R));
 ok('⑨ 記住停在 🗽(下次開消息面直接讀)', R.saved === 'trump');
 ok('⑨ 右上角標更新時間', /^\d{2}\/\d{2}\(.\) \d{2}:\d{2}$/.test(R.ts), R.ts);
 ok('⑨ 每則先收成 4 行、點一下展開', String(R.clampBefore) === '4' && R.openCls && String(R.clampAfter) !== '4', `${R.clampBefore} → ${R.clampAfter}`);
 ok('⑨ 390px ⛔ 橫捲', R.scrollX <= 2, R.scrollX);
+ok('⑨ 🏛️ 官方動作在最上面、2 則都畫出來、生效日那一行、⚠️ 點名台灣、原文連到聯邦公報', R.tariffFirst && R.tItems === 2 && /美國關稅生效/.test(R.tTxt) && /點名台灣/.test(R.tTxt)
+   && R.tLink.length === 2 && R.tLink.every(h => /^https:\/\/www\.federalregister\.gov\//.test(h)), JSON.stringify({ f: R.tariffFirst, n: R.tItems, l: R.tLink }));
+// 逐元素跟「已知寬度」的容器比(ui.md:沙箱沒有 Tailwind,原地量祖先鏈只剩 ~100px = 假紅;⛔ 只靠整頁 scrollX:html,body 有 overflow-x:hidden 夾著)
+const shimBad = await page.evaluate(rwdShim);
+const W = await page.evaluate(html => {
+    const box = document.createElement('div');
+    box.style.cssText = 'width:358px;padding:0;margin:0;position:absolute;left:0;top:0';
+    box.innerHTML = html; document.body.appendChild(box);
+    const bw = box.getBoundingClientRect();
+    // 元素 + 文字節點都要量(一串不斷行的字會溢出它的 div,但 div 自己的框還是 358 → 只量元素抓不到)
+    const over = [...box.querySelectorAll('*')].filter(el => el.getBoundingClientRect().right > bw.right + 1).map(el => `${el.tagName}:${Math.round(el.getBoundingClientRect().right - bw.right)}`);
+    const tw = document.createTreeWalker(box, NodeFilter.SHOW_TEXT), rg = document.createRange();
+    for (let t = tw.nextNode(); t; t = tw.nextNode()) {
+        if (!t.textContent.trim()) continue;
+        rg.selectNodeContents(t);
+        const r = rg.getBoundingClientRect();
+        if (r.right > bw.right + 1) over.push(`字「${t.textContent.trim().slice(0, 12)}」:${Math.round(r.right - bw.right)}`);
+    }
+    const w = Math.round(bw.width), n = box.querySelectorAll('[data-tariff-item]').length;
+    box.remove();
+    return { w, n, over };
+}, R.tHtml);
+ok('⑨ 🏛️ 那一段放進 358px(手機 390 扣左右邊)每個元素都在框裡(長英文標題 / 點名 16 國)', shimBad.length === 0 && W.w >= 350 && W.n === 2 && W.over.length === 0,
+   `shim 沒生效 ${shimBad.join(',') || 0}・寬 ${W.w}・則數 ${W.n}・超出 ${W.over.slice(0, 5).join(' ')}`);
+ok('⑨ 🏛️ 官方動作只抓一次(5 分鐘內切回來⛔ 再抓)', R.thits === 1, R.thits);
 ok('⑨ 5 分鐘內切回來⛔ 再打網路(照樣畫得出來)', R.hits1 === 1 && R.hits2 === 1 && R.postsAgain === 3, `${R.hits1} → ${R.hits2}`);
 ok('⑨ 沒有 pageerror', errs.length === 0, errs.join(' | '));
 await browser.close();

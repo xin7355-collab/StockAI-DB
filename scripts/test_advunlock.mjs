@@ -283,6 +283,17 @@ const T = await page.evaluate(() => {
       R.btNull = ids(run({ btc: { c: null, d: '2026-10-17' } })); R.btStr = ids(run({ btc: { c: '', d: '2026-10-17' } })); R.btNone = ids(run({ btc: null }));
       const h = run({ btc: { c: -(BB + 0.6), d: '2026-10-17' } }).find(x => x.id === 'btc_big');
       R.btWhy = h ? h.why : ''; }
+    // 🏛️ 2026-11-25 美國聯邦公報最近 2 天(台北日期)刊登了關稅公告 → tariff_new;3 天前 / 今天以後(日期打錯)/ 壞日期 / 沒資料 → 沒有
+    { const td = { tdy: '2026-11-25', wk: 3, weekday: true };
+      const it = (d, extra = {}) => ({ id: 'x' + d, date: d, kind: '定案', tw: false, ...extra });
+      R.tf = ids(run({ today: td, tariff: { items: [it('2026-11-24', { tw: true }), it('2026-11-23')] } }));
+      R.tf2 = ids(run({ today: td, tariff: { items: [it('2026-11-23')] } }));
+      R.tfOld = ids(run({ today: td, tariff: { items: [it('2026-11-22')] } }));
+      R.tfFut = ids(run({ today: td, tariff: { items: [it('2026-11-30')] } }));
+      R.tfBad = ids(run({ today: td, tariff: { items: [it('x'), { date: null }] } }));
+      R.tfNone = ids(run({ today: td, tariff: null }));
+      const h = run({ today: td, tariff: { items: [it('2026-11-24', { tw: true }), it('2026-11-23')] } }).find(x => x.id === 'tariff_new');
+      R.tfWhy = h ? h.why : ''; }
     // 📰 V79.3.3 再接 6 篇專欄
     { const H = new Map([['2330', { cost: 0 }]]);
       const drop = mkK(80, '2026-10-16', k => { k[k.length - 1].close = 95; });
@@ -385,6 +396,10 @@ ok('③m4 🏧 fi_out 那一行寫實際數字 + 日期(兩個都超過就兩個
 ok('③m5 ₿ 比特幣一天跌 5.6% / 漲 5%(邊界)→ btc_big;跌 4.9% / 比大盤最新收盤舊 / null / 空字串(⛔ 當 0)/ 沒資料 → 沒有;門檻 = _BTC_BIG 5',
    T.btOk && has(T.bt, 'btc_big') && has(T.btUp, 'btc_big') && ![T.btNo, T.btOld, T.btNull, T.btStr, T.btNone].some(x => has(x, 'btc_big')),
    JSON.stringify([T.btOk, T.bt, T.btUp, T.btNo, T.btOld, T.btNull, T.btStr, T.btNone]));
+ok('③m7 🏛️ 聯邦公報最近 2 天(11/24、11/23)刊登關稅公告 → tariff_new;3 天前(11/22)/ 日期在今天之後 / 壞日期 / 沒資料 → 沒有',
+   has(T.tf, 'tariff_new') && has(T.tf2, 'tariff_new') && ![T.tfOld, T.tfFut, T.tfBad, T.tfNone].some(x => has(x, 'tariff_new')),
+   JSON.stringify([T.tf, T.tf2, T.tfOld, T.tfFut, T.tfBad, T.tfNone]));
+ok('③m8 🏛️ tariff_new 那一行寫日期 + 種類 + 點名台灣 + 共幾則(⛔ 方向 / 買賣字)', /11\/24\(二\) 美國聯邦公報刊登關稅公告\(定案・點名台灣,共 2 則\)/.test(T.tfWhy || '') && !/利多|利空|小心|風險|跌|漲|買|賣/.test(T.tfWhy || ''), T.tfWhy);
 ok('③m6 ₿ btc_big 那一行寫日期 + 漲 / 跌 + 幾 %(⛔「利多 / 小心」)', /10\/17\(六\) 比特幣一天跌 5\.6%/.test(T.btWhy || '') && !/利多|小心|風險/.test(T.btWhy || ''), T.btWhy);
 ok('③n 手上的跌破 5 日線 → ma5_break;沒跌破 / 自選 → 沒有', has(T.ma5, 'ma5_break') && !has(T.ma5No, 'ma5_break') && !has(T.ma5Fav, 'ma5_break'), JSON.stringify([T.ma5, T.ma5No, T.ma5Fav]));
 ok('③o 手上的收盤創 60 日新高 → nh60_held;平盤 → 沒有', has(T.nh, 'nh60_held') && !has(T.nhNo, 'nh60_held'), JSON.stringify([T.nh, T.nhNo]));

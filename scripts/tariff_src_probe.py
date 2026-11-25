@@ -25,8 +25,8 @@ FR = 'https://www.federalregister.gov/api/v1/documents.json'
 FR_PI = 'https://www.federalregister.gov/api/v1/public-inspection-documents/current.json'
 USTR_AGENCY = 'trade-representative-office-of-united-states'
 FIELDS = ['title', 'type', 'abstract', 'document_number', 'html_url', 'publication_date', 'agencies',
-          'effective_on', 'comments_close_on', 'dates', 'action', 'signing_date', 'presidential_document_type',
-          'proclamation_number', 'executive_order_number']
+          'effective_on', 'comments_close_on', 'dates', 'action', 'signing_date', 'subtype',
+          'proclamation_number', 'executive_order_number']   # ⚠️ 2026-11-25 ⓪ 實測:presidential_document_type → HTTP 400(已拿掉)
 USTR_PAGES = [
     'https://ustr.gov/about-us/policy-offices/press-office/press-releases',
     'https://ustr.gov/rss.xml',
@@ -56,7 +56,7 @@ def fr_line(r):
         return '(不是 dict)'
     t = re.sub(r'\s+', ' ', str(r.get('title') or '')).strip()
     extra = []
-    for k in ('effective_on', 'comments_close_on', 'signing_date', 'presidential_document_type'):
+    for k in ('effective_on', 'comments_close_on', 'signing_date', 'subtype'):
         if r.get(k):
             extra.append(f'{k}={r[k]}')
     return f"{r.get('publication_date')}|{r.get('type')}|{r.get('document_number')}|{' '.join(extra)}|{t[:170]}"
@@ -208,10 +208,13 @@ def main():
         if 'xml' in str(ct) or body.lstrip().startswith('<?xml'):
             k0 = body.find('<item>')
             print('   第一個 item 原文:', re.sub(r'\s+', ' ', body[k0:k0 + 900]) if k0 >= 0 else '(沒有 <item>)')
-            items = re.findall(r'<item>.*?<title>(.*?)</title>.*?<link>(.*?)</link>.*?(?:<pubDate>(.*?)</pubDate>)?', body, flags=re.S)
-            print(f'   RSS item {len(items)} 個')
-            for it in items[:8]:
-                print('   ', it)
+            # 每個 <item> 自己切開再找(舊寫法結尾的 (?:<pubDate>…)? 是懶惰比對 → 永遠抓到空字串,看不出有沒有日期)
+            blocks = re.findall(r'<item>(.*?)</item>', body, flags=re.S)
+            tags = Counter(t for b in blocks for t in set(re.findall(r'<([A-Za-z][\w:]*)[\s>]', b)))
+            print(f'   RSS item {len(blocks)} 個;item 裡的標籤(出現在幾個 item)= {dict(tags)}')
+            for b in blocks[:8]:
+                f = lambda t: (re.search(rf'<{t}>(.*?)</{t}>', b, flags=re.S) or [None, ''])[1].strip()[:120]
+                print('    ', (f('title'), f('link'), f('pubDate') or f('dc:date') or '(沒有日期)'))
     print(f"\n📊 連線統計:{g.stats};斷路 = {g.open}")
 
 

@@ -74,6 +74,11 @@ python3 scripts/btc_hist_miner.py --selftest
 python3 scripts/txnight_hist_miner.py --selftest
 node scripts/btc_tw_probe.mjs --selftest
 node scripts/txnight_probe.mjs --selftest
+python3 tariff_watch.py --selftest
+node scripts/test_tariff_watch.mjs
+python3 scripts/tariff_src_probe.py --selftest
+node scripts/tariff_event_probe.mjs --selftest
+node scripts/global_crash_probe.mjs --selftest
 node scripts/lib_conc.mjs --selftest
 node scripts/conc_probe.mjs --selftest
 node scripts/adr_premium_probe.mjs --selftest

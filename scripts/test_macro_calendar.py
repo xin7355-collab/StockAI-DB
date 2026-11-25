@@ -113,7 +113,7 @@ for rx, want in KIND:
 nokind = [e['event'] for e in EVS if not any(re.search(rx, e['event']) for rx, _ in KIND) and 'kind' in e]
 ok('②k2 其他事件 ⛔ 亂給 kind(月營收旺季 5 日那筆不是 9~11 日那個定義、休市本身不是一種日子)', not nokind, nokind[:3])
 KINDS = {'post45', 'post6', 'pre45', 'pre6', 'settle', 'wit', 'opx', 'fomc', 'cpi', 'nfp', 'rev',
-         'msci', 'boj', 'cbc', 'ism', 'ppi', 'earn'}
+         'msci', 'boj', 'cbc', 'ism', 'ppi', 'earn', 'tariff'}
 ok('②k3 kind 都是 _DAY_FACTS 認得的鍵', {e['kind'] for e in EVS if 'kind' in e} <= KINDS)
 # 手寫事件:採礦端用同一份關鍵字推(⛔ 手寫的就沒有 kind)
 ok('②k4 手寫事件的 kind 用關鍵字推', mm._kind_of_text('🔮 美股四巫日 (期權結算)') == 'wit'
@@ -173,6 +173,21 @@ except Exception:
     MANUAL = set()
 covered = [e['event'] for e in EVS if e['event'] not in MANUAL and not any(re.search(rx, e['event']) for _, rx, _ in SEV)]
 ok('④b 每一種演算法事件都有釘分級(新增事件要補進上表)', not covered, sorted(set(covered))[:3])
+# 🏛️ 2026-11-25 美國關稅生效日(tariff_watch.json 的 upcoming「生效」;呼叫端讀檔,這支只收清單)
+TW = mm._compute_upcoming_macro_events(date(2026, 11, 25), 14, None, tariff=[
+    ('2026-12-01', '301 條款・產能過剩・定案(點名 16 個:台灣、中國…)'), ('2027-03-01', '太遠'), ('壞日期', 'x'), (None, 'y')])
+TWE = [e for e in TW if e.get('kind') == 'tariff']
+ok('④e 美國關稅生效:14 天內那一筆進行事曆、kind tariff、重要度 high;括號(點名國家)不放、太遠 / 壞日期 ⛔ 收',
+   len(TWE) == 1 and TWE[0]['date'] == '2026-12-01' and TWE[0]['event'] == '🏛️ 美國關稅生效:301 條款・產能過剩・定案'
+   and TWE[0]['severity'] == 'high', TWE)
+ok('④e2 美國關稅生效那一列 ⛔ 方向 / 買賣 / 警示字', TWE and not DIRECTIVE.search(TWE[0]['event']), TWE)
+_tu, _src = mm._tariff_upcoming(local_path=os.path.join(ROOT, 'nonexistent_tariff.json'), getter=lambda u: (_ for _ in ()).throw(OSError('x')))
+ok('④e3 _tariff_upcoming 讀不到 → [] + 原因(⛔ 丟例外、⛔ 擋行事曆)', _tu == [] and '讀不到' in _src, _src)
+import tempfile as _tf
+with _tf.NamedTemporaryFile('w', suffix='.json', delete=False, encoding='utf-8') as _f:
+    json.dump({'upcoming': [{'date': '2026-12-01', 'what': '生效', 'zh': 'A'}, {'date': '2026-12-02', 'what': '意見截止', 'zh': 'B'}]}, _f)
+_tu2, _src2 = mm._tariff_upcoming(local_path=_f.name)
+ok('④e4 只收「生效」(意見截止 ⛔ 進行事曆)', _tu2 == [('2026-12-01', 'A')] and '本機' in _src2, (_tu2, _src2))
 with_dir = [e['event'] for e in EVS if 'direction' in e]
 ok('④c `direction` 已拿掉(關鍵字湊的、沒人讀)', not with_dir, with_dir[:2])
 src = open(os.path.join(ROOT, 'macro_miner.py'), encoding='utf-8').read()
@@ -279,7 +294,7 @@ _carry = src_mm[src_mm.index('for key in ("us10y_yield"'):src_mm.index('"macro_e
 #     抓不到 → 上一份 ≥ 今年的年份整份沿用(各年時間照舊)。tw_closed 仍 ⛔ 進斷崖防護清單(那條會整份照抄、不分年份)。
 ok('⑦f 主程式:抓到的跟上一份按年份合併(merge_tw_closed),合併結果才寫進 out;⛔ 走斷崖防護整份照抄',
    'tw_closed' not in _carry and 'merge_tw_closed(_twc_new, (_prev_json or {}).get("tw_closed")' in src_mm
-   and 'if _twc:\n            out["tw_closed"] = _twc' in src_mm and 'tw_closed=_twc)' in src_mm)
+   and 'if _twc:\n            out["tw_closed"] = _twc' in src_mm and 'tw_closed=_twc, tariff=_tw_up)' in src_mm)   # 🏛️ 2026-11-25 多帶關稅生效日
 _ys = lambda tc: sorted({int(d[:4]) for d in (tc or {}).get('days') or []})
 P26 = {'src': 'x', 'fetched': '2026-06-01 08:00', 'years': [2026], 'days': ['2026-01-01', '2026-10-09', '2026-10-26'],
        'names': {'2026-01-01': '開國紀念日', '2026-10-09': '國慶日補假', '2026-10-26': '光復節補假'}}

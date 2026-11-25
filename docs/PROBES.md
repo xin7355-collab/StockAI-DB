@@ -3,6 +3,16 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🏛️🌎 V82.6.9(2026-11-25)美國官方關稅動作 / 全球一起大跌 / 大跌撿美股(EXP-20261125-01 / -02 / -03,三個都 ⛔)
+- **`scripts/tariff_event_probe.mjs`(新,selftest 12 條;EXP-20261125-03)**:`IDX_LONG IDX_EARLY TWII_NOW [EVENTS] node scripts/tariff_event_probe.mjs out.json`(約 1 分)。事件名單 `research/tariff_events_20261125.json`(登記前寫死:美國第一次公開、正式、有具體稅率的那天;範圍 = 對中國 / 對台灣 / 對全部或多數國家;同方向 5 個日曆天內併一次;方向相反撞同一個台股交易日兩個都拿掉)→ 第一個台灣日期 > 美國日期的台股交易日;
+  反應日收盤之後 20 天 vs「同一級第一天漲跌、不是關稅」的日子(2010 起、離事件 ±5 天以外,隨機 4,000 次雙尾);顛不顛 / 方向六格借 `daytype_probe.cellStat`(同星期幾、分層置換、BH)。結果:加碼 29 次 20 天差 +0.69pp(p 0.48、兩段方向相反)⛔;隔天 23/29 跌、漲跌超過 1.5% 51.7% vs 18.6%(29 次 < 30 門檻,只描述)。產物 `research/tariff_20261125/out.json|out.txt`。
+  ⏭️ 重跑時機:名單只增不改(新的事件寫進新的一份名單、另外登記);⛔ 換門檻重跑;封存日之後照同一條規則累積再驗。
+- **`scripts/global_crash_probe.mjs`(新,selftest 16 條;EXP-20261125-01 / -02)**:`IDX_LONG IDX_EARLY TWII_NOW FRED_HIST WORLD_HIST [FI_HIST] node scripts/global_crash_probe.mjs out.json`(幾秒)。
+  ① 一起大跌:加權每段修正第一次「加權與看得到的標普(美國日期 < 台股日期)都離 250 天高點 ≥ 15%」→ 台股收盤買加權 vs 同一晚標普收盤用台幣買,250 天後比;正負號翻轉 p;韓國同一套。8 次 +5.97pp(中位 −4.69、5/8 台股比較差、p 0.70)⛔。
+  ② 撿美股:標普每段修正第一次離高點 ≥ D% → 隔一個美股交易日收盤用台幣買抱 h 天 vs 同期間隨便一天(抽 4,000 次);D 10 / 15 / 20 / 25 × 120 / 250 / 500。15 × 250:8 次 +3.07pp(p 0.30、前半 −8.23)⛔。只描述:同一天改買加權含息、存現金等大跌 vs 每月買(0.80~0.91 倍)、一半一半每年再平衡。產物 `research/global_crash_20261125/out.json|out.txt`。
+  ⚠️ 標普只有價格(沒股利);世界指數那份只到 2026-11-06。⏭️ 重跑時機:下一次全球一起跌完一段之後(照同一套規則累積,⛔ 換門檻)。
+- **`scripts/tariff_src_probe.py`(新,資料格式,⛔ 不進 LAB;`macro_probe.yml which=tariff_src`)**:聯邦公報 API / 「明天要刊登」那份 / 美國貿易代表署新聞稿頁與 RSS 在 Actions 上的真實格式 + 2018 起總統關稅文件清單。11/25 第一輪:聯邦公報 documents.json 帶參數全部 HTTP 400(第二輪逐一加參數找原因)、public inspection 與 USTR 新聞稿頁 / RSS 都 200。
+
 ### 💱 V82.5.6(2026-11-20)人性頁第 6 期:FRED 每日歷史(匯率 / 美債 / 信用利差 / 比特幣)
 - **`scripts/fred_hist_miner.py`(新,資料格式,⛔ 不進 LAB)**:`PREV=data/fred_hist.json python3 scripts/fred_hist_miner.py`(`--selftest` 16 條;`ONLY=usdtwd,baa10y` 只跑幾條)。workflow `fred_hist.yml`(跟在每日採礦後面 + 手動),只推 data 分支。11/20 第一次實跑(run 44608641300):9 條都拿到、src_error 0 —— 台幣 6,733 天(2000-01-03 ~ 11-13)、信用利差 10,219 天(1986 起)、比特幣 4,327 天(2015 起)。
   ⚠️ FRED 匯率一週才更新一次(週一補上一週)→ 只當歷史基準;今天的值照舊用總經風險檔、先比同一把尺。⛔ 油價:FRED 是現貨、App 是期貨近月(實測差 7%)→ 不接。
