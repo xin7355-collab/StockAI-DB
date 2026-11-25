@@ -208,6 +208,11 @@ def parse_cboe(j, sym):
     return {'close': round(close * sc, 2), 'chg': round(pct, 2) if pct is not None else None, 'date': date, 'time': tm}, ''
 
 
+# 🛟 V82.6.9 「單一檔停住、其他的都有到」那句的記號(macro_miner / miner 的 yfinance 備援看到它就 ⛔ 退:那一檔自己停了,
+#    yfinance 會把同一根舊 K 當今天;只有連不到 / 整批過期 / 例外才退)。⛔ 改字:test_cboe_fallback ⑥ 用真的 cboe_quotes 釘
+CBOE_STOPPED_MARK = '其他的已到'
+
+
 def cboe_quotes(gate, tickers, today=None, max_age_days=5):
     """一輪要的 Cboe 代號一次問完(Yahoo 寫法 ^VIX / TSM …)→ ({代號: 報價}, {代號: 原因})。
     🛡️ 日期守門(同 V71.5.1「成功但過期」那一課):以這一批最新的那天為準,比它舊的代號 = 停住了(例:_SOX 停在 11/04)→ ⛔ 收;
@@ -242,7 +247,7 @@ def cboe_quotes(gate, tickers, today=None, max_age_days=5):
             bad[tk] = 'Cboe 沒有成交日期'
             del got[tk]
         elif q['date'] < ref:
-            bad[tk] = f"Cboe 停在 {q['date']}(其他的已到 {ref})"
+            bad[tk] = f"Cboe 停在 {q['date']}({CBOE_STOPPED_MARK} {ref})"
             del got[tk]
         elif q.get('time') and q['time'] < '15:59:00':
             # data_audit 認得「方向待確認」= 有交代的降級(值在、error 也在 ⛔ 算矛盾)

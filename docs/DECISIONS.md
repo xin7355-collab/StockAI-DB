@@ -4,6 +4,19 @@
 
 
 
+## 🛟 2026-11-25 Cboe 延遲報價對 GitHub 機器回 HTTP 403 → 拿不到那一格退回 yfinance 當備援(採礦,不換版本號;V82.4.0「⚠️ 風險」那句成真)
+
+**由來**:使用者 11/25 問川普 301 / 全球大跌時查到:`macro_risk` 與 `macro_cache` 兩份的標普 / 道瓊 / VIX / 台積電·日月光·聯電 ADR 都卡在 **11/19**(五天)→ 11/20 起大跌那幾天,盤前體檢少了美股那幾項。macro_probe `yf2_live`(11/25)= `_VIX` / `_SPX` / `_NDX` / `_DJX` 全部 HTTP 403(期交所行情網照常)= Cboe 擋 GitHub 機器,⛔ 是網址改了。問了一次,使用者選「先診斷,Cboe 不通就退回 yfinance 當備援」。
+**做法**:
+- `macro_miner._fetch_cboe_close`(VIX / 標普 / 道瓊 / 三檔 ADR / 板塊對標的美國上市代號):Cboe 拿不到 → 用既有的 `_fetch_yf_close`(那斯達克 / 費半本來就在用);error 寫「Cboe … → 備援 yfinance」(data_audit 認得「備援」= 有交代的降級);兩邊都拿不到才 None + 兩邊原因都寫。「日期不可倒退」守門、盤中標記照舊(VIX / 三檔 ADR 加進 `_US_CASH_YF`,備援在美股盤中抓到的照樣標盤中)。
+- `miner.fetch_us_macro_cache`(macro_cache 那 9 格):同一輪把 Cboe 拿不到的那幾格交給 yfinance 補,error 同上;yfinance 也載入失敗 / 回空 / 例外 → 保留 Cboe 原因 + 備援失敗原因。
+- ⛔ **單一檔停住、其他的都有到**(`lib_quotes.CBOE_STOPPED_MARK`,例:GRID 停在 11/04)⛔ 退備援 —— 那一檔自己停了,yfinance 會把同一根舊 K 當今天、板塊對標平均被拉歪(`test_yf2` ⑤b 第一次跑就抓到)。只有連不到 / 整批過期 / 例外才退。
+**測試**:新 `scripts/test_cboe_fallback.py`(①~⑥b,用真的 `lib_quotes.cboe_quotes` 產生「停住」那句;`INJECT=1` 7 種全紅);`test_yf2` ⑥b 靜態清單拿掉 `_fetch_cboe_close`(行為改由新測試釘)、⑥ 關掉備援只看 Cboe;`test_yf_official` ④d 改成「整批過期 → 退備援、⛔ 拿 Cboe 舊的當今天」+ 新 ④e(兩邊都失敗 → 沒值、兩邊原因都寫)。
+**怎麼換回**:`git revert` 這個 commit(回到 Cboe 拿不到就空著)。
+**沒驗到(上線後看)**:手動派 macro_cron,`macro_risk` 的 `sp500_date` / `vix_date` / `tsm_date` 前進到最新交易日、error 寫「→ 備援 yfinance」。
+
+
+
 ## V82.6.8(2026-11-24)🐘 鉅額交易佔當天成交特別大之後,那檔 20 天平均比較強(EXP-20261124-01 ✅ 📌 參考)—— 但一半以上是輸的、平均靠少數幾檔、前 1% 多半是冷門股;溢價 / 折價成交沒有用;第一次跑因兩輪獨立審查作廢重跑
 
 **🐘 鉅額交易(事先登記 EXP-20261124-01,`scripts/block_trade_probe.mjs`;block_deep 2009-01 ~ 2026-11-20 共 215 個月抓完)**

@@ -286,8 +286,19 @@ ok('④c 💱 yfinance 壞掉不影響 Cboe 那 9 格(美股 / ADR / VIX 照常)
 print('💱 Cboe 那份停住了(跟其他差一大截)/ 整批都是兩週前')
 gate, calls = make_fake_gate()
 mc6, _, _ = run_macro_cache(tmp, gate, get=no_get, qgate=make_fake_cboe(ltt='2026-01-02T16:00:00')[0])
-ok('④d Cboe 整批停在很久以前 → 那 9 格各寫 *_error、⛔ 拿舊的當今天', all(k not in mc6 and '超過' in mc6.get(f'{k}_error', '')
-   for k in M._CBOE_MACRO_SYMBOLS), [mc6.get(f'{k}_error') for k in list(M._CBOE_MACRO_SYMBOLS)[:2]])
+# 🛟 V82.6.9 整批過期 = 跟連不到同一類 → 那 9 格退 yfinance 備援(使用者 11/25 選);⛔ 拿 Cboe 舊的當今天這條不變
+ok('④d Cboe 整批停在很久以前 → ⛔ 拿 Cboe 舊的(01/02)當今天;那 9 格退 yfinance 備援(日期是 yfinance 那天、error 寫「超過 … → 備援 yfinance」)',
+   all((mc6.get(k) or {}).get('date') == '2026-11-12' and '超過' in mc6.get(f'{k}_error', '') and '備援 yfinance' in mc6.get(f'{k}_error', '')
+       for k in M._CBOE_MACRO_SYMBOLS), [(mc6.get(k), mc6.get(f'{k}_error')) for k in list(M._CBOE_MACRO_SYMBOLS)[:2]])
+_saved = sys.modules.get('yfinance')
+sys.modules['yfinance'] = None      # → yfinance 也載入失敗
+try:
+    mc7, _, _ = run_macro_cache(tmp, make_fake_gate()[0], get=no_get, qgate=make_fake_cboe(ltt='2026-01-02T16:00:00')[0])
+finally:
+    sys.modules['yfinance'] = _saved
+ok('④e Cboe 整批過期 + yfinance 也載入失敗 → 那 9 格沒有值、error 兩邊的原因都寫(⛔ 拿舊的當今天)',
+   all(k not in mc7 and '超過' in mc7.get(f'{k}_error', '') and '備援 yfinance 載入失敗' in mc7.get(f'{k}_error', '') for k in M._CBOE_MACRO_SYMBOLS),
+   [mc7.get(f'{k}_error') for k in list(M._CBOE_MACRO_SYMBOLS)[:2]])
 
 print('🕐 V82.4.2 美股還在交易時抓的 → macro_cache 那一格多 intraday(App 寫「盤中」、⛔ 當收盤;11/16 每日採礦機延遲那輪)')
 # Cboe 那份的日期要在 5 天內(cboe_quotes 拿真的今天量)→ 用最近一個平日;「現在」釘在那天美東盤中 / 收盤後

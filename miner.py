@@ -5231,15 +5231,23 @@ def fetch_us_macro_cache(_gate=None, _get=None, _qgate=None, _now=None):
     if yf is None:
         print(f"⚠️  yfinance 載入失敗({yf_why})→ 還沒換掉的那 {len(_YF_MACRO_SYMBOLS)} 格這輪沒有;"
               f"美股 / ADR(Cboe)、加權 / 櫃買 / 13 週美債(官方)照常")
-    for key, ticker in _YF_MACRO_SYMBOLS.items():
+    # 🛟 V82.6.9 Cboe 拿不到的那幾格 → 退回 yfinance 當備援(使用者 11/25 選;2026-11-20 起 Cboe 對 GitHub 機器整批回 HTTP 403)
+    #   拿到了:error 改寫「Cboe … → 備援 yfinance」(data_audit 認得「備援」);盤中照樣標 intraday(下面 `key in _fb` 那一段)。
+    #   ⛔ 單一檔停住、其他的都有到(_LQ.CBOE_STOPPED_MARK)= 那一檔自己停了 → ⛔ 退(同 macro_miner._fetch_cboe_close)
+    _fb = {k: tk for k, tk in _CBOE_MACRO_SYMBOLS.items()
+           if k not in result and f'{k}_error' in result and _LQ.CBOE_STOPPED_MARK not in result[f'{k}_error']}
+    _cboe_why = {k: result[f'{k}_error'] for k in _fb}
+    for key, ticker in {**_YF_MACRO_SYMBOLS, **_fb}.items():
         if yf is None:
-            result[f'{key}_error'] = f'yfinance 載入失敗({yf_why})→ 這一格這輪沒有(還沒有官方替代)'
+            result[f'{key}_error'] = (f"{_cboe_why[key]};備援 yfinance 載入失敗({yf_why})" if key in _fb
+                                      else f'yfinance 載入失敗({yf_why})→ 這一格這輪沒有(還沒有官方替代)')
             continue
         try:
             # 🛡️ SIGALRM 硬逾時,防 yfinance 無限 hang;只要最近 10 天(昨收 + 前收)
             hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period='10d'), 30, None)
             if hist is None or hist.empty:
-                result[f'{key}_error'] = f'Yahoo 回空或逾時({ticker};沒有資料或被擋,還沒有官方替代)'
+                result[f'{key}_error'] = (f"{_cboe_why[key]};備援 yfinance 回空或逾時" if key in _fb
+                                          else f'Yahoo 回空或逾時({ticker};沒有資料或被擋,還沒有官方替代)')
                 continue
             prev = hist.iloc[-2] if len(hist) >= 2 else hist.iloc[-1]
             last = hist.iloc[-1]
@@ -5251,12 +5259,16 @@ def fetch_us_macro_cache(_gate=None, _get=None, _qgate=None, _now=None):
                                   float(prev['Close']) * 100, 2),
             }
             # 🕐 V82.4.2 美股還在交易時,yfinance 最後一根就是「今天到現在」→ 同 Cboe 那幾格標 intraday(⛔ 當收盤)
-            _ia = _LQ.us_cash_intraday(result[key]['date'], _now) if key in _YF_US_CASH else ''
+            _ia = _LQ.us_cash_intraday(result[key]['date'], _now) if (key in _YF_US_CASH or key in _fb) else ''
             if _ia:
                 result[key]['intraday'] = _ia
-            print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%{f';🕐 美東 {_ia} 盤中' if _ia else ''})")
+            if key in _fb:
+                result[f'{key}_error'] = f"{_cboe_why[key]} → 備援 yfinance"
+            print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%{f';🕐 美東 {_ia} 盤中' if _ia else ''}"
+                  f"{';🛟 Cboe 拿不到 → 備援 yfinance' if key in _fb else ''})")
         except Exception as e:
-            result[f'{key}_error'] = f'yfinance 例外 {type(e).__name__}({ticker})'
+            result[f'{key}_error'] = (f"{_cboe_why[key]};備援 yfinance 也例外 {type(e).__name__}" if key in _fb
+                                      else f'yfinance 例外 {type(e).__name__}({ticker})')
             print(f"  ⚠️  {ticker}: {e}")
     import lib_official as _LO
     gate = _gate or _LO.make_gate()

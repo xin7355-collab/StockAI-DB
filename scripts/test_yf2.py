@@ -136,16 +136,20 @@ def run(src, lqsrc, html, quiet=False):
     srv = sec.get('server') or {}
     ok('⑤c 加權平均照舊(美國上市的成分都拿到)', srv and all(c['ok'] for c in srv.get('components', [])) and srv.get('chg_pct') is not None, srv)
 
+    _yfc = M._fetch_yf_close
+    M._fetch_yf_close = lambda t, n: (None, None, 'yfinance(測試裡關掉)')   # 🛟 V82.6.9 Cboe 拿不到會退 yfinance → 這裡關掉,只看 Cboe 那一段
     with redirect_stdout(io.StringIO()):
         sox = M._fetch_cboe_close('^SOX', '費半')
-    ok('⑥ 🛡️ 不在這一輪清單的代號 → None + 原因(⛔ 臨時再問一輪)', sox[0] is None and sox[2], sox)
+    M._fetch_yf_close = _yfc
+    ok('⑥ 🛡️ 不在這一輪清單的代號 → None + 原因(⛔ 臨時再問一輪 Cboe)', sox[0] is None and sox[2], sox)
     bad_static = []
+    # 🛟 V82.6.9 `_fetch_cboe_close` 失敗時才退 yfinance(使用者 11/25 選)→ 拿出這份靜態清單,行為改由 test_cboe_fallback 釘
     for fn in (M.fetch_vix, M.fetch_sp500, M.fetch_dji, M.fetch_tsm_adr, M.fetch_asx_adr, M.fetch_umc_adr, M.fetch_btc,
-               M.fetch_nikkei, M.fetch_taifex_tx_now, M._fetch_cboe_close, M._cboe_book):
+               M.fetch_nikkei, M.fetch_taifex_tx_now, M._cboe_book):
         s = re.sub(r'(?m)#.*$', '', re.sub(r'"""[\s\S]*?"""', '', inspect.getsource(fn)))
         if 'yfinance' in s or 'yf.Ticker' in s or '_fetch_yf_close(' in s or '_fetch_yf_future(' in s:
             bad_static.append(fn.__name__)
-    ok('⑥b 靜態:換掉的 11 個函式 ⛔ yfinance', not bad_static, bad_static)
+    ok('⑥b 靜態:換掉的 10 個函式 ⛔ 直接用 yfinance(Cboe 那支失敗才退備援,見 test_cboe_fallback)', not bad_static, bad_static)
     ok('⑥c Cboe 清單 ⛔ 帶交易所後綴 / 期貨的代號', not [t for t in M._cboe_tickers() if '.' in t or '=' in t], M._cboe_tickers())
 
     # ⑧ 黃金 / 美元指數:沒金鑰 → 照舊 yfinance(安靜);有金鑰 → Twelve Data 一次問 7 個(金鑰只在標頭)
@@ -282,7 +286,7 @@ def run(src, lqsrc, html, quiet=False):
 
 if os.environ.get('INJECT'):
     INJ = {
-        'noguard': ('lqsrc', "        elif q['date'] < ref:\n            bad[tk] = f\"Cboe 停在 {q['date']}(其他的已到 {ref})\"\n            del got[tk]\n", ''),
+        'noguard': ('lqsrc', "        elif q['date'] < ref:\n            bad[tk] = f\"Cboe 停在 {q['date']}({CBOE_STOPPED_MARK} {ref})\"\n            del got[tk]\n", ''),
         'vixyf': ('src', 'def fetch_vix():      return _fetch_cboe_close("^VIX",   "VIX 恐慌指數")', 'def fetch_vix():      return _fetch_yf_close("^VIX",   "VIX 恐慌指數")'),
         'appkey': ('html', '`🪙 黃金 ${fmtMr(mr.gold_usd ?? mr.gold)}', '`🪙 黃金 ${fmtMr(mr.gold)}'),
         # 🕐 V82.4.2:Cboe 盤中不標 / yfinance 美股現貨盤中不標 / 寫檔時不寫 `_intraday` / 保留上一份時標記沒跟著走

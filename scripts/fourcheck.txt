@@ -301,6 +301,7 @@ python3 scripts/block_deep_fetch.py --selftest
 python3 scripts/official_extra_probe.py --selftest
 python3 lib_quotes.py --selftest
 python3 scripts/test_yf2.py
+python3 scripts/test_cboe_fallback.py
 python3 lib_official.py --selftest
 python3 scripts/test_yf_official.py
 python3 scripts/pick_ledger.py --selftest

@@ -1076,13 +1076,26 @@ def _td_book():
 
 
 def _fetch_cboe_close(ticker, name):
-    """簽章同 _fetch_yf_close → (收盤, 漲跌%, error);資料日記進 _YF_LAST_DATE[ticker](「日期不可倒退」守門照樣作用)。"""
+    """簽章同 _fetch_yf_close → (收盤, 漲跌%, error);資料日記進 _YF_LAST_DATE[ticker](「日期不可倒退」守門照樣作用)。
+    🛟 V82.6.9 Cboe 拿不到那一格 → 退回 yfinance 當備援(使用者 11/25 選):2026-11-20 起 Cboe 對 GitHub 機器整批回 HTTP 403,
+       標普 / 道瓊 / VIX / 台積電·日月光·聯電 ADR 卡在 11/19 五天 → 大跌那幾天盤前體檢少了美股。
+       error 寫「Cboe … → 備援 yfinance」(data_audit 認得「備援」= 有交代的降級);兩邊都拿不到才回 None。
+       ⛔ 單一檔停住、其他的都有到(lib_quotes.CBOE_STOPPED_MARK;例:GRID 停在 11/04)= 那一檔自己停了 → ⛔ 退備援
+          (yfinance 會把同一根舊 K 當今天,板塊對標的平均就被拉歪 —— test_yf2 ⑤b)。
+       ⛔ 拿掉這段:test_cboe_fallback 會紅(注入 INJECT=1)。"""
     got, bad = _cboe_book()
     q = got.get(ticker)
     _INTRADAY.pop(ticker, None)
     if not q:
         _YF_LAST_DATE.pop(ticker, None)
-        return None, None, f"{name}:{bad.get(ticker) or bad.get('*') or 'Cboe 沒有這一格'}(下一輪再試)"
+        why = bad.get(ticker) or bad.get('*') or 'Cboe 沒有這一格'
+        if _LQ.CBOE_STOPPED_MARK in why:
+            return None, None, f"{name}:{why}(那一檔自己停了 → ⛔ 退備援;下一輪再試)"
+        v, chg, err = _fetch_yf_close(ticker, name)
+        if v is not None:
+            note = f"{name}:{why} → 備援 yfinance"
+            return v, chg, (f"{note} ・{err}" if err else note)
+        return None, None, f"{name}:{why}(下一輪再試);備援 yfinance 也沒拿到:{err}"
     _YF_LAST_DATE[ticker] = q['date']
     # 🕐 V82.4.2 成交時間早於 15:59 + 美東現在還在交易 = 盤中 → 標起來(半天市收完那幾小時不算:那是真的收盤)
     if q.get('note') and q.get('time') and _LQ.us_cash_intraday(q['date']):
@@ -1547,7 +1560,8 @@ def fetch_us2y_yield():
 _YF_LAST_DATE: dict = {}   # V71.5.1 來源鍵(yfinance ticker 或官方來源,如 UST10Y_SRC)→ 該筆收盤的資料日期(擋「成功但過期」的覆蓋)
 # 🕐 V82.4.2 來源鍵 → 美東 'HH:MM'(這一格是美股還在交易時抓的盤中價)→ 寫成 `{key}_intraday`,App 寫「盤中」、⛔ 當收盤
 _INTRADAY: dict = {}
-_US_CASH_YF = ('^IXIC', '^SOX', '^GSPC', '^DJI')   # 美股現貨指數(⛔ 期貨 / 原油 / 匯率:幾乎 24 小時在交易,規則不適用)
+_US_CASH_YF = ('^IXIC', '^SOX', '^GSPC', '^DJI', '^VIX', 'TSM', 'ASX', 'UMC')   # 美股現貨盤時段才在動的(⛔ 期貨 / 原油 / 匯率:幾乎 24 小時在交易,規則不適用)
+#   🛟 V82.6.9 VIX / 三檔 ADR 也加進來:Cboe 擋住改走 yfinance 備援時,美股盤中抓到的照樣標盤中(App ⛔ 當收盤算分,同 Cboe 那條)
 
 
 def _fetch_yf_future(ticker, name):
