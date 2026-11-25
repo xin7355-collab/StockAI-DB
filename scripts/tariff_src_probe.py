@@ -115,6 +115,30 @@ def main():
             print('   ' + fr_line(r))
         return j
 
+    print('═══ ⓪ 聯邦公報 API 診斷(2026-11-25 第一輪全部 HTTP 400 → 一個一個加參數找是哪一個不收)═══')
+    host = 'www.federalregister.gov'
+
+    def try_(label, params):
+        res, why = g.get(FR, params=params, expect='json')
+        if res is None:
+            print(f"   ❌ {label}:{why} ・回應開頭:{g.fail_page.get(host, '')[:300]}")
+            return None
+        try:
+            j = res.json()
+            print(f"   ✅ {label}:count={j.get('count')} 第一筆欄位 = {sorted(((j.get('results') or [{}])[0] or {}).keys())[:20]}")
+            return j
+        except ValueError:
+            print(f'   ❌ {label}:不是 JSON')
+            return None
+    try_('只有 per_page', [('per_page', '2')])
+    try_('+ order=newest', [('per_page', '2'), ('order', 'newest')])
+    try_('+ 機關 USTR', [('per_page', '2'), ('conditions[agencies][]', USTR_AGENCY)])
+    try_('+ 型別 PRESDOCU', [('per_page', '2'), ('conditions[type][]', 'PRESDOCU')])
+    try_('+ 關鍵字 tariff', [('per_page', '2'), ('conditions[term]', 'tariff')])
+    try_('+ 刊登日 ≥ 2026-01-01', [('per_page', '2'), ('conditions[publication_date][gte]', '2026-01-01')])
+    for f in FIELDS + ['subtype', 'president', 'citation', 'excerpts']:
+        try_(f'欄位 {f}', [('per_page', '1'), ('fields[]', f)])
+
     print('═══ ① 聯邦公報 API:最近的 ═══')
     fr('美國貿易代表署 2026 起(新到舊)', fr_params(per_page=25, agencies=[USTR_AGENCY], gte='2026-01-01'), show=25)
     fr('總統文件 + 關鍵字 tariff,2025 起', fr_params(per_page=25, types=['PRESDOCU'], term='tariff', gte='2025-01-01'), show=25)
@@ -182,6 +206,8 @@ def main():
         for h, t in links[:10]:
             print(f'   {h} | {t[:120]}')
         if 'xml' in str(ct) or body.lstrip().startswith('<?xml'):
+            k0 = body.find('<item>')
+            print('   第一個 item 原文:', re.sub(r'\s+', ' ', body[k0:k0 + 900]) if k0 >= 0 else '(沒有 <item>)')
             items = re.findall(r'<item>.*?<title>(.*?)</title>.*?<link>(.*?)</link>.*?(?:<pubDate>(.*?)</pubDate>)?', body, flags=re.S)
             print(f'   RSS item {len(items)} 個')
             for it in items[:8]:
