@@ -160,6 +160,10 @@ ok('④ 其他檔全部抓不到 → 照樣算、雷達那幾條是 x(⛔ 丟例
 let f4 = null, fe4 = '';
 try { f4 = await FF.fetchPub('data/risk_history.json', async () => { throw new Error('連不上'); }); } catch (e) { fe4 = e.message; }
 ok('④b 抓檔失敗 → 回 null + 原因(網站、data 分支都試過),⛔ 丟例外', !fe4 && f4 && f4.j === null && /連不上 \/ 連不上/.test(f4.why), fe4 || JSON.stringify(f4));
+// ④c macro_cache.json(只在網站根目錄)網站抓不到 → 退 gh-pages 分支 raw(⛔ 整格變沒有)
+const seen4 = [];
+const g4 = await FF.fetchPub('macro_cache.json', async u => { seen4.push(u); if (u.includes('github.io')) throw new Error('連不上'); return { ok: true, json: async () => ({ sp500: { chg_pct: 1 } }) }; });
+ok('④c macro_cache.json 網站抓不到 → 退 gh-pages 分支 raw 拿到', g4.j && g4.src === 'gh-pages 分支' && seen4.length === 2 && /raw\.githubusercontent\.com\/xin7355-collab\/StockAI-DB\/gh-pages\/macro_cache\.json/.test(seen4[1]), JSON.stringify([g4.src, seen4]));
 
 // ⑤ 公式指紋
 const vA = srcHash(SRC0, FF.VER_PRE);

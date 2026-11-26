@@ -10,7 +10,8 @@
  * 跑法(macro_cron 那一步,macro_miner.py 寫完 data/macro_risk.json 之後;只用 Node 內建,⛔ npm):
  *   node scripts/forecast_freeze.mjs data/macro_risk.json /tmp/freeze.json
  *   ① 只在 macro_risk.premkt_w(這一輪真的寫了今天早上那筆)對得上 premkt_recent 某一筆時才算;否則印一行、不寫檔
- *   ② 其他輸入跟 App 一樣從網站抓(macro_cache / risk_history / bubble_warning / ^TWII / breadth),抓不到退 data 分支 raw;
+ *   ② 其他輸入跟 App 一樣從網站抓(macro_cache / risk_history / bubble_warning / ^TWII / breadth),抓不到退 raw
+ *      (data/* 走 data 分支、macro_cache.json 走 gh-pages 分支 —— 它只在網站根目錄);
  *      再抓不到 → 那一段照 App 的處置(雷達那條 ⏳、該格 null),⛔ 整支失敗
  *   ③ 任何例外都 exit 0(凍結失敗 ⛔ 擋總經推送);只有參數錯 exit 2
  *
@@ -29,6 +30,7 @@ import { buildApp, srcHash } from './lib_appextract.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PAGES = 'https://xin7355-collab.github.io/StockAI-DB/';
 const RAWD = 'https://raw.githubusercontent.com/xin7355-collab/StockAI-DB/data/';
+const RAWG = 'https://raw.githubusercontent.com/xin7355-collab/StockAI-DB/gh-pages/';   // macro_cache.json 只在網站根目錄(data 分支沒有)
 
 // 算分用到的成員(指紋只拿「會改變結論」的那幾支 → 改說明文字不換版)
 export const VER_PRE = ['_premktX', '_preOpenScore', '_premktCall', '_premktFieldAge', '_premktNight', '_PREMKT_DEAD', '_vixState', '_macroPick', '_intraAt'];
@@ -90,15 +92,15 @@ export function freeze({ src, mr, usm, rh, bub, twii, breadth, app }) {
     return { out, radar };
 }
 
-/** 抓一個已發佈的檔:網站 → data 分支 raw(macro_cache 只在網站根目錄);抓不到回 { j: null, why } */
+/** 抓一個已發佈的檔:網站 → raw(data/* 走 data 分支;macro_cache.json 走 gh-pages 分支);抓不到回 { j: null, why } */
 export async function fetchPub(rel, getter = fetch, ms = 12000) {
-    const bases = rel.startsWith('data/') ? [PAGES, RAWD] : [PAGES];
+    const bases = rel.startsWith('data/') ? [PAGES, RAWD] : [PAGES, RAWG];
     const why = [];
     for (const b of bases) {
         try {
             const r = await getter(`${b}${rel}?t=${Date.now()}`, { signal: AbortSignal.timeout(ms) });
             if (!r.ok) { why.push(`HTTP ${r.status}`); continue; }
-            return { j: await r.json(), why: '', src: b === PAGES ? '網站' : 'data 分支' };
+            return { j: await r.json(), why: '', src: b === PAGES ? '網站' : b === RAWD ? 'data 分支' : 'gh-pages 分支' };
         } catch (e) { why.push(e && e.name === 'TimeoutError' ? '逾時' : String((e && e.message) || e).slice(0, 40)); }
     }
     return { j: null, why: why.join(' / '), src: null };
