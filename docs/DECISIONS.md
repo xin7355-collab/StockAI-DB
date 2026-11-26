@@ -4,6 +4,38 @@
 
 
 
+## V82.7.0(2026-11-26)🧊 每天早上把 App 盤前頁「當天畫面」凍結下來(開盤預判 + 反攻條件雷達,用 index.html 真的函式)→ 產業作戰室分開對答案(EXP-20261126-01 事先登記)・📱 Telegram 08:00 的開高 / 開低改成跟 App 同一個結論
+
+**由來**:使用者 11/26:「把每日開盤預判及反攻條件雷達空方主控 4/11及成形門檻 9/11紀錄下來看有沒有效果，這樣有用嗎？，幫我想一下要怎麼設計」。選:Telegram →「改成跟 App 同一個結論」;雷達 →「不重跑,往後每天記錄就好」。
+
+**有用嗎(先回答再做)**
+- 開盤預判:值得記。一個月約 14 次表態(開高偏多 / 開低偏空),2~4 個月看得出準不準;順便抓得到資料壞掉(11/20~11/25 早上的美股卡在 11/19)。
+- 反攻雷達:只值得當「記錄 + 條件有沒有壞掉的健康檢查」。有沒有預測力 12 條版已用 2010 起回測過(V80.1.4:當進場條件 17 個起點全輸、逐條 0 條過);成形一年只有一兩段,往後記要好幾年才判得了。
+
+**查到的三個問題**
+- 早上只存原始資料(premkt_recent[].x),作戰室 `_premktTrack` 拿「現在的公式」重算 —— 公式 5 週改了 3 次(V79.9.8 / V79.9.9 / V82.6.7),11/17~11/22 被加上當時畫面沒有的夜盤分數 → 對答案對的不是當天畫面。
+- Telegram 08:00(worker `runPreMarket` 的 dScore)與 alert_system `_market_direction` 是另一套簡化版(標普 / 那斯達克 / VIX、門檻 ±2)→ 可能跟 App 講相反;EXP-20261123-03 說好要同步,一直沒做(陷阱 #37)。
+- 雷達不是純函式(讀快取、寫畫面),門檻 `max(6, 條數 − 2)` 在畫面 / 分析師 / 加權頁三處各算一次;「機構派發日」那條要等背景算完,有時候畫面是 N/10。
+
+**做法**
+- App(畫面一個字不變):`_premktX(mr, usm)`(renderMarketBriefing 取值那段原封搬出)、`_premktCall(s)`、`_premktOccOf(sPct)`;雷達拆 `_reboundInputs()`(讀快取;派發日背景還沒算完就當場算)/ `_reboundCalc(inp)`(純計算)/ `_reboundNeed(j)`(門檻唯一一份);`_reboundVerdict` 多帶 need / half / lvl / lit,另外兩處讀 rv.need。
+- 伺服器凍結:`scripts/lib_appextract.mjs`(從 index.html 抽成員:一行一行往下延伸,讓 JS 自己判斷哪裡是結尾;Proxy 讀到沒抽出來的 `this.xxx` 直接丟錯)+ `scripts/forecast_freeze.mjs`(只在 `macro_risk.premkt_w` 對得上這一輪剛寫的那一筆才算;macro_cache / risk_history / bubble / ^TWII / breadth 從網站抓、抓不到退 data 分支 raw、再抓不到照 App 的處置;任何例外 exit 0)→ `python3 macro_miner.py --attach /tmp/freeze.json`(只塞進那一筆、同一套 `json.dumps` 參數)。只有 macro_cron 設 `PREMKT_WRITER=1` 才寫今天早上那筆(daily_miner 早上那輪寫了會換掉已凍結那筆)。macro_cron 在「🌍 採礦」與「📡 同步」之間加「🧊 凍結」一步(continue-on-error、自己 2 分鐘、只用 Node 內建)。
+- 存什麼(約 1KB / 天,⛔ 存畫面文字):out {ver 公式指紋(只看算分那幾支), app, s, sPct, raw, call, k, occ 那天印的發生率, n, intra, stale, nt, ntWhy, tsm, usD, p} / radar {ver, lvl, passN, judged, need, lit, nm 條件名字, swan, rx 17 個原始數字, twD, rhD} 或 {na}。晚上 daily_miner 照舊整筆併進 `data/premkt_log.json`。
+- 作戰室:「🌅 早上那份準不準」有 out 就用(標「當天畫面」)、舊列才重算(標「重算」),分開統計;講話滿 20 天跟回測 75.7% 比(Wilson 95% 範圍整個低於才說「比回測差」);發生率每一級滿 30 天跟那天畫面印的比(`_calibZ`,跟 `_calibAgg` 共用一條式子;|z| > 2.5 才標);只描述:只看夜盤的對照、開盤之後、資料有缺 vs 齊、公式換版。新「📡 反攻條件雷達準不準」`_radarTrack`:同一級連續算一段(⛔ 逐日)、基準 = 那一段第一天的前一天加權收盤、20 / 60 個交易日、60 天內最深回檔、再跌 5% 以上、對照 = 同期間每一天、每一級 ≥ 5 段才給數字、還沒滿 60 天 ⛔ 收進彙總、滿 40 天照名字做條件健康檢查。
+- Telegram:worker `premktFrozen` / `premktCallLine`、alert_system `_market_direction` 讀 `premkt_recent[今天].out`;還沒凍結 / 不是 05:00~08:59 寫的那筆 / 過了 09:00 → ⛔ 講結論、只指路 App。舊的 dScore 拿掉。
+- 事先登記 EXP-20261126-01(對答案規則寫死、tries 4);實測總表 `premkt-score` / `rebound-radar` 更新(雷達補 tries 44 = V80.1.4 那次)、新增 `next-radar-rerun11`(11 條版歷史重跑 + 什麼時候該做)。
+
+**多久看得出來**:開盤預判講話 20 次約 6 週(冒煙測試,±17 個百分點)・60 次約 4 個月(±10)・90 次約半年(分得出 76% 和 88%);雷達要好幾年,第一年只能看條件有沒有壞。
+
+**已知限制**
+- Telegram 08:00 那一刻有凍結的日子大約三分之一(要看那天早上 macro_cron 有沒有先跑完;worker 08:00 同一輪才叫醒 macro_cron)→ 其他日子 Telegram 不講結論。這是「不打架」的代價。
+- 凍結的其他輸入是伺服器抓網站那一刻的,跟使用者手機打開那一刻可能差幾分鐘;rx 原始數字只拿來事後查哪一條壞了,⛔ 拿來重算。
+- 舊的 20 筆(10/23 起)只能重算、標「重算」,⛔ 混進判定。
+
+**測試**:`test_forecast_freeze`(36 種情境伺服器 == 瀏覽器真的跑 App)/ `test_radar_pure` / `test_radar_track` / `test_macro_cron_freeze` / `test_worker_premkt` / `test_premkt_track ⓗ` / `test_premkt_log ⑨~⑬`(INJECT 那段順便修:注入的副本缺 lib_*.py 會直接 crash、以前 crash 被當成「紅了」= 假綠燈)/ `test_tgalert`(改釘新用意)/ `test_mktwarn`(掃三支雷達函式)。
+
+**怎麼換回**:各批 `git revert`;只想讓 Telegram 回舊算法 → revert worker.js 與 alert_system.py 那兩段。
+
 ## V82.6.9(2026-11-25)🏛️ 美國官方關稅動作每天自動收(聯邦公報)+ 有新的正式公告推 Telegram・三個實驗都 ⛔:關稅政策本身之後一個月沒有比較特別(EXP-20261125-03)・全球一起大跌台股沒有回得比美股慢(-01)・大跌撿美股沒有比隨便一天好(-02)
 
 **由來**:使用者 11/25:「川普新301關稅請持續追蹤,並且會對股市怎麼影響,還有目前全球股市都有大跌嗎?會對台灣股市有什麼影響,當提款機?另外如果都將大跌的話,以全球來講是不是撿美股也是一個好方法,我想要做的是你自己找會賺錢的方法」。本站只有川普發文(trump_posts_miner / 實測總表 trump-post),沒有「政府真的做了什麼」,也沒測過「關稅政策本身」、「全球一起大跌」、「大跌撿美股(台幣)」。問了一次,選「App 每天自動收官方公告 + 有新的推 Telegram」。

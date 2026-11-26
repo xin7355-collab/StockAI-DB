@@ -1820,9 +1820,14 @@ def _premkt_pick(a, b):
     return b if str(b.get("at") or "") > str(a.get("at") or "") else a
 
 
-def _premkt_recent_step(out, prevs, now_tw):
+def _premkt_recent_step(out, prevs, now_tw, writer=None):
     """回 (recent 清單, 這一輪做了什麼)。prevs = [本機上一份, 已發佈那份](dict,可為 {} / None)。
-    平日 05:00~08:59 → 今天那一筆用這一輪的值蓋掉;其他時間只沿用上一份(⛔ 不寫新的)。"""
+    平日 05:00~08:59 → 今天那一筆用這一輪的值蓋掉;其他時間只沿用上一份(⛔ 不寫新的)。
+    🧊 V82.7.0 只有 macro_cron 那輪(環境變數 PREMKT_WRITER=1)寫:早上那筆之後要接 forecast_freeze 凍結的結論(out / radar),
+       那一步只掛在 macro_cron;daily_miner 早上被 push 帶起來那輪寫的會是「沒有結論」的一筆、還會蓋掉已經凍結的那筆 → 它只沿用。
+       同一天重寫 = 全新的一筆(⛔ 沿用舊的 out / radar:那是比較早那輪的資料算的)。"""
+    if writer is None:
+        writer = os.environ.get("PREMKT_WRITER") == "1"
     merged = {}
     for pj in prevs:
         for e in (pj or {}).get("premkt_recent") or []:
@@ -1830,7 +1835,7 @@ def _premkt_recent_step(out, prevs, now_tw):
                 merged[e["d"]] = _premkt_pick(merged.get(e["d"]), e)
     did = "只沿用"
     mins = now_tw.hour * 60 + now_tw.minute
-    if now_tw.weekday() < 5 and PREMKT_WIN[0] <= mins < PREMKT_WIN[1]:
+    if writer and now_tw.weekday() < 5 and PREMKT_WIN[0] <= mins < PREMKT_WIN[1]:
         today = now_tw.strftime("%Y-%m-%d")
         merged[today] = {"d": today, "at": now_tw.strftime("%H:%M"),
                          "x": {k: _premkt_clean(out.get(k)) for k in PREMKT_SNAP_KEYS}}
@@ -1848,6 +1853,38 @@ def _premkt_prevs(prev_json, prev_src, loader=None):
     pub, src = (loader or _load_prev_macro)(local=False)
     prevs.append(pub or {})
     return prevs, f"另讀已發佈那份:{src}"
+
+
+def _premkt_attach(freeze_path, path=None):
+    """🧊 V82.7.0 scripts/forecast_freeze.mjs 算好的 { d, at, out, radar } → 塞進 macro_risk.json premkt_recent 裡 d / at 都對得上的那一筆。
+    只認這一輪的標記 premkt_w(⛔ 塞進別天 / 別輪那筆);用 main() 同一套 json.dumps 參數重寫(數字格式不飄)。⛔ 永遠不丟例外;回 (成功與否, 訊息)。"""
+    path = Path(path) if path else OUTPUT_FILE
+    try:
+        fz = json.loads(Path(freeze_path).read_text(encoding="utf-8"))
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        return False, f"⚠️ 凍結結果或 macro_risk.json 讀不到(不影響推送):{str(e)[:80]}"
+    w = doc.get("premkt_w") if isinstance(doc, dict) else None
+    if not isinstance(fz, dict) or not isinstance(w, dict) or not fz.get("d") or (fz.get("d"), fz.get("at")) != (w.get("d"), w.get("at")):
+        return False, "ℹ️ 凍結結果跟這一輪寫的那一筆對不上(日期 / 時間)→ 不塞"
+    hit = None
+    for e in doc.get("premkt_recent") or []:
+        if _premkt_ok(e) and e["d"] == fz["d"] and e.get("at") == fz["at"]:
+            hit = e
+    if hit is None:
+        return False, "ℹ️ premkt_recent 裡找不到這一輪那一筆 → 不塞"
+    n = 0
+    for k in ("out", "radar"):
+        if isinstance(fz.get(k), dict):
+            hit[k] = _premkt_clean(fz[k])
+            n += 1
+    if not n:
+        return False, "ℹ️ 凍結結果是空的 → 不塞"
+    try:
+        path.write_text(json.dumps(doc, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
+    except Exception as e:
+        return False, f"⚠️ 寫回失敗(不影響推送,macro_risk.json 沒動):{str(e)[:80]}"
+    return True, f"✅ 凍結結論塞進 {fz['d']} {fz['at']} 那一筆({n} 段)"
 
 
 def _premkt_log_merge(rows, recent, keep=PREMKT_LOG_N):
@@ -4307,6 +4344,9 @@ def main():
         _prevs, _pv_msg = _premkt_prevs(_prev_json, _prev_src)
         print(f"  🌅 盤前紀錄的上一份:{_pv_msg}")
         out["premkt_recent"], _did = _premkt_recent_step(out, _prevs, _now_tw)
+        if _did.startswith("寫入今天"):
+            # 🧊 V82.7.0 標記「這一輪真的寫了今天早上那一筆」→ forecast_freeze.mjs / --attach 只認這一筆
+            out["premkt_w"] = {"d": _now_tw.strftime("%Y-%m-%d"), "at": _now_tw.strftime("%H:%M")}
         print(f"  🌅 盤前紀錄 premkt_recent:{_did} ・共 {len(out['premkt_recent'])} 天")
     except Exception as _e:
         print(f"  ⚠️ 盤前紀錄略過(不影響其他):{_e}")
@@ -4441,6 +4481,11 @@ def generate_bubble_warning():
 # 🚀 程式執行起點 (雙引擎同時發動)
 # ==========================================
 if __name__ == "__main__":
+    # 🧊 V82.7.0 macro_cron 那一步:python3 macro_miner.py --attach /tmp/freeze.json(⛔ 不跑採礦)
+    if len(sys.argv) >= 3 and sys.argv[1] == "--attach":
+        _ok_at, _msg_at = _premkt_attach(sys.argv[2])
+        print("  🧊 " + _msg_at)
+        sys.exit(0)
     try:
         # 第一引擎：抓取總經三大指標
         main()

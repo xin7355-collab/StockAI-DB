@@ -403,7 +403,7 @@ const CRON = {
 // 台北的星期幾(0 = 週日);排程時間點優先用 Cloudflare 給的 scheduledTime
 function _twWeekday(ms) { return new Date((Number(ms) || Date.now()) + 8 * 3600e3).getUTCDay(); }
 
-export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs, CRON, _twWeekday, buildWeekBlock };   // crashDipLines / crashEvLine 在定義處 export
+export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs, CRON, _twWeekday, buildWeekBlock, runPreMarket };   // crashDipLines / crashEvLine 在定義處 export
 export default {
     async fetch(request, env, ctx) {
         if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -2472,6 +2472,27 @@ function buildDailyPrompt(rawSummary, user) {
 // 🗑️ V80.0.9 `runOvernightUS`(05:00 隔夜美股戰報)已刪 —— V22 起沒排程;裡面點名個股「順勢買 2330 / 2454」、「減碼追蹤,別接刀」都沒回測過。
 
 // 🌅 08:30 台北 — 盤前簡報
+// 🧊 V82.7.0 08:00 盤前簡報的「今天開高 / 開低」改成跟 App 盤前頁同一個結論(使用者 11/26 選「改成跟 App 同一個結論」)
+//   macro_cron 每天早上(台北平日 05:00~08:59)用 index.html 真的函式算好、凍結在 macro_risk.premkt_recent[今天].out
+//   (scripts/forecast_freeze.mjs + macro_miner.py --attach)→ 這裡只讀,⛔ 另算一套。
+//   今天那筆有凍結 → 照 App 的字 + 燈號 + 分數(🔴 開高偏多 / 🟢 開低偏空 / 🟡 中性震盪,同 App renderMarketBriefing)
+//   還沒凍結(那天早上 macro_cron 還沒跑到 / 凍結失敗)→ ⛔ 講任何開高 / 開低,只指路 App(美股漲跌那一行照樣列)
+//   🗑️ 舊的 dScore(只看標普 / 那斯達克 / VIX、門檻 ±2)拿掉:跟 App 會講相反(EXP-20261123-03)
+const _PREMKT_LIGHT = { '開高偏多': '🔴', '開低偏空': '🟢', '中性震盪': '🟡' };
+export function premktFrozen(macro, now = Date.now()) {
+    const today = new Date(now + 8 * 3600e3).toISOString().slice(0, 10);   // 台北日期
+    const e = (Array.isArray(macro && macro.premkt_recent) ? macro.premkt_recent : []).find(x => x && x.d === today);
+    const o = e && e.out;
+    if (!o || typeof o !== 'object' || !Number.isFinite(+o.sPct) || !_PREMKT_LIGHT[o.call]) return null;
+    if (!/^0[5-8]:\d\d$/.test(String(e.at || ''))) return null;   // 只認開盤前那一筆(macro_miner 只在 05:00~08:59 寫)
+    return { light: _PREMKT_LIGHT[o.call], call: o.call, sPct: +o.sPct, at: e.at };
+}
+export function premktCallLine(macro, now = Date.now()) {
+    const F = premktFrozen(macro, now);
+    if (F) return `${F.light} *今天 ${F.call}*(App 盤前分數 ${F.sPct}/100,${F.at} 的資料)`;
+    return '🌅 今天開盤偏高或偏低:早上的資料還沒算好 → 看 App 盤前頁';
+}
+
 async function runPreMarket(env) {
     const t = Date.now();
     const [macroRes, radarRes, attentionRes, rhRes] = await Promise.all([
@@ -2497,18 +2518,9 @@ async function runPreMarket(env) {
     }
     const mmVerdict = mmVerdictOf(mmIndex);   // 🔕 V79.3.5 只描述
 
-    // 🌅 V21.4 — 開盤方向(簡易純公式,對齊前端盤前體檢的「開高偏多/開低偏空」)
-    let dScore = 0;
-    if (macro) {
-        const sgn = v => (Number.isFinite(+v) ? (v > 0 ? 1 : v < 0 ? -1 : 0) : 0);
-        dScore += sgn(macro.sp500_chg_pct) + sgn(macro.nasdaq_chg_pct);
-        if (Number.isFinite(+macro.vix)) { if (macro.vix < 20) dScore += 1; else if (macro.vix > 30) dScore -= 2; else if (macro.vix > 25) dScore -= 1; }
-        // 🧪 V79.3.8 外資現貨 / 外資台指期 ⛔ 不再算進方向分(同 App 盤前體檢:國內四項只列出來、不計分)——
-        //   premkt_dom_probe 2004~2026:這幾項對隔天開盤 / 收盤的名次相關每年都 ≈ 0,算進去「開高偏多」反而比只看海外不準。
-        //   下面那行照樣列出外資現貨與台指期(描述),⛔ 不影響「今天開高 / 開低」那句。
-    }
+    // 🧊 V82.7.0 開盤方向改成跟 App 盤前頁同一個結論(premktCallLine;🗑️ 舊的 dScore 簡化版拿掉,見函式說明)
+    const callLine = premktCallLine(macro);
     const fc5 = macro ? fiFutChg5(riskHist) : null;
-    const dV = dScore >= 2 ? { e: '🔴', t: '開高偏多' } : dScore <= -2 ? { e: '🟢', t: '開低偏空' } : { e: '🟡', t: '中性震盪' };   // 紅漲綠跌:偏多🔴 偏空🟢
 
     // 對每用戶推:加入個人化重點 3 檔
     let cursor = undefined;
@@ -2553,9 +2565,9 @@ async function runPreMarket(env) {
                 const text = [
                     `🌅 *盤前簡報* _${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })} 台北08:00_`,
                     SEP,
-                    `${dV.e} *今天 ${dV.t}*(方向分 ${dScore > 0 ? '+' : ''}${dScore})`,
+                    callLine,
                     macro ? `🇺🇸 SP500 ${macro.sp500_chg_pct >= 0 ? '+' : ''}${macro.sp500_chg_pct?.toFixed(2)}% / NASDAQ ${macro.nasdaq_chg_pct >= 0 ? '+' : ''}${macro.nasdaq_chg_pct?.toFixed(2)}% / VIX ${macro.vix?.toFixed(1)}` : '',
-                    (macro && (Number.isFinite(+macro.fi_spot_net) || Number.isFinite(+macro.fi_futures_net))) ? `🏦 外資現貨 ${Number.isFinite(+macro.fi_spot_net) ? (macro.fi_spot_net >= 0 ? '+' : '') + macro.fi_spot_net + '億' : '—'} / 台指期 ${Number.isFinite(+macro.fi_futures_net) ? macro.fi_futures_net.toLocaleString() + '口' : '—'}${fc5 != null ? `(5 日 ${fc5 >= 0 ? '+' : ''}${Math.round(fc5).toLocaleString()} 口)` : ''}(只列出來,不算進方向分)` : '',
+                    (macro && (Number.isFinite(+macro.fi_spot_net) || Number.isFinite(+macro.fi_futures_net))) ? `🏦 外資現貨 ${Number.isFinite(+macro.fi_spot_net) ? (macro.fi_spot_net >= 0 ? '+' : '') + macro.fi_spot_net + '億' : '—'} / 台指期 ${Number.isFinite(+macro.fi_futures_net) ? macro.fi_futures_net.toLocaleString() + '口' : '—'}${fc5 != null ? `(5 日 ${fc5 >= 0 ? '+' : ''}${Math.round(fc5).toLocaleString()} 口)` : ''}(只列出來,不算進盤前分數)` : '',
                     `🐂 主力出貨指數 ${mmIndex} ${mmVerdict}${factors.length ? `(${factors.slice(0, 2).join('/')})` : ''}`,
                     focus.length ? `🎯 自選重點:${focus.join('、')}` : '',
                     outSoon.length ? `⚠️ 處置出獄:${outSoon.join('、')}` : '',

@@ -79,7 +79,20 @@ jobs:
           # 💱 V82.4.0 換掉 yfinance 第二階段:黃金現貨 + 美元指數(6 個匯率照 ICE 公式算)走 Twelve Data 免費方案;
           #   沒設這個 Secret 也不會壞:lib_quotes.td_quote 回 nokey → 黃金 / 美元指數照舊(⛔ 發失敗通知)。金鑰只走標頭。
           TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+          # 🧊 V82.7.0 只有這支會寫「今天早上那一筆」premkt_recent(daily_miner 早上被 push 帶起來那輪只沿用 → ⛔ 蓋掉已凍結那筆)
+          PREMKT_WRITER: '1'
         run: python macro_miner.py
+
+      # 🧊 V82.7.0 每天早上凍結「App 盤前頁當下說了什麼」(開盤預判 + 反攻條件雷達)→ 產業作戰室事後對答案
+      #   只在這一輪真的寫了今天早上那一筆(台北平日 05:00~08:59)才算;用 index.html 真的函式(⛔ 另抄一份)。
+      #   ⛔ 失敗不擋下面的推送:continue-on-error + 自己 2 分鐘上限(job 只有 8 分);只用 Node 內建,⛔ npm。
+      - name: 🧊 凍結今天早上的開盤預判 + 反攻雷達
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          node --version
+          node scripts/forecast_freeze.mjs data/macro_risk.json /tmp/freeze.json
+          if [ -s /tmp/freeze.json ]; then python macro_miner.py --attach /tmp/freeze.json; fi
 
       - name: 📡 同步 data/macro_risk.json 到 gh-pages
         run: |

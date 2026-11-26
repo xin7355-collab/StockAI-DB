@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V82.6.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V82.7.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -922,7 +922,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.6.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V82.7.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -9063,10 +9063,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V82.6.9',
+    _APP_VERSION: 'V82.7.0',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V82.7.0', d: [
+            '🧊 盤前頁的「今日開盤預判」和「反攻條件雷達」每天早上會自動存一份當下的結果,之後可以拿來對照真的開出來的盤(畫面不變)',
+            '📱 Telegram 早上 8 點那則盤前簡報的「今天開高 / 開低」改成跟 App 盤前頁同一個結論;那天早上的資料還沒算好時不講結論,請直接看 App 盤前頁',
+        ], dt: '2026-11-26' },
         { v: 'V82.6.9', d: [
             '🏛️ 大盤 › 消息面 › 川普那一格最上面多了「美國政府正式動作」:美國政府正式刊登的關稅公告(301 條款、232 條款、總統命令)會一筆一筆列出來,點名台灣的會標 ⚠️,點「原文」看全文;有新的正式公告會推 Telegram 一次',
             '📅 財經行事曆會列出「美國關稅生效」的日子',
@@ -9379,11 +9383,6 @@ ${list}
             '👀 自選清單盤中只刷畫面上看得到的那幾檔(滑到哪刷到哪),比較省流量、刷得比較快',
             '⚡ K 線的 MACD 算得比較快(數字一樣)',
             '🤖 在你電腦上跑的自動下單,收工前會把今天每一筆的實際成交價記到檔案,並寫出跟「收盤價成交」差多少(只記錄,下單方式一樣)',
-        ] },
-        { v: 'V80.1.1', d: [
-            '📈 上櫃股票的 K 線改用櫃買中心的官方資料:以前最新那一根常是盤中還沒收完的(收盤差一兩檔、成交量少一大截),現在換成收盤後的官方數字;前幾個月抓錯的也會整批換掉(下一輪採礦跑完生效)',
-            '⏱️ 上市股票當天那一根,晚上那一輪會換成官方全天的數字(以前有時只算到整股)',
-            '🗓️ 上櫃三大法人的資料也先確認「是不是那一天的」才收',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -17238,7 +17237,7 @@ const marginByDate = {};
             //    「壓力附近減、支撐附近加」,跟上面「📌 今天怎麼看」(手上的照出場規則走、不用因為分數低就整天不做)
             //    打架,而且都沒驗證過 → 只講開盤 + 中期守門;其他照你自己的進出場規則。
             const _rv = this._reboundVerdict;
-            const _need = (_rv && _rv.total > 0) ? Math.max(6, _rv.total - 2) : null;
+            const _need = (_rv && _rv.total > 0) ? (_rv.need ?? this._reboundNeed(_rv.total)) : null;   // 🧊 V82.7.0 門檻只讀雷達那份
             const _midWeak = _rv && _rv.total > 0 && _rv.passN < _need;
             const _sp = Math.round(sPct);
             if (sPct <= 35) parts.push(`<b class="text-green-300">總結:今天開盤偏弱</b>(盤前 ${_sp} 分,只講開盤高低)——手上的照你的出場規則走,⛔ 不用因為分數低就先賣;新買的先縮小部位、別在開盤前掛大單。`);
@@ -17420,13 +17419,83 @@ const marginByDate = {};
         all: { up: 29.9, flat: 48.2, dn: 21.9 } },
     // 🧪 V79.9.9 美股四項 + 台積電 ADR 漲跌不到這個 %(絕對值)算 0 分(premkt_app_probe DEAD;pro `_premktScore` 的 DEAD 要一樣,test_premkt_formula ⑩)
     _PREMKT_DEAD: 0.4,
+    // 🧊 V82.7.0 分數 → 發生率那一格(畫面 `_premktOccHtml` 與伺服器凍結同一份;⛔ 兩處各寫門檻)
+    _premktOccOf(sPct) {
+        const O = this._PREMKT_OCC; if (!O || !Number.isFinite(+sPct)) return null;
+        const k = sPct >= 65 ? 'hi' : sPct <= 35 ? 'lo' : 'mid';
+        return { k, b: O[k], a: O.all };
+    },
     _premktOccHtml(sPct) {
-        const O = this._PREMKT_OCC; if (!O || !Number.isFinite(+sPct)) return '';
-        const k = sPct >= 65 ? 'hi' : sPct <= 35 ? 'lo' : 'mid', b = O[k], a = O.all, r = v => Math.round(v);
+        const O = this._PREMKT_OCC, _oc = this._premktOccOf(sPct); if (!O || !_oc) return '';
+        const k = _oc.k, b = _oc.b, a = _oc.a, r = v => Math.round(v);
         const lab = k === 'hi' ? '分數 65 以上' : k === 'lo' ? '分數 35 以下' : '分數 36~64';
         return `<div data-occ="premkt" class="mt-1 text-[10px] text-amber-200/80 leading-snug">🎲 開盤發生率(${O.from} 年起、0050 開盤比前一天收盤,差不到 0.3% 算開平):${lab}的早上 ${b.n.toLocaleString()} 次 → 開高 ${r(b.up)}% ・開平 ${r(b.flat)}% ・開低 ${r(b.dn)}%;隨便一天 ${r(a.up)}% / ${r(a.flat)}% / ${r(a.dn)}%。⛔ 只講開盤,不是今天會漲或會跌。</div>`;
     },
 
+    // 🧊 V82.7.0 盤前體檢「把值取好」那一段從 renderMarketBriefing 搬出來(⛔ 算術一個字沒改,test_premkt_formula 照樣比):
+    //   App 畫面 與 scripts/forecast_freeze.mjs(每天早上在伺服器凍結「當下畫面說了什麼」→ 事後對答案)用同一支 → ⛔ 第二份算法。
+    //   ⛔ 這支不抓網路、不碰畫面:只讀傳進來的 mr(macro_risk)/ usm(macro_cache)與既有的唯一來源(_vixState / _fiFutState / _premktFieldAge / _premktNight)。
+    //   tech(加權自己的技術面)只列出來、不計分 → 呼叫端自己補(伺服器那份不補,分數一樣)。
+    _premktX(mr, usm) {
+        mr = mr || {}; usm = usm || {};
+        // 🐛 V58.7 修「盤前體檢美股停在舊交易日」大 bug:
+        //   macro_cache.json(miner.py 產)的美股區塊會 stale(實測停在 07-07 崩盤日),但 macro_risk.json
+        //   (macro_miner.py,每 4hr cron)的美股是新鮮的。判反的症狀:費半/台積ADR 顯兩天前崩盤 -4.65%,
+        //   實際當日反彈 +2%,害「開盤預判」用舊崩盤數據算成「極度偏空 0 分」。
+        //   偵測:兩檔 sp500 漲跌不一致 = macro_cache 是較舊的交易日 → 過期。
+        //   ① sp500/nasdaq/vix/dji/sox/tsm/asx/umc 一律優先讀 macro_risk 的新鮮值(採礦端 V58.7 已補齊)
+        //   ② macro_risk 尚無該欄(等採礦)且 macro_cache 過期 → 回 null(顯「採集中」、不採計開盤分數,不用舊崩盤誤導)
+        //   🕐 V82.4.2 任一邊是盤中抓的 → 差一點是抓的時間不同、⛔ 是舊交易日(誰新誰舊交給下面 usPct 照日期挑)
+        const _usStale = (!mr.sp500_intraday && !usm.sp500?.intraday && mr.sp500_chg_pct != null && usm.sp500?.chg_pct != null
+                          && Math.abs(+mr.sp500_chg_pct - +usm.sp500.chg_pct) > 0.02);
+        const _MR_US = { sp500: 'sp500_chg_pct', nasdaq: 'nasdaq_chg_pct', dji: 'dji_chg_pct',
+                         sox: 'sox_chg_pct', tsm: 'tsm_chg_pct', asx: 'asx_chg_pct', umc: 'umc_chg_pct' };
+        // 🕐 V82.4.2 美股盤中抓的(`_intraday`)⛔ 當昨晚收盤算分:另一份有同一天(或更新)的收盤 → 用收盤;
+        //   沒有 → 記進 _usIntra、回 null,由 `_preOpenScore` 照樣列出來寫「盤中・還不是收盤」、0 分(同「資料舊了」那種處置)
+        const _usIntra = {};
+        const usPct = k => {
+            const mk = _MR_US[k];
+            if (mk && mr[mk] != null && !isNaN(mr[mk])) {   // 新鮮檔優先
+                const ia = this._intraAt(mr[`${k}_intraday`]);
+                if (!ia) return +mr[mk];
+                const c = usm[k];
+                if (c && !c.intraday && c.chg_pct != null && !isNaN(c.chg_pct) && c.date && (!mr[`${k}_date`] || String(c.date) >= String(mr[`${k}_date`]))) return +c.chg_pct;
+                _usIntra[k] = { at: ia, v: +mr[mk] };
+                return null;
+            }
+            if (_usStale && ['dji', 'sox', 'tsm', 'asx', 'umc'].includes(k)) return null;   // 舊檔過期 → 不用崩盤舊值
+            const c = usm[k]?.chg_pct; if (c == null || isNaN(c)) return null;
+            if (_MR_US[k] && usm[k].intraday) { _usIntra[k] = { at: this._intraAt(usm[k].intraday), v: +c }; return null; }
+            return +c;
+        };
+        // 🐛 V58.7 VIX 也優先讀新鮮的 macro_risk(macro_cache 停 07-07 顯 18.41,實際 16.9)
+        // 😱 V75.2.3 優先序抽成 `_vixState()`(⛔ 這裡原本是同一段判斷式的第一份實作)
+        const _vs2 = this._vixState();
+        let vix = (_vs2.val != null && (_vs2.src === 'macro_risk' || !_usStale)) ? _vs2.val.toFixed(2) : '';
+        if (vix && _vs2.intraday) { _usIntra.vix = { at: _vs2.intraday, v: +vix }; vix = ''; }   // 🕐 V82.4.2 盤中的 VIX 水位 ⛔ 算分
+        const fiSpot = mr.fi_spot_net;     // 外資現貨買賣超(億)
+        const fiTotal = mr.fi_total_net;   // 三大法人合計(億)
+        const asxChg = usPct('asx'), umcChg = usPct('umc');   // 🐛 V58.7 ADR 走 usPct(含新鮮檔優先+過期守門)
+        const _age = this._premktFieldAge(mr);
+        const _f5 = this._fiFutState();
+        // 🐛 V79.9.8 只認「真的夜盤」(sess === 'night')的漲跌%:採礦那份 taifex_tx_now 其實是**前一個交易日的日盤**
+        //   (TAIFEX OpenAPI;10/29 早上拿到的是 10/28 日盤 +2.47%)→ 那一天的漲跌台股前一天收盤早就反映了,
+        //   以前當成「夜盤」+1.5 分、分析師那行寫「夜盤走強」= 講錯。⛔ 沒有 sess / 日盤 / 估算 一律不算分(pro `_premktScore` 同一條,test_premkt_formula ⑥⑧)。
+        // 💱 V82.4.0 期交所行情網給的是真的夜盤 → 🌙 V82.6.7 回測過關開始算分;算不算一律走 `_premktNight`(這次開盤前那一盤、已經收了)
+        const _nt = this._premktNight(mr, _age.twMax);
+        const nightChg = _nt.chg;
+        const x = {
+            dji: usPct('dji'), ndx: usPct('nasdaq'), spx: usPct('sp500'), sox: usPct('sox'), tsm: usPct('tsm'),
+            asx: asxChg, umc: umcChg, vix, nq: mr.nq_fut_chg_pct, ust: mr.ust10y_chg_pct, night: nightChg,
+            nk: mr.nikkei_chg_pct, ks: mr.kospi_chg_pct, hs: mr.hsi_chg_pct, fg: mr.fear_greed,
+            twd: mr.usdtwd_chg_pct, twd5: mr.usdtwd_chg_5d, krw5: mr.krw_chg_5d, cny5: mr.cny_chg_5d,
+            stale: _age.stale, fut: { chg5: _f5.chg5, pct: _f5.pct }, fiSpot, fiTotal, tech: null,
+            intra: _usIntra,
+        };
+        return { x, usPct, usIntra: _usIntra, usStale: _usStale, MR_US: _MR_US, vix, age: _age, f5: _f5, nt: _nt };
+    },
+    // 🧊 V82.7.0 開盤那一句(全 App 唯一一份門檻;畫面 / 伺服器凍結 / Telegram 都讀這個)
+    _premktCall(s) { return s >= 3 ? '開高偏多' : s <= -3 ? '開低偏空' : '中性震盪'; },
     /** 🌅 V79.5.4 盤前體檢的開盤分數 —— 全 App 唯一一份算法(以前長在 renderMarketBriefing 裡面,回測與產業作戰室都拿不到)
      *   ⛔ 不讀 DOM、⛔ 不 fetch、⛔ 不看現在幾點 → 回測探針 scripts/premkt_app_probe.mjs 拿同一支函式重算 2010 起每一天。
      *   x(都是「已經取好的值」;漲跌一律 %,沒有就 null):
@@ -17435,7 +17504,8 @@ const marginByDate = {};
      *     stale:{ tsm|asx|umc|nikkei|kospi|hsi: 'YYYY-MM-DD' }(= _premktFieldAge(mr).stale;舊了只列出來、⛔ 不算分)
      *     只列出來、⛔ 不計分:fut {chg5, pct}(外資台指期)・fiSpot・fiTotal(億)・tech(加權技術面那句)
      *   回 { s, sPct, raw, clamped, parts:[{nm, d, note}], v:{ 算分用的那幾個數字(分析師那段要用)} }
-     *   ⛔ 改這裡的任何門檻 / 權重:先跑 premkt_app_probe(V75.0.9 那套判準),而且 worker dScore / alert_system 要一起看。
+     *   ⛔ 改這裡的任何門檻 / 權重:先跑 premkt_app_probe(V75.0.9 那套判準)。🧊 V82.7.0 起 Telegram(worker 08:00 / alert_system)
+     *     讀早上凍結的結果(scripts/forecast_freeze.mjs 用這一支)→ ⛔ 在那兩邊再寫一份簡化版。
      */
     _preOpenScore(x) {
         x = x || {};
@@ -17868,12 +17938,35 @@ const marginByDate = {};
         return `<div data-occ="crash" class="text-[10px] text-amber-200/80 leading-snug mt-1.5">🎲 這一段修正裡已經出現「25 天內跌 15% 以上」(第一次是 ${dW(s.d)})。台股 ${O.from} 年起有 ${T.n} 次(每一段只算第一次),已經走完的 ${T.leg} 次裡,那一段的最低收盤:一週內就到 ${T.wk} 次 ・一週到半年 ${T.mo} 次 ・半年以上 ${T.half} 次(${A.mk} 個市場合計 ${A.leg} 次:${P(100 * A.wk / A.leg)} / ${P(100 * A.mo / A.leg)} / ${P(100 * A.half / A.leg)})`
             + `<br>🎲 之後 60 個交易日內收盤又再低 5% 以上:台股 ${T.re}/${T.reN} 次(${P(100 * T.re / T.reN)})・台股修正中隨便一天 ${P(O.base)} ・${A.mk} 個市場合計 ${A.re}/${A.reN} 次(${P(100 * A.re / A.reN)})—— 過去發生過的比例,⛔ 不是會漲或會跌</div>`;
     },
-    _renderReboundRadar() {
-        const box = document.getElementById('reboundRadarCard');
-        if (!box) return;
+    // 🧊 V82.7.0 反攻條件雷達拆三支:讀資料(_reboundInputs)/ 純計算(_reboundCalc)/ 畫畫面(_renderReboundRadar)
+    //   → scripts/forecast_freeze.mjs 每天早上在伺服器用同一支 `_reboundCalc` 凍結「當下雷達說了什麼」,事後對答案。
+    //   ⛔ 第二份算法;⛔ `_reboundCalc` 裡讀快取 / 碰畫面(test_radar_pure 釘住)。
+    _reboundNeed(j) { return Math.max(6, j - 2); },   // 「反攻條件成形」門檻:全部條件數 −2(至少 6 條)—— 全 App 唯一一份
+    _reboundInputs() {
         const mr = this._macroRiskCache || {};
         const usm = this.usMacroCache || {};
-        if (mr.vix == null && mr.fi_futures_net == null) { box.classList.add('hidden'); return; }
+        const N = v => (v == null || isNaN(+v)) ? null : +v;
+        // 融資 5 日增減(risk_history 快照,V70.2.7 起後端才記 → 沒資料就誠實顯示)
+        let mgNow = N(this._bubbleCache?.margin_leverage?.total_100m), mgChg5 = null;
+        try {
+            const rh = this._riskHistCache || [];
+            const ms = rh.map(r => N(r.margin_100m)).filter(v => v != null);
+            if (ms.length >= 6) mgChg5 = ms[ms.length - 1] - ms[ms.length - 6];
+        } catch (_) {}
+        // 😱 V79.3.5 VIX 改走 `_vixState()`(V75.2.3 唯一來源;⛔ 不再直接讀 mr.vix)
+        const vix = (() => { try { const v = this._vixState(); return v && v.val != null ? N(v.val) : N(mr.vix); } catch (_) { return N(mr.vix); } })();
+        let fiChg5 = null, fiPct = null;
+        try { const _fs = this._fiFutState(); fiChg5 = _fs.chg5; fiPct = _fs.pct; } catch (_) {}
+        // 🧊 V82.7.0 派發日:背景那支(_renderDistributionDays)還沒跑完時,拿已經載好的加權日 K 當場算
+        //   (同一支 _calcDistributionDays、同一份 rows)→ 不再常常掛 ⏳、條件數忽 10 忽 11
+        let dist = N(this._distDayCount);
+        if (dist == null) { try { dist = N(this._calcDistributionDays(this._twiiKlineCache && this._twiiKlineCache.rows, 25)); } catch (_) { dist = null; } }
+        return { mr, usm, vix, mgNow, mgChg5, fiChg5, fiPct, dist,
+                 amt: this._amtState(), rv: this._twRealizedVol(), dl: this._deleverProgress(), lag: this._twiiLag() };
+    },
+    _reboundCalc(inp) {
+        inp = inp || {};
+        const mr = inp.mr || {}, usm = inp.usm || {};
         const N = v => (v == null || isNaN(+v)) ? null : +v;
         const f1 = v => v == null ? '—' : (+v).toFixed(1);
         // 台股 5MA / 季線(twii_history)
@@ -17887,19 +17980,10 @@ const marginByDate = {};
                 if (cl.length >= 60) twiiMa60 = cl.slice(-60).reduce((a, b) => a + b, 0) / 60;
             }
         } catch (_) {}
-        // 融資 5 日增減(risk_history 快照,V70.2.7 起後端才記 → 沒資料就誠實顯示)
-        let mgNow = N(this._bubbleCache?.margin_leverage?.total_100m), mgChg5 = null;
-        try {
-            const rh = this._riskHistCache || [];
-            const ms = rh.map(r => N(r.margin_100m)).filter(v => v != null);
-            if (ms.length >= 6) mgChg5 = ms[ms.length - 1] - ms[ms.length - 6];
-        } catch (_) {}
-        // 😱 V79.3.5 VIX 改走 `_vixState()`(V75.2.3 唯一來源;⛔ 不再直接讀 mr.vix)
-        const vix = (() => { try { const v = this._vixState(); return v && v.val != null ? N(v.val) : N(mr.vix); } catch (_) { return N(mr.vix); } })();
+        const { mgNow, mgChg5, vix, fiChg5, fiPct, dist } = inp;   // 🧊 V82.7.0 讀快取的那幾段在 `_reboundInputs`
         const sp = N(mr.sp500_chg_pct), twd5 = N(mr.usdtwd_chg_5d), twd = N(mr.usdtwd);
         const kospi = N(mr.kospi_chg_pct), nikkei = N(mr.nikkei_chg_pct), wti = N(mr.wti_chg_pct);
         const jpy3 = N(mr.jpy_chg_3d), fg = N(mr.fear_greed), fifu = N(mr.fi_futures_net), twvix = N(mr.tw_vix);
-        const dist = N(this._distDayCount);
         // ── 條件表(pass=轉多必要件;每條寫白話門檻)──
         const C = [];
         const add = (icon, name, now, pass, when, na) => C.push({ icon, name, now, pass: na ? null : !!pass, when });
@@ -17927,8 +18011,6 @@ const marginByDate = {};
         //   改成看「有沒有真的在回補」(相對自己 5 日前),這才符合條件名稱,且不受市場規模變化影響。
         //   另附「近 20 日位階」給脈絡:0%=史上最空、100%=最不空。
         //   🔁 V79.3.5 改讀 `_fiFutState()`(陷阱 #37:同一條規則全 App 只有一份,⛔ 這裡不再自己算 5 日增減 / 20 日位階)
-        let fiChg5 = null, fiPct = null;
-        try { const _fs = this._fiFutState(); fiChg5 = _fs.chg5; fiPct = _fs.pct; } catch (_) {}
         add('🏦', '外資期貨回補',
             fifu == null ? '—' : `${Math.round(fifu).toLocaleString()} 口${fiChg5 != null ? `(5日 ${fiChg5 >= 0 ? '回補+' : '加空'}${Math.abs(Math.round(fiChg5)).toLocaleString()})` : ''}`,
             fiChg5 != null && fiChg5 >= 3000,
@@ -17940,7 +18022,7 @@ const marginByDate = {};
         add('🛢️', '油價不走極端', wti == null ? '—' : `${wti >= 0 ? '+' : ''}${f1(wti)}%`, wti != null && Math.abs(wti) < 3, '單日 ±3% 內(暴漲暴跌兩頭都是恐慌)', wti == null);
         // 💴 2026-11-20 日圓那條改成只列出來(EXP-20261120-01:日圓 3 天升值 ≥2% 之後,台股跟同樣顛的日子差不多)→ 寫在條件表下面一行
         add('📊', '站回 5 日線', twiiC != null && twiiMa5 != null ? `${Math.round(twiiC).toLocaleString()} vs ${Math.round(twiiMa5).toLocaleString()}` : '—', twiiC != null && twiiMa5 != null && twiiC >= twiiMa5, '收盤站回 5MA;站回季線' + (twiiMa60 ? ` ${Math.round(twiiMa60).toLocaleString()}` : '') + ' 才算轉多'
-            + (() => { const L = this._twiiLag(); return L.lag > 0 ? ` ・⚠️ 用的是 ${this._dW(L.twiiD)} 收盤(加權資料落後 ${L.lag} 天)` : ''; })(), twiiC == null);
+            + (() => { const L = inp.lag || { lag: 0 }; return L.lag > 0 ? ` ・⚠️ 用的是 ${this._dW(L.twiiD)} 收盤(加權資料落後 ${L.lag} 天)` : ''; })(), twiiC == null);
         // 📐 V71.1.6 順逆價差(使用者建議,採礦端 taifex_backwardation 早就有,只是沒被用):
         //   定義 = 台指期近月收盤 − 加權指數收盤;負值=逆價差(避險/看空),正值=正價差(偏多)。
         //   ⚠️ 為什麼要跟外資空單一起看:外資期貨空單有一部分是「現貨多 + 期貨空」的避險對沖,
@@ -17971,7 +18053,7 @@ const marginByDate = {};
         //   並提示美股 VIX 可以先當替代參考(同一件事只給一個結論,不另開卡)。
         // 💰 V71.5.6 量能條件(理財達人秀開場第一問「今天量能有沒有站回 1 兆」;
         //   朱家泓:連三黑後要有「帶量」紅K才算止跌訊號 → 沒量的紅K不算)
-        const _amt = this._amtState();
+        const _amt = inp.amt;
         add('💰', '量能站回 1 兆',
             _amt == null ? '—' : `${_amt.tn.toFixed(2)} 兆`,
             _amt == null ? null : _amt.over1tn,
@@ -17990,7 +18072,7 @@ const marginByDate = {};
         if (twvix != null) {
             add('🌡️', '台指 VIX 退燒', f1(twvix), twvix < 30, '回 30 以下(>30=仍在搶避險)', false);
         } else {
-            const rv = this._twRealizedVol();
+            const rv = inp.rv;
             if (rv && rv.pct != null) {
                 add('🌡️', '台股波動率退燒',
                     `${rv.vol.toFixed(1)}%(近一年位階 ${Math.round(rv.pct)}%)`,
@@ -18010,7 +18092,7 @@ const marginByDate = {};
         let mgTxt = mgNow == null ? '—' : `${Math.round(mgNow).toLocaleString()} 億`;
         let mgPass = null, mgWhen = '';
         // 💰 V71.2.2 併入「去槓桿進度」(不新增卡,直接強化這一條)
-        const dl = this._deleverProgress();
+        const dl = inp.dl;
         if (mgChg5 != null) {
             mgTxt += `(5日 ${mgChg5 >= 0 ? '+' : ''}${Math.round(mgChg5)} 億)`;
             mgPass = mgChg5 <= -30;
@@ -18049,7 +18131,7 @@ const marginByDate = {};
         //    答案是不用:門檻是 max(6, 全部−2),10 條時 = 8 條,也就是「允許有 2 條沒過」。
         //    原本卡上只寫「7/10」,沒寫要幾條才算過,才會讓人以為要全亮。
         //    ⛔ 這兩個數字必須從同一個式子來,別在文案裡另外寫死,否則條件數變動就會對不上。
-        const needN = Math.max(6, judged.length - 2);          // 「反攻條件成形」門檻
+        const needN = this._reboundNeed(judged.length);          // 「反攻條件成形」門檻(🧊 V82.7.0 唯一一份)
         const halfN = Math.ceil(judged.length / 2);            // 「打底觀察中」門檻
         let heroIcon, heroTxt, heroCls, act;
         if (isSwan) {
@@ -18073,10 +18155,22 @@ const marginByDate = {};
             heroIcon = '⛔'; heroTxt = '空方主控'; heroCls = 'text-green-300 border-green-500';
             act = `只過 ${passN}/${judged.length} 條(過半 ${halfN} 條算打底、${needN} 條算條件成形)。<b class="text-gray-100">這張卡只描述外面的狀況,⛔ 不是買賣訊號</b>:要不要買新的照決策台(你選的策略自己的規則),手上的照你的出場規則走(⛔ 不用因為這張卡就全賣)。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',「便宜」不等於「止跌」)' : ''}`;
         }
+        const lvl = isSwan ? 'swan' : passN >= needN ? 'formed' : passN >= halfN ? 'base' : 'bear';
+        const lit = C.map(c => c.pass === null ? 'x' : c.pass ? '1' : '0').join('');   // 每一條:1 過 / 0 沒過 / x 沒資料(照條件表順序)
+        return { C, judged, passN, missing, needN, halfN, isSwan, swanHits, fg, fgExtreme, jpy3, heroIcon, heroTxt, heroCls, act, lvl, lit };
+    },
+    _renderReboundRadar() {
+        const box = document.getElementById('reboundRadarCard');
+        if (!box) return;
+        const mr = this._macroRiskCache || {};
+        const usm = this.usMacroCache || {};
+        if (mr.vix == null && mr.fi_futures_net == null) { box.classList.add('hidden'); return; }
+        const R = this._reboundCalc(this._reboundInputs());
+        const { C, judged, passN, needN, halfN, isSwan, swanHits, jpy3, heroIcon, heroTxt, heroCls, act } = R;
         // 🔗 V71.2.1 存下結論供「盤前體檢」引用 —— 兩張卡時間尺度不同(盤前=今天開盤、雷達=這波跌完沒),
         //   本來就該一起看;而且兩張都在下操作指令,不接起來萬一分歧會給出兩套矛盾指示(違反單一劇本原則)。
-        //   ⛔ 只存結論不重算,避免又生出第三個版本的分數。
-        this._reboundVerdict = { icon: heroIcon, txt: heroTxt, passN, total: judged.length };
+        //   ⛔ 只存結論不重算,避免又生出第三個版本的分數。🧊 V82.7.0 多帶門檻 need(別處 ⛔ 再自己算)與每一條的狀態 lit
+        this._reboundVerdict = { icon: heroIcon, txt: heroTxt, passN, total: judged.length, need: needN, half: halfN, lvl: R.lvl, lit: R.lit };
 
         // 📣 黑天鵝當日一次 → 🔕 V79.3.5 只進 🔔 鈴鐺、⛔ 不跳通知、⛔ 不叫人減碼(沒有一條回測得出能事先預告大跌)
         try {
@@ -18186,36 +18280,9 @@ const marginByDate = {};
             }
         } catch (_) {}
 
-        // 🐛 V58.7 修「盤前體檢美股停在舊交易日」大 bug:
-        //   macro_cache.json(miner.py 產)的美股區塊會 stale(實測停在 07-07 崩盤日),但 macro_risk.json
-        //   (macro_miner.py,每 4hr cron)的美股是新鮮的。判反的症狀:費半/台積ADR 顯兩天前崩盤 -4.65%,
-        //   實際當日反彈 +2%,害「開盤預判」用舊崩盤數據算成「極度偏空 0 分」。
-        //   偵測:兩檔 sp500 漲跌不一致 = macro_cache 是較舊的交易日 → 過期。
-        //   ① sp500/nasdaq/vix/dji/sox/tsm/asx/umc 一律優先讀 macro_risk 的新鮮值(採礦端 V58.7 已補齊)
-        //   ② macro_risk 尚無該欄(等採礦)且 macro_cache 過期 → 回 null(顯「採集中」、不採計開盤分數,不用舊崩盤誤導)
-        //   🕐 V82.4.2 任一邊是盤中抓的 → 差一點是抓的時間不同、⛔ 是舊交易日(誰新誰舊交給下面 usPct 照日期挑)
-        const _usStale = (!mr.sp500_intraday && !usm.sp500?.intraday && mr.sp500_chg_pct != null && usm.sp500?.chg_pct != null
-                          && Math.abs(+mr.sp500_chg_pct - +usm.sp500.chg_pct) > 0.02);
-        const _MR_US = { sp500: 'sp500_chg_pct', nasdaq: 'nasdaq_chg_pct', dji: 'dji_chg_pct',
-                         sox: 'sox_chg_pct', tsm: 'tsm_chg_pct', asx: 'asx_chg_pct', umc: 'umc_chg_pct' };
-        // 🕐 V82.4.2 美股盤中抓的(`_intraday`)⛔ 當昨晚收盤算分:另一份有同一天(或更新)的收盤 → 用收盤;
-        //   沒有 → 記進 _usIntra、回 null,由 `_preOpenScore` 照樣列出來寫「盤中・還不是收盤」、0 分(同「資料舊了」那種處置)
-        const _usIntra = {};
-        const usPct = k => {
-            const mk = _MR_US[k];
-            if (mk && mr[mk] != null && !isNaN(mr[mk])) {   // 新鮮檔優先
-                const ia = this._intraAt(mr[`${k}_intraday`]);
-                if (!ia) return +mr[mk];
-                const c = usm[k];
-                if (c && !c.intraday && c.chg_pct != null && !isNaN(c.chg_pct) && c.date && (!mr[`${k}_date`] || String(c.date) >= String(mr[`${k}_date`]))) return +c.chg_pct;
-                _usIntra[k] = { at: ia, v: +mr[mk] };
-                return null;
-            }
-            if (_usStale && ['dji', 'sox', 'tsm', 'asx', 'umc'].includes(k)) return null;   // 舊檔過期 → 不用崩盤舊值
-            const c = usm[k]?.chg_pct; if (c == null || isNaN(c)) return null;
-            if (_MR_US[k] && usm[k].intraday) { _usIntra[k] = { at: this._intraAt(usm[k].intraday), v: +c }; return null; }
-            return +c;
-        };
+        // 🧊 V82.7.0 盤前「組輸入」那一段搬進 `_premktX`(⛔ 一字不改;scripts/forecast_freeze.mjs 每天早上用同一支凍結當下畫面)
+        const _PX = this._premktX(mr, usm);
+        const { usPct, usIntra: _usIntra, usStale: _usStale, MR_US: _MR_US } = _PX;
         const pctStr = v => (v == null) ? null : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
         // 🔢 V69.8.0 千分位(使用者要求:數字倒數第三位加逗號,同會計格式):43634 → 43,634
         const _fmtComma = v => { const n = parseFloat(String(v).replace(/,/g, '')); return Number.isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1000 ? 0 : 2 }) : (v || ''); };
@@ -18234,11 +18301,7 @@ const marginByDate = {};
             } catch (_) {}
         }
         const djiChg = pctStr(usPct('dji')) || '', ndxChg = pctStr(usPct('nasdaq')) || '', spxChg = pctStr(usPct('sp500')) || '', soxChg = pctStr(usPct('sox')) || '', tsmChg = pctStr(usPct('tsm')) || '';
-        // 🐛 V58.7 VIX 也優先讀新鮮的 macro_risk(macro_cache 停 07-07 顯 18.41,實際 16.9)
-        // 😱 V75.2.3 優先序抽成 `_vixState()`(⛔ 這裡原本是同一段判斷式的第一份實作)
-        const _vs2 = this._vixState();
-        let vix = (_vs2.val != null && (_vs2.src === 'macro_risk' || !_usStale)) ? _vs2.val.toFixed(2) : '';
-        if (vix && _vs2.intraday) { _usIntra.vix = { at: _vs2.intraday, v: +vix }; vix = ''; }   // 🕐 V82.4.2 盤中的 VIX 水位 ⛔ 算分
+        let vix = _PX.vix;   // 🧊 V82.7.0 VIX 的挑法在 `_premktX`(⛔ 這裡不再挑一次)
         const fi = this.fiShortQty;
         const fiSpot = mr.fi_spot_net;     // 外資現貨買賣超(億)
         const fiTrust = mr.fi_trust_net;   // 投信(億)
@@ -18269,22 +18332,10 @@ const marginByDate = {};
         // ③ 開盤方向計分(純公式)
         // 🧩 V79.5.4 算法搬進 `_preOpenScore`(全 App 唯一一份;回測探針 premkt_app_probe.mjs 拿同一支重算 2010 起每一天)
         //   —— 這裡只負責把值取好。⛔ 算術一個字沒改(test_premkt_formula 金樣本 300 組逐項比)。
-        const _age = this._premktFieldAge(mr);
-        const _f5 = this._fiFutState();
-        // 🐛 V79.9.8 只認「真的夜盤」(sess === 'night')的漲跌%:採礦那份 taifex_tx_now 其實是**前一個交易日的日盤**
-        //   (TAIFEX OpenAPI;10/29 早上拿到的是 10/28 日盤 +2.47%)→ 那一天的漲跌台股前一天收盤早就反映了,
-        //   以前當成「夜盤」+1.5 分、分析師那行寫「夜盤走強」= 講錯。⛔ 沒有 sess / 日盤 / 估算 一律不算分(pro `_premktScore` 同一條,test_premkt_formula ⑥⑧)。
-        // 💱 V82.4.0 期交所行情網給的是真的夜盤 → 🌙 V82.6.7 回測過關開始算分;算不算一律走 `_premktNight`(這次開盤前那一盤、已經收了)
-        const _nt = this._premktNight(mr, _age.twMax);
+        // 🧊 V82.7.0 輸入組在 `_premktX`;這裡只補「加權自己的技術面」那一行(只列出來、不計分)
+        const { age: _age, f5: _f5, nt: _nt } = _PX;
         const nightChg = _nt.chg;
-        const _po = this._preOpenScore({
-            dji: usPct('dji'), ndx: usPct('nasdaq'), spx: usPct('sp500'), sox: usPct('sox'), tsm: usPct('tsm'),
-            asx: asxChg, umc: umcChg, vix, nq: mr.nq_fut_chg_pct, ust: mr.ust10y_chg_pct, night: nightChg,
-            nk: mr.nikkei_chg_pct, ks: mr.kospi_chg_pct, hs: mr.hsi_chg_pct, fg: mr.fear_greed,
-            twd: mr.usdtwd_chg_pct, twd5: mr.usdtwd_chg_5d, krw5: mr.krw_chg_5d, cny5: mr.cny_chg_5d,
-            stale: _age.stale, fut: { chg5: _f5.chg5, pct: _f5.pct }, fiSpot, fiTotal, tech: tech ? (tech.verdict || '') : null,
-            intra: _usIntra,
-        });
+        const _po = this._preOpenScore({ ..._PX.x, tech: tech ? (tech.verdict || '') : null });
         const s = _po.s, sPct = _po.sPct;
         const { fg: _fgN, twd: _twdC, twd5: _twd5, krw5: _krw5, cny5: _cny5, fxDump: _asiaFxDump } = _po.v;
         // 🧹 V79.5.2 刪掉只餵給死碼 `summary` 與舊盤中型態的「外資台指期極空」但書(兩者都已拿掉);外資台指期照舊在明細列出來
@@ -18310,9 +18361,10 @@ const marginByDate = {};
                 : '🌙 美股週末休市(以下美股為上週五收盤,今天美股台灣晚間才開)') + '→ 美股那幾項參考度降低。' + patNote;
         }
         let light, verdict, vColor;
-        if (s >= 3) { light = '🔴'; verdict = '開高偏多'; vColor = 'red'; }
-        else if (s <= -3) { light = '🟢'; verdict = '開低偏空'; vColor = 'green'; }
-        else { light = '🟡'; verdict = '中性震盪'; vColor = 'yellow'; }
+        verdict = this._premktCall(s);   // 🧊 V82.7.0 門檻唯一一份
+        if (verdict === '開高偏多') { light = '🔴'; vColor = 'red'; }
+        else if (verdict === '開低偏空') { light = '🟢'; vColor = 'green'; }
+        else { light = '🟡'; vColor = 'yellow'; }
         // 🧹 V69.8.0 合併重複判斷(使用者要求):夜盤/情緒/匯率注記不再塞開盤預判卡的 💡 段
         //   (與分析師解讀重複),改收進 _analystNotes 統一由「🎙️ 分析師盤勢解讀」一段講完。
         //   亞股不收(分析師解讀 ② 已含,收了會重複講兩次)。
@@ -39673,7 +39725,7 @@ ${this._reportFacts(sym)}
         const rv2 = this._reboundVerdict;
         const midHtml = (rv2 && rv2.total > 0)
             ? `<div class="bg-[#0d1117] border-l-4 border-[#30363d] pl-2.5 py-1.5 rounded-r mt-2 text-[11px] text-gray-200 leading-relaxed">
-                 🧭 中期:<b>${rv2.icon} ${rv2.txt}</b>(反攻條件 ${rv2.passN}/${rv2.total},門檻 ${Math.max(6, rv2.total - 2)})
+                 🧭 中期:<b>${rv2.icon} ${rv2.txt}</b>(反攻條件 ${rv2.passN}/${rv2.total},門檻 ${rv2.need ?? this._reboundNeed(rv2.total)})
                  <span class="text-gray-500">— 完整條件在「大盤 → 💡 建議 → 反攻條件雷達」</span></div>`
             : `<div class="bg-[#0d1117] border-l-4 border-[#30363d] pl-2.5 py-1.5 rounded-r mt-2 text-[11px] text-gray-400 leading-relaxed">
                  🧭 中期結論在「大盤 → 💡 建議 → 反攻條件雷達」,那裡逐條列出每個條件。</div>`;

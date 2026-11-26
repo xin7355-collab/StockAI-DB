@@ -36,7 +36,8 @@ const BAD = /現金為王|持股先減碼|立即砍到|全市場都要減碼|持
 
 // ── ① 推播 → 只進鈴鐺 ──
 const fRisk = body(SRC, '    _checkMarketAlerts() {');
-const fRadar = body(SRC, '    _renderReboundRadar(');
+// 🧊 V82.7.0 雷達拆成三支(讀資料 / 純計算 / 畫畫面)→ 三支一起掃(⛔ 只掃畫畫面那支 = 讀快取那幾行搬走就假紅、規則被改也看不到)
+const fRadar = ['    _reboundInputs(', '    _reboundCalc(', '    _renderReboundRadar('].map(h => body(SRC, h)).join('\n');
 const fCb = body(SRC, '    _renderCircuitBreakerAlert() {');
 ok('① 🚧 空過守門:三支函式都抓得到', fRisk.length > 300 && fRadar.length > 3000 && fCb.length > 800, `${fRisk.length}/${fRadar.length}/${fCb.length}`);
 ok('① 風險指數 / 反攻雷達黑天鵝 / 全球熔斷 ⛔ 不可再 `_fireAlert`,改 `_alertQuiet`(只進 🔔 鈴鐺)',

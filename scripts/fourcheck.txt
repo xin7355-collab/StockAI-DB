@@ -97,6 +97,11 @@ python3 scripts/test_rh_fallback.py
 python3 scripts/test_txnight.py
 python3 scripts/test_premkt_log.py
 node scripts/test_premkt_track.mjs
+node scripts/test_forecast_freeze.mjs
+node scripts/test_radar_pure.mjs
+node scripts/test_radar_track.mjs
+python3 scripts/test_macro_cron_freeze.py
+node scripts/test_worker_premkt.mjs
 python3 scripts/test_etf_chg.py
 node scripts/test_idxparse.mjs
 node scripts/test_ovtruth.mjs

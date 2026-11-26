@@ -245,20 +245,24 @@ try:
 finally:
     A.DATA_DIR, A._STOCK_NAMES_CACHE = _orig_dir, _orig_cache
 
-# ── 🧪 V79.5.2 summary 的「今日大盤」那句(手動 dispatch 才會跑)────────────
-# ⚠️ 兩組都放在門檻邊上(舊寫法 ±1 分就會翻):A = 1 分(中性)、B = 2 分(偏多)
-_bA = {'sp500_chg_pct': 0.6, 'nasdaq_chg_pct': -0.3, 'vix': 18}
-_bB = {'sp500_chg_pct': 0.6, 'nasdaq_chg_pct': 0.9, 'vix': 22}
-_base = _bB
-_d0 = A._market_direction(dict(_bB))
-ok('🧪 外資現貨 ⛔ 不算進方向(門檻邊上 +500 億 / −500 億 → 結果跟沒有一模一樣)',
-   A._market_direction({**_bA, 'fi_spot_net': 500}) == A._market_direction(dict(_bA))
-   and A._market_direction({**_bB, 'fi_spot_net': -500}) == _d0,
-   [A._market_direction({**_bA, 'fi_spot_net': 500}), A._market_direction({**_bB, 'fi_spot_net': -500})])
-ok('🧪 決定性對照:美股與 VIX 照樣決定方向(三項都偏空 → 偏空)',
-   A._market_direction({'sp500_chg_pct': -1, 'nasdaq_chg_pct': -1, 'vix': 31})[1] == '偏空' and _d0[1] == '偏多')
-_all = ' '.join(A._market_direction(m)[2] for m in (_base, {'sp500_chg_pct': -1, 'nasdaq_chg_pct': -1, 'vix': 31}, {}))
+# ── 🧊 V82.7.0 summary 的「今日大盤」那句改讀 App 早上凍結的結論(手動 dispatch 才會跑;worker 08:00 讀同一份)────
+#   🗑️ 舊的簡化版(標普 / 那斯達克 / VIX、門檻 ±2)拿掉 → 原本「外資現貨不算進方向」那兩條跟著換成下面的用意
+_TWm = datetime(2026, 11, 27, 7, 50, tzinfo=TW)
+_fz = lambda call, sp, at='07:42', d='2026-11-27': {'premkt_recent': [{'d': d, 'at': at, 'x': {}, 'out': {'call': call, 'sPct': sp, 's': 4}}]}
+_bear_us = {'sp500_chg_pct': -1, 'nasdaq_chg_pct': -1, 'vix': 31, 'fi_spot_net': -500}
+_d1 = A._market_direction({**_bear_us, **_fz('開高偏多', 72)}, _TWm)
+ok('🧊 今天有凍結 → 跟 App 同一句(美股三項都偏空也照 App:開高偏多 72 分)', _d1[0] == '🔴' and _d1[1].startswith('開高偏多') and '72/100' in _d1[1], _d1)
+_d2 = A._market_direction(dict(_bear_us), _TWm)
+ok('🧊 決定性對照:同一組美股、沒有凍結 → ⛔ 講開高 / 開低(舊簡化版這組會講偏空)', not re.search(r'偏多|偏空|開高|開低', _d2[1] + _d2[2]), _d2)
+_d3 = A._market_direction(_fz('開低偏空', 30, d='2026-11-26'), _TWm)
+ok('🧊 昨天那筆 ⛔ 拿來講今天', not re.search(r'偏空|開低', _d3[1]), _d3)
+_d4 = A._market_direction(_fz('開低偏空', 30, at='09:10'), _TWm)
+ok('🧊 不是開盤前寫的那筆(09:10)⛔ 用', not re.search(r'偏空|開低', _d4[1]), _d4)
+_d5 = A._market_direction(_fz('開低偏空', 30), datetime(2026, 11, 27, 13, 0, tzinfo=TW))
+ok('🧊 過了 09:00 ⛔ 再講開盤', not re.search(r'偏空|開低', _d5[1]), _d5)
+_all = ' '.join(' '.join(A._market_direction(_fz(c, 50), _TWm)[1:]) for c in ('開高偏多', '開低偏空', '中性震盪'))
 ok('🧪 對策只講開盤 ⛔ 接刀 / 續抱 / 順勢 / 昨高', not re.search(r'接刀|續抱|順勢|昨高|昨低', _all), _all)
+ok('🧊 開高那句照發生率講(比較少開低、開高跟開平差不多)⛔「多半開高」', '比較少開低' in A._PREMKT_SOP['開高偏多'] and '多半開高' not in _all, A._PREMKT_SOP['開高偏多'])
 
 # ── 📅 2026-11-17 A5「下一個交易日」那一行(day_line;讀採礦產物的 event + fact,⛔ 自己組句子 / 算連休)──────
 _F_SET = '這種日子:大盤方向沒有規律,也沒有比平常顛。'

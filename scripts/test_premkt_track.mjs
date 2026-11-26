@@ -9,6 +9,9 @@
 //   ⓔ ADR 比美股指數那天舊 → 那一項不算分(= 上面同一支 _premktScore)、表上寫出來
 //   ⓕ 表:最多 10 列、預設日期新到舊、表頭可排序而且同一欄再點反向、⛔ 不用 🔴🟢
 //   ⓖ 接線:專欄頁盤前那塊底下真的畫出來;沒有任何紀錄時誠實說「還沒有」;無 pageerror
+//   ⓗ 🧊 V82.7.0 有凍結(out = 當天畫面)就用它、⛔ 重算:同一天美股全漲、畫面講開低 → 照畫面算對錯(決定性對照:拿掉 out → 回到重算)
+//      當天畫面 / 重算分開統計、表上標出來;發生率校準跟「那天畫面印的」比(⛔ 跟今天的表比);
+//      滿 20 天才跟回測比(Wilson 95% 範圍整個低於回測 → 「比回測差」);只看夜盤的對照、資料有缺 vs 齊、公式換版、⛔ 🔴🟢
 // 跑法:node scripts/test_premkt_track.mjs ・INJECT=1 node scripts/test_premkt_track.mjs(注入必紅)
 import fs from 'node:fs';
 import os from 'node:os';
@@ -24,6 +27,9 @@ const INJ = {
   exdiv: ["if (ex.has(e.d)) { o.why = '0050 除息日(跳空是除息不是行情)'; return o; }", ''],
   thresh: ["o.call = r.s >= 3 ? 'up' : r.s <= -3 ? 'dn' : 'mid';", "o.call = r.s >= 2 ? 'up' : r.s <= -3 ? 'dn' : 'mid';"],
   sort: ["this._premktTrackSort = S.k === k ? { k, dir: -S.dir } : { k, dir: -1 };", "this._premktTrackSort = { k, dir: -1 };"],
+  fzIgnore: ["const F = (e.out && typeof e.out === 'object' && Number.isFinite(+e.out.s) && e.out.call) ? e.out : null;   // 🧊 當天畫面", 'const F = null;'],
+  occNow: ['a.map(o => +o.occ[j] / 100)', "a.map(o => +this._PREMKT[k][c === 'flat' ? 'flat' : c] / 100)"],
+  wilsonOff: ['const vs = !W ? \'\' : W.hi < P.hit ?', 'const vs = !W ? \'\' : W.lo > P.hit + 99 ?'],
 };
 
 // ── 合成資料 ──
@@ -124,6 +130,42 @@ async function run(html) {
      JSON.stringify([gapOrder, gapOrder2]));
   ok('ⓕ3 ⛔ 不用 🔴🟢(對錯用 ✅⛔➖)', !/[🔴🟢]/u.test(h1) && /✅ 對/.test(h1) && /⛔ 開反/.test(h1), '');
 
+  // ⓗ 🧊 當天畫面優先
+  const OUTDN = { s: -4, sPct: 30, call: '開低偏空', k: 'lo', occ: [8.4, 36.6, 55], ver: 'aaaa1111', intra: [], stale: [], nt: -0.8, n: 9 };
+  const LOGF = { rows: LOG.rows.map(r => r.d === '2026-10-01' ? { ...r, out: OUTDN } : r) };
+  const TF = await page.evaluate(([log, b, div]) => PRO._premktTrack(log, b, div), [LOGF, bars, DIV]);
+  const f1 = TF.rows.find(o => o.d === '2026-10-01');
+  ok('ⓗ 有 out → 用當天畫面(美股全漲、畫面講開低 → 開盤 +0.50% = 開反),標 frozen',
+     f1.src === 'frozen' && f1.call === 'dn' && f1.res === 'wrong' && f1.sPct === 30 && byD['2026-10-01'].res === 'hit' && byD['2026-10-01'].src === 'rescore', JSON.stringify([f1, byD['2026-10-01'].res]));
+  ok('ⓗ2 當天畫面 / 重算分開統計(當天畫面 1 天講話、重算 5 天)', TF.sFz.call === 1 && TF.sRe.call === 5 && TF.sAll.call === 6 && TF.fzFirst === '2026-10-01', JSON.stringify([TF.sFz, TF.sRe]));
+  // 表只列最後 10 天 → 用 10/02 那天當「當天畫面」(10/01 那天不在表上)
+  const LOGF2 = { rows: LOG.rows.slice(1).map(r => r.d === '2026-10-02' ? { ...r, out: OUTDN } : r) };
+  const hF = await page.evaluate(([log, b, div]) => PRO._premktTrackHtml(PRO._premktTrack(log, b, div)), [LOGF2, bars, DIV]);
+  ok('ⓗ3 表上標「當天畫面」/「重算」;還不到 20 天 → 當天畫面那行寫「還在累積」', /10\/02[\s\S]{0,80}當天畫面/.test(hF.replace(/<[^>]+>/g, ' ')) && /・重算/.test(hF) && /當天畫面<\/b>[((]2026-10-02 起凍結[))][::]講話 <b>1<\/b> 天 → ⏳ 還在累積/.test(hF), hF.replace(/<[^>]+>/g, '').slice(0, 400));
+  const hNone = (await page.evaluate(T => PRO._premktTrackHtml(T), T)).replace(/<[^>]+>/g, '');
+  ok('ⓗ4 一天都還沒凍結 → 說明「從 V82.7.0 起凍結」、⛔ 假裝有成績', /V82\.7\.0 起每天早上/.test(hNone) && !/當天畫面(?!.*凍結)/.test(hNone.split('🧊')[0] || ''), hNone.slice(0, 300));
+  // 滿 20 天:24 天講開高(10 對、14 開反)→ Wilson 上界 < 75.7 → 比回測差;occ 用「那天畫面印的」(故意跟今天的表不一樣:開低 10%)
+  const OUTUP = { s: 4, sPct: 70, call: '開高偏多', k: 'hi', occ: [40, 50, 10], ver: 'aaaa1111', intra: [], stale: [], nt: 0.5, n: 9 };
+  const fzLog = { rows: [] }, fzBars = [{ date: '2026/01/02', open: 100, close: 100 }];
+  let tt = Date.UTC(2026, 0, 5), kk = 0;
+  while (fzLog.rows.length < 34) { const d = new Date(tt); tt += 864e5; if (!(d.getUTCDay() % 6)) continue; const ds = d.toISOString().slice(0, 10);
+    const open = kk < 10 ? 100.5 : kk < 24 ? 99.5 : 99.9; const ver = kk < 17 ? 'aaaa1111' : 'bbbb2222'; kk++;   // 10 對、14 開反(= 開低 14 天)、10 開平
+    fzBars.push({ date: ds.replace(/-/g, '/'), open, close: 100 }); fzLog.rows.push({ d: ds, at: '07:40', x: UP, out: { ...OUTUP, ver, intra: kk > 30 ? ['sp500'] : [] } }); }
+  const TZ = await page.evaluate(([log, b]) => PRO._premktTrack(log, b, null), [fzLog, fzBars]);
+  const hz = (await page.evaluate(T => PRO._premktTrackHtml(T), TZ)).replace(/<[^>]+>/g, '');
+  const cH = TZ.fz.calib.hi;
+  ok('ⓗ5 發生率校準跟「那天畫面印的」比:說開低 10%(⛔ 今天的表 4.2%)、真的開低 14/34', cH.n === 34 && Math.abs(cH.said - 10) < 1e-9 && Math.abs(cH.got - 14 / 34 * 100) < 1e-9 && cH.z > 2.5, JSON.stringify(cH));
+  ok('ⓗ6 畫面寫出來:分數 65 以上 說開低 10.0% → 真的 41.2% ⚠️ 差太多', /分數 65 以上:畫面說開低 10\.0% → 真的 41\.2%[((]34 天[))] ⚠️ 差太多/.test(hz), hz.slice(0, 600));
+  ok('ⓗ7 滿 20 天跟回測比:34 天講話、對 29.4% → Wilson 95% 範圍整個低於回測 75.7% → ⚠️ 比回測差', TZ.sFz.call === 34 && /當天畫面[^\n]*講話 34 天 → 方向猜對 29\.4%[^\n]*⚠️ 比回測差/.test(hz), hz.slice(0, 600));
+  // 對照組:同樣 34 天、對 26 天(76.5%)→ 跟回測差不多(⛔ 說比較差)
+  const okLog = { rows: fzLog.rows }, okBars = fzBars.map((b, i) => i >= 1 && i <= 26 ? { ...b, open: 100.5 } : b);
+  const TO = await page.evaluate(([log, b]) => PRO._premktTrack(log, b, null), [okLog, okBars]);
+  const ho = (await page.evaluate(T => PRO._premktTrackHtml(T), TO)).replace(/<[^>]+>/g, '');
+  ok('ⓗ7b 決定性對照:同樣 34 天、對 26 天(76.5%)→ ✅ 跟回測差不多(⛔ 說比回測差)', TO.sFz.hit === 26 && /方向猜對 76\.5%[^\n]*✅ 跟回測 75\.7% 差不多/.test(ho) && !/比回測差/.test(ho), ho.slice(0, 500));
+  ok('ⓗ8 公式換過 1 次 → 列出換版日', /公式換過 1 次:2026-01-05 起 aaaa1111 → 2026-01-28 起 bbbb2222/.test(hz), (hz.match(/🧾[^\n]*/) || [''])[0]);
+  ok('ⓗ9 只看夜盤的對照(同一批日子)、開盤之後(講開高那天平均)、資料有缺 vs 齊 都有一行', /只看夜盤/.test(hz) && /開盤之後[^\n]*講開高那天平均[^\n]*34 天/.test(hz) && /資料有缺的早上[^\n]*講話 4 天/.test(hz), hz.slice(300, 1400));
+  ok('ⓗ10 ⛔ 🔴🟢', !/[🔴🟢]/u.test(hz));
+
   // ⓖ 接線
   const R = await page.evaluate(async ([log, b, div]) => {
     const host = document.getElementById('colPremkt');
@@ -158,7 +200,7 @@ if (process.env.INJECT) {
     console.log(`${f.length ? '✅' : '❌'} 注入 ${nm} → ${f.length ? '紅(' + f.slice(0, 3).join(' / ') + ')' : '沒叫出來'}`);
     if (!f.length) allRed = false;
   }
-  console.log(allRed ? '✅ 四種注入全部叫得出來' : '❌ 有注入沒叫出來');
+  console.log(allRed ? `✅ ${Object.keys(INJ).length} 種注入全部叫得出來` : '❌ 有注入沒叫出來');
   if (!allRed) process.exit(1);
 }
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ PREMKT_TRACK_PASS');

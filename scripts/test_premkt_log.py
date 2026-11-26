@@ -14,6 +14,12 @@
   ⑦ 跨檔:產業作戰室 _premktScore / 散戶 App _premktFieldAge 實際讀到的每一個欄位都在 PREMKT_SNAP_KEYS 裡
      (⭐ 真的執行那兩支函式、用 Proxy 記錄讀了哪些鍵,⛔ 不靠 regex 猜)
   ⑧ 接線:main() 先算 premkt_recent 再寫 macro_risk.json、寫完才在有底層資料時寫 premkt_log;已發佈那份用 local=False 讀
+  🧊 V82.7.0(每天早上凍結 App 當下的結論 → 事後對答案):
+  ⑨ 只有寫入者(macro_cron,PREMKT_WRITER=1)寫今天那一筆;daily_miner 早上那輪只沿用(⛔ 蓋掉已凍結那筆)
+  ⑩ --attach 只塞進 d / at 都對得上「這一輪標記 premkt_w」的那一筆;對不上 / 標記沒有 → ⛔ 塞;寫回格式跟 main() 一樣
+  ⑪ out / radar 跟著沿用、跟著併進 premkt_log(⛔ 被洗掉)
+  ⑫ 同一天下一輪重寫 = 全新的一筆(⛔ 沿用比較早那輪的 out)
+  ⑬ 接線:main() 只在真的寫了今天那一筆時才設 premkt_w;--attach 在 __main__ 最前面、⛔ 跑採礦
 用法:python3 scripts/test_premkt_log.py
 """
 import io
@@ -30,6 +36,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 os.environ.setdefault('SKIP_GLOBAL', '1')
+os.environ['PREMKT_WRITER'] = '1'    # 🧊 V82.7.0 ①~⑧ 驗的是 macro_cron 那輪(寫入者);⑨ 另外驗不是寫入者的那輪
 for _m in ('yfinance',):
     if _m not in sys.modules:
         sys.modules[_m] = types.ModuleType(_m)
@@ -197,9 +204,71 @@ calls.clear()
 pv2, m2 = mm._premkt_prevs({'a': 1}, '線上 gh-pages(本機沒有上一份)', loader=fake_loader)
 ok('⑧f 已經是線上那份 → ⛔ 不再多打一次網路', len(pv2) == 1 and calls == [], (pv2, calls, m2))
 
+# ── 🧊 V82.7.0 凍結那一段 ──
+# ⑨ 寫入者守門
+r9, d9 = mm._premkt_recent_step(out_with(1.0), [{}], at(22, 7, 30), writer=False)
+ok('⑨ 不是寫入者(daily_miner 早上那輪)→ 只沿用、⛔ 寫今天那一筆', d9 == '只沿用' and not r9, (r9, d9))
+os.environ['PREMKT_WRITER'] = '0'
+r9b, d9b = mm._premkt_recent_step(out_with(1.0), [{}], at(22, 7, 30))
+os.environ['PREMKT_WRITER'] = '1'
+r9c, d9c = mm._premkt_recent_step(out_with(1.0), [{}], at(22, 7, 30))
+ok('⑨b 沒傳 writer → 看環境變數 PREMKT_WRITER(=1 才寫)', d9b == '只沿用' and d9c.startswith('寫入今天'), (d9b, d9c))
+frozen = {'d': '2026-10-22', 'at': '06:30', 'x': {'sp500_chg_pct': 1.0}, 'out': {'s': 3, 'call': '開高偏多'}, 'radar': {'lvl': 'bear'}}
+r9d, _ = mm._premkt_recent_step(out_with(-5.0), [{'premkt_recent': [frozen]}], at(22, 7, 30), writer=False)
+ok('⑨c ⭐ 決定性對照:不是寫入者那輪 → 已凍結那筆(06:30、有 out)原封不動', r9d[-1] == frozen, r9d)
+
+# ⑩ --attach
+def mk_doc(entries, w):
+    d = {'updated': 'x', 'premkt_recent': entries}
+    if w is not None:
+        d['premkt_w'] = w
+    return d
+tdir = Path(tempfile.mkdtemp(prefix='pmlog-attach-'))
+def attach_case(entries, w, fz):
+    mp, fp = tdir / 'macro_risk.json', tdir / 'freeze.json'
+    mp.write_text(json.dumps(mk_doc(entries, w), ensure_ascii=False, indent=2), encoding='utf-8')
+    fp.write_text(json.dumps(fz, ensure_ascii=False), encoding='utf-8')
+    okk, msg = mm._premkt_attach(fp, mp)
+    return okk, msg, json.loads(mp.read_text(encoding='utf-8')), mp.read_text(encoding='utf-8')
+E0 = {'d': '2026-10-21', 'at': '08:10', 'x': {'a': 1}}
+E1 = {'d': '2026-10-22', 'at': '08:20', 'x': {'a': 2}}
+FZ = {'d': '2026-10-22', 'at': '08:20', 'out': {'s': -3.5, 'call': '開低偏空', 'p': [['費半', -1.5]]}, 'radar': {'lvl': 'bear', 'lit': '10x'}}
+ok10, msg10, doc10, raw10 = attach_case([E0, dict(E1)], {'d': '2026-10-22', 'at': '08:20'}, FZ)
+ok('⑩ 對得上 → 塞進那一筆(out + radar)、別天那筆不動', ok10 and doc10['premkt_recent'][1].get('out') == FZ['out'] and doc10['premkt_recent'][1].get('radar') == FZ['radar']
+   and 'out' not in doc10['premkt_recent'][0], (msg10, doc10))
+ok('⑩b 寫回格式跟 main() 一樣(indent=2、中文不跳脫)', raw10 == json.dumps(doc10, ensure_ascii=False, indent=2, allow_nan=False), raw10[:120])
+ok11, msg11, doc11, _ = attach_case([E0, dict(E1)], {'d': '2026-10-22', 'at': '08:10'}, FZ)
+ok('⑩c 標記是另一輪(時間對不上)→ ⛔ 塞', not ok11 and 'out' not in doc11['premkt_recent'][1], msg11)
+ok12, msg12, doc12, _ = attach_case([E0, dict(E1)], None, FZ)
+ok('⑩d 這一輪沒標記(沒寫今天那一筆)→ ⛔ 塞', not ok12 and all('out' not in e for e in doc12['premkt_recent']), msg12)
+ok13, msg13, doc13, _ = attach_case([E0], {'d': '2026-10-22', 'at': '08:20'}, FZ)
+ok('⑩e 標記有、但 premkt_recent 裡沒有那一筆 → ⛔ 塞、⛔ 自己生一筆', not ok13 and len(doc13['premkt_recent']) == 1, msg13)
+(tdir / 'freeze.json').write_text('{壞掉', encoding='utf-8')
+okb, msgb = mm._premkt_attach(tdir / 'freeze.json', tdir / 'macro_risk.json')
+ok('⑩f 凍結檔壞掉 → 回失敗訊息、⛔ 丟例外、macro_risk 不動', not okb and '讀不到' in msgb, msgb)
+
+# ⑪ out / radar 沿用、併進 log
+r11, _ = mm._premkt_recent_step(out_with(0), [{'premkt_recent': [frozen]}], at(22, 13, 0))
+ok('⑪ 09:00 以後那輪沿用 → out / radar 還在', r11[-1].get('out') == frozen['out'] and r11[-1].get('radar') == frozen['radar'], r11)
+rows11, a11, u11 = mm._premkt_log_merge([], [frozen])
+ok('⑪b 併進 premkt_log → out / radar 還在', rows11[-1].get('out') == frozen['out'] and rows11[-1].get('radar') == frozen['radar'], rows11)
+
+# ⑫ 同一天下一輪重寫 → 全新的一筆
+r12, d12 = mm._premkt_recent_step(out_with(-1.0), [{'premkt_recent': [frozen]}], at(22, 8, 40))
+ok('⑫ ⭐ 同一天 08:40 那輪重寫 → 全新的一筆(⛔ 沿用 06:30 那輪的 out / radar)', r12[-1]['at'] == '08:40' and 'out' not in r12[-1] and 'radar' not in r12[-1], r12)
+
+# ⑬ 接線
+msrc13 = (ROOT / 'macro_miner.py').read_text(encoding='utf-8')
+main13 = msrc13[msrc13.find('\ndef main():'):]
+i_rs, i_w = main13.find('_premkt_recent_step('), main13.find('out["premkt_w"]')
+ok('⑬ main():寫了今天那一筆才設 premkt_w(緊跟在 _premkt_recent_step 後面、看 _did)',
+   0 < i_rs < i_w and 'if _did.startswith("寫入今天"):' in main13[i_rs:i_w], (i_rs, i_w))
+mb = msrc13[msrc13.find('if __name__ == "__main__":'):]
+ok('⑬b --attach 在 __main__ 最前面、做完就 sys.exit(⛔ 跑採礦)', mb.find('"--attach"') > 0 and mb.find('"--attach"') < mb.find('main()') and 'sys.exit(0)' in mb[:mb.find('main()')], mb[:300])
+
 os.chdir(_cwd)
 
-# 🧪 INJECT=1:六種壞寫法各放進一份暫存的副本(⛔ 不動正本),每一種都要讓這支測試變紅
+# 🧪 INJECT=1:每一種壞寫法各放進一份暫存的副本(⛔ 不動正本),每一種都要讓這支測試變紅
 if os.environ.get('INJECT') and not os.environ.get('_PMLOG_CHILD'):
     import shutil
     MUT = {
@@ -208,7 +277,10 @@ if os.environ.get('INJECT') and not os.environ.get('_PMLOG_CHILD'):
         'merge': ('        elif _premkt_pick(old, e) is not old:\n            by[e["d"]] = e; upd += 1', '        else:\n            by[e["d"]] = e; upd += 1'),
         'gate': ('    if _had_base:\n        print("  " + _premkt_log_write', '    if True:\n        print("  " + _premkt_log_write'),
         'prevs': ('    if str(prev_src or "").startswith("線上"):\n        return prevs, "上一份就是已發佈那份"', '    if True:\n        return prevs, "上一份就是已發佈那份"'),
-        'keys': ('    "taiex_date", "fi_three_date",\n)', '    "taiex_date",\n)'),
+        'keys': ('    "taiex_date", "fi_three_date",\n    # 🕐 V82.4.2', '    "taiex_date",\n    # 🕐 V82.4.2'),
+        'writer': ('    if writer and now_tw.weekday() < 5', '    if now_tw.weekday() < 5'),
+        'keepOut': ('        merged[today] = {"d": today, "at": now_tw.strftime("%H:%M"),', '        merged[today] = {**(merged.get(today) or {}), "d": today, "at": now_tw.strftime("%H:%M"),'),
+        'attachAny': ('    if not isinstance(fz, dict) or not isinstance(w, dict) or not fz.get("d") or (fz.get("d"), fz.get("at")) != (w.get("d"), w.get("at")):', '    if not isinstance(fz, dict) or not fz.get("d"):'),
     }
     msrc = (ROOT / 'macro_miner.py').read_text(encoding='utf-8')
     all_red = True
@@ -217,17 +289,20 @@ if os.environ.get('INJECT') and not os.environ.get('_PMLOG_CHILD'):
             print(f'⚠️ 注入 {nm}:找不到原句'); all_red = False; continue
         d = Path(tempfile.mkdtemp(prefix=f'pmlog-inj-{nm}-'))
         (d / 'scripts').mkdir()
-        for f in ('common.py', 'groq_common.py', 'pro.html', 'index.html'):
+        # 🧊 V82.7.0 修:macro_miner 匯入 lib_official / lib_quotes / lib_http…,以前沒複製 → 副本一匯入就當掉,
+        #   「當掉」被算成「叫得出來」(假綠)。→ 全部 lib_*.py 一起複製,而且一定要有 ❌ 那一行才算(當掉 ⛔ 算)
+        for f in ['common.py', 'groq_common.py', 'pro.html', 'index.html'] + [q.name for q in ROOT.glob('lib_*.py')]:
             shutil.copy(ROOT / f, d / f)
         shutil.copy(ROOT / 'scripts' / 'test_premkt_log.py', d / 'scripts' / 'test_premkt_log.py')
         (d / 'macro_miner.py').write_text(msrc.replace(a, b), encoding='utf-8')
         r = subprocess.run([sys.executable, str(d / 'scripts' / 'test_premkt_log.py')], capture_output=True, text=True,
                            env={**os.environ, '_PMLOG_CHILD': '1'}, timeout=300)
         reds = [l for l in r.stdout.splitlines() if l.startswith('❌')]
-        print(f"{'✅' if r.returncode else '❌'} 注入 {nm} → {reds[0][:80] if reds else '沒叫出來'}")
-        all_red = all_red and r.returncode != 0
+        hit = r.returncode != 0 and bool(reds)
+        print(f"{'✅' if hit else '❌'} 注入 {nm} → {reds[0][:80] if reds else ('副本當掉(⛔ 不算叫得出來):' + (r.stderr.strip().splitlines() or [''])[-1][:80] if r.returncode else '沒叫出來')}")
+        all_red = all_red and hit
         shutil.rmtree(d, ignore_errors=True)
-    print('✅ 六種注入全部叫得出來' if all_red else '❌ 有注入沒叫出來')
+    print(f'✅ {len(MUT)} 種注入全部叫得出來' if all_red else '❌ 有注入沒叫出來')
     if not all_red:
         fails.append('INJECT')
 

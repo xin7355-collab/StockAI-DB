@@ -113,36 +113,37 @@ def _tpe_now():
     return datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8)))
 
 
-def _market_direction(macro):
-    """簡易大盤方向(對齊前端盤前體檢;紅漲綠跌:偏多🔴 偏空🟢 中性🟡)。"""
-    s = 0.0
+# 🧊 V82.7.0 大盤方向改讀 App 盤前頁「當天早上凍結的那一句」(macro_risk.premkt_recent[今天].out ——
+#   macro_cron 早上用 index.html 真的函式算好凍結,scripts/forecast_freeze.mjs;worker 08:00 盤前簡報讀同一份 `premktFrozen`)。
+#   🗑️ 舊的簡化版(標普 / 那斯達克 / VIX、門檻 ±2)拿掉:跟 App 會講相反(EXP-20261123-03),而且是第二份算法(陷阱 #37)。
+#   今天那筆還沒凍結 / 已經過了 09:00(開盤那一刻已經過了)→ ⛔ 講任何開高 / 開低,只指路 App。
+#   對策那句照 App renderMarketBriefing 的 patNote(V79.9.8 照發生率的講法),⛔ 講到開盤之後。
+_PREMKT_LIGHT = {'開高偏多': '🔴', '開低偏空': '🟢', '中性震盪': '🟡'}
+_PREMKT_SOP = {
+    '開高偏多': '隔夜海外偏多 → 今天比較少開低,但開高跟開平差不多一樣常見 → 照原本計畫做,⛔ 別在開盤追高;開盤之後怎麼走不預測',
+    '開低偏空': '隔夜海外偏弱 → 今天比較常開低(大約一半),開平也很常見 → 新買的先縮小部位;手上的照出場規則走,⛔ 不用因為這樣就先賣',
+    '中性震盪': '多空拉扯,今天多半開平 → 照原本計畫做;開盤之後怎麼走不預測',
+}
 
-    def sgn(v):
-        try:
-            v = float(v)
-            return 1 if v > 0 else -1 if v < 0 else 0
-        except Exception:
-            return 0
-    s += sgn(macro.get('sp500_chg_pct')) + sgn(macro.get('nasdaq_chg_pct'))
-    try:
-        vix = float(macro.get('vix'))
-        if vix < 20:
-            s += 1
-        elif vix > 30:
-            s -= 2
-        elif vix > 25:
-            s -= 1
-    except Exception:
-        pass
-    # 🧪 V79.5.2 外資現貨 ⛔ 不再算進方向分(V79.3.8 App 盤前體檢 / worker 盤前簡報早就拿掉了,這一份漏了 = 陷阱 #37):
-    #   premkt_dom_probe 2004~2026:外資現貨對隔天開盤 / 收盤的名次相關每年都 ≈ 0,算進去反而比只看海外不準。
-    # 🧪 V79.5.2 對策那句只講開盤(同 App「📌 今天怎麼看」):開盤之後怎麼走 ⛔ 不預測;
-    #   以前的「拉回不破可續抱 / 空手別急著接刀 / 等站上昨高」都沒有回測過。
-    if s >= 2:
-        return ('🔴', '偏多', '隔夜海外偏多,今天多半開高 → 照原本計畫做,⛔ 別在開盤追高;開盤之後怎麼走不預測')
-    if s <= -2:
-        return ('🟢', '偏空', '隔夜海外偏弱,今天多半開低 → 新買的先縮小部位;手上的照出場規則走,⛔ 不用因為這樣就先賣')
-    return ('🟡', '中性', '多空拉扯,今天多半開平 → 照原本計畫做')
+
+def _market_direction(macro, now=None):
+    """→ (燈號, 那一句, 對策)。只讀凍結的 App 結論,⛔ 自己算。"""
+    import re
+    now = now or _tpe_now()
+    if now.hour < 9:
+        today = now.strftime('%Y-%m-%d')
+        e = next((x for x in ((macro or {}).get('premkt_recent') or []) if isinstance(x, dict) and x.get('d') == today), None)
+        o = e.get('out') if e else None
+        if isinstance(o, dict) and o.get('call') in _PREMKT_LIGHT and re.match(r'^0[5-8]:\d\d$', str(e.get('at') or '')):
+            try:
+                sp = float(o.get('sPct'))
+            except (TypeError, ValueError):
+                sp = None
+            if sp is not None and sp == sp:
+                call = o['call']
+                return (_PREMKT_LIGHT[call], f"{call}(App 盤前分數 {sp:g}/100)", _PREMKT_SOP[call])
+        return ('🌅', '開盤偏高或偏低看 App 盤前頁', '早上的資料還沒算好(App 盤前頁會自己更新)')
+    return ('🌅', '開盤判斷只在早上講', '開盤之後怎麼走這裡不預測 → 看 App')
 
 
 def build_summary():
@@ -160,7 +161,7 @@ def build_summary():
     lines = [f"{title} _{now.strftime('%m/%d %H:%M')} 台北_", ""]
 
     # 🌏 今日大盤一句話(白話方向 + 對策)
-    emo, dirt, sop = _market_direction(macro)
+    emo, dirt, sop = _market_direction(macro, now)
     vix = macro.get('vix')
     lines.append(f"{emo} *今日大盤:{dirt}*" + (f"　VIX {vix}" if vix is not None else ""))
     lines.append(f"　💡 {sop}")
