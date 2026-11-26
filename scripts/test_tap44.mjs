@@ -43,6 +43,9 @@ async function probe(touch) {
     const R = await page.evaluate(async () => {
         const out = { coarse: matchMedia('(pointer: coarse)').matches, groups: {} };
         const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+        // ⏳ 2026-11-26 切頁之後「等到按鈕真的看得到再量」(最多 5 秒):以前固定等 0.4 秒,四驗證平行跑、機器忙的時候
+        //    大盤那頁還沒畫出來就量 → 量到 0 顆(③ 空過守門抓到、整支紅;單獨跑都綠)。⛔ 把固定等待拉長了事(慢機器照樣會紅)
+        const waitVis = async (sel, ms = 5000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { if ([...document.querySelectorAll(sel)].some(vis)) return true; await new Promise(r => setTimeout(r, 100)); } return false; };
         const hitOK = el => {
             try { el.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (_) {}   // 個股子分頁那排可以橫捲 → 畫面外的點不到(elementFromPoint 回 null)
             const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, miss = [];
@@ -65,6 +68,7 @@ async function probe(touch) {
         if (pro) pro.style.display = 'none';
         app.switchAppTab('market'); app.switchMarketSubTab('global'); app.switchNewsPane('news');
         await new Promise(r => setTimeout(r, 400));
+        await waitVis('[data-newspane]'); await waitVis('button[onclick^="app.switchMarketSubTab("]');
         take('消息面分頁', [...document.querySelectorAll('[data-newspane]')]);
         take('大盤子分頁', [...document.querySelectorAll('button[onclick^="app.switchMarketSubTab("]')]);
         // ④ 決定性對照:真的跳一則通知橫幅(App 自己的 _alertToast)、⛔ 清就量 → 一定有點不到的
@@ -73,6 +77,7 @@ async function probe(touch) {
         clearToasts();
         app.switchAppTab('diag');
         await new Promise(r => setTimeout(r, 400));
+        await waitVis('.sub-tab-btn');
         take('個股子分頁', [...document.querySelectorAll('.sub-tab-btn')]);
         // 🆕 V80.2.2 個股頁頂端那排 + 觀察抽屜(先捲回最上面:個股子分頁那排可能把頁面捲走)
         window.scrollTo(0, 0);
@@ -82,6 +87,7 @@ async function probe(touch) {
         out.nameW = nm ? Math.round(nm.getBoundingClientRect().width) : 0;
         try { app.openHuntPanel(); } catch (_) {}
         await new Promise(r => setTimeout(r, 500));
+        await waitVis('#monitorHuntIcon');
         take('觀察抽屜', [document.getElementById('monitorHuntIcon')].filter(Boolean));
         try { app.closeHuntPanel(); } catch (_) {}
         return out;
