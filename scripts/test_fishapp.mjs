@@ -32,17 +32,39 @@ for (const f of ['data/screener.json', 'data/playbook_edge.json']) {
 }
 const SRC = readFileSync('pro.html', 'utf8');
 const URL0 = pathToFileURL(resolve('pro.html')).href;
+// 🧪 2026-11-26 大跌時 👑 排行可能只剩 1 條(11/25 收盤只有 2412:成交額前 100 檔只剩它站上月線)→
+//   「一按只釣一條、海裡剩 N−1 條」「拋網全抓」「排序」「重新打開」「往左游」「放回海裡」那幾條前提不成立、天天紅(main 上一樣)。
+//   → 真資料排行 < 3 條時,這一輪改用固定測資:screener 成交額前 12 檔改成「站上月線(月線乖離 2 < 季線乖離 5)、10 日漲幅照名次、一年位置 95」,
+//     其他欄位(價格 / 漲跌 / 市值…)照真的。⛔ 改任何判定;ⓒ 那幾條照樣是「同一份資料」App 名單 == _castPick。
+const SCR = JSON.parse(readFileSync('data/screener.json', 'utf8'));
+let PATCH = null, PATCH_N0 = null;
+const patchScreener = () => {
+  const C = Object.fromEntries(SCR.cols.map((c, i) => [c, i])), rows = JSON.parse(JSON.stringify(SCR.rows));
+  const top = Object.entries(rows).filter(([s, v]) => /^\d{4}$/.test(s) && !s.startsWith('00') && +v[C.etf] !== 1 && +v[C.amt20] > 0 && +v[C.c] > 0)
+    .sort((a, b2) => +b2[1][C.amt20] - +a[1][C.amt20]).slice(0, 12);
+  top.forEach(([, v], i) => { v[C.b20] = 2; v[C.b60] = 5; v[C.chg10] = 30 - i; v[C.pos252] = 95; });
+  return JSON.stringify({ ...SCR, rows });
+};
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const errs = [];
 const open = async (q, reduce) => {
   const pg = await b.newPage({ viewport: { width: 390, height: 844 } });
+  if (PATCH) await pg.route(u => u.href.includes('/data/screener.json'), r => r.fulfill({ status: 200, contentType: 'application/json', body: PATCH }));
   await pg.emulateMedia({ reducedMotion: reduce ? 'reduce' : 'no-preference' });
   pg.on('pageerror', e => errs.push(String(e).slice(0, 200)));
   await pg.goto(URL0 + q);
   await pg.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO._fpvOne, null, { timeout: 30000 });
   return pg;
 };
+
+// ── 🧪 先看今天真資料的 👑 排行夠不夠(用 App 自己的 _leaderCalc,⛔ 另寫一份)──
+{
+  const p0 = await open('?app=fish');
+  PATCH_N0 = await p0.evaluate(async () => { const s = await PRO.fetchJson('data/screener.json'); return ((PRO._leaderCalc(s) || {}).ranked || []).length; });
+  await p0.close();
+  if (PATCH_N0 < 3) { PATCH = patchScreener(); console.log(`🧪 今天真資料 👑 排行只有 ${PATCH_N0} 條(< 3,大跌時常見)→ 這一輪改用固定測資(screener 成交額前 12 檔改成站上月線;判定一個字都沒改)`); }
+}
 
 // ── ⓐ ⓑ ────────────────────────────────────────────────
 const pg = await open('?app=fish');
@@ -53,8 +75,10 @@ const L = await pg.evaluate(() => {
   return { top: vis(document.querySelector('.topbar')), pool: vis(document.getElementById('fishPoolPane')), cast: vis(document.getElementById('rodCastPane')),
     rules: vis(document.getElementById('rodRules')), stage: vis(document.getElementById('fpvCanvas')), btn: !document.getElementById('fpvCastBtn') && !!(PRO._fpv && PRO._fpv.reel),
     title: document.title, mf: mf && mf.getAttribute('href'), icon: (document.querySelector('link[rel=apple-touch-icon]') || {}).href || '',
-    app: PRO._appFish === true, tab: PRO._tab, swim: PRO._fpv.swim.length, raf: !!PRO._fpv.raf };
+    app: PRO._appFish === true, tab: PRO._tab, swim: PRO._fpv.swim.length, raf: !!PRO._fpv.raf,
+    ranked: (((PRO._fishD || {}).LD || {}).ranked || []).length };
 });
+ok(L.ranked >= 3, `🚧 空過守門:互動那幾條要有 ≥ 3 條魚(今天真資料 ${PATCH_N0} 條${PATCH ? ' → 用固定測資' : ''};排行 ${L.ranked} 條)`, JSON.stringify([PATCH_N0, L.ranked]));
 ok(!L.top && !L.pool && !L.cast && !L.rules, 'ⓐ 作戰室分頁列 / 池子 / 拋竿規則段 / 紀律卡都看不到', JSON.stringify(L));
 ok(L.stage && L.btn && L.app && L.tab === 'rod' && L.swim > 0 && L.raf, 'ⓐ2 舞台看得到、⛔ 沒有另外的拋竿鈕(只有捲線器)、水下有魚在游(rAF 在跑)—— 🚧 空過守門', JSON.stringify(L));
 ok(L.title === '股海釣手' && L.mf === 'fish.webmanifest' && /fish-192\.png$/.test(L.icon), 'ⓐ3 標題 / manifest / 主畫面圖示換成股海釣手', JSON.stringify(L));

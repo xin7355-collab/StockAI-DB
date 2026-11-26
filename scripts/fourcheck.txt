@@ -135,6 +135,7 @@ python3 scripts/test_namematch.py
 node scripts/test_accrfilter.mjs
 node scripts/test_rotate.mjs
 node scripts/test_labplain.mjs
+node scripts/test_prohtml.mjs
 node scripts/test_invmodal.mjs
 node scripts/test_selllog.mjs
 node scripts/test_daytrades.mjs
