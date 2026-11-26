@@ -86,13 +86,14 @@ jobs:
       # 🧊 V82.7.0 每天早上凍結「App 盤前頁當下說了什麼」(開盤預判 + 反攻條件雷達)→ 產業作戰室事後對答案
       #   只在這一輪真的寫了今天早上那一筆(台北平日 05:00~08:59)才算;用 index.html 真的函式(⛔ 另抄一份)。
       #   ⛔ 失敗不擋下面的推送:continue-on-error + 自己 2 分鐘上限(job 只有 8 分);只用 Node 內建,⛔ npm。
+#   塞回去走 scripts/premkt_attach.py(⛔ 需要任何金鑰 → ⛔ 給這一步金鑰;check_workflow_paths 看腳本名比金鑰)
       - name: 🧊 凍結今天早上的開盤預判 + 反攻雷達
         continue-on-error: true
         timeout-minutes: 2
         run: |
           node --version
           node scripts/forecast_freeze.mjs data/macro_risk.json /tmp/freeze.json
-          if [ -s /tmp/freeze.json ]; then python macro_miner.py --attach /tmp/freeze.json; fi
+          if [ -s /tmp/freeze.json ]; then python scripts/premkt_attach.py /tmp/freeze.json; fi
 
       - name: 📡 同步 data/macro_risk.json 到 gh-pages
         run: |

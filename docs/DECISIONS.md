@@ -19,11 +19,11 @@
 
 **做法**
 - App(畫面一個字不變):`_premktX(mr, usm)`(renderMarketBriefing 取值那段原封搬出)、`_premktCall(s)`、`_premktOccOf(sPct)`;雷達拆 `_reboundInputs()`(讀快取;派發日背景還沒算完就當場算)/ `_reboundCalc(inp)`(純計算)/ `_reboundNeed(j)`(門檻唯一一份);`_reboundVerdict` 多帶 need / half / lvl / lit,另外兩處讀 rv.need。
-- 伺服器凍結:`scripts/lib_appextract.mjs`(從 index.html 抽成員:一行一行往下延伸,讓 JS 自己判斷哪裡是結尾;Proxy 讀到沒抽出來的 `this.xxx` 直接丟錯)+ `scripts/forecast_freeze.mjs`(只在 `macro_risk.premkt_w` 對得上這一輪剛寫的那一筆才算;macro_cache / risk_history / bubble / ^TWII / breadth 從網站抓、抓不到退 data 分支 raw、再抓不到照 App 的處置;任何例外 exit 0)→ `python3 macro_miner.py --attach /tmp/freeze.json`(只塞進那一筆、同一套 `json.dumps` 參數)。只有 macro_cron 設 `PREMKT_WRITER=1` 才寫今天早上那筆(daily_miner 早上那輪寫了會換掉已凍結那筆)。macro_cron 在「🌍 採礦」與「📡 同步」之間加「🧊 凍結」一步(continue-on-error、自己 2 分鐘、只用 Node 內建)。
+- 伺服器凍結:`scripts/lib_appextract.mjs`(從 index.html 抽成員:一行一行往下延伸,讓 JS 自己判斷哪裡是結尾;Proxy 讀到沒抽出來的 `this.xxx` 直接丟錯)+ `scripts/forecast_freeze.mjs`(只在 `macro_risk.premkt_w` 對得上這一輪剛寫的那一筆才算;macro_cache / risk_history / bubble / ^TWII / breadth 從網站抓、抓不到退 data 分支 raw、再抓不到照 App 的處置;任何例外 exit 0)→ `python scripts/premkt_attach.py /tmp/freeze.json`(呼叫 `macro_miner._premkt_attach`:只塞進那一筆、同一套 `json.dumps` 參數;⛔ 直接跑 macro_miner.py —— 那支要金鑰,`check_workflow_paths` 會要求這一步也給,而這一步根本用不到)。只有 macro_cron 設 `PREMKT_WRITER=1` 才寫今天早上那筆(daily_miner 早上那輪寫了會換掉已凍結那筆)。macro_cron 在「🌍 採礦」與「📡 同步」之間加「🧊 凍結」一步(continue-on-error、自己 2 分鐘、只用 Node 內建)。
 - 存什麼(約 1KB / 天,⛔ 存畫面文字):out {ver 公式指紋(只看算分那幾支), app, s, sPct, raw, call, k, occ 那天印的發生率, n, intra, stale, nt, ntWhy, tsm, usD, p} / radar {ver, lvl, passN, judged, need, lit, nm 條件名字, swan, rx 17 個原始數字, twD, rhD} 或 {na}。晚上 daily_miner 照舊整筆併進 `data/premkt_log.json`。
 - 作戰室:「🌅 早上那份準不準」有 out 就用(標「當天畫面」)、舊列才重算(標「重算」),分開統計;講話滿 20 天跟回測 75.7% 比(Wilson 95% 範圍整個低於才說「比回測差」);發生率每一級滿 30 天跟那天畫面印的比(`_calibZ`,跟 `_calibAgg` 共用一條式子;|z| > 2.5 才標);只描述:只看夜盤的對照、開盤之後、資料有缺 vs 齊、公式換版。新「📡 反攻條件雷達準不準」`_radarTrack`:同一級連續算一段(⛔ 逐日)、基準 = 那一段第一天的前一天加權收盤、20 / 60 個交易日、60 天內最深回檔、再跌 5% 以上、對照 = 同期間每一天、每一級 ≥ 5 段才給數字、還沒滿 60 天 ⛔ 收進彙總、滿 40 天照名字做條件健康檢查。
 - Telegram:worker `premktFrozen` / `premktCallLine`、alert_system `_market_direction` 讀 `premkt_recent[今天].out`;還沒凍結 / 不是 05:00~08:59 寫的那筆 / 過了 09:00 → ⛔ 講結論、只指路 App。舊的 dScore 拿掉。
-- 事先登記 EXP-20261126-01(對答案規則寫死、tries 4);實測總表 `premkt-score` / `rebound-radar` 更新(雷達補 tries 44 = V80.1.4 那次)、新增 `next-radar-rerun11`(11 條版歷史重跑 + 什麼時候該做)。
+- 事先登記 EXP-20261126-01(對答案規則寫死、tries 4);實測總表 `premkt-score` / `rebound-radar` 更新(雷達補 tries 44 = V80.1.4 那次;雷達只加說明、結論沒變 → 更新日期維持 10/31,⛔ 推成新條目 —— `test_exp_registry` 會要它重新登記)、新增 `next-radar-rerun11`(11 條版歷史重跑 + 什麼時候該做)。
 
 **多久看得出來**:開盤預判講話 20 次約 6 週(冒煙測試,±17 個百分點)・60 次約 4 個月(±10)・90 次約半年(分得出 76% 和 88%);雷達要好幾年,第一年只能看條件有沒有壞。
 

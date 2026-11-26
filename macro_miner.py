@@ -1857,6 +1857,7 @@ def _premkt_prevs(prev_json, prev_src, loader=None):
 
 def _premkt_attach(freeze_path, path=None):
     """🧊 V82.7.0 scripts/forecast_freeze.mjs 算好的 { d, at, out, radar } → 塞進 macro_risk.json premkt_recent 裡 d / at 都對得上的那一筆。
+    入口 = scripts/premkt_attach.py(macro_cron「🧊 凍結」那一步;⛔ 需要金鑰,所以 ⛔ 經過這支的 __main__)。
     只認這一輪的標記 premkt_w(⛔ 塞進別天 / 別輪那筆);用 main() 同一套 json.dumps 參數重寫(數字格式不飄)。⛔ 永遠不丟例外;回 (成功與否, 訊息)。"""
     path = Path(path) if path else OUTPUT_FILE
     try:
@@ -4345,7 +4346,7 @@ def main():
         print(f"  🌅 盤前紀錄的上一份:{_pv_msg}")
         out["premkt_recent"], _did = _premkt_recent_step(out, _prevs, _now_tw)
         if _did.startswith("寫入今天"):
-            # 🧊 V82.7.0 標記「這一輪真的寫了今天早上那一筆」→ forecast_freeze.mjs / --attach 只認這一筆
+            # 🧊 V82.7.0 標記「這一輪真的寫了今天早上那一筆」→ forecast_freeze.mjs / scripts/premkt_attach.py 只認這一筆
             out["premkt_w"] = {"d": _now_tw.strftime("%Y-%m-%d"), "at": _now_tw.strftime("%H:%M")}
         print(f"  🌅 盤前紀錄 premkt_recent:{_did} ・共 {len(out['premkt_recent'])} 天")
     except Exception as _e:
@@ -4481,11 +4482,6 @@ def generate_bubble_warning():
 # 🚀 程式執行起點 (雙引擎同時發動)
 # ==========================================
 if __name__ == "__main__":
-    # 🧊 V82.7.0 macro_cron 那一步:python3 macro_miner.py --attach /tmp/freeze.json(⛔ 不跑採礦)
-    if len(sys.argv) >= 3 and sys.argv[1] == "--attach":
-        _ok_at, _msg_at = _premkt_attach(sys.argv[2])
-        print("  🧊 " + _msg_at)
-        sys.exit(0)
     try:
         # 第一引擎：抓取總經三大指標
         main()

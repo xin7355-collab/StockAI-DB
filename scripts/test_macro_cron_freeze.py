@@ -3,10 +3,10 @@
 
 驗:
   ① 步驟順序:🌍 執行總經採礦 → 🧊 凍結 → 📡 同步(凍結要在採礦寫完之後、推送之前)
-  ② 凍結那步:continue-on-error、自己 2 分鐘上限(job 只有 8 分)、跑 forecast_freeze.mjs 再 --attach、⛔ npm install
+  ② 凍結那步:continue-on-error、自己 2 分鐘上限(job 只有 8 分)、跑 forecast_freeze.mjs 再 scripts/premkt_attach.py、⛔ npm install、⛔ 拿任何金鑰
   ③ PREMKT_WRITER=1 只在 macro_cron 的採礦那步(⛔ 其他 workflow 設 —— daily_miner 早上那輪寫了會蓋掉已凍結那筆)
-  ④ 用到的檔案都在(scripts/forecast_freeze.mjs / lib_appextract.mjs、macro_miner.py 有 --attach)
-  INJECT=1:拿掉 continue-on-error / 凍結搬到推送後面 / daily_miner 也設寫入者 —— 三種都要紅
+  ④ 用到的檔案都在(scripts/forecast_freeze.mjs / lib_appextract.mjs / premkt_attach.py、macro_miner.py 有 _premkt_attach)
+  INJECT=1:拿掉 continue-on-error / 凍結搬到推送後面 / daily_miner 也設寫入者 / 凍結那步拿金鑰 —— 四種都要紅
 用法:python3 scripts/test_macro_cron_freeze.py
 """
 import os
@@ -48,9 +48,10 @@ def check(mc, others):
     tm = re.search(r'timeout-minutes: (\d+)', frz)
     job_tm = re.search(r'\n    timeout-minutes: (\d+)', mc)
     ok('②b 自己有時限 ≤ 2 分、而且比整個 job 短', tm is not None and int(tm.group(1)) <= 2 and job_tm is not None and int(tm.group(1)) < int(job_tm.group(1)), (tm and tm.group(1), job_tm and job_tm.group(1)))
-    ok('②c 先跑 forecast_freeze.mjs、有結果才 --attach;⛔ npm install(只用 Node 內建)',
-       'node scripts/forecast_freeze.mjs data/macro_risk.json /tmp/freeze.json' in frz and 'macro_miner.py --attach /tmp/freeze.json' in frz
-       and frz.find('forecast_freeze.mjs') < frz.find('--attach') and 'npm ' not in frz, frz[-300:])
+    ok('②c 先跑 forecast_freeze.mjs、有結果才 scripts/premkt_attach.py 塞回去;⛔ npm install(只用 Node 內建)',
+       'node scripts/forecast_freeze.mjs data/macro_risk.json /tmp/freeze.json' in frz and 'python scripts/premkt_attach.py /tmp/freeze.json' in frz
+       and frz.find('forecast_freeze.mjs') < frz.find('premkt_attach.py') and 'npm ' not in frz, frz[-300:])
+    ok('②d 凍結那步 ⛔ 拿任何金鑰(用不到;多給一份 = 多一個外洩的地方)', 'secrets.' not in frz and 'macro_miner.py' not in frz, frz[-300:])
     mine = st[i_mine][1] if i_mine >= 0 else ''
     ok("③ macro_cron 的採礦那步設 PREMKT_WRITER: '1'", re.search(r"PREMKT_WRITER: '1'", mine) is not None, mine[-300:])
     bad = [n for n, t in others.items() if 'PREMKT_WRITER' in t]
@@ -60,15 +61,16 @@ def check(mc, others):
 mc_text = (WF / 'macro_cron.yml').read_text(encoding='utf-8')
 others = {p.name: p.read_text(encoding='utf-8') for p in WF.glob('*.yml') if p.name != 'macro_cron.yml'}
 check(mc_text, others)
-ok('④ 用到的檔案都在、macro_miner.py 有 --attach',
-   (ROOT / 'scripts' / 'forecast_freeze.mjs').exists() and (ROOT / 'scripts' / 'lib_appextract.mjs').exists()
-   and '"--attach"' in (ROOT / 'macro_miner.py').read_text(encoding='utf-8'))
+ok('④ 用到的檔案都在、macro_miner.py 有 _premkt_attach',
+   (ROOT / 'scripts' / 'forecast_freeze.mjs').exists() and (ROOT / 'scripts' / 'lib_appextract.mjs').exists() and (ROOT / 'scripts' / 'premkt_attach.py').exists()
+   and 'def _premkt_attach(' in (ROOT / 'macro_miner.py').read_text(encoding='utf-8'))
 
 if os.environ.get('INJECT') and not os.environ.get('_MCF_CHILD'):
     MUT = {
         'noCoe': lambda mc, ot: (mc.replace('        continue-on-error: true\n        timeout-minutes: 2\n', '        timeout-minutes: 2\n'), ot),
         'afterSync': lambda mc, ot: (mc.replace('      - name: 🧊 凍結', '      - name: 🧊X 凍結').replace('      - name: 📡 同步', '      - name: 📡 同步Y'), ot),
         'dmWriter': lambda mc, ot: (mc, {**ot, 'daily_miner.yml': ot.get('daily_miner.yml', '') + "\n          PREMKT_WRITER: '1'\n"}),
+        'secret': lambda mc, ot: (mc.replace('        timeout-minutes: 2\n        run: |\n', '        timeout-minutes: 2\n        env:\n          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}\n        run: |\n'), ot),
     }
     all_red = True
     for nm, f in MUT.items():
@@ -84,7 +86,7 @@ if os.environ.get('INJECT') and not os.environ.get('_MCF_CHILD'):
         print(f"{'✅' if hit else '❌'} 注入 {nm} → {fails[0][:70] if fails else '沒叫出來'}")
         all_red = all_red and hit
         fails[:] = saved
-    ok('🧪 三種注入全部叫得出來', all_red)
+    ok('🧪 四種注入全部叫得出來', all_red)
 
 print('\n' + (f'❌ {len(fails)} 條失敗' if fails else '✅ MACRO_CRON_FREEZE_PASS'))
 sys.exit(1 if fails else 0)

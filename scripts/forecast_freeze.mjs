@@ -5,7 +5,7 @@
  *   為什麼要凍結:以前早上只存原始資料(macro_risk.premkt_recent[].x),產業作戰室事後拿「現在的公式」重算 ——
  *     公式 5 週改了 3 次(夜盤算分、盤中價不算、0.4% 不算),對答案對的不是當天畫面。
  *   做法:用 index.html 真的函式(lib_appextract,⛔ 另抄一份)算好結論,存成 { out, radar },
- *     由 `python3 macro_miner.py --attach` 塞進 premkt_recent 裡「這一輪剛寫的那一筆」(晚上 daily_miner 照舊併進 data/premkt_log.json)。
+ *     由 `python scripts/premkt_attach.py`(呼叫 macro_miner._premkt_attach)塞進 premkt_recent 裡「這一輪剛寫的那一筆」(晚上 daily_miner 照舊併進 data/premkt_log.json)。
  *
  * 跑法(macro_cron 那一步,macro_miner.py 寫完 data/macro_risk.json 之後;只用 Node 內建,⛔ npm):
  *   node scripts/forecast_freeze.mjs data/macro_risk.json /tmp/freeze.json

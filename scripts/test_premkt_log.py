@@ -19,7 +19,7 @@
   ⑩ --attach 只塞進 d / at 都對得上「這一輪標記 premkt_w」的那一筆;對不上 / 標記沒有 → ⛔ 塞;寫回格式跟 main() 一樣
   ⑪ out / radar 跟著沿用、跟著併進 premkt_log(⛔ 被洗掉)
   ⑫ 同一天下一輪重寫 = 全新的一筆(⛔ 沿用比較早那輪的 out)
-  ⑬ 接線:main() 只在真的寫了今天那一筆時才設 premkt_w;--attach 在 __main__ 最前面、⛔ 跑採礦
+  ⑬ 接線:main() 只在真的寫了今天那一筆時才設 premkt_w;入口 scripts/premkt_attach.py 實跑一次塞得進去、壞檔照樣 exit 0、⛔ 跑採礦;macro_miner __main__ ⛔ 再收 --attach
 用法:python3 scripts/test_premkt_log.py
 """
 import io
@@ -264,7 +264,18 @@ i_rs, i_w = main13.find('_premkt_recent_step('), main13.find('out["premkt_w"]')
 ok('⑬ main():寫了今天那一筆才設 premkt_w(緊跟在 _premkt_recent_step 後面、看 _did)',
    0 < i_rs < i_w and 'if _did.startswith("寫入今天"):' in main13[i_rs:i_w], (i_rs, i_w))
 mb = msrc13[msrc13.find('if __name__ == "__main__":'):]
-ok('⑬b --attach 在 __main__ 最前面、做完就 sys.exit(⛔ 跑採礦)', mb.find('"--attach"') > 0 and mb.find('"--attach"') < mb.find('main()') and 'sys.exit(0)' in mb[:mb.find('main()')], mb[:300])
+pa = ROOT / 'scripts' / 'premkt_attach.py'
+mp13, fp13 = tdir / 'macro_risk.json', tdir / 'freeze.json'
+mp13.write_text(json.dumps(mk_doc([E0, dict(E1)], {'d': '2026-10-22', 'at': '08:20'}), ensure_ascii=False, indent=2), encoding='utf-8')
+fp13.write_text(json.dumps(FZ, ensure_ascii=False), encoding='utf-8')
+rp13 = subprocess.run([sys.executable, str(pa), str(fp13), str(mp13)], capture_output=True, text=True, cwd=str(tdir), timeout=120)
+d13 = json.loads(mp13.read_text(encoding='utf-8'))
+ok('⑬b 入口 scripts/premkt_attach.py 實跑一次 → 塞進那一筆、exit 0(⛔ 跑採礦)', pa.exists() and rp13.returncode == 0 and d13['premkt_recent'][1].get('out') == FZ['out'] and '✅' in rp13.stdout,
+   (rp13.returncode, rp13.stdout[-200:], rp13.stderr[-200:]))
+rp13b = subprocess.run([sys.executable, str(pa), str(tdir / 'nope.json'), str(mp13)], capture_output=True, text=True, cwd=str(tdir), timeout=120)
+rp13c = subprocess.run([sys.executable, str(pa)], capture_output=True, text=True, cwd=str(tdir), timeout=120)
+ok('⑬c 凍結檔不在 → 印原因、照樣 exit 0(⛔ 擋總經推送);沒給參數 → exit 2', rp13b.returncode == 0 and '讀不到' in rp13b.stdout and rp13c.returncode == 2, (rp13b.returncode, rp13b.stdout[-160:], rp13c.returncode))
+ok('⑬d macro_miner.py 的 __main__ ⛔ 再收 --attach(只留一個入口;那支要金鑰)', '"--attach"' not in mb, mb[:200])
 
 os.chdir(_cwd)
 
@@ -284,8 +295,10 @@ if os.environ.get('INJECT') and not os.environ.get('_PMLOG_CHILD'):
     }
     msrc = (ROOT / 'macro_miner.py').read_text(encoding='utf-8')
     all_red = True
+    # 🧪 先跑一份「沒注入」的副本 → 一定要全綠(副本少檔案、自己就紅 → 每一種注入都會被誤算成叫得出來)
+    MUT = {'_control': (None, None), **MUT}
     for nm, (a, b) in MUT.items():
-        if msrc.count(a) != 1:
+        if a is not None and msrc.count(a) != 1:
             print(f'⚠️ 注入 {nm}:找不到原句'); all_red = False; continue
         d = Path(tempfile.mkdtemp(prefix=f'pmlog-inj-{nm}-'))
         (d / 'scripts').mkdir()
@@ -294,15 +307,22 @@ if os.environ.get('INJECT') and not os.environ.get('_PMLOG_CHILD'):
         for f in ['common.py', 'groq_common.py', 'pro.html', 'index.html'] + [q.name for q in ROOT.glob('lib_*.py')]:
             shutil.copy(ROOT / f, d / f)
         shutil.copy(ROOT / 'scripts' / 'test_premkt_log.py', d / 'scripts' / 'test_premkt_log.py')
-        (d / 'macro_miner.py').write_text(msrc.replace(a, b), encoding='utf-8')
+        shutil.copy(ROOT / 'scripts' / 'premkt_attach.py', d / 'scripts' / 'premkt_attach.py')
+        (d / 'macro_miner.py').write_text(msrc if a is None else msrc.replace(a, b), encoding='utf-8')
         r = subprocess.run([sys.executable, str(d / 'scripts' / 'test_premkt_log.py')], capture_output=True, text=True,
                            env={**os.environ, '_PMLOG_CHILD': '1'}, timeout=300)
         reds = [l for l in r.stdout.splitlines() if l.startswith('❌')]
+        if a is None:
+            clean = r.returncode == 0 and not reds
+            print(f"{'✅' if clean else '❌'} 對照:沒注入的副本 {'全綠' if clean else '自己就紅 → 下面的注入都不算數:' + (reds[0][:80] if reds else (r.stderr.strip().splitlines() or [''])[-1][:80])}")
+            all_red = all_red and clean
+            shutil.rmtree(d, ignore_errors=True)
+            continue
         hit = r.returncode != 0 and bool(reds)
         print(f"{'✅' if hit else '❌'} 注入 {nm} → {reds[0][:80] if reds else ('副本當掉(⛔ 不算叫得出來):' + (r.stderr.strip().splitlines() or [''])[-1][:80] if r.returncode else '沒叫出來')}")
         all_red = all_red and hit
         shutil.rmtree(d, ignore_errors=True)
-    print(f'✅ {len(MUT)} 種注入全部叫得出來' if all_red else '❌ 有注入沒叫出來')
+    print(f'✅ {len(MUT) - 1} 種注入全部叫得出來(沒注入的對照全綠)' if all_red else '❌ 有注入沒叫出來(或對照沒全綠)')
     if not all_red:
         fails.append('INJECT')
 
