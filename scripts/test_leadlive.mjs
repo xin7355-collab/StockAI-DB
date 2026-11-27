@@ -151,10 +151,14 @@ const R = await page.evaluate(async () => {
     host.querySelector('details[data-leaderinfo]') && (host.querySelector('details[data-leaderinfo]').open = true);
     window.__ws = []; app._deckStreamKey = '';
     app._syncDeckStream();
-    await until(() => app._deckQ && app._deckQ['1003'] && app._deckQ['1003'].prev > 0 && window.__ws.some(w => w.sent.some(m => m.includes('"symbol":"1003"'))));
+    // 🐛 2026-11-28 四驗證同時開很多瀏覽器時 6 秒不夠(單獨跑會過)→ 等到 15 秒;那一列還是沒畫出來 → 記下來讓斷言紅(⛔ 讀 null 整支當掉)
+    await until(() => app._deckQ && app._deckQ['1003'] && app._deckQ['1003'].prev > 0 && window.__ws.some(w => w.sent.some(m => m.includes('"symbol":"1003"'))), 15000);
+    await until(() => !!host.querySelector('[data-leaderrow="1003"] [data-lqp]'), 15000);
     const ws3 = window.__ws.find(w => w.sent.some(m => m.includes('"symbol":"1003"')));
     o.ws3 = !!ws3;
     const rowEl = host.querySelector('[data-leaderrow="1003"]');
+    o.noRow3 = !rowEl || !rowEl.querySelector('[data-lqp]');
+    if (!o.noRow3) {
     o.before = rowEl.querySelector('[data-lqp]').textContent;
     ws3 && ws3.push({ event: 'data', data: { symbol: '1003', price: 110 } });
     await raf();
@@ -162,6 +166,7 @@ const R = await page.evaluate(async () => {
     o.sameNode = r3b === rowEl;   // ⛔ 不重畫整張表
     o.tick = { p: r3b.querySelector('[data-lqp]').textContent, r: r3b.querySelector('[data-lqr]').textContent, c: r3b.querySelector('[data-lqc]').textContent,
                red: r3b.querySelector('[data-lqp]').classList.contains('bg-red-600'), lim: r3b.querySelector('[data-lqlim]').textContent, live: r3b.querySelector('[data-lqp]').dataset.leaderlive };
+    }
     o.detailsStillOpen = !!host.querySelector('details[data-leaderinfo]')?.open;
     o.hdrNow = host.querySelector('[data-lqhdr="px"]')?.innerText;
     ws3 && ws3.push({ event: 'data', data: { symbol: '1003', price: 200 } });   // 怪價(+82%)
@@ -273,7 +278,8 @@ ok('②c 表下寫現價是哪來的(沒有富果金鑰 → 告訴你去設定�
 // ③
 ok('③ 14 檔、3 把金鑰 → 3 條連線(5 / 5 / 4)、每條不同金鑰、訂的是前 14 檔', R.shard.length === 3 && JSON.stringify(R.shard.map(x => x.key)) === JSON.stringify(['K1', 'K2', 'K3']) && JSON.stringify(R.shard.map(x => x.subs.length)) === JSON.stringify([5, 5, 4]), JSON.stringify(R.shard));
 ok('③b REST 一次只問一檔(⛔ 不併發),第一輪每一檔都問(要昨收 / 開盤)', R.maxIn === 1 && R.calls >= 14, JSON.stringify([R.maxIn, R.calls]));
-ok('③c ⭐ 跳一次價 → 現價 110.0、從 09/24 +37.5%、今天 +10.0%、漲停紅底 + 代號旁「漲停」;⛔ 不重畫整張表(同一個節點、摺疊沒被關掉)', R.ws3 && R.tick.p === '110.0' && R.tick.r === '+37.5%' && R.tick.c === '+10.0%' && R.tick.red && /漲停/.test(R.tick.lim) && R.tick.live === '1' && R.sameNode && R.detailsStillOpen && R.hdrNow === '現價', JSON.stringify([R.before, R.tick, R.sameNode, R.detailsStillOpen, R.hdrNow]));
+ok('③c0 1003 那一列 15 秒內畫得出來(⛔ 讀 null 整支當掉)', !R.noRow3, '那一列沒畫出來');
+ok('③c ⭐ 跳一次價 → 現價 110.0、從 09/24 +37.5%、今天 +10.0%、漲停紅底 + 代號旁「漲停」;⛔ 不重畫整張表(同一個節點、摺疊沒被關掉)', R.ws3 && !R.noRow3 && !!R.tick && R.tick.p === '110.0' && R.tick.r === '+37.5%' && R.tick.c === '+10.0%' && R.tick.red && /漲停/.test(R.tick.lim) && R.tick.live === '1' && R.sameNode && R.detailsStillOpen && R.hdrNow === '現價', JSON.stringify([R.before, R.tick, R.sameNode, R.detailsStillOpen, R.hdrNow]));
 ok('③d 15% 怪價直接丟掉', R.weird === '110.0', R.weird);
 ok('③e 離開決策台 → WebSocket 全關', R.leaveClosed && R.shardClosed, JSON.stringify([R.leaveClosed, R.shardClosed]));
 ok('③f 盤後(資料日已是今天)/ 盤前 / 週末 → ⛔ 不開 WebSocket;盤前排好 09:00 自己開', R.afterWs === 0 && R.preWs === 0 && R.preWake && R.wkWs === 0, JSON.stringify([R.afterWs, R.preWs, R.preWake, R.wkWs]));
