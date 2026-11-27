@@ -75,8 +75,8 @@ const tpe = ts => new Date((+ts + 8 * 3600) * 1000).toISOString().slice(0, 10); 
 const TICK = /\((\d{4,6})-TW\)/g;
 
 // ⛔ 情緒規則是**明文寫死並印出來**的(⛔ 不用 AI;規則本身要能被檢視才敢用)
-const POS = ['大漲', '漲停', '創新高', '創高', '看好', '調升', '上修', '獲利創', '營收創', '接單', '急單', '滿載', '擴產', '漲價', '報價上漲', '結盪', '受惠', '得標', '通過認證', '外資買超', '投信買超', '目標價調升'];
-const NEG = ['大跌', '跌停', '創新低', '重挫', '看壞', '調降', '下修', '虧損', '衰退', '砍單', '減產', '降價', '殺價', '停工', '罰款', '起訴', '搜索', '掏空', '下市', '外資賣超', '目標價調降', '示警'];
+// 🗣️ V82.7.4 字表搬到 scripts/news_tone_words.json(一個字沒改)—— news_factor.py 的 tone 輸出 / news_consensus_probe.mjs 讀同一份,⛔ 再抄第二份
+const { pos: POS, neg: NEG } = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'news_tone_words.json'), 'utf8'));
 const tone = t => {
   const p = POS.filter(k => t.includes(k)).length, n = NEG.filter(k => t.includes(k)).length;
   return p > n ? 'pos' : n > p ? 'neg' : 'neu';

@@ -144,6 +144,9 @@
   本機小測:同一套指令 40 檔(快取 2 片 155 秒、名單 3 秒、判觸發 32 秒、17 條 8 秒)。失敗的組用 `only=R85_V60,…` 補跑。
 - `scripts/news_runup_probe.mjs`(📰 V82.2.0 新):`NEWS_CNT=<news_factor.py 的 news_cnt.json> DATA_DIR=<d16> node --max-old-space-size=8000 scripts/news_runup_probe.mjs out.json`
   → 新聞暴增前已先漲 vs 沒先漲(EXP-20261112-04)。news_cnt:`NEWS_DIR=<news_deep 解開> DATA_DIR=<d16> NAMES=stock_names.json OUT=news_cnt.json python3 scripts/news_factor.py`(約 15 分)。
+- `scripts/news_consensus_probe.mjs`(🗣️ V82.7.4 新,EXP-20261128-01,評估紀錄 58):`NEWS_CNT=<V82.7.4 以後 news_factor.py 的 news_cnt.json(要有 tone)> DATA_DIR=<d16> node --max-old-space-size=8000 scripts/news_consensus_probe.mjs out.json`(本機約 20 秒)
+  → H1 新聞暴增之後 20 天 vs 同一檔換日子的安慰劑・H2 暴增那天往前 20 個交易日標題看好 ÷ 看壞 < 2 vs ≥ 2(baseline 全部股票每 5 天同一套分組、門檻 1.5 / 3)。
+  ⛔ 兩條都沒用(H2 方向相反)→ 別再測「新聞熱度 / 看好看壞比例」當買賣訊號;⏭️ PTT 版 2027 年底(`ptt-consensus`)。看好 / 看壞字表 `scripts/news_tone_words.json`(news_event_probe 讀同一份)。
 - `scripts/crash_stock_probe.mjs` 🧾 V82.1.8 加 `REV_DIR=<stock_deep/rev> [REV_ONLY=1]` → 恐慌 vs 基本面(跌深股月營收年增 ≥+10% vs ≤−10%,EXP-20261112-03)。
   rev 在 research_pack 的 `src/stock_deep/rev`(要 `KEEP_SRC=1` 或先複製出來,做完 src 會刪)。⏭️ 下一次大跌滿 60 天後重跑。
 - `scripts/yen_surge_probe.mjs`(💴 V82.5.9 新,EXP-20261120-01):`IDX_LONG IDX_EARLY TWII_NOW FRED_HIST node scripts/yen_surge_probe.mjs out.json` → 日圓一天升值 ≥1% / 3 天升值 ≥2%(判)與 ≥0.5% / ≥0.2% / 3 天 ≥4%(描述)之後,加權 20 天內跌 ≥5% / 60 天內跌 ≥10% 的比例 vs 同一個波動五分位的非事件日;看得到的那天 = 匯率日期之後第一個台股交易日;兩段・拿掉事件最多那年・循環平移安慰劑。結論 ⛔(見實測總表 yen-surge)。⏭️ ⛔ 換門檻重跑;要測「日圓急升 + 美股大跌同一天」先登記新的實驗。
@@ -245,6 +248,7 @@
   (bull n=0、lu20 n=10)→ 改比「大於那個值 vs 等於那個值」,其他關卡照舊、單調那關不適用。selftest ④b~④d / ⑥(注入「關掉二分組」必紅)。
 - 跑法:`git archive origin/news_deep | tar -x -C <dir>` → `NEWS_DIR=<dir>/news_deep DATA_DIR=<d16> OUT=news_cnt.json python3 scripts/news_factor.py`
   → factor_panel(`NEWS=news_cnt.json`)→ factor_zoo。⏭️ news_deep 補到 2015 再跑(第二層要 8 年以上)。
+- 🗣️ V82.7.4 `news_factor.py` 多輸出 `tone:{代號:[[交易日, 看好, 看壞]]}`(字表 `scripts/news_tone_words.json`,⛔ AI;同一則 / 同標題只算一次);⛔ cnt 照舊三欄(factor_panel 用三個欄位拆,selftest ⑤)。
 
 ### 📰 V80.1.3(2026-10-31)`scripts/news_src_probe.py`(新聞來源探路)+ `scripts/news_deep.py`(回補)
 - `news_src_probe.yml` mode:quick(鉅亨翻頁 + 概念股)/ hist(回補得到多舊:個股頁翻頁・分類 + 日期區間・搜尋頁數・Google 每週窗口)/ fields(分類新聞有沒有標代號、一頁幾則)。只印、⛔ 寫檔;沙箱連不到鉅亨 / Google → 只能在 Actions 跑。

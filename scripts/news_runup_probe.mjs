@@ -46,7 +46,7 @@ export function preRun(K, d, n = RULE.pre) {
 export const bucket = (p, R = RULE) => p == null ? null : p >= R.upPre ? 'up' : (p >= R.flatLo && p <= R.flatHi) ? 'flat' : null;
 
 /** 判定:rows = [{y, b:'up'|'flat', x:20 天超額}];base = baseline 的 flat − up */
-export function judge(rows, base, SIMS = 2000, seed = 17) {
+export function judge(rows, base, SIMS = 2000, seed = 17, okTxt = '✅ 消息出來前已先漲的,之後比較差(利多出盡)') {   // 🗣️ V82.7.4 okTxt 選填(news_consensus_probe 借用;預設不變)
     const U = rows.filter(r => r.b === 'up').map(r => r.x), F = rows.filter(r => r.b === 'flat').map(r => r.x);
     if (U.length < 30 || F.length < 30) return { verdict: '樣本不夠', nU: U.length, nF: F.length };
     const diff = mean(F) - mean(U);
@@ -64,7 +64,7 @@ export function judge(rows, base, SIMS = 2000, seed = 17) {
     }
     const p = (ge + 1) / (SIMS + 1);
     const okv = diff >= 2 && yd.length && same / yd.length >= 2 / 3 && p < 0.05 && base != null && diff - base >= 1.5;
-    return { verdict: okv ? '✅ 消息出來前已先漲的,之後比較差(利多出盡)' : '⛔ 分不出來', diff: r2(diff), mU: r2(mean(U)), mF: r2(mean(F)), nU: U.length, nF: F.length,
+    return { verdict: okv ? okTxt : '⛔ 分不出來', diff: r2(diff), mU: r2(mean(U)), mF: r2(mean(F)), nU: U.length, nF: F.length,
         years: yd.map(([y, v]) => `${y}:${r2(v)}`), same, nY: yd.length, p: r2(p), base: r2(base), net: base == null ? null : r2(diff - base) };
 }
 

@@ -225,6 +225,7 @@ node scripts/stopfall_probe.mjs --selftest
 node scripts/nsf_probe.mjs --selftest
 node scripts/psych_state_probe.mjs --selftest
 node scripts/news_runup_probe.mjs --selftest
+node scripts/news_consensus_probe.mjs --selftest
 node scripts/hot_wf_probe.mjs --selftest
 node scripts/ccwin_overlay_probe.mjs --selftest
 node scripts/rev_decline_probe.mjs --selftest

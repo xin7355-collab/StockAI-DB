@@ -19,7 +19,9 @@ news_deep(V80.1.3)把鉅亨「台股新聞」分類一週一週往回補;這支�
 
 輸出 OUT(預設 news_cnt.json):
   {meta:{cal:[交易日], known:[0/1], from, to, items, matched, by_year:{年:[則數, 對到幾則, 有標代號幾則]}, …},
-   cnt:{代號:[[cal_i, 則數, 盤外則數], …]}}     盤外 = 不是在那個交易日 09:00~13:30 之間發的(前一天收盤後、週末、開盤前)
+   cnt:{代號:[[cal_i, 則數, 盤外則數], …]},    盤外 = 不是在那個交易日 09:00~13:30 之間發的(前一天收盤後、週末、開盤前)
+   tone:{代號:[[cal_i, 看好則數, 看壞則數], …]}}  🗣️ V82.7.4:字表 scripts/news_tone_words.json(⛔ AI);只列有看好或看壞的那幾天
+   ⛔ cnt 一列永遠只有三欄:factor_panel.news_cal 用 `for t, n_, off in rows` 拆 → 新欄位一律另開一個 key
 跑法:NEWS_DIR=<news_deep 解出來的目錄> DATA_DIR=<d16 或 data> NAMES=data/stock_names.json OUT=news_cnt.json \\
       python3 scripts/news_factor.py
       python3 scripts/news_factor.py --selftest
@@ -98,6 +100,23 @@ class Matcher:
         return hit
 
 
+TONE_WORDS = ROOT / 'scripts' / 'news_tone_words.json'
+
+
+def load_tone(path=TONE_WORDS):
+    """看好 / 看壞字表 —— ⛔ 只有這一份(news_event_probe.mjs / news_consensus_probe.mjs 讀同一個檔)"""
+    j = json.loads(Path(path).read_text('utf-8'))
+    return list(j['pos']), list(j['neg'])
+
+
+def tone_of(title, pos, neg):
+    """同 news_event_probe.mjs 的 tone():標題含的利多詞比利空詞多 = 1(看好)、少 = −1(看壞)、一樣多 = 0"""
+    t = str(title or '')
+    p = sum(1 for k in pos if k in t)
+    n = sum(1 for k in neg if k in t)
+    return 1 if p > n else -1 if n > p else 0
+
+
 def attribute(ts, cal):
     """發布時間(epoch 秒)→ (交易日索引 or None, 盤外?)。13:30 以後 / 非交易日 → 下一個交易日。"""
     dt = datetime.fromtimestamp(int(ts), TW)
@@ -154,12 +173,14 @@ def build(news_dir, cal, names, verbose=True):
             months_bad.add(m)
     done = sorted(w for w, ok in weeks_ok.items() if ok)
     if not done:
-        return {'meta': {'err': '沒有做完的週', 'cal': cal, 'known': [0] * len(cal), 'months_bad': sorted(months_bad)}, 'cnt': {}}
+        return {'meta': {'err': '沒有做完的週', 'cal': cal, 'known': [0] * len(cal), 'months_bad': sorted(months_bad)}, 'cnt': {}, 'tone': {}}
     first_day = done[0]
     last_day = (date.fromisoformat(done[-1]) + timedelta(days=6)).isoformat()
     known = known_days(cal, weeks_ok, months_bad, first_day, last_day)
     match = Matcher(names)
+    pos_w, neg_w = load_tone()
     per = defaultdict(lambda: defaultdict(lambda: [0, 0]))
+    ton = defaultdict(lambda: defaultdict(lambda: [0, 0]))   # 🗣️ [看好, 看壞](同一則 / 同標題只算一次 = 跟 cnt 同一把尺)
     seen_id, seen_title = set(), set()
     by_year = defaultdict(lambda: [0, 0, 0])
     n_items = n_match = n_out = 0
@@ -185,6 +206,7 @@ def build(news_dir, cal, names, verbose=True):
             continue
         n_match += 1
         by_year[y][1] += 1
+        tn = tone_of(title, pos_w, neg_w)
         key_t = re.sub(r'\s+', '', title)
         for s in hit:
             k = (s, t, key_t)
@@ -194,19 +216,24 @@ def build(news_dir, cal, names, verbose=True):
             c = per[s][t]
             c[0] += 1
             c[1] += 1 if off else 0
+            if tn:
+                ton[s][t][0 if tn > 0 else 1] += 1
     cnt = {s: [[t, v[0], v[1]] for t, v in sorted(d.items())] for s, d in sorted(per.items())}
+    tone = {s: [[t, v[0], v[1]] for t, v in sorted(d.items())] for s, d in sorted(ton.items())}
     meta = {'cal': cal, 'known': known, 'from': first_day, 'to': last_day, 'items': n_items, 'matched': n_match,
             'outside': n_out, 'syms': len(cnt), 'names': len(names), 'name_syms': sorted(names), 'months_bad': sorted(months_bad),
             'weeks_done': len(done), 'weeks_not_ok': sum(1 for v in weeks_ok.values() if not v),
             'by_year': {y: v for y, v in sorted(by_year.items())},
-            'rule': '標題講到(括號代號或股名,誤配守門 = universal_radar._title_hits);13:30 以後 / 非交易日歸下一個交易日'}
+            'rule': '標題講到(括號代號或股名,誤配守門 = universal_radar._title_hits);13:30 以後 / 非交易日歸下一個交易日',
+            'tone_words': [len(pos_w), len(neg_w)],
+            'tone_rule': 'scripts/news_tone_words.json:標題利多詞比利空詞多 = 看好、少 = 看壞(⛔ AI)'}
     if verbose:
         print(f'📰 {n_items:,} 則 ・標題對到股票 {n_match:,} 則 ・範圍外 / 不知道的日子 {n_out:,} 則 ・{len(cnt):,} 檔')
         print(f'   範圍 {first_day} ~ {last_day} ・做完 {len(done)} 週 ・沒做完 {meta["weeks_not_ok"]} 週 ・知道的交易日 {sum(known):,}'
               + (f' ・⚠️ 讀不出來的月份 {sorted(months_bad)}' if months_bad else ''))
         for y, v in sorted(by_year.items()):
             print(f'   {y}:{v[0]:,} 則 ・對到 {v[1]:,}({v[1] / max(1, v[0]) * 100:.0f}%)・有標代號 {v[2]:,}({v[2] / max(1, v[0]) * 100:.0f}%)')
-    return {'meta': meta, 'cnt': cnt}
+    return {'meta': meta, 'cnt': cnt, 'tone': tone}
 
 
 def main():
@@ -308,6 +335,20 @@ def selftest():
         ok('壞掉的月份 → 那幾天不知道', res3['meta'].get('months_bad') == ['2026-10'] and sum(res3['meta']['known'][1:5]) == 0,
            str(res3['meta'].get('months_bad')))
         ok('輸出帶「股名對得到的代號」(factor_panel 用它分 0 跟 NaN)', res2['meta'].get('name_syms') == sorted(names))
+        # 🗣️ V82.7.4 看好 / 看壞(另一個 key;cnt 一列照舊三欄)
+        tz = {s: {t: (p_, n_) for t, p_, n_ in v} for s, v in res2.get('tone', {}).items()}
+        ok('⑤ 看好:10/27「台積電 3 奈米擴產」(擴產)→ 2330 那天看好 1、看壞 0;「法說會」中性 ⛔ 算',
+           tz.get('2330', {}).get(1) == (1, 0), str(tz.get('2330')))
+        ok('⑤ 中性的那幾天 ⛔ 列(中華電那則沒有看好 / 看壞詞)', '2412' not in tz, str(tz))
+        ok('⑤ ⛔ cnt 一列永遠三欄(factor_panel.news_cal 用 for t, n_, off in rows 拆)',
+           all(len(r) == 3 for v in res2['cnt'].values() for r in v))
+    print('⑥ 看好 / 看壞的規則(字表 scripts/news_tone_words.json,同 news_event_probe.mjs)')
+    pw, nw = load_tone()
+    ok('字表讀得到、兩邊都有詞', len(pw) >= 10 and len(nw) >= 10, f'{len(pw)} / {len(nw)}')
+    ok('看好詞多 → 1', tone_of('台積電營收創新高 法人看好', pw, nw) == 1)
+    ok('看壞詞多 → −1', tone_of('某某下修財測 虧損擴大', pw, nw) == -1)
+    ok('一樣多 → 0(⛔ 硬判一邊)', tone_of('看好後市但下修財測', pw, nw) == 0)
+    ok('沒有詞 → 0', tone_of('股東會紀念品', pw, nw) == 0)
     print(f'\n{"❌ " + str(len(fails)) + " 條沒過:" + ", ".join(fails) if fails else "✅ news_factor selftest 全過"}')
     sys.exit(1 if fails else 0)
 
