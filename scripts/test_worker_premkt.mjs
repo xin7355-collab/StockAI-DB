@@ -8,8 +8,10 @@
  *  ④ 燈號跟 App renderMarketBriefing 同一組(跨檔:🔴 開高偏多 / 🟢 開低偏空 / 🟡 中性震盪)
  *  ⑤ 舊的 dScore / 「方向分」不在 runPreMarket 裡;外資那行講「不算進盤前分數」
  *  ⑥ 🧊 V82.7.1 標題寫「台北08:10」(⛔ 還寫 08:00 —— 那則已經挪到 08:10 那輪發)
+ *  ⑦ 🇺🇸 V82.7.3 凍結的那份把美股指數標舊(stale 有 sp500 = 美國放假、台股有開)→ 美股那一行註明「MM/DD 收盤・美國放假,台股已經反應過、不算分」;
+ *     ⭐ 決定性對照:同一組資料、stale 是空的 → ⛔ 那句;還沒凍結 → ⛔ 那句(⛔ worker 自己判日期)
  *  實跑:假的網路(macro_risk / radar / attention / risk_history)+ 假的 KV 一個使用者,抓 Telegram sendMessage 的內容來比
- *  INJECT=1:把結論換回舊的簡化版 / 不看日期 / 不看寫入時間 —— 三種都要紅
+ *  INJECT=1:把結論換回舊的簡化版 / 不看日期 / 不看寫入時間 / 🇺🇸 不看美國放假 —— 四種都要紅
  */
 import fs from 'fs';
 import path from 'path';
@@ -23,6 +25,7 @@ const INJECTS = {
         "    const _sg = v => (Number.isFinite(+v) ? (v > 0 ? 1 : v < 0 ? -1 : 0) : 0); const _ds = macro ? _sg(macro.sp500_chg_pct) + _sg(macro.nasdaq_chg_pct) + (macro.vix < 20 ? 1 : 0) : 0;\n    const callLine = _ds >= 2 ? '🔴 *今天 開高偏多*' : _ds <= -2 ? '🟢 *今天 開低偏空*' : premktCallLine(macro);"],
     noDate: ['.find(x => x && x.d === today);', '.find(x => x && x.d);'],
     noAt: ["    if (!/^0[5-8]:\\d\\d$/.test(String(e.at || ''))) return null;", ''],
+    noUsHol: ["const usHol = Array.isArray(o.stale) && o.stale.includes('sp500');", 'const usHol = false;'],
 };
 let W = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8');
 if (INJ) { const [a, b] = INJECTS[INJ]; if (!W.includes(a)) { console.log('❌ 注入點找不到:' + INJ); process.exit(1); } W = W.replace(a, b); }
@@ -97,6 +100,14 @@ ok('④ App 的三種結論只從 _premktCall 來(worker 認的就是那三種�
 const body = (() => { const i = W.indexOf('async function runPreMarket('), j = W.indexOf('\n}\n', i); return W.slice(i, j).split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n'); })();   // 去掉註解(說明裡會提到舊名字)
 ok('⑤ runPreMarket 裡 ⛔ dScore / 方向分', !/dScore|方向分/.test(body), (body.match(/.*(dScore|方向分).*/) || [''])[0]);
 ok('⑤ 外資那行講「不算進盤前分數」', /只列出來,不算進盤前分數/.test(body));
+// ⑦ 🇺🇸 V82.7.3 美國放假的隔天(11/26 感恩節 → 11/27 早上美股還是 11/25 那一盤)
+const HOL7 = ['asx', 'dji', 'nasdaq', 'sox', 'sp500', 'tsm', 'umc'];
+const fzS = (stale, sp500_date = '2026-11-25') => { const m = fz('中性震盪', 48); m.sp500_date = sp500_date; m.premkt_recent[0].out.stale = stale; return m; };
+const usLine = t => (t.split('\n').find(l => l.startsWith('🇺🇸 SP500')) || '');
+const m7 = await runWith(fzS(HOL7)), m7c = await runWith(fzS([])), m7n = await runWith({ ...US_UP, sp500_date: '2026-11-25' });
+ok('⑦ 凍結的那份標了美國放假 → 美股那一行註明「11/25 收盤・美國放假,台股已經反應過、不算分」', /\(11\/25 收盤・美國放假,台股已經反應過、不算分\)/.test(usLine(m7)), usLine(m7));
+ok('⑦b ⭐ 決定性對照:同一組資料 stale 是空的 → ⛔ 那句;還沒凍結 → ⛔ 那句(worker ⛔ 自己判日期)', usLine(m7c) && !/美國放假/.test(usLine(m7c)) && usLine(m7n) && !/美國放假/.test(usLine(m7n)), [usLine(m7c), usLine(m7n)].join(' | '));
+ok('⑦c premktFrozen 回傳 usHol(只認 stale 裡的 sp500;只有 ADR 舊 ⛔ 算美國放假)', premktFrozen(fzS(HOL7)).usHol === true && premktFrozen(fzS(['tsm', 'asx'])).usHol === false && premktFrozen(fzS([])).usHol === false);
 ok('⑥ 🧊 標題寫台北08:10(⛔ 還寫 08:00)', /盤前簡報\* _[^_]* 台北08:10_/.test(m1) && !/台北08:00/.test(m1), m1.split('\n')[0]);
 
 if (process.env.INJECT && !INJ) {
@@ -108,7 +119,7 @@ if (process.env.INJECT && !INJ) {
         console.log(`${hit ? '✅' : '❌'} 注入 ${k} → ${reds[0] ? reds[0].slice(0, 90) : '沒叫出來'}`);
         allRed = allRed && hit;
     }
-    ok('🧪 三種注入全部叫得出來', allRed);
+    ok('🧪 四種注入全部叫得出來', allRed);
 }
 console.log(fails.length ? `\n❌ ${fails.length} 條沒過` : '\n✅ WORKER_PREMKT_PASS');
 process.exit(fails.length ? 1 : 0);

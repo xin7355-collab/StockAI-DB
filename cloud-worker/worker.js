@@ -390,7 +390,7 @@ export async function tgKick(env, kind, now = Date.now(), fetchFn = fetch, dispa
     return { sent: !!(r && r.ok), why: r && r.why, strat, nx };
 }
 
-const WORKER_VER = 'V23.1 (2026-11-27)';   // 🧊 盤前簡報改 08:10 發(等早上那份凍結好,同 App 盤前頁那一句)+ 今天還沒凍結也叫醒總經;V23.0 📲 08:00 / 13:15 準時叫醒 Telegram 作戰清單 / 尾盤買點(tgKick);V22.9 📉 08:00 大跌事件 / 大跌撿便宜;V22.8 盤中推播只描述(⛔ 進場 / 目標價 / 低接 / 鎖利);V22.7 排程星期欄 1-5 → MON-FRI
+const WORKER_VER = 'V23.2 (2026-11-27)';   // 🇺🇸 美國放假的隔天美股那一行註明「台股已經反應過、不算分」;V23.1 🧊 盤前簡報改 08:10 發(等早上那份凍結好,同 App 盤前頁那一句)+ 今天還沒凍結也叫醒總經;V23.0 📲 08:00 / 13:15 準時叫醒 Telegram 作戰清單 / 尾盤買點(tgKick);V22.9 📉 08:00 大跌事件 / 大跌撿便宜;V22.8 盤中推播只描述(⛔ 進場 / 目標價 / 低接 / 鎖利);V22.7 排程星期欄 1-5 → MON-FRI
 const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
 
 // 🗓️ V22.7 排程(⛔ 要跟 wrangler.toml 的 crons 一字不差 —— Cloudflare 傳進來的 event.cron 就是那串原文)
@@ -2498,7 +2498,10 @@ export function premktFrozen(macro, now = Date.now()) {
     const o = e && e.out;
     if (!o || typeof o !== 'object' || !Number.isFinite(+o.sPct) || !_PREMKT_LIGHT[o.call]) return null;
     if (!/^0[5-8]:\d\d$/.test(String(e.at || ''))) return null;   // 只認開盤前那一筆(macro_miner 只在 05:00~08:59 寫)
-    return { light: _PREMKT_LIGHT[o.call], call: o.call, sPct: +o.sPct, at: e.at };
+    // 🇺🇸 V82.7.3 usHol:凍結的那份把美股指數也標舊(V82.7.2 起只有「美國放假、台股有開」那條規則會標 sp500)
+    //   → 美股那一行要註明「台股已經反應過、不算分」(⛔ worker 自己再判一次日期:只讀凍結那份)
+    const usHol = Array.isArray(o.stale) && o.stale.includes('sp500');
+    return { light: _PREMKT_LIGHT[o.call], call: o.call, sPct: +o.sPct, at: e.at, usHol };
 }
 export function premktCallLine(macro, now = Date.now()) {
     const F = premktFrozen(macro, now);
@@ -2533,6 +2536,9 @@ async function runPreMarket(env) {
 
     // 🧊 V82.7.0 開盤方向改成跟 App 盤前頁同一個結論(premktCallLine;🗑️ 舊的 dScore 簡化版拿掉,見函式說明)
     const callLine = premktCallLine(macro);
+    // 🇺🇸 V82.7.3 美國放假的隔天:美股那一行是台股前一天已經反應過的那一盤 → 註明(同 App 盤前頁「資料舊了(美國那天放假、台股已經反應過)」)
+    const _fz = premktFrozen(macro), _md = d => String(d || '').slice(5, 10).replace('-', '/');
+    const usHolTag = _fz && _fz.usHol ? `(${_md(macro && macro.sp500_date) || '前一次'} 收盤・美國放假,台股已經反應過、不算分)` : '';
     const fc5 = macro ? fiFutChg5(riskHist) : null;
 
     // 對每用戶推:加入個人化重點 3 檔
@@ -2579,7 +2585,7 @@ async function runPreMarket(env) {
                     `🌅 *盤前簡報* _${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })} 台北08:10_`,
                     SEP,
                     callLine,
-                    macro ? `🇺🇸 SP500 ${macro.sp500_chg_pct >= 0 ? '+' : ''}${macro.sp500_chg_pct?.toFixed(2)}% / NASDAQ ${macro.nasdaq_chg_pct >= 0 ? '+' : ''}${macro.nasdaq_chg_pct?.toFixed(2)}% / VIX ${macro.vix?.toFixed(1)}` : '',
+                    macro ? `🇺🇸 SP500 ${macro.sp500_chg_pct >= 0 ? '+' : ''}${macro.sp500_chg_pct?.toFixed(2)}% / NASDAQ ${macro.nasdaq_chg_pct >= 0 ? '+' : ''}${macro.nasdaq_chg_pct?.toFixed(2)}% / VIX ${macro.vix?.toFixed(1)}${usHolTag}` : '',
                     (macro && (Number.isFinite(+macro.fi_spot_net) || Number.isFinite(+macro.fi_futures_net))) ? `🏦 外資現貨 ${Number.isFinite(+macro.fi_spot_net) ? (macro.fi_spot_net >= 0 ? '+' : '') + macro.fi_spot_net + '億' : '—'} / 台指期 ${Number.isFinite(+macro.fi_futures_net) ? macro.fi_futures_net.toLocaleString() + '口' : '—'}${fc5 != null ? `(5 日 ${fc5 >= 0 ? '+' : ''}${Math.round(fc5).toLocaleString()} 口)` : ''}(只列出來,不算進盤前分數)` : '',
                     `🐂 主力出貨指數 ${mmIndex} ${mmVerdict}${factors.length ? `(${factors.slice(0, 2).join('/')})` : ''}`,
                     focus.length ? `🎯 自選重點:${focus.join('、')}` : '',
