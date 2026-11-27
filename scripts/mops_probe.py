@@ -25,6 +25,13 @@
 
 🧪 `--selftest`:純函式(被擋偵測 / 表格解析 / 表格 vs 網頁的分辨)不用網路也驗得到,
    含**決定性對照**(一頁「查無資料」的網頁⛔ 不可被當成抓到了)。
+
+🔎 V82.7.5 `MOPS_MODE=detail`(評估紀錄 58 第 0 步:公告**內文**怎麼拿 —— 金額在說明欄,主旨裡只有 3.4% 有金額):
+   ① 抓 MOPS_DETAIL_DATE(預設前一個平日)那天上市 / 上櫃的列表**原始 HTML**,印每一列「詳細資料」按鈕帶的參數
+      (onclick 裡 `document.<表單>.<欄位>.value='…'` 那幾個)與頁面上所有 <form> 的 action / 隱藏欄位
+   ② 挑 3 則(訂單 / 代子公司取得或收購 / 現金增資或私募)照「表單預設欄位 + 那一列的參數」送出,印 content-type + 開頭 +「說明」那一段
+      (⛔ 只看 HTTP 200 不算數,陷阱 #23);每次隔 3 秒、被擋就停
+   ⛔ 一樣只印不寫分支,結果進 artifact。
 """
 import json
 import os
@@ -113,6 +120,71 @@ def form_fields(html):
         if len(ajax) >= 6:
             break
     return {'fields': out[:80], 'actions': actions, 'ajax': ajax}
+
+
+def page_forms(html):
+    """頁面上每一個 <form> → {名字: {action, inputs:{欄位: 預設值}}}(🔎 V82.7.5 內文探路;⛔ 猜欄位,讓官方頁面自己說)"""
+    out = {}
+    for m in re.finditer(r'<form\b([^>]*)>(.*?)</form>', html or '', flags=re.S | re.I):
+        attrs, body = m.group(1), m.group(2)
+        nm = re.search(r'\b(?:name|id)\s*=\s*["\']?([\w\-]+)', attrs, flags=re.I)
+        act = re.search(r'action\s*=\s*["\']([^"\']*)', attrs, flags=re.I)
+        inputs = {}
+        for im in re.finditer(r'<input\b([^>]*)>', body, flags=re.I):
+            a = im.group(1)
+            n2 = re.search(r'name\s*=\s*["\']?([\w\-\[\]]+)', a, flags=re.I)
+            if not n2:
+                continue
+            v2 = re.search(r'value\s*=\s*["\']([^"\']*)', a, flags=re.I)
+            inputs.setdefault(n2.group(1), v2.group(1) if v2 else '')
+        out[(nm.group(1) if nm else f'form{len(out) + 1}')] = {'action': act.group(1) if act else '', 'inputs': inputs}
+    return out
+
+
+_ASSIGN = re.compile(r'document\.(\w+)\.(\w+)\.value\s*=\s*["\']([^"\']*)["\']')
+_ACTION = re.compile(r'document\.(\w+)\.action\s*=\s*["\']([^"\']*)["\']')
+
+
+def row_actions(html):
+    """每一個資料列(第一欄像代號,同 table_rows)→ {cells, form, fields, action, onclick}。
+    fields = onclick 裡 `document.<表單>.<欄位>.value='…'` 的那幾個;沒有 onclick 的列 → fields 空(⛔ 自己編)。"""
+    out = []
+    for tr in re.findall(r'<tr[^>]*>.*?</tr>', html or '', flags=re.S | re.I):
+        tds = re.findall(r'<td[^>]*>(.*?)</td>', tr, flags=re.S | re.I)
+        cells = [strip_tags(x) for x in tds]
+        if len(cells) < 4 or not any(re.match(r'^\d{4,6}[A-Z]?$', c) for c in cells[:2]):
+            continue
+        oc = ' '.join(re.findall(r'onclick\s*=\s*"([^"]*)"', tr, flags=re.I) + re.findall(r"onclick\s*=\s*'([^']*)'", tr, flags=re.I))
+        fields, form = {}, ''
+        for fm, k, v in _ASSIGN.findall(oc):
+            form = form or fm
+            fields[k] = v
+        act = _ACTION.search(oc)
+        out.append({'cells': cells, 'form': form, 'fields': fields, 'action': act.group(2) if act else '', 'onclick': oc[:400]})
+    return out
+
+
+def detail_request(forms, ra):
+    """(action, 送出內容):那張表單的預設欄位 + 這一列 onclick 給的值(⛔ 欄位名一個都不猜);沒有表單 / 沒有參數 → None"""
+    if not ra or not ra.get('fields'):
+        return None
+    f = forms.get(ra.get('form') or '') or {}
+    action = ra.get('action') or f.get('action') or ''
+    if not action:
+        return None
+    return action, {**(f.get('inputs') or {}), **ra['fields']}
+
+
+def say_section(html, n=600):
+    """內文的「說明」那一段(去標籤後從「說明」兩個字開始取 n 字);找不到 → ''"""
+    t = strip_tags(html)
+    i = t.find('說明')
+    return t[i:i + n] if i != -1 else ''
+
+
+DETAIL_PICK = (('訂單', r'訂單|採購案|標得|得標|接獲'),
+               ('代子公司取得 / 收購', r'(?:代子公司|子公司).*(?:取得|處分|收購|併購)'),
+               ('現金增資 / 私募', r'現金增資|私募|現增'))
 
 
 def verdict(status, ctype, text):
@@ -220,13 +292,131 @@ def selftest():
     ff = form_fields('<form action="/mops/web/ajax_t05st01" method=post><input type="hidden" name="step" value="1"><input name=co_id value="">'
                      '<select name="TYPEK"><option>sii</option></select><script>ajax1(document.form1,"ajax_t05st01")</script></form>')
     ok('⑪ 官方表單欄位解析:input / select 名字、action、ajax 上下文', [x[1] for x in ff['fields']] == ['step', 'co_id', 'TYPEK'] and ff['actions'] == ['/mops/web/ajax_t05st01'] and len(ff['ajax']) >= 1, ff)
+    # 🔎 V82.7.5 內文探路的純函式(⛔ 照我猜的 MOPS 長相寫死 —— 真的長相由 runner 那一輪印出來,這裡只驗「解析本身」)
+    pg = ('<form name="fm_t05st01" action="/mops/web/ajax_t05st01" method=post><input type=hidden name="step" value="2">'
+          '<input type=hidden name="co_id"><input type=hidden name="seq_no"></form><table>'
+          '<tr><td>2345</td><td>智邦</td><td>115/11/27</td><td>15:54:00</td><td>公告本公司現金增資發行價格</td>'
+          '<td><input type=button value="詳細資料" onclick="document.fm_t05st01.co_id.value=\'2345\';document.fm_t05st01.seq_no.value=\'3\';'
+          'openWindowAction(\'_blank\');document.fm_t05st01.submit();"></td></tr>'
+          '<tr><td>9999</td><td>沒按鈕</td><td>115/11/27</td><td>16:00:00</td><td>主旨</td></tr></table>')
+    F = page_forms(pg)
+    R = row_actions(pg)
+    ok('⑫ 🔎 表單:名字 / action / 隱藏欄位預設值', F.get('fm_t05st01', {}).get('action') == '/mops/web/ajax_t05st01'
+       and F['fm_t05st01']['inputs'].get('step') == '2', F)
+    ok('⑫ 🔎 每列參數:onclick 的 document.表單.欄位.value 都抓到(含表單名)',
+       len(R) == 2 and R[0]['form'] == 'fm_t05st01' and R[0]['fields'] == {'co_id': '2345', 'seq_no': '3'}, R[:1])
+    dr = detail_request(F, R[0])
+    ok('⑫ 🔎 送出內容 = 表單預設 + 那一列的值;⭐ 決定性對照:沒按鈕那列 → None(⛔ 自己編參數)',
+       dr == ('/mops/web/ajax_t05st01', {'step': '2', 'co_id': '2345', 'seq_no': '3'}) and detail_request(F, R[1]) is None, dr)
+    ok('⑫ 🔎 說明段:從「說明」開始取;沒有 → 空字串', say_section('<td>主旨</td><td>說明:1.事實發生日:115/11/27 2.交易總金額:新台幣1億元</td>').startswith('說明')
+       and say_section('<td>無</td>') == '')
     print('❌ %d 條失敗' % len(fails) if fails else '✅ MOPS_PROBE_SELFTEST_PASS')
     return 1 if fails else 0
+
+
+def detail_main():
+    """🔎 V82.7.5 內文探路(MOPS_MODE=detail)。⛔ 只印不寫分支;結果進 artifact。"""
+    import requests
+    import mops_backfill as MB       # 列表表單只有一份(mops_backfill.form)—— 它 import 本檔,所以在函式裡才 import(⛔ 循環)
+    today = datetime.now(TW).date()
+    raw = (os.getenv('MOPS_DETAIL_DATE') or '').strip()
+    d = date.fromisoformat(raw) if raw else today - timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    print(f'🔎 MOPS 公告內文探路 —— host {HOST} ・日期 {d} ・每次隔 3 秒、被擋就停')
+    s = requests.Session()
+    hdr = {**UA, 'Referer': f'{HOST}/mops/web/t05st01'}
+    out = {'probed_at': datetime.now(TW).isoformat(), 'host': HOST, 'date': str(d), 'lists': [], 'details': []}
+    picked, blocked = {}, False
+    for typek in ('sii', 'otc'):
+        t0 = time.time()
+        try:
+            r = s.post(f'{HOST}{MB.PATH}', data=MB.form(typek, d), headers=hdr, timeout=30)
+            r.encoding = r.encoding or 'utf-8'
+            html = r.text or ''
+        except Exception as e:
+            print(f'── 列表 {typek}:❌ {type(e).__name__}: {str(e)[:120]}')
+            out['lists'].append({'typek': typek, 'err': str(e)[:200]})
+            continue
+        F, RA = page_forms(html), row_actions(html)
+        rec = {'typek': typek, 'status': r.status_code, 'ctype': r.headers.get('Content-Type', ''), 'bytes': len(r.content or b''),
+               'sec': round(time.time() - t0, 2), 'blocked': is_blocked(html), 'rows': len(RA),
+               'forms': {k: {'action': v['action'], 'inputs': v['inputs']} for k, v in F.items()},
+               'row_sample': RA[:3], 'with_params': sum(1 for x in RA if x['fields'])}
+        out['lists'].append(rec)
+        print(f"── 列表 {typek}:HTTP {rec['status']} ・{rec['ctype']} ・{rec['bytes']} bytes ・{rec['sec']}s ・資料列 {rec['rows']}"
+              f" ・帶參數的列 {rec['with_params']}" + (' ・⛔ 被擋' if rec['blocked'] else ''))
+        for k, v in F.items():
+            print(f"   🧾 form {k} → action {v['action']} ・欄位 {v['inputs']}")
+        for x in RA[:3]:
+            print(f"   📄 {x['cells'][:5]}\n      onclick:{x['onclick'][:300]}\n      解析:form={x['form']} fields={x['fields']} action={x['action']}")
+        if RA and not RA[0]['fields']:
+            i = html.find(RA[0]['cells'][0])
+            print(f"   ⚠️ 第一列沒有解析到參數 → 原始 HTML(那一列附近 1,500 字):\n{html[max(0, i - 300):i + 1200]}")
+        if rec['blocked']:
+            blocked = True
+            break
+        for label, pat in DETAIL_PICK:
+            if label not in picked:
+                for x in RA:
+                    if x['fields'] and re.search(pat, x['cells'][4] if len(x['cells']) > 4 else ''):
+                        picked[label] = (typek, F, x)
+                        break
+        time.sleep(3)
+    for label, _ in DETAIL_PICK:
+        if blocked:
+            break
+        if label not in picked:
+            print(f'── 內文 {label}:這天沒有這一類(或那幾列沒有參數)')
+            continue
+        typek, F, x = picked[label]
+        req = detail_request(F, x)
+        if not req:
+            print(f'── 內文 {label}:送出內容組不出來(表單 {x["form"]} 不在頁面上?)')
+            continue
+        action, data = req
+        url = action if action.startswith('http') else f"{HOST}{action if action.startswith('/') else '/mops/web/' + action}"
+        t0 = time.time()
+        try:
+            r = s.post(url, data=data, headers=hdr, timeout=30)
+            r.encoding = r.encoding or 'utf-8'
+            html = r.text or ''
+            say = say_section(html)
+            rec = {'label': label, 'row': x['cells'][:5], 'url': url, 'data': data, 'status': r.status_code,
+                   'ctype': r.headers.get('Content-Type', ''), 'bytes': len(r.content or b''), 'sec': round(time.time() - t0, 2),
+                   'blocked': is_blocked(html), 'head': strip_tags(html[:1500])[:300], 'say': say,
+                   'amount_lines': re.findall(r'[^。;;\s]{0,24}(?:金額|總額|價款|價格)[^。;;]{0,60}', strip_tags(html))[:8]}
+        except Exception as e:
+            rec = {'label': label, 'row': x['cells'][:5], 'url': url, 'data': data, 'err': f'{type(e).__name__}: {str(e)[:120]}'}
+        out['details'].append(rec)
+        print(f"── 內文 {label}:{rec.get('row')}\n   POST {url} ・{data}")
+        if 'err' in rec:
+            print(f"   ❌ {rec['err']}")
+        else:
+            print(f"   HTTP {rec['status']} ・{rec['ctype']} ・{rec['bytes']} bytes ・{rec['sec']}s" + (' ・⛔ 被擋' if rec['blocked'] else ''))
+            print(f"   開頭:{rec['head'][:220]}")
+            print(f"   說明:{rec['say'][:500] or '⚠️ 找不到「說明」兩個字(多半不是內文頁,陷阱 #23)'}")
+            for a in rec['amount_lines']:
+                print(f'   💰 {a}')
+            if rec['blocked']:
+                blocked = True
+        time.sleep(3)
+    ok_n = sum(1 for r in out['details'] if r.get('say') and not r.get('blocked'))
+    print(f"\n══════ 結論 ══════\n內文拿到 {ok_n} / {len(out['details'])} 則" + (' ・⛔ 這一輪被擋過' if blocked else ''))
+    try:
+        OUT.parent.mkdir(parents=True, exist_ok=True)
+        OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding='utf-8')
+        print(f'📤 結果已寫 {OUT}(artifact 用;⛔ 不推任何分支)')
+    except Exception as e:
+        print(f'⚠️ 結果檔寫不出來:{e}')
+    return 0
 
 
 def main():
     if '--selftest' in sys.argv:
         return selftest()
+    if (os.getenv('MOPS_MODE') or '').strip() == 'detail':
+        return detail_main()
     import requests
     today = datetime.now(TW).date()
     back, deep = today - timedelta(days=BACK_DAYS), today - timedelta(days=DEEP_DAYS)
