@@ -8,8 +8,13 @@
 這支只做一件事:從說明欄抓「這則公告講的那個金額」。每天(mops_daily)與回補歷史(mops_backfill detail)同一份。
 
 ⛔ 明文規則、⛔ AI(禁 AI 算數);規則本身印得出來、測得到:
- ① 找「標籤」,照下面 LABELS 的順序(前面的優先)。同一個標籤可能先出現在題目(「5.交易單位數量、每單位價格及交易總金額:」),
-    真正的金額在後面同一項 → 每個出現的位置都往後看 WIN 個字,取**第一個「(幣別)數字 金額單位」**。
+ ① 找「標籤」,照下面 LABELS 的順序(前面的優先)。同一個標籤常先出現在**題目**(「5.交易單位數量、每單位價格及交易總金額:」,
+    標籤前面是「及」),題目後面常先接「每批單價」「每月租金」→ **先看不是題目的那幾處**(「交易總金額:NTD 4,807,346,759元」
+    「累計交易總金額計:…」),都沒有才回頭看題目那一處。每一處往後看 WIN 個字,取**第一個「(幣別)數字 金額單位」**。
+ ①b 現金增資:公告的「發行總金額及股數」那一項寫的是**面額**總額(10,000 仟股 × 面額 10 元),⛔ 不是募到的錢 →
+    改用「發行股數 × 每股發行價格」(兩個都要在說明欄裡找得到;價格還沒訂的那一則 → None)。
+ ①c 順序:明確的標籤 → 現金增資(①b)→ 最後才用籠統的「總金額 / 金額」(⛔ 前面是「發行」的那一處 ——
+    「發行總金額及股數」是題目,後面接的是面額)。
  ② 一定要有金額單位(元 / 仟元 / 千元 / 萬元 / 百萬元 / 仟萬元 / 億元)才算 ——「100%股權」「13,050,000股」⛔ 算。
  ③ 幣別:新台幣 / 新臺幣 / NT$ / 台幣 → TWD;人民幣 / RMB → CNY;美金 / 美元 / US$ / USD → USD;日圓 / 日幣 → JPY;歐元 → EUR;
     前後都沒寫 → TWD(公告的金額欄沒寫幣別就是新台幣),並記 cur_note='沒寫幣別'。
@@ -19,8 +24,12 @@
 
 跑法:python3 scripts/lib_mops_amount.py --selftest
 """
+import os
 import re
+import subprocess
 import sys
+
+_INJ = os.environ.get('_MA_INJ', '')   # selftest 注入用:title / unit / cash(INJECT=1 會各跑一次,全部要紅)
 
 WIN = 90                     # 標籤後面往後看幾個字
 EV_MAX = 120
@@ -30,7 +39,7 @@ LABELS = (
     '交易總金額', '交易金額',
     '契約總金額', '合約總金額', '契約總價', '合約總價', '契約金額', '合約金額',
     '訂單總金額', '訂單金額', '得標金額', '決標金額', '標案金額',
-    '募集總金額', '發行總金額', '募集金額',
+    '募集總金額', '募集金額',
     '預定買回之總金額上限', '預定買回股份總金額上限', '買回股份總金額', '買回總金額',
     '總金額', '金額',
 )
@@ -45,7 +54,13 @@ _UNIT_RE = '|'.join(re.escape(k) for k in sorted(_UNIT, key=len, reverse=True))
 MONEY = re.compile(
     rf'(?P<cur>{_CUR_RE})?\s*[::]?\s*約?\s*'
     rf'(?P<num>\d{{1,3}}(?:,\d{{3}})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*'
-    rf'(?P<unit>{_UNIT_RE})(?P<cur2>{_CUR_RE})?')
+    rf'(?P<unit>{_UNIT_RE})(?:\s*[((]?\s*(?P<cur2>{_CUR_RE}))?')
+_MONEY_NOUNIT = re.compile(   # 注入用:金額單位變成可有可無(⛔ 正式)
+    rf'(?P<cur>{_CUR_RE})?\s*[::]?\s*約?\s*(?P<num>\d{{1,3}}(?:,\d{{3}})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?P<unit>{_UNIT_RE})?(?:\s*[((]?\s*(?P<cur2>{_CUR_RE}))?')
+# ①b 現金增資:發行股數 × 每股發行價格(⛔ 拿面額總額當募到的錢)
+_SHARES = re.compile(r'發行(?:普通股|新股|股數)?[^\d]{0,6}?(?P<num>\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?P<u>仟股|千股|萬股|股)')
+_PRICE = re.compile(r'發行價格[^\d]{0,24}?(?:新台幣|新臺幣|NT\$|NTD)?\s*(?P<num>\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*元')
+_SH_UNIT = {'仟股': 1e3, '千股': 1e3, '萬股': 1e4, '股': 1.0}
 _NA = re.compile(r'^[\s::]*(?:不適用|無|N/?A)(?:[\s。;;,,]|$)')
 
 
@@ -58,21 +73,32 @@ def parse_amount(say):
     t = _clean(say)
     if not t:
         return None
-    for lab in LABELS:
-        start = 0
-        while True:
-            i = t.find(lab, start)
-            if i == -1:
-                break
+    if _INJ == 'cash':                                   # 注入:籠統標籤排在現增前面(⛔ 正式)
+        return _by_labels(t, LABELS) or cash_increase(t)
+    r = _by_labels(t, LABELS[:-2])
+    if r:
+        return r
+    r = cash_increase(t)
+    if r:
+        return r
+    return _by_labels(t, LABELS[-2:], skip_prev=('發行',))
+
+
+def _by_labels(t, labels, skip_prev=()):
+    for lab in labels:
+        pos = [m.start() for m in re.finditer(re.escape(lab), t) if not any(t[max(0, m.start() - len(p)):m.start()] == p for p in skip_prev)]
+        # 題目那一處 = 標籤前一個字是「及」(「每單位價格及交易總金額」)→ 放到最後才看
+        order = pos if _INJ == 'title' else [p for p in pos if t[p - 1:p] != '及'] + [p for p in pos if t[p - 1:p] == '及']
+        for i in order:
             start = i + len(lab)
             seg = t[start:start + WIN]
             if _NA.match(seg):
                 continue
-            m = MONEY.search(seg)
+            m = (_MONEY_NOUNIT if _INJ == 'unit' else MONEY).search(seg)
             if not m:
                 continue
             try:
-                amt = float(m.group('num').replace(',', '')) * _UNIT[m.group('unit')]
+                amt = float(m.group('num').replace(',', '')) * _UNIT.get(m.group('unit') or '元', 1.0)
             except (ValueError, KeyError):
                 continue
             if amt <= 0:
@@ -82,6 +108,24 @@ def parse_amount(say):
             return {'amt': amt, 'cur': _CUR[ck] if ck else 'TWD', 'label': lab,
                     'ev': ev[:EV_MAX], 'cur_note': '' if ck else '沒寫幣別'}
     return None
+
+
+def cash_increase(t):
+    """①b 現金增資:發行股數 × 每股發行價格(兩個都要有;⛔ 用面額)。回同 parse_amount 的格式或 None"""
+    if '增資' not in t and '發行新股' not in t:
+        return None
+    ms, mp_ = _SHARES.search(t), _PRICE.search(t)
+    if not ms or not mp_:
+        return None
+    try:
+        sh = float(ms.group('num').replace(',', '')) * _SH_UNIT[ms.group('u')]
+        px = float(mp_.group('num').replace(',', ''))
+    except (ValueError, KeyError):
+        return None
+    if sh <= 0 or px <= 0:
+        return None
+    ev = f"{ms.group(0)}・{mp_.group(0)}"
+    return {'amt': sh * px, 'cur': 'TWD', 'label': '發行股數 × 發行價格', 'ev': ev[:EV_MAX], 'cur_note': ''}
 
 
 def to_yi(amt):
@@ -99,6 +143,40 @@ REAL_LITEON = ('說明 1.事實發生日:自民國115/11/27至民國115/11/27 2.
 REAL_YINGHAN = ('說明 1.事實發生日:115/11/27 2.公司名稱:穎漢科技股份有限公司 3.與公司關係(請輸入本公司或子公司):本公司 4.相互持股比例:不適用 '
                 '5.發生緣由:(1)本公司115年現金增資發行普通股13,050,000股乙案，業經金 融監督管理委員會115年10月19日金管證發字第1150356313號函申報生效， '
                 '並於115年11月5日及11月13日公告本次現金增資認股基準日及增資價格等相關事宜。 6.因應措施:無。')
+
+
+# 第二輪探路(run 46082610081,2026-11-27;MOPS_DETAIL_COS = 截圖那幾家)說明欄節錄,一字沒改
+REAL2 = {
+    '玖鼎電力 4588 #1 台電訂單': ('說明 1.事實發生日:115/11/27 2.契約或承諾相對人:台灣電力股份有限公司 3.與公司關係:不適用 4.契約或承諾起迄日期（或解除日期）:115/11/27 '
+                             '5.主要內容（解除者不適用）:本公司參與台電公司標案「模組化智慧型電表」 取得訂單金額約1.64億元(新台幣，未稅金額) 6.限制條款（解除者不適用）:無',
+                             1.64e8, 'TWD'),
+    '友達 2409 #2 代子公司使用權資產': ('說明 1.標的物之名稱及性質（如坐落台中市北區ＸＸ段ＸＸ小段土地）: 友達光電(廈門)有限公司座落於廈門火炬高新區（翔安） 產業區翔安北路1689號T3棟之部分廠房、庫房及辦公室 '
+                                  '2.事實發生日:115/11/27~115/11/27 3.董事會通過日期: 民國115年11月27日 4.其他核決日期: 不適用 5.交易單位數量（如ＸＸ平方公尺，折合ＸＸ坪）、每單位價格及交易總金額: '
+                                  '租賃面積：43,469 坪 每單位價格：每月租金約人民幣236.8萬元 交易總金額：不動產使用權資產金額約人民幣2,785.9萬元 6.交易相對人及其與公司之關係',
+                                  27859000.0, 'CNY'),
+    '日月光投控 3711 #1 代子公司矽品取得設備': ('說明 1.標的物之名稱及性質（如坐落台中市北區ＸＸ段ＸＸ小段土地）: 營業用機器設備 2.事實發生日:115/11/18~115/11/27 3.董事會通過日期: 不適用 '
+                                       '4.其他核決日期: 核決層級:總經理核決 民國115年11月27日 5.交易單位數量（如ＸＸ平方公尺，折合ＸＸ坪）、每單位價格及交易總金額: 取得8批， '
+                                       '每批平均單價：NTD 600,918,345元， 交易總金額：NTD 4,807,346,759元。 6.交易相對人及其與公司之關係',
+                                       4807346759.0, 'TWD'),
+    '友達 2409 #3 處分華亞廠': ('5.交易單位數量（如ＸＸ平方公尺，折合ＸＸ坪）、每單位價格及交易總金額: 土地面積： 65,260.09平方公尺(約19,741.1772坪) 建物面積： 162,826.12平方公尺(約49,254.89坪) '
+                           '附屬設備一批 交易總金額:新台幣 197億元(未稅) 6.交易相對人及其與公司之關係（交易相對人如屬自然人，且非公司之關 係人者，得免揭露其姓名）: 矽品精密工業股份有限公司；非關係人 '
+                           '9.預計處分利益（或損失）（取得資產者不適用）（遞延者應列表說明 認列情形）: 預計處分利益約新台幣104億元(已扣除相關交易費用及預估稅費)',
+                           197e8, 'TWD'),
+    '日月光投控 3711 #2 代子公司矽品取得華亞廠': ('5.交易單位數量（如ＸＸ平方公尺，折合ＸＸ坪）、每單位價格及交易總金額: 土地面積： 65,260.09平方公尺(約19,741.1772坪) 建物面積： 162,826.12平方公尺(約49,254.89坪) '
+                                        '交易總金額：NTD 19,700,000仟元(未稅) 6.交易相對人及其與公司之關係',
+                                        19700000e3, 'TWD'),
+    '日月光投控 3711 #3 代子公司日月光取得設備': ('5.交易單位數量（如ＸＸ平方公尺，折合ＸＸ坪）、每單位價格及交易總金額: 交易數量：一批 每單位價格計：新台幣1,021,715仟元(未稅) '
+                                        '累計交易總金額計：新台幣1,021,715仟元(未稅) 6.交易相對人及其與公司之關係',
+                                        1021715e3, 'TWD'),
+    '智邦 2345 #2 現增定價': ('說明 1.董事會決議或公司決定增資基準日期:115/11/19 2.是否採總括申報發行新股(是，請併敘明預定發行期間/否):否 3.主管機關申報生效日期:115/11/19 '
+                          '4.董事會決議(追補)發行日期:115/10/22 5.發行總金額及股數: 發行普通股10,000仟股，每股面額新台幣10元，發行總面額計新台幣100,000仟元。 '
+                          '6.採總括申報發行新股案件，本次發行金額及股數:不適用 7.採總括申報發行新股案件，本次發行後，剩餘之金額及股數餘額:不適用 8.每股面額:新台幣10元 '
+                          '9.發行價格:本次現金增資每股發行價格訂為新台幣1,217元。(補充公告) 10.員工認股股數:本次發行新股總數之15%，計1,500仟股，由本公司員工認購。',
+                          12170000000.0, 'TWD'),
+    '友達 2409 #1 法說會': ('說明 符合條款第四條第XX款：12 事實發生日：115/12/02 1.召開法人說明會之日期：115/12/02 ~ 115/12/04 2.召開法人說明會之時間：14 時 00 分 '
+                         '3.召開法人說明會之地點：香港 4.法人說明會擇要訊息：本公司將參加國泰證舉辦之「Non-Deal Roadshow」，就115年第三季法說會之內容說明公司營運與財務概況。 5.其他應敘明事項：無',
+                         None, None),
+}
 
 
 def selftest():
@@ -131,7 +209,29 @@ def selftest():
        and parse_amount('募集總金額:新台幣12,170,000仟元')['amt'] == 12170000e3)
     ok('⑧ 億元換算 to_yi:兩位小數', to_yi(1.6449e8) == 1.64 and to_yi(None) is None)
     ok('⑨ 空字串 / None → None', parse_amount('') is None and parse_amount(None) is None)
+    # ⑩ 第二輪真內文:截圖裡那幾則的金額要對得上(197 億 / 48.07 億 / 121.7 億 / 1.64 億)
+    for nm, (txt, want, cur) in REAL2.items():
+        r2 = parse_amount(txt)
+        good = (r2 is None) if want is None else (bool(r2) and abs(r2['amt'] - want) < 1 and r2['cur'] == cur)
+        ok(f'⑩ 真內文 {nm} → {"None" if want is None else f"{cur} {to_yi(want)} 億"}', good, r2)
+    ok('⑪ ⭐ 決定性對照:題目後面先接「每批單價」→ 取真正的交易總金額(⛔ 600,918,345 元)',
+       parse_amount(REAL2['日月光投控 3711 #1 代子公司矽品取得設備'][0])['amt'] != 600918345.0)
+    ok('⑪ ⭐ 決定性對照:現增 ⛔ 拿面額總額 10 億當募到的錢(那則「發行總金額及股數」寫的是面額)',
+       round(parse_amount(REAL2['智邦 2345 #2 現增定價'][0])['amt']) != 1000000000)
+    ok('⑫ 現增價格還沒訂(只有股數)→ None', cash_increase('現金增資發行新股 發行普通股10,000仟股 每股面額新台幣10元') is None)
+    ok('⑬ ⭐ 決定性對照:同一項先寫「100%股權」再寫金額 → 取 5 億(⛔ 沒有金額單位的數字)',
+       (parse_amount('交易總金額:取得南京公司100%股權,新台幣5億元') or {}).get('amt') == 5e8, parse_amount('交易總金額:取得南京公司100%股權,新台幣5億元'))
     print('❌ %d 條沒過' % len(fails) if fails else '✅ MOPS_AMOUNT_SELFTEST_PASS')
+    if not _INJ and os.environ.get('INJECT'):
+        all_red = True
+        for k in ('title', 'unit', 'cash'):
+            rc = subprocess.run([sys.executable, __file__, '--selftest'], env={**os.environ, 'INJECT': '', '_MA_INJ': k},
+                                capture_output=True, text=True).returncode
+            print(f"  {'✅' if rc else '❌'} 注入 {k} → {'紅' if rc else '⛔ 沒有紅(測試沒有鑑別力)'}")
+            all_red = all_red and rc != 0
+        print('✅ 🧪 三種注入全部叫得出來' if all_red else '❌ 有注入沒被抓到')
+        if not all_red:
+            fails.append('注入')
     return 1 if fails else 0
 
 
