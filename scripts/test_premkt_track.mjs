@@ -144,7 +144,7 @@ async function run(html) {
   ok('ⓗ3 表上標「當天畫面」/「重算」;還不到 20 天 → 當天畫面那行寫「還在累積」', /10\/02[\s\S]{0,80}當天畫面/.test(hF.replace(/<[^>]+>/g, ' ')) && /・重算/.test(hF) && /當天畫面<\/b>[((]2026-10-02 起凍結[))][::]講話 <b>1<\/b> 天 → ⏳ 還在累積/.test(hF), hF.replace(/<[^>]+>/g, '').slice(0, 400));
   const hNone = (await page.evaluate(T => PRO._premktTrackHtml(T), T)).replace(/<[^>]+>/g, '');
   ok('ⓗ4 一天都還沒凍結 → 說明「從 V82.7.0 起凍結」、⛔ 假裝有成績', /V82\.7\.0 起每天早上/.test(hNone) && !/當天畫面(?!.*凍結)/.test(hNone.split('🧊')[0] || ''), hNone.slice(0, 300));
-  // 滿 20 天:24 天講開高(10 對、14 開反)→ Wilson 上界 < 75.7 → 比回測差;occ 用「那天畫面印的」(故意跟今天的表不一樣:開低 10%)
+  // 滿 20 天:24 天講開高(10 對、14 開反)→ Wilson 上界 < 回測(V82.7.2 起 76.7)→ 比回測差;occ 用「那天畫面印的」(故意跟今天的表不一樣:開低 10%)
   const OUTUP = { s: 4, sPct: 70, call: '開高偏多', k: 'hi', occ: [40, 50, 10], ver: 'aaaa1111', intra: [], stale: [], nt: 0.5, n: 9 };
   const fzLog = { rows: [] }, fzBars = [{ date: '2026/01/02', open: 100, close: 100 }];
   let tt = Date.UTC(2026, 0, 5), kk = 0;
@@ -156,15 +156,29 @@ async function run(html) {
   const cH = TZ.fz.calib.hi;
   ok('ⓗ5 發生率校準跟「那天畫面印的」比:說開低 10%(⛔ 今天的表 4.2%)、真的開低 14/34', cH.n === 34 && Math.abs(cH.said - 10) < 1e-9 && Math.abs(cH.got - 14 / 34 * 100) < 1e-9 && cH.z > 2.5, JSON.stringify(cH));
   ok('ⓗ6 畫面寫出來:分數 65 以上 說開低 10.0% → 真的 41.2% ⚠️ 差太多', /分數 65 以上:畫面說開低 10\.0% → 真的 41\.2%[((]34 天[))] ⚠️ 差太多/.test(hz), hz.slice(0, 600));
-  ok('ⓗ7 滿 20 天跟回測比:34 天講話、對 29.4% → Wilson 95% 範圍整個低於回測 75.7% → ⚠️ 比回測差', TZ.sFz.call === 34 && /當天畫面[^\n]*講話 34 天 → 方向猜對 29\.4%[^\n]*⚠️ 比回測差/.test(hz), hz.slice(0, 600));
+  ok('ⓗ7 滿 20 天跟回測比:34 天講話、對 29.4% → Wilson 95% 範圍整個低於回測(V82.7.2 起 76.7%)→ ⚠️ 比回測差', TZ.sFz.call === 34 && /當天畫面[^\n]*講話 34 天 → 方向猜對 29\.4%[^\n]*⚠️ 比回測差/.test(hz), hz.slice(0, 600));
   // 對照組:同樣 34 天、對 26 天(76.5%)→ 跟回測差不多(⛔ 說比較差)
   const okLog = { rows: fzLog.rows }, okBars = fzBars.map((b, i) => i >= 1 && i <= 26 ? { ...b, open: 100.5 } : b);
   const TO = await page.evaluate(([log, b]) => PRO._premktTrack(log, b, null), [okLog, okBars]);
   const ho = (await page.evaluate(T => PRO._premktTrackHtml(T), TO)).replace(/<[^>]+>/g, '');
-  ok('ⓗ7b 決定性對照:同樣 34 天、對 26 天(76.5%)→ ✅ 跟回測差不多(⛔ 說比回測差)', TO.sFz.hit === 26 && /方向猜對 76\.5%[^\n]*✅ 跟回測 75\.7% 差不多/.test(ho) && !/比回測差/.test(ho), ho.slice(0, 500));
+  const PH = await page.evaluate(() => PRO._PREMKT.hit);   // 回測那個數字只讀唯一來源(⛔ 寫死 —— V82.7.2 75.7 → 76.7 就是這條假紅)
+  ok('ⓗ7b 決定性對照:同樣 34 天、對 26 天(76.5%)→ ✅ 跟回測差不多(⛔ 說比回測差)', TO.sFz.hit === 26 && new RegExp(`方向猜對 76\\.5%[^\\n]*✅ 跟回測 ${PH}% 差不多`).test(ho) && !/比回測差/.test(ho), ho.slice(0, 500));
   ok('ⓗ8 公式換過 1 次 → 列出換版日', /公式換過 1 次:2026-01-05 起 aaaa1111 → 2026-01-28 起 bbbb2222/.test(hz), (hz.match(/🧾[^\n]*/) || [''])[0]);
   ok('ⓗ9 只看夜盤的對照(同一批日子)、開盤之後(講開高那天平均)、資料有缺 vs 齊 都有一行', /只看夜盤/.test(hz) && /開盤之後[^\n]*講開高那天平均[^\n]*34 天/.test(hz) && /資料有缺的早上[^\n]*講話 4 天/.test(hz), hz.slice(300, 1400));
   ok('ⓗ10 ⛔ 🔴🟢', !/[🔴🟢]/u.test(hz));
+  // ⓗ11 🇺🇸 V82.7.2 美國放假那天:凍結的 stale 有 sp500(美股四項 + 三檔 ADR 整組只列出來)→ 表上講美國放假、⛔ 再寫「ADR 舊了 3 項」;
+  //      重算那條(沒有 out)看 _premktScore 的 usOld(台股上一個交易日 10/13、美股還是 10/09)
+  const HOLX = { ...UP, taiex_date: '2026-10-13', fi_three_date: '2026-10-13', sp500_date: '2026-10-09', tsm_date: '2026-10-09', usdtwd_chg_pct: 0.2, fear_greed: 50, ust10y_chg_pct: 0.1 };
+  const OUTHOL = { ...OUTDN, s: 0.5, sPct: 53, call: '中性震盪', k: 'mid', stale: ['asx', 'dji', 'nasdaq', 'sox', 'sp500', 'tsm', 'umc'] };
+  const LOGH = { rows: LOG.rows.slice(1).map(r => r.d === '2026-10-14' ? { ...r, out: OUTHOL } : r.d === '2026-10-07' ? { ...r, x: HOLX } : r) };
+  const TH = await page.evaluate(([log, b, div]) => PRO._premktTrack(log, b, div), [LOGH, bars, DIV]);
+  const hH = (await page.evaluate(T => PRO._premktTrackHtml(T), TH));
+  const rowH = d => { const m = hH.match(new RegExp(`data-pmtrk-row="${d}"[\\s\\S]*?</tr>`)); return m ? m[0].replace(/<[^>]+>/g, ' ') : ''; };
+  const h14 = TH.rows.find(o => o.d === '2026-10-14'), h07 = TH.rows.find(o => o.d === '2026-10-07');
+  ok('ⓗ11 🇺🇸 凍結的那天美國放假 → usOld、表上寫「美國放假:美股 / ADR 只列出來」、⛔「ADR 舊了」',
+     h14.usOld === true && h14.stale === 0 && /美國放假/.test(rowH('2026-10-14')) && !/ADR 舊了/.test(rowH('2026-10-14')), JSON.stringify([h14.usOld, h14.stale, rowH('2026-10-14').slice(0, 200)]));
+  ok('ⓗ11b 🇺🇸 重算那條也認得(美股 10/09 < 台股上一個交易日 10/13)→ 美股 / ADR 不算、只剩 VIX +1・台幣 −0.5 = 0.5;一般日子那天照常(⛔ 誤標)',
+     h07.usOld === true && h07.s === 0.5 && /美國放假/.test(rowH('2026-10-07')) && TH.rows.filter(o => o.usOld).length === 2, JSON.stringify([h07.usOld, h07.s, TH.rows.filter(o => o.usOld).map(o => o.d)]));
 
   // ⓖ 接線
   const R = await page.evaluate(async ([log, b, div]) => {

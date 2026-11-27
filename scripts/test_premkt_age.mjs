@@ -17,6 +17,8 @@
  *   ③ 卡片 ⛔ 不可再有「盤中型態 / 順勢做多 / 開高走高 / 別接刀 / 逃命波」;要有「📌 今天怎麼看」與「不預測」
  *   ④ 分析師:前一天的寫「台股那天已經一起反映」、今天的寫「今天亞股開盤」、太舊的不講;⛔「今日開盤 / 易開低 / 拖累」
  *   ⑤ 全球快讀:⛔「別追多 / 別接刀 / 同步承壓」;太舊的要寫「不算分」
+ *   ⑥ 🇺🇸 V82.7.2 美股指數那天早於台股上一個交易日(美國放假、台股有開)→ 美股四項 + 三檔 ADR 都算舊、0 分寫「資料舊了」(EXP-20261127-01);
+ *      ⭐ 決定性對照:同一份資料美股日期 = 台股上一個交易日 → 照常算分;盤中 taiex_date 已是今天 → ⛔ 把昨晚的美股判成舊
  *
  * 注入驗證:`HTML=<另一份 index.html>` 讀那一份(⛔ 檔案要放在 repo 根目錄,相對路徑才讀得到)。
  */
@@ -74,6 +76,11 @@ const R = await page.evaluate(async () => {
     // 盤中:taiex_date 已經是今天,法人還是昨天 → 台股那天 = 昨天(⛔ 不可把昨天的亞股判成舊)
     o.f2 = F({ taiex_date: '2026-10-22', fi_three_date: '2026-10-21', nikkei_date: '2026-10-21' }, '2026-10-22');
     o.f3 = F({}, '2026-10-22');
+    // ⑥ 🇺🇸 美國放假(11/26 感恩節):台股上一個交易日 11/26、美股還是 11/25 → 美股四項 + 三檔 ADR 都舊
+    const US7 = { sp500_date: '2026-11-25', nasdaq_date: '2026-11-25', tsm_date: '2026-11-25', asx_date: '2026-11-25', umc_date: '2026-11-25' };
+    o.f4 = F({ taiex_date: '2026-11-26', fi_three_date: '2026-11-26', ...US7 }, '2026-11-27');
+    o.f5 = F({ taiex_date: '2026-11-25', fi_three_date: '2026-11-25', ...US7 }, '2026-11-26');   // 一般日子:美股 = 台股上一個交易日
+    o.f6 = F({ taiex_date: '2026-11-26', fi_three_date: '2026-11-25', ...US7 }, '2026-11-26');   // 盤中:taiex_date 已是今天、法人還是昨天
 
     // ②⑤ 實際渲染:同一份資料,只差日期(⭐ 決定性對照)
     const base = {
@@ -95,6 +102,7 @@ const R = await page.evaluate(async () => {
         const an = el.querySelector('[data-asianote]');
         return {
             s: C.s, sum: Math.round((C.parts || []).reduce((a, x) => a + x.d, 0) * 10) / 10,
+            all: (C.parts || []).map(p => ({ nm: p.nm, d: p.d, note: p.note })),
             tsm: part('🏭 台積電 ADR'), asx: part('🔌 日月光 ADR'), umc: part('🔌 聯電 ADR'),
             nk: part('🇯🇵 日經'), ks: part('🇰🇷 韓股'), hs: part('🇭🇰 恆指'),
             txt: (el.textContent || '').replace(/\s+/g, ' '),
@@ -104,6 +112,8 @@ const R = await page.evaluate(async () => {
     };
     o.stale = await run({ ...base, tsm_date: D2, asx_date: D2, nikkei_date: D2, kospi_date: D2 });
     o.fresh = await run({ ...base, tsm_date: D1, asx_date: D1, nikkei_date: D1, kospi_date: D1 });
+    // ⑥ 同一份值,只把美股(含三檔 ADR)的日期改成台股上一個交易日的前一天(= 美國那天放假)
+    o.usOld = await run({ ...base, sp500_date: D2, nasdaq_date: D2, tsm_date: D2, asx_date: D2, umc_date: D2, nikkei_date: D1, kospi_date: D1 });
     o.weak = await run({ ...base, sp500_chg_pct: -1, nasdaq_chg_pct: -1.5, dji_chg_pct: -0.8, sox_chg_pct: -2, tsm_chg_pct: -3,
         tsm_date: D1, asx_date: D1, nikkei_date: D1, kospi_date: D1, kospi_chg_pct: -5.5 });
 
@@ -129,7 +139,7 @@ ok('①g 什麼日期都沒有 → 一項都不判', Object.keys(R.f3.stale).len
 // ② 分數
 const S = R.stale, Fr = R.fresh;
 ok('② 空過守門:兩次都有渲染出分數', Number.isFinite(S.s) && Number.isFinite(Fr.s), JSON.stringify([S.s, Fr.s]));
-ok('②a 舊的台積電 ADR → 0 分 + 寫「資料舊了」', S.tsm && S.tsm.d === 0 && /資料舊了/.test(S.tsm.note) && /不計分/.test(S.tsm.note), JSON.stringify(S.tsm));
+ok('②a 舊的台積電 ADR → 0 分 + 寫「資料舊了」(⛔ 美國放假那句:美股指數是新的,只有 ADR 舊)', S.tsm && S.tsm.d === 0 && /資料舊了/.test(S.tsm.note) && /不計分/.test(S.tsm.note) && !/美國那天放假/.test(S.tsm.note), JSON.stringify(S.tsm));
 ok('②b 舊的日月光 ADR → 0 分', S.asx && S.asx.d === 0 && /資料舊了/.test(S.asx.note), JSON.stringify(S.asx));
 ok('②c 舊的日經 / 韓股 → 0 分', S.nk && S.nk.d === 0 && S.ks && S.ks.d === 0 && /資料舊了/.test(S.ks.note), JSON.stringify([S.nk, S.ks]));
 ok('②d 新的聯電 ADR 照常算分;恆指 V79.5.4 起只列出來(0 分・不計分,⛔ 不是「資料舊了」)',
@@ -160,6 +170,20 @@ ok('⑤b 太舊的要寫「不算分」', S.an && /不算分/.test(S.an.t), S.an
 ok('⑤c 前一天的要寫「台股那天已一起反映」', Fr.an && /台股那天已一起反映/.test(Fr.an.t), Fr.an && Fr.an.t);
 ok('⑤d 重挫(−5.5%)那段 ⛔ 不叫人「今天別接刀 / 別追多」,只描述', R.weak.an && R.weak.an.k === 'crash' && !/別接刀|別追多|同步承壓/.test(R.weak.an.t) && /出場規則/.test(R.weak.an.t), R.weak.an && R.weak.an.t);
 ok('⑤e 一般走弱那段 ⛔ 下指令', S.an && !/別追多|停損|同步承壓/.test(S.an.t), S.an && S.an.t);
+
+// ⑥ 🇺🇸 V82.7.2 美國放假那天
+const K7 = ['dji', 'nasdaq', 'sp500', 'sox', 'tsm', 'asx', 'umc'];
+ok('⑥ 美國放假:美股 11/25、台股上一個交易日 11/26 → 美股四項 + 三檔 ADR 都標舊(11/25)', K7.every(k => R.f4.stale[k] === '2026-11-25') && R.f4.tw === '2026-11-26', JSON.stringify(R.f4.stale));
+ok('⑥b ⭐ 決定性對照:一般日子(美股 = 台股上一個交易日)→ 美股那幾格一格都不標', K7.every(k => !R.f5.stale[k]), JSON.stringify(R.f5.stale));
+ok('⑥c 🚨 盤中 taiex_date 已是今天 → 用法人那天比,昨晚的美股 ⛔ 判成舊', K7.every(k => !R.f6.stale[k]) && R.f6.tw === '2026-11-25', JSON.stringify(R.f6));
+const U7 = [['🇺🇸 道瓊', 'dji'], ['🇺🇸 那斯達克', 'nasdaq'], ['🇺🇸 S&P500', 'sp500'], ['💾 費半', 'sox'], ['🏭 台積電 ADR', 'tsm'], ['🔌 日月光 ADR', 'asx'], ['🔌 聯電 ADR', 'umc']];
+const pOf = (x, nm) => (x.all || []).find(p => p.nm === nm) || null;
+const U = R.usOld;
+ok('⑥d 畫面:美國放假那天七項都列出來、0 分、寫「資料舊了(… 收盤,美國那天放假、台股已經反應過)」+「不計分」', U7.every(([nm]) => { const q = pOf(U, nm); return q && q.d === 0 && /資料舊了/.test(q.note) && /美國那天放假、台股已經反應過/.test(q.note) && /不計分/.test(q.note); }),
+    JSON.stringify(U7.map(([nm]) => pOf(U, nm))));
+const usSum = Math.round(U7.reduce((a, [nm]) => a + ((pOf(Fr, nm) || {}).d || 0), 0) * 10) / 10;
+ok(`⑥e ⭐ 決定性對照:同一份值日期改成一般日子 → 七項照常算(合計 ${usSum} 分)、總分差 = ${usSum}`, usSum === 6.5 && Math.abs((Fr.s - U.s) - usSum) < 0.051, `${Fr.s} − ${U.s} vs ${usSum}`);
+ok('⑥f VIX 水位 ⛔ 跟著變(只動美股四項 + ADR)', (pOf(U, '😱 VIX') || {}).d === (pOf(Fr, '😱 VIX') || {}).d && (pOf(Fr, '😱 VIX') || {}).d === 1, JSON.stringify([pOf(U, '😱 VIX'), pOf(Fr, '😱 VIX')]));
 
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
 await browser.close();

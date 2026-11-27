@@ -46,7 +46,9 @@ const INJ = {
   nightStale: ["if (d <= tw) return { chg: null, why: '前一晚那一盤", "if (false) return { chg: null, why: '前一晚那一盤"],
   nightOpen: ["if (!(t >= '04:55' && t < '06:00')) return { chg: null, why: '夜盤還沒收", "if (false) return { chg: null, why: '夜盤還沒收"],
   nightMin: ["const _nt = this._premktNight(mr, _age.twMax);", "const _nt = this._premktNight(mr, _age.tw);"],
-  occ: ['hi: { n: 1774, up: 51.3,', 'hi: { n: 1774, up: 99.9,'],
+  occ: ['hi: { n: 1704, up: 52.8,', 'hi: { n: 1704, up: 99.9,'],
+  // 🇺🇸 V82.7.2 美國放假那天美股四項不看 stale(只剩三檔 ADR 看)
+  usOldIdx: ["const _us = (nm, k, t, v, w) => stale[k] ? _info(nm, _old(k, t)) : intra[k]", "const _us = (nm, k, t, v, w) => intra[k]"],
   dead: ["const _dz = v => { const n = N(v); return n != null && Math.abs(Math.round(n * 100) / 100) < this._PREMKT_DEAD; };", "const _dz = v => false;"],
   // 🕐 V82.4.2 盤中標記:算分那支看不到 / 呼叫端沒擋下 macro_risk 的盤中值
   intraOff: ['const intra = x.intra || {};', 'const intra = {};'],
@@ -60,7 +62,10 @@ const INJ_PRO = { proTsm: ["if (tsm != null && !stale('tsm')) add('台積電 ADR
                   proNightStale: ["tw && txd > tw && txt >= '04:55'", "tw && txt >= '04:55'"],
                   proNightOpen: ["txd > tw && txt >= '04:55' && txt < '06:00') {", "txd > tw) {"],
                   proNightMin: ["iso(mr.fi_three_date)].filter(Boolean).sort().pop() || '';", "iso(mr.fi_three_date)].filter(Boolean).sort()[0] || '';"],
-                  proIntraOff: ["const intra = k => !!mr[k + '_intraday'];", 'const intra = k => false;'] };
+                  proIntraOff: ["const intra = k => !!mr[k + '_intraday'];", 'const intra = k => false;'],
+                  // 🇺🇸 V82.7.2 產業作戰室那份忘了美國放假 / 「資料夠不夠」沒把刻意不算的美股算進去
+                  proUsOld: ['const usOld = !!(us && tw0 && us < tw0);', 'const usOld = false;'],
+                  proUsOldN: ['if (n + nUs < 5) return { na: true, n, intra: nIntra, usOld };', 'if (n < 5) return { na: true, n, intra: nIntra, usOld };'] };
 
 const fnBody = html => {
   const i = html.indexOf('    _preOpenScore(x) {');
@@ -319,6 +324,17 @@ async function run(html, proHtml = PRO_SRC) {
                  tsm_date: '2026-10-21', vix: 18, fear_greed: 50, usdtwd_chg_pct: 0.1, fi_total_net: 100, fi_spot_net: -50 };
   for (const [d, c] of [['2026-10-21', 1.2], ['2026-10-21', -1.5], ['2026-10-22', 1.2], ['2026-10-22', -1.5]])
     fx.push({ ...FULL, taifex_tx_now: { chg: c, est: false, sess: 'night', date: d, time: '04:59:58' } });
+  // ⑧d 🇺🇸 V82.7.2 美國放假那天(台股上一個交易日 11/26、美股還是 11/25):兩邊都只算美股以外的;對照組(美股 = 台股上一個交易日)兩邊都照算
+  const HOL = { updated: '2026-11-27 08:03 +0800', taiex_date: '2026-11-26', fi_three_date: '2026-11-26', sp500_date: '2026-11-25', nasdaq_date: '2026-11-25',
+               dji_chg_pct: -0.9, nasdaq_chg_pct: -1.4, sp500_chg_pct: -1.1, sox_chg_pct: -2.2, tsm_chg_pct: -2.5, asx_chg_pct: -1.2, umc_chg_pct: -0.8,
+               tsm_date: '2026-11-25', asx_date: '2026-11-25', umc_date: '2026-11-25', vix: 17.5, fear_greed: 45, usdtwd_chg_pct: 0.2, ust10y_chg_pct: 0.5,
+               fi_total_net: 100, fi_spot_net: -50 };
+  const iHol = fx.length;
+  fx.push({ ...HOL });                                                              // 美國放假
+  fx.push({ ...HOL, taiex_date: '2026-11-27' });                                     // 盤中 taiex_date 已是今天(法人還是 11/26)→ 照樣是美國放假那天
+  fx.push({ ...HOL, sp500_date: '2026-11-26', nasdaq_date: '2026-11-26', tsm_date: '2026-11-26', asx_date: '2026-11-26', umc_date: '2026-11-26' });   // 對照:一般日子
+  const { usdtwd_chg_pct: _x1, ust10y_chg_pct: _x2, ...HOL2 } = HOL;
+  fx.push({ ...HOL2 });                                                             // 美股以外只剩 VIX + 恐懼貪婪 → 產業作戰室 ⛔ 因為刻意不算美股就講「資料只有 2 項」
   const txOk = t => t && t.sess === 'night' && t.est !== true && t.chg != null;
   const nTxOn = fx.filter(m => txOk(m.taifex_tx_now) && m.taifex_tx_now.date === '2026-10-22' && m.taifex_tx_now.time === '04:59:59').length;
   const nTxOff = fx.filter(m => txOk(m.taifex_tx_now) && !(m.taifex_tx_now.date === '2026-10-22' && m.taifex_tx_now.time === '04:59:59')).length;
@@ -349,6 +365,11 @@ async function run(html, proHtml = PRO_SRC) {
   ok('⑨b 高分 / 低分那天那一行的三個比例 = `_PREMKT_OCC` 那一格(隨便一天那組也是)+「不是今天會漲或會跌」;⛔ 研究字樣',
      R.occHi.p >= 65 && R.occLo.p <= 35 && K.hi && hiT.includes(tri(K.hi)) && hiT.includes(`隨便一天 ${r0(K.all.up)}% / ${r0(K.all.flat)}% / ${r0(K.all.dn)}%`) && /不是今天會漲或會跌/.test(hiT)
      && loT.includes(tri(K.lo)) && badOf(hiT + loT).length === 0, JSON.stringify({ hi: [R.occHi.p, hiT], lo: [R.occLo.p, loT], bad: badOf(hiT + loT) }));
+  const hol = [0, 1, 2, 3].map(j => [appS[iHol + j], proS[iHol + j]]);
+  ok('⑧d 🇺🇸 美國放假那幾組:兩邊都有分數、逐一相同;美股以外那幾項的分數(VIX +1・台幣 −0.5)= 只剩那些;盤中那組一樣',
+     hol.every(([a, b]) => a != null && b != null && a === b) && hol[0][0] === 0.5 && hol[1][0] === 0.5 && hol[3][0] === 1, JSON.stringify(hol));
+  ok('⑧d2 ⭐ 決定性對照:同一份值美股日期 = 台股上一個交易日 → 兩邊都照算(多扣 道瓊 −1・那斯達克 −1・標普 −1・費半 −1.5・台積電 −2・日月光 / 聯電 各 −0.5 = −7.5)',
+     hol[2][0] === hol[2][1] && Math.abs((hol[0][0] - hol[2][0]) - 7.5) < 0.051, JSON.stringify(hol));
   const both = appS.map((a, i) => [a, proS[i]]).filter(([a, b]) => b != null);
   const diff = both.filter(([a, b]) => a !== b);
   ok('⑧ 產業作戰室 `PRO._premktScore` == App(300 組隨機 macro_risk,兩邊都有分數的那幾組逐一相同)',
