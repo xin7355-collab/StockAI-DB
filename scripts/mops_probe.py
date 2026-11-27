@@ -31,6 +31,7 @@
       (onclick 裡 `document.<表單>.<欄位>.value='…'` 那幾個)與頁面上所有 <form> 的 action / 隱藏欄位
    ② 挑 3 則(訂單 / 代子公司取得或收購 / 現金增資或私募)照「表單預設欄位 + 那一列的參數」送出,印 content-type + 開頭 +「說明」那一段
       (⛔ 只看 HTTP 200 不算數,陷阱 #23);每次隔 3 秒、被擋就停
+   ③ MOPS_DETAIL_COS=代號,代號…:改成那天那幾家的每一則都抓(最多 14 則),說明段印 1,500 字 —— 給金額解析當真測資
    ⛔ 一樣只印不寫分支,結果進 artifact。
 """
 import json
@@ -356,14 +357,19 @@ def detail_main():
         if rec['blocked']:
             blocked = True
             break
-        for label, pat in DETAIL_PICK:
+        cos = [c.strip() for c in (os.getenv('MOPS_DETAIL_COS') or '').split(',') if c.strip()]
+        if cos:                                          # 🔎 指定公司:那天那幾家的每一則都抓(給金額解析當真測資)
+            for x in RA:
+                if x['fields'] and x['cells'][0] in cos and len(picked) < 14:
+                    picked[f"{x['cells'][0]} {x['cells'][1]} #{x['fields'].get('seq_no')}"] = (typek, F, x)
+        for label, pat in ([] if cos else DETAIL_PICK):
             if label not in picked:
                 for x in RA:
                     if x['fields'] and re.search(pat, x['cells'][4] if len(x['cells']) > 4 else ''):
                         picked[label] = (typek, F, x)
                         break
         time.sleep(3)
-    for label, _ in DETAIL_PICK:
+    for label in (list(picked) if (os.getenv('MOPS_DETAIL_COS') or '').strip() else [lb for lb, _ in DETAIL_PICK]):
         if blocked:
             break
         if label not in picked:
@@ -381,7 +387,7 @@ def detail_main():
             r = s.post(url, data=data, headers=hdr, timeout=30)
             r.encoding = r.encoding or 'utf-8'
             html = r.text or ''
-            say = say_section(html)
+            say = say_section(html, 3000)
             rec = {'label': label, 'row': x['cells'][:5], 'url': url, 'data': data, 'status': r.status_code,
                    'ctype': r.headers.get('Content-Type', ''), 'bytes': len(r.content or b''), 'sec': round(time.time() - t0, 2),
                    'blocked': is_blocked(html), 'head': strip_tags(html[:1500])[:300], 'say': say,
@@ -395,7 +401,7 @@ def detail_main():
         else:
             print(f"   HTTP {rec['status']} ・{rec['ctype']} ・{rec['bytes']} bytes ・{rec['sec']}s" + (' ・⛔ 被擋' if rec['blocked'] else ''))
             print(f"   開頭:{rec['head'][:220]}")
-            print(f"   說明:{rec['say'][:500] or '⚠️ 找不到「說明」兩個字(多半不是內文頁,陷阱 #23)'}")
+            print(f"   說明:{rec['say'][:1500 if (os.getenv('MOPS_DETAIL_COS') or '').strip() else 500] or '⚠️ 找不到「說明」兩個字(多半不是內文頁,陷阱 #23)'}")
             for a in rec['amount_lines']:
                 print(f'   💰 {a}')
             if rec['blocked']:

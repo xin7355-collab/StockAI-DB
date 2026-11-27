@@ -29,6 +29,10 @@ on:
         description: "detail 模式抓哪一天(YYYY-MM-DD,空白 = 前一個平日)"
         required: false
         default: ""
+      detail_cos:
+        description: "detail 模式只抓這幾家那天的每一則(代號用逗號隔開,空白 = 訂單 / 收購 / 增資各挑一則)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -64,6 +68,7 @@ jobs:
           MOPS_SAMPLE: ${{ github.event.inputs.sample }}
           MOPS_MODE: ${{ github.event.inputs.mode }}
           MOPS_DETAIL_DATE: ${{ github.event.inputs.detail_date }}
+          MOPS_DETAIL_COS: ${{ github.event.inputs.detail_cos }}
         run: python scripts/mops_probe.py || echo "⚠️ 非零退出(結論仍印在上面)"
 
       - name: 📤 上傳探針結果 artifact
