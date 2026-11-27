@@ -62,7 +62,8 @@ const R = await page.evaluate(() => {
         // 🚨 週一放假 → 第一個交易日是「週二」,gap 仍是 4 天(⛔ 不可因為不是星期一就漏掉)
         tueAfterHol: app._calDayVol(mk(['2026-03-19', '2026-03-24'])),
         htmlGap3: app._calDayVolHtml(mk([back(20), back(3)])),
-        htmlNone: app._calDayVolHtml(mk([back(20), back(19)])),
+        // 🐛 2026-11-28 固定日期(同 dom20 / stale):以前用 back(20)~back(19) —— 那根剛好落在 9~11 日就命中「月營收公布日前後」,11/28 那天就紅了
+        htmlNone: app._calDayVolHtml(mk(['2026-03-19', '2026-03-20'])),
         // 🧹 V78.3.6 長假(gap≥4)那段連假方向研究只在實驗室模式顯示
         htmlGap6: app._calDayVolHtml(mk([back(20), back(6)])),
         htmlGap6Lab: (() => { document.documentElement.classList.add('lab');
@@ -92,8 +93,9 @@ ok('②f 月營收公布日前後(9~11 日)要命中', !!R.dom5 && R.dom5.tags.s
 ok('②g 月中(20 日)+ 隔天 → ⛔ 完全不命中', R.dom20 === null, JSON.stringify(R.dom20));
 ok('②l 🐛 春節休 10 天(最後一根是 11 天前)→ 今天仍是「連休 10 天後的第一個交易日」(新鮮度 12 天)',
    !!R.cny11 && R.cny11.gap === 11 && R.cny11.date === R.today && R.cny11.tags[0].t === '連休 10 天後的第一個交易日', JSON.stringify(R.cny11));
+// 🐛 2026-11-28 找「連休」那個標籤(⛔ 取 tags[0]:每月 9~11 日「月營收公布日前後」1.12 會排在週末 1.11 前面 → 那三天會紅)
 ok('②m 「休幾天」寫實際沒開盤的天數:週末後 =「連休 2 天後」(跟財經行事曆同一個說法,⛔ 寫 gap)',
-   !!R.gap3 && R.gap3.tags[0].t === '連休 2 天後的第一個交易日', JSON.stringify(R.gap3 && R.gap3.tags));
+   !!R.gap3 && ((R.gap3.tags || []).find(t => /連休/.test(t.t)) || {}).t === '連休 2 天後的第一個交易日', JSON.stringify(R.gap3 && R.gap3.tags));
 ok('②n 決定性對照:最後一根是 13 天前 → 算資料舊了(⛔ 當成連休 12 天)', !R.tooOld || R.tooOld.date !== R.today, JSON.stringify(R.tooOld));
 ok('②h 🚨 資料過期(最後一根是幾個月前)→ ⛔ 不可算成「休市 N 百天」,改描述資料裡的最後一天',
    R.stale === null, JSON.stringify(R.stale));
