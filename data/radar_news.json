@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-27 19:27 UTC",
+  "updated": "2026-11-27 20:28 UTC",
   "count": 15,
   "data": [
     {
@@ -12,7 +12,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利多",
-      "ai_reason": "美管制奏效，中國AI開發降速，利美系晶片",
+      "ai_reason": "中國AI降速，利多加速台系AI供應鏈",
       "important": true
     },
     {
@@ -41,7 +41,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "EPS創新高且股利配發率達6成",
+      "ai_reason": "EPS創新高且維持高股利配發率",
       "important": true
     },
     {
@@ -54,7 +54,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "前10月稅前淨利49億，較去年轉盈",
+      "ai_reason": "鋼鐵銷售量增帶動營業利益回升轉盈",
       "important": true
     },
     {
@@ -68,7 +68,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利空",
-      "ai_reason": "現增3億股稀釋股權，用於償債",
+      "ai_reason": "現增稀釋股權，且資金用於償債",
       "important": true
     },
     {
@@ -81,7 +81,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "美中貿易戰升溫，衝擊全球供應鏈",
+      "ai_reason": "美中貿易戰升溫恐衝擊全球供應鏈",
       "important": true
     },
     {
@@ -95,7 +95,21 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "主計處上修經濟成長率，AI發展持續",
+      "ai_reason": "主計處上修經濟成長率，AI發展持續帶動景氣",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "美股七雄年末盤點／輝達崩2成最慘！蘋果「1招」成最大贏家",
+      "link": "https://tw.news.yahoo.com/%E7%BE%8E%E8%82%A1%E4%B8%83%E9%9B%84%E5%B9%B4%E6%9C%AB%E7%9B%A4%E9%BB%9E-%E8%BC%9D%E9%81%94%E5%B4%A92%E6%88%90%E6%9C%80%E6%85%98-%E8%98%8B%E6%9E%9C-1%E6%8B%9B-%E6%88%90%E6%9C%80%E5%A4%A7%E8%B4%8F%E5%AE%B6-191500097.html",
+      "published_time": "Fri, 27 Nov 2026 19:15:00 +0800",
+      "matched_keywords": [
+        "財報",
+        "資本支出"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "輝達重挫拖累台系半導體供應鏈",
       "important": true
     },
     {
@@ -108,7 +122,7 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "看好選後護盤與年底紅包行情",
+      "ai_reason": "看好年底紅包行情及選後護盤",
       "important": true
     },
     {
@@ -123,7 +137,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "AI需求強勁，法人上調台積電及聯電目標價",
+      "ai_reason": "AI需求強勁，台積電聯電獲買進評等",
       "important": true
     },
     {
@@ -138,7 +152,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "獲利創新高且現金股利維持高配發率",
+      "ai_reason": "前3季獲利創新高，現金股利配發率維持6成以上",
       "important": true
     },
     {
@@ -151,7 +165,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "國泰金看好AI驅動台灣經濟與資本市場表現",
+      "ai_reason": "國泰金看好AI供應鏈持續受惠",
       "important": true
     },
     {
@@ -164,7 +178,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利空",
-      "ai_reason": "現增折價逾兩成，稀釋股權且反映股價壓力",
+      "ai_reason": "現增大幅折價，稀釋股東權益",
       "important": true
     },
     {
@@ -179,7 +193,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "匯率貶值與成本推動盤價上調",
+      "ai_reason": "台幣貶值推升盤價，營收獲利雙增",
       "important": true
     },
     {
@@ -194,21 +208,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "AI需求強勁，預估出口破兆美元創新高",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "台新新光今年前3季淨利642億 銀行2027年元旦合併",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5655610",
-      "published_time": "Fri, 27 Nov 2026 18:00:05 +0800",
-      "matched_keywords": [
-        "合併",
-        "EPS"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "前三季淨利642億，合併後規模擴大",
+      "ai_reason": "AI需求強勁，出口預估創新高",
       "important": true
     }
   ]

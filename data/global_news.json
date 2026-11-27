@@ -1,14 +1,41 @@
 {
-  "updated": "2026-11-27 19:27 UTC",
+  "updated": "2026-11-27 20:29 UTC",
   "items": [
+    {
+      "source": "🧪 技術突破",
+      "title": "LG Chairman Koo Kwang-mo Takes His Nvidia Robotics Deal to Tennessee - Observer",
+      "url": "https://news.google.com/rss/articles/CBMigwFBVV95cUxOOXh3bzdKNFVyTzFPTlJiYUlfZDEySXpTN2MtNEpaai1RSGFNQ0tkV0hOcGswUmVoLU5BaFI2bU4wWjJCVlBmZlRkbklBR0hOYy1VUTBmUUpTanpvZkoxaDVfNk5rMzRlSElHcjY4MG1xeG5UYlNpSUZkV3FjZ3BWOFA5NA?oc=5",
+      "published": "Fri, 27 Nov 2026 19:28:26 GMT",
+      "title_zh": "LG主席攜Nvidia機器人交易赴田納西",
+      "impact": "AI機器人產業鏈加速落地，利好相關供應鏈。",
+      "impact_level": "bullish"
+    },
     {
       "source": "🧪 技術突破",
       "title": "The ‘Iron’ age: XPeng prepares for mass production of its humanoid robot - Robotics & Automation News",
       "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxNWTdrdHQ5QjNGdFUwdEFyM3RCZmhscDRQbVN5THZoYzlFdXBSVEtvQXBrWUhCMUwyenp2M3V6UnB5cUUwU3VtQ3hVOXhSY3ROdkFKY2tvcWNGZExESm1MOVFrZWpyay16UG16cHl6ZXlNNkt6U1p2STg5anJ0TEhzYzMtODVQM1lTYkc2QWcxaUtILUhuWEpla2djMzlTa011MlRmZm5Ha0tBTlc1SlBuOXY3VlNWLUp3RXJFZFhVU2RXM1lp?oc=5",
       "published": "Fri, 27 Nov 2026 19:14:21 GMT",
-      "title_zh": "小鵬人形機器人備戰量產",
-      "impact": "小鵬機器人量產預期提振台鏈機器人零組件與AI相關個股投資情緒",
+      "title_zh": "小鵬機器人量產在即",
+      "impact": "機器人產業鏈相關個股可能受提振。",
       "impact_level": "bullish"
+    },
+    {
+      "source": "🏢 雲端巨頭",
+      "title": "Fox News AI Newsletter: Locals 'never seen nothing like' hulking Meta data center - Fox News",
+      "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxQeUkyNDUtWHFzQWRfNjRxV3BHNEE2aUNKdVJtWG52aFJ1X0hlV0V2QjVDYTVGRmJlYnBlX2t4Xy10YkpIaUJLNi1FUWhIQnBDOXRGbzFiaVVza1lnN3hPZmpQeEg2SVpqdFF2d1hwVVVycHQ0bk5INHNZQ0hNcVN3dlRiN21QZGZ6aWc1eURVaFJmb3g2MlVFNms5NjZmY2fSAaQBQVVfeXFMTXFMemdJX19IYXU0Vk1KaFFZZ1oxUUl0TWFIbzJRWWY1U05qTi1aaENlc2ZReW1za2ZBU0I0WTBITnY2RVhxYm9scXN1UXhNYk1tVVprdzFEWjVwRnlfdXJiQzNoVEQ2SXUtUkdjcml2YWVPYzY0SU5KRExqLTdlQUZtMEIwaWF1Zjg0VEZMQzRjekpEQ2NjSWc4SlNULXBmQ3A3RXQ?oc=5",
+      "published": "Fri, 27 Nov 2026 19:10:21 GMT",
+      "title_zh": "Meta巨型數據中心驚動當地居民",
+      "impact": "Meta擴大AI基礎設施投資，利好相關硬體供應鏈。",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "📊 巨頭財報",
+      "title": "As Google threatens to cut schools’ search access, LAUSD blocks AI features - Los Angeles Daily News",
+      "url": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxObTRYaV83SkpNdDBlaEpKY0VmdmdNMjRXUVp6YmFzelhmREZJWlM1Wm1CWVYyVGpqSHlVTVE5WWlQMEFqYTRrMV9HWUFGbGRWWUtrYzViR29NUEU5Tmx1X2VMaDYxLU1JQnJRSllqd1NFSFdNYk9uLWdsMS1wRV8wYjR0TGowRVV5dmUzMkZhWGFYYXZDTHNzUU1Wa1RocHdsdHlmZ0JCeWhCcFRxblFPVlBXUnd5dC1o?oc=5",
+      "published": "Fri, 27 Nov 2026 19:09:24 GMT",
+      "title_zh": "谷歌威脅削減學校搜索權限，洛杉磯公立學校封鎖AI功能",
+      "impact": "此事件顯示科技巨頭與教育機構間的監管與商業摩擦加劇，可能影響",
+      "impact_level": "neutral"
     },
     {
       "source": "🔥 停產事故",
@@ -16,7 +43,7 @@
       "url": "https://news.google.com/rss/articles/CBMi_AFBVV95cUxPa2tlb0VZSGF4Q2lwdm5GNU1SX19jVW9BZmxsLTFmVDZ2UmNGX3JhUWVPNjlLcUJWbDlmY2tFYjc4UDN5MVVOcFViNW5WRkhtTHU2Mjl4dVkzbGJfQllTZGxoUFkzaEFKN3Z6SFNMMFczMElPM1VxM0o2TUlfOGtPcURGNmNYemYxNnRwMjVXNHQ2eVhOYUlfelhta0hIUzlpNmlPVU1FVXFnbVdUenoyR2o1aElSQXFJREVwX0J4VGZuS2MtaUc2N01BM29QbURZSWxRMFVZNlpQTzZEN3A1aWNqcDhtRlVHbWNUUHo2akFWQ1M5Q2dYQlYyVlo?oc=5",
       "published": "Fri, 27 Nov 2026 19:06:04 GMT",
       "title_zh": "曼谷煉油廠爆炸，發布安全警告",
-      "impact": "事件發生於泰國，對台股的直接影響極小，市場情緒維持中性。",
+      "impact": "事件發生於泰國，對台股的直接影響極小，市場反應中性。",
       "impact_level": "neutral"
     },
     {
@@ -24,8 +51,8 @@
       "title": "Crews use sand to contain fire at Benton Harbor aluminum plant - WNDU",
       "url": "https://news.google.com/rss/articles/CBMihwFBVV95cUxQTzFfNnBmVDVqVlJmZ0dRbG9zUWdfcDRwYjdtemtqS244Uk5LT1M3VV95YTN5b0docnRoZXE1RzhfdGNEMDV2N19KQ2tiNDFOU3FZZW9iS2dWeVg0Q1VhN0F5MWZtUERZLWpDWnhCTy1SdWFGaGdtdEw2MGpOeENLWEJ5a1BwcTA?oc=5",
       "published": "Fri, 27 Nov 2026 19:04:00 GMT",
-      "title_zh": "班頓港鋁廠火災，消防隊用沙控制火勢",
-      "impact": "單一工廠火災對全球鋁價影響有限，對台股影響中性。",
+      "title_zh": "賓頓港鋁廠火災，消防隊用沙控制火勢",
+      "impact": "單一工廠火災對整體市場影響極小，但可能短暫推高鋁價，對相關供",
       "impact_level": "neutral"
     },
     {
@@ -33,63 +60,36 @@
       "title": "What happens when the AI construction boom lands in one of Spain’s driest regions? - NPR",
       "url": "https://news.google.com/rss/articles/CBMiwwFBVV95cUxPNXc0dnFQdmxBZFcwZVU4SFVHV1ZLNEV1Y0pBcXFkZjRLYmlQZVZ4Rzc2UUhDM2RaVnRuWEh0a3FkOW1HZ0VqTXdwcG5vLXpxSUMzNjJMM2VXT2VoN1hHSzZQLXlVbHBlbnRsNjJ4amdkOGp3ZU45LXZGY29vMlVNSzVuRUN5a0NaWklzdHpseXBiQnR3XzR6NEZyeEdsWWQ5TlNmTGxWWjhCTzAzYS01Qk01YlBzU3k1YXRWeWJkSHZFYjQ?oc=5",
       "published": "Fri, 27 Nov 2026 19:00:00 GMT",
-      "title_zh": "西班牙乾旱區AI建設潮",
-      "impact": "此新聞主要關注歐洲基礎設施與環境議題，與台股關聯性極低，無直",
+      "title_zh": "西班牙乾旱地區AI建設潮",
+      "impact": "此新聞聚焦歐洲基礎設施建設，與台股關聯性極低。",
       "impact_level": "neutral"
     },
     {
-      "source": "🌍 地緣突發",
-      "title": "Zelenskyy urges US to pressure Putin and questions Trump’s reference to Putin as a ‘friend’ - AP News",
-      "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxOZHZncjd6TjJOQy1tZVlWUVowZ0hBY2NWMjN2d1k3WXdzUlB4VUdlbl9kMDdLTnZ2bzY5eGlZUGFNSEQxYVNCaVNRYWlBTkZneUxoZm5ub1Q2MVd3QjFza1BJWWhiWEQ2Tk1aUE1jVlByV0h6NldmUC1NOUQ5WW5ka3pqdUFwaXI1SEd4VzNzUGNoZ2c5WG5Yd3dFeWpyY0taN3c?oc=5",
-      "published": "Fri, 27 Nov 2026 18:47:00 GMT",
-      "title_zh": "澤倫斯基籲美施壓普丁 質疑川普稱其為友",
-      "impact": "地緣政治緊張加劇可能引發市場避險情緒，對台股構成輕微利空。",
-      "impact_level": "bearish"
+      "source": "日股半導體",
+      "title": "Japan auto parts makers lose global lead as China drives EV transition - Nikkei Asia",
+      "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxOUUdiWjlibS1rUXppekgtRl9ybkFQdElTZEVCdGFydU0xdjZjZVZaRERDV184REVObG5LMVU3TnRISkdnOVF1ZllOWHp3VHlkblAyYW5tYzBTcDduNE1BRzBxN1dubUQ4V2xMNkNNMUFjMGF1WERJdFJmUlU2WU80NTBoUXNHcFhVZEpzby1qUnhlMndham5ZS1c3VkJMQkxULWNGdktMSzF4YWFDVlJQUHdtRzZhdw?oc=5",
+      "published": "Fri, 27 Nov 2026 18:43:00 GMT",
+      "title_zh": "中國電動車崛起 日零組件廠失全球優勢",
+      "impact": "日本汽車零組件產業競爭力下降可能影響相關供應鏈，對台股影響有",
+      "impact_level": "neutral"
     },
     {
       "source": "🌍 地緣突發",
       "title": "Ukraine war latest: Ukraine hits missile fuel production facility in Russia's Tula Oblast, military says - The Kyiv Independent",
       "url": "https://news.google.com/rss/articles/CBMiygFBVV95cUxNV2xOLTBrY2RGTDJZRjBfVWlIemJMQmh5SzRKWkhIdXkyeEVRbUc0R1RWR2FLek9rYjgwR2FPcUJ2Qjd2LXV6eDVRd19VUjVpT2xWTVc5S1RtUjNhWUo4OUtKSkZTcGlWTTJscTlWeDdQMDNyT1ZaRFlDcW1vVHBST0ZTZGt5a0ZiU1psZVN4ZVFTMlh4dm9ZRlRMbUc5WW5uZDk2RjdBMjNjakYxSF9felcyV25udkdtSlhvcmNuaGRLU3ZldHN3ZW1n?oc=5",
       "published": "Fri, 27 Nov 2026 18:36:27 GMT",
-      "title_zh": "烏軍打擊俄圖拉州彈藥廠",
-      "impact": "地緣政治風險升溫可能引發市場避險情緒，對台股構成短期壓力。",
+      "title_zh": "烏軍襲擊俄圖拉州導彈燃料廠",
+      "impact": "地緣政治風險升溫，市場避險情緒增加，不利台股。",
       "impact_level": "bearish"
-    },
-    {
-      "source": "Musk Tesla",
-      "title": "Elon Musk to End Cybertruck: Used Demand for Tesla EV Picks Up - Benzinga",
-      "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxPUEJZSFpnN3NScnhxNllFMzVoVUltSUVKYXV3WkFGZ0lwbnZOOUlvOWNmSnRhd1JLanRDaEJieUJvNWZPbFhuQnFmeDIzazQtV0JYQ3RNeldld0FvN2RMX1JzTVhZbkRxUHpUQUhIV2xkbDFLZUI2UlotaW1lRUJ1SUhqbjhUd0tpbEI3WFRRaTZsdXZzVURuejJCWndheXNLNmZVMWxRNWFuT2VhY2NWbzUwWmJwTWF3MGp6dUp0VkIxeWVn?oc=5",
-      "published": "Fri, 27 Nov 2026 18:17:46 GMT",
-      "title_zh": "馬斯克終止Cybertruck，二手車需求升",
-      "impact": "馬斯克宣布終止Cybertruck生產，市場聚焦於特斯拉二手",
-      "impact_level": "bullish"
     },
     {
       "source": "日股半導體",
       "title": "Japan's Nikkei Stock Average Jumps 1,211 Points to 58,711 on AI, Semiconductor Stock Leadership, Rising for Second Day - BigGo Finance",
       "url": "https://news.google.com/rss/articles/CBMidkFVX3lxTFBXS3hONmU2V2YzQUgxb0dyeHE5ZHR0QURGSlMxX1dpWUpyTzVXRmVESjM0Q1ZIcmxPcnZvTnh4ajNKZ182MXBBY0JwTFJfbUZmbkJaNzIza01iZ1llUEdjamZCdWFVcGd4WHZCZG4wNF9Yb3ZOVVE?oc=5",
       "published": "Fri, 27 Nov 2026 18:15:00 GMT",
-      "title_zh": "日經指數漲1211點，AI半導體領漲",
-      "impact": "日股AI與半導體領漲，反映全球科技板塊強勁動能，有利台股相關",
+      "title_zh": "日經指數AI半導體領漲連兩日上攻",
+      "impact": "日股AI與半導體領漲，帶動全球科技股情緒，利好台積電等相關個",
       "impact_level": "bullish"
-    },
-    {
-      "source": "Musk Tesla",
-      "title": "Elon Musk is giving away nearly $18 billion in SpaceX stock. Here’s who can get it - Fast Company",
-      "url": "https://news.google.com/rss/articles/CBMitwFBVV95cUxQUzl0ZkkwR2o3WHFrQXp5MkRZV3YyNUZpMFNteEtVVzBZWHo3bnRvdENiX0RpVkotdVlwdzNpSWNabnNMeDFfR1BYckZTVmlvdGVtMXNlTFNid0lMMl9VZF9nZUZSYzh1WFk5TFBfOE0zSDRzZGVJaTdpRWF6RnFWenRuLW5EU3oxSFFFSm9wSy1ITjJ1bU9iQkxNWG9KVUNkUFNCV0tPdUliYndIcVhBbTNjaDhISUU?oc=5",
-      "published": "Fri, 27 Nov 2026 18:12:56 GMT",
-      "title_zh": "馬斯克贈送180億SpaceX股票",
-      "impact": "此事件主要影響美股，對台股無直接顯著影響。",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "🏢 雲端巨頭",
-      "title": "Los Angeles schools switch off Google’s AI Overviews on student laptops - The Next Web",
-      "url": "https://news.google.com/rss/articles/CBMiigFBVV95cUxQZUhHTWpvci1sSl95WTk3TGh5NGRYX1lvcDladTkweTNsWHNCbUZ5b3lRdURIUlhOOHhHN2tOZmE2YUlYOTdoWVFJQzFkUU9nb1pkcWtSZ3BUdVVxeWhTWVRzYUJzU2NEZnlZOUVPbUVtR213b1VoRmp5T2FvcFNCSXBEbnhqS3o2b2c?oc=5",
-      "published": "Fri, 27 Nov 2026 18:00:52 GMT",
-      "title_zh": "洛杉磯學校停用學生筆電上的Google AI功能",
-      "impact": "顯示教育市場對AI整合的保守態度，可能影響相關科技公司的長期",
-      "impact_level": "neutral"
     }
   ]
 }
