@@ -204,6 +204,8 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 - Cloudflare 免費版 cron 只能 **5 個**,目前 **5 個全部用滿**(見 `wrangler.toml` 的 `[triggers]`)
 - ⭐ 所以新功能一律**掛在既有 cron 的 handler 裡**(`worker.js` 的 `scheduled()` 依 `event.cron` 分流),
   ⛔ 別想再加第 6 個 —— 加了不會生效而且沒有錯誤訊息
+- 🧊 V82.7.1 要多一個時間點:在既有那條**加分鐘**(一條排程多個分鐘不算第 6 條)——
+  `"0,10 0 * * MON-FRI"` = 台北 08:00 叫醒 / 推播、08:10 只發盤前簡報(等早上那份凍結好,`_preBriefSlot` 看排定時間的分鐘)
 
 ### deploy_worker.yml 失敗
 - 確認 `CLOUDFLARE_API_TOKEN` 已加到 GitHub Secrets

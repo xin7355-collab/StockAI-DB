@@ -7,10 +7,11 @@
  *   ① wrangler.toml 的 crons == worker.js 的 CRON(一字不差 —— Cloudflare 傳進來的 event.cron 就是那串原文)
  *   ② 每一條的星期欄 ⛔ 不可有數字(只准 SUN~SAT 英文縮寫)
  *   ③ 照 Cloudflare 的規則算 → 每一條都是週一~週五(⭐ 決定性對照:舊的 "1-5" 用同一個算法 = 週日~週四 → 必須被判錯)
- *   ④ 每一條的分 / 時 = 用途(08:00 盤前・09:00 開盤・17:00 盤後・盤中每 15 分・13 點末班)
+ *   ④ 每一條的分 / 時 = 用途(08:00 叫醒 + 08:10 盤前簡報・09:00 開盤・17:00 盤後・盤中每 15 分・13 點末班)
  *   ⑤ 真的呼叫 scheduled():台北週五每一條都有做事;週六 / 週日一律不做
- *   ⑥ 分支內容:17:00 叫醒採礦 + 週報、08:00 盤前簡報 + 換倉 + 總經 + 盤中快照、09:00 ETF + 逐筆、其他 = 盤中掃描 + 看門狗
- * 注入:INJECT=numeric(wrangler 改回 1-5)/ noguard(拿掉週末保險)/ mismatch(只改 wrangler 的大小寫)—— 都要紅
+ *   ⑥ 分支內容:17:00 叫醒採礦 + 週報、08:00 換倉 + 大跌 + 總經 + 作戰清單 + 盤中快照、🧊 08:10 只發盤前簡報、09:00 ETF + 逐筆、其他 = 盤中掃描 + 看門狗
+ * 注入:INJECT=numeric(wrangler 改回 1-5)/ noguard(拿掉週末保險)/ mismatch(只改 wrangler 的大小寫)
+ *       / brief0800(盤前簡報搬回 08:00)/ all0810(08:10 那輪什麼都做)—— 都要紅
  */
 import fs from 'fs';
 import path from 'path';
@@ -23,6 +24,9 @@ const inject = (src, a, b) => { const out = src.split(a).join(b); if (out === sr
 if (INJ === 'numeric') T = inject(T, 'MON-FRI"', '1-5"');
 if (INJ === 'noguard') W = inject(W, 'if (wd === 0 || wd === 6) return;\n        if (event.cron', 'if (event.cron');
 if (INJ === 'mismatch') T = inject(T, '"0 9 * * MON-FRI"', '"0 9 * * mon-fri"');
+// 🧊 V82.7.1 08:10 那輪只發盤前簡報:搬回 08:00(08:00 那則一定趕不上凍結)/ 08:10 什麼都做(👑 推兩次、再叫一次總經、砍掉盤中迴圈)
+if (INJ === 'brief0800') W = inject(W, 'if (_preBriefSlot(event.scheduledTime)) {\n                ctx.waitUntil(runPreMarket(env));\n                return;\n            }\n', 'ctx.waitUntil(runPreMarket(env));\n');
+if (INJ === 'all0810') W = inject(W, '                ctx.waitUntil(runPreMarket(env));\n                return;\n', '                ctx.waitUntil(runPreMarket(env));\n');
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + String(e).slice(0, 300)}`); if (!c) fails.push(n); };
 
@@ -72,7 +76,8 @@ for (const c of TOML_CRONS) {
 
 // ④ 分 / 時 = 用途
 const mh = c => String(c || '').trim().split(/\s+/).slice(0, 2).join(' ');
-ok('④ CRON.pre = 台北 08:00(UTC 0:00)', mh(CRON.pre) === '0 0', CRON.pre);
+ok('④ CRON.pre = 台北 08:00 + 08:10(UTC 0:00 / 0:10;🧊 V82.7.1 一條排程兩個分鐘)', mh(CRON.pre) === '0,10 0', CRON.pre);
+ok('④g 08:10 那輪認得出來(排定時間的分鐘 ≥ 5)、08:00 不是', M._preBriefSlot && M._preBriefSlot(Date.parse('2026-10-23T00:10:00Z')) === true && M._preBriefSlot(Date.parse('2026-10-23T00:00:00Z')) === false);
 ok('④b CRON.open = 台北 09:00(UTC 1:00)', mh(CRON.open) === '0 1', CRON.open);
 ok('④c CRON.eve = 台北 17:00(UTC 9:00)', mh(CRON.eve) === '0 9', CRON.eve);
 ok('④d CRON.scan = 台北 09:00~12:45 每 15 分', mh(CRON.scan) === '0,15,30,45 1-4', CRON.scan);
@@ -92,13 +97,15 @@ async function fire(cron, iso) {
   } finally { console.log = origLog; console.error = origErr; console.warn = origWarn; }
   return ps.length;
 }
-const EXPECT = { eve: 2, open: 2, pre: 6, scan: 2, last: 3 };   // 📉 V82.0.0 pre 多一件:大跌事件 / 大跌撿便宜(runCrashDipPush);📲 V82.0.5 pre / last 各多一件:Telegram 準時叫醒(tgKick)
+const EXPECT = { eve: 2, open: 2, pre: 5, scan: 2, last: 3 };   // 📉 V82.0.0 pre 多一件:大跌事件 / 大跌撿便宜(runCrashDipPush);📲 V82.0.5 pre / last 各多一件:Telegram 準時叫醒(tgKick);🧊 V82.7.1 盤前簡報搬去 08:10 那輪(pre 6 → 5)
 const FRI = { pre: '2026-10-23T00:00:00Z', open: '2026-10-23T01:00:00Z', scan: '2026-10-23T02:15:00Z', last: '2026-10-23T05:15:00Z', eve: '2026-10-23T09:00:00Z' };
 for (const k of Object.keys(EXPECT)) {
   const n = await fire(CRON[k], FRI[k]);
   ok(`⑤ 台北週五 ${k} 那一輪有做事(${EXPECT[k]} 件)`, n === EXPECT[k], `做了 ${n} 件`);
 }
-for (const [lab, iso] of [['週六 08:00', '2026-10-24T00:00:00Z'], ['週日 08:00', '2026-10-25T00:00:00Z'], ['週日 10:15', '2026-10-25T02:15:00Z'], ['週六 17:00', '2026-10-24T09:00:00Z']]) {
+// 🧊 V82.7.1 08:10 那輪:只發盤前簡報(1 件);⛔ 換倉 / 大跌 / 叫醒總經 / 作戰清單 / 盤中快照不可再跑一次
+{ const n = await fire(CRON.pre, '2026-10-23T00:10:00Z'); ok('⑤c 台北週五 08:10 那一輪只做 1 件(盤前簡報)', n === 1, `做了 ${n} 件`); }
+for (const [lab, iso] of [['週六 08:00', '2026-10-24T00:00:00Z'], ['週六 08:10', '2026-10-24T00:10:00Z'], ['週日 08:00', '2026-10-25T00:00:00Z'], ['週日 10:15', '2026-10-25T02:15:00Z'], ['週六 17:00', '2026-10-24T09:00:00Z']]) {
   let n = 0;
   for (const k of Object.keys(EXPECT)) n += await fire(CRON[k], iso);
   ok(`⑤b 台北${lab}:五條排程一件事都不做(雙保險)`, n === 0, `做了 ${n} 件`);
@@ -113,7 +120,11 @@ const bPre = br('} else if (event.cron === CRON.pre)', '} else {');
 const bElse = br('} else {', '\n    },');
 ok('⑥ 17:00:盤後總結 + 叫醒每日採礦', /runDailySummary\(env\)/.test(bEve) && /minerKick\(env\)/.test(bEve), bEve.slice(0, 200));
 ok('⑥b 09:00:ETF 跟單 + 叫醒逐筆', /runEtfFollowMorningPush\(env\)/.test(bOpen) && /ghDispatch\(env, 'intraday-ticks'\)/.test(bOpen), bOpen.slice(0, 200));
-ok('⑥c 08:00:盤前簡報 + 換倉 + 總經 + 盤中快照 + Telegram 作戰清單', ['runPreMarket(env)', 'runLeaderRebalPush(env)', 'macroKick(env)', "ghDispatch(env, 'intraday-quotes')", "tgKick(env, 'list'"].every(x => bPre.includes(x)), bPre.slice(0, 200));
+// 🧊 V82.7.1 pre 分支 = 「08:10 那段(只有盤前簡報 + return)」+「08:00 那段(其他五件)」
+const _bi = bPre.indexOf('if (_preBriefSlot(event.scheduledTime)) {'), _bj = _bi < 0 ? -1 : bPre.indexOf('return;', _bi);
+const bBrief = _bi < 0 || _bj < 0 ? '' : bPre.slice(_bi, _bj), bKick = _bj < 0 ? '' : bPre.slice(_bj);
+ok('⑥c 08:00:換倉 + 大跌 + 總經 + 盤中快照 + Telegram 作戰清單', ['runLeaderRebalPush(env)', 'runCrashDipPush(env)', 'macroKick(env)', "ghDispatch(env, 'intraday-quotes')", "tgKick(env, 'list'"].every(x => bKick.includes(x)), bKick.slice(0, 200));
+ok('⑥c2 🧊 08:10:只有盤前簡報(runPreMarket 只在 08:10 那段、08:00 那段 ⛔ 再發一次)', /runPreMarket\(env\)/.test(bBrief) && (bBrief.match(/ctx\.waitUntil\(/g) || []).length === 1 && !/runPreMarket\(env\)/.test(bKick), bBrief.slice(0, 200));
 ok('⑥d 其他(盤中):個人警報 + 看門狗', /runScan\(env\)/.test(bElse) && /intradayWatchdog\(env\)/.test(bElse), bElse.slice(0, 200));
 ok('⑥d2 盤中末班(13:15 那輪)叫醒 Telegram 尾盤買點(tgKick 只在 CRON.last 呼叫)', /if \(event\.cron === CRON\.last\) ctx\.waitUntil\(tgKick\(env, 'eod'/.test(bElse), bElse.slice(0, 300));
 ok('⑥e ⛔ 分流不可再寫死字串(一律 CRON.xxx,改排程只改一處)', !/event\.cron === '/.test(S.slice(0, S.indexOf('\n    },'))));

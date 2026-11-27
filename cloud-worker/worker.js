@@ -170,7 +170,7 @@ function tplChu5MA(label, sym, price, ma5, volRatio) {
 
 // 🗑️ V79.3.5 `tplBlackswan`(「持股減 50% / 1/3、別接刀」)已刪 —— 觸發它的只是「今天 / 明天有重大事件」,
 //   calendar_stock_probe:37 種行事曆日方向 0 個成立;crash_warn_probe:沒有一種大盤警示過關。
-//   重大事件改在 08:00 盤前簡報裡當一行描述(`premarketEventLine`),⛔ 不另發、⛔ 不給部位指令。
+//   重大事件改在盤前簡報(🧊 V82.7.1 起 08:10)裡當一行描述(`premarketEventLine`),⛔ 不另發、⛔ 不給部位指令。
 
 // 🗑️ V80.0.9 `tplAttention`(處置股「雙刀流:出獄前低接 / 出獄當日反向放空」)已刪 —— 沒有呼叫端;
 //   App V78.4.3 處置 / 注意股只講三件事:⛔ 看不出之後會漲會跌・手上的照出場規則走・⛔ 別用市價單。
@@ -310,7 +310,7 @@ async function minerKick(env, now = Date.now(), fetchFn = fetch, dispatchFn = gh
 // 🌅 V79.3.4 盤前體檢以前永遠拿「美股盤中」的數字 —— macro_cron 自己的 cron 從來進不來,
 //   跟車的那幾支都在台北下午到半夜 → 美股收盤後到台股開盤前一輪都沒有。
 //   ⭐ 台北 08:00 那一輪:平日、gh-pages 的 macro_risk 還停在「最近一次美股收盤」之前 → 發 `macro-cron`
-//   ⛔ 已經是收盤後的就不發(不重複跑)
+//   ⛔ 已經是收盤後的、而且今天早上那份已經凍結(🧊 V82.7.1)就不發(不重複跑)
 // 最近一次美股收盤(紐約 16:00,夏令 = 20:00 UTC、冬令 = 21:00 UTC)的 UTC 毫秒;⛔ 沒管美國假日(只差一天早上多跑一次)
 function _lastUsCloseMs(now = Date.now()) {
     const fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' });
@@ -329,19 +329,23 @@ function _twStampMs(raw) {
     const m = String(raw || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
     return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - 8 * 3600e3 : null;
 }
+// 🧊 V82.7.1 多一個叫醒條件:今天早上那份還沒凍結(premktFrozen === null)也叫 ——
+//   夏令時間美股 04:00(台北)就收盤:04:00~04:59 跑的那輪算「收盤後」,但在 05:00 寫入時間之前 → 以前判 fresh 不叫,整天沒有凍結;
+//   凍結那一步失敗的日子也靠這條補一次(那輪在 05:00~08:59 裡 → macro_miner 重寫今天那筆 → forecast_freeze 再凍一次)。
+//   ⛔ 讀不到 macro_risk → 照發(同以前)。
 async function macroKick(env, now = Date.now(), fetchFn = fetch, dispatchFn = ghDispatch) {
     if (!env.GH_DISPATCH_TOKEN) return { sent: false, why: 'no-token' };
     const wd = new Date(now + 8 * 3600e3).getUTCDay();
     if (wd === 0 || wd === 6) return { sent: false, why: 'weekend' };
     const close = _lastUsCloseMs(now);
-    let upd = null;
+    let upd = null, frozen = false;
     try {
         const r = await fetchFn(`${GH_PAGES_BASE}/data/macro_risk.json?t=${now}`);
-        if (r && r.ok) upd = _twStampMs((await r.json())?.updated);
-    } catch (_) { upd = null; }
-    if (upd && close && upd >= close) return { sent: false, why: 'fresh', upd, close };
+        if (r && r.ok) { const j = await r.json(); upd = _twStampMs(j?.updated); frozen = !!premktFrozen(j, now); }
+    } catch (_) { upd = null; frozen = false; }
+    if (upd && close && upd >= close && frozen) return { sent: false, why: 'fresh', upd, close, frozen };
     const r = await dispatchFn(env, 'macro-cron');
-    return { sent: !!(r && r.ok), why: r && r.why, upd, close };
+    return { sent: !!(r && r.ok), why: r && r.why, upd, close, frozen };
 }
 
 // 📲 V82.0.5 Telegram「今天的作戰清單」(台北 08:00)與「尾盤買點」(13:15)改由這裡準時叫醒 tg_push.yml
@@ -386,7 +390,7 @@ export async function tgKick(env, kind, now = Date.now(), fetchFn = fetch, dispa
     return { sent: !!(r && r.ok), why: r && r.why, strat, nx };
 }
 
-const WORKER_VER = 'V23.0 (2026-11-07)';   // 📲 08:00 / 13:15 準時叫醒 Telegram 作戰清單 / 尾盤買點(tgKick);V22.9 📉 08:00 大跌事件 / 大跌撿便宜;V22.8 盤中推播只描述(⛔ 進場 / 目標價 / 低接 / 鎖利);V22.7 排程星期欄 1-5 → MON-FRI
+const WORKER_VER = 'V23.1 (2026-11-27)';   // 🧊 盤前簡報改 08:10 發(等早上那份凍結好,同 App 盤前頁那一句)+ 今天還沒凍結也叫醒總經;V23.0 📲 08:00 / 13:15 準時叫醒 Telegram 作戰清單 / 尾盤買點(tgKick);V22.9 📉 08:00 大跌事件 / 大跌撿便宜;V22.8 盤中推播只描述(⛔ 進場 / 目標價 / 低接 / 鎖利);V22.7 排程星期欄 1-5 → MON-FRI
 const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
 
 // 🗓️ V22.7 排程(⛔ 要跟 wrangler.toml 的 crons 一字不差 —— Cloudflare 傳進來的 event.cron 就是那串原文)
@@ -396,14 +400,17 @@ const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才�
 const CRON = {
     scan: '0,15,30,45 1-4 * * MON-FRI',   // 台北 09:00~12:45 每 15 分:盤中個人警報 + 看門狗
     last: '0,15,30 5 * * MON-FRI',        // 台北 13:00 / 13:15 / 13:30:盤中末班
-    pre:  '0 0 * * MON-FRI',              // 🌅 台北 08:00 盤前簡報 + 👑 換倉推播 + 叫醒總經 / 盤中快照
+    pre:  '0,10 0 * * MON-FRI',           // 🌅 台北 08:00 👑 換倉推播 + 大跌 + 叫醒總經 / 作戰清單 / 盤中快照;08:10 盤前簡報(🧊 V82.7.1 等早上那份凍結好)
     open: '0 1 * * MON-FRI',              // 台北 09:00 開盤:ETF 跟單 + 叫醒逐筆內外盤
     eve:  '0 9 * * MON-FRI',              // 🌆 台北 17:00 盤後總結 + 叫醒每日採礦
 };
 // 台北的星期幾(0 = 週日);排程時間點優先用 Cloudflare 給的 scheduledTime
 function _twWeekday(ms) { return new Date((Number(ms) || Date.now()) + 8 * 3600e3).getUTCDay(); }
+// 🧊 V82.7.1 CRON.pre 一條排程兩個分鐘(同 scan 那條的寫法,⛔ 不算第 6 條):分鐘 ≥ 5 = 08:10 那輪(只發盤前簡報)
+//   Cloudflare 的 scheduledTime 是「排定的時間」(⛔ 不是實際開始跑的時間)→ 分鐘就是 0 或 10;沒給就看現在
+function _preBriefSlot(ms) { return new Date(Number(ms) || Date.now()).getUTCMinutes() >= 5; }
 
-export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs, CRON, _twWeekday, buildWeekBlock, runPreMarket };   // crashDipLines / crashEvLine 在定義處 export
+export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs, CRON, _twWeekday, _preBriefSlot, buildWeekBlock, runPreMarket };   // crashDipLines / crashEvLine 在定義處 export
 export default {
     async fetch(request, env, ctx) {
         if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -438,7 +445,7 @@ export default {
     async scheduled(event, env, ctx) {
         // cron 排程分流(UTC → 台北 +8),五條排程與用途見上面的 CRON。
         // 🧹 V22 精簡:砍掉「隔夜美股戰報」「午盤戰報」兩則長篇廣播(使用者反映沒用),
-        //   只留「盤前精選(08:00)」「盤後精選(17:00)」+ 開盤掃 + 盤中個人警報。
+        //   只留「盤前精選(08:00;🧊 V82.7.1 起 08:10)」「盤後精選(17:00)」+ 開盤掃 + 盤中個人警報。
         // 🗓️ V22.7 雙保險:這支只做交易日的事 → 台北週六 / 週日一律不做
         //   (萬一哪天星期欄又寫回數字,至少不會在週末推播、叫醒採礦)。⚠️ 要加週末排程的話,寫在這行之前。
         const wd = _twWeekday(event.scheduledTime);
@@ -453,10 +460,16 @@ export default {
             // 🚀 逐筆內外盤的窗口是 09:03 起 → 用台北 09:00 這一輪叫它(⛔ 別跟 quotes 同一輪發)
             ctx.waitUntil(ghDispatch(env, 'intraday-ticks'));
         } else if (event.cron === CRON.pre) {
-            ctx.waitUntil(runPreMarket(env));      // V21.4 盤前簡報(台北 08:00)
+            // 🧊 V82.7.1 08:10 那輪只發盤前簡報(V21.4):要等 08:00 叫醒的 macro_cron 把 App 盤前頁那一句凍結好
+            //   (最近 15 次 3~5 分鐘跑完 + 網站部署約 1.5 分;還沒好照舊寫「看 App 盤前頁」)。
+            //   ⛔ 下面那幾件不可在 08:10 再跑一次:👑 換倉會推兩次、會再叫一次 macro_cron、會把盤中快照的主迴圈砍掉重來。
+            if (_preBriefSlot(event.scheduledTime)) {
+                ctx.waitUntil(runPreMarket(env));
+                return;
+            }
             ctx.waitUntil(runLeaderRebalPush(env));   // 👑 V77.9.6 選 👑 的人:換倉日「今天開盤買 / 賣哪幾檔」
             ctx.waitUntil(runCrashDipPush(env));      // 📉 V82.0.0 大跌事件 / 大跌撿便宜(只在有事的日子發一則)
-            ctx.waitUntil(macroKick(env));   // 🌅 V79.3.4 總經資料還停在美股收盤前 → 叫醒 macro_cron(盤前體檢)
+            ctx.waitUntil(macroKick(env));   // 🌅 V79.3.4 總經資料還停在美股收盤前(🧊 V82.7.1 或今天早上那份還沒凍結)→ 叫醒 macro_cron(盤前體檢)
             ctx.waitUntil(tgKick(env, 'list', event.scheduledTime || Date.now()));   // 📲 V82.0.5 Telegram「今天的作戰清單」(擁有者選 👑 不派)
             // 🚀 順便把盤中快照的主迴圈叫起來(GitHub 排程實測整天不進來,見上面那段)。
             //    ⭐ 08:00 發沒問題 —— `intraday_window.py` 會自己 SLEEP 到 08:45 那一拍。
@@ -1560,7 +1573,7 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
     const invAlerts = [];   // 💼 V21.4 — 庫存盤中觸發彙總(-5%/跌破5MA/+20%),結尾合成「一則」發送(不一檔一則轟炸)
     const huntAlerts = [];  // 🎯 V21.4 — 獵殺清單盤中買點(帶量站上5MA)彙總,結尾合成「一則」
 
-    // 🔕 V79.3.5 重大事件 ⛔ 不再單獨推(舊版附「持股減 1/3」)→ 改在 08:00 盤前簡報當一行描述(premarketEventLine)
+    // 🔕 V79.3.5 重大事件 ⛔ 不再單獨推(舊版附「持股減 1/3」)→ 改在盤前簡報(🧊 V82.7.1 起 08:10)當一行描述(premarketEventLine)
 
     for (const sym of symbols) {
         const stock = falconMap.get(sym) || { sym };
@@ -2471,8 +2484,8 @@ function buildDailyPrompt(rawSummary, user) {
 
 // 🗑️ V80.0.9 `runOvernightUS`(05:00 隔夜美股戰報)已刪 —— V22 起沒排程;裡面點名個股「順勢買 2330 / 2454」、「減碼追蹤,別接刀」都沒回測過。
 
-// 🌅 08:30 台北 — 盤前簡報
-// 🧊 V82.7.0 08:00 盤前簡報的「今天開高 / 開低」改成跟 App 盤前頁同一個結論(使用者 11/26 選「改成跟 App 同一個結論」)
+// 🌅 台北 08:10 — 盤前簡報(🧊 V82.7.1 從 08:00 挪到 08:10:08:00 那輪才叫醒 macro_cron,凍結 08:04 左右才上網站 → 08:00 那則一定趕不上)
+// 🧊 V82.7.0 盤前簡報的「今天開高 / 開低」改成跟 App 盤前頁同一個結論(使用者 11/26 選「改成跟 App 同一個結論」)
 //   macro_cron 每天早上(台北平日 05:00~08:59)用 index.html 真的函式算好、凍結在 macro_risk.premkt_recent[今天].out
 //   (scripts/forecast_freeze.mjs + macro_miner.py --attach)→ 這裡只讀,⛔ 另算一套。
 //   今天那筆有凍結 → 照 App 的字 + 燈號 + 分數(🔴 開高偏多 / 🟢 開低偏空 / 🟡 中性震盪,同 App renderMarketBriefing)
@@ -2563,7 +2576,7 @@ async function runPreMarket(env) {
 
                 // 🌅 V21.4 — 精簡:方向一句話 + 每項一行(使用者要「簡單講重點」)
                 const text = [
-                    `🌅 *盤前簡報* _${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })} 台北08:00_`,
+                    `🌅 *盤前簡報* _${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })} 台北08:10_`,
                     SEP,
                     callLine,
                     macro ? `🇺🇸 SP500 ${macro.sp500_chg_pct >= 0 ? '+' : ''}${macro.sp500_chg_pct?.toFixed(2)}% / NASDAQ ${macro.nasdaq_chg_pct >= 0 ? '+' : ''}${macro.nasdaq_chg_pct?.toFixed(2)}% / VIX ${macro.vix?.toFixed(1)}` : '',

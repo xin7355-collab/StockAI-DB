@@ -114,7 +114,7 @@ def _tpe_now():
 
 
 # 🧊 V82.7.0 大盤方向改讀 App 盤前頁「當天早上凍結的那一句」(macro_risk.premkt_recent[今天].out ——
-#   macro_cron 早上用 index.html 真的函式算好凍結,scripts/forecast_freeze.mjs;worker 08:00 盤前簡報讀同一份 `premktFrozen`)。
+#   macro_cron 早上用 index.html 真的函式算好凍結,scripts/forecast_freeze.mjs;worker 盤前簡報(🧊 V82.7.1 起 08:10 發)讀同一份 `premktFrozen`)。
 #   🗑️ 舊的簡化版(標普 / 那斯達克 / VIX、門檻 ±2)拿掉:跟 App 會講相反(EXP-20261123-03),而且是第二份算法(陷阱 #37)。
 #   今天那筆還沒凍結 / 已經過了 09:00(開盤那一刻已經過了)→ ⛔ 講任何開高 / 開低,只指路 App。
 #   對策那句照 App renderMarketBriefing 的 patNote(V79.9.8 照發生率的講法),⛔ 講到開盤之後。

@@ -7,7 +7,8 @@
  *      + job if 放行 repository_dispatch;台北 08:00 那一輪(0 0 * * 1-5)呼叫 macroKick
  *   ③ index.html _lastUsCloseMs == worker _lastUsCloseMs(逐時比對,夏令 / 冬令都要過)
  *   ④ 盤前體檢灰字:收盤前抓的 → 有;收盤後抓的 → 沒有(決定性對照);收盤 12 小時後不講
- * 注入:INJECT=nofresh(拿掉「已是收盤後就不發」)/ dst(冬令也當 20:00)—— 都要紅
+ *   🧊 V82.7.1 ①i~①k:收盤後 + 今天早上那份已經凍結 → 才不發;收盤後但還沒凍結(夏令 04:00~04:59 那輪 / 凍結失敗)→ 照發
+ * 注入:INJECT=nofresh(拿掉「已是收盤後就不發」)/ dst(冬令也當 20:00)/ nofrozen(拿掉「還沒凍結也發」)—— 都要紅
  */
 import fs from 'fs';
 import path from 'path';
@@ -19,7 +20,8 @@ const MC = fs.readFileSync(path.join(ROOT, '.github/workflows/macro_cron.yml'), 
 const NP = fs.readFileSync(path.join(ROOT, '.github/workflows/news_premarket.yml'), 'utf8');
 let IDX = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const inj = (src, a, b) => { const o = src; const n = src.replace(a, b); if (n === o) { console.log('❌ 注入沒有注進去'); process.exit(1); } return n; };
-if (INJ === 'nofresh') W = inj(W, "if (upd && close && upd >= close) return { sent: false, why: 'fresh', upd, close };", '');
+if (INJ === 'nofresh') W = inj(W, "if (upd && close && upd >= close && frozen) return { sent: false, why: 'fresh', upd, close, frozen };", '');
+if (INJ === 'nofrozen') W = inj(W, 'if (upd && close && upd >= close && frozen) return', 'if (upd && close && upd >= close) return');
 if (INJ === 'dst') IDX = inj(IDX, "if (+fmt.format(new Date(cand)) !== 16) cand = day + 21 * 3600e3;\n                if (cand <= now) return cand;\n            }\n        } catch", "if (cand <= now) return cand;\n            }\n        } catch");
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + String(e).slice(0, 300)}`); if (!c) fails.push(n); };
@@ -30,7 +32,9 @@ const M = await import(tmp + '?t=' + Date.now());
 try { fs.unlinkSync(tmp); } catch (_) {}
 
 const at = s => Date.parse(s);   // UTC
-const mkFetch = upd => async () => ({ ok: true, json: async () => ({ updated: upd }) });
+// 🧊 V82.7.1 fz = 今天早上那份凍結的那一筆(d / at);沒給 = 還沒凍結
+const mkFetch = (upd, fz) => async () => ({ ok: true, json: async () => ({ updated: upd,
+  premkt_recent: fz ? [{ d: fz.d, at: fz.at, x: {}, out: { s: -5, sPct: 25, call: '開低偏空' } }] : [] }) });
 const sent = [];
 const disp = async (env, ev) => { sent.push(ev); return { ok: true, why: 'http-204' }; };
 const env = { GH_DISPATCH_TOKEN: 't' };
@@ -39,10 +43,19 @@ const NOW = at('2026-10-16T00:00:00Z');
 const r1 = await M.macroKick(env, NOW, mkFetch('2026-10-15 23:57 +0800'), disp);
 ok('① 台北 08:00、資料是昨晚 23:57(美股盤中)→ 發 macro-cron', r1.sent && sent.at(-1) === 'macro-cron', JSON.stringify(r1));
 const n1 = sent.length;
-const r2 = await M.macroKick(env, NOW, mkFetch('2026-10-16 05:30 +0800'), disp);
-ok('①b ⭐ 決定性對照:同一時間資料換成 05:30(收盤後)→ 不可以發', !r2.sent && sent.length === n1 && r2.why === 'fresh', JSON.stringify(r2));
-ok('①c 週六不發', (await M.macroKick(env, at('2026-10-17T00:00:00Z'), mkFetch('2026-10-15 23:57 +0800'), disp)).why === 'weekend' && sent.length === n1);
-ok('①d 沒設金鑰不發', (await M.macroKick({}, NOW, mkFetch('2026-10-15 23:57 +0800'), disp)).why === 'no-token' && sent.length === n1);
+const r2 = await M.macroKick(env, NOW, mkFetch('2026-10-16 05:30 +0800', { d: '2026-10-16', at: '05:30' }), disp);
+ok('①b ⭐ 決定性對照:同一時間資料換成 05:30(收盤後)而且今天那份已經凍結 → 不可以發', !r2.sent && sent.length === n1 && r2.why === 'fresh', JSON.stringify(r2));
+// 🧊 V82.7.1 收盤後、但今天早上那份還沒凍結 → 照發
+const r2b = await M.macroKick(env, NOW, mkFetch('2026-10-16 04:30 +0800'), disp);
+ok('①i 🧊 夏令 04:30 那輪(美股 04:00 收盤後、05:00 寫入時間之前)→ 收盤後但沒凍結 → 照發', r2b.sent && sent.at(-1) === 'macro-cron' && r2b.frozen === false, JSON.stringify(r2b));
+const n2 = sent.length;
+const r2c = await M.macroKick(env, NOW, mkFetch('2026-10-16 05:30 +0800', { d: '2026-10-15', at: '07:42' }), disp);
+ok('①j 🧊 凍結的是昨天那筆 → 照發(⛔ 拿昨天的當今天)', r2c.sent && sent.length === n2 + 1, JSON.stringify(r2c));
+const r2d = await M.macroKick(env, NOW, mkFetch('2026-10-16 05:30 +0800', { d: '2026-10-16', at: '09:10' }), disp);
+ok('①k 🧊 今天那筆不是開盤前寫的(09:10)→ 照發(跟 Telegram 認的同一條 premktFrozen)', r2d.sent && sent.length === n2 + 2, JSON.stringify(r2d));
+const n1b = sent.length;
+ok('①c 週六不發', (await M.macroKick(env, at('2026-10-17T00:00:00Z'), mkFetch('2026-10-15 23:57 +0800'), disp)).why === 'weekend' && sent.length === n1b);
+ok('①d 沒設金鑰不發', (await M.macroKick({}, NOW, mkFetch('2026-10-15 23:57 +0800'), disp)).why === 'no-token' && sent.length === n1b);
 const r5 = await M.macroKick(env, NOW, async () => ({ ok: false }), disp);
 ok('①e 讀不到 macro_risk → 照發(⛔ 不可當成已更新)', r5.sent, JSON.stringify(r5));
 // 週一 08:00 → 收盤基準是上週五

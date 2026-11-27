@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * 🧊 V82.7.0 Telegram 08:00 盤前簡報的「今天開高 / 開低」改成跟 App 盤前頁同一個結論(使用者 11/26 選)
+ * 🧊 V82.7.0 Telegram 盤前簡報的「今天開高 / 開低」改成跟 App 盤前頁同一個結論(使用者 11/26 選);V82.7.1 起 08:10 發(等早上那份凍結好)
  *   worker `runPreMarket` 只讀 macro_risk.premkt_recent[今天].out(macro_cron 早上用 index.html 真的函式凍結的),⛔ 自己算
  *  ① 今天那筆有凍結 → 訊息裡是 App 的字 + 燈號 + 分數(美股三項全漲也照 App 講「開低偏空」)
  *  ② ⭐ 決定性對照:同一組美股(舊的簡化版會講「開高偏多」)、沒有凍結 → 訊息裡 ⛔ 任何開高 / 開低 / 偏多 / 偏空,只指路 App
  *  ③ 昨天那筆 / 不是開盤前寫的那筆(09:10)/ 結論不是那三種 / 分數不是數字 → 一律當沒有
  *  ④ 燈號跟 App renderMarketBriefing 同一組(跨檔:🔴 開高偏多 / 🟢 開低偏空 / 🟡 中性震盪)
  *  ⑤ 舊的 dScore / 「方向分」不在 runPreMarket 裡;外資那行講「不算進盤前分數」
+ *  ⑥ 🧊 V82.7.1 標題寫「台北08:10」(⛔ 還寫 08:00 —— 那則已經挪到 08:10 那輪發)
  *  實跑:假的網路(macro_risk / radar / attention / risk_history)+ 假的 KV 一個使用者,抓 Telegram sendMessage 的內容來比
  *  INJECT=1:把結論換回舊的簡化版 / 不看日期 / 不看寫入時間 —— 三種都要紅
  */
@@ -96,6 +97,7 @@ ok('④ App 的三種結論只從 _premktCall 來(worker 認的就是那三種�
 const body = (() => { const i = W.indexOf('async function runPreMarket('), j = W.indexOf('\n}\n', i); return W.slice(i, j).split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n'); })();   // 去掉註解(說明裡會提到舊名字)
 ok('⑤ runPreMarket 裡 ⛔ dScore / 方向分', !/dScore|方向分/.test(body), (body.match(/.*(dScore|方向分).*/) || [''])[0]);
 ok('⑤ 外資那行講「不算進盤前分數」', /只列出來,不算進盤前分數/.test(body));
+ok('⑥ 🧊 標題寫台北08:10(⛔ 還寫 08:00)', /盤前簡報\* _[^_]* 台北08:10_/.test(m1) && !/台北08:00/.test(m1), m1.split('\n')[0]);
 
 if (process.env.INJECT && !INJ) {
     let allRed = true;
