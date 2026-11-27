@@ -16,6 +16,11 @@
 ⚠️ 休市日 MOPS 回「查無」→ 那天記 0 筆(同 backfill);⛔ 另外抓休市表(多一個請求、也多一個會壞的地方)。
 輸出(只留最近 KEEP_DAYS 個日曆天;同一天同一市場重抓 = 整天換掉 → 冪等):
    data/mops_recent.json      cols = s 代號 / n 名稱 / d 日期 / t 時間 / sub 主旨 / mk 市場 / cat 類別
+                              + 🔎 V82.7.5 kind 大小類(訂單 / 增資 / 收購 / 處分 / 取得 / 庫藏股 / 減資,mops_backfill.size_kind)
+                                / amt 金額(億,那則自己的幣別)/ cur 幣別 / ev 金額那句原文(≤120 字)
+                              ⭐ 金額 = 內文說明欄照 lib_mops_amount 明文規則抓(⛔ AI);只有那幾類才抓內文、每輪最多 DETAIL_MAX 則,
+                                 上一份抓過的同一則直接沿用(⛔ 每輪重抓);被擋 / 不是內文頁 → amt 留空(⛔ 寫 0)。
+                                 amt = None 且 ev = None → 還沒抓;ev = '' → 抓了、說明欄沒有金額。舊的 7 欄列補空欄位(⛔ 丟掉)
    data/insider_recent.json   cols = s / n / d 申報日 / role 身分 / rc 身分類 / method 方式 / mc 方式類 / sh 預定轉讓股數 / chg 異動 / mk
    <MD_OUT>/mops_daily_patch.json  這一輪抓到的「今天以前」那幾天(研究分支要的原文格式)→ `--apply-deep` 併進研究分支
        (workflow 推研究分支失敗 → 重抓分支、再併一次;⛔ 對二進位月檔 rebase)
@@ -52,6 +57,7 @@ import mops_probe as mp              # noqa: E402  host / UA / 被擋偵測 只�
 import mops_backfill as MB           # noqa: E402  重大訊息 表單 / 分類 / 解析 / 月檔
 import insider_backfill as IB        # noqa: E402  申報轉讓 兩層表單 / 解析 / 月檔
 import mops_event_probe as MEP       # noqa: E402  重大訊息主旨 → 類別(⛔ 第二份)
+import lib_mops_amount as LA         # noqa: E402  🔎 V82.7.5 內文說明欄 → 金額(⛔ 第二份)
 import insider_event_probe as IEP    # noqa: E402  申報 身分 / 方式 → 分類(⛔ 第二份)
 from lib_jsonsafe import load_accum  # noqa: E402  累積檔讀壞 ⛔ 當成沒有
 
@@ -74,7 +80,9 @@ _CODE = re.compile(r'^\d{4,6}[A-Z]?$')
 # 避雷那兩類(mops_event_probe 16 年:能當買進理由的 0 類、之後比較差的就這兩類)—— App 讀這張表顯示名字
 AVOID = {'buyback_end': '庫藏股買完 / 期滿 / 註銷', 'cap_red_loss': '減資彌補虧損'}
 MOPS_FILE, INS_FILE, PATCH_FILE = 'mops_recent.json', 'insider_recent.json', 'mops_daily_patch.json'
-MOPS_COLS = ['s', 'n', 'd', 't', 'sub', 'mk', 'cat']
+MOPS_COLS = ['s', 'n', 'd', 't', 'sub', 'mk', 'cat', 'kind', 'amt', 'cur', 'ev']
+MOPS_COLS_OLD = 7                     # V82.7.5 以前的列只有 7 欄 → merge_recent 補空欄位
+DETAIL_MAX = max(0, int(os.environ.get('MD_DETAIL_MAX') or '60'))   # 🔎 每輪最多抓幾則內文(每則約 0.8 秒 + SLEEP)
 INS_COLS = ['s', 'n', 'd', 'role', 'rc', 'method', 'mc', 'sh', 'chg', 'mk']
 SRC_MOPS = '公開資訊觀測站 重大訊息(t05st01,全市場單日)'
 SRC_INS = '公開資訊觀測站 股權轉讓事前申報日報表(t56sb12)'
@@ -93,8 +101,52 @@ def target_days(today, back=None):
 
 
 def mops_app_rows(raw, mk):
-    """backfill 格式 [代號, 名稱, 日期, 時間, 主旨, 市場] → App 用的列(只收代號、加類別)。"""
-    return [[r[0], r[1], r[2], r[3], r[4], mk, MEP.classify(r[4])] for r in raw if _CODE.match(str(r[0]))]
+    """backfill 格式 [代號, 名稱, 日期, 時間, 主旨, 市場] → App 用的列(只收代號、加類別 + 🔎 大小類;金額三欄先空著)。"""
+    out = []
+    for r in raw:
+        if not _CODE.match(str(r[0])):
+            continue
+        cat = MEP.classify(r[4])
+        out.append([r[0], r[1], r[2], r[3], r[4], mk, cat, MB.size_kind(r[4], cat), None, None, None])
+    return out
+
+
+def fill_amounts(got, acts, prev_rows, fetch, budget):
+    """🔎 V82.7.5 那幾類(kind 有值)補金額:上一份抓過的同一則(代號 / 日期 / 時間 / 主旨)直接沿用;其他照 acts 的參數抓內文。
+    fetch(form, what) → html 或 None(None = 被擋滿 / 連不上 → 這一輪不再抓)。回 {'reuse','fetch','amt','none','skip','stop'}。"""
+    st = {'reuse': 0, 'fetch': 0, 'amt': 0, 'none': 0, 'skip': 0, 'stop': 0}
+    prev = {(r[0], r[2], r[3], r[4]): r[8:11] for r in (prev_rows or [])
+            if isinstance(r, list) and len(r) == len(MOPS_COLS) and (r[8] is not None or r[10] is not None)}
+    for (iso, mk), rows in sorted(got.items()):
+        for r in rows:
+            if not r[7]:
+                continue
+            key = (r[0], r[2], r[3], r[4])
+            if key in prev:
+                r[8:11] = prev[key]
+                st['reuse'] += 1
+                continue
+            f = MB.detail_form((acts.get((iso, mk)) or {}).get((r[0], r[3], r[4])))
+            if not f or st['stop'] or st['fetch'] >= budget:
+                st['skip'] += 1
+                continue
+            html = fetch(f, f'內文 {r[0]} {iso} {r[3]}')
+            st['fetch'] += 1
+            if html is None:
+                st['stop'] = 1
+                continue
+            say = MB.parse_detail(html)
+            if not say:                       # 不是內文頁 → 留空(下一輪再試)
+                st['skip'] += 1
+                continue
+            a = LA.parse_amount(say)
+            if a:
+                r[8:11] = [LA.to_yi(a['amt']), a['cur'], a['ev']]
+                st['amt'] += 1
+            else:
+                r[8:11] = [None, None, '']
+                st['none'] += 1
+    return st
 
 
 def ins_app_rows(cells, mk):
@@ -118,6 +170,9 @@ def merge_recent(doc, got, cols, src, today, keep=None, now=None, miss=None):
     keep = KEEP_DAYS if keep is None else keep
     im = cols.index('mk')
     rows = [r for r in ((doc or {}).get('rows') or []) if isinstance(r, list) and len(r) == len(cols)]
+    if cols is MOPS_COLS:   # 🔎 V82.7.5 以前的 7 欄列 → 補空欄位(⛔ 丟掉;那幾天這一輪不一定會重抓)
+        rows += [r + [None] * (len(cols) - len(r)) for r in ((doc or {}).get('rows') or [])
+                 if isinstance(r, list) and len(r) == MOPS_COLS_OLD]
     days = {k: dict(v) for k, v in ((doc or {}).get('days') or {}).items() if isinstance(v, dict)}
     pm = {k: set(v) for k, v in ((doc or {}).get('miss') or {}).items() if isinstance(v, list)}
     warn = []
@@ -262,7 +317,7 @@ def main(now=None, sess=None, sleep=time.sleep, out_dir=None):
                 continue
             return r
 
-    raw_m, raw_i = {}, {}
+    raw_m, raw_i, acts_m = {}, {}, {}
     fx = IB.Fetcher(sess, post)
 
     def get_m(d, mk):
@@ -274,6 +329,9 @@ def main(now=None, sess=None, sleep=time.sleep, out_dir=None):
         k = MB.classify(r.status_code, r.text or '')
         if k in ('ok', 'empty'):
             raw_m[(iso, mk)] = [x for x in MB.parse_rows(r.text or '', mk) if x[2] == iso] if k == 'ok' else []
+            # 🔎 V82.7.5 每列「詳細資料」帶的參數(mops_probe.row_actions;⛔ 第二份)→ 抓內文用
+            acts_m[(iso, mk)] = {(a['cells'][0], a['cells'][3], a['cells'][4]): a['fields']
+                                 for a in mp.row_actions(r.text or '') if a['fields'] and len(a['cells']) >= 5} if k == 'ok' else {}
             n['ok'] += 1
             return True
         print(f'   ⚠️ 重大訊息 {iso} {mk}:{k}', flush=True)
@@ -309,12 +367,25 @@ def main(now=None, sess=None, sleep=time.sleep, out_dir=None):
 
     got_m = {k: mops_app_rows(v, k[1]) for k, v in raw_m.items()}
     got_i = {k: ins_app_rows(v, k[1]) for k, v in raw_i.items()}
+    # 🔎 V82.7.5 那幾類補金額(上一份抓過的沿用;被擋 / 連不上 → 不再抓,列照寫、金額留空)
+    det = {'reuse': 0, 'fetch': 0, 'amt': 0, 'none': 0, 'skip': 0, 'stop': 0}
+    if got_m:
+        prev_m, _ = load_accum(out_dir / MOPS_FILE, {}, what=MOPS_FILE)
+
+        def fetch(form, what):
+            hdr['Referer'] = f'{mp.HOST}/mops/web/t05st01'
+            rr = post('POST', mp.HOST + MB.PATH, form, what=what)
+            return None if rr is None else (rr.text or '')
+        det = fill_amounts(got_m, acts_m, (prev_m or {}).get('rows'), fetch, DETAIL_MAX)
+        print(f'🔎 內文:沿用上一份 {det["reuse"]} 則 ・這輪抓 {det["fetch"]} 則(有金額 {det["amt"]}、沒有金額 {det["none"]})'
+              f' ・沒抓 {det["skip"]} 則' + (' ・⛔ 被擋 / 連不上 → 這一輪停抓' if det['stop'] else ''), flush=True)
     print(f'📢 抓 {", ".join(d.isoformat() for d in days)} ・請求 {n["req"]} 次 ・成功 {n["ok"]} 次 ・連線錯誤 {n["err"]} 次'
           f' ・被擋 {n["blocks"]} 次 ・重大訊息 {sum(len(v) for v in got_m.values())} 則 ・申報 {sum(len(v) for v in got_i.values())} 筆', flush=True)
     if todo:
         print(f'⚠️ 最後還是沒抓到:{miss_txt}(研究分支 ⛔ 標完成;下一輪會再抓「今天 + 前一個平日」,更早的要手動派 back 或等 backfill)', flush=True)
     _gh_summary(f'📢 mops_daily:請求 {n["req"]} 次 ・成功 {n["ok"]} 次 ・連線錯誤 {n["err"]} 次 ・被擋 {n["blocks"]} 次'
-                + (f'\n\n⚠️ 最後還是沒抓到:{miss_txt}' if todo else '\n\n✅ 每一天每個市場都抓到了'))
+                + (f'\n\n⚠️ 最後還是沒抓到:{miss_txt}' if todo else '\n\n✅ 每一天每個市場都抓到了')
+                + f'\n\n🔎 內文:沿用 {det["reuse"]} ・抓 {det["fetch"]}(有金額 {det["amt"]}、沒有 {det["none"]})・沒抓 {det["skip"]}')
     if n['ok'] == 0:
         print('❌ 這一輪一次都沒成功 → ⛔ 不覆蓋舊檔', flush=True)
         _gh_out(push=0)
@@ -425,20 +496,23 @@ def _selftest():
     page = "<form><input name='encodeURIComponent' value='1'><input name='step' value='1'><input name='firstin' value='1'>" \
            "<input name='year'><input name='month'><input name='day'></form>"
 
-    def server_factory(blocked=False, fail=None):
+    def server_factory(blocked=False, fail=None, listf=None, detail=None):
         calls = []
 
         def handle(method, url, data):
-            calls.append((method, url.rsplit('/', 1)[-1]))
+            is_det = url.endswith('ajax_t05st01') and bool(data) and data.get('step') == '2'   # 申報轉讓第二層也是 step 2(ajax_t56sb12)→ 只算重大訊息內文
+            calls.append((method, 'detail') if is_det else (method, url.rsplit('/', 1)[-1]))
             if fail and fail(method, url, data):
                 raise ConnectionResetError(104, 'Connection reset by peer')
             if blocked:
                 return R('因為安全性考量,您的連線已被阻擋')
             if method == 'GET':
                 return R(page)
+            if url.endswith('ajax_t05st01') and data.get('step') == '2':
+                return R(detail(data) if detail else '<html>別的網頁</html>')
             if url.endswith('ajax_t05st01'):
                 y, m, dd = int(data['year']) + 1911, int(data['month']), int(data['b_date'])
-                return R(mops_html(date(y, m, dd), data['TYPEK']))
+                return R((listf or mops_html)(date(y, m, dd), data['TYPEK']))
             if url.endswith(('ajax_t56sb12_q1', 'ajax_t56sb12_q2')):
                 rep = 'SY' if url.endswith('q1') else 'OY'
                 kv = ''.join(f"<input type='hidden' name='{k}' value='{v}'>" for k, v in
@@ -593,6 +667,71 @@ def _selftest():
         backoff = sum(x for x in w12 if x != SLEEP)
         ok('⑫ 全部連不上 → exit 1、沒有寫檔', r12 == 1 and d12 is None, (r12, d12 is None))
         ok('⑫ 退避加起來 ≤ 上限 + 最後一次(⛔ 一直等)', backoff <= WAIT_BUDGET + PASS2_WAIT + max(CONN_WAIT), backoff)
+
+        # ⑬ 🔎 V82.7.5 內文 → 金額(列表每列帶「詳細資料」參數;內文用 2026-11-27 真內文的節錄)
+        def det_list(d, mk):
+            roc = f'{d.year - 1911}/{d.month:02d}/{d.day:02d}'
+            rows = [('4588', '玖鼎電力', '15:35:20', '本公司獲得台電公司「模組化智慧型電表」金額約 新台幣1.64億元(未稅)', '1'),
+                    ('2409', '友達', '16:00:10', '本公司處分華亞廠不動產及其相關廠務附屬設施', '3'),
+                    ('2330', '台積電', '13:54:04', '公告本公司將參加法人說明會', '1')] if mk == 'sii' else []
+            oc = ("document.t05st01_fm.action='ajax_t05st01';document.t05st01_fm.seq_no.value='{q}';document.t05st01_fm.spoke_time.value='{t}';"
+                  "document.t05st01_fm.spoke_date.value='{d}';document.t05st01_fm.co_id.value='{c}';document.t05st01_fm.TYPEK.value='{mk}';openWindow(this.form ,'');")
+            return '<table>' + ''.join(
+                f'<tr><td>{c}</td><td>{n}</td><td>{roc}</td><td>{t}</td><td>{sb}</td><td><input type=button value="詳細資料" onclick="'
+                + oc.format(q=q, t=int(t.replace(':', '')), d=d.strftime('%Y%m%d'), c=c, mk=mk) + '"></td></tr>' for c, n, t, sb, q in rows) + '</table>'
+        DET = {'4588': '說明 1.事實發生日:115/11/27 5.主要內容（解除者不適用）:本公司參與台電公司標案「模組化智慧型電表」 取得訂單金額約1.64億元(新台幣，未稅金額) 6.限制條款:無',
+               '2409': '說明 5.交易單位數量、每單位價格及交易總金額: 土地面積： 65,260.09平方公尺 附屬設備一批 交易總金額:新台幣 197億元(未稅) 6.交易相對人:矽品'}
+        det_calls = []
+
+        def det_page(data):
+            det_calls.append(data['co_id'])
+            return f"<html>本資料由 (上市公司) {data['co_id']} 公司提供 序號 {data['seq_no']}<table><tr><td>{DET.get(data['co_id'], '說明 1.事實發生日:115/11/27')}</td></tr></table>以上資料均由各公司依發言當時所屬市場別之規定申報後</html>"
+
+        def run_det(sub, detail=det_page, env_max=None):
+            dd = tmp / sub
+            dd.mkdir(exist_ok=True)
+            global DETAIL_MAX
+            keep_dm = DETAIL_MAX
+            if env_max is not None:
+                DETAIL_MAX = env_max
+            try:
+                s_, c_ = server_factory(listf=det_list, detail=detail)
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    r_ = main(now=now, sess=s_, sleep=lambda x: None, out_dir=dd)
+            finally:
+                DETAIL_MAX = keep_dm
+            doc = json.loads((dd / MOPS_FILE).read_text(encoding='utf-8')) if (dd / MOPS_FILE).exists() else {}
+            rows = {(x[0], x[2]): dict(zip(doc.get('cols') or [], x)) for x in doc.get('rows', [])}
+            return r_, rows, c_, buf.getvalue()
+
+        r13, rw13, c13, log13 = run_det('r13')
+        a4588, a2409, a2330 = rw13.get(('4588', '2026-11-13'), {}), rw13.get(('2409', '2026-11-13'), {}), rw13.get(('2330', '2026-11-13'), {})
+        ok('⑬ 訂單 → 金額 1.64 億、新台幣、帶那句原文;處分 → 197 億', r13 == 0 and a4588.get('kind') == '訂單' and a4588.get('amt') == 1.64
+           and a4588.get('cur') == 'TWD' and '1.64億元' in (a4588.get('ev') or '') and a2409.get('kind') == '處分' and a2409.get('amt') == 197.0,
+           (r13, a4588, a2409))
+        ok('⑬ 不是那幾類(法說會)→ ⛔ 抓內文、金額空著', a2330.get('kind') == '' and a2330.get('amt') is None and '2330' not in det_calls, (a2330, det_calls))
+        ok('⑬ 內文請求只有那幾類 × 兩天(4 次)', sum(1 for m, u in c13 if u == 'detail') == 4, [u for m, u in c13 if u == 'detail'])
+        n1 = len(det_calls)
+        r13b, rw13b, c13b, _ = run_det('r13')
+        ok('⑬ 第二輪:上一份抓過的同一則直接沿用(0 次內文請求、金額一樣)', r13b == 0 and sum(1 for m, u in c13b if u == 'detail') == 0
+           and rw13b.get(('4588', '2026-11-13'), {}).get('amt') == 1.64 and len(det_calls) == n1, sum(1 for m, u in c13b if u == 'detail'))
+        r13c, rw13c, _, log13c = run_det('r13c', detail=lambda d: '因為安全性考量,您的連線已被阻擋')
+        bc = rw13c.get(('4588', '2026-11-13'), {})
+        ok('⑬ 決定性對照:內文被擋 → 列照寫(rc 0)、金額留空(⛔ 寫 0)、這一輪停抓', r13c == 0 and bc.get('kind') == '訂單' and bc.get('amt') is None
+           and bc.get('ev') is None and '停抓' in log13c, (r13c, bc))
+        r13d, rw13d, c13d, _ = run_det('r13d', env_max=1)
+        ok('⑬ 每輪上限 DETAIL_MAX = 1 → 只抓 1 則,其他留空(下一輪再抓)', r13d == 0 and sum(1 for m, u in c13d if u == 'detail') == 1
+           and sum(1 for v in rw13d.values() if v.get('amt') is not None) == 1, sum(1 for m, u in c13d if u == 'detail'))
+        r13e, rw13e, _, _ = run_det('r13e', detail=lambda d: '<html>別的網頁</html>')
+        ok('⑬ 回來的不是內文頁(沒有「說明」)→ 留空(⛔ 當成沒有金額)', r13e == 0 and rw13e.get(('4588', '2026-11-13'), {}).get('ev') is None)
+        st = fill_amounts({('2026-11-13', 'sii'): [['1', 'x', '2026-11-13', '10:00:00', '取得訂單', 'sii', 'order', '訂單', None, None, None]]},
+                          {('2026-11-13', 'sii'): {('1', '10:00:00', '取得訂單'): {'seq_no': '1', 'spoke_time': '100000', 'spoke_date': '20261113', 'co_id': '1', 'TYPEK': 'sii'}}},
+                          [], lambda f, w: '<td>說明 1.事實發生日:115/11/13 2.契約相對人:某公司</td>', 5)
+        ok('⑬ 說明欄沒有金額 → ev 寫空字串(= 抓過、沒有),下一輪沿用不重抓', st['none'] == 1 and st['amt'] == 0, st)
+        d7, _ = merge_recent({'rows': [['2330', '台積電', '2026-11-12', '13:54:04', '舊格式', 'sii', 'other']], 'days': {'2026-11-12': {'sii': 1}}},
+                             {}, MOPS_COLS, SRC_MOPS, today, keep=14, now=now)
+        ok('⑬ V82.7.5 以前的 7 欄列 → 補空欄位留著(⛔ 丟掉)', any(len(r) == len(MOPS_COLS) and r[4] == '舊格式' and r[7] is None for r in d7['rows']), d7['rows'])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")

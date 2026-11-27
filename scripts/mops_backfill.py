@@ -31,6 +31,7 @@ import calendar
 import gzip
 import json
 import os
+import re
 import sys
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -91,6 +92,64 @@ def parse_rows(html, market):
             continue
         out.append([c[0].strip(), c[1].strip(), iso, c[3].strip(), c[4].strip(), market])
     return out
+
+
+# ───────────────────────── 🔎 V82.7.5 公告內文(評估紀錄 58:「消息多大」)─────────────────────────
+# 列表每列 onclick 帶 seq_no / spoke_time / spoke_date / co_id / TYPEK(mops_probe.row_actions 解析),照官方頁面上的
+# t05st01_fm 表單(step=2)送出 = 那一則的內文。mops_probe detail 模式 run 46080900577 / 46082610081:10 / 10 則拿到、
+# 每則約 0.8 秒、沒被擋。⛔ 欄位名一個都不猜:DETAIL_BASE 就是那張表單的預設欄位(印在那兩輪 log 裡)。
+DETAIL_BASE = {'firstin': 'true', 'b_date': '', 'e_date': '', 'TYPEK': '', 'year': '', 'month': '', 'type': '', 'co_id': '',
+               'spoke_date': '', 'spoke_time': '', 'seq_no': '', 'MEETING_STEP': '', 'MODEL': '', 'ITEM': '', 'step': '2', 'off': '1'}
+DETAIL_KEYS = ('seq_no', 'spoke_time', 'spoke_date', 'co_id', 'TYPEK')
+
+
+def detail_form(f):
+    """那一列 onclick 給的欄位 → 內文表單;五個欄位缺一個 → None(⛔ 自己編)"""
+    if not f or any(not str(f.get(k) or '').strip() for k in DETAIL_KEYS):
+        return None
+    return {**DETAIL_BASE, **{k: str(f[k]).strip() for k in DETAIL_KEYS}}
+
+
+def parse_detail(html):
+    """內文頁 → 說明欄文字(去標籤、截到「以上資料均由各公司…」之前);被擋 / 不是內文頁(沒有「說明」)→ ''"""
+    if not html or mp.is_blocked(html):
+        return ''
+    say = mp.say_section(html, 5000)
+    j = say.find('以上資料均由各公司')
+    return (say[:j] if j != -1 else say).strip()
+
+
+# 「消息多大」值得抓內文的那幾類 —— 看主旨(代子公司 / 其他 / 取得那幾桶裡的訂單、收購也撈回來;⛔ 動 mops_event_probe.classify)
+_K_SKIP = re.compile(r'衍生性|有價證券|債券|基金|票券|貨幣市場|定期存款|附買回|理財|國庫券')
+_K_ORDER = re.compile(r'訂單|採購案|標案|標得|得標|接獲|承攬|獲得.{0,20}(?:金額|合約|契約|採購)')
+_K_CASH = re.compile(r'現金增資|私募|現增|發行新股')
+_K_MA = re.compile(r'收購|併購|股份轉換|股權')
+_K_CONSOL = re.compile(r'合併(?:財務|營收|報表|報告)')
+SIZE_KINDS = ('訂單', '增資', '收購', '處分', '取得', '庫藏股', '減資')
+
+
+def size_kind(sub, cat):
+    """主旨 + 類別 → '訂單' / '增資' / '收購' / '處分' / '取得' / '庫藏股' / '減資';其他 → ''(⛔ 抓內文)。
+    ⛔ 有價證券 / 債券 / 基金 / 衍生性商品那種(公司拿閒錢買理財)一律不算 —— 那不是本業的消息。"""
+    s, c = str(sub or ''), str(cat or '')
+    if _K_SKIP.search(s) or c in ('finrep', 'selfprofit', 'confcall', 'clarify', 'attn', 'dividend', 'guarantee'):
+        return ''
+    loose = c in ('sub', 'other', 'asset', 'order')
+    if c == 'order' or (loose and _K_ORDER.search(s)):
+        return '訂單'
+    if c == 'cash_inc' or (loose and _K_CASH.search(s) and not re.search(r'取得|認購|參與', s)):
+        return '增資'
+    if c == 'ma' or (loose and _K_MA.search(s) and not _K_CONSOL.search(s)):
+        return '收購'
+    if loose and '處分' in s:
+        return '處分'
+    if loose and '取得' in s:
+        return '取得'
+    if c == 'buyback':
+        return '庫藏股'
+    if c in ('cap_red_cash', 'cap_red_loss'):
+        return '減資'
+    return ''
 
 
 def classify(status, text):
@@ -300,6 +359,30 @@ def selftest():
     c_bad, why = cross_check(doc, [['2330', '台積電', f'2026-09-{d:02d}', '10:00:00', f'x{d}', 'co'] for d in range(1, 11)])
     ok('⑥ 決定性對照:全市場那份漏掉那家公司 → 沒過(⛔ 不推)', c_bad is False, why)
     ok('⑥ 那家公司這個月沒有 → 不判(換下一家)', cross_check(doc, [])[0] is None)
+    # ⑦ 🔎 V82.7.5 內文表單 / 解析 / 哪幾類要抓(主旨是 2026-11-27 的真主旨)
+    fld = {'seq_no': '1', 'spoke_time': '153520', 'spoke_date': '20261127', 'co_id': '4588', 'TYPEK': 'sii'}
+    df = detail_form(fld)
+    ok('⑦ 內文表單 = 官方 t05st01_fm 預設 + 那一列五個欄位(step=2)', df and df['step'] == '2' and df['co_id'] == '4588'
+       and df['seq_no'] == '1' and set(DETAIL_BASE) <= set(df), df)
+    ok('⑦ 決定性對照:少一個欄位(seq_no)→ None(⛔ 自己編)', detail_form({k: v for k, v in fld.items() if k != 'seq_no'}) is None)
+    pg = '<html>公開資訊觀測站 本資料由 (上市公司) 4588 玖鼎電力 公司提供 序號 1<table><tr><td>說明</td><td>1.事實發生日:115/11/27 5.主要內容:取得訂單金額約1.64億元</td></tr></table>以上資料均由各公司依發言當時所屬市場別之規定申報後 <script>x</script></html>'
+    pd = parse_detail(pg)
+    ok('⑧ 內文解析:從「說明」開始、截到「以上資料均由各公司」之前', pd.startswith('說明') and '1.64億元' in pd and '以上資料' not in pd, pd)
+    ok('⑧ 被擋 / 不是內文頁 → 空字串', parse_detail('因為安全性考量') == '' and parse_detail('<html>別的網頁</html>') == '')
+    import mops_event_probe as MEP  # noqa: E402
+    subs = {'本公司獲得台電公司「模組化智慧型電表」金額約 新台幣1.64億元(未稅)': '訂單',
+            '代子公司矽品精密工業(股)公司公告取得營業用機器設備達十億元': '取得',
+            '本公司處分華亞廠不動產及其相關廠務附屬設施': '處分',
+            '本公司子公司取得南京能利芯科技有限公司100%股權': '收購',
+            '公告本公司115年現金增資認股基準日等相關事宜 (補充每股發行價格暨代收及存儲專戶銀行)': '增資',
+            '代子公司友達智慧行動系統(廈門)有限公司公告取得不動產使用權資產': '取得',
+            '公告本公司將參加國泰證舉辦之「Non-Deal Roadshow」': '',
+            '代子公司公告取得有價證券': '',
+            '公告本公司董事會通過合併財務報告': '',
+            '公告本公司董事會決議減資彌補虧損': '減資'}
+    got = {k: size_kind(k, MEP.classify(k)) for k in subs}
+    ok('⑨ 哪幾類要抓內文(11/27 真主旨):訂單 / 取得 / 處分 / 收購 / 增資 / 減資;法說 / 理財 / 財報 ⛔',
+       got == subs, {k[:16]: (v, subs[k]) for k, v in got.items() if v != subs[k]})
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 
