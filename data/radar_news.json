@@ -1,0 +1,213 @@
+{
+  "updated": "2026-11-27 18:35 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "自由財經",
+      "title": "AI雙雄變狗熊？美晶片管制與反蒸餾奏效  中國模型開發降速",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5655845",
+      "published_time": "Fri, 27 Nov 2026 21:17:18 +0800",
+      "matched_keywords": [
+        "出口管制"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利多",
+      "ai_reason": "美管制奏效，中國AI開發降速，利美系晶片",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "東北季風發威 風電連3天單日破1億度",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5655841",
+      "published_time": "Fri, 27 Nov 2026 21:14:48 +0800",
+      "matched_keywords": [
+        "突破"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "風電量創新高，利好綠能設備股",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "第一金：目標股利配發率6成以上　評估證券壽險子公司增資",
+      "link": "https://www.cna.com.tw/news/afe/202611270255.aspx",
+      "published_time": "Fri, 27 Nov 2026 20:56:06 +0800",
+      "matched_keywords": [
+        "增資",
+        "每股盈餘",
+        "EPS",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "EPS創新高且股利配發率達標",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "中鋼自結前10月稅前淨利49.13億元　較去年同期轉盈",
+      "link": "https://www.cna.com.tw/news/afe/202611270245.aspx",
+      "published_time": "Fri, 27 Nov 2026 20:30:44 +0800",
+      "matched_keywords": [
+        "合併"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "前10月稅前淨利49億，較去年轉盈",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "星宇航空決議辦理現增發行3億股　用於償還銀行借款",
+      "link": "https://www.cna.com.tw/news/afe/202611270243.aspx",
+      "published_time": "Fri, 27 Nov 2026 20:24:39 +0800",
+      "matched_keywords": [
+        "增資",
+        "現金增資"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "現增3億股稀釋股權，雖償債但攤薄EPS",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "路透：川普新關稅施壓各國劍指北京　圖重塑全球貿易秩序",
+      "link": "https://www.cna.com.tw/news/aopl/202611270242.aspx",
+      "published_time": "Fri, 27 Nov 2026 20:15:37 +0800",
+      "matched_keywords": [
+        "關稅"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "美中貿易戰升溫，衝擊全球供應鏈",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "主計總處：明年經濟成長估6.51%　AI發展腳步不會停",
+      "link": "https://www.cna.com.tw/news/afe/202611270234.aspx",
+      "published_time": "Fri, 27 Nov 2026 19:34:19 +0800",
+      "matched_keywords": [
+        "上修",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "主計處上修2026年經濟成長率至13.28%",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "第一金明年現金股利配發率維持6成以上  是否配股仍待討論",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5655700",
+      "published_time": "Fri, 27 Nov 2026 19:03:51 +0800",
+      "matched_keywords": [
+        "法說",
+        "EPS",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "獲利創新高且現金股利配發率維持六成以上",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "國泰金看好台灣持續受惠AI　預期台美年底前有升息機會",
+      "link": "https://www.cna.com.tw/news/afe/202611270220.aspx",
+      "published_time": "Fri, 27 Nov 2026 18:44:49 +0800",
+      "matched_keywords": [
+        "展望"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "看好AI供應鏈及資本市場表現",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "智邦現增每股訂價1217元　看好AI投資加速分散5國生產",
+      "link": "https://www.cna.com.tw/news/afe/202611270212.aspx",
+      "published_time": "Fri, 27 Nov 2026 18:27:32 +0800",
+      "matched_keywords": [
+        "資本支出"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "看好AI投資加速，擴充產能分散生產",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "智邦現增價出爐！每股1217元  折價約21.7％",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5655638",
+      "published_time": "Fri, 27 Nov 2026 18:17:40 +0800",
+      "matched_keywords": [
+        "擴產"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利空",
+      "ai_reason": "現增大幅折價稀釋股權，股價下跌",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "華新12月盤價 316每噸大漲5000元",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5655633",
+      "published_time": "Fri, 27 Nov 2026 18:10:57 +0800",
+      "matched_keywords": [
+        "調漲",
+        "台幣貶值",
+        "新台幣貶"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "盤價調漲，營收與獲利預期提升",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "AI 仍供不應求，主計總處估明年出口破 1 兆美元創新高",
+      "link": "https://finance.technews.tw/2026/11/27/ai-supply-shortage-dgbass-forecasts-next-year-exports-1-trillion-record-high/",
+      "published_time": "Fri, 27 Nov 2026 10:10:06 +0000",
+      "matched_keywords": [
+        "供不應求",
+        "突破",
+        "新高"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI需求強勁，預估出口破兆美元創新高",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台新新光今年前3季淨利642億 銀行2027年元旦合併",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5655610",
+      "published_time": "Fri, 27 Nov 2026 18:00:05 +0800",
+      "matched_keywords": [
+        "合併",
+        "EPS"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "前三季淨利642億，合併後規模擴大",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "廣達退出、矽品接手，友達華亞廠 197 億元交易案再拍板",
+      "link": "https://finance.technews.tw/2026/11/27/auo-spil/",
+      "published_time": "Fri, 27 Nov 2026 09:49:18 +0000",
+      "matched_keywords": [
+        "重訊"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "友達資產出售案敲定，對營運影響有限",
+      "important": true
+    }
+  ]
+}
