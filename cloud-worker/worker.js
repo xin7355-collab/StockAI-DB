@@ -2537,8 +2537,10 @@ async function runPreMarket(env) {
     // 🧊 V82.7.0 開盤方向改成跟 App 盤前頁同一個結論(premktCallLine;🗑️ 舊的 dScore 簡化版拿掉,見函式說明)
     const callLine = premktCallLine(macro);
     // 🇺🇸 V82.7.3 美國放假的隔天:美股那一行是台股前一天已經反應過的那一盤 → 註明(同 App 盤前頁「資料舊了(美國那天放假、台股已經反應過)」)
-    const _fz = premktFrozen(macro), _md = d => String(d || '').slice(5, 10).replace('-', '/');
-    const usHolTag = _fz && _fz.usHol ? `(${_md(macro && macro.sp500_date) || '前一次'} 收盤・美國放假,台股已經反應過、不算分)` : '';
+    //   日期跟 App `_premktFieldAge` 同一個來源:sp500_date,沒有才用 nasdaq_date(YYYY-MM-DD / YYYYMMDD 都收)
+    const _fz = premktFrozen(macro), _md = d => { const m = String(d || '').match(/^\d{4}[-/]?(\d{2})[-/]?(\d{2})/); return m ? `${m[1]}/${m[2]}` : ''; };
+    const _usD = _md(macro && macro.sp500_date) || _md(macro && macro.nasdaq_date);
+    const usHolTag = _fz && _fz.usHol ? `(${_usD ? _usD + ' ' : '前一次'}收盤・美國放假,台股已經反應過、不算分)` : '';
     const fc5 = macro ? fiFutChg5(riskHist) : null;
 
     // 對每用戶推:加入個人化重點 3 檔

@@ -10,6 +10,7 @@
  *  ⑥ 🧊 V82.7.1 標題寫「台北08:10」(⛔ 還寫 08:00 —— 那則已經挪到 08:10 那輪發)
  *  ⑦ 🇺🇸 V82.7.3 凍結的那份把美股指數標舊(stale 有 sp500 = 美國放假、台股有開)→ 美股那一行註明「MM/DD 收盤・美國放假,台股已經反應過、不算分」;
  *     ⭐ 決定性對照:同一組資料、stale 是空的 → ⛔ 那句;還沒凍結 → ⛔ 那句(⛔ worker 自己判日期)
+ *     ⑦d 日期跟 App `_premktFieldAge` 同一個來源(sp500_date,沒有才用 nasdaq_date;YYYYMMDD 也收;都沒有寫「前一次收盤」)
  *  實跑:假的網路(macro_risk / radar / attention / risk_history)+ 假的 KV 一個使用者,抓 Telegram sendMessage 的內容來比
  *  INJECT=1:把結論換回舊的簡化版 / 不看日期 / 不看寫入時間 / 🇺🇸 不看美國放假 —— 四種都要紅
  */
@@ -26,6 +27,7 @@ const INJECTS = {
     noDate: ['.find(x => x && x.d === today);', '.find(x => x && x.d);'],
     noAt: ["    if (!/^0[5-8]:\\d\\d$/.test(String(e.at || ''))) return null;", ''],
     noUsHol: ["const usHol = Array.isArray(o.stale) && o.stale.includes('sp500');", 'const usHol = false;'],
+    sp500Only: ['const _usD = _md(macro && macro.sp500_date) || _md(macro && macro.nasdaq_date);', 'const _usD = _md(macro && macro.sp500_date);'],
 };
 let W = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8');
 if (INJ) { const [a, b] = INJECTS[INJ]; if (!W.includes(a)) { console.log('❌ 注入點找不到:' + INJ); process.exit(1); } W = W.replace(a, b); }
@@ -108,6 +110,9 @@ const m7 = await runWith(fzS(HOL7)), m7c = await runWith(fzS([])), m7n = await r
 ok('⑦ 凍結的那份標了美國放假 → 美股那一行註明「11/25 收盤・美國放假,台股已經反應過、不算分」', /\(11\/25 收盤・美國放假,台股已經反應過、不算分\)/.test(usLine(m7)), usLine(m7));
 ok('⑦b ⭐ 決定性對照:同一組資料 stale 是空的 → ⛔ 那句;還沒凍結 → ⛔ 那句(worker ⛔ 自己判日期)', usLine(m7c) && !/美國放假/.test(usLine(m7c)) && usLine(m7n) && !/美國放假/.test(usLine(m7n)), [usLine(m7c), usLine(m7n)].join(' | '));
 ok('⑦c premktFrozen 回傳 usHol(只認 stale 裡的 sp500;只有 ADR 舊 ⛔ 算美國放假)', premktFrozen(fzS(HOL7)).usHol === true && premktFrozen(fzS(['tsm', 'asx'])).usHol === false && premktFrozen(fzS([])).usHol === false);
+const fzD = (sp, nq) => { const m = fzS(HOL7); delete m.sp500_date; delete m.nasdaq_date; if (sp) m.sp500_date = sp; if (nq) m.nasdaq_date = nq; return m; };
+const m7d = await runWith(fzD(null, '2026-11-24')), m7e = await runWith(fzD('20261125', null)), m7f = await runWith(fzD(null, null));
+ok('⑦d 日期跟 App 同一個來源:沒有 sp500_date 改用 nasdaq_date(11/24)、YYYYMMDD 也收(11/25)、兩個都沒有寫「前一次收盤」', /\(11\/24 收盤・美國放假/.test(usLine(m7d)) && /\(11\/25 收盤・美國放假/.test(usLine(m7e)) && /\(前一次收盤・美國放假/.test(usLine(m7f)), [usLine(m7d), usLine(m7e), usLine(m7f)].join(' | '));
 ok('⑥ 🧊 標題寫台北08:10(⛔ 還寫 08:00)', /盤前簡報\* _[^_]* 台北08:10_/.test(m1) && !/台北08:00/.test(m1), m1.split('\n')[0]);
 
 if (process.env.INJECT && !INJ) {
@@ -119,7 +124,7 @@ if (process.env.INJECT && !INJ) {
         console.log(`${hit ? '✅' : '❌'} 注入 ${k} → ${reds[0] ? reds[0].slice(0, 90) : '沒叫出來'}`);
         allRed = allRed && hit;
     }
-    ok('🧪 四種注入全部叫得出來', allRed);
+    ok('🧪 五種注入全部叫得出來', allRed);
 }
 console.log(fails.length ? `\n❌ ${fails.length} 條沒過` : '\n✅ WORKER_PREMKT_PASS');
 process.exit(fails.length ? 1 : 0);
