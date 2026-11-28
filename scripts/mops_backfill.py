@@ -128,6 +128,7 @@ _K_ORDER = re.compile(r'訂單|採購案|標案|標得|得標|接獲|承攬|獲�
 _K_CASH = re.compile(r'現金增資|私募|現增|發行新股')
 _K_MA = re.compile(r'收購|併購|股份轉換|股權')
 _K_CONSOL = re.compile(r'合併(?:財務|營收|報表|報告)')
+_K_SEC = re.compile(r'股票|公司債|受益憑證')   # 🔎 V82.7.5 取得 / 處分的是股票、公司債 → 理財 / 投資,⛔ 本業的消息(11/26 光明處分台積電股票、元大證買公司債)
 SIZE_KINDS = ('訂單', '增資', '收購', '處分', '取得', '庫藏股', '減資')
 
 
@@ -145,9 +146,9 @@ def size_kind(sub, cat):
     if c == 'ma' or (loose and _K_MA.search(s) and not _K_CONSOL.search(s)):
         return '收購'
     if loose and '處分' in s:
-        return '處分'
+        return '' if _K_SEC.search(s) else '處分'
     if loose and '取得' in s:
-        return '取得'
+        return '' if _K_SEC.search(s) else '取得'
     if c == 'buyback':
         return '庫藏股'
     if c in ('cap_red_cash', 'cap_red_loss'):
@@ -582,9 +583,14 @@ def selftest():
             '公告本公司將參加國泰證舉辦之「Non-Deal Roadshow」': '',
             '代子公司公告取得有價證券': '',
             '公告本公司董事會通過合併財務報告': '',
-            '公告本公司董事會決議減資彌補虧損': '減資'}
+            '公告本公司董事會決議減資彌補虧損': '減資',
+            # 🔎 11/26~27 真主旨:取得 / 處分的是股票、公司債(理財)→ ⛔;同一天的土地建物 → 取得(決定性對照)
+            '本公司處分台灣積體電路製造(股)公司 普通股股票達實收資本額百分之二十': '',
+            '元大金控代子公司元大證券公告取得元大金控115年度第二次無擔保普通公司債': '',
+            '公告本公司一年內累積取得日本豐田自動車株式會社 (TOYOTA MOTOR CORPORATION)股票達新台幣三億元': '',
+            '公告本公司取得土地及地上建物之相關資訊': '取得'}
     got = {k: size_kind(k, MEP.classify(k)) for k in subs}
-    ok('⑨ 哪幾類要抓內文(11/27 真主旨):訂單 / 取得 / 處分 / 收購 / 增資 / 減資;法說 / 理財 / 財報 ⛔',
+    ok('⑨ 哪幾類要抓內文(11/26~27 真主旨):訂單 / 取得 / 處分 / 收購 / 增資 / 減資;法說 / 理財(含股票 / 公司債)/ 財報 ⛔',
        got == subs, {k[:16]: (v, subs[k]) for k, v in got.items() if v != subs[k]})
     # ⑩ 🔎 V82.7.5 第 2 步:補歷史內文(MODE=detail)—— 假網路走正式入口 detail_main()
     import tempfile

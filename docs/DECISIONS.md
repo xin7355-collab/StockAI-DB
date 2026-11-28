@@ -20,7 +20,8 @@
 - **取捨(拿不準,先挑合理預設)**:① 營收佔比只給訂單 / 取得 / 處分 / 收購(增資、庫藏股拿營收比沒意義;增資 ÷ 市值等第 2 步 H2)② 產業用 screener 的中文產業名(比 industry_map 的代碼直接)③ 新聞來源用 news_buzz(radar_news 只有 15 則、沒有股票代號)。
 - **測試**:`scripts/test_evt_feed.mjs`(新,30 條;INJECT nogate / rev11 / ratioall / zeroamt / nomiss / nosort 全紅)、`lib_mops_amount --selftest`、`mops_backfill --selftest`、`mops_daily --selftest`、`test_mops_daily_wf`;既有 test_week_digest / test_advunlock / test_nodirective / test_retail_clean 照過。
 - **第 2 步 a(補歷史內文,11/28 上線、不換版本號)**:`mops_backfill.py` `MODE=detail` + `mops_backfill.yml` 多 `mode` / `kinds`(推 orphan 分支 `mops_detail`,同一個 concurrency group = ⛔ 跟列表回補同時打 MOPS)。先數過:mops_deep 2010~2026 共 925,637 則、那幾類 93,548 則(訂單 7,843・取得 23,090・收購 15,958・處分 7,987・增資 30,005・庫藏股 6,478・減資 2,187);預設只抓 H1 / H2 要用的訂單 + 增資 37,848 則 + 有目標的日子×市場列表約 8,000 次 ≈ 每次 2 秒 ≈ 25 小時 ≈ 5 棒(自動接力)。市值(H2)用 stock_deep/share 每天的發行股數(2010-01 ~ 2026-10)× 前一天收盤;營收用 stock_deep/rev(2009 起)。
-- **第 2 步 b(還沒做)**:補完之後→ 事先登記 H1 訂單金額 ÷ 當時已公布的近 12 個月營收(≥ 10% vs < 2%)、H2 現金增資 / 私募 ÷ 市值(≥ 10% vs < 3%,預先寫方向是比較差)→ 照結果:過了清單才加「金額大」那一句,沒過就維持只寫佔比。
+- **第 2 步 b**:✅ 11/28 已事先登記 **EXP-20261128-02**(資料還在補、還沒看任何報酬;tries 2、bias 14 條):H1 訂單金額 ÷ 公告日之前已知的近 12 個月營收(≥ 10% vs < 2%,hi − lo ≥ +2pp)、H2 公司自己的現金增資 / 私募 ÷ 前一天市值(≥ 10% vs < 3%,事先寫方向「hi 比較差」,lo − hi ≥ +2pp;60 天內第一則、⛔ 盈餘轉增資 / 代子公司);共同:各 ≥ 50 筆・逐年同向 ≥ 2/3・年內打亂 p < 0.05・安慰劑(同一檔挪 40~120 天)差距少 ≥ 1pp・門檻高原 5 / 10 / 20% 三格都 ≥ +1pp;封存 2026-11-06。→ 補完後寫 `scripts/mops_size_probe.mjs`(sampleEv)跑 → 照結果:過了清單才加「金額大」那一句,沒過就維持只寫佔比。
+- 🧹 同一天順手:`size_kind` 取得 / 處分的是股票、公司債、受益憑證 → ⛔ 算(理財 / 投資,不是本業;11/26 光明處分台積電股票、元大證買公司債原本被列成「處分 / 取得 + 約一年營收的幾 %」);selftest ⑨ 加 4 條真主旨(含決定性對照:同一天的土地建物照樣算取得)。訂單 / 增資不受影響(補抓照跑)。
 - 怎麼換回:`git revert`(App 那塊跟著 🔓 week 開關,關掉就看不到;採礦多的欄位 App 照 cols 讀,舊 App 不受影響)。
 
 ## V82.7.4(2026-11-28)🗣️ 評估紀錄 58:Chris Camillo「社會套利」的台股版兩條都 ⛔(新聞暴增之後 20 天 −0.14pp;「看好 ÷ 看壞 < 2」反而比 ≥ 2 少 0.86pp,方向相反)
