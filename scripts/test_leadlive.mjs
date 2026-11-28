@@ -171,7 +171,9 @@ const R = await page.evaluate(async () => {
     o.hdrNow = host.querySelector('[data-lqhdr="px"]')?.innerText;
     ws3 && ws3.push({ event: 'data', data: { symbol: '1003', price: 200 } });   // 怪價(+82%)
     await raf();
-    o.weird = host.querySelector('[data-leaderrow="1003"] [data-lqp]').textContent;
+    // 🐛 2026-11-28 第二次:四驗證同時開很多瀏覽器時,上面那段(或 ③c0 跳過時)這一列可能還沒畫出來 → 再等到 15 秒;還是沒有 → 讀成 undefined 讓 ③d 紅(⛔ 讀 null 整支當掉)
+    await until(() => !!host.querySelector('[data-leaderrow="1003"] [data-lqp]'), 15000);
+    o.weird = host.querySelector('[data-leaderrow="1003"] [data-lqp]')?.textContent;
     // ③c 離開決策台 → 關
     const deckWs = [...(app._deckWsList || [])];
     try { realSwitch('inv'); } catch (_) {}
