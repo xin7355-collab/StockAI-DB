@@ -80,7 +80,7 @@ _CODE = re.compile(r'^\d{4,6}[A-Z]?$')
 # 避雷那兩類(mops_event_probe 16 年:能當買進理由的 0 類、之後比較差的就這兩類)—— App 讀這張表顯示名字
 AVOID = {'buyback_end': '庫藏股買完 / 期滿 / 註銷', 'cap_red_loss': '減資彌補虧損'}
 MOPS_FILE, INS_FILE, PATCH_FILE = 'mops_recent.json', 'insider_recent.json', 'mops_daily_patch.json'
-MOPS_COLS = ['s', 'n', 'd', 't', 'sub', 'mk', 'cat', 'kind', 'amt', 'cur', 'ev']
+MOPS_COLS = ['s', 'n', 'd', 't', 'sub', 'mk', 'cat', 'kind', 'amt', 'cur', 'ev', 'nw']
 MOPS_COLS_OLD = 7                     # V82.7.5 以前的列只有 7 欄 → merge_recent 補空欄位
 DETAIL_MAX = max(0, int(os.environ.get('MD_DETAIL_MAX') or '60'))   # 🔎 每輪最多抓幾則內文(每則約 0.8 秒 + SLEEP)
 INS_COLS = ['s', 'n', 'd', 'role', 'rc', 'method', 'mc', 'sh', 'chg', 'mk']
@@ -107,8 +107,52 @@ def mops_app_rows(raw, mk):
         if not _CODE.match(str(r[0])):
             continue
         cat = MEP.classify(r[4])
-        out.append([r[0], r[1], r[2], r[3], r[4], mk, cat, MB.size_kind(r[4], cat), None, None, None])
+        out.append([r[0], r[1], r[2], r[3], r[4], mk, cat, MB.size_kind(r[4], cat), None, None, None, None])
     return out
+
+
+# 📰 V82.7.5「新聞也報」:同一檔、公告那天的前一天 ~ 後一天,新聞標題講到同一類的有幾則(data/news_buzz.json 的 t,
+#   news_buzz_miner 已經只收「標題真的講到這一檔」的;⛔ 論壇貼文)。只描述 —— 新聞多寡研究過沒有預測力(EXP-20261128-01)。
+#   ⛔ 反過來用新聞猜「只有新聞、公司沒公告」:11/24~26 實測 3 天 75 則候選(嚴格版 10 則)幾乎全是評論 / 舊聞 / 認錯公司 → 不做。
+NEWS_FILE = 'news_buzz.json'
+NW_KW = {'訂單': r'訂單|接單|大單|得標|標案|採購案|簽約|合約',
+         '增資': r'增資|現增|募資|私募|發行新股|存託憑證|GDR',
+         '收購': r'收購|併購|合併|入股',
+         '處分': r'處分|出售|售地|賣地|賣廠|出脫',
+         '取得': r'取得|購置|買地|購地|買廠|購廠|擴廠|建廠',
+         '庫藏股': r'庫藏股|買回',
+         '減資': r'減資|退還股款'}
+NW_SKIP = re.compile(r'股市爆料同學會|個股概覽|討論區|PTT|Dcard', re.I)
+
+
+def news_count(rows, cols, buzz):
+    """rows(照 cols 的 list)→ 就地寫 nw 欄,回 {'hit','zero','na'}。
+    那幾天都沒有標題紀錄(不在新聞熱度名單 / 標題只留 10 天)→ 不動(新的列 None;⛔ 寫 0:不知道 ≠ 沒有;舊的列留上一輪算的)。"""
+    S = (buzz or {}).get('s') or {}
+    ix = {k: cols.index(k) for k in ('s', 'd', 'kind', 'nw')}
+    st = {'hit': 0, 'zero': 0, 'na': 0}
+    for r in rows:
+        kind = r[ix['kind']]
+        if kind not in NW_KW:
+            continue
+        days = S.get(str(r[ix['s']])) or {}
+        try:
+            d0 = date.fromisoformat(str(r[ix['d']]))
+        except ValueError:
+            continue
+        titles, seen = [], False
+        for k in (-1, 0, 1):
+            x = days.get((d0 + timedelta(days=k)).isoformat())
+            if isinstance(x, dict) and isinstance(x.get('t'), list):
+                seen = True
+                titles += [t for t in x['t'] if not NW_SKIP.search(str(t))]
+        if not seen:
+            st['na'] += 1
+            continue
+        n = sum(1 for t in titles if re.search(NW_KW[kind], str(t)))
+        r[ix['nw']] = n
+        st['hit' if n else 'zero'] += 1
+    return st
 
 
 def fill_amounts(got, acts, prev_rows, fetch, budget):
@@ -116,7 +160,7 @@ def fill_amounts(got, acts, prev_rows, fetch, budget):
     fetch(form, what) → html 或 None(None = 被擋滿 / 連不上 → 這一輪不再抓)。回 {'reuse','fetch','amt','none','skip','stop'}。"""
     st = {'reuse': 0, 'fetch': 0, 'amt': 0, 'none': 0, 'skip': 0, 'stop': 0}
     prev = {(r[0], r[2], r[3], r[4]): r[8:11] for r in (prev_rows or [])
-            if isinstance(r, list) and len(r) == len(MOPS_COLS) and (r[8] is not None or r[10] is not None)}
+            if isinstance(r, list) and len(r) >= 11 and (r[8] is not None or r[10] is not None)}
     for (iso, mk), rows in sorted(got.items()):
         for r in rows:
             if not r[7]:
@@ -401,6 +445,13 @@ def main(now=None, sess=None, sleep=time.sleep, out_dir=None):
         if not can_write:
             continue
         doc, warn = merge_recent(prev, got, cols, src, today, now=now, miss=ms)
+        if fname == MOPS_FILE:
+            buzz, _ = load_accum(out_dir / NEWS_FILE, {}, what=NEWS_FILE)
+            if buzz:
+                nst = news_count(doc['rows'], cols, buzz)
+                print(f'📰 新聞也報:有 {nst["hit"]} 則 ・0 則 {nst["zero"]} ・那幾天沒有新聞紀錄 {nst["na"]}', flush=True)
+            else:
+                print(f'📰 {NEWS_FILE} 讀不到 → 「新聞也報」這一輪不算(⛔ 寫 0)', flush=True)
         for w in warn:
             print(f'   ⚠️ {fname}:{w}', flush=True)
         (out_dir / fname).write_text(json.dumps(doc, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
@@ -732,6 +783,43 @@ def _selftest():
         d7, _ = merge_recent({'rows': [['2330', '台積電', '2026-11-12', '13:54:04', '舊格式', 'sii', 'other']], 'days': {'2026-11-12': {'sii': 1}}},
                              {}, MOPS_COLS, SRC_MOPS, today, keep=14, now=now)
         ok('⑬ V82.7.5 以前的 7 欄列 → 補空欄位留著(⛔ 丟掉)', any(len(r) == len(MOPS_COLS) and r[4] == '舊格式' and r[7] is None for r in d7['rows']), d7['rows'])
+
+        # ⑭ 📰 新聞也報(news_buzz 的標題;同一檔、前一天 ~ 後一天、講到同一類;⛔ 論壇)
+        B = {'s': {'4588': {'2026-11-13': {'t': ['玖鼎拿下台電智慧電表標案 金額1.64億', '玖鼎訂單 - 股市爆料同學會', '玖鼎股價亮燈']},
+                            '2026-11-14': {'t': ['玖鼎電表採購案挹注明年營收']}},
+                   '2409': {'2026-11-12': {'t': ['友達出售華亞廠 進帳197億']}, '2026-11-13': {'t': ['友達股價走強']}},
+                   '2330': {'2026-11-13': {'t': ['台積電法說會在即']}},
+                   '1101': {'2026-10-01': {'n': 3}}}}
+        C = MOPS_COLS
+        R14 = [['4588', '玖鼎', '2026-11-13', '15:35:20', '取得台電標案', 'sii', 'order', '訂單', 1.64, 'TWD', 'x', None],
+               ['2409', '友達', '2026-11-13', '16:00:10', '處分華亞廠', 'sii', 'asset', '處分', 197.0, 'TWD', 'y', None],
+               ['2330', '台積電', '2026-11-13', '13:54:04', '法人說明會', 'sii', 'confcall', '', None, None, None, None],
+               ['1101', '台泥', '2026-11-13', '10:00:00', '取得廠房', 'sii', 'asset', '取得', None, None, None, None],
+               ['1102', '亞泥', '2026-11-02', '10:00:00', '取得設備', 'sii', 'asset', '取得', None, None, None, 2]]
+        st14 = news_count(R14, C, B)
+        nw = {r[0]: r[11] for r in R14}
+        ok('⑭ 訂單:當天 + 隔天講到「標案 / 採購案」的 2 則(⛔ 論壇那則、⛔ 股價那則)', nw['4588'] == 2, nw)
+        ok('⑭ 處分:前一天「出售」也算(新聞先報、公司隔天公告)', nw['2409'] == 1, nw)
+        ok('⑭ 不是那幾類(法說會)→ 不算(None)', nw['2330'] is None, nw)
+        ok('⑭ 那檔有新聞紀錄、但那幾天沒有標題 → None(⛔ 寫 0:不知道 ≠ 沒有)', nw['1101'] is None and st14['na'] >= 1, (nw, st14))
+        ok('⑭ 上一輪算過、這輪標題已經過期 → 留著上一輪的數字', nw['1102'] == 2, nw)
+        R14b = [list(R14[0])]
+        NW_SKIP_keep = NW_SKIP
+        try:
+            globals()['NW_SKIP'] = re.compile(r'(?!x)x')
+            news_count(R14b, C, B)
+        finally:
+            globals()['NW_SKIP'] = NW_SKIP_keep
+        ok('⑭ 決定性對照:不擋論壇 → 3 則(論壇那則被算進來)', R14b[0][11] == 3, R14b[0][11])
+        dd14 = tmp / 'r13'
+        (dd14 / NEWS_FILE).write_text(json.dumps(B, ensure_ascii=False), encoding='utf-8')
+        r14m, rw14m, c14m, log14 = run_det('r13')
+        ok('⑭ main:data/news_buzz.json 在 → 寫進 nw 欄(4588 = 2)、內文照樣沿用(0 次內文請求)', r14m == 0
+           and rw14m.get(('4588', '2026-11-13'), {}).get('nw') == 2 and sum(1 for m, u in c14m if u == 'detail') == 0 and '📰 新聞也報' in log14,
+           (rw14m.get(('4588', '2026-11-13')), log14[-300:]))
+        r14n, rw14n, _, log14n = run_det('r13d')
+        ok('⑭ main:沒有 news_buzz.json → nw 留空(⛔ 寫 0)+ log 寫讀不到', r14n == 0 and all(v.get('nw') is None for v in rw14n.values())
+           and '讀不到' in log14n, log14n[-200:])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")

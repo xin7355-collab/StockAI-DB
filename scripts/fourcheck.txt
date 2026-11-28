@@ -152,6 +152,9 @@ python3 confcall_deck.py --selftest
 python3 scripts/mops_daily.py --selftest
 python3 scripts/test_mops_daily_wf.py
 node scripts/test_week_digest.mjs
+python3 scripts/mops_backfill.py --selftest
+python3 scripts/lib_mops_amount.py --selftest
+node scripts/test_evt_feed.mjs
 python3 ptt_meta.py --selftest
 python3 scripts/test_confcall_qa.py
 python3 confcall_qa.py --selftest

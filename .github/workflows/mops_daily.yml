@@ -8,6 +8,9 @@ name: 📢 每天的重大訊息 + 申報轉讓 (mops_daily)
 # ⏰ 什麼時候跑:⛔ 不吃排程配額(V75.2.0)—— 跟在每日採礦後面(那支由 Cloudflare worker 台北 17:00 叫醒,實測跑得到);
 #   只跟「每天那一輪」(排程 / worker 叫醒 / 手動),⛔ push 那輪、被取消 / 整個 skipped 的那輪不跟。
 #   一輪約 14 次請求(每次間隔 1.2 秒以上;被擋第 3 次就收工)。⛔ 不加自己的 cron(會跟採礦那輪重複打 MOPS)。
+#   🔎 V82.7.5 那幾類(訂單 / 增資 / 收購 / 處分 / 取得 / 庫藏股 / 減資,一天約 20~35 則)再抓內文拿金額:
+#     每輪最多 MD_DETAIL_MAX=60 則(每則約 0.8 秒 + 間隔 1.2 秒 ≈ 2 分鐘);上一份抓過的同一則沿用(⛔ 重抓);被擋就停、金額留空。
+#   📰 V82.7.5「新聞也報」讀 data 分支的 news_buzz.json(只讀,⛔ 這支不推它 —— 推回去會蓋掉 news_buzz 那支比較新的那份)。
 # ⛔ 只描述:App 只把這兩份當「事實」列出來(週報的本週重點、觸發專欄),⛔ 不產生買賣訊號。
 
 on:
@@ -62,6 +65,12 @@ jobs:
               rm -f "/tmp/prev_$f"; echo "上一份 $f:沒有(第一次跑)"
             fi
           done
+          # 📰 V82.7.5 新聞熱度(news_buzz.yml 產的;只讀,算「新聞也報」用)—— ⛔ 下面兩段推送不帶它
+          if git show "origin/data:data/news_buzz.json" > /tmp/prev_news_buzz.json 2>/dev/null && [ -s /tmp/prev_news_buzz.json ]; then
+            mv /tmp/prev_news_buzz.json data/news_buzz.json; echo "新聞熱度 news_buzz.json:$(wc -c < data/news_buzz.json) bytes"
+          else
+            rm -f /tmp/prev_news_buzz.json; echo "新聞熱度 news_buzz.json:沒有 →「新聞也報」這一輪不算"
+          fi
 
       - name: 📢 抓重大訊息 + 申報轉讓
         id: run

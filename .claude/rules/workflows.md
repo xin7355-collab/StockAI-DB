@@ -30,6 +30,7 @@ paths:
 - ⚠️ **`index.html` 已從 `daily_miner.yml` 的 push paths 移除** → 純前端改動只觸發秒級的 `deploy_pages.yml`，不再浪費 30-60 分跑採礦（避免一次 push 同時觸發兩條部署互相 race）。
 - ⛔ **不要再新增第二支「只部署前端」的 workflow** — 已有 `deploy_pages.yml`,重複會導致兩條同時 force-push gh-pages 打架。
 - 可手動觸發：Actions → 對應 workflow → Run workflow → 選 **`main`**。
+- 📢 **`mops_daily.yml`**(跟在每日採礦後面,⛔ 自己的 cron):一輪約 14 次列表請求;🔎 V82.7.5 起再抓那幾類公告的內文拿金額(每輪最多 `MD_DETAIL_MAX`=60 則、上一份抓過的沿用;實測一天約 20~35 則 ≈ 多 2 分鐘)。打的是公開資訊觀測站 → 派任何打 MOPS 的回補前照 CLAUDE.md 規則 5 先看有沒有同類 run。讀 data 分支 `news_buzz.json` 算「新聞也報」,⛔ 推它(會蓋掉 news_buzz 那支比較新的那份)。
 
 ### V16.1 — daily_miner.yml workflow-level concurrency(新版自動 cancel 舊版)
 - `daily_miner.yml` 已加 workflow-level concurrency:`group: daily-miner-${{ github.ref }}` + `cancel-in-progress: true`

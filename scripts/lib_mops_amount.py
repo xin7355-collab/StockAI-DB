@@ -20,6 +20,8 @@
     前後都沒寫 → TWD(公告的金額欄沒寫幣別就是新台幣),並記 cur_note='沒寫幣別'。
  ④ 金額是 0、或那一項寫「不適用」「無」→ 這個標籤當沒有,往下一個標籤找(⛔ 寫 0)。
  ⑤ 一則公告有好幾個金額 → 只取優先序最前面那個標籤抓到的(⛔ 加總、⛔ 取最大)。
+ ⑥ 往後找的時候跳過「單價」:前面緊接 每股 / 每單位 / 每批 / 每月 / 單價 / 面額… 的那個數字 ⛔ 算(2012 中工那則:
+    「交易總金額: 99,200仟股,每股5元,總金額為496,000仟元」舊版抓成 5 元);不到 1 萬元的也 ⛔ 算(MIN_AMT,重大訊息的金額不可能這麼小)。
 輸出:{'amt': 元(float), 'cur': 'TWD'…, 'label': 標籤, 'ev': 金額那句原文(≤120 字,給人核對), 'cur_note': …} 或 None
 
 跑法:python3 scripts/lib_mops_amount.py --selftest
@@ -29,10 +31,13 @@ import re
 import subprocess
 import sys
 
-_INJ = os.environ.get('_MA_INJ', '')   # selftest 注入用:title / unit / cash(INJECT=1 會各跑一次,全部要紅)
+_INJ = os.environ.get('_MA_INJ', '')   # selftest 注入用:title / unit / cash / perunit(INJECT=1 會各跑一次,全部要紅)
 
 WIN = 90                     # 標籤後面往後看幾個字
 EV_MAX = 120
+MIN_AMT = 1e4                # ⑥ 不到 1 萬元 → 不是這則公告的金額(多半是每股價格 / 面額)
+# ⑥ 單價:數字前面(同一段裡)緊接這些字 → 那是每一單位的價格,⛔ 這則公告的金額
+_PER_UNIT = re.compile(r'(?:每股|每單位|每批|每張|每坪|每平方公尺|每月|每年|單價|單位價格|面額)[^\d]{0,8}$')
 
 # 照優先序:這則公告「主要那個金額」的名字(⛔ 照順序;越前面越是那則的主角)
 LABELS = (
@@ -94,14 +99,17 @@ def _by_labels(t, labels, skip_prev=()):
             seg = t[start:start + WIN]
             if _NA.match(seg):
                 continue
-            m = (_MONEY_NOUNIT if _INJ == 'unit' else MONEY).search(seg)
-            if not m:
-                continue
-            try:
-                amt = float(m.group('num').replace(',', '')) * _UNIT.get(m.group('unit') or '元', 1.0)
-            except (ValueError, KeyError):
-                continue
-            if amt <= 0:
+            m, amt = None, 0.0
+            for mm in (_MONEY_NOUNIT if _INJ == 'unit' else MONEY).finditer(seg):
+                try:
+                    v = float(mm.group('num').replace(',', '')) * _UNIT.get(mm.group('unit') or '元', 1.0)
+                except (ValueError, KeyError):
+                    continue
+                if _INJ != 'perunit' and v > 0 and (_PER_UNIT.search(seg[max(0, mm.start() - 14):mm.start()]) or v < MIN_AMT):
+                    continue                                   # ⑥ 單價 / 太小 → 看同一段的下一個
+                m, amt = mm, v
+                break
+            if not m or amt <= 0:
                 continue
             ck = m.group('cur') or m.group('cur2')
             ev = t[i:start + m.end()]
@@ -179,6 +187,12 @@ REAL2 = {
 }
 
 
+# 第三輪(run 46085149984,2012-03-15;舊公告也拿得到內文)說明欄節錄,一字沒改:題目那一處後面先接股數、每股價格,才是總金額
+REAL3_CTCI = ('說明 1.標的物之名稱及性質（屬特別股者，並應標明特別股約定發行條件，如股息率等）: 認購京華城(股)公司現金增資私募普通股共99,200仟股 '
+              '2.事實發生日:101/3/15~101/3/15 3.交易數量、每單位價格及交易總金額: 99,200仟股,每股5元,總金額為496,000仟元 '
+              '4.交易相對人及其與公司之關係（交易相對人如屬自然人，且非公司之實 質關係人者，得免揭露其姓名）: 京華城(股)公司,關係人')
+
+
 def selftest():
     fails = []
 
@@ -221,15 +235,29 @@ def selftest():
     ok('⑫ 現增價格還沒訂(只有股數)→ None', cash_increase('現金增資發行新股 發行普通股10,000仟股 每股面額新台幣10元') is None)
     ok('⑬ ⭐ 決定性對照:同一項先寫「100%股權」再寫金額 → 取 5 億(⛔ 沒有金額單位的數字)',
        (parse_amount('交易總金額:取得南京公司100%股權,新台幣5億元') or {}).get('amt') == 5e8, parse_amount('交易總金額:取得南京公司100%股權,新台幣5億元'))
+    r3 = parse_amount(REAL3_CTCI)
+    ok('⑭ ⭐ 2012 真內文(中工認購私募):題目後面先接「每股5元」→ 取「總金額為496,000仟元」= 4.96 億(⛔ 5 元)',
+       bool(r3) and r3['amt'] == 496000e3 and r3['cur'] == 'TWD' and '496,000仟元' in r3['ev'], r3)
+    ok('⑭ 只有每股價格 / 每月租金 → None(⛔ 當成這則的金額)',
+       parse_amount('交易總金額:每股價格新台幣12元') is None and parse_amount('交易總金額:每月租金新台幣80萬元') is None)
+    ok('⑭ 不到 1 萬元 → None(⛔ 5,000 元當成重大訊息的金額);剛好 1 萬元照收',
+       parse_amount('交易總金額:新台幣5,000元') is None and (parse_amount('交易總金額:新台幣10,000元') or {}).get('amt') == 1e4)
+    # ⑮ 規則各自的決定性對照(⑥ 單價規則加進來之後,真內文剛好都被它先擋掉 → 另外釘住 ① 與 ①b 兩條,注入 title / cash 才量得到)
+    ok('⑮ 題目那一處後面先接別的金額(帳面價值 3 億,不是單價)→ 取後面真正的「交易總金額」12 億(① 題目放最後)',
+       (parse_amount('5.交易單位數量、每單位價格及交易總金額: 土地2筆 帳面價值新台幣3億元 交易總金額:新台幣12億元') or {}).get('amt') == 12e8,
+       parse_amount('5.交易單位數量、每單位價格及交易總金額: 土地2筆 帳面價值新台幣3億元 交易總金額:新台幣12億元'))
+    ok('⑮ 現增:發行股數 × 發行價格 = 10 億,排在籠統的「增資後實收資本總金額 50 億」前面(①b)',
+       (parse_amount('董事會決議辦理現金增資 發行普通股10,000仟股 每股發行價格新台幣100元 增資後實收資本總金額新台幣5,000,000仟元') or {}).get('amt') == 1e9,
+       parse_amount('董事會決議辦理現金增資 發行普通股10,000仟股 每股發行價格新台幣100元 增資後實收資本總金額新台幣5,000,000仟元'))
     print('❌ %d 條沒過' % len(fails) if fails else '✅ MOPS_AMOUNT_SELFTEST_PASS')
     if not _INJ and os.environ.get('INJECT'):
         all_red = True
-        for k in ('title', 'unit', 'cash'):
+        for k in ('title', 'unit', 'cash', 'perunit'):
             rc = subprocess.run([sys.executable, __file__, '--selftest'], env={**os.environ, 'INJECT': '', '_MA_INJ': k},
                                 capture_output=True, text=True).returncode
             print(f"  {'✅' if rc else '❌'} 注入 {k} → {'紅' if rc else '⛔ 沒有紅(測試沒有鑑別力)'}")
             all_red = all_red and rc != 0
-        print('✅ 🧪 三種注入全部叫得出來' if all_red else '❌ 有注入沒被抓到')
+        print('✅ 🧪 四種注入全部叫得出來' if all_red else '❌ 有注入沒被抓到')
         if not all_red:
             fails.append('注入')
     return 1 if fails else 0
