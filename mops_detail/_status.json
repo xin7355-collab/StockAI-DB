@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-28T19:30+08:00",
+ "updated": "2026-11-29T01:01+08:00",
  "kinds": [
   "訂單",
   "增資"
@@ -60,16 +60,19 @@
  ],
  "last_run": {
   "reason": "time",
-  "list": 835,
-  "det": 4592,
-  "amt": 2241,
-  "none": 2351,
-  "nofield": 5,
+  "list": 923,
+  "det": 5907,
+  "amt": 1620,
+  "none": 4287,
+  "nofield": 14,
   "mism": 0,
   "nohdr": 0,
   "blocks": 0,
-  "fail": 0,
-  "days": 811,
-  "pending_seen": 4671
- }
+  "fail": 1,
+  "days": 893,
+  "heal": 1821,
+  "heal_days": 923,
+  "pending_seen": 5998
+ },
+ "amt_v": 2
 }
