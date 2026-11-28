@@ -6,6 +6,9 @@ name: 📰 重大訊息歷史回補(公開資訊觀測站,變因因子用,手動
 #   ① 寫獨立 orphan 分支 mops_deep(⛔ 不進 data / gh-pages,陷阱 #41;分支只增不減)
 #   ② ⛔ 不加排程;時間用完就 workflow_dispatch 接力自己(最多 20 棒);被擋 / 對表沒過 ⛔ 不接力
 #   ③ ⛔ 不吃 FinMind 額度(不用任何金鑰)
+# 🔎 V82.7.5 mode=detail(評估紀錄 58 第 2 步):讀 mops_deep 的主旨 → 那幾類(kinds,預設 訂單,增資)重抓列表拿參數 → 抓內文 → 金額
+#   → 寫另一個 orphan 分支 mops_detail(⛔ 全文、⛔ 進 data / gh-pages)。同一個 concurrency group = 跟列表回補 ⛔ 同時打 MOPS。
+#   2010~2026 訂單 7,843 + 增資 30,005 = 37,848 則 + 有目標的日子×市場列表約 8,000 次;每次約 2 秒 → 約 25 小時 ≈ 5 棒。
 on:
   workflow_dispatch:
     inputs:
@@ -21,6 +24,14 @@ on:
         description: '(內部用)第幾棒接力'
         required: false
         default: '0'
+      mode:
+        description: 'list = 主旨列表(原本那一套);detail = 🔎 V82.7.5 那幾類的公告內文 → 金額(寫 mops_detail)'
+        required: false
+        default: 'list'
+      kinds:
+        description: 'detail 模式抓哪幾類(逗號隔開;訂單,增資,收購,處分,取得,庫藏股,減資)'
+        required: false
+        default: '訂單,增資'
 
 permissions:
   contents: write
@@ -54,54 +65,71 @@ jobs:
 
       # ⚠️ V49.4 教訓:還原用 git archive,⛔ 不要 git checkout origin/x -- dir(會弄髒 index)
       - name: 📂 還原已抓的
+        env:
+          MODE: ${{ github.event.inputs.mode || 'list' }}
         run: |
           mkdir -p mops_deep
           if git fetch --depth=1 origin mops_deep 2>/dev/null; then
             git archive FETCH_HEAD mops_deep | tar -x || true
           fi
-          echo "已抓:$(find mops_deep -name '*.json.gz' | wc -l) 個月"
+          echo "主旨(mops_deep):$(find mops_deep -name '*.json.gz' | wc -l) 個月"
+          if [ "$MODE" = "detail" ]; then
+            mkdir -p mops_detail
+            if git fetch --depth=1 origin mops_detail 2>/dev/null; then
+              git archive FETCH_HEAD mops_detail | tar -x || true
+            fi
+            echo "內文(mops_detail):$(find mops_detail -name '*.json.gz' | wc -l) 個月"
+          fi
 
       - name: 📰 回補
         id: run
         env:
           FROM: ${{ github.event.inputs.from }}
           MAX_MIN: ${{ github.event.inputs.max_min }}
-          OUT_DIR: mops_deep
-        run: python3 scripts/mops_backfill.py
+          MODE: ${{ github.event.inputs.mode || 'list' }}
+          KINDS: ${{ github.event.inputs.kinds }}
+          DEEP_DIR: mops_deep
+        run: |
+          if [ "$MODE" = "detail" ]; then export OUT_DIR=mops_detail; else export OUT_DIR=mops_deep; fi
+          python3 scripts/mops_backfill.py
 
       # ⚠️ 順序:先把 mops_deep/ 搬到 /tmp,切完分支再搬回來(⛔ 不然 checkout 會蓋掉整輪的結果)
-      - name: 🚀 推到 mops_deep 分支
+      # 🔎 V82.7.5 detail 模式推 mops_detail(同一段,只換分支 / 資料夾名)
+      - name: 🚀 推到研究分支(mops_deep / mops_detail)
         if: always() && steps.run.outputs.push == '1'
+        env:
+          MODE: ${{ github.event.inputs.mode || 'list' }}
         run: |
           set -e
-          n=$(find mops_deep -name '*.json.gz' 2>/dev/null | wc -l)
+          if [ "$MODE" = "detail" ]; then BR=mops_detail; else BR=mops_deep; fi
+          n=$(find "$BR" -name '*.json.gz' 2>/dev/null | wc -l)
           echo "要推 $n 個月"
           [ "$n" -gt 0 ] || { echo "一個月都沒有 → 不推"; exit 0; }
-          rm -rf /tmp/mdeep && mkdir -p /tmp/mdeep && cp -a mops_deep/. /tmp/mdeep/
+          rm -rf /tmp/mdeep && mkdir -p /tmp/mdeep && cp -a "$BR"/. /tmp/mdeep/
           git config user.name  "StockAI Bot"
           git config user.email "bot@users.noreply.github.com"
           git reset --hard -q && git clean -fdq
-          if git fetch --depth=1 origin mops_deep 2>/dev/null; then
-            git checkout -f -B mops_deep FETCH_HEAD
-            old=$(find mops_deep -name '*.json.gz' | wc -l)
+          if git fetch --depth=1 origin "$BR" 2>/dev/null; then
+            git checkout -f -B "$BR" FETCH_HEAD
+            old=$(find "$BR" -name '*.json.gz' | wc -l)
           else
-            git checkout -q --orphan mops_deep
+            git checkout -q --orphan "$BR"
             git rm -rq --cached . 2>/dev/null || true
             git clean -fdq
             old=0
           fi
           # 🚧 只增不減:這一棒的月份數比分支上少 → 有東西不對,⛔ 不推
           if [ "$n" -lt "$old" ]; then echo "::error::這一棒 $n 個月 < 分支上 $old 個月 → 不推"; exit 1; fi
-          rm -rf mops_deep && mkdir -p mops_deep && cp -a /tmp/mdeep/. mops_deep/
-          git add -f mops_deep
+          rm -rf "$BR" && mkdir -p "$BR" && cp -a /tmp/mdeep/. "$BR"/
+          git add -f "$BR"
           if git diff --cached --quiet; then echo "✅ 沒有新東西 → 不 commit"; exit 0; fi
-          git commit -q -m "📰 重大訊息回補 $n 個月 $(date -u +%Y-%m-%d)"
+          git commit -q -m "📰 重大訊息回補($BR)$n 個月 $(date -u +%Y-%m-%d)"
           pushed=0
           # ⛔ 這個 retry 迴圈不可拿掉
           for i in 1 2 3 4 5; do
-            git push origin mops_deep && { pushed=1; echo "✅ 已推上 mops_deep(第 $i 次)"; break; }
+            git push origin "$BR" && { pushed=1; echo "✅ 已推上 $BR(第 $i 次)"; break; }
             sleep $((i * 3))
-            git pull --rebase origin mops_deep 2>/dev/null || true
+            git pull --rebase origin "$BR" 2>/dev/null || true
           done
           [ "$pushed" -eq 1 ] || { echo "::error::push 連 5 次失敗"; exit 1; }
 
@@ -112,8 +140,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CHAIN: ${{ github.event.inputs.chain }}
           FROM_M: ${{ github.event.inputs.from }}
+          MODE: ${{ github.event.inputs.mode || 'list' }}
+          KINDS: ${{ github.event.inputs.kinds }}
         run: |
           C=$(( ${CHAIN:-0} + 1 ))
           if [ "$C" -gt 20 ]; then echo "⛔ 已經接力 20 棒 → 停(防無限迴圈)"; exit 0; fi
-          gh workflow run mops_backfill.yml --ref main -f from="${FROM_M:-2010-01}" -f chain="$C" -f max_min=330
+          gh workflow run mops_backfill.yml --ref main -f from="${FROM_M:-2010-01}" -f chain="$C" -f max_min=330 -f mode="$MODE" -f kinds="${KINDS:-訂單,增資}"
           echo "🔁 已觸發第 $C 棒"

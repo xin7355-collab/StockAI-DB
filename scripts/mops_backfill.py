@@ -25,10 +25,13 @@
   ⑥ 空過守門:這一棒一天都沒做完 → exit 1
 
 跑法:FROM=2010-01 MAX_MIN=330 OUT_DIR=mops_deep python3 scripts/mops_backfill.py
+      MODE=detail KINDS=訂單,增資 DEEP_DIR=mops_deep OUT_DIR=mops_detail python3 scripts/mops_backfill.py   🔎 V82.7.5 第 2 步:那幾類的內文 → 金額
       python3 scripts/mops_backfill.py --selftest
 """
 import calendar
+import contextlib
 import gzip
+import io
 import json
 import os
 import re
@@ -324,6 +327,206 @@ def main():
     return 0 if ok_push else 1
 
 
+# ── 🔎 V82.7.5 第 2 步:補歷史內文(MODE=detail;評估紀錄 58)──────────────────────────
+#   讀 mops_deep 的月檔(主旨)→ 那幾類(KINDS,預設 訂單 / 增資 = 事先登記 H1 / H2 要用的)→ 重抓那一天的列表拿「詳細資料」參數
+#   → 一則一則抓內文 → lib_mops_amount 抓金額 → 寫 mops_detail/{YYYY-MM}.json.gz(⛔ 全文、⛔ 進 data / gh-pages)。
+#   存法:{'m', 'done': {'日期|市場': [做過的大小類]}, 'rows': [[代號, 日期, 時間, 大小類, 億元|None, 幣別|None, ev, seq_no]]}
+#     ev:金額那句原文;'' = 抓過、說明欄沒金額;None = 沒抓到(那一列沒有參數)。
+#   守門:被擋 → 退避、第 3 次收工(保留已抓的)・內文頁上的公司代號 ≠ 要的 → ⛔ 收、累積 MISMATCH_MAX 次 → 這一棒 ⛔ 推
+#        ・連不上的那一天 ⛔ 標做完(下一棒再試)・時間用完 → 接力・空過守門(還有要做的、這一棒一則都沒抓到 → exit 1)
+DEEP_DIR = Path(os.environ.get('DEEP_DIR') or 'mops_deep')
+KINDS = tuple(k.strip() for k in (os.environ.get('KINDS') or '訂單,增資').split(',') if k.strip())
+MISMATCH_MAX = 5
+_CO_RE = re.compile(r'本資料由\s*[((][^))]{0,10}[))]\s*(\d{4,6}[A-Z]?)')
+_CODE_RE = re.compile(r'^\d{4,6}[A-Z]?$')
+
+
+def load_month_at(base, mo, empty):
+    f = Path(base) / f'{mo}.json.gz'
+    if not f.exists():
+        return dict(empty)
+    try:
+        return json.loads(gzip.decompress(f.read_bytes()).decode('utf-8'))
+    except Exception:
+        return dict(empty)
+
+
+def detail_targets(deep_doc, kinds, done):
+    """mops_deep 一個月 → {(日期, 市場): [(代號, 時間, 主旨, 大小類)]};done['日期|市場'] 已做過的大小類跳過"""
+    import mops_event_probe as MEP  # noqa: E402  主旨 → 類別(⛔ 第二份;在函式裡 import,list 模式用不到)
+    out = {}
+    for r in (deep_doc or {}).get('rows') or []:
+        if not isinstance(r, list) or len(r) < 6 or not _CODE_RE.match(str(r[0])):
+            continue
+        k = size_kind(r[4], MEP.classify(r[4]))
+        if not k or k not in kinds or k in ((done or {}).get(f'{r[2]}|{r[5]}') or []):
+            continue
+        out.setdefault((r[2], r[5]), []).append((str(r[0]), str(r[3]), str(r[4]), k))
+    return out
+
+
+def match_fields(acts, code, t, sub):
+    """列表那一頁的參數 → 這一則的(代號 / 時間 / 主旨一樣;主旨對不上就用代號 + 時間,而且那個時間只有一則才算)"""
+    f = acts.get((code, t, sub))
+    if f:
+        return f
+    same = [v for (c, tt, _), v in acts.items() if c == code and tt == t]
+    return same[0] if len(same) == 1 else None
+
+
+def page_code(html):
+    """內文頁頁首「本資料由 (上市公司) 2515 中工 公司提供」→ '2515';找不到 → None"""
+    import html as _h
+    t = re.sub(r'\s+', ' ', _h.unescape(re.sub(r'<[^>]+>', ' ', str(html or ''))))
+    m = _CO_RE.search(t)
+    return m.group(1) if m else None
+
+
+def detail_row(code, d, t, kind, html, seq):
+    """內文頁 → 一列;說明欄沒金額 → ev ''(= 抓過、沒有)"""
+    import lib_mops_amount as LA  # noqa: E402
+    say = parse_detail(html)
+    a = LA.parse_amount(say) if say else None
+    return [code, d, t, kind, LA.to_yi(a['amt']) if a else None, a['cur'] if a else None, a['ev'] if a else '', str(seq or '')]
+
+
+def detail_main(sess=None, sleep=time.sleep, now=None, out_dir=None, deep_dir=None, kinds=None, max_min=None, frm=None):
+    if sess is None:
+        import requests
+        sess = requests.Session()
+    out_dir, deep_dir = Path(out_dir or OUT_DIR), Path(deep_dir or DEEP_DIR)
+    kinds = tuple(kinds or KINDS)
+    max_min = MAX_MIN if max_min is None else max_min
+    t0 = time.time()
+    today = ((now or datetime.now(TW)) - timedelta(days=1)).date()
+    hdr = {**mp.UA, 'Referer': f'{mp.HOST}/mops/web/t05st01'}
+    n = {'list': 0, 'det': 0, 'amt': 0, 'none': 0, 'nofield': 0, 'mism': 0, 'nohdr': 0, 'blocks': 0, 'fail': 0, 'days': 0}
+    reason, more, pending = 'done', 0, 0
+
+    def post(f):
+        """回 (類別, 文字):'ok' / 'empty' / 'blocked'(第 3 次)/ 'fail';內文頁用 'page'(有沒有內容交給呼叫端判斷)"""
+        for att in range(3):
+            if n['blocks'] >= BLOCK_MAX:
+                return 'blocked', ''
+            try:
+                r = sess.post(mp.HOST + PATH, data=f, headers=hdr, timeout=60)
+                r.encoding = r.encoding or 'utf-8'
+                txt = r.text or ''
+                if mp.is_blocked(txt):
+                    n['blocks'] += 1
+                    print(f'   ⛔ 被擋(第 {n["blocks"]} 次)', flush=True)
+                    if n['blocks'] >= BLOCK_MAX:
+                        return 'blocked', ''
+                    sleep(60 * 2 ** (n['blocks'] - 1))
+                    continue
+                if f.get('step') == '2':
+                    return ('page' if r.status_code == 200 else 'fail'), txt
+                return classify(r.status_code, txt), txt
+            except Exception as e:  # noqa: BLE001
+                print(f'   ⚠️ {type(e).__name__}: {str(e)[:80]}(第 {att + 1} 次)', flush=True)
+                sleep(3 * (att + 1))
+        n['fail'] += 1
+        return 'fail', ''
+
+    stop = False
+    for mo in months_back(frm or FROM, today):
+        if stop:
+            break
+        deep = load_month_at(deep_dir, mo, {'m': mo, 'days': {}, 'rows': []})
+        if not deep.get('rows'):
+            continue
+        doc = load_month_at(out_dir, mo, {'m': mo, 'done': {}, 'rows': []})
+        doc.setdefault('done', {})
+        doc.setdefault('rows', [])
+        tg = detail_targets(deep, kinds, doc['done'])
+        if not tg:
+            continue
+        pending += sum(len(v) for v in tg.values())
+        print(f'🔎 {mo}:要抓內文 {sum(len(v) for v in tg.values())} 則({len(tg)} 個日子×市場)', flush=True)
+        have = {(r[0], r[1], r[2]): i for i, r in enumerate(doc['rows'])}
+        for (d, mk), items in sorted(tg.items(), reverse=True):
+            if (time.time() - t0) / 60 > max_min:
+                reason, more, stop = 'time', 1, True
+                break
+            k, txt = post(form(mk, date.fromisoformat(d)))
+            n['list'] += 1
+            sleep(SLEEP)
+            if k == 'blocked':
+                reason, stop = 'blocked', True
+                break
+            if k != 'ok':
+                continue                                     # 連不上 / 那天說查無(主旨那份明明有)→ ⛔ 標做完,下一棒再試
+            acts = {(a['cells'][0], a['cells'][3], a['cells'][4]): a['fields']
+                    for a in mp.row_actions(txt) if a['fields'] and len(a['cells']) >= 5}
+            day_ok = True
+            for code, t, sub, kind in items:
+                fd = detail_form(match_fields(acts, code, t, sub))
+                if not fd:
+                    row, n['nofield'] = [code, d, t, kind, None, None, None, ''], n['nofield'] + 1
+                else:
+                    k2, html = post(fd)
+                    sleep(SLEEP)
+                    if k2 == 'blocked':
+                        reason, stop, day_ok = 'blocked', True, False
+                        break
+                    if k2 != 'page' or not parse_detail(html):
+                        day_ok = False                       # 連不上 / 不是內文頁 → 下一棒再試
+                        continue
+                    pc = page_code(html)
+                    if pc is None:
+                        n['nohdr'] += 1                      # 頁首沒有「本資料由 (…公司) 代號」→ 對不了,照收(另外計數)
+                    elif pc != code:
+                        n['mism'] += 1
+                        day_ok = False
+                        print(f'   ⚠️ 內文頁的公司代號對不上:要 {code}、拿到 {pc}({d} {t})', flush=True)
+                        if n['mism'] >= MISMATCH_MAX:
+                            reason, stop = 'mismatch', True
+                            break
+                        continue
+                    row = detail_row(code, d, t, kind, html, fd.get('seq_no'))
+                    n['det'] += 1
+                    n['amt' if row[4] is not None else 'none'] += 1
+                key = (code, d, t)
+                if key in have:
+                    doc['rows'][have[key]] = row
+                else:
+                    have[key] = len(doc['rows'])
+                    doc['rows'].append(row)
+            if day_ok and not stop:
+                doc['done'][f'{d}|{mk}'] = sorted(set(doc['done'].get(f'{d}|{mk}') or []) | set(kinds))
+                n['days'] += 1
+            out_dir.mkdir(parents=True, exist_ok=True)
+            doc['rows'].sort(key=lambda r: (r[1], r[2], r[0]))
+            have = {(r[0], r[1], r[2]): i for i, r in enumerate(doc['rows'])}
+            (out_dir / f'{mo}.json.gz').write_bytes(gzip.compress(json.dumps(doc, ensure_ascii=False, separators=(',', ':')).encode('utf-8')))
+            if stop:
+                break
+    push = n['det'] > 0 and reason != 'mismatch'
+    if reason == 'done' and pending == 0:
+        print('✅ 這幾類的內文全部抓完了(沒有要做的)', flush=True)
+    elif n['det'] == 0 and reason != 'time':
+        print(f'❌ 還有 {pending} 則要做、這一棒一則都沒抓到(空過守門;{reason})', flush=True)
+    st_path = out_dir / '_status.json'
+    try:
+        status = json.loads(st_path.read_text(encoding='utf-8')) if st_path.exists() else {}
+    except Exception:
+        status = {}
+    status.update({'updated': datetime.now(TW).isoformat(timespec='minutes'), 'kinds': list(kinds),
+                   'months': sorted(p.name[:7] for p in out_dir.glob('*.json.gz')) if out_dir.exists() else [],
+                   'last_run': {'reason': reason, **n, 'pending_seen': pending}})
+    out_dir.mkdir(parents=True, exist_ok=True)
+    st_path.write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding='utf-8')
+    out = os.environ.get('GITHUB_OUTPUT')
+    if out:
+        with open(out, 'a') as f:
+            f.write(f'more={more}\nreason={reason}\npush={1 if push else 0}\n')
+    print(f'🏁 {reason} ・列表 {n["list"]} 次 ・內文 {n["det"]} 則(有金額 {n["amt"]}、沒有 {n["none"]})・沒有參數 {n["nofield"]}'
+          f' ・代號對不上 {n["mism"]} ・被擋 {n["blocks"]} ・連不上 {n["fail"]} ・做完 {n["days"]} 個日子×市場 ・{round((time.time() - t0) / 60, 1)} 分', flush=True)
+    if reason == 'mismatch':
+        return 1
+    return 0 if (n['det'] > 0 or reason == 'time' or pending == 0) else 1
+
+
 def selftest():
     bad = []
 
@@ -383,9 +586,106 @@ def selftest():
     got = {k: size_kind(k, MEP.classify(k)) for k in subs}
     ok('⑨ 哪幾類要抓內文(11/27 真主旨):訂單 / 取得 / 處分 / 收購 / 增資 / 減資;法說 / 理財 / 財報 ⛔',
        got == subs, {k[:16]: (v, subs[k]) for k, v in got.items() if v != subs[k]})
+    # ⑩ 🔎 V82.7.5 第 2 步:補歷史內文(MODE=detail)—— 假網路走正式入口 detail_main()
+    import tempfile
+    tmpd = Path(tempfile.mkdtemp())
+    deep_d, out_d = tmpd / 'deep', tmpd / 'det'
+    deep_d.mkdir()
+    DROWS = [['4588', '玖鼎電力', '2012-03-15', '15:35:20', '本公司獲得台電公司標案訂單', 'sii'],
+             ['2515', '中工', '2012-03-15', '15:43:17', '本公司董事會決議辦理現金增資發行新股', 'sii'],
+             ['2330', '台積電', '2012-03-15', '13:54:04', '公告本公司將參加法人說明會', 'sii'],
+             ['2409', '友達', '2012-03-15', '16:00:10', '本公司處分華亞廠不動產', 'sii'],
+             ['8077', '洛碁', '2012-03-14', '08:35:47', '本公司接獲訂單', 'otc']]
+    (deep_d / '2012-03.json.gz').write_bytes(gzip.compress(json.dumps({'m': '2012-03', 'days': {}, 'rows': DROWS}, ensure_ascii=False).encode('utf-8')))
+    DSAY = {'4588': '說明 5.主要內容:取得訂單金額約1.64億元(新台幣,未稅) 6.限制條款:無',
+            '2515': '說明 3.交易數量、每單位價格及交易總金額: 99,200仟股,每股5元,總金額為496,000仟元 4.交易相對人:京華城',
+            '2409': '說明 5.交易總金額:新台幣197億元(未稅)',
+            '8077': '說明 1.事實發生日:101/03/14 2.契約相對人:某公司'}
+
+    class _R:
+        def __init__(self, t, code=200):
+            self.text, self.status_code, self.encoding = t, code, 'utf-8'
+
+    def fake(mode=''):
+        calls = []
+
+        class S:
+            def post(self, url, data=None, headers=None, timeout=None):
+                if data.get('step') == '2':
+                    calls.append(('det', data['co_id']))
+                    if mode == 'block':
+                        return _R('因為安全性考量,您的連線已被阻擋')
+                    code = data['co_id'] if mode != 'wrongco' else '9999'
+                    hdr = '' if mode == 'nohdr' else f'本資料由 (上市公司) {code} 某公司 公司提供 序號 {data["seq_no"]}'
+                    return _R(f'<html>{hdr}<table><tr><td>{DSAY.get(data["co_id"], "說明 1.事實發生日")}</td></tr></table>以上資料均由各公司依規定申報</html>')
+                calls.append(('list', data['TYPEK'], data['year'], data['month'], data['b_date']))
+                d = date(int(data['year']) + 1911, int(data['month']), int(data['b_date']))
+                rr = [r for r in DROWS if r[2] == d.isoformat() and r[5] == data['TYPEK']]
+                roc = f'{d.year - 1911}/{d.month:02d}/{d.day:02d}'
+                oc = ("document.t05st01_fm.seq_no.value='{q}';document.t05st01_fm.spoke_time.value='{t}';document.t05st01_fm.spoke_date.value='{d}';"
+                      "document.t05st01_fm.co_id.value='{c}';document.t05st01_fm.TYPEK.value='{mk}';openWindow(this.form ,'');")
+                body = ''.join(f'<tr><td>{r[0]}</td><td>{r[1]}</td><td>{roc}</td><td>{r[3]}</td><td>{r[4] + (" " if mode == "subdiff" else "")}</td>'
+                               f'<td><input type=button value="詳細資料" onclick="{oc.format(q=i + 1, t=int(r[3].replace(":", "")), d=d.strftime("%Y%m%d"), c=r[0], mk=r[5])}"></td></tr>'
+                               for i, r in enumerate(rr))
+                return _R(f'<table>{body}</table>' if rr else '<html>資料庫中查無需求資料</html>')
+        return S(), calls
+
+    def run_d(mode='', kinds=('訂單', '增資'), out=None, mm=999):
+        s_, c_ = fake(mode)
+        buf, gho = io.StringIO(), tmpd / 'gho.txt'
+        gho.write_text('')
+        keep_go = os.environ.get('GITHUB_OUTPUT')
+        os.environ['GITHUB_OUTPUT'] = str(gho)
+        try:
+            with contextlib.redirect_stdout(buf):
+                rc_ = detail_main(sess=s_, sleep=lambda x: None, now=datetime(2026, 11, 28, 9, 0, tzinfo=TW), out_dir=out or out_d, deep_dir=deep_d,
+                                  kinds=kinds, max_min=mm, frm='2012-01')
+        finally:
+            if keep_go is None:
+                os.environ.pop('GITHUB_OUTPUT', None)
+            else:
+                os.environ['GITHUB_OUTPUT'] = keep_go
+        f_ = Path(out or out_d) / '2012-03.json.gz'
+        doc_ = json.loads(gzip.decompress(f_.read_bytes())) if f_.exists() else {'done': {}, 'rows': []}
+        go = dict(x.split('=', 1) for x in gho.read_text().split() if '=' in x)
+        return rc_, doc_, c_, buf.getvalue() + f"\n[gho] push={go.get('push')} more={go.get('more')} reason={go.get('reason')}"
+
+    rc1, d1, c1, log1 = run_d()
+    R1 = {r[0]: r for r in d1['rows']}
+    ok('⑩ 只抓那幾類(訂單 / 增資):玖鼎、中工、洛碁 3 則內文(⛔ 法說會、⛔ 處分 —— 這一棒沒選)',
+       sorted(x[1] for x in c1 if x[0] == 'det') == ['2515', '4588', '8077'] and '2330' not in R1 and '2409' not in R1, c1)
+    ok('⑩ 金額:玖鼎 1.64 億、中工 4.96 億(每股5元 ⛔)、洛碁說明欄沒金額 → ev 空字串',
+       R1.get('4588', [0] * 8)[4] == 1.64 and R1.get('2515', [0] * 8)[4] == 4.96 and R1.get('8077', [0] * 8)[6] == '' and R1['8077'][4] is None, d1['rows'])
+    ok('⑩ 列表只抓有目標的日子 × 市場(3/15 上市、3/14 上櫃 = 2 次)', sum(1 for x in c1 if x[0] == 'list') == 2, [x for x in c1 if x[0] == 'list'])
+    ok('⑩ 兩個日子都標做完(訂單 / 增資)', d1['done'].get('2012-03-15|sii') == ['增資', '訂單'] and d1['done'].get('2012-03-14|otc') == ['增資', '訂單'], d1['done'])
+    rc2, d2, c2, _ = run_d()
+    ok('⑪ 續跑:做過的 0 次請求(rc 0 = 全部抓完)', rc2 == 0 and not c2 and len(d2['rows']) == 3, (rc2, c2))
+    rc3, d3, c3, _ = run_d(kinds=('訂單', '增資', '處分'))
+    ok('⑪ 多選一類(處分)→ 只抓友達那 1 則、舊的不重抓', [x[1] for x in c3 if x[0] == 'det'] == ['2409'] and len(d3['rows']) == 4
+       and d3['done'].get('2012-03-15|sii') == ['增資', '處分', '訂單'], (c3, d3['done']))
+    rc4, d4, c4, log4 = run_d(mode='block', out=tmpd / 'b')
+    ok('⑫ 被擋 → 第 3 次收工、那一天 ⛔ 標做完、rc 1(空過)', rc4 == 1 and not d4['done'] and '被擋' in log4 and 'blocked' in log4, (rc4, d4['done']))
+    keep_mm = MISMATCH_MAX
+    globals()['MISMATCH_MAX'] = 2
+    try:
+        rc5, d5, c5, log5 = run_d(mode='wrongco', out=tmpd / 'w')
+    finally:
+        globals()['MISMATCH_MAX'] = keep_mm
+    ok('⑫ ⭐ 內文頁的公司代號對不上 → ⛔ 收、⛔ 標做完;累積到上限 → 收工 mismatch、rc 1、push 0(⛔ 推)',
+       rc5 == 1 and not d5['rows'] and not d5['done'] and 'push=0' in log5 and 'reason=mismatch' in log5
+       and sum(1 for x in c5 if x[0] == 'det') == 2, (rc5, d5, log5[-220:]))
+    rc6, d6, c6, log6 = run_d(mode='nohdr', out=tmpd / 'n')
+    ok('⑫ 頁首沒有代號(對不了)→ 照收、另外計數', rc6 == 0 and len(d6['rows']) == 3 and '代號對不上 0' in log6, (rc6, log6[-200:]))
+    rc7, d7, c7, _ = run_d(mode='subdiff', out=tmpd / 's')
+    ok('⑬ 主旨對不上(多一個空白)→ 用代號 + 時間對(那個時間只有一則)', rc7 == 0 and len([r for r in d7['rows'] if r[4] is not None]) == 2, d7['rows'])
+    rc8, d8, c8, log8 = run_d(out=tmpd / 't', mm=-1)
+    ok('⑬ 時間用完 → reason time、rc 0、more 1(接力)、⛔ 標做完', rc8 == 0 and not d8['done'] and 'more=1' in log8 and 'reason=time' in log8, log8[-160:])
+    ok('⑩ 第一棒:push 1、more 0(做完了)', 'push=1' in log1 and 'more=0' in log1, log1[-120:])
+    ok('⑬ 內文頁代號解析:頁首去掉標籤後找「本資料由 (上市公司) 代號」;沒有 → None',
+       page_code('<p>本資料由&nbsp;<b>(上櫃公司)</b> 8077 洛碁 公司提供</p>') == '8077' and page_code('<html>別的網頁</html>') is None)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 
 
 if __name__ == '__main__':
-    sys.exit(selftest() if '--selftest' in sys.argv else main())
+    sys.exit(selftest() if '--selftest' in sys.argv else (detail_main() if os.environ.get('MODE') == 'detail' else main()))
