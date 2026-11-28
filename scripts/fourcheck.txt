@@ -155,6 +155,7 @@ node scripts/test_week_digest.mjs
 python3 scripts/mops_backfill.py --selftest
 python3 scripts/lib_mops_amount.py --selftest
 node scripts/test_evt_feed.mjs
+node scripts/mops_size_probe.mjs --selftest
 python3 ptt_meta.py --selftest
 python3 scripts/test_confcall_qa.py
 python3 confcall_qa.py --selftest
