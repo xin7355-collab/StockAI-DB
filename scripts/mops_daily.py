@@ -167,7 +167,11 @@ def fill_amounts(got, acts, prev_rows, fetch, budget):
                 continue
             key = (r[0], r[2], r[3], r[4])
             if key in prev:
-                r[8:11] = prev[key]
+                pv = list(prev[key])
+                if pv[2]:                                  # 🩹 V82.7.6 有原句 → 照現在的金額規則重算(App 清單裡的舊列下一輪自己修好)
+                    a = LA.reparse_ev(pv[2])
+                    pv = [LA.to_yi(a['amt']), a['cur'], a['ev']] if a else [None, None, '']
+                r[8:11] = pv
                 st['reuse'] += 1
                 continue
             f = MB.detail_form((acts.get((iso, mk)) or {}).get((r[0], r[3], r[4])))
@@ -780,6 +784,16 @@ def _selftest():
                           {('2026-11-13', 'sii'): {('1', '10:00:00', '取得訂單'): {'seq_no': '1', 'spoke_time': '100000', 'spoke_date': '20261113', 'co_id': '1', 'TYPEK': 'sii'}}},
                           [], lambda f, w: '<td>說明 1.事實發生日:115/11/13 2.契約相對人:某公司</td>', 5)
         ok('⑬ 說明欄沒有金額 → ev 寫空字串(= 抓過、沒有),下一輪沿用不重抓', st['none'] == 1 and st['amt'] == 0, st)
+        # 🩹 V82.7.6 沿用上一份的金額時照現在的規則重算(越南盾那則舊版記成新台幣 4,737 億)
+        g15 = {('2026-11-13', 'sii'): [['8464', 'x', '2026-11-13', '10:00:00', '取得訂單', 'sii', 'order', '訂單', None, None, None],
+                                       ['4588', 'y', '2026-11-13', '11:00:00', '標案訂單', 'sii', 'order', '訂單', None, None, None]]}
+        st15 = fill_amounts(g15, {}, [['8464', 'x', '2026-11-13', '10:00:00', '取得訂單', 'sii', 'order', '訂單', 4737.73, 'TWD', '交易總金額為越南盾473,772,812,805元'],
+                                      ['4588', 'y', '2026-11-13', '11:00:00', '標案訂單', 'sii', 'order', '訂單', 1.64, 'TWD', '取得訂單金額約1.64億元']],
+                            lambda f, w: None, 5)
+        r15 = {x[0]: x for x in g15[('2026-11-13', 'sii')]}
+        ok('⑬ 🩹 沿用上一份時照現在的規則重算:越南盾 → VND(⛔ 新台幣 4,737 億);決定性對照:正常那則 1.64 億新台幣不變;0 次內文請求',
+           r15['8464'][9] == 'VND' and r15['8464'][8] == 4737.73 and r15['4588'][8:10] == [1.64, 'TWD'] and st15['reuse'] == 2 and st15['fetch'] == 0,
+           (r15, st15))
         d7, _ = merge_recent({'rows': [['2330', '台積電', '2026-11-12', '13:54:04', '舊格式', 'sii', 'other']], 'days': {'2026-11-12': {'sii': 1}}},
                              {}, MOPS_COLS, SRC_MOPS, today, keep=14, now=now)
         ok('⑬ V82.7.5 以前的 7 欄列 → 補空欄位留著(⛔ 丟掉)', any(len(r) == len(MOPS_COLS) and r[4] == '舊格式' and r[7] is None for r in d7['rows']), d7['rows'])

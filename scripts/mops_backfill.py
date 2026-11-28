@@ -391,7 +391,41 @@ def detail_row(code, d, t, kind, html, seq):
     return [code, d, t, kind, LA.to_yi(a['amt']) if a else None, a['cur'] if a else None, a['ev'] if a else '', str(seq or '')]
 
 
+def heal_rows(doc, deep):
+    """🩹 V82.7.6 舊版本(amt_v < lib_mops_amount.AMT_V)的月檔:已存的列照現在的金額規則重算一次。
+    原句(ev)判斷得出來的 → 改成重算值(沒金額 → ev '');值有變、或原句看不出來(LA.needs_body:增資、「金額」開頭)
+    → 那一天×市場的那一類從 done 拿掉,這一棒照完整內文重抓(完整內文 = 最後的值)。
+    ⛔ 碰 ev 是 '' / None 的(抓過沒金額 / 沒抓到;新規則只會拿掉金額、不會多抓到)。回 (改了幾列, 拿掉幾個「日子|市場」)"""
+    import lib_mops_amount as LA  # noqa: E402
+    mk_of = {(str(r[0]), r[2], r[3]): r[5] for r in (deep or {}).get('rows') or [] if isinstance(r, list) and len(r) >= 6}
+    changed, drop = 0, {}
+    for r in doc.get('rows') or []:
+        if not isinstance(r, list) or len(r) < 8 or not r[6]:
+            continue
+        if LA.needs_body(r[6], r[3]):
+            new, ev = [None, None], ''
+        else:
+            a = LA.reparse_ev(r[6])
+            new, ev = ([LA.to_yi(a['amt']), a['cur']], a['ev']) if a else ([None, None], '')
+            if new == [r[4], r[5]]:
+                continue
+        changed += 1
+        r[4], r[5], r[6] = new[0], new[1], ev
+        for mk in ([mk_of[(r[0], r[1], r[2])]] if (r[0], r[1], r[2]) in mk_of else ['sii', 'otc']):
+            drop.setdefault(f'{r[1]}|{mk}', set()).add(r[3])
+    for key, ks in drop.items():
+        if key in doc.get('done', {}):
+            left = [k for k in doc['done'][key] if k not in ks]
+            if left:
+                doc['done'][key] = left
+            else:
+                doc['done'].pop(key)
+    doc['amt_v'] = LA.AMT_V
+    return changed, len(drop)
+
+
 def detail_main(sess=None, sleep=time.sleep, now=None, out_dir=None, deep_dir=None, kinds=None, max_min=None, frm=None):
+    import lib_mops_amount as LA  # noqa: E402
     if sess is None:
         import requests
         sess = requests.Session()
@@ -401,7 +435,7 @@ def detail_main(sess=None, sleep=time.sleep, now=None, out_dir=None, deep_dir=No
     t0 = time.time()
     today = ((now or datetime.now(TW)) - timedelta(days=1)).date()
     hdr = {**mp.UA, 'Referer': f'{mp.HOST}/mops/web/t05st01'}
-    n = {'list': 0, 'det': 0, 'amt': 0, 'none': 0, 'nofield': 0, 'mism': 0, 'nohdr': 0, 'blocks': 0, 'fail': 0, 'days': 0}
+    n = {'list': 0, 'det': 0, 'amt': 0, 'none': 0, 'nofield': 0, 'mism': 0, 'nohdr': 0, 'blocks': 0, 'fail': 0, 'days': 0, 'heal': 0, 'heal_days': 0}
     reason, more, pending = 'done', 0, 0
 
     def post(f):
@@ -436,9 +470,17 @@ def detail_main(sess=None, sleep=time.sleep, now=None, out_dir=None, deep_dir=No
         deep = load_month_at(deep_dir, mo, {'m': mo, 'days': {}, 'rows': []})
         if not deep.get('rows'):
             continue
-        doc = load_month_at(out_dir, mo, {'m': mo, 'done': {}, 'rows': []})
+        doc = load_month_at(out_dir, mo, {'m': mo, 'done': {}, 'rows': [], 'amt_v': LA.AMT_V})
         doc.setdefault('done', {})
         doc.setdefault('rows', [])
+        if (doc.get('amt_v') or 1) < LA.AMT_V:            # 🩹 V82.7.6 舊規則抓的月檔 → 先重算(只做一次:做完寫 amt_v)
+            hc, hd = heal_rows(doc, deep)
+            n['heal'] += hc
+            n['heal_days'] += hd
+            if hc or hd:
+                print(f'🩹 {mo}:金額規則 v{LA.AMT_V} 重算 → 改 {hc} 列、{hd} 個日子×市場重抓', flush=True)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            (out_dir / f'{mo}.json.gz').write_bytes(gzip.compress(json.dumps(doc, ensure_ascii=False, separators=(',', ':')).encode('utf-8')))
         tg = detail_targets(deep, kinds, doc['done'])
         if not tg:
             continue
@@ -502,7 +544,7 @@ def detail_main(sess=None, sleep=time.sleep, now=None, out_dir=None, deep_dir=No
             (out_dir / f'{mo}.json.gz').write_bytes(gzip.compress(json.dumps(doc, ensure_ascii=False, separators=(',', ':')).encode('utf-8')))
             if stop:
                 break
-    push = n['det'] > 0 and reason != 'mismatch'
+    push = (n['det'] > 0 or n['heal'] > 0 or n['heal_days'] > 0) and reason != 'mismatch'   # 🩹 只有修正也要推
     if reason == 'done' and pending == 0:
         print('✅ 這幾類的內文全部抓完了(沒有要做的)', flush=True)
     elif n['det'] == 0 and reason != 'time':
@@ -512,7 +554,7 @@ def detail_main(sess=None, sleep=time.sleep, now=None, out_dir=None, deep_dir=No
         status = json.loads(st_path.read_text(encoding='utf-8')) if st_path.exists() else {}
     except Exception:
         status = {}
-    status.update({'updated': datetime.now(TW).isoformat(timespec='minutes'), 'kinds': list(kinds),
+    status.update({'updated': datetime.now(TW).isoformat(timespec='minutes'), 'kinds': list(kinds), 'amt_v': LA.AMT_V,
                    'months': sorted(p.name[:7] for p in out_dir.glob('*.json.gz')) if out_dir.exists() else [],
                    'last_run': {'reason': reason, **n, 'pending_seen': pending}})
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -522,7 +564,8 @@ def detail_main(sess=None, sleep=time.sleep, now=None, out_dir=None, deep_dir=No
         with open(out, 'a') as f:
             f.write(f'more={more}\nreason={reason}\npush={1 if push else 0}\n')
     print(f'🏁 {reason} ・列表 {n["list"]} 次 ・內文 {n["det"]} 則(有金額 {n["amt"]}、沒有 {n["none"]})・沒有參數 {n["nofield"]}'
-          f' ・代號對不上 {n["mism"]} ・被擋 {n["blocks"]} ・連不上 {n["fail"]} ・做完 {n["days"]} 個日子×市場 ・{round((time.time() - t0) / 60, 1)} 分', flush=True)
+          f' ・代號對不上 {n["mism"]} ・被擋 {n["blocks"]} ・連不上 {n["fail"]} ・做完 {n["days"]} 個日子×市場'
+          f' ・🩹 修正 {n["heal"]} 列(重抓 {n["heal_days"]} 個日子×市場)・{round((time.time() - t0) / 60, 1)} 分', flush=True)
     if reason == 'mismatch':
         return 1
     return 0 if (n['det'] > 0 or reason == 'time' or pending == 0) else 1
@@ -689,6 +732,43 @@ def selftest():
     ok('⑩ 第一棒:push 1、more 0(做完了)', 'push=1' in log1 and 'more=0' in log1, log1[-120:])
     ok('⑬ 內文頁代號解析:頁首去掉標籤後找「本資料由 (上市公司) 代號」;沒有 → None',
        page_code('<p>本資料由&nbsp;<b>(上櫃公司)</b> 8077 洛碁 公司提供</p>') == '8077' and page_code('<html>別的網頁</html>') is None)
+    # ⑭ 🩹 V82.7.6 舊規則抓的月檔讀進來先重算:乘錯(股數 × 總額)/ 越南盾當新台幣 → 改值 + 那一天拿掉 done → 重抓;正常列不動
+    hd_ = tmpd / 'h'
+    hd_.mkdir()
+    old = {'m': '2012-03', 'done': {'2012-03-15|sii': ['增資', '訂單'], '2012-03-14|otc': ['增資', '訂單']},
+           'rows': [['2515', '2012-03-15', '15:43:17', '增資', 245462344.0, 'TWD', '發行股數:普通股44,600,000股・發行價格計算，新台幣550,364,000元', '2'],
+                    ['4588', '2012-03-15', '15:35:20', '訂單', 4737.73, 'TWD', '交易總金額為越南盾473,772,812,805元', '1'],
+                    ['8077', '2012-03-14', '08:35:47', '訂單', None, None, '', '1']]}
+    (hd_ / '2012-03.json.gz').write_bytes(gzip.compress(json.dumps(old, ensure_ascii=False).encode('utf-8')))
+    rc9, d9, c9, log9 = run_d(out=hd_)
+    R9 = {r[0]: r for r in d9['rows']}
+    ok('⑭ 🩹 舊月檔先重算:乘錯那列 + 越南盾那列 → 那一天(3/15 上市)拿掉 done → 照完整內文重抓兩則;3/14 上櫃 ⛔ 動(0 次請求)',
+       sorted(x[1] for x in c9 if x[0] == 'det') == ['2515', '4588'] and not any(x[0] == 'list' and x[4] == '14' for x in c9)
+       and '修正 2 列' in log9 and '重抓 1 個' in log9, (c9, log9[-300:]))
+    ok('⑭ 重抓後是完整內文的值(2515 4.96 億、4588 1.64 億)、檔頭 amt_v 2、done 補回、push 1(只有修正也推)',
+       R9['2515'][4] == 4.96 and R9['4588'][4] == 1.64 and d9.get('amt_v') == 2 and d9['done'].get('2012-03-15|sii') == ['增資', '訂單'] and 'push=1' in log9,
+       (d9.get('amt_v'), d9['done'], log9[-120:]))
+    rc10, d10, c10, log10 = run_d(out=hd_)
+    ok('⑭ 第二次:amt_v 已經是 2 → ⛔ 再重算、0 次請求(⛔ 每一棒都重抓)', not c10 and '修正 0 列' in log10, (c10, log10[-160:]))
+    hn_ = tmpd / 'hn'
+    hn_.mkdir()
+    good = {'m': '2012-03', 'done': {'2012-03-15|sii': ['增資', '訂單'], '2012-03-14|otc': ['增資', '訂單']},
+            'rows': [['2515', '2012-03-15', '15:43:17', '增資', 15.46, 'TWD', '募集金額為新台幣1,546,228仟元', '2'],
+                     ['4588', '2012-03-15', '15:35:20', '訂單', 1.64, 'TWD', '主要內容:取得訂單金額約1.64億元', '1']]}
+    (hn_ / '2012-03.json.gz').write_bytes(gzip.compress(json.dumps(good, ensure_ascii=False).encode('utf-8')))
+    rc11, d11, c11, log11 = run_d(out=hn_)
+    ok('⑭ ⭐ 決定性對照:舊月檔但全部正常 → 0 列改、done 不動、0 次請求、只寫 amt_v、push 0',
+       not c11 and d11['done'] == good['done'] and d11.get('amt_v') == 2 and [r[4] for r in d11['rows']] == [15.46, 1.64] and 'push=0' in log11,
+       (c11, d11['done'], log11[-160:]))
+    hh_ = tmpd / 'hh'
+    hh_.mkdir()
+    gen = {'m': '2012-03', 'done': {'2012-03-15|sii': ['增資', '訂單']},
+           'rows': [['2515', '2012-03-15', '15:43:17', '增資', 1.0, 'TWD', '金額:新台幣100,000,000元', '2']]}
+    (hh_ / '2012-03.json.gz').write_bytes(gzip.compress(json.dumps(gen, ensure_ascii=False).encode('utf-8')))
+    d12 = {'rows': [list(x) for x in gen['rows']], 'done': {k: list(v) for k, v in gen['done'].items()}}
+    hc12, hdd12 = heal_rows(d12, {'rows': DROWS})
+    ok('⑭ 增資「金額:」開頭(看不到前面是不是「發行總」)→ 先清掉金額、只拿掉「增資」那一類重抓(訂單照舊)',
+       hc12 == 1 and hdd12 == 1 and d12['rows'][0][4] is None and d12['done'].get('2012-03-15|sii') == ['訂單'], (hc12, hdd12, d12))
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 

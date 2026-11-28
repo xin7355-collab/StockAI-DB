@@ -22,6 +22,16 @@
  ⑤ 一則公告有好幾個金額 → 只取優先序最前面那個標籤抓到的(⛔ 加總、⛔ 取最大)。
  ⑥ 往後找的時候跳過「單價」:前面緊接 每股 / 每單位 / 每批 / 每月 / 單價 / 面額… 的那個數字 ⛔ 算(2012 中工那則:
     「交易總金額: 99,200仟股,每股5元,總金額為496,000仟元」舊版抓成 5 元);不到 1 萬元的也 ⛔ 算(MIN_AMT,重大訊息的金額不可能這麼小)。
+ 🩹 V82.7.6(AMT_V 2;補抓第一棒 32 個月抽查出來的,⛔ 看過任何報酬):
+ ⑦ 現增「發行價格」到數字之間有「計算」→ 那個數字就是總額(⛔ 再乘股數;日勝生「發行價格計算,新台幣550,364,000元」舊版算成 2.45 億億);
+    有「而定 / 未定 / 另訂」而且後面沒有「暫定」→ 價格還沒訂 → None;每股價格 ≥ 100 萬元 → 不是價格;價格那一段的幣別要認(「美金1,000元」)。
+ ⑧ 幣別表補越南盾 / 港幣 / 泰銖 / 新加坡幣…(8464「越南盾473,772,812,805元」舊版當成新台幣 4,737 億);冒號 / 括號全形半形都認;「USD$」也認。
+ ⑨ 「7億8500萬元」→ 一個數(78,500萬元;舊版只抓到 8,500 萬);「5, 005萬元」數字中間的空白併掉。
+ ⑩ 單價窗口放寬:「每坪使用權資產價值:約新台幣65,427元」(每坪後面 10 個字內、中間沒有「總 / 合計」)⛔ 算。
+ ⑪ 新台幣 > 1 兆元 → 當成解析錯(MAX_TWD;外幣不限,越南盾的數字本來就大)。
+ ⑫ 籠統標籤「總金額 / 金額」⛔ 取「發行總金額」裡的、後面接「及股數」的(增資那一欄是面額總額;檔頭 ①c 本來就寫 ⛔,舊版只擋了一半);
+    增資類內文裡,標籤到數字之間有「面額」的(「按面額新台幣10元計算,共計…」)也 ⛔。
+ reparse_ev(ev):存下來的金額原句照現在的規則重算(mops_detail 已存的列、mops_daily 沿用上一份的那幾列);「股數段・價格段」直接走 ⑦。
 輸出:{'amt': 元(float), 'cur': 'TWD'…, 'label': 標籤, 'ev': 金額那句原文(≤120 字,給人核對), 'cur_note': …} 或 None
 
 跑法:python3 scripts/lib_mops_amount.py --selftest
@@ -31,13 +41,19 @@ import re
 import subprocess
 import sys
 
-_INJ = os.environ.get('_MA_INJ', '')   # selftest 注入用:title / unit / cash / perunit(INJECT=1 會各跑一次,全部要紅)
+_INJ = os.environ.get('_MA_INJ', '')   # selftest 注入用:title / unit / cash / perunit + V82.7.6 pricetotal / pricecur / facefield / nofx / yiwan / perwin / nocap(INJECT=1 會各跑一次,全部要紅)
 
+AMT_V = 2                    # 🩹 規則版本(V82.7.6 修 ⑦~⑫ 之後 = 2);mops_detail 月檔 / _status.json 記這個,舊版本的月檔讀進來先重算
 WIN = 90                     # 標籤後面往後看幾個字
 EV_MAX = 120
 MIN_AMT = 1e4                # ⑥ 不到 1 萬元 → 不是這則公告的金額(多半是每股價格 / 面額)
+MAX_TWD = 1e12               # ⑪ 新台幣超過 1 兆元 → 解析錯(一則公告不可能這麼大;外幣不限)
+PX_MAX = 1e6                 # ⑦ 每股發行價格 ≥ 100 萬元 → 那不是每股價格
 # ⑥ 單價:數字前面(同一段裡)緊接這些字 → 那是每一單位的價格,⛔ 這則公告的金額
-_PER_UNIT = re.compile(r'(?:每股|每單位|每批|每張|每坪|每平方公尺|每月|每年|單價|單位價格|面額)[^\d]{0,8}$')
+#   ⑩ V82.7.6 放寬:後面最多 10 個非數字字元、中間沒有「總 / 合計」(「每坪使用權資產價值:約新台幣65,427元」)
+_PER_UNIT = re.compile(r'(?:每股|每單位|每批|每張|每坪|每平方公尺|每月|每年|單價|單位價格|面額)(?:(?!總|合計)[^\d]){0,10}$'
+                       if os.environ.get('_MA_INJ', '') != 'perwin' else r'(?:每股|每單位|每批|每張|每坪|每平方公尺|每月|每年|單價|單位價格|面額)[^\d]{0,8}$')
+PER_WIN = 20 if os.environ.get('_MA_INJ', '') != 'perwin' else 14
 
 # 照優先序:這則公告「主要那個金額」的名字(⛔ 照順序;越前面越是那則的主角)
 LABELS = (
@@ -52,25 +68,49 @@ LABELS = (
 _CUR = {'新台幣': 'TWD', '新臺幣': 'TWD', 'NT$': 'TWD', 'NTD': 'TWD', '台幣': 'TWD', '臺幣': 'TWD',
         '人民幣': 'CNY', 'RMB': 'CNY', 'CNY': 'CNY',
         '美金': 'USD', '美元': 'USD', 'US$': 'USD', 'USD': 'USD',
-        '日圓': 'JPY', '日幣': 'JPY', 'JPY': 'JPY', '歐元': 'EUR', 'EUR': 'EUR'}
+        '日圓': 'JPY', '日幣': 'JPY', '日元': 'JPY', 'JPY': 'JPY', '歐元': 'EUR', 'EUR': 'EUR'}
+# ⑧ V82.7.6 補(8464 越南盾、KY 公司增資的港幣 / 泰銖 / 新加坡幣…);⚠️ App 的 _EVT_CUR 要有同一組代碼的中文名(test_evt_feed 比對)
+_CUR_MORE = {'越南盾': 'VND', 'VND': 'VND', '港幣': 'HKD', '港元': 'HKD', 'HKD': 'HKD', '泰銖': 'THB', 'THB': 'THB',
+             '印尼盾': 'IDR', 'IDR': 'IDR', '新加坡幣': 'SGD', '新加坡元': 'SGD', 'SGD': 'SGD',
+             '馬來西亞令吉': 'MYR', '馬來西亞幣': 'MYR', '令吉': 'MYR', '馬幣': 'MYR', 'MYR': 'MYR',
+             '菲律賓披索': 'PHP', '菲律賓比索': 'PHP', 'PHP': 'PHP', '韓元': 'KRW', '韓圜': 'KRW', 'KRW': 'KRW',
+             '澳幣': 'AUD', '澳元': 'AUD', 'AUD': 'AUD', '英鎊': 'GBP', 'GBP': 'GBP', '印度盧比': 'INR', 'INR': 'INR',
+             '瑞士法郎': 'CHF', 'CHF': 'CHF', '加拿大幣': 'CAD', '加幣': 'CAD', 'CAD': 'CAD'}
+if os.environ.get('_MA_INJ', '') != 'nofx':
+    _CUR.update(_CUR_MORE)
 _UNIT = {'億元': 1e8, '仟萬元': 1e7, '千萬元': 1e7, '百萬元': 1e6, '萬元': 1e4, '仟元': 1e3, '千元': 1e3, '元': 1.0}
 _CUR_RE = '|'.join(re.escape(k) for k in sorted(_CUR, key=len, reverse=True))
 _UNIT_RE = '|'.join(re.escape(k) for k in sorted(_UNIT, key=len, reverse=True))
 MONEY = re.compile(
-    rf'(?P<cur>{_CUR_RE})?\s*[::]?\s*約?\s*'
+    rf'(?P<cur>{_CUR_RE})?\s*\$?\s*[:：]?\s*約?\s*'
     rf'(?P<num>\d{{1,3}}(?:,\d{{3}})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*'
-    rf'(?P<unit>{_UNIT_RE})(?:\s*[((]?\s*(?P<cur2>{_CUR_RE}))?')
+    rf'(?P<unit>{_UNIT_RE})(?:\s*[(（]?\s*(?P<cur2>{_CUR_RE}))?')
 _MONEY_NOUNIT = re.compile(   # 注入用:金額單位變成可有可無(⛔ 正式)
-    rf'(?P<cur>{_CUR_RE})?\s*[::]?\s*約?\s*(?P<num>\d{{1,3}}(?:,\d{{3}})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?P<unit>{_UNIT_RE})?(?:\s*[((]?\s*(?P<cur2>{_CUR_RE}))?')
+    rf'(?P<cur>{_CUR_RE})?\s*\$?\s*[:：]?\s*約?\s*(?P<num>\d{{1,3}}(?:,\d{{3}})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?P<unit>{_UNIT_RE})?(?:\s*[(（]?\s*(?P<cur2>{_CUR_RE}))?')
+_CUR_FIND = re.compile(_CUR_RE)
 # ①b 現金增資:發行股數 × 每股發行價格(⛔ 拿面額總額當募到的錢)
 _SHARES = re.compile(r'發行(?:普通股|新股|股數)?[^\d]{0,6}?(?P<num>\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?P<u>仟股|千股|萬股|股)')
-_PRICE = re.compile(r'發行價格[^\d]{0,24}?(?:新台幣|新臺幣|NT\$|NTD)?\s*(?P<num>\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*元')
+_PRICE = re.compile(r'發行價格(?P<pre>[^\d]{0,24}?)(?P<num>\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*元')
+_PX_TBD = re.compile(r'而定|未定|另訂|另定')        # ⑦ 價格還沒訂
+_PX_SET = re.compile(r'暫定|暫訂|訂為|定為')        # ⑦ 「…而定,暫定為新台幣30元」→ 有暫定價
+_YI_WAN = re.compile(r'(\d+(?:\.\d+)?)\s*億\s*(\d{1,3}(?:,\d{3})+|\d{1,4})\s*萬')
 _SH_UNIT = {'仟股': 1e3, '千股': 1e3, '萬股': 1e4, '股': 1.0}
-_NA = re.compile(r'^[\s::]*(?:不適用|無|N/?A)(?:[\s。;;,,]|$)')
+_NA = re.compile(r'^[\s:：]*(?:不適用|無|N/?A)(?:[\s。;；,，]|$)')
+_FACE_TXT = re.compile(r'增資|發行新股')            # ⑫ 增資類內文
+_GENERIC_EV = re.compile(r'^金額(?!及股數)')       # ⑫ 籠統標籤「金額」抓到的原句:看不到前面是不是「發行總」(舊版只擋「發行」+「總金額」→「總金額」開頭的判斷得出來)
+
+
+def _yiwan(m):
+    v = float(m.group(1)) * 1e4 + float(m.group(2).replace(',', ''))
+    return (f'{v:,.4f}'.rstrip('0').rstrip('.')) + '萬'
 
 
 def _clean(t):
-    return re.sub(r'\s+', ' ', str(t or '')).strip()
+    t = re.sub(r'\s+', ' ', str(t or '')).strip()
+    if _INJ == 'yiwan':
+        return t
+    t = re.sub(r'(?<=\d),\s+(?=\d{3}(?!\d))', ',', t)       # ⑨「5, 005萬元」→「5,005萬元」
+    return _YI_WAN.sub(_yiwan, t)                              # ⑨「7億8500萬元」→「78,500萬元」
 
 
 def parse_amount(say):
@@ -86,12 +126,16 @@ def parse_amount(say):
     r = cash_increase(t)
     if r:
         return r
-    return _by_labels(t, LABELS[-2:], skip_prev=('發行',))
+    if _INJ == 'facefield':                              # 注入:面額欄照收(⛔ 正式)
+        return _by_labels(t, LABELS[-2:], skip_prev=('發行',))
+    # ⑫ 「發行總金額」「…金額及股數」是增資的面額欄 ⛔;增資類內文標籤到數字之間有「面額」⛔
+    return _by_labels(t, LABELS[-2:], skip_prev=('發行', '發行總'), skip_next=('及股數',), face=bool(_FACE_TXT.search(t)))
 
 
-def _by_labels(t, labels, skip_prev=()):
+def _by_labels(t, labels, skip_prev=(), skip_next=(), face=False):
     for lab in labels:
-        pos = [m.start() for m in re.finditer(re.escape(lab), t) if not any(t[max(0, m.start() - len(p)):m.start()] == p for p in skip_prev)]
+        pos = [m.start() for m in re.finditer(re.escape(lab), t) if not any(t[max(0, m.start() - len(p)):m.start()] == p for p in skip_prev)
+               and not any(t[m.end():m.end() + len(q)] == q for q in skip_next)]
         # 題目那一處 = 標籤前一個字是「及」(「每單位價格及交易總金額」)→ 放到最後才看
         order = pos if _INJ == 'title' else [p for p in pos if t[p - 1:p] != '及'] + [p for p in pos if t[p - 1:p] == '及']
         for i in order:
@@ -105,8 +149,13 @@ def _by_labels(t, labels, skip_prev=()):
                     v = float(mm.group('num').replace(',', '')) * _UNIT.get(mm.group('unit') or '元', 1.0)
                 except (ValueError, KeyError):
                     continue
-                if _INJ != 'perunit' and v > 0 and (_PER_UNIT.search(seg[max(0, mm.start() - 14):mm.start()]) or v < MIN_AMT):
+                if _INJ != 'perunit' and v > 0 and (_PER_UNIT.search(seg[max(0, mm.start() - PER_WIN):mm.start()]) or v < MIN_AMT):
                     continue                                   # ⑥ 單價 / 太小 → 看同一段的下一個
+                ck0 = mm.group('cur') or mm.group('cur2')
+                if (not ck0 or _CUR.get(ck0) == 'TWD') and v > MAX_TWD and _INJ != 'nocap':
+                    continue                                   # ⑪ 新台幣超過 1 兆 → 解析錯
+                if face and '面額' in seg[:mm.start()]:
+                    continue                                   # ⑫ 增資類「按面額…計算」= 面額總額
                 m, amt = mm, v
                 break
             if not m or amt <= 0:
@@ -118,9 +167,16 @@ def _by_labels(t, labels, skip_prev=()):
     return None
 
 
-def cash_increase(t):
-    """①b 現金增資:發行股數 × 每股發行價格(兩個都要有;⛔ 用面額)。回同 parse_amount 的格式或 None"""
-    if '增資' not in t and '發行新股' not in t:
+def _cur_in(txt):
+    """一段文字裡最後(最靠近數字)的那個幣別 → 代碼;沒有 → None"""
+    ms = list(_CUR_FIND.finditer(txt or ''))
+    return _CUR[ms[-1].group(0)] if ms else None
+
+
+def cash_increase(t, force=False):
+    """①b 現金增資:發行股數 × 每股發行價格(兩個都要有;⛔ 用面額)。回同 parse_amount 的格式或 None。
+    force=True:reparse_ev 用(存下來的「股數段・價格段」沒有「增資」字樣)"""
+    if not force and '增資' not in t and '發行新股' not in t:
         return None
     ms, mp_ = _SHARES.search(t), _PRICE.search(t)
     if not ms or not mp_:
@@ -132,8 +188,39 @@ def cash_increase(t):
         return None
     if sh <= 0 or px <= 0:
         return None
+    pre = mp_.group('pre') or ''
+    total = False
+    if _INJ != 'pricetotal':
+        tbd = _PX_TBD.search(pre)
+        if tbd and not _PX_SET.search(pre[tbd.end():]):
+            return None                                  # ⑦ 價格還沒訂(「發行價格而定 發行總金額:上限…」那是面額)
+        total = '計算' in pre                            # ⑦「發行價格計算,新台幣550,364,000元」= 總額
+        if not total and px >= PX_MAX:
+            return None                                  # ⑦ 每股 ≥ 100 萬元 → 不是價格
+    ck = None if _INJ == 'pricecur' else _cur_in(pre)    # ⑦ 價格那一段的幣別(「美金1,000元」)
+    cur = ck or 'TWD'
+    amt = px if total else sh * px
+    if cur == 'TWD' and amt > MAX_TWD and _INJ != 'nocap':
+        return None                                      # ⑪
     ev = f"{ms.group(0)}・{mp_.group(0)}"
-    return {'amt': sh * px, 'cur': 'TWD', 'label': '發行股數 × 發行價格', 'ev': ev[:EV_MAX], 'cur_note': ''}
+    return {'amt': amt, 'cur': cur, 'label': '發行價格計算(總額)' if total else '發行股數 × 發行價格', 'ev': ev[:EV_MAX], 'cur_note': ''}
+
+
+def reparse_ev(ev):
+    """🩹 V82.7.6 存下來的金額原句(ev)照現在的規則重算 → 同 parse_amount 的格式或 None。
+    「股數段・價格段」(現增規則自己組的,那句沒有「增資」字樣)直接走現增規則。"""
+    t = _clean(ev)
+    if not t:
+        return None
+    if '・' in t and _SHARES.search(t) and _PRICE.search(t):
+        return cash_increase(t, force=True)
+    return parse_amount(t)
+
+
+def needs_body(ev, kind):
+    """🩹 原句看不出來的那種 → 要重抓完整內文:增資類、「金額」開頭(⛔「金額及股數」—— 那句自己就判斷得出來)。
+    看不到前面是不是「發行總」(= 面額欄);第一棒 32 個月 254 則(⛔ 全部 2,725 則重抓)"""
+    return kind == '增資' and bool(ev) and bool(_GENERIC_EV.match(_clean(ev)))
 
 
 def to_yi(amt):
@@ -249,15 +336,56 @@ def selftest():
     ok('⑮ 現增:發行股數 × 發行價格 = 10 億,排在籠統的「增資後實收資本總金額 50 億」前面(①b)',
        (parse_amount('董事會決議辦理現金增資 發行普通股10,000仟股 每股發行價格新台幣100元 增資後實收資本總金額新台幣5,000,000仟元') or {}).get('amt') == 1e9,
        parse_amount('董事會決議辦理現金增資 發行普通股10,000仟股 每股發行價格新台幣100元 增資後實收資本總金額新台幣5,000,000仟元'))
+    # ⑯ 🩹 V82.7.6 補抓第一棒(32 個月)抽查出來的真原句(mops_detail 的 ev 欄,一字沒改)→ 現在的規則(reparse_ev)
+    def rp(ev):
+        x = reparse_ev(ev)
+        return (round(x['amt']), x['cur']) if x else None
+    ok('⑯ ⑦ 日勝生 2547「發行價格計算,新台幣550,364,000元」= 總額 5.50 億(⛔ 再乘 44,600,000 股)',
+       rp('發行股數:普通股44,600,000股・發行價格計算，新台幣550,364,000元') == (550364000, 'TWD'), rp('發行股數:普通股44,600,000股・發行價格計算，新台幣550,364,000元'))
+    ok('⑯ ⑦ 5529「發行價格而定 發行總金額:上限120,000,000元」→ 價格還沒訂 → None(那是面額總額)',
+       rp('發行總股數：上限12,000,000股・發行價格而定 發行總金額：上限120,000,000元') is None)
+    ok('⑯ ⑦ 「…而定,暫定為新台幣30元」有暫定價 → 照乘(決定性對照)',
+       (cash_increase('現金增資 發行普通股1,000,000股 發行價格:依市場狀況而定，暫定為新台幣30元') or {}).get('amt') == 3e7)
+    ok('⑯ ⑦ 價格那一段的幣別:4977「發行價格:美金1,000元」× 700 股 = USD 70 萬;1402 美金 111,111.11 元 × 9 股 ≈ USD 100 萬',
+       rp('發行700股・發行價格:美金1,000元') == (700000, 'USD') and rp('發行股數為9股・發行價格:美金111,111.11元') == (1000000, 'USD'))
+    ok('⑯ ⑧ 8464「越南盾473,772,812,805元」→ VND(⛔ 當成新台幣 4,737 億);2891「港幣2億5,000萬元」→ HKD 2.5 億',
+       rp('交易總金額為越南盾473,772,812,805元') == (473772812805, 'VND') and rp('金額:港幣2億5,000萬元') == (250000000, 'HKD'))
+    ok('⑯ ⑧ 6415「USD 5, 005萬元」→ USD 5,005 萬(⛔ 新台幣 5 萬);6908「新加坡幣(SGD)2,600萬元」→ SGD;全形括號後面的幣別也認',
+       rp('金額及股數(如屬盈餘或公積轉增資，發行股數則不含配發給員工部分): USD 5, 005萬元') is None
+       and rp('交易總金額: USD 5, 005萬元') == (50050000, 'USD') and (parse_amount('交易總金額:8億元（人民幣）') or {}).get('cur') == 'CNY'
+       and rp('交易總金額:不超過新加坡幣2,600萬元') == (26000000, 'SGD'), [rp('交易總金額: USD 5, 005萬元'), parse_amount('交易總金額:8億元（人民幣）')])
+    ok('⑯ ⑨ 1536「總工程款為:新台幣7億8500萬元」= 7.85 億(⛔ 8,500 萬);1438「約新台幣32億1,667萬元」= 32.17 億',
+       rp('契約總金額:總工程款為:新台幣7億8500萬元') == (785000000, 'TWD') and rp('金額: 預估投入建築成本約新台幣32億1,667萬元') == (3216670000, 'TWD'))
+    ok('⑯ ⑩ 2615「每坪使用權資產價值:約新台幣65,427元」= 單價 → None(⛔ 當成交易總金額)',
+       rp('交易總金額: 使用權資產面積：約69坪 每坪使用權資產價值：約新台幣65,427元') is None)
+    ok('⑯ ⑩ 決定性對照:「每股5元,總金額為496,000仟元」中間有數字 → 照收 4.96 億;「每股價格依評價報告訂定,交易總價新台幣5億元」中間有「總」→ 照收',
+       rp('交易總金額: 99,200仟股,每股5元,總金額為496,000仟元') == (496000000, 'TWD')
+       and (parse_amount('交易總金額:每股價格依評價報告訂定，總價新台幣5億元') or {}).get('amt') == 5e8)
+    ok('⑯ ⑪ 新台幣 > 1 兆 → None(解析錯);外幣不限(越南盾 4,737 億照收)',
+       parse_amount('交易總金額:新台幣2,000,000,000,000元') is None and rp('交易總金額為越南盾4,737,728,128,050元') == (4737728128050, 'VND'))
+    ok('⑯ ⑫ 增資面額欄:6160「金額及股數(…):擬辦理現金增資發行普通股11,000仟股,每股面額新臺幣10元,計新台幣110,000仟元」→ None',
+       parse_amount('5.發行總金額及股數(如屬盈餘或公積轉增資，發行股數則不含配發給員工部分): 擬辦理現金增資發行普通股11,000仟股，每股面額新臺幣10元，計新台幣110,000仟元') is None)
+    ok('⑯ ⑫「發行總金額:新台幣45,000仟元」/「按面額新台幣10元計算,共計新台幣36,600,000元」(增資)→ None;決定性對照:收足股款「總金額新台幣416,000,000元」照收',
+       parse_amount('現金增資收足股款 金額及股數: 發行總金額：新台幣45,000仟元') is None
+       and parse_amount('初次上櫃前現金增資發行新股 金額:按面額新台幣10元計算，共計新台幣36,600,000元') is None
+       and (parse_amount('現金增資收足股款 實際收足股款總金額新台幣416,000,000元') or {}).get('amt') == 416000000)
+    ok('⑯ 決定性對照:正常的照舊 —「發行普通股23,529,000股・暫定為每股新台幣70元」= 16.47 億;「募集金額為新台幣1,546,228仟元」= 15.46 億',
+       rp('發行普通股23,529,000股・發行價格，暫定為每股新台幣70元') == (1647030000, 'TWD') and rp('募集金額為新台幣1,546,228仟元') == (1546228000, 'TWD'))
+    ok('⑯ needs_body:增資 + 籠統標籤開頭 → 要重抓完整內文;訂單 / 明確標籤 → 不用',
+       needs_body('金額:新台幣168,000,000元', '增資') and not needs_body('金額:新台幣168,000,000元', '訂單')
+       and not needs_body('募集金額為新台幣1,546,228仟元', '增資') and not needs_body('', '增資')
+       and not needs_body('總金額:新台幣143,000,000元', '增資') and not needs_body('金額及股數(如屬盈餘或公積轉增資): 新台幣383,000,000元', '增資'))
+    ok('⑯ reparse_ev 冪等:重算兩次一樣(⛔ 每一棒都改)',
+       all(rp(reparse_ev(e)['ev']) == rp(e) for e in ('交易總金額為越南盾473,772,812,805元', '發行股數:普通股44,600,000股・發行價格計算，新台幣550,364,000元', '金額:港幣2億5,000萬元')))
     print('❌ %d 條沒過' % len(fails) if fails else '✅ MOPS_AMOUNT_SELFTEST_PASS')
     if not _INJ and os.environ.get('INJECT'):
         all_red = True
-        for k in ('title', 'unit', 'cash', 'perunit'):
+        for k in ('title', 'unit', 'cash', 'perunit', 'pricetotal', 'pricecur', 'facefield', 'nofx', 'yiwan', 'perwin', 'nocap'):
             rc = subprocess.run([sys.executable, __file__, '--selftest'], env={**os.environ, 'INJECT': '', '_MA_INJ': k},
                                 capture_output=True, text=True).returncode
             print(f"  {'✅' if rc else '❌'} 注入 {k} → {'紅' if rc else '⛔ 沒有紅(測試沒有鑑別力)'}")
             all_red = all_red and rc != 0
-        print('✅ 🧪 四種注入全部叫得出來' if all_red else '❌ 有注入沒被抓到')
+        print('✅ 🧪 十一種注入全部叫得出來' if all_red else '❌ 有注入沒被抓到')
         if not all_red:
             fails.append('注入')
     return 1 if fails else 0

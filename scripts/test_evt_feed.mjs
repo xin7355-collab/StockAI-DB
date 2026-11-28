@@ -17,6 +17,7 @@
  *   ⑪ 390px 不橫捲 ・⑫ 無 pageerror
  * 注入(逐一確認會紅):INJECT=nogate(拿掉 🔓 守門)/ rev11(11 個月當一年)/ ratioall(增資也算營收佔比)/
  *   zeroamt(沒抓到金額寫成數字)/ nomiss(檔頭 miss 不看)/ nosort(不照時間排)
+ *   🩹 V82.7.6 ⑬:外幣印中文名(越南盾 / 港幣)、新台幣 ≥ 1 兆不顯示、幣別清單跟 lib_mops_amount 同一組 —— INJECT=nocap / nocurlabel
  */
 import fs from 'fs';
 import path from 'path';
@@ -34,6 +35,9 @@ if (INJ === 'ratioall') sub('if (this._EVT_RATIO_KINDS.includes(r.kind)) {', 'if
 if (INJ === 'zeroamt') sub("const a = r && r.amt != null && r.amt !== '' ? +r.amt : NaN;", 'const a = r ? (+r.amt || 0.0001) : NaN;');
 if (INJ === 'nomiss') sub('for (const [d, mks] of Object.entries(MS)) if (d >= lo && d < today)', 'for (const [d, mks] of Object.entries(MS)) if (false)');
 if (INJ === 'nosort') sub('rows.sort((a, b) => (key(a) < key(b) ? 1 : key(a) > key(b) ? -1 : 0));', '');
+if (INJ === 'nocap') sub("if (cur === 'TWD' && a >= 1e4) return '';", '');
+if (INJ === 'nocurlabel') sub("VND: '越南盾', ", '');
+if (INJ && SRC === ORIG) { console.error(`❌ 注入 ${INJ} 沒有注進去(字串對不到)`); process.exit(2); }
 if (INJ && SRC === ORIG) { console.log('❌ 注入沒有注進去'); process.exit(1); }
 const TMP = path.join(ROOT, '.test_evt_feed.html');
 fs.writeFileSync(TMP, SRC);
@@ -183,6 +187,22 @@ try {
     ok('⑩ 使用者自己點開「再看 N 則」→ 重畫之後還是開著', R.moreKept, R.moreKept);
     ok('⑩ 決定性對照:沒點過的「其他公告」重畫後關著', R.otherClosed, R.otherClosed);
     ok('⑪ 390px:容器 358px、全部展開也沒有元素超出', R.w390.boxW >= 350 && R.w390.over <= 2, JSON.stringify(R.w390));
+    // ⑬ 🩹 V82.7.6 外幣中文名 / 新台幣上限 / 兩邊幣別清單一樣
+    const R2 = await page.evaluate(() => ({
+        vnd: app._evtAmtTxt({ amt: 4737.73, cur: 'VND', kind: '訂單', s: '8464' }, {}),
+        hkd: app._evtAmtTxt({ amt: 2.5, cur: 'HKD', kind: '增資', s: '2891' }, {}),
+        huge: app._evtAmtTxt({ amt: 245462344, cur: 'TWD', kind: '增資', s: '2547' }, {}),
+        big: app._evtAmtTxt({ amt: 9999, cur: 'TWD', kind: '增資', s: '2330' }, {}),
+        cur: Object.keys(app._EVT_CUR).sort(),
+    }));
+    ok('⑬ 🩹 外幣寫中文名:「金額 越南盾 4,737.73 億元」(⛔ 代碼、⛔ 營收佔比)、「金額 港幣 2.5 億元」',
+       /金額 越南盾 4,737\.73 億元/.test(R2.vnd || '') && !/營收|VND/.test(R2.vnd || '') && /金額 港幣 2\.5 億元/.test(R2.hkd || ''), [R2.vnd, R2.hkd]);
+    ok('⑬ 🩹 新台幣 ≥ 1 兆元(2.45 億億 = 解析錯)→ 不顯示;決定性對照:9,999 億照寫', R2.huge === '' && /金額 9,999 億元/.test(R2.big || ''), [R2.huge, R2.big]);
+    const LIB = fs.readFileSync(path.join(ROOT, 'scripts', 'lib_mops_amount.py'), 'utf8');
+    const blk = nm => { const i = LIB.indexOf(`${nm} = {`); return i < 0 ? '' : LIB.slice(i, LIB.indexOf('}', i)); };
+    const libCodes = [...new Set([...(blk('_CUR') + blk('_CUR_MORE')).matchAll(/:\s*'([A-Z]{3})'/g)].map(m => m[1]))].sort();
+    ok('⑬ 幣別清單兩邊一樣:lib_mops_amount 的 _CUR / _CUR_MORE 代碼 = App 的 _EVT_CUR(⛔ 只改一邊 → 外幣印成代碼)',
+       libCodes.length >= 18 && JSON.stringify(libCodes) === JSON.stringify(R2.cur), [libCodes.join(','), R2.cur.join(',')]);
     ok('⑫ 無 pageerror', !errs.length, errs.join(' | '));
 } finally {
     await browser.close();

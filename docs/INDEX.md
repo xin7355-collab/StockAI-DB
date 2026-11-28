@@ -5,6 +5,7 @@
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 🩹 V82.7.6 公告金額解析修 6 類 bug(股數 × 總額乘錯・外幣當新台幣・億萬少算・單價當總額・增資面額欄當募到的錢・H2 混進投資別家;補抓第一棒抽查、⛔ 看過報酬)+ 已補的列自動修正(heal_rows / reparse_ev)
 - 🏛️ V82.7.5 全市場公司公告清單(🔓 公司公告與本週重點):✅ 官方公告・產業・金額 + 約一年營收的幾 %(公告內文抓,lib_mops_amount)・新聞也報幾則;⛔ 高 / 中(第 2 步回測前)、⛔「只有新聞」(3 天 75 則候選幾乎全錯)
 - 🗣️⛔ V82.7.4 評估紀錄 58 Chris Camillo「社會套利」台股版(EXP-20261128-01):新聞暴增之後 20 天 −0.14pp(同一檔換日子 +0.99)・看好 ÷ 看壞 < 2 反而比 ≥ 2 少 0.86pp(方向相反)→ trap `news-consensus`・PTT 版 blocked `ptt-consensus`(2027 年底)・字表搬 `scripts/news_tone_words.json`、news_factor 多輸出 tone
 - 📱🇺🇸 V82.7.3 Telegram 盤前簡報:美國放假的隔天美股那一行註明「台股已經反應過、不算分」(worker `premktFrozen().usHol`,只讀凍結那份)・11/27 晚上驗收 premkt_log 有 out / radar ✅、0050 跳空 −0.05%(照規則猜對、其實開平)
